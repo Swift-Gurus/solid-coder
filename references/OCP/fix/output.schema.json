@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OCP Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file", "suggestions"],
+  "properties": {
+    "agent": { "const": "ocp" },
+    "principle": { "const": "Open/Closed Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ocp-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., ocp-fix-001"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['ocp-001', 'ocp-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the refactoring"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": ["dependency_injection", "strategy_pattern", "decorator_pattern", "protocol_extraction"],
+            "description": "Which OCP design pattern this fix applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the refactoring: protocol definitions, modified class with DI, before/after of key changes"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted OCP metrics after the suggestion is applied",
+            "properties": {
+              "original_class": {
+                "type": "object",
+                "properties": {
+                  "sealed_variation_points": { "type": "integer" },
+                  "direct_untestable_count": { "type": "integer" },
+                  "direct_testable_count": { "type": "integer" },
+                  "indirect_untestable_count": { "type": "integer" },
+                  "indirect_testable_count": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              },
+              "refactored_types": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "sealed_variation_points": { "type": "integer" },
+                    "direct_untestable_count": { "type": "integer" },
+                    "direct_testable_count": { "type": "integer" },
+                    "indirect_untestable_count": { "type": "integer" },
+                    "indirect_testable_count": { "type": "integer" },
+                    "expected_severity": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prepare Review Input Output",
+  "description": "Normalized input structure for review agents.",
+  "type": "object",
+  "required": ["source_type", "metadata", "summary"],
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": ["branch", "folder", "file", "buffer"]
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["timestamp"],
+      "properties": {
+        "branch": { "type": ["string", "null"] },
+        "base_branch": { "type": ["string", "null"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "files": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["file_path", "changed_ranges", "units"],
+        "properties": {
+          "file_path": { "type": "string" },
+          "changed_ranges": {
+            "type": ["array", "null"],
+            "items": {
+              "type": "object",
+              "required": ["start", "end"],
+              "properties": {
+                "start": { "type": "integer", "minimum": 1 },
+                "end": { "type": "integer", "minimum": 1 }
+              }
+            }
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "kind", "line_start", "line_end"],
+              "properties": {
+                "name": { "type": "string" },
+                "kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "protocol", "enum", "extension"]
+                },
+                "line_start": { "type": "integer", "minimum": 1 },
+                "line_end": { "type": "integer", "minimum": 1 },
+                "has_changes": { "type": ["boolean", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "buffer": {
+      "type": ["object", "null"],
+      "required": ["input", "units"],
+      "properties": {
+        "input": { "type": "string" },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "kind", "line_start", "line_end"],
+            "properties": {
+              "name": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["class", "struct", "protocol", "enum", "extension"]
+              },
+              "line_start": { "type": "integer", "minimum": 1 },
+              "line_end": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_files", "total_units", "changed_units"],
+      "properties": {
+        "total_files": { "type": "integer", "minimum": 0 },
+        "total_units": { "type": "integer", "minimum": 0 },
+        "changed_units": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "if": { "properties": { "source_type": { "const": "buffer" } } },
+  "then": {
+    "properties": { "buffer": { "type": "object" }, "files": { "const": null } }
+  },
+  "else": {
+    "properties": { "files": { "type": "array" }, "buffer": { "const": null } }
+  }
+}

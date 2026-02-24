@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OCP Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "ocp" },
+    "principle": { "const": "Open/Closed Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file", "metrics", "scoring", "findings"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "metrics": {
+            "type": "object",
+            "required": ["sealed_variation_points", "testability"],
+            "properties": {
+              "sealed_variation_points": {
+                "type": "object",
+                "description": "OCP-1: Steps 1.1.1 — 1.1.5",
+                "required": ["count", "dependency_table", "direct_classification", "indirect_types"],
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "description": "Step 1.1.5: Sum of DIRECT non-injected minus exceptions"
+                  },
+                  "dependency_table": {
+                    "type": "array",
+                    "description": "Step 1.1.1: Every dependency the class uses",
+                    "items": {
+                      "type": "object",
+                      "required": ["dependency", "type", "classification", "reason"],
+                      "properties": {
+                        "dependency": { "type": "string" },
+                        "type": { "type": "string" },
+                        "classification": {
+                          "type": "string",
+                          "enum": ["abstract", "direct", "indirect", "exception"]
+                        },
+                        "reason": { "type": "string" }
+                      }
+                    }
+                  },
+                  "direct_classification": {
+                    "type": "array",
+                    "description": "Step 1.1.3: DIRECT types classified as INJECTED or NON-INJECTED",
+                    "items": {
+                      "type": "object",
+                      "required": ["dependency", "injection_type"],
+                      "properties": {
+                        "dependency": { "type": "string" },
+                        "injection_type": {
+                          "type": "string",
+                          "enum": ["INJECTED", "NON-INJECTED"]
+                        }
+                      }
+                    }
+                  },
+                  "indirect_types": {
+                    "type": "array",
+                    "description": "Step 1.1.4: INDIRECT concrete types passed indirectly by dependencies",
+                    "items": {
+                      "type": "object",
+                      "required": ["dependency", "source"],
+                      "properties": {
+                        "dependency": { "type": "string" },
+                        "source": {
+                          "type": "string",
+                          "description": "Which dependency provides this indirect type"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "testability": {
+                "type": "object",
+                "description": "OCP-2: Steps 1.2.1 — 1.2.5",
+                "required": ["direct_untestable_count", "direct_testable_count", "indirect_untestable_count", "indirect_testable_count", "direct_dependency_analyses", "indirect_dependency_analyses"],
+                "properties": {
+                  "direct_untestable_count": {
+                    "type": "integer",
+                    "description": "Step 1.2.3: Count of DIRECT dependencies marked UNTESTABLE"
+                  },
+                  "direct_testable_count": {
+                    "type": "integer",
+                    "description": "Count of DIRECT dependencies marked TESTABLE"
+                  },
+                  "indirect_untestable_count": {
+                    "type": "integer",
+                    "description": "Step 1.2.5: Count of INDIRECT dependencies marked UNTESTABLE"
+                  },
+                  "indirect_testable_count": {
+                    "type": "integer",
+                    "description": "Count of INDIRECT dependencies marked TESTABLE"
+                  },
+                  "direct_dependency_analyses": {
+                    "type": "array",
+                    "description": "Step 1.2.2: Per-dependency OCP-1 analysis for each DIRECT concrete dep",
+                    "items": {
+                      "type": "object",
+                      "required": ["dependency", "testable", "sealed_point_count"],
+                      "properties": {
+                        "dependency": { "type": "string" },
+                        "testable": { "type": "boolean" },
+                        "sealed_point_count": {
+                          "type": "integer",
+                          "description": "Step 1.2.2.4: Sealed points found in the direct dependency"
+                        },
+                        "dependency_table": {
+                          "type": "array",
+                          "description": "Step 1.2.2.1: Dependencies of the direct class",
+                          "items": {
+                            "type": "object",
+                            "required": ["dependency", "type", "classification", "reason"],
+                            "properties": {
+                              "dependency": { "type": "string" },
+                              "type": { "type": "string" },
+                              "classification": {
+                                "type": "string",
+                                "enum": ["abstract", "direct", "indirect", "exception"]
+                              },
+                              "reason": { "type": "string" }
+                            }
+                          }
+                        },
+                        "direct_classification": {
+                          "type": "array",
+                          "description": "Step 1.2.2.3: DIRECT types of the analyzed class",
+                          "items": {
+                            "type": "object",
+                            "required": ["dependency", "injection_type"],
+                            "properties": {
+                              "dependency": { "type": "string" },
+                              "injection_type": {
+                                "type": "string",
+                                "enum": ["INJECTED", "NON-INJECTED"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "indirect_dependency_analyses": {
+                    "type": "array",
+                    "description": "Step 1.2.4: Per-dependency subclass check for each INDIRECT dep",
+                    "items": {
+                      "type": "object",
+                      "required": ["dependency", "testable", "reason"],
+                      "properties": {
+                        "dependency": { "type": "string" },
+                        "testable": { "type": "boolean" },
+                        "reason": {
+                          "type": "string",
+                          "description": "Step 1.2.4.1: Why it can or cannot be subclassed"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "scoring": {
+            "type": "object",
+            "description": "Phase 2: Steps 2.1.1 — 2.1.6",
+            "required": ["sealed_points_count", "sealed_points_severity", "direct_untestable_count", "direct_untestable_severity", "testable_direct_count", "indirect_untestable_count", "indirect_untestable_severity", "testable_indirect_count", "final_severity"],
+            "properties": {
+              "sealed_points_count": { "type": "integer", "description": "Step 2.1.1" },
+              "sealed_points_severity": { "type": "string", "description": "Step 2.1.1" },
+              "direct_untestable_count": { "type": "integer", "description": "Step 2.1.2" },
+              "direct_untestable_severity": { "type": "string", "description": "Step 2.1.2" },
+              "testable_direct_count": { "type": "integer", "description": "Step 2.1.3" },
+              "indirect_untestable_count": { "type": "integer", "description": "Step 2.1.4" },
+              "indirect_untestable_severity": { "type": "string", "description": "Step 2.1.4" },
+              "testable_indirect_count": { "type": "integer", "description": "Step 2.1.5" },
+              "final_severity": {
+                "type": "string",
+                "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+                "description": "Step 2.1.6"
+              }
+            }
+          },
+          "findings": {
+            "type": "array",
+            "description": "Phase 3: Steps 3.1.1 — 3.1.2",
+            "items": {
+              "type": "object",
+              "required": ["id", "severity", "metric", "title", "issue"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^ocp-\\d{3}$"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": ["SEVERE", "MINOR"]
+                },
+                "metric": {
+                  "type": "string",
+                  "enum": ["OCP-1", "OCP-2"],
+                  "description": "Which metric triggered this finding"
+                },
+                "line_start": { "type": "integer" },
+                "line_end": { "type": "integer" },
+                "title": { "type": "string" },
+                "issue": { "type": "string" },
+                "impact": { "type": "string" },
+                "rule_source": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

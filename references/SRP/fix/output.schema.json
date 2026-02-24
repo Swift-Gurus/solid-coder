@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SRP Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file", "suggestions"],
+  "properties": {
+    "agent": { "const": "srp" },
+    "principle": { "const": "Single Responsibility Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^srp-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., srp-fix-001"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['srp-001', 'srp-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the refactoring"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "MODERATE", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the refactoring: protocol definitions, extracted types, modified original class, before/after of key methods"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task that can be fed to a code agent."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted SRP metrics after the suggestion is applied",
+            "properties": {
+              "original_class": {
+                "type": "object",
+                "properties": {
+                  "verbs": { "type": "integer" },
+                  "cohesion_groups": { "type": "integer" },
+                  "stakeholders": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              },
+              "extracted_types": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "verbs": { "type": "integer" },
+                    "cohesion_groups": { "type": "integer" },
+                    "stakeholders": { "type": "integer" },
+                    "expected_severity": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
