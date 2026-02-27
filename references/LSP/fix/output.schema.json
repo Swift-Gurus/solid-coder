@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LSP Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file", "suggestions"],
+  "properties": {
+    "agent": { "const": "lsp" },
+    "principle": { "const": "Liskov Substitution Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^lsp-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., lsp-fix-001"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['lsp-001', 'lsp-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the refactoring"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": ["protocol_extraction", "generic_constraint", "contract_update", "value_type_encapsulation", "interface_redesign", "error_hierarchy_unification"],
+            "description": "Which LSP refactoring pattern this fix applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the refactoring: protocol definitions, generic constraints, modified base/subtype, split interfaces, before/after of key changes"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted LSP metrics after the suggestion is applied",
+            "properties": {
+              "original_class": {
+                "type": "object",
+                "properties": {
+                  "type_checks": { "type": "integer" },
+                  "contract_violations": { "type": "integer" },
+                  "empty_methods": { "type": "integer" },
+                  "fatal_error_methods": { "type": "integer" },
+                  "empty_percentage": { "type": "number" },
+                  "expected_severity": { "type": "string" }
+                }
+              },
+              "refactored_types": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "type_checks": { "type": "integer" },
+                    "contract_violations": { "type": "integer" },
+                    "empty_methods": { "type": "integer" },
+                    "fatal_error_methods": { "type": "integer" },
+                    "empty_percentage": { "type": "number" },
+                    "expected_severity": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

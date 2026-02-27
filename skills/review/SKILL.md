@@ -52,6 +52,16 @@ allowed-tools: Read, Glob, Bash, Write
 
 - [ ] 4.4 List all output file paths
 
+## Phase 5: Generate Report (wait for phase 4)
+- [ ] 5.1 Prepare a Task call:
+  - subagent_type: `solid-coder:generate-report-agent`
+  - prompt:
+    ```
+    review-output-directory: {OUTPUT_ROOT}
+    ```
+- [ ] 5.2 Launch Task
+- [ ] 5.3 Report the path to the generated HTML: `{OUTPUT_ROOT}/report.html`
+
 ## Constraints
 - Do NOT invent principles — only run reviews for folders that have review/instructions.md
 - Do NOT modify any source code files
