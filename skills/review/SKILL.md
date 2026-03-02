@@ -52,6 +52,26 @@ allowed-tools: Read, Glob, Bash, Write
 
 - [ ] 4.4 List all output file paths
 
+## Phase 5: Validate Findings (wait for phase 4)
+- [ ] 5.1 Prepare a Task call:
+  - subagent_type: `solid-coder:validate-findings-agent`
+  - prompt:
+    ```
+    output-root: {OUTPUT_ROOT}
+    ```
+- [ ] 5.2 Launch Task
+- [ ] 5.3 Report validated output paths from `{OUTPUT_ROOT}/by-file/`
+
+## Phase 6: Generate Report (wait for phase 5)
+- [ ] 6.1 Prepare a Task call:
+  - subagent_type: `solid-coder:generate-report-agent`
+  - prompt:
+    ```
+    output-root: {OUTPUT_ROOT}
+    ```
+- [ ] 6.2 Launch Task
+- [ ] 6.3 Report the path to the generated HTML: `{OUTPUT_ROOT}/report.html`
+
 ## Constraints
 - Do NOT invent principles — only run reviews for folders that have review/instructions.md
 - Do NOT modify any source code files

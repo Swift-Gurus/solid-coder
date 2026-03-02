@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+"""
+Validate and reorganize SOLID review findings by file.
+
+Filters findings to only those overlapping changed ranges,
+then groups findings + suggestions by file path.
+
+Usage:
+    python3 validate-findings.py <output-root>
+
+Input:
+    <output-root>/prepare/review-input.json
+    <output-root>/rules/*/review-output.json
+    <output-root>/rules/*/fix.json
+
+Output:
+    <output-root>/by-file/<filename>.output.json
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+from datetime import datetime, timezone
+
+
+def load_json(path):
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def write_json(path, data):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def ranges_overlap(finding, changed_ranges):
+    """Check if finding's line range overlaps any changed range."""
+    f_start = finding.get("line_start")
+    f_end = finding.get("line_end")
+    if f_start is None or f_end is None:
+        return True  # no line info = keep it
+    for r in changed_ranges:
+        if f_start <= r["end"] and f_end >= r["start"]:
+            return True
+    return False
+
+
+def worst_severity(findings):
+    """Return worst severity from a list of findings."""
+    order = {"COMPLIANT": 0, "MINOR": 1, "MODERATE": 2, "IMPORTANT": 3, "SEVERE": 4, "CRITICAL": 5}
+    if not findings:
+        return "COMPLIANT"
+    worst = max(findings, key=lambda f: order.get(f.get("severity", "COMPLIANT"), 0))
+    return worst.get("severity", "COMPLIANT")
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <output-root>", file=sys.stderr)
+        sys.exit(1)
+
+    output_root = Path(sys.argv[1])
+
+    # Phase 1: Load data
+    review_input_path = output_root / "prepare" / "review-input.json"
+    if not review_input_path.exists():
+        print(f"Error: {review_input_path} not found", file=sys.stderr)
+        sys.exit(1)
+
+    review_input = load_json(review_input_path)
+    source_type = review_input.get("source_type", "branch")
+    skip_filtering = source_type in ("folder", "file", "buffer")
+
+    # Build lookup: file_path -> changed_ranges
+    changed_lookup = {}
+    for file_entry in review_input.get("files") or []:
+        fp = file_entry["file_path"]
+        changed_lookup[fp] = file_entry.get("changed_ranges")
+
+    # Discover review outputs and fix outputs
+    rules_dir = output_root / "rules"
+    if not rules_dir.exists():
+        print(f"Error: {rules_dir} not found", file=sys.stderr)
+        sys.exit(1)
+
+    principles = []
+    for principle_dir in sorted(rules_dir.iterdir()):
+        if not principle_dir.is_dir():
+            continue
+        review_path = principle_dir / "review-output.json"
+        fix_path = principle_dir / "fix.json"
+        if not review_path.exists():
+            continue
+        entry = {
+            "review": load_json(review_path),
+            "fix": load_json(fix_path) if fix_path.exists() else None,
+        }
+        principles.append(entry)
+
+    # Phase 2 & 3: Filter and reorganize by file
+    # Structure: file_path -> [{ agent, principle, findings, suggestions }]
+    by_file = {}
+    total_findings = 0
+    total_rejected = 0
+
+    for entry in principles:
+        review = entry["review"]
+        fix = entry["fix"]
+
+        agent = review.get("agent", "")
+        principle_name = review.get("principle", "")
+        timestamp = review.get("timestamp", datetime.now(timezone.utc).isoformat())
+
+        # Build suggestion lookup from fix.json: finding_id -> [suggestions]
+        suggestions_by_finding = {}
+        all_suggestions = []
+        if fix and "suggestions" in fix:
+            all_suggestions = fix["suggestions"]
+            for s in all_suggestions:
+                for addr in s.get("addresses", []):
+                    suggestions_by_finding.setdefault(addr, []).append(s)
+
+        # Process each file in review output
+        for file_entry in review.get("files", []):
+            file_path = file_entry.get("file", "")
+            findings = file_entry.get("findings", [])
+
+            # Filter findings
+            passing = []
+            for finding in findings:
+                total_findings += 1
+                if skip_filtering:
+                    passing.append(finding)
+                    continue
+
+                cr = changed_lookup.get(file_path)
+                if cr is None or cr is True:
+                    # null or true = entire file is new
+                    passing.append(finding)
+                    continue
+
+                if isinstance(cr, list) and ranges_overlap(finding, cr):
+                    passing.append(finding)
+                else:
+                    total_rejected += 1
+
+            if not passing:
+                continue
+
+            # Collect suggestions that address at least one passing finding
+            passing_ids = {f["id"] for f in passing}
+            seen_suggestion_ids = set()
+            matched_suggestions = []
+            for f in passing:
+                for s in suggestions_by_finding.get(f["id"], []):
+                    if s["id"] not in seen_suggestion_ids:
+                        seen_suggestion_ids.add(s["id"])
+                        matched_suggestions.append(s)
+
+            severity = worst_severity(passing)
+
+            by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
+            by_file[file_path]["principles"].append({
+                "agent": agent,
+                "principle": principle_name,
+                "severity": severity,
+                "findings": passing,
+                "suggestions": matched_suggestions,
+            })
+
+    # Phase 4: Write outputs
+    by_file_dir = output_root / "by-file"
+    total_passed = total_findings - total_rejected
+
+    for file_path, data in sorted(by_file.items()):
+        filename = os.path.basename(file_path)
+        output = {
+            "file": file_path,
+            "timestamp": data["timestamp"],
+            "principles": data["principles"],
+        }
+        out_path = by_file_dir / f"{filename}.output.json"
+        write_json(str(out_path), output)
+
+    print(f"{total_findings} findings → {total_passed} validated, {total_rejected} rejected")
+    print(f"Output: {by_file_dir}")
+
+
+if __name__ == "__main__":
+    main()
