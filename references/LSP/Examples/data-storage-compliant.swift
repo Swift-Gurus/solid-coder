@@ -1,6 +1,6 @@
 
 protocol Identifiable {
-   var id: String { }
+   var id: String { get }
 }
 
 protocol RecordRepresentable: Identifiable, Encodable {

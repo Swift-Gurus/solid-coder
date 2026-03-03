@@ -3,6 +3,7 @@ name: validate-findings
 description: Filter findings to changes only and reorganize outputs by file for implementation.
 argument-hint: <output-root>
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # Findings Validator

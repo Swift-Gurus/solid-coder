@@ -3,6 +3,7 @@ name: generate-report
 description: Generate a self-contained HTML report from validated per-file findings and fix suggestions.
 argument-hint: <output-root>
 allowed-tools: Bash
+user-invocable: false
 ---
 
 # HTML Report Generator

@@ -3,6 +3,7 @@ name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
 allowed-tools: Read, Grep, Glob, Bash
+user-invocable: false
 ---
 
 # Generic Code Review

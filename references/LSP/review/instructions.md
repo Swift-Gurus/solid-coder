@@ -17,7 +17,7 @@ output_schema: output.schema.json
       | Pattern | Concrete Type | Base Type/Protocol  | 
       |---------|--------------|---------------------|
       |         |              |                     |
-    - [ ] 1.1.2 Count out exceptions — typechecks forced by the framework API, not by a wrong abstraction the developer chose (see typecast-lsp-exception.swift in Examples)
+    - [ ]  1.1.2 Count out exceptions — for each typecast, identify the source type and search the project/local package files for its definition. If found → developer-owned (not exception). If not found → external (exception). See typecast-lsp-exception.swift in Examples
     - [ ] 1.1.3 Count net type checks (total - exceptions)
 
       Net type check count: ___

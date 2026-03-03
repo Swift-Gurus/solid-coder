@@ -3,6 +3,7 @@ name: fix-suggest
 description: Generate fix suggestions from review findings. Reads findings JSON, source code, and principle-specific fix instructions to produce refactoring suggestions.
 argument-hint: <principle-folder> <findings-json> <code-files>
 allowed-tools: Read, Grep, Glob, Bash, Write
+user-invocable: false
 ---
 
 # Fix Suggestion Generator

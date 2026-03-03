@@ -22,13 +22,18 @@ observable from code.
 
 Count runtime type checks (`is`, `as?`, `as!`, `type(of:)`) against concrete types in client code that uses a base type or protocol.
 
-**Definition:** A "type check" is a place where client code inspects the concrete type behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
-
+**Definition:** 
+- A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
+    
 **Detection:**
 
 1. **Count typechecks** — `is`, `as?`, `as!`, `type(of:)` used with concrete types, protocols, interfaces
 2. **Count out exceptions**
-   - count typechecks that are forced by the framework API, not by a wrong abstraction the developer chose. see typecast-lsp-exception.swift in Examples
+   - see typecast-lsp-exception.swift in Examples
+   - identify the source of typecasted object
+   - search in project/local packages/local framework files
+   - if not found -> external -> exception
+   - if found -> developer-owned -> violation
 3. **Total Count** = total type checks minus exceptions
 
 **Result:**
@@ -47,15 +52,15 @@ final class StorageImpl: Storage {
    func saveItem(_ item: StorageItem) {
       if let user = item as? User {
              let json = // create json from user
-             let record == Record(user.id, attributes: json)
+             let record = Record(user.id, attributes: json)
              try database.save(record)
          } else if let product = item as? Product {
               let json = // create json from product
-              let record == Record(product.id, attributes: json)
+              let record = Record(product.id, attributes: json)
              try database.save(record)
          } else if let order = item as? Order {
              let json = // create json from order
-             let record == Record(order.id, attributes: json)
+             let record = Record(order.id, attributes: json)
              try database.save(record)
          }
    }
