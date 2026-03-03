@@ -13,8 +13,9 @@ allowed-tools: Read, Glob, Bash, Write, Edit
 - MAX_ITERATIONS: 2                                                                                                                                                                                                                                                                            
 - ITERATION: 0 (counter)
 ## Phase 1: Prepare Input (Review loop)
-- [ ] 1.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS go to Phase 6
-- [ ] 1.2 Prepare a Task call:
+- [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2
+- [ ] 1.2 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS go to Phase 6
+- [ ] 1.3 Prepare a Task call:
   - subagent_type: `prepare-review-input-agent`
   - prompt:
    ```
