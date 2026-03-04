@@ -22,10 +22,15 @@ output_schema: output.schema.json
 - [ ] **2.1 Analyze findings** — read metrics (sealed points, testable dependencies)
 - [ ] **2.2 Propose suggestion** — what way to comply, what pattern to use
 - [ ] **2.3 Create todo items** — concrete actionable steps to implement the fix:
-    - Create protocol (name + method signatures)
-    - Create extracted type (name + which variables/methods move)
-    - Update original class (new dependencies, removed variables, delegation changes)
-    - Each todo item should be a single, implementable action
+  - [ ] **2.3.1 Validate protocol existence** - Check for existing protocols first before creating new ones
+    - if exist use it 
+    - if not create protocol (name + method signatures)
+  - [ ] **2.3.2 Check existing type** - Check if existing type already provides the required methods
+    - if already provides the exact method/property -> extension conformance
+    - if the type can provide the method via a thin forwarding call to its own properties (e.g. chained calls like `obj.child.method()` can become `obj.method() { child.method() }`) -> extension conformance with a forwarding implementation. Prefer this over creating a wrapper struct — keep the conformance on the existing type
+    - only if the type cannot reasonably conform (e.g. you don't own it, it's a system type with no meaningful identity, or forwarding would require external state) -> use adapter or bridge pattern, create extracted type (name + which variables/methods move)
+   - [ ] **2.3.3 Update original class**  new dependencies, removed variables, delegation changes
+  - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix
 

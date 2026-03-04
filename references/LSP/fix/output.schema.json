@@ -26,6 +26,15 @@
             "pattern": "^lsp-fix-\\d{3}$",
             "description": "Suggestion ID, e.g., lsp-fix-001"
           },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the unit this suggestion targets"
+          },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "extension"],
+            "description": "Kind of the unit this suggestion targets"
+          },
           "addresses": {
             "type": "array",
             "items": { "type": "string" },

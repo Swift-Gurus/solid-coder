@@ -16,157 +16,169 @@
       "description": "Per-file analysis results",
       "items": {
         "type": "object",
-        "required": ["file", "metrics", "scoring", "findings"],
+        "required": ["file", "units"],
         "properties": {
           "file": {
             "type": "string",
             "description": "Full path to the reviewed file"
           },
-
-          "metrics": {
-            "type": "object",
-            "required": ["verbs", "cohesion_groups", "stakeholders", "cross_reference"],
-            "properties": {
-
-              "verbs": {
-                "type": "object",
-                "required": ["count", "table"],
-                "properties": {
-                  "count": { "type": "integer" },
-                  "table": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": ["method", "verb"],
-                      "properties": {
-                        "method": { "type": "string" },
-                        "verb": { "type": "string" }
-                      }
-                    }
-                  }
-                }
-              },
-
-              "cohesion_groups": {
-                "type": "object",
-                "required": ["count", "groups", "method_variable_table"],
-                "properties": {
-                  "count": { "type": "integer" },
-                  "method_variable_table": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": ["method", "variables"],
-                      "properties": {
-                        "method": { "type": "string" },
-                        "variables": {
-                          "type": "array",
-                          "items": { "type": "string" }
-                        }
-                      }
-                    }
-                  },
-                  "groups": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": ["name", "variables", "methods"],
-                      "properties": {
-                        "name": { "type": "string" },
-                        "variables": {
-                          "type": "array",
-                          "items": { "type": "string" }
-                        },
-                        "methods": {
-                          "type": "array",
-                          "items": { "type": "string" }
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-
-              "stakeholders": {
-                "type": "object",
-                "required": ["count", "table"],
-                "properties": {
-                  "count": { "type": "integer" },
-                  "table": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "required": ["verb", "stakeholder"],
-                      "properties": {
-                        "verb": { "type": "string" },
-                        "stakeholder": { "type": "string" }
-                      }
-                    }
-                  }
-                }
-              },
-
-              "cross_reference": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "required": ["group", "variables", "verbs", "stakeholder"],
-                  "properties": {
-                    "group": { "type": "string" },
-                    "variables": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "verbs": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    },
-                    "stakeholder": { "type": "string" }
-                  }
-                }
-              }
-            }
-          },
-
-          "scoring": {
-            "type": "object",
-            "required": ["cohesion_severity", "verb_severity", "stakeholder_count", "final_severity"],
-            "properties": {
-              "cohesion_severity": { "type": "string" },
-              "verb_severity": { "type": "string" },
-              "stakeholder_count": { "type": "integer" },
-              "final_severity": {
-                "type": "string",
-                "enum": ["COMPLIANT", "MINOR", "MODERATE", "SEVERE"]
-              }
-            }
-          },
-
-          "findings": {
+          "units": {
             "type": "array",
+            "description": "Per-unit analysis results within this file",
             "items": {
               "type": "object",
-              "required": ["id", "severity", "metric", "title", "issue"],
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
               "properties": {
-                "id": {
+                "unit_name": {
                   "type": "string",
-                  "pattern": "^srp-\\d{3}$"
+                  "description": "Name of the analyzed unit (e.g., class name, struct name)"
                 },
-                "severity": {
+                "unit_kind": {
                   "type": "string",
-                  "enum": ["CRITICAL", "IMPORTANT", "MINOR"]
+                  "enum": ["class", "struct", "enum", "extension"],
+                  "description": "Kind of the analyzed unit"
                 },
-                "metric": {
-                  "type": "string",
-                  "enum": ["SRP-1", "SRP-2", "SRP-3"],
-                  "description": "Which metric triggered this finding"
+                "metrics": {
+                  "type": "object",
+                  "required": ["verbs", "cohesion_groups", "stakeholders", "cross_reference"],
+                  "properties": {
+                    "verbs": {
+                      "type": "object",
+                      "required": ["count", "table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["method", "verb"],
+                            "properties": {
+                              "method": { "type": "string" },
+                              "verb": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "cohesion_groups": {
+                      "type": "object",
+                      "required": ["count", "groups", "method_variable_table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "method_variable_table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["method", "variables"],
+                            "properties": {
+                              "method": { "type": "string" },
+                              "variables": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            }
+                          }
+                        },
+                        "groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["name", "variables", "methods"],
+                            "properties": {
+                              "name": { "type": "string" },
+                              "variables": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              },
+                              "methods": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "stakeholders": {
+                      "type": "object",
+                      "required": ["count", "table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["verb", "stakeholder"],
+                            "properties": {
+                              "verb": { "type": "string" },
+                              "stakeholder": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "cross_reference": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["group", "variables", "verbs", "stakeholder"],
+                        "properties": {
+                          "group": { "type": "string" },
+                          "variables": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                          },
+                          "verbs": {
+                            "type": "array",
+                            "items": { "type": "string" }
+                          },
+                          "stakeholder": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
                 },
-                "line_start": { "type": "integer" },
-                "line_end": { "type": "integer" },
-                "title": { "type": "string" },
-                "issue": { "type": "string" },
-                "impact": { "type": "string" },
-                "rule_source": { "type": "string" }
+                "scoring": {
+                  "type": "object",
+                  "required": ["cohesion_severity", "verb_severity", "stakeholder_count", "final_severity"],
+                  "properties": {
+                    "cohesion_severity": { "type": "string" },
+                    "verb_severity": { "type": "string" },
+                    "stakeholder_count": { "type": "integer" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "MODERATE", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^srp-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["CRITICAL", "IMPORTANT", "MINOR"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["SRP-1", "SRP-2", "SRP-3"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
               }
             }
           }

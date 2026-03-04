@@ -16,269 +16,288 @@
       "description": "Per-file analysis results",
       "items": {
         "type": "object",
-        "required": ["file", "metrics", "scoring", "findings"],
+        "required": ["file", "units"],
         "properties": {
           "file": {
             "type": "string",
             "description": "Full path to the reviewed file"
           },
-          "metrics": {
-            "type": "object",
-            "required": ["type_checking", "contract_compliance", "empty_methods"],
-            "properties": {
-              "type_checking": {
-                "type": "object",
-                "description": "LSP-1: Steps 1.1.1 — 1.1.3",
-                "required": ["total_count", "excepted_count", "net_count", "instances"],
-                "properties": {
-                  "total_count": {
-                    "type": "integer",
-                    "description": "Step 1.1.1: Total type checks found"
-                  },
-                  "excepted_count": {
-                    "type": "integer",
-                    "description": "Step 1.1.2: Type checks forced by framework API (not wrong abstraction)"
-                  },
-                  "net_count": {
-                    "type": "integer",
-                    "description": "Step 1.1.3: total_count - excepted_count"
-                  },
-                  "instances": {
-                    "type": "array",
-                    "description": "Step 1.1.1: Every type check found",
-                    "items": {
-                      "type": "object",
-                      "required": ["pattern", "concrete_type", "base_type", "line", "exception_applied"],
-                      "properties": {
-                        "pattern": {
-                          "type": "string",
-                          "description": "The pattern found: is, as?, as!, type(of:)"
-                        },
-                        "concrete_type": {
-                          "type": "string",
-                          "description": "The concrete type being checked"
-                        },
-                        "base_type": {
-                          "type": "string",
-                          "description": "The base type or protocol the variable is declared as"
-                        },
-                        "line": { "type": "integer" },
-                        "exception_applied": {
-                          "type": "boolean",
-                          "description": "Step 1.1.2: True if typecheck is forced by framework API"
-                        },
-                        "exception_reason": {
-                          "type": "string",
-                          "description": "Why the exception was applied (e.g., 'forced by URLSession API', 'forced by JSONSerialization API')"
-                        }
-                      }
-                    }
-                  }
-                }
-              },
-              "contract_compliance": {
-                "type": "object",
-                "description": "LSP-2: Steps 1.2.1 — 1.2.4",
-                "required": ["has_inheritance", "total_violations"],
-                "properties": {
-                  "has_inheritance": {
-                    "type": "boolean",
-                    "description": "Step 1.2.1: Does the class inherit from a concrete base class?"
-                  },
-                  "base_class": {
-                    "type": "string",
-                    "description": "Step 1.2.2: Name of the base class (if has_inheritance is true)"
-                  },
-                  "base_class_file": {
-                    "type": "string",
-                    "description": "Step 1.2.2: File path of the base class"
-                  },
-                  "precondition_violations": {
-                    "type": "object",
-                    "description": "Step 1.2.3.1: New guard clauses in subtype",
-                    "required": ["count", "instances"],
-                    "properties": {
-                      "count": { "type": "integer" },
-                      "instances": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "required": ["method", "base_guards", "subtype_guards", "new_guards"],
-                          "properties": {
-                            "method": { "type": "string" },
-                            "base_guards": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            },
-                            "subtype_guards": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            },
-                            "new_guards": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "postcondition_violations": {
-                    "type": "object",
-                    "description": "Step 1.2.3.2: Assertions removed or relaxed in subtype",
-                    "required": ["count", "instances"],
-                    "properties": {
-                      "count": { "type": "integer" },
-                      "instances": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "required": ["method", "base_assertions", "subtype_assertions", "weakened"],
-                          "properties": {
-                            "method": { "type": "string" },
-                            "base_assertions": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            },
-                            "subtype_assertions": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            },
-                            "weakened": {
-                              "type": "array",
-                              "items": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "invariant_violations": {
-                    "type": "object",
-                    "description": "Step 1.2.3.3: Protected state exposed in subtype",
-                    "required": ["count", "instances"],
-                    "properties": {
-                      "count": { "type": "integer" },
-                      "instances": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "required": ["property", "base_access", "subtype_access"],
-                          "properties": {
-                            "property": { "type": "string" },
-                            "base_access": { "type": "string" },
-                            "subtype_access": { "type": "string" }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "total_violations": {
-                    "type": "integer",
-                    "description": "Step 1.2.4: Sum of precondition + postcondition + invariant violations"
-                  }
-                }
-              },
-              "empty_methods": {
-                "type": "object",
-                "description": "LSP-3: Steps 1.3.1 — 1.3.6",
-                "required": ["interface_name", "total_interface_members", "empty_count", "fatal_error_count", "empty_percentage", "is_noop_exception"],
-                "properties": {
-                  "interface_name": {
-                    "type": "string",
-                    "description": "Step 1.3.1: The protocol/interface the class conforms to"
-                  },
-                  "total_interface_members": {
-                    "type": "integer",
-                    "description": "Step 1.3.2: Total methods/vars in the interface"
-                  },
-                  "empty_count": {
-                    "type": "integer",
-                    "description": "Step 1.3.3: Methods/vars with no statements or only comments"
-                  },
-                  "fatal_error_count": {
-                    "type": "integer",
-                    "description": "Step 1.3.4: Methods whose entire body is a crash assertion (fatalError, preconditionFailure, assertionFailure)"
-                  },
-                  "is_noop_exception": {
-                    "type": "boolean",
-                    "description": "Step 1.3.5: True if name states NoOp AND 100% of methods/vars are empty or default"
-                  },
-                  "empty_percentage": {
-                    "type": "number",
-                    "description": "Step 1.3.6: empty (non-fatal) methods/vars / total methods/vars"
-                  },
-                  "instances": {
-                    "type": "array",
-                    "description": "Each empty or fatal-error method/var",
-                    "items": {
-                      "type": "object",
-                      "required": ["member", "type", "line"],
-                      "properties": {
-                        "member": {
-                          "type": "string",
-                          "description": "Method or var name"
-                        },
-                        "type": {
-                          "type": "string",
-                          "enum": ["empty", "fatal_error"],
-                          "description": "Whether the member is empty or contains a crash assertion"
-                        },
-                        "line": { "type": "integer" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "scoring": {
-            "type": "object",
-            "description": "Phase 2: Steps 2.1.1 — 2.1.7",
-            "required": ["net_type_checks", "type_check_severity", "has_inheritance", "contract_violations", "contract_severity", "empty_percentage", "fatal_error_count", "empty_method_severity", "noop_exception_applied", "final_severity"],
-            "properties": {
-              "net_type_checks": { "type": "integer", "description": "Step 2.1.1" },
-              "type_check_severity": { "type": "string", "description": "Step 2.1.1" },
-              "has_inheritance": { "type": "boolean", "description": "Step 2.1.2" },
-              "contract_violations": { "type": "integer", "description": "Step 2.1.3" },
-              "contract_severity": { "type": "string", "description": "Step 2.1.3" },
-              "empty_percentage": { "type": "number", "description": "Step 2.1.4" },
-              "fatal_error_count": { "type": "integer", "description": "Step 2.1.5" },
-              "empty_method_severity": { "type": "string", "description": "Step 2.1.4/2.1.5" },
-              "noop_exception_applied": { "type": "boolean", "description": "Step 2.1.6" },
-              "final_severity": {
-                "type": "string",
-                "enum": ["COMPLIANT", "MINOR", "SEVERE"],
-                "description": "Step 2.1.7"
-              }
-            }
-          },
-          "findings": {
+          "units": {
             "type": "array",
-            "description": "Phase 3: Steps 3.1.1 — 3.1.3",
+            "description": "Per-unit analysis results within this file",
             "items": {
               "type": "object",
-              "required": ["id", "severity", "metric", "title", "issue"],
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
               "properties": {
-                "id": {
+                "unit_name": {
                   "type": "string",
-                  "pattern": "^lsp-\\d{3}$"
+                  "description": "Name of the analyzed unit (e.g., class name, struct name)"
                 },
-                "severity": {
+                "unit_kind": {
                   "type": "string",
-                  "enum": ["SEVERE", "MINOR"]
+                  "enum": ["class", "struct", "enum", "extension"],
+                  "description": "Kind of the analyzed unit"
                 },
-                "metric": {
-                  "type": "string",
-                  "enum": ["LSP-1", "LSP-2", "LSP-3"],
-                  "description": "Which metric triggered this finding"
+                "metrics": {
+                  "type": "object",
+                  "required": ["type_checking", "contract_compliance", "empty_methods"],
+                  "properties": {
+                    "type_checking": {
+                      "type": "object",
+                      "description": "LSP-1: Steps 1.1.1 — 1.1.3",
+                      "required": ["total_count", "excepted_count", "net_count", "instances"],
+                      "properties": {
+                        "total_count": {
+                          "type": "integer",
+                          "description": "Step 1.1.1: Total type checks found"
+                        },
+                        "excepted_count": {
+                          "type": "integer",
+                          "description": "Step 1.1.2: Type checks forced by framework API (not wrong abstraction)"
+                        },
+                        "net_count": {
+                          "type": "integer",
+                          "description": "Step 1.1.3: total_count - excepted_count"
+                        },
+                        "instances": {
+                          "type": "array",
+                          "description": "Step 1.1.1: Every type check found",
+                          "items": {
+                            "type": "object",
+                            "required": ["pattern", "concrete_type", "base_type", "line", "exception_applied"],
+                            "properties": {
+                              "pattern": {
+                                "type": "string",
+                                "description": "The pattern found: is, as?, as!, type(of:)"
+                              },
+                              "concrete_type": {
+                                "type": "string",
+                                "description": "The concrete type being checked"
+                              },
+                              "base_type": {
+                                "type": "string",
+                                "description": "The base type or protocol the variable is declared as"
+                              },
+                              "line": { "type": "integer" },
+                              "exception_applied": {
+                                "type": "boolean",
+                                "description": "Step 1.1.2: True if typecheck is forced by framework API"
+                              },
+                              "exception_reason": {
+                                "type": "string",
+                                "description": "Why the exception was applied (e.g., 'forced by URLSession API', 'forced by JSONSerialization API')"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "contract_compliance": {
+                      "type": "object",
+                      "description": "LSP-2: Steps 1.2.1 — 1.2.4",
+                      "required": ["has_inheritance", "total_violations"],
+                      "properties": {
+                        "has_inheritance": {
+                          "type": "boolean",
+                          "description": "Step 1.2.1: Does the class inherit from a concrete base class?"
+                        },
+                        "base_class": {
+                          "type": "string",
+                          "description": "Step 1.2.2: Name of the base class (if has_inheritance is true)"
+                        },
+                        "base_class_file": {
+                          "type": "string",
+                          "description": "Step 1.2.2: File path of the base class"
+                        },
+                        "precondition_violations": {
+                          "type": "object",
+                          "description": "Step 1.2.3.1: New guard clauses in subtype",
+                          "required": ["count", "instances"],
+                          "properties": {
+                            "count": { "type": "integer" },
+                            "instances": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["method", "base_guards", "subtype_guards", "new_guards"],
+                                "properties": {
+                                  "method": { "type": "string" },
+                                  "base_guards": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  },
+                                  "subtype_guards": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  },
+                                  "new_guards": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "postcondition_violations": {
+                          "type": "object",
+                          "description": "Step 1.2.3.2: Assertions removed or relaxed in subtype",
+                          "required": ["count", "instances"],
+                          "properties": {
+                            "count": { "type": "integer" },
+                            "instances": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["method", "base_assertions", "subtype_assertions", "weakened"],
+                                "properties": {
+                                  "method": { "type": "string" },
+                                  "base_assertions": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  },
+                                  "subtype_assertions": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  },
+                                  "weakened": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "invariant_violations": {
+                          "type": "object",
+                          "description": "Step 1.2.3.3: Protected state exposed in subtype",
+                          "required": ["count", "instances"],
+                          "properties": {
+                            "count": { "type": "integer" },
+                            "instances": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": ["property", "base_access", "subtype_access"],
+                                "properties": {
+                                  "property": { "type": "string" },
+                                  "base_access": { "type": "string" },
+                                  "subtype_access": { "type": "string" }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "total_violations": {
+                          "type": "integer",
+                          "description": "Step 1.2.4: Sum of precondition + postcondition + invariant violations"
+                        }
+                      }
+                    },
+                    "empty_methods": {
+                      "type": "object",
+                      "description": "LSP-3: Steps 1.3.1 — 1.3.6",
+                      "required": ["interface_name", "total_interface_members", "empty_count", "fatal_error_count", "empty_percentage", "is_noop_exception"],
+                      "properties": {
+                        "interface_name": {
+                          "type": "string",
+                          "description": "Step 1.3.1: The protocol/interface the class conforms to"
+                        },
+                        "total_interface_members": {
+                          "type": "integer",
+                          "description": "Step 1.3.2: Total methods/vars in the interface"
+                        },
+                        "empty_count": {
+                          "type": "integer",
+                          "description": "Step 1.3.3: Methods/vars with no statements or only comments"
+                        },
+                        "fatal_error_count": {
+                          "type": "integer",
+                          "description": "Step 1.3.4: Methods whose entire body is a crash assertion (fatalError, preconditionFailure, assertionFailure)"
+                        },
+                        "is_noop_exception": {
+                          "type": "boolean",
+                          "description": "Step 1.3.5: True if name states NoOp AND 100% of methods/vars are empty or default"
+                        },
+                        "empty_percentage": {
+                          "type": "number",
+                          "description": "Step 1.3.6: empty (non-fatal) methods/vars / total methods/vars"
+                        },
+                        "instances": {
+                          "type": "array",
+                          "description": "Each empty or fatal-error method/var",
+                          "items": {
+                            "type": "object",
+                            "required": ["member", "type", "line"],
+                            "properties": {
+                              "member": {
+                                "type": "string",
+                                "description": "Method or var name"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["empty", "fatal_error"],
+                                "description": "Whether the member is empty or contains a crash assertion"
+                              },
+                              "line": { "type": "integer" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 },
-                "line_start": { "type": "integer" },
-                "line_end": { "type": "integer" },
-                "title": { "type": "string" },
-                "issue": { "type": "string" },
-                "impact": { "type": "string" },
-                "rule_source": { "type": "string" }
+                "scoring": {
+                  "type": "object",
+                  "description": "Phase 2: Steps 2.1.1 — 2.1.7",
+                  "required": ["net_type_checks", "type_check_severity", "has_inheritance", "contract_violations", "contract_severity", "empty_percentage", "fatal_error_count", "empty_method_severity", "noop_exception_applied", "final_severity"],
+                  "properties": {
+                    "net_type_checks": { "type": "integer", "description": "Step 2.1.1" },
+                    "type_check_severity": { "type": "string", "description": "Step 2.1.1" },
+                    "has_inheritance": { "type": "boolean", "description": "Step 2.1.2" },
+                    "contract_violations": { "type": "integer", "description": "Step 2.1.3" },
+                    "contract_severity": { "type": "string", "description": "Step 2.1.3" },
+                    "empty_percentage": { "type": "number", "description": "Step 2.1.4" },
+                    "fatal_error_count": { "type": "integer", "description": "Step 2.1.5" },
+                    "empty_method_severity": { "type": "string", "description": "Step 2.1.4/2.1.5" },
+                    "noop_exception_applied": { "type": "boolean", "description": "Step 2.1.6" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+                      "description": "Step 2.1.7"
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "description": "Phase 3: Steps 3.1.1 — 3.1.3",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^lsp-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE", "MINOR"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["LSP-1", "LSP-2", "LSP-3"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
               }
             }
           }

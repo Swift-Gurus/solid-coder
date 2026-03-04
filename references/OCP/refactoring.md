@@ -36,6 +36,7 @@ This framework provides examples of how to refactor OCP violations, matched to t
 ### 1. Dependency Injection — Replace Singletons/Static References
 
 The most common SEVERE refactoring. Each `.shared`/`.default`/`static` reference becomes an injected protocol.
+We need to create or find existed interface that includes definition of the called functionality.
 
 ```swift
 // BEFORE: Singleton and Static API references (2 sealed points)
@@ -53,8 +54,26 @@ protocol NetworkFetching {
     func fetchUserData() async throws
 }
 
+extension NetworkManager: NetworkFetching {}
+
 protocol UserPersisting {
     func saveUser(_ user: User) async throws
+}
+
+// if the object is owned by the developer, switch static to instance.
+final class DatabaseRealmAdapter: UserPersisting {
+   // switched function from static to instance
+   func saveUser(_ user: User) async throws {
+      
+   }
+}
+
+// if not owned by a developer an adapter or bridge can be used
+
+struct DatabaseRealmAdapterWrapper: UserPersisting {
+  func saveUser(_ user: User) async throws {
+    try await DatabaseRealmAdapter.saveUser(user)
+  }
 }
 
 final class UserDatabaseManager {
@@ -71,6 +90,9 @@ final class UserDatabaseManager {
         try await  database.saveUser(user)
     }
 }
+
+// call site  UserDatabaseManager(network: NetworkManager.shared, database: DatabaseRealmAdapter()) or 
+// call site  UserDatabaseManager(network: NetworkManager.shared, database: DatabaseRealmAdapterWrapper()) 
 ```
 
 ### 2. Strategy Pattern — Replace Switch/If-Else on Types

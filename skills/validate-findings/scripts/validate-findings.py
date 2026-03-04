@@ -125,50 +125,63 @@ def main():
         # Process each file in review output
         for file_entry in review.get("files", []):
             file_path = file_entry.get("file", "")
-            findings = file_entry.get("findings", [])
 
-            # Filter findings
-            passing = []
-            for finding in findings:
-                total_findings += 1
-                if skip_filtering:
-                    passing.append(finding)
+            # Support both unit-based (new) and flat (legacy) review output
+            units = file_entry.get("units")
+            if units is not None:
+                # New per-unit structure: files[].units[].findings
+                for unit in units:
+                    findings = unit.get("findings", [])
+                    unit_name = unit.get("unit_name", "")
+                    unit_kind = unit.get("unit_kind", "")
+
+                    passing = _filter_findings(
+                        findings, file_path, changed_lookup, skip_filtering
+                    )
+                    total_findings += len(findings)
+                    total_rejected += len(findings) - len(passing)
+
+                    if not passing:
+                        continue
+
+                    passing_ids = {f["id"] for f in passing}
+                    matched_suggestions = _match_suggestions(passing, suggestions_by_finding)
+                    severity = worst_severity(passing)
+
+                    by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
+                    by_file[file_path]["principles"].append({
+                        "agent": agent,
+                        "principle": principle_name,
+                        "severity": severity,
+                        "unit_name": unit_name,
+                        "unit_kind": unit_kind,
+                        "findings": passing,
+                        "suggestions": matched_suggestions,
+                    })
+            else:
+                # Legacy flat structure: files[].findings
+                findings = file_entry.get("findings", [])
+
+                passing = _filter_findings(
+                    findings, file_path, changed_lookup, skip_filtering
+                )
+                total_findings += len(findings)
+                total_rejected += len(findings) - len(passing)
+
+                if not passing:
                     continue
 
-                cr = changed_lookup.get(file_path)
-                if cr is None or cr is True:
-                    # null or true = entire file is new
-                    passing.append(finding)
-                    continue
+                matched_suggestions = _match_suggestions(passing, suggestions_by_finding)
+                severity = worst_severity(passing)
 
-                if isinstance(cr, list) and ranges_overlap(finding, cr):
-                    passing.append(finding)
-                else:
-                    total_rejected += 1
-
-            if not passing:
-                continue
-
-            # Collect suggestions that address at least one passing finding
-            passing_ids = {f["id"] for f in passing}
-            seen_suggestion_ids = set()
-            matched_suggestions = []
-            for f in passing:
-                for s in suggestions_by_finding.get(f["id"], []):
-                    if s["id"] not in seen_suggestion_ids:
-                        seen_suggestion_ids.add(s["id"])
-                        matched_suggestions.append(s)
-
-            severity = worst_severity(passing)
-
-            by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
-            by_file[file_path]["principles"].append({
-                "agent": agent,
-                "principle": principle_name,
-                "severity": severity,
-                "findings": passing,
-                "suggestions": matched_suggestions,
-            })
+                by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
+                by_file[file_path]["principles"].append({
+                    "agent": agent,
+                    "principle": principle_name,
+                    "severity": severity,
+                    "findings": passing,
+                    "suggestions": matched_suggestions,
+                })
 
     # Phase 4: Write outputs
     by_file_dir = output_root / "by-file"
@@ -186,6 +199,38 @@ def main():
 
     print(f"{total_findings} findings → {total_passed} validated, {total_rejected} rejected")
     print(f"Output: {by_file_dir}")
+
+
+def _filter_findings(findings, file_path, changed_lookup, skip_filtering):
+    """Filter findings based on changed ranges."""
+    passing = []
+    for finding in findings:
+        if skip_filtering:
+            passing.append(finding)
+            continue
+
+        cr = changed_lookup.get(file_path)
+        if cr is None or cr is True:
+            # null or true = entire file is new
+            passing.append(finding)
+            continue
+
+        if isinstance(cr, list) and ranges_overlap(finding, cr):
+            passing.append(finding)
+
+    return passing
+
+
+def _match_suggestions(passing, suggestions_by_finding):
+    """Collect suggestions that address at least one passing finding."""
+    seen_suggestion_ids = set()
+    matched = []
+    for f in passing:
+        for s in suggestions_by_finding.get(f["id"], []):
+            if s["id"] not in seen_suggestion_ids:
+                seen_suggestion_ids.add(s["id"])
+                matched.append(s)
+    return matched
 
 
 if __name__ == "__main__":

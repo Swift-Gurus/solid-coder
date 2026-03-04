@@ -29,9 +29,13 @@ Create Preparation task list and execute it
   - extract files and units from json 
 ## Phase 2
 FOR each file DO
+  FOR each unit (class, struct, enum) in file.units that has_changes == true DO
     Creating/appending tasks from the instructions.
     Once you read instructions and rules, they might contain more tasks.
     Create a second tasklist and execute it
+    IMPORTANT: Scope analysis to ONLY this unit's line range (line_start..line_end).
+    Ignore other declarations in the same file.
+  END
 END
 
 
