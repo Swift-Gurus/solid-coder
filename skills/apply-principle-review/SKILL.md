@@ -10,7 +10,7 @@ user-invocable: false
 
 ## Input
 - RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
-- INPUT_SCHEMA: ${CLAUDE_PLUGIN_ROOT}/prepare-review-input/output.schema.json
+- INPUT_SCHEMA: ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/output.schema.json
 - NAME: $ARGUMENTS[0] (e.g., SRP,OCP)
 - OUTPUT_PATH: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
 - Code files: path to json follows INPUT_SCHEMA
@@ -22,7 +22,7 @@ Create Preparation task list and execute it
 - [ ] 1.2 **Load instructions** — Read `RULES_PATH/NAME/review/instructions.md`
 - [ ] 1.3 **Parse frontmatter** — Extract `rules` and `output_schema` paths.
   - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME} 
-  - if rules are not provided use PRINCIPLE_FOLDER_ABSOLUTE_PATH/rulere.md path as fallback
+  - if rules are not provided use PRINCIPLE_FOLDER_ABSOLUTE_PATH/ruler.md path as fallback
 - [ ] 1.4 **Load rules** — Read the rules file referenced in frontmatter]()
 - [ ] 1.5 **Parse input** -
   - read and parse input json
