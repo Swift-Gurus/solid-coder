@@ -1,7 +1,7 @@
 ---
 name: review
 description: Orchestrate parallel reviews across all principles. Prepares input once, then fans out.
-argument-hint: [branch|folder|file]
+argument-hint: [branch|changes|folder|file]
 allowed-tools: Read, Glob, Bash, Write
 ---
 
@@ -57,6 +57,7 @@ allowed-tools: Read, Glob, Bash, Write
   - subagent_type: `solid-coder:validate-findings-agent`
   - prompt:
     ```
+    review-input-root: {OUTPUT_ROOT}
     output-root: {OUTPUT_ROOT}
     ```
 - [ ] 5.2 Launch Task

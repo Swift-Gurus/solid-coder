@@ -10,7 +10,11 @@ user-invocable: false
 
 ## Input
 - OUTPUT_ROOT: $ARGUMENTS[0] — review output directory (e.g., `.solid_coder/review-20260227103000/`)
+- SKILL_ROOT: ${CLAUDE_PLUGIN_ROOT}/skills/generate-report
 
 ## Workflow
-- [ ] 1.1 Run: `python3 ${SKILL_DIR}/generate-report.py {OUTPUT_ROOT}`
+- [ ] 1.1 Run:
+    ```bash
+        python3 {SKILL_ROOT}/scripts/generate-report.py {OUTPUT_ROOT}
+    ```
 - [ ] 1.2 Report the path to the generated HTML: `{OUTPUT_ROOT}/report.html`

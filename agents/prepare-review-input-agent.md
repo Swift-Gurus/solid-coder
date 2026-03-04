@@ -5,6 +5,6 @@ allowed-tools: Read, Grep, Glob, Bash
 skills:
 - prepare-review-input
 tools:  Read, Grep, Glob, Bash
-model: haiku
+model: sonnet
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, suggest fixes, then implement them.
-argument-hint: [branch|folder|file]
+argument-hint: [branch|changes|folder|file]
 allowed-tools: Read, Glob, Bash, Write, Edit
 ---
 
@@ -11,19 +11,19 @@ allowed-tools: Read, Glob, Bash, Write, Edit
 - RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 - OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/refactor-<YYYYMMDDhhmmss>
 - MAX_ITERATIONS: 2                                                                                                                                                                                                                                                                            
-- ITERATION: 0 (counter)
-## Phase 1: Prepare Input (Review loop)
+- ITERATION: 1 (counter)
+
+## Phase 1: Prepare Input 
 - [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2
-- [ ] 1.2 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS go to Phase 6
-- [ ] 1.3 Prepare a Task call:
+- [ ] 1.2 Prepare a Task call:
   - subagent_type: `prepare-review-input-agent`
   - prompt:
    ```
     input: $ARGUMENTS
-    ouput_root: {OUTPUT_ROOT}
+    output_root: {OUTPUT_ROOT}/{ITERATION}
     ```
 - [ ] 1.3 Launch Task
-- [ ] 1.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/prepare)
+- [ ] 1.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
   - If the Task failed, stop and report the error
 
 ## Phase 2: Discover Principles (wait for phase 1)
@@ -31,14 +31,14 @@ allowed-tools: Read, Glob, Bash, Write, Edit
 - [ ] 2.2 Extract principle abbreviation from each path (directory name: SRP, OCP, etc.)
 - [ ] 2.3 Build list of principles to review
 
-## Phase 3: Launch Parallel Reviews 
+## Phase 3: Launch Parallel Reviews (Review loop)
 
 - [ ] 3.1 For EACH discovered principle, prepare a Task call:
     - subagent_type: `solid-coder:principle-review-fx-agent`
     - prompt:
       ```
       principle: {NAME}
-      review-input: {$ARGUMENTS[1]}
+      review-input: {{OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json }
       rules-path: {RULES_PATH}
       principle-folder: {RULES_PATH}/{NAME}
       output-path: {OUTPUT_ROOT}/{ITERATION}/rules/{NAME}
@@ -68,15 +68,35 @@ allowed-tools: Read, Glob, Bash, Write, Edit
 
 
 ## Phase 6: Implement suggestions (wait for phase 5)
-FOR every plan file in `{OUTPUT_ROOT}/{ITERATION}/by-file/` DO
-- [ ] 6.1 Read the principles[].suggestions[] for this file
-  - if suggestions are empty, or all principles compliant  Write Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary and stop.
-- [ ] 6.2 Read todo items
-- [ ] 6.3 Create task lists
-- [ ] 6.4 Follow the task list to implement suggestions
-- [ ] 6.5 Write Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary
-- [ ] 6.6 Go to 3.1
-END
+
+- [ ] 6.1 Glob for `{OUTPUT_ROOT}/{ITERATION}/by-file/*.output.json`
+- [ ] 6.2 For EACH by-file output JSON, prepare a Task call:
+    - subagent_type: `solid-coder:refactor-implement-agent`
+    - prompt:
+      ```
+      by-file-json: {OUTPUT_ROOT}/{ITERATION}/by-file/{filename}.output.json
+      output-root: {OUTPUT_ROOT}/{ITERATION}
+      ```
+- [ ] 6.3 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
+- [ ] 6.4 Wait for all to complete
+- [ ] 6.5 Collect results from `{OUTPUT_ROOT}/{ITERATION}/implement/*.refactor-log.json`
+- [ ] 6.6 If all files were skipped (all compliant), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` and stop
+- [ ] 6.7 Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs
+- [ ] 6.8 Go to Phase 7
+
+## Phase 7: Iteration loop 
+- [ ] 7.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS provide summary and stop
+- [ ] 7.2 Prepare a Task call with `changes` to re-review only staged/unstaged/untracked files:
+    - subagent_type: `prepare-review-input-agent`
+    - prompt:
+   ```
+    input: "changes"
+    output_root: {OUTPUT_ROOT}/{ITERATION}
+    ```
+- [ ] 7.3 Launch Task
+- [ ] 7.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
+    - If the Task failed, stop and report the error
+- [ ] 7.5 go to 3.1
 
   
 ## Constraints
@@ -86,3 +106,4 @@ END
 - Each review agent is independent — no shared state between principles
 - Do NOT auto-resolve issues: if anything fails, report the error
 - Do NOT build the project.
+- DO NOT Deviate from the instructions, Follow them thoroughly.

@@ -6,6 +6,6 @@ allowed-tools: Bash
 skills:
 - validate-findings
 tools: Bash
-model: haiku
+model: sonnet
 ---
 

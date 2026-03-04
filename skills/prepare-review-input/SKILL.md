@@ -3,17 +3,18 @@ name: prepare-review-input
 description: Normalize input (branch diff, folder, class, buffer) into structured review-input.json for review agents.
 argument-hint: [folder|class|buffer] [target] [--base <branch>]
 allowed-tools: Read, Grep, Glob, Bash, Write
-user-invocable: false
+user-invocable: true
 ---
 
 # Prepare Review Input
 
 ## Input
-- SOURCE_TYPE: $ARGUMENTS[0] — one of: branch, folder, file, buffer
+- SOURCE_TYPE: $ARGUMENTS[0] — one of: branch, changes, folder, file, buffer
   - If $ARGUMENTS[0] is not a known type you must stop and show an error message. Unknown Type
   - If NO arguments provided → default to branch diff (current branch vs base)
 - OUTPUT_ROOT: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
-- OUTPUT_PATH: OUTPUT_ROOT/prepare
+- OUTPUT_PATH: {OUTPUT_ROOT}/prepare
+- SKILL_ROOT: ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input
 ## Workflow
 
 ### Phase 1: Input Detection & Validation
@@ -30,24 +31,26 @@ Create Preparation task list and execute it.
 
 ### Phase 2: Loading content
 - [ ] 2.0.1 **Load content**
-   - if mode is Branch then load content using Phase 2.1 
+   - if mode is Changes then load content using Phase 2.1
    - if mode is Folder then load content using Phase 2.2
    - if mode is File then load content using Phase 2.3
    - if mode is Buffer then load content using Phase 2.4
-- [ ] 2.0.2 **Identify units**
-  - for loaded content run Unit identification (see Unit Identification)
-  - if no diff provided set has_changes = true and changed_lines = boundaries of the unit
-  - if diff provided use this info to set has_changes and changed_lines
 
-#### Phase 2.1: Branch Diff (DEFAULT)
-- [ ] 2.1.1 **Get current branch** — `git branch --show-current`
-- [ ] 2.1.2 **Determine base branch** — Use `--base` arg if provided, else detect main/master/develop
-- [ ] 2.1.3 **Fetch branch diff** — `git diff <base-branch>...HEAD` (committed changes)
-- [ ] 2.1.4 **Fetch staged changes** — `git diff --staged` and merge with branch diff
-- [ ] 2.1.5 **Fetch unstaged changes** — `git diff` and merge with previous diffs
-- [ ] 2.1.6 **Parse combined diff** — Extract per-file changed line ranges (see Diff Parsing)
-- [ ] 2.1.7 **Read changed files** — Read each file from disk
-- [ ] 2.1.8 **Identify units** — Run unit identification on each file (see Unit Identification)
+#### Phase 2.1: Changes 
+- [ ] 2.1.1 **Run prepare-changes script** — 
+    ```bash
+        python3 {SKILL_ROOT}/scripts/prepare-changes.py -o OUTPUT_PATH/review-input.json
+    ```
+  - This collects staged + unstaged + untracked changes, parses diffs, and writes structured JSON with per-file changed ranges
+- [ ] 2.1.2 **Read generated JSON** — Read `OUTPUT_PATH/review-input.json`
+- [ ] 2.1.3 **Read changed files** — Read each file listed in the JSON from disk
+- [ ] 2.1.4 **Identify units** — Run unit identification on each file (see Unit Identification)
+  - if the file has no changed_ranges → has_changes = true
+  - if the file has changed_ranges  →
+       check if ANY changed_range overlaps with [unit.line_start, unit.line_end].
+       Overlap = range.start <= unit.line_end AND range.end >= unit.line_start.
+       If overlap exists → has_changes = true, otherwise → has_changes = false
+- [ ] 2.1.5 **Update JSON** — Write units back into `OUTPUT_PATH/review-input.json` and update summary counts
 
 #### Phase 2.2: Folder
 - [ ] 2.2.1 **Read all files**
@@ -57,7 +60,6 @@ Create Preparation task list and execute it.
 
 #### Phase 2.4: Buffer
 - [ ] 2.4.1 **Capture buffer string** — Store raw input
-
 
 ### Phase 3: Assembly & Output
 - [ ] 3.1 **Write structured output** - using defined schema write to `OUTPUT_PATH/review-input.json`
