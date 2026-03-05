@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Synthesized Fix Plan",
-  "description": "Reconciled, conflict-free implementation plan for a single source file, produced by cross-principle synthesis.",
+  "description": "Holistic, cross-principle-aware implementation plan for a single source file. Each action has been cross-checked against all principles' metrics.",
   "type": "object",
   "required": ["file", "timestamp", "actions", "unresolved", "conflicts_detected"],
   "properties": {
@@ -15,49 +15,70 @@
     },
     "actions": {
       "type": "array",
-      "description": "Ordered list of fix suggestions to implement. Respects depends_on ordering.",
+      "description": "Ordered list of fix actions to implement. Respects depends_on ordering. Each action has been cross-checked against all principles.",
       "items": {
         "type": "object",
-        "required": ["suggestion_id", "principle", "resolves", "todo_items"],
+        "required": ["suggestion_id", "principle", "resolves", "todo_items", "suggested_fix"],
         "properties": {
           "suggestion_id": {
             "type": "string",
-            "description": "ID of the original fix suggestion (e.g., ocp-fix-001)"
+            "description": "Generated ID for this action (e.g., holistic-fix-001)"
           },
           "principle": {
             "type": "string",
-            "description": "Principle that authored this suggestion (e.g., OCP, LSP, SRP)"
+            "description": "Primary principle this action addresses (e.g., OCP, LSP, SRP)"
           },
           "resolves": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Finding IDs this action actually resolves (after conflict resolution)"
+            "description": "Finding IDs this action resolves — may span multiple principles"
           },
           "todo_items": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Concrete implementation steps, possibly amended by synthesis"
+            "description": "Concrete implementation steps, each a single implementable action"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full code snippets showing before/after: protocol definitions, extracted types, modified class, key methods"
           },
           "depends_on": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Suggestion IDs that must be implemented before this one"
+            "description": "Action IDs that must be implemented before this one"
           },
-          "amended_todo_items": {
+          "cross_check_results": {
             "type": "array",
-            "items": { "type": "string" },
-            "description": "Additional todo items added by synthesis to integrate with other fixes"
+            "description": "Per-principle verification that this action does not introduce violations",
+            "items": {
+              "type": "object",
+              "required": ["principle", "passed", "detail"],
+              "properties": {
+                "principle": {
+                  "type": "string",
+                  "description": "Principle checked against (e.g., SRP, OCP, LSP)"
+                },
+                "passed": {
+                  "type": "boolean",
+                  "description": "True if the action does not violate this principle"
+                },
+                "detail": {
+                  "type": "string",
+                  "description": "Explanation: what was checked and why it passed/failed"
+                }
+              }
+            }
           },
           "note": {
             "type": "string",
-            "description": "Explanation of any synthesis decisions affecting this action"
+            "description": "Explanation of design decisions, synergies between principles, or adjustments made"
           }
         }
       }
     },
     "unresolved": {
       "type": "array",
-      "description": "Finding IDs that no suggestion adequately resolves after synthesis",
+      "description": "Finding IDs that no action adequately resolves",
       "items": {
         "type": "object",
         "required": ["finding_id", "reason"],
@@ -67,7 +88,7 @@
           },
           "reason": {
             "type": "string",
-            "description": "Why this finding remains unresolved (e.g., requires cross-module changes)"
+            "description": "Why this finding remains unresolved (e.g., requires cross-module changes, fix would violate another principle)"
           }
         }
       }
@@ -86,11 +107,11 @@
           "claimed_by": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Suggestion IDs that claimed to resolve this finding"
+            "description": "Principles or action IDs that claimed to resolve this finding"
           },
           "resolution": {
             "type": "string",
-            "description": "Which rule was applied and which suggestion won"
+            "description": "Which rule was applied and which approach won"
           },
           "relocation_detected": {
             "type": "string",

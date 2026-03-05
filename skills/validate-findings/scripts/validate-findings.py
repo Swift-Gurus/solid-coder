@@ -6,7 +6,10 @@ Filters findings to only those overlapping changed ranges,
 then groups findings + suggestions by file path.
 
 Usage:
-    python3 validate-findings.py <output-root>
+    python3 validate-findings.py <output-root> [plugin-root]
+
+    When plugin-root is provided, JSON inputs are validated against their
+    schemas before processing. When omitted, validation is skipped.
 
 Input:
     <output-root>/prepare/review-input.json
@@ -23,10 +26,28 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
+try:
+    import jsonschema
+except ImportError:
+    jsonschema = None
+
 
 def load_json(path):
     with open(path, "r") as f:
         return json.load(f)
+
+
+def validate_json(data, schema_path):
+    """Validate data against a JSON schema. Raises SystemExit on failure."""
+    if jsonschema is None:
+        print("Warning: jsonschema not installed, skipping validation", file=sys.stderr)
+        return
+    schema = load_json(schema_path)
+    try:
+        jsonschema.validate(instance=data, schema=schema)
+    except jsonschema.ValidationError as e:
+        print(f"Schema validation failed for {schema_path}:\n  {e.message}", file=sys.stderr)
+        sys.exit(1)
 
 
 def write_json(path, data):
@@ -49,7 +70,7 @@ def ranges_overlap(finding, changed_ranges):
 
 def worst_severity(findings):
     """Return worst severity from a list of findings."""
-    order = {"COMPLIANT": 0, "MINOR": 1, "MODERATE": 2, "IMPORTANT": 3, "SEVERE": 4, "CRITICAL": 5}
+    order = {"COMPLIANT": 0, "MINOR": 1, "SEVERE": 2}
     if not findings:
         return "COMPLIANT"
     worst = max(findings, key=lambda f: order.get(f.get("severity", "COMPLIANT"), 0))
@@ -57,11 +78,12 @@ def worst_severity(findings):
 
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <output-root>", file=sys.stderr)
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print(f"Usage: {sys.argv[0]} <output-root> [plugin-root]", file=sys.stderr)
         sys.exit(1)
 
     output_root = Path(sys.argv[1])
+    plugin_root = Path(sys.argv[2]) if len(sys.argv) == 3 else None
 
     # Phase 1: Load data
     review_input_path = output_root / "prepare" / "review-input.json"
@@ -70,6 +92,8 @@ def main():
         sys.exit(1)
 
     review_input = load_json(review_input_path)
+    if plugin_root:
+        validate_json(review_input, plugin_root / "skills" / "prepare-review-input" / "output.schema.json")
     source_type = review_input.get("source_type", "branch")
     skip_filtering = source_type in ("folder", "file", "buffer")
 
@@ -93,9 +117,20 @@ def main():
         fix_path = principle_dir / "fix.json"
         if not review_path.exists():
             continue
+        review_data = load_json(review_path)
+        fix_data = load_json(fix_path) if fix_path.exists() else None
+        if plugin_root:
+            principle_name_upper = principle_dir.name.upper()
+            review_schema = plugin_root / "references" / principle_name_upper / "review" / "output.schema.json"
+            if review_schema.exists():
+                validate_json(review_data, review_schema)
+            if fix_data:
+                fix_schema = plugin_root / "references" / principle_name_upper / "fix" / "output.schema.json"
+                if fix_schema.exists():
+                    validate_json(fix_data, fix_schema)
         entry = {
-            "review": load_json(review_path),
-            "fix": load_json(fix_path) if fix_path.exists() else None,
+            "review": review_data,
+            "fix": fix_data,
         }
         principles.append(entry)
 
@@ -148,6 +183,9 @@ def main():
                     matched_suggestions = _match_suggestions(passing, suggestions_by_finding)
                     severity = worst_severity(passing)
 
+                    if severity == "COMPLIANT":
+                        continue
+
                     by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
                     by_file[file_path]["principles"].append({
                         "agent": agent,
@@ -173,6 +211,9 @@ def main():
 
                 matched_suggestions = _match_suggestions(passing, suggestions_by_finding)
                 severity = worst_severity(passing)
+
+                if severity == "COMPLIANT":
+                    continue
 
                 by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
                 by_file[file_path]["principles"].append({

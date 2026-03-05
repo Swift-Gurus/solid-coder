@@ -30,7 +30,7 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["COMPLIANT", "MINOR", "MODERATE", "SEVERE"],
+            "enum": ["COMPLIANT", "MINOR", "SEVERE"],
             "description": "Worst severity among remaining findings for this principle on this file"
           },
           "findings": {

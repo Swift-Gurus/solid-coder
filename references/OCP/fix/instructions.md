@@ -29,6 +29,7 @@ output_schema: output.schema.json
     - if already provides the exact method/property -> extension conformance
     - if the type can provide the method via a thin forwarding call to its own properties (e.g. chained calls like `obj.child.method()` can become `obj.method() { child.method() }`) -> extension conformance with a forwarding implementation. Prefer this over creating a wrapper struct — keep the conformance on the existing type
     - only if the type cannot reasonably conform (e.g. you don't own it, it's a system type with no meaningful identity, or forwarding would require external state) -> use adapter or bridge pattern, create extracted type (name + which variables/methods move)
+    - **For sealed framework/system calls** (singletons, static methods) → follow the same priority: extension conformance first, then thin forwarding, then adapter as last resort. The resulting type is a Boundary Adapter (see `rule.md` Exceptions §4) and is exempt from OCP-1 sealed point counting.
    - [ ] **2.3.3 Update original class**  new dependencies, removed variables, delegation changes
   - Each todo item should be a single, implementable action
 

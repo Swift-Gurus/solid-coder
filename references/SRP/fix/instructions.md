@@ -15,7 +15,6 @@ output_schema: output.schema.json
 
 - [ ] **1.1 Read `scoring.final_severity` from findings**
     - MINOR → no extraction, light touch only
-    - MODERATE → extract one concern
     - SEVERE → full two-phase refactoring (see refactoring.md)
 
 #### Phase 2: Identify Suggestions
@@ -26,6 +25,7 @@ output_schema: output.schema.json
     - Create protocol (name + method signatures)
     - Create extracted type (name + which variables/methods move)
     - Update original class (new dependencies, removed variables, delegation changes)
+    - **Facade check**: after extraction, the original class should become a Facade (see `design_patterns/structural/facade.md`). Verify it meets the recognition conditions: all-protocol deps, pure delegation, no internal construction. If it doesn't, adjust the extraction.
     - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix

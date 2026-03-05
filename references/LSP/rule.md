@@ -133,6 +133,7 @@ class WorldWideShipping: ShippingStrategy {
         guard let destination = destination else {                       // NEW guard — violation!
             throw ShippingError.destinationRequired
         }
+        }
         return internationalCost(to: destination)
     }
 }

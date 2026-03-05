@@ -22,16 +22,12 @@ from datetime import datetime, timezone
 
 
 SEVERITY_ORDER = {
-    "COMPLIANT": 0, "MINOR": 1, "MODERATE": 2,
-    "IMPORTANT": 3, "SEVERE": 4, "CRITICAL": 5,
+    "COMPLIANT": 0, "MINOR": 1, "SEVERE": 2,
 }
 
 
 def badge_class(severity):
-    s = severity.lower()
-    if s == "important":
-        return "badge-severe"
-    return f"badge-{s}"
+    return f"badge-{severity.lower()}"
 
 
 def worst_severity(severities):
@@ -89,10 +85,7 @@ def render_verification(verification):
 
 def render_finding(f):
     sev = f.get("severity", "")
-    sev_lower = sev.lower()
-    card_class = f"severity-{sev_lower}"
-    if sev_lower == "important":
-        card_class = "severity-important"
+    card_class = f"severity-{sev.lower()}"
 
     lines_html = ""
     if f.get("line_start") and f.get("line_end"):

@@ -46,7 +46,7 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["MINOR", "MODERATE", "SEVERE"],
+            "enum": ["MINOR", "SEVERE"],
             "description": "Severity from the review that triggered this suggestion"
           },
           "suggested_fix": {

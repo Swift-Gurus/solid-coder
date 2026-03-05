@@ -23,8 +23,9 @@ Create Preparation task list and execute it
 - [ ] 1.3 **Parse frontmatter** — Extract `rules` and `output_schema` paths.
   - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME} 
   - if rules are not provided use PRINCIPLE_FOLDER_ABSOLUTE_PATH/ruler.md path as fallback
-- [ ] 1.4 **Load rules** — Read the rules file referenced in frontmatter]()
-- [ ] 1.5 **Parse input** -
+- [ ] 1.4 **Load rules** — Read the rules file referenced in frontmatter
+- [ ] 1.5 **Load patterns** — Parse `required_patterns` from rule.md frontmatter. For each entry, read `{RULES_PATH}/design_patterns/{entry}.md`
+- [ ] 1.6 **Parse input** -
   - read and parse input json
   - extract files and units from json 
 ## Phase 2

@@ -2,7 +2,9 @@
 name: srp
 displayName: Single Responsibility Principle
 category: solid
-description: Verb counting and cohesion group analysis with direct severity scoring   
+description: Verb counting and cohesion group analysis with direct severity scoring
+required_patterns:
+  - structural/facade
 ---
 
 # Single Responsibility Principle (SRP)
@@ -156,6 +158,16 @@ If different stakeholders could independently request changes to the same class 
 3. **Group by stakeholder** — each group = one responsibility
 4. **Count the groups**
 
+
+### Exceptions(NOT violations):
+1. **Facade / Coordinator** (see @facade.md)
+   A class that only coordinates protocol-typed subsystems has one responsibility: coordination.
+
+   Check the Facade Recognition Conditions (ALL must hold):
+    1. Every stored property / init parameter is protocol-typed
+    2. Every method body is pure delegation — no business logic, no branching on own mutable state
+    3. Class creates no objects internally — all dependencies injected via init
+   If ALL conditions hold: cohesion groups = 1 (coordination), final severity = COMPLIANT
 
 ### Severity Bands:
 - ✅ **COMPLIANT** (1 cohesion group, 1-2 verbs)

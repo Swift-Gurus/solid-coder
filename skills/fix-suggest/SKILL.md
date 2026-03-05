@@ -22,7 +22,8 @@ Create Preparation task list and execute it
 - [ ] 1.2 **Parse frontmatter** — Extract `rules`, `review_schema`, and `output_schema` paths
 - [ ] 1.3 **Load rules** — Read the rules file referenced in frontmatter
   - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME}
-- [ ] 1.4 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
+- [ ] 1.4 **Load patterns** — Read the principle's `rule.md` frontmatter. Parse `required_patterns`, for each entry read `{RULES_PATH}/design_patterns/{entry}.md`
+- [ ] 1.5 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
 - [ ] 1.5 **Load source code** — Read each code file from remaining arguments
 
 ## Phase 2: Analysis

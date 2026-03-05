@@ -3,6 +3,8 @@ name: ocp
 displayName: Open/Closed Principle
 category: solid
 description: Sealed variation point counting and testability analysis with direct severity scoring
+required_patterns:
+  - structural/adapter
 ---
 
 # Open/Closed Principle (OCP)
@@ -98,6 +100,13 @@ class UserDatabaseManager {
 1. **Factories/Builders** creating objects — that's their job
 2. **Helpers** with no dependencies — JSONEncoder, DateFormatter, NumberFormatter
 3. **Pure data structures** — no business logic, no dependencies, no side effects
+4. **Boundary Adapters** - (see @adapter.md) - Check the Boundary Adapter Recognition Conditions
+    - Wraps static API
+    - API is not owned by dev:
+      - search in project/local packages/local framework files
+      - if not found -> owns by developer
+    - API doesnt support instatiation: enums, constants, static global functions.
+      
 
 ### Severity Bands:
 - ✅ **COMPLIANT** (0 sealed points, 0 untestable dependencies)

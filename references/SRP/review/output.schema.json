@@ -147,7 +147,7 @@
                     "stakeholder_count": { "type": "integer" },
                     "final_severity": {
                       "type": "string",
-                      "enum": ["COMPLIANT", "MINOR", "MODERATE", "SEVERE"]
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
                     }
                   }
                 },
@@ -163,7 +163,7 @@
                       },
                       "severity": {
                         "type": "string",
-                        "enum": ["CRITICAL", "IMPORTANT", "MINOR"]
+                        "enum": ["SEVERE", "MINOR"]
                       },
                       "metric": {
                         "type": "string",

@@ -11,10 +11,11 @@ user-invocable: false
 ## Input
 - OUTPUT_ROOT: $ARGUMENTS[0] — review output directory (e.g., `.solid_coder/review-20260227103000/`)
 - SKILL_ROOT: ${CLAUDE_PLUGIN_ROOT}/skills/validate-findings
+- PLUGIN_ROOT: ${CLAUDE_PLUGIN_ROOT}
 
 ## Workflow
 - [ ] 1.1 Run:
     ```bash
-        python3 {SKILL_ROOT}/scripts/validate-findings.py {OUTPUT_ROOT}
+        python3 {SKILL_ROOT}/scripts/validate-findings.py {OUTPUT_ROOT} {PLUGIN_ROOT}
     ```
 - [ ] 1.2 Report the output summary and list files in `{OUTPUT_ROOT}/by-file/`
