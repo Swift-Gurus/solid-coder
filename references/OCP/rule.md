@@ -36,7 +36,7 @@ Count the number of dependency/behavior points in the class that are hardcoded a
        - construction methods (init, create type factory methods, convenience methods) can have defatult arguments -> consider INJECTED
      - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
    - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
-3. **Check exceptions** — exclude from count: factories/builders, helpers (JSONEncoder, DateFormatter), pure data structures
+3. **Check exceptions** — exclude from count (see Exceptions section below)
 4. **Count concrete dependencies DIRECT NON-INJECTED** that are NOT exceptions = sealed points from dependencies
 5. **Sum** = total sealed variation points
 
@@ -98,14 +98,24 @@ class UserDatabaseManager {
 
 ### Exceptions (0 points — NOT violations):
 1. **Factories/Builders** creating objects — that's their job
-2. **Helpers** with no dependencies — JSONEncoder, DateFormatter, NumberFormatter
+2. **Helpers** — types whose source is NOT in the project (platform SDK, standard library, system frameworks). Check: search for the type definition in the project/local packages/local frameworks. If not found → helper.
 3. **Pure data structures** — no business logic, no dependencies, no side effects
-4. **Boundary Adapters** - (see @adapter.md) - Check the Boundary Adapter Recognition Conditions
-    - Wraps static API
-    - API is not owned by dev:
-      - search in project/local packages/local framework files
-      - if not found -> owns by developer
-    - API doesnt support instatiation: enums, constants, static global functions.
+4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
+
+    When encountering a `.shared` / `.default` / static access, **inspect the returned type** before deciding:
+
+    | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |
+    |---------------|---------------------------|--------|-------------------|
+    | Concrete class (non-final) | Yes — can subclass | Protocol extension conformance + inject the instance | **No** |
+    | Concrete final class | Yes — can instantiate | Protocol extension conformance + inject the instance | **No** |
+    | Protocol / interface | Already abstract | Depend on the protocol directly | **No** |
+    | Enum with static members only | No | Wrap in adapter struct | **Yes** |
+    | Global function / constant | No | Wrap in adapter struct | **Yes** |
+
+    Boundary Adapter Recognition Conditions (ALL must hold):
+    - API is not owned by dev (search in project/local packages/local framework files)
+    - API doesn't support instantiation: enums with only static members, global constants, static global functions
+    - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
       
 
 ### Severity Bands:

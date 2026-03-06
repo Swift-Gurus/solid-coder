@@ -35,7 +35,7 @@
                 },
                 "unit_kind": {
                   "type": "string",
-                  "enum": ["class", "struct", "enum", "extension"],
+                  "enum": ["class", "struct", "enum", "protocol", "extension"],
                   "description": "Kind of the analyzed unit"
                 },
                 "metrics": {

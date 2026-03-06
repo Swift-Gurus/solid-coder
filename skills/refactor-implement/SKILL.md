@@ -36,6 +36,15 @@ FOR each action (in order from Phase 2):
 - [ ] 3.2 Follow the `todo_items` step by step
 - [ ] 3.3 Apply code changes using Edit tool
 - [ ] 3.4 After each action, verify the file is syntactically valid (no broken brackets, missing imports)
+- [ ] 3.5 **Split new types into separate files:**
+  FOR each new top-level type (protocol, class, struct, enum) introduced by this action:
+  - **Protocol + base implementation** → same file, named after the implementation (e.g., `ProductFetchService.swift` contains `protocol ProductFetching` + `final class ProductFetchService: ProductFetching`)
+  - **Additional conformers** (decorators, adapters, alternative implementations) → separate file each, named after the conformer (e.g., `CachedProductFetcher.swift`)
+  - **Small helpers** (<10 lines, or private/fileprivate) → stay in the source file, do NOT split
+  - **Target directory**: same directory as the source file
+  - Copy necessary `import` statements to each new file
+  - Remove the split type definitions from the source file — keep only usage (conformance, injection, calls)
+  - Track created files for the log
 END
 
 ## Phase 4: Write Log
@@ -47,6 +56,7 @@ END
     "timestamp": "<ISO 8601>",
     "suggestions_applied": ["<action suggestion_id>", ...],
     "suggestions_skipped": ["<action suggestion_id>", ...],
+    "files_created": ["<path to new file>", ...],
     "errors": ["<description if any>"]
   }
   ```
@@ -54,8 +64,8 @@ END
 
 ## Constraints
 
-- Do NOT modify files other than the target source file
 - Do NOT invent changes beyond what the actions describe
 - Do NOT re-analyze the code for new violations — trust the plan
 - If an action cannot be applied (e.g., code has changed), skip it and log the reason
 - Preserve existing formatting and style conventions of the file
+- **File-per-type**: protocol + its base implementation share one file (named after the implementation). Additional conformers (decorators, adapters, alternatives) get their own files. Small helpers (<10 lines) or private types stay inline. New files go in the same directory as the source file.

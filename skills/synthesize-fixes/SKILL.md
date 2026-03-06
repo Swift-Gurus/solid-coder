@@ -34,78 +34,122 @@ Load fix knowledge **only for principles that have findings** (keeps context bou
 - [ ] 2.6 **Load patterns** — Parse `required_patterns` from rule.md frontmatter. For each entry, read `{RULES_PATH}/design_patterns/{entry}.md`
 - [ ] 2.7 Build a lookup: `principle_id → { fix_instructions, refactoring_patterns, metrics, patterns }`
 
-## Phase 3: Generate Holistic Fix Plan
+## Phase 3: Draft Fix Actions
+
+Generate one draft action per principle per unit. Each draft is focused on a single principle — do NOT consider other principles yet.
 
 FOR each file that has non-COMPLIANT findings:
 
-### 3.1 Gather All Findings
+### 3.1 Gather & Group
 - [ ] Collect ALL findings from ALL principles for this file into a single list
 - [ ] Group findings by unit (class/struct/enum) they affect
 
-### 3.2 Determine Fix Strategy Per Unit
-FOR each unit with findings:
-- [ ] Read each principle's `fix/instructions.md` severity-based strategy for this unit
-- [ ] Identify what refactoring pattern each principle suggests (extract type, inject dependency, split protocol, etc.)
-- [ ] **Look for synergies**: do multiple principles' fixes align? (e.g., SRP extraction + OCP protocol injection can be done in one step)
-- [ ] **Look for conflicts**: would one principle's fix introduce violations for another? (e.g., SRP extraction creating sealed variation points)
+### 3.2 Draft Per-Principle Actions
+FOR each unit with findings, FOR each principle that has findings on this unit:
+- [ ] Using ONLY that principle's `fix/instructions.md` + `refactoring.md` from the Phase 2 lookup
+- [ ] Generate a draft action:
+  - `suggestion_id`: e.g., `draft-srp-001`
+  - `principle`: the owning principle
+  - `resolves[]`: finding IDs from THIS principle only
+  - `suggested_fix`: full code snippets (protocols, extracted types, modified class, before/after)
+  - `todo_items`: concrete implementable steps
+- [ ] Do NOT consider other principles — focus on one concern at a time
 
-### 3.3 Design Unified Fix Actions
-FOR each unit:
-- [ ] Create fix actions that satisfy ALL principles simultaneously
-- [ ] For each action, follow the fix strategy from the owning principle's `fix/instructions.md`
-- [ ] **Cross-check each action against every loaded principle's metrics:**
-
-  | Check | Question | Metric Source |
-  |-------|----------|---------------|
-  | SRP | Does any new/modified type have >1 cohesion group or >1 stakeholder? | SRP rule.md |
-  | OCP | Does any new type introduce sealed variation points or untestable deps? | OCP rule.md |
-  | LSP | Does any new protocol introduce empty methods for existing conformers? Type checks? | LSP rule.md |
-
-- [ ] If a cross-check fails, **adjust the fix** before finalizing:
-  - SRP fail → split the extracted type further
-  - OCP fail → inject dependencies via protocol instead of concrete reference
-  - LSP fail → split the protocol so conformers only implement what they support
-- [ ] Record cross-check results in the action
-
-### 3.4 Write Suggested Fix
-FOR each action:
-- [ ] Write full code snippets showing:
-  - Protocol definitions (if any)
-  - Extracted/modified types with init and moved methods
-  - Modified original class with injected dependencies
-  - Before/after of key methods
-- [ ] Create concrete `todo_items` — each a single implementable step
-- [ ] Fill `suggested_fix` with the full text + code snippets
-- [ ] Record which finding IDs this action `resolves`
-
-### 3.5 Order Actions
-- [ ] Apply Rule 3 (Complementary Merging): if action A creates a type that action B modifies, B depends on A
-- [ ] Order by: dependency graph first, then severity (SEVERE → MODERATE → MINOR)
-
-### 3.6 Verify Completeness
-- [ ] Every finding must appear in exactly one action's `resolves` list, OR in `unresolved`
-- [ ] Apply Rule 1 (Principle Authority): if a finding is resolved by multiple actions, the action from the finding's own principle wins
-- [ ] Apply Rule 2 (Relocation Detection): if a fix merely moves a violation to a new type without resolving it, mark as `unresolved` with reason
+### 3.3 Collect
+- [ ] Collect all draft actions for this file into a list
 
 END (per file)
 
-## Phase 4: Output
+---
 
-- [ ] 4.1 Read the output schema from `${SKILL_DIR}/plan.schema.json`
-- [ ] 4.2 For each file, write `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` matching the schema:
+## Phase 4: Verify & Patch
+
+Cross-check each draft action against every OTHER active principle's metrics. Patch violations using that principle's fix patterns. This reuses the same rule.md and fix/instructions.md already loaded in Phase 2 — no separate recipe files needed.
+
+FOR each draft action:
+
+### 4.1 Identify Cross-Check Targets
+- [ ] All OTHER active principles (from Phase 1.4) that are not the action's own principle
+
+### 4.2 Run Cross-Checks
+FOR each cross-check principle:
+- [ ] Read the proposed code in the action's `suggested_fix`
+- [ ] Apply that principle's `rule.md` metrics to the proposed code. Specifically check for new or modified types/protocols introduced by the fix:
+  - **SRP**: Count cohesion groups and verbs in any new/modified type. Does any have >1 cohesion group or 2+ stakeholders?
+  - **OCP**: Count sealed variation points in any new/modified type. Are there singletons, static calls, or internal construction?
+  - **LSP**: Check any new protocol — will conformers have empty methods? Are there type checks against the new types?
+- [ ] Record result: `{ principle, passed: true/false, detail: "what was checked and why" }`
+
+### 4.3 Patch Failures
+IF any cross-check fails:
+- [ ] Load the failing principle's `fix/instructions.md` from the Phase 2 lookup
+- [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
+  - **SRP fail** → split the extracted type further along cohesion group boundaries
+  - **OCP fail** → wrap concrete dependencies behind protocols, inject via init instead of direct/singleton reference
+  - **LSP fail** → split the protocol so conformers only implement what they use; remove type checks by improving the abstraction
+- [ ] Update `todo_items` to include the patch steps
+- [ ] Re-run the failed cross-check on the patched code
+- [ ] If still fails → move the affected findings to `unresolved[]` with reason explaining why the patch was insufficient
+- [ ] Add a `note` explaining what was patched and why
+
+### 4.4 Record Results
+- [ ] Record all `cross_check_results` on the action
+
+**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. Do NOT attempt to recursively fix your own fixes.
+
+END (per action)
+
+---
+
+## Phase 5: Merge & Order
+
+Combine actions that touch the same unit, resolve overlaps, and produce the final ordered plan.
+
+### 5.1 Merge Synergistic Actions
+FOR each file, FOR each unit with multiple actions:
+- [ ] Check if actions are synergistic — do they modify the same type in complementary ways?
+  - Example: SRP extracts a type + OCP injects its deps → one combined action that extracts AND injects
+- [ ] When merging:
+  - Combine `resolves[]` from both actions
+  - Union `todo_items`, reordering so extraction steps come before injection steps
+  - Rewrite `suggested_fix` to show the combined result (not two separate snippets)
+  - Set `principle` to the higher-severity action's principle
+  - Preserve `cross_check_results` from both actions
+  - Add `note` explaining the merge decision
+
+### 5.2 Dependency Ordering
+- [ ] If action A creates a type that action B modifies → B depends on A
+- [ ] Build `depends_on[]` for each action
+
+### 5.3 Sort
+- [ ] Order by: dependency graph first, then severity (SEVERE → MINOR)
+
+### 5.4 Verify Completeness
+- [ ] Every finding MUST appear in exactly one action's `resolves[]` OR in `unresolved[]`
+- [ ] **Principle Authority**: if a finding is claimed by multiple actions, the action from the finding's own principle wins
+- [ ] **Relocation Detection**: if a fix merely moves a violation to a new type without resolving it, mark as `unresolved` with reason
+
+END (per file)
+
+---
+
+## Phase 6: Output
+
+- [ ] 6.1 Read the output schema from `${SKILL_DIR}/plan.schema.json`
+- [ ] 6.2 For each file, write `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` matching the schema:
   - `file`: source file path
   - `actions[]`: ordered list of fix actions, each with:
     - `suggestion_id`: generated ID (e.g., `holistic-fix-001`)
     - `principle`: primary principle this action addresses
-    - `resolves[]`: finding IDs resolved (after cross-check — may address findings from multiple principles)
+    - `resolves[]`: finding IDs resolved (after cross-check — may span multiple principles)
     - `todo_items[]`: concrete implementation steps
     - `suggested_fix`: full code snippets (protocols, types, modified class)
     - `depends_on[]`: action IDs that must run first
-    - `cross_check_results[]`: per-principle verification
-    - `note`: explanation of design decisions
+    - `cross_check_results[]`: per-principle verification results
+    - `note`: explanation of design decisions, merges, or patches applied
   - `unresolved[]`: findings no action resolves, each with `finding_id` and `reason`
   - `conflicts_detected[]`: cross-principle conflicts found and how resolved
-- [ ] 4.3 Print summary:
+- [ ] 6.3 Print summary:
 
   | File | Actions | Cross-Checks Passed | Unresolved |
   |------|---------|---------------------|------------|
@@ -113,8 +157,9 @@ END (per file)
 ## Constraints
 
 - Load principle fix knowledge DYNAMICALLY — only for principles that have findings
-- Cross-check every fix against ALL loaded principles' metrics before finalizing
-- If a cross-check fails, adjust the fix — do NOT emit a fix known to violate another principle
+- Phase 3 (Draft) is single-principle focused — do NOT cross-check during drafting
+- Phase 4 (Verify & Patch) reuses each principle's existing rule.md metrics and fix/instructions.md patterns — no separate recipe files
+- If a cross-check fails and patch fails, mark as `unresolved` — do NOT recursively fix fixes
 - Do NOT invent findings — only address findings from the review outputs
 - Include full code snippets in `suggested_fix` (protocols, types, modified class)
 - `todo_items` must be concrete and implementable (not vague)
