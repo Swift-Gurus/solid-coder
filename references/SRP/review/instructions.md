@@ -51,16 +51,27 @@ output_schema: output.schema.json
   |----------------|-----------|-------|-------------------|
   |                |           |       |                   |
 
-#### Phase 3: Scoring
+#### Phase 3: Filter Out exceptions 
 
-- [ ] **3.1 Determine severity**
-    - [ ] 3.1.1 Cohesion groups: ___, severity: __
-    - [ ] 3.1.2 Verb count: ___ , severity: ___
-    - [ ] 3.1.3 Stakeholders count: ___
-    - [ ] 3.1.4 Final severity: ___
+- [ ] **3.1 Cross-check exceptions** - mark exceptions
 
-#### Phase 4: Output
+  | Class/Object | Exception reason |
+  |--------------|------------------|
+  |              |                  | 
+- [ ] **3.2 Exclude exception** - exclude exceptions from analysis
 
-- [ ] **4.1 Report Violations**
-    - [ ] 4.1.1 Show verb list and cohesion group analysis
-    - [ ] 4.1.2 Show cross-reference table with stakeholder labels
+#### Phase 4: Scoring
+
+- [ ] **4.1 Determine severity**
+    - [ ] 4.1.1 Cohesion groups: ___, severity: __
+    - [ ] 4.1.2 Verb count: ___ , severity: ___
+    - [ ] 4.1.3 Stakeholders count: ___
+    - [ ] 4.1.4 Adjust severity considering exceptions.
+    - [ ] 4.1.5 Final severity: ___
+
+#### Phase 5: Output
+
+- [ ] **5.1 Report Violations**
+    - [ ] 5.1.1 Show verb list and cohesion group analysis
+    - [ ] 5.1.2 Show cross-reference table with stakeholder labels
+    - [ ] 5.1.3 Show cross-reference table with found exceptions 

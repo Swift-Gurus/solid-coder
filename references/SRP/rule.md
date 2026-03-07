@@ -151,14 +151,6 @@ Ask: "Who would request this change?"
 
 If different stakeholders could independently request changes to the same class → **multiple responsibilities**.
 
-#### Step-by-Step Process
-
-1. **List all the things the class does** (not methods, but capabilities, count verbs)
-2. **For each capability, ask: "Who owns this decision?"**
-3. **Group by stakeholder** — each group = one responsibility
-4. **Count the groups**
-
-
 ### Exceptions(NOT violations):
 1. **Facade / Coordinator** (see @facade.md)
    A class that only coordinates protocol-typed subsystems has one responsibility: coordination.
@@ -178,11 +170,12 @@ If different stakeholders could independently request changes to the same class 
 ---
 
 ## Quantitative Metrics Summary
-| ID    | Metric          | Threshold                           | Severity  |
-|-------|-----------------|-------------------------------------|-----------|
-| SRP-1 | Verbs           | 1-2 verbs, 1 group                  | COMPLIANT |
-| SRP-1 | Verbs           | 3+ verbs, 1 group, 1 stakeholder    | MINOR     |
-| SRP-1 | Verbs           | 3+ verbs, 2+ stakeholders           | SEVERE    |
-| SRP-2 | Cohesion groups | 2+ groups                           | SEVERE    |
+| ID    | Metric          | Threshold                        | Severity  |
+|-------|-----------------|----------------------------------|-----------|
+| SRP-0 | Exception       | falls into exception category    | COMPLIANT |
+| SRP-1 | Verbs           | 1-2 verbs, 1 group               | COMPLIANT |
+| SRP-1 | Verbs           | 3+ verbs, 1 group, 1 stakeholder | MINOR     |
+| SRP-1 | Verbs           | 3+ verbs, 2+ stakeholders        | SEVERE    |
+| SRP-2 | Cohesion groups | 2+ groups                        | SEVERE    |
 ---
 

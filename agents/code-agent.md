@@ -1,7 +1,7 @@
 ---
-name: refactor-implement-agent
-description: Generic Skill Wrapper, to allow skill to be run in parallel.
-argument-hint: <by-file-json-path> <output-root>
+name: code-agent
+description: SOLID-compliant coding agent — writes code with principle rules loaded as constraints.
+argument-hint: [file|prompt]
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 skills:
 - code

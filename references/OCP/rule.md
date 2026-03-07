@@ -98,7 +98,7 @@ class UserDatabaseManager {
 
 ### Exceptions (0 points — NOT violations):
 1. **Factories/Builders** creating objects — that's their job
-2. **Helpers** — types whose source is NOT in the project (platform SDK, standard library, system frameworks). Check: search for the type definition in the project/local packages/local frameworks. If not found → helper.
+2. **Helpers** — with no dependencies — Encoders, Formatters, Locks, Queues, Multithreading.
 3. **Pure data structures** — no business logic, no dependencies, no side effects
 4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
 
