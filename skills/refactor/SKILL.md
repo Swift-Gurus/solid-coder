@@ -73,6 +73,16 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 
 - [ ] 4.4 List all output file paths
 - [ ] 4.5 If ALL principles are COMPLIANT (no findings), capture timestamp as `time_review_end`. Write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` including `phase_timings` for `prepare` and `review` (set validate/synthesize/implement to `null`). Stop.
+- [ ] 4.6 Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-findings/scripts/check-severity.py {OUTPUT_ROOT}/{ITERATION}`
+  - If output contains `MINOR_ONLY`:
+    - Capture timestamp → store as `time_review_end`
+    - Write `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with:
+      - `status: "all_compliant"`
+      - `stop_reason`: the summary line from script output
+      - `phase_timings` with validate/synthesize/implement set to `null`
+      - `minor_findings` array: read each `rules/*/review-output.json`, collect findings with severity MINOR
+    - Print summary and STOP (do not proceed to Phase 5)
+  - If output contains `HAS_SEVERE`: continue to Phase 5
 
 ## Phase 5: Validate Findings (wait for phase 4)
 - [ ] 5.0 Capture timestamp → store as `time_review_end` AND `time_validate_start`
@@ -113,7 +123,6 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 - [ ] 7.4 Wait for all to complete
 - [ ] 7.5 Collect results from `{OUTPUT_ROOT}/{ITERATION}/implement/*.refactor-log.json`
 - [ ] 7.6 If all files were skipped (all compliant), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` and stop
-- [ ] 7.6b Check the synthesized plans: if ALL findings were MINOR severity AND no `unresolved` entries remain, write refactor-log.json and stop (no re-review needed for minor-only fixes)
 - [ ] 7.7 Capture timestamp as `time_implement_end`. Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs AND phase timings:
   ```json
   {
@@ -129,7 +138,12 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
     "...": "rest of existing fields"
   }
   ```
-- [ ] 7.8 Go to Phase 8
+- [ ] 7.8 Stage implemented changes so the next iteration sees only its own delta:
+  - From the refactor logs collected in 7.5, collect:
+    - Each log's `file` (the modified source file)
+    - Each log's `files_created[]` entries
+  - Run: `git add <file1> <file2> ...` with all collected paths
+- [ ] 7.9 Go to Phase 8
 
 ## Phase 8: Iteration loop
 - [ ] 8.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS provide summary and stop

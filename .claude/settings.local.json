@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv:*)",
+      "Bash(xargs:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(sh:*)",
+      "Bash(ls -lh /Users/crowea/Developer/Autodesk/build-mobile/.solid_coder/refactor-20260304142534/*/refactor-log.json)",
+      "Bash(du:*)",
+      "Bash(sort -t/ -k9,9 -k10,10n)",
+      "Bash(swift build:*)",
+      "Bash(chmod +x:*)",
+      "Bash(pkill ClaudeUsageBar:*)",
+      "Bash(iconutil:*)",
+      "Bash(open:*)",
+      "Bash(swift:*)",
+      "Bash(ps:*)",
+      "Bash(ls:*)",
+      "Bash(done)",
+      "Bash(do:*)",
+      "Bash(do python3:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}
