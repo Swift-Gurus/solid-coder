@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ISP Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file", "suggestions"],
+  "properties": {
+    "agent": { "const": "isp" },
+    "principle": { "const": "Interface Segregation Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^isp-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., isp-fix-001"
+          },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the protocol this suggestion targets"
+          },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension"],
+            "description": "Kind of the unit this suggestion targets"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['isp-001', 'isp-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the refactoring"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": ["protocol_split", "role_interface", "composition_protocol", "default_implementation"],
+            "description": "Which ISP fix pattern this applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the refactoring: split protocols, composition typealias, updated conformers and consumers"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted ISP metrics after the suggestion is applied",
+            "properties": {
+              "original_protocol": {
+                "type": "object",
+                "properties": {
+                  "width": { "type": "integer" },
+                  "min_conformer_coverage": { "type": "number" },
+                  "cohesion_groups": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              },
+              "split_protocols": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "width": { "type": "integer" },
+                    "min_conformer_coverage": { "type": "number" },
+                    "cohesion_groups": { "type": "integer" },
+                    "expected_severity": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

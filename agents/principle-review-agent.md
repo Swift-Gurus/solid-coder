@@ -6,5 +6,6 @@ allowed-tools: Read, Grep, Glob, Bash
 skills:
 - apply-principle-review
 tools:  Read, Grep, Glob, Bash
+model: sonnet
 ---
 

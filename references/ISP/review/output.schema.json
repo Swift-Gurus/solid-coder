@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ISP Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "isp" },
+    "principle": { "const": "Interface Segregation Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file", "units"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "units": {
+            "type": "array",
+            "description": "Per-unit analysis results within this file",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": {
+                  "type": "string",
+                  "description": "Name of the analyzed protocol"
+                },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension"],
+                  "description": "Kind of the analyzed unit"
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["protocol_width", "conformer_coverage", "protocol_cohesion"],
+                  "properties": {
+                    "protocol_width": {
+                      "type": "object",
+                      "description": "ISP-1: Steps 1.1.1 — 1.1.3",
+                      "required": ["total_requirements", "requirements_table"],
+                      "properties": {
+                        "total_requirements": {
+                          "type": "integer",
+                          "description": "Step 1.1.3: Total methods + properties + associated types"
+                        },
+                        "requirements_table": {
+                          "type": "array",
+                          "description": "Step 1.1.1: Every requirement declared in the protocol",
+                          "items": {
+                            "type": "object",
+                            "required": ["requirement", "kind"],
+                            "properties": {
+                              "requirement": { "type": "string" },
+                              "kind": {
+                                "type": "string",
+                                "enum": ["method", "property", "associatedtype"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "conformer_coverage": {
+                      "type": "object",
+                      "description": "ISP-2: Steps 1.2.1 — 1.2.4",
+                      "required": ["conformer_count", "minimum_coverage", "conformers"],
+                      "properties": {
+                        "conformer_count": {
+                          "type": "integer",
+                          "description": "Step 1.2.1: Number of conformers found in the project"
+                        },
+                        "minimum_coverage": {
+                          "type": "number",
+                          "description": "Step 1.2.4: Lowest coverage percentage across all conformers"
+                        },
+                        "conformers": {
+                          "type": "array",
+                          "description": "Step 1.2.2-1.2.3: Per-conformer classification and coverage",
+                          "items": {
+                            "type": "object",
+                            "required": ["name", "meaningful_count", "empty_count", "stub_count", "total", "coverage_percent"],
+                            "properties": {
+                              "name": { "type": "string" },
+                              "meaningful_count": { "type": "integer" },
+                              "empty_count": { "type": "integer" },
+                              "stub_count": { "type": "integer" },
+                              "total": { "type": "integer" },
+                              "coverage_percent": { "type": "number" },
+                              "method_classifications": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["method", "classification"],
+                                  "properties": {
+                                    "method": { "type": "string" },
+                                    "classification": {
+                                      "type": "string",
+                                      "enum": ["MEANINGFUL", "EMPTY", "STUB", "DELEGATED"]
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "protocol_cohesion": {
+                      "type": "object",
+                      "description": "ISP-3: Steps 1.3.1 — 1.3.3",
+                      "required": ["group_count", "groups"],
+                      "properties": {
+                        "group_count": {
+                          "type": "integer",
+                          "description": "Step 1.3.3: Number of disjoint usage groups"
+                        },
+                        "groups": {
+                          "type": "array",
+                          "description": "Step 1.3.2: Methods clustered by co-usage across conformers",
+                          "items": {
+                            "type": "object",
+                            "required": ["name", "methods", "used_by"],
+                            "properties": {
+                              "name": { "type": "string" },
+                              "methods": {
+                                "type": "array",
+                                "items": { "type": "string" }
+                              },
+                              "used_by": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "Conformer names that meaningfully implement all methods in this group"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "description": "Phase 3: Steps 3.1.1 — 3.1.6",
+                  "required": ["protocol_width", "width_severity", "minimum_coverage_percent", "coverage_severity", "cohesion_group_count", "cohesion_severity", "worst_conformer_empty_stub_count", "final_severity"],
+                  "properties": {
+                    "protocol_width": { "type": "integer", "description": "Step 3.1.1" },
+                    "width_severity": { "type": "string", "description": "Step 3.1.1" },
+                    "minimum_coverage_percent": { "type": "number", "description": "Step 3.1.2" },
+                    "coverage_severity": { "type": "string", "description": "Step 3.1.2" },
+                    "cohesion_group_count": { "type": "integer", "description": "Step 3.1.3" },
+                    "cohesion_severity": { "type": "string", "description": "Step 3.1.3" },
+                    "worst_conformer_empty_stub_count": { "type": "integer", "description": "Step 3.1.4" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+                      "description": "Step 3.1.6"
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "description": "Phase 4: Steps 4.1.1 — 4.1.4",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^isp-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE", "MINOR"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["ISP-1", "ISP-2", "ISP-3"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

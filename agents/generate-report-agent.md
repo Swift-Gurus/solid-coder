@@ -6,6 +6,6 @@ allowed-tools: Bash
 skills:
 - generate-report
 tools: Bash
-model: sonnet
+model: haiku
 ---
 

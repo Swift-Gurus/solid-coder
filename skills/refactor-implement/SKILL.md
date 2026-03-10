@@ -4,6 +4,7 @@ description: Implement refactor actions from a synthesized fix plan. Reads the p
 argument-hint: <plan-json-path> <output-root>
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 user-invocable: false
+model: opus
 ---
 
 # Refactor Implement

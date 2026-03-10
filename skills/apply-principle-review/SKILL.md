@@ -47,6 +47,7 @@ Creating output.
 
 ## Constraints
 - Do NOT invent rules — only apply what is in the rules file
+- Do NOT expand exception lists — apply ONLY the exceptions explicitly defined in rule.md. If a dependency looks similar to a listed exception but does not match the stated criteria, it is NOT an exception. Do not justify exceptions by "well-known patterns" or common industry practice (e.g., "Logger is a helper", "Analytics is cross-cutting"). The rule defines what qualifies. Nothing else does.
 - Do NOT merge or skip checklist steps
 - Report one finding per triggered metric
 - Do NOT auto-resolve issues in the workflow: 

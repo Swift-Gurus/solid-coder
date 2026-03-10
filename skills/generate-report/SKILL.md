@@ -4,6 +4,7 @@ description: Generate a self-contained HTML report from validated per-file findi
 argument-hint: <output-root>
 allowed-tools: Bash
 user-invocable: false
+
 ---
 
 # HTML Report Generator

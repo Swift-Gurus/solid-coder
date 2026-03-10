@@ -46,7 +46,7 @@ FOR each file that has non-COMPLIANT findings:
 
 ### 3.2 Draft Per-Principle Actions
 
-**Principle order:** Process principles from smallest to largest blast radius — resolve dependencies before restructuring. The order is: OCP → LSP → SRP. Each principle's fixes build on the previous — OCP resolves sealed dependencies so LSP can fix abstractions cleanly, and SRP extracts types that already have proper injection.
+**Principle order:** Process principles from smallest to largest blast radius — resolve dependencies before restructuring. The order is: OCP → LSP → ISP → SRP. Each principle's fixes build on the previous — OCP resolves sealed dependencies so LSP can fix abstractions cleanly, ISP splits fat protocols so extracted types get narrow interfaces, and SRP extracts types that already have proper injection.
 
 FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:
 - [ ] Using ONLY that principle's `fix/instructions.md` + `refactoring.md` from the Phase 2 lookup

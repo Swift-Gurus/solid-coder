@@ -6,8 +6,7 @@ output_schema: output.schema.json
 ---
 
 ### Phase 0: Load Examples for context.
-- [ ] **0.1 Read all references/examples**
-  - [] [FOR EVERY FILE IN PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples CREATE TODO]
+- [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
 
 #### Phase 1: Detection (LSP-1, LSP-2, and LSP-3 run independently and in parallel if possible)
 
