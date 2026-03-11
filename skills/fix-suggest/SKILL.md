@@ -18,13 +18,13 @@ user-invocable: false
 
 ## Phase 1: Preparation
 Create Preparation task list and execute it
-- [ ] 1.1 **Load fix instructions** — Read `$ARGUMENTS[0]/fix/instructions.md`
-- [ ] 1.2 **Parse frontmatter** — Extract `rules`, `review_schema`, and `output_schema` paths
-- [ ] 1.3 **Load rules** — Read the rules file referenced in frontmatter
-  - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME}
-- [ ] 1.4 **Load patterns** — Read the principle's `rule.md` frontmatter. Parse `required_patterns`, for each entry read `{RULES_PATH}/design_patterns/{entry}.md`
-- [ ] 1.5 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
-- [ ] 1.6 **Load source code** — Read each code file from remaining arguments
+- [ ] 1.1 **Parse fix instruction frontmatter** — Use skill **solid-coder:parse-frontmatter** `$ARGUMENTS[0]/fix/instructions.md`
+  Extract `rules`, `input_schema`, and `output_schema` paths from the JSON output.
+- [ ] 1.2 **Parse rule frontmatter** — Use skill **solid-coder:parse-frontmatter** `$ARGUMENTS[0]/rule.md`
+- [ ] 1.3 **Load references** — Use skill **solid-coder:load-reference** with all paths from `files_to_load` in step 1.2 JSON output
+- [ ] 1.4 **Load rules** — Use skill **solid-coder:load-reference** with the `rules` path from step 1.1
+- [ ] 1.6 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
+- [ ] 1.7 **Load source code** — Read each code file from remaining arguments
 
 ## Phase 2: Analysis
 Creating/appending tasks from the fix instructions.
@@ -32,7 +32,7 @@ Once you read fix instructions, rules, and findings, they contain more tasks.
 Create a second tasklist and execute it
 
 ## Phase 3: Output
-- [ ] 3.1 **Load output schema** — Read the schema file referenced in frontmatter
+- [ ] 3.1 **Load output schema** — Read the schema file path from step 1.1
 - [ ] 3.2 **Generate output** — Produce JSON matching the output schema, write to `fix.json` into the same folder where findings are $ARGUMENTS[1]
 
 ## Constraints

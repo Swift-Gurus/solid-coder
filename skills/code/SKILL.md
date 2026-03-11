@@ -28,12 +28,12 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 ## Phase 2: Load Rules
 
 - [ ] 2.1 Glob for `{RULES_PATH}/*/rule.md`
-- [ ] 2.2 For each rule.md, read its frontmatter:
+- [ ] 2.2 For each rule.md, use skill **solid-coder:parse-frontmatter** `{rule.md path}`
   - `activation: always` → load it
   - `activation: imports: [...]` → load only if any listed import is detected from Phase 1.3
-- [ ] 2.3 Read each active `rule.md` in full — these are the constraints
-- [ ] 2.4 Parse `required_patterns` from each rule.md frontmatter. For each entry, read `{RULES_PATH}/design_patterns/{entry}.md`
-- [ ] 2.5 Hold all loaded rules and patterns in context — they apply to every line of code you write
+- [ ] 2.3 **Load rules** — For each active rule.md, use skill **solid-coder:load-reference** `{rule.md path}` — these are the constraints
+- [ ] 2.4 **Load references** — For each active rule, use skill **solid-coder:load-reference** with all paths from `files_to_load` in its step 2.2 JSON output
+- [ ] 2.5 Hold all loaded rules and references in context — they apply to every line of code you write
 
 ## Phase 3: Write Code
 

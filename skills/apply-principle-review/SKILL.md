@@ -19,15 +19,15 @@ user-invocable: false
 ## Phase 1
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
-- [ ] 1.2 **Load instructions** — Read `RULES_PATH/NAME/review/instructions.md`
-- [ ] 1.3 **Parse frontmatter** — Extract `rules` and `output_schema` paths.
-  - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME} 
-  - if rules are not provided use PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md path as fallback
-- [ ] 1.4 **Load rules** — Read the rules file referenced in frontmatter
-- [ ] 1.5 **Load patterns** — Parse `required_patterns` from rule.md frontmatter. For each entry, read `{RULES_PATH}/design_patterns/{entry}.md`
-- [ ] 1.6 **Parse input** -
+- [ ] 1.2 **Parse instruction frontmatter** — Use skill **solid-coder:parse-frontmatter** `RULES_PATH/NAME/review/instructions.md`
+  Extract `rules` and `output_schema` paths from the JSON output.
+  - if `rules` is not provided, use `RULES_PATH/NAME/rule.md` as fallback
+- [ ] 1.3 **Parse rule frontmatter** — Use skill **solid-coder:parse-frontmatter** `RULES_PATH/NAME/rule.md`
+- [ ] 1.4 **Load references** — Use skill **solid-coder:load-reference** with all paths from `files_to_load` in step 1.3 JSON output
+- [ ] 1.5 **Load rules** — Use skill **solid-coder:load-reference** with the `rules` path from step 1.2
+- [ ] 1.7 **Parse input** -
   - read and parse input json
-  - extract files and units from json 
+  - extract files and units from json
 ## Phase 2
 FOR each file DO
   FOR each unit (class, struct, enum) in file.units that has_changes == true DO
