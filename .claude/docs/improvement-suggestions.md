@@ -530,13 +530,15 @@ This means:
 
 ---
 
-## S-20: Missing `has_changes` field in prepare-input schema
+## S-20: `has_changes` null handling in prepare-input
 
-**Impact**: Medium | **Effort**: Trivial | **Category**: Data contracts
+**Impact**: Medium | **Effort**: Trivial | **Category**: Data contracts | **Status**: Done
 
-The prepare-review-input agent writes `has_changes: true/false` on each unit. The review skill explicitly checks `has_changes == true` to decide what to review. But `output.schema.json` doesn't define this field.
+The schema allowed `has_changes: null`, but `apply-principle-review` checks `has_changes == true` — so null-valued units were silently skipped. Three fixes applied:
 
-**Fix**: Add `"has_changes": { "type": "boolean" }` to the units definition in the schema.
+1. **Schema** (`output.schema.json`): Tightened `has_changes` type from `["boolean", "null"]` to `"boolean"`
+2. **Prepare skill** (`prepare-review-input/SKILL.md`): Clarified step 2.1.4 — `has_changes` must always be `true` or `false`, never `null`. When `changed_ranges` is null/empty/missing → all units get `has_changes = true`
+3. **Docs**: Updated `flows.md` to note null is never expected
 
 ---
 
@@ -1011,7 +1013,7 @@ This mirrors how `/review` and `/refactor` don't have this problem — they alwa
 | S-17 | Missing `tier`/`activation` in rule.md frontmatter | High | Low | Done — replaced with tag-based activation via `discover-principles` skill. No tags = always active. |
 | S-18 | `file_path` vs `file` field inconsistency | High | Medium | Pending |
 | S-19 | Unit context lost in validation/synthesis schemas | High | Low | Pending |
-| S-20 | Missing `has_changes` in prepare-input schema | Medium | Trivial | Pending |
+| S-20 | Missing `has_changes` in prepare-input schema | Medium | Trivial | Done — field exists in schema; tightened type from `["boolean", "null"]` to `"boolean"` and clarified prepare-input must never emit null |
 | S-21 | No tests for `prepare-changes.py` | High | Medium | Pending |
 | S-22 | Missing JSON error handling in Python scripts | Medium | Low | Pending |
 | S-23 | README.md rewrite | Medium | Low | Pending |

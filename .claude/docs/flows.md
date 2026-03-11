@@ -46,7 +46,7 @@ Step 4: Parallel Principle Review + Fix
        - Load rule.md metrics and severity bands
        - Load review/instructions.md phased checklist
        - Load design pattern references (if required_patterns set)
-       - For each file/unit with has_changes == true:
+       - For each file/unit with has_changes == true (null is never expected — prepare-input must set true or false):
          - Compute metrics (e.g., SRP: verb count, cohesion groups, stakeholders)
          - Check exceptions (facade, helper, boundary adapter, NoOp)
          - Score severity

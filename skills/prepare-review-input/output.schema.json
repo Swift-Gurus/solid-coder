@@ -49,7 +49,7 @@
                 },
                 "line_start": { "type": "integer", "minimum": 1 },
                 "line_end": { "type": "integer", "minimum": 1 },
-                "has_changes": { "type": ["boolean", "null"] }
+                "has_changes": { "type": "boolean" }
               }
             }
           }

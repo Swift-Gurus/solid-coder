@@ -72,7 +72,7 @@ solid-coder/
 ## Technology Stack
 
 - **Orchestration:** Claude Code skills + subagents (YAML-defined)
-- **Models:** Opus (for review, synthesis, implementation), Sonnet (for input prep, validation, report generation)
+- **Models:** Opus (for review, synthesis, implementation), Sonnet (for review without fix), Haiku (for input prep, validation, report generation)
 - **Scripts:** Python 3 (diff parsing, finding validation, report generation)
 - **Target Language:** Swift
 - **Output:** JSON findings/plans + self-contained HTML reports
