@@ -11,21 +11,29 @@ This document captures how the system makes key decisions at each stage of the p
 **Decision logic:**
 
 ```
-For each references/**/rule.md:
-  Read YAML frontmatter → activation field
+Step 1: Discovery
+  Run discover-principles script → all principles + all_candidate_tags
+  (parses rule.md frontmatter, extracts tags field from each)
 
-  if activation == "always":
-      INCLUDE (core + practice tiers)
+Step 2: Tag Matching (if candidate_tags is non-empty)
+  Pass candidate_tags to prepare-review-input agent
+  Agent reads code → extracts imports (script) + analyzes patterns (agent judgment)
+  Merges into matched_tags in review-input.json
 
-  if activation == conditional:
-      Check review-input.json for detected imports
-      if required import found (e.g., "SwiftUI"):
-          INCLUDE
-      else:
-          SKIP
+Step 3: Filtering
+  Run discover-principles script with --review-input → active_principles
+
+  For each principle:
+    if no tags in rule.md → ALWAYS ACTIVE (include)
+    if has tags → check intersection with matched_tags
+      if any tag matches → INCLUDE
+      else → SKIP
+
+  For included principles:
+      Run load-reference script with files_to_load → clean content (frontmatter stripped)
 ```
 
-**Current state:** SRP, OCP, LSP, ISP are all `activation: always`. Framework-tier principles (SwiftUI, TCA) will use conditional activation when implemented.
+**Current state:** SRP, OCP, LSP, ISP have no tags → always active. Framework-tier principles (SwiftUI, TCA) will use `tags: [swiftui]`, `tags: [tca]` for conditional activation when implemented.
 
 ---
 

@@ -22,7 +22,13 @@
       "Bash(done)",
       "Bash(do:*)",
       "Bash(do python3:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(echo exit: $?:*)",
+      "Bash(for f in references/*/rule.md)",
+      "Read(//Users/crowea/Developer/Swift-Gurus/solid-coder/**)",
+      "Bash(for f in references/*/refactoring.md)",
+      "Bash(/tmp/compare.txt:*)",
+      "Read(//tmp/**)"
     ]
   }
 }

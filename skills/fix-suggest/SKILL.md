@@ -18,11 +18,15 @@ user-invocable: false
 
 ## Phase 1: Preparation
 Create Preparation task list and execute it
-- [ ] 1.1 **Parse fix instruction frontmatter** — Use skill **solid-coder:parse-frontmatter** `$ARGUMENTS[0]/fix/instructions.md`
+- [ ] 1.1 **Parse fix instruction frontmatter** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py $ARGUMENTS[0]/fix/instructions.md`
   Extract `rules`, `input_schema`, and `output_schema` paths from the JSON output.
-- [ ] 1.2 **Parse rule frontmatter** — Use skill **solid-coder:parse-frontmatter** `$ARGUMENTS[0]/rule.md`
-- [ ] 1.3 **Load references** — Use skill **solid-coder:load-reference** with all paths from `files_to_load` in step 1.2 JSON output
-- [ ] 1.4 **Load rules** — Use skill **solid-coder:load-reference** with the `rules` path from step 1.1
+- [ ] 1.2 **Parse rule frontmatter** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py $ARGUMENTS[0]/rule.md`
+- [ ] 1.3 **Load references** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 1.2>`
+- [ ] 1.4 **Load rules** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <rules path from step 1.1>`
 - [ ] 1.6 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
 - [ ] 1.7 **Load source code** — Read each code file from remaining arguments
 

@@ -79,6 +79,16 @@
         }
       }
     },
+    "detected_imports": {
+      "type": "array",
+      "description": "Raw import module names extracted from source files",
+      "items": { "type": "string" }
+    },
+    "matched_tags": {
+      "type": "array",
+      "description": "Tags matched by the agent from detected_imports + code analysis, merged with candidate_tags",
+      "items": { "type": "string" }
+    },
     "summary": {
       "type": "object",
       "required": ["total_files", "total_units", "changed_units"],

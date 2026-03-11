@@ -4,19 +4,28 @@
 
 solid-coder is a **multi-agent pipeline** where each stage has a dedicated agent with constrained tools, a specific model, and a focused skill. The orchestrator skills (`/review`, `/refactor`) compose these agents into full workflows.
 
-## Tier System
+## Activation System
 
-Principles are organized into tiers that determine activation and cross-checking behavior:
+Principles are activated based on **tags** in their `rule.md` frontmatter:
+
+- **No tags** = always active (core principles like SRP, OCP, LSP, ISP)
+- **Has tags** = conditionally active — only when the code matches at least one tag
 
 ```
 ┌─────────────────────────────────────────┐
-│  framework    SwiftUI, TCA              │  Activated only when imports detected
+│  framework    SwiftUI, TCA              │  tags: [swiftui], [tca] — conditional
 ├─────────────────────────────────────────┤
-│  practice     DRY, Functions/Smells     │  Always active
+│  practice     DRY, Functions/Smells     │  No tags — always active
 ├─────────────────────────────────────────┤
-│  core         SRP, OCP, LSP, ISP, DIP  │  Always active
+│  core         SRP, OCP, LSP, ISP, DIP  │  No tags — always active
 └─────────────────────────────────────────┘
 ```
+
+**Discovery flow:**
+1. Orchestrator runs `discover-principles` skill → gets all principles + `all_candidate_tags`
+2. Candidate tags are passed to `prepare-review-input` agent
+3. Agent matches tags against code (imports + usage patterns) → `matched_tags` in review-input.json
+4. Orchestrator runs `discover-principles` again with `--review-input` → filtered `active_principles`
 
 **Cross-checking is directional (upward only):**
 - Core checks everything (its own tier + practice + framework)
@@ -75,25 +84,39 @@ references/{PRINCIPLE}/
 ```
 
 The `rule.md` YAML frontmatter controls:
-- `activation`: `always` (core/practice) or conditional (framework — based on detected imports)
-- `tier`: `core`, `practice`, or `framework`
+- `tags`: (optional) List of tags for conditional activation. No tags = always active. Tags present = active only when code matches at least one tag.
 - `required_patterns`: Design pattern references the principle needs (e.g., SRP needs `structural/facade`)
+- `examples`: (optional) Paths to example files/folders, defaults to `Examples/` if the directory exists
+
+Frontmatter is parsed by `parse-frontmatter` (script), which resolves all paths to absolute and produces a `files_to_load` array. Content is loaded by `load-reference` (script), which strips YAML frontmatter so agents never see it. Principle discovery and tag-based filtering is handled by `discover-principles` (script/skill).
 
 ## Data Flow
 
 All intermediate data is JSON, schema-validated at each boundary:
 
 ```
-                    ┌─────────────────────┐
-     User target    │  prepare-review-    │    review-input.json
-   (branch/folder/  │  input-agent        │──────────────┐
-    file/changes)   └─────────────────────┘              │
+                    ┌──────────────────────┐
+                    │  discover-principles │    all_candidate_tags
+                    │  (script)            │──────────────┐
+                    └──────────────────────┘              │
                                                           ▼
-                    ┌─────────────────────┐    ┌──────────────────┐
-                    │  principle-review-   │◄───│  Principle       │
-                    │  (fx)-agent  × N    │    │  Discovery       │
-                    │  (parallel)         │    │  (glob + filter) │
-                    └────────┬────────────┘    └──────────────────┘
+                    ┌─────────────────────┐    candidate_tags passed
+     User target    │  prepare-review-    │    review-input.json
+   (branch/folder/  │  input-agent        │    (with matched_tags)
+    file/changes)   └─────────────────────┘──────────────┐
+                                                          ▼
+                    ┌──────────────────────┐   ┌──────────────────┐
+                    │  discover-principles │◄──│  review-input    │
+                    │  --review-input      │   │  .json           │
+                    │  (filter mode)       │   └──────────────────┘
+                    └────────┬─────────────┘
+                             │ active_principles
+                             ▼
+                    ┌─────────────────────┐
+                    │  principle-review-   │
+                    │  (fx)-agent  × N    │
+                    │  (parallel)         │
+                    └────────┬────────────┘
                              │
                     review-output.json + fix.json (per principle)
                              │
@@ -187,7 +210,9 @@ The system maximizes parallelism at two points:
 2. **Refactor implementation**: All file-level plans are implemented simultaneously (M agents in one message)
 
 Sequential dependencies are honored:
-- Prepare input must complete before review starts
+- Principle discovery must complete before prepare input (to get candidate tags)
+- Prepare input must complete before filtering (to get matched tags)
+- Filtering must complete before review starts (to get active principles)
 - All reviews must complete before validation
 - Validation must complete before synthesis
 - Synthesis must complete before implementation

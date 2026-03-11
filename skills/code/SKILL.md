@@ -23,17 +23,22 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
   - If it contains a path to a spec/markdown file → read it as requirements
   - Treat any remaining text as the prompt (what to build)
 - [ ] 1.2 If a refactor plan, read the target source file and understand its structure
-- [ ] 1.3 Collect import statements from any source files involved (needed for framework-tier activation)
 
-## Phase 2: Load Rules
+## Phase 2: Discover & Load Rules
 
-- [ ] 2.1 Glob for `{RULES_PATH}/*/rule.md`
-- [ ] 2.2 For each rule.md, use skill **solid-coder:parse-frontmatter** `{rule.md path}`
-  - `activation: always` → load it
-  - `activation: imports: [...]` → load only if any listed import is detected from Phase 1.3
-- [ ] 2.3 **Load rules** — For each active rule.md, use skill **solid-coder:load-reference** `{rule.md path}` — these are the constraints
-- [ ] 2.4 **Load references** — For each active rule, use skill **solid-coder:load-reference** with all paths from `files_to_load` in its step 2.2 JSON output
-- [ ] 2.5 Hold all loaded rules and references in context — they apply to every line of code you write
+- [ ] 2.1 Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH}`
+- [ ] 2.2 If `all_candidate_tags` is non-empty AND Phase 1 loaded source files:
+  - Scan the source files from Phase 1 for imports and code patterns that match the candidate tags
+  - Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH} --matched-tags {matched tags as comma-separated}`
+  - Use `active_principles` from the output
+  - NOTE: If Phase 1 loaded no source files (greenfield — spec or prompt only), skip tag scanning and use all principles from step 2.1
+- [ ] 2.3 For each active principle, run parse-frontmatter on its rule.md:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py {rule_path}`
+- [ ] 2.4 **Load rules** — For each active rule.md, run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {rule_path}`
+- [ ] 2.5 **Load references** — For each active rule, run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.3>`
+- [ ] 2.6 Hold all loaded rules and references in context — they apply to every line of code you write
 
 ## Phase 3: Write Code
 

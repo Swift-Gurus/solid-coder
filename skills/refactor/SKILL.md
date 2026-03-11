@@ -28,40 +28,42 @@ Store timestamps in memory using these names:
 
 The "end" of one phase equals the "start" of the next (reuse the same timestamp to avoid redundant calls). Include all timestamps in `refactor-log.json` as the `phase_timings` object.
 
-## Phase 1: Prepare Input
+## Phase 1: Discover Principles
 - [ ] 1.0 Capture timestamp → store as `time_prepare_start`
 - [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2
-- [ ] 1.2 Prepare a Task call:
+- [ ] 1.2 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH`
+- [ ] 1.3 Parse JSON output — extract `all_candidate_tags` and the full principle list
+
+## Phase 2: Prepare Input (wait for phase 1)
+- [ ] 2.1 Prepare a Task call:
   - subagent_type: `solid-coder:prepare-review-input-agent`
   - prompt:
    ```
     input: $ARGUMENTS
     output_root: {OUTPUT_ROOT}/{ITERATION}
+    candidate_tags: {all_candidate_tags from Phase 1}
     ```
-- [ ] 1.3 Launch Task
-- [ ] 1.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
+- [ ] 2.2 Launch Task
+- [ ] 2.3 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
   - If the Task failed, stop and report the error
 
-## Phase 2: Discover Principles (wait for phase 1)
-- [ ] 2.1 Glob for `RULES_PATH/**/review/instructions.md`
-- [ ] 2.2 Extract principle abbreviation from each path (directory name: SRP, OCP, etc.)
-- [ ] 2.3 Build list of principles to review
-
-## Phase 3: Launch Parallel Reviews (review only — no fix generation)
+## Phase 3: Filter Principles & Launch Reviews (wait for phase 2)
 
 - [ ] 3.0 Capture timestamp → store as `time_prepare_end` AND `time_review_start`
-- [ ] 3.1 For EACH discovered principle, prepare a Task call:
+- [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json`
+- [ ] 3.2 Use `active_principles` from the output — these are the principles to review
+- [ ] 3.3 For EACH active principle, prepare a Task call:
     - subagent_type: `solid-coder:principle-review-agent`
     - prompt:
       ```
       principle: {NAME}
-      review-input: {{OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json }
+      review-input: {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json
       rules-path: {RULES_PATH}
-      principle-folder: {RULES_PATH}/{NAME}
+      principle-folder: {FOLDER from discovery output}
       output-path: {OUTPUT_ROOT}/{ITERATION}/rules/{NAME}
       ```
-- [ ] 3.2 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
-- [ ] 3.3 Wait for all to complete
+- [ ] 3.4 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
+- [ ] 3.5 Wait for all to complete
 
 ## Phase 4: Collect Results
 - [ ] 4.1 Glob for review output files in .OUTPUT_ROOT/{ITERATION}/rules/**
@@ -153,6 +155,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
    ```
     input: "changes"
     output_root: {OUTPUT_ROOT}/{ITERATION}
+    candidate_tags: {all_candidate_tags from Phase 1}
     ```
 - [ ] 8.3 Launch Task
 - [ ] 8.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)

@@ -16,6 +16,7 @@ from typing import Dict, List, Optional
 
 DIFF_FILE_RE = re.compile(r"^diff --git a/(.*) b/(.*)$")
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
+IMPORT_RE = re.compile(r"^\s*import\s+(\w+)", re.MULTILINE)
 
 
 def run_git(*args: str) -> str:
@@ -102,6 +103,19 @@ def file_line_count(path: str) -> int:
         return 0
 
 
+def extract_imports(file_paths: List[str]) -> List[str]:
+    """Extract unique import module names from a list of files."""
+    imports: set = set()
+    for fp in file_paths:
+        try:
+            content = Path(fp).read_text(encoding="utf-8", errors="replace")
+            for m in IMPORT_RE.finditer(content):
+                imports.add(m.group(1))
+        except OSError:
+            continue
+    return sorted(imports)
+
+
 def build_output(output_path: Optional[str]) -> None:
     # 1. Collect diffs
     staged = run_git("diff", "--staged")
@@ -139,6 +153,10 @@ def build_output(output_path: Optional[str]) -> None:
             "units": [],
         })
 
+    # 4. Extract imports from all files
+    all_file_paths = [fp for fp in sorted(merged)]
+    detected_imports = extract_imports(all_file_paths)
+
     branch = run_git("branch", "--show-current").strip() or None
 
     output = {
@@ -150,6 +168,8 @@ def build_output(output_path: Optional[str]) -> None:
         },
         "files": files if files else None,
         "buffer": None,
+        "detected_imports": detected_imports,
+        "matched_tags": [],
         "summary": {
             "total_files": len(files),
             "total_units": 0,

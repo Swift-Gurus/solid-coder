@@ -48,7 +48,10 @@ solid-coder/
 │   ├── prepare-review-input/     Input normalizer + diff parser
 │   ├── validate-findings/        Finding filter + reorganizer
 │   ├── synthesize-fixes/         Cross-principle fix planner
-│   └── generate-report/          HTML report generator
+│   ├── generate-report/          HTML report generator
+│   ├── parse-frontmatter/        YAML frontmatter parser → JSON with resolved paths
+│   ├── load-reference/           Reference loader with frontmatter stripping
+│   └── discover-principles/      Principle discovery + tag-based filtering
 └── requirements.txt          Python deps (pytest, jsonschema)
 ```
 

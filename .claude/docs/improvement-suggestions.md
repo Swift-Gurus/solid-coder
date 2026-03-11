@@ -92,6 +92,8 @@ One file read replaces N globs + N reads in Phase 2 (Discover Principles) of bot
 
 **Maintenance**: Add a script or hook that regenerates the index when any `rule.md` changes.
 
+**Update**: `parse-frontmatter` script now resolves paths and produces `files_to_load` per principle. A cached index would further reduce repeated script calls. Status: **Partially addressed** — caching is the remaining optimization.
+
 ---
 
 ## S-04: Short-circuit the pipeline for trivial changes
@@ -207,6 +209,8 @@ LLM-interpreted substitution is unreliable. The LLM might forget to substitute, 
 - In orchestrators, resolve ALL paths to absolute paths BEFORE passing to subagents
 - Pass only concrete absolute paths in agent prompts — never template variables
 - Consider using `!`command`` dynamic context injection for paths that need runtime resolution
+
+**Update**: `parse-frontmatter` script now handles `PRINCIPLE_FOLDER_ABSOLUTE_PATH` token replacement and resolves all paths to absolute. `load-reference` strips frontmatter so agents get clean content. Skills use `!` bash calls to run these scripts. Status: **Partially addressed** — `CURRENT_PROJECT` and `{RULES_PATH}` still rely on LLM interpretation.
 
 ---
 
@@ -953,18 +957,49 @@ Investigate why Run 8 went through synthesize+implement despite only MINOR findi
 
 ---
 
+## S-29: `/code` skill greenfield gap — no source files for tag matching
+
+**Impact**: Medium | **Effort**: Low | **Category**: Correctness
+
+**Status**: Pending
+
+The `/code` skill Phase 2.2 assumes source files exist to scan for tag matching:
+
+```
+If `all_candidate_tags` is non-empty:
+  - Scan the source files from Phase 1 for imports and code patterns that match the candidate tags
+```
+
+In greenfield scenarios (spec or inline prompt only, no existing source file), there are no source files to scan. Phase 1 only loads a spec/markdown or prompt text — not source code.
+
+### Current behavior
+
+The skill silently falls through — tag matching produces no matches, so only tagless (always-active) principles load. Tagged principles (e.g., SwiftUI, TCA) would be skipped even when the spec explicitly describes building a SwiftUI view.
+
+### Proposed fix
+
+Add a fallback chain to Phase 2.2:
+
+1. **Source files exist** (modification mode) → scan them for tags (current behavior)
+2. **No source files, spec exists** → scan the spec/prompt content against candidate tags (e.g., spec mentions "SwiftUI" → matches `swiftui` tag)
+3. **No source files, no spec** → load all principles (safest default)
+
+This mirrors how `/review` and `/refactor` don't have this problem — they always operate on existing code.
+
+---
+
 ## Suggestion Status Tracker
 
 | ID | Summary | Impact | Effort | Status |
 |----|---------|--------|--------|--------|
 | S-01 | Always-on SOLID enforcement (rules not distributable via plugin) | High | Low | Blocked — needs design decision |
 | S-02 | Fix model selection (Sonnet for mechanical tasks) | High | Low | Pending |
-| S-03 | Pre-compute rule index | Medium | Low | Pending |
+| S-03 | Pre-compute rule index | Medium | Low | Partial — `discover-principles` script replaces manual glob+parse; caching is remaining optimization |
 | S-04 | Short-circuit trivial changes (with LSP-safe tier 2) | Medium | Low | Pending |
 | S-05 | Post-synthesis verification script | High | Medium | Pending |
 | S-06 | Graceful degradation for partial failures | Medium | Medium | Pending |
 | S-07 | Fix `ruler.md` typo | Low | Trivial | Pending |
-| S-08 | Standardize path template substitution | Medium | Medium | Pending |
+| S-08 | Standardize path template substitution | Medium | Medium | Partial |
 | S-09 | Detect oscillation in iteration loop | Medium | Low | Pending |
 | S-10 | Output cleanup mechanism | Low | Low | Pending |
 | S-11 | Prioritize ISP and DIP principles | High | High | Pending |
@@ -973,7 +1008,7 @@ Investigate why Run 8 went through synthesize+implement despite only MINOR findi
 | S-14 | Fix iteration loop: `git add` between iterations | High | Low | Done |
 | S-15 | **CRITICAL**: `addresses` vs `resolves` field name break | Critical | Low | Pending |
 | S-16 | **CRITICAL**: validate-findings passes unknown files | Critical | Low | Pending |
-| S-17 | Missing `tier`/`activation` in rule.md frontmatter | High | Low | Pending |
+| S-17 | Missing `tier`/`activation` in rule.md frontmatter | High | Low | Done — replaced with tag-based activation via `discover-principles` skill. No tags = always active. |
 | S-18 | `file_path` vs `file` field inconsistency | High | Medium | Pending |
 | S-19 | Unit context lost in validation/synthesis schemas | High | Low | Pending |
 | S-20 | Missing `has_changes` in prepare-input schema | Medium | Trivial | Pending |
@@ -985,3 +1020,4 @@ Investigate why Run 8 went through synthesize+implement despite only MINOR findi
 | S-26 | AST-based metric extraction (tree-sitter) | High | High | POC needed — validate on Examples/ first |
 | S-27 | Pre-plan target architecture before incremental refactoring | High | Medium | Pending |
 | S-28 | Short-circuit MINOR-only findings — skip synthesis/implement | Medium | Low | Pending |
+| S-29 | `/code` greenfield gap — no source files for tag matching | Medium | Low | Pending |

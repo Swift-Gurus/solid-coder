@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SwiftUI Fix Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "swiftui" },
+    "principle": { "const": "SwiftUI Best Practices" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "files": {
+      "type": "array",
+      "items": {}
+    }
+  }
+}

@@ -27,11 +27,12 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
 
 - [ ] 2.1 For EACH principle agent ID from step 1.4, resolve to the principle folder: `{RULES_PATH}/{UPPERCASE_AGENT_ID}/`
-- [ ] 2.2 **Parse rule frontmatter** — Use skill **solid-coder:parse-frontmatter** `{principle_folder}/rule.md`
-- [ ] 2.3 **Load references** — Use skill **solid-coder:load-reference** with all paths from `files_to_load` in step 2.2 JSON output
-- [ ] 2.4 **Load fix instructions** — Use skill **solid-coder:load-reference** `{principle_folder}/fix/instructions.md`
-- [ ] 2.5 **Load refactoring patterns** — Use skill **solid-coder:load-reference** `{principle_folder}/refactoring.md`
-- [ ] 2.6 **Load rule** — Use skill **solid-coder:load-reference** `{principle_folder}/rule.md`
+- [ ] 2.2 **Parse rule frontmatter** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py {principle_folder}/rule.md`
+- [ ] 2.3 **Load references** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.2>`
+- [ ] 2.4 **Load fix knowledge** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {principle_folder}/fix/instructions.md {principle_folder}/refactoring.md {principle_folder}/rule.md`
 - [ ] 2.7 Build a lookup: `principle_id → { fix_instructions, refactoring_patterns, metrics, patterns, examples }`
 
 ## Phase 3: Draft Fix Actions

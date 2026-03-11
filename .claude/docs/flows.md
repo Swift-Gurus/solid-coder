@@ -10,27 +10,34 @@ User runs `/review` with a target (branch, folder, file, or current changes).
 ### Steps
 
 ```
-Step 1: Prepare Input
+Step 1: Discover Principles
+───────────────────────────
+  Agent:  orchestrator (inline)
+  Action:
+    - Runs discover-principles skill → all principles + all_candidate_tags
+  Output: Principle list + candidate tags for activation
+
+Step 2: Prepare Input
 ─────────────────────
   Agent:  prepare-review-input-agent (haiku)
-  Input:  User target (branch name, folder path, file path, or "changes")
+  Input:  User target + candidate_tags from Step 1
   Action:
-    - For "changes" mode: runs prepare-changes.py to parse git diff
+    - For "changes" mode: runs prepare-changes.py to parse git diff + extract imports
     - For all modes: identifies Swift units (class, struct, protocol, enum, extension)
     - Detects which units overlap changed line ranges
-    - Detects framework imports (SwiftUI, TCA) for conditional activation
-  Output: {OUTPUT_ROOT}/prepare/review-input.json
+    - Matches candidate_tags against code (imports + usage patterns) → matched_tags
+  Output: {OUTPUT_ROOT}/prepare/review-input.json (with detected_imports + matched_tags)
 
-Step 2: Discover Principles
-───────────────────────────
-  Agent:  orchestrator (inline in skill)
+Step 3: Filter Principles
+─────────────────────────
+  Agent:  orchestrator (inline)
   Action:
-    - Globs for references/**/review/instructions.md
-    - Reads each principle's rule.md frontmatter
-    - Filters: "always" → include; conditional → check detected imports
-  Output: List of active principle paths
+    - Runs discover-principles skill with --review-input → active_principles
+    - Rules with no tags → always active
+    - Rules with tags → active only if any tag in matched_tags
+  Output: Filtered list of active principles
 
-Step 3: Parallel Principle Review + Fix
+Step 4: Parallel Principle Review + Fix
 ───────────────────────────────────────
   Agent:  principle-review-fx-agent × N (opus, parallel)
   Input:  review-input.json + principle-specific instructions + rule + examples
@@ -52,13 +59,13 @@ Step 3: Parallel Principle Review + Fix
          - Verification criteria
   Output: {OUTPUT_ROOT}/rules/{PRINCIPLE}/review-output.json + fix.json
 
-Step 4: Collect & Print Summary
+Step 5: Collect & Print Summary
 ───────────────────────────────
   Agent:  orchestrator (inline)
   Action: Reads all review-output.json files, prints summary table
   Output: Console summary (principle | files | findings | worst severity)
 
-Step 5: Validate Findings
+Step 6: Validate Findings
 ─────────────────────────
   Agent:  validate-findings-agent (haiku)
   Action: Runs validate-findings.py which:
@@ -69,7 +76,7 @@ Step 5: Validate Findings
     - Matches fix suggestions to their findings
   Output: {OUTPUT_ROOT}/by-file/{filename}.output.json
 
-Step 6: Generate Report
+Step 7: Generate Report
 ───────────────────────
   Agent:  generate-report-agent (haiku)
   Action: Runs generate-report.py which:
@@ -86,14 +93,18 @@ Step 6: Generate Report
 ```
 User ──► /review target
           │
-          ▼
-    ┌─────────────┐
-    │ Prepare      │ ──► review-input.json
+    ┌─────▼───────┐
+    │ Discover     │ ──► all_candidate_tags
+    │ Principles   │
+    └──────┬──────┘
+           │
+    ┌──────▼──────┐
+    │ Prepare      │ ──► review-input.json (with matched_tags)
     │ Input        │
     └──────┬──────┘
            │
     ┌──────▼──────┐
-    │ Discover     │ ──► [SRP, OCP, LSP]
+    │ Filter       │ ──► active_principles
     │ Principles   │
     └──────┬──────┘
            │
@@ -126,20 +137,20 @@ User runs `/refactor` with a target and optional `--iterations N` (default 2).
 ### Steps
 
 ```
-Steps 1–2: Same as Review (Prepare Input + Discover Principles)
+Steps 1–3: Same as Review (Discover Principles + Prepare Input + Filter)
 
-Step 3: Parallel Principle Review (review only, no fix)
+Step 4: Parallel Principle Review (review only, no fix)
 ──────────────────────────────────────────────────────
   Agent:  principle-review-agent × N (parallel)
   Why:    Synthesis handles fix planning holistically — individual fix suggestions
           would be generated in isolation without cross-principle awareness
   Output: {OUTPUT_ROOT}/rules/{PRINCIPLE}/review-output.json
 
-Step 4: Validate Findings
+Step 5: Validate Findings
 ─────────────────────────
-  Same as review flow Step 5
+  Same as review flow Step 6
 
-Step 5: Synthesize Fixes (Two-Pass)
+Step 6: Synthesize Fixes (Two-Pass)
 ────────────────────────────────────
   Agent:  synthesize-fixes-agent (opus)
   Input:  All validated findings + principle fix knowledge
@@ -169,7 +180,7 @@ Step 5: Synthesize Fixes (Two-Pass)
 
   Output: {OUTPUT_ROOT}/synthesized/{filename}.plan.json per file
 
-Step 6: Parallel Implementation
+Step 7: Parallel Implementation
 ────────────────────────────────
   Agent:  refactor-implement-agent × M (opus, parallel, one per file)
   Input:  plan.json for one file
@@ -183,7 +194,7 @@ Step 6: Parallel Implementation
     - Write per-file refactor-log.json
   Output: Modified source files + refactor-log.json
 
-Step 7: Iteration Loop
+Step 8: Iteration Loop
 ───────────────────────
   Condition: iteration_counter < MAX_ITERATIONS
   Action:
@@ -200,20 +211,21 @@ Step 7: Iteration Loop
 ```
 User ──► /refactor target --iterations 2
           │
-          ▼
-    ┌─────────────┐
-    │ Prepare      │
+    ┌─────▼───────┐
+    │ Discover     │ ──► candidate_tags
+    └──────┬──────┘
+           │
+    ┌──────▼──────┐
+    │ Prepare      │ ──► matched_tags
     │ Input        │
     └──────┬──────┘
            │
     ┌──────▼──────┐
-    │ Discover     │
-    └──────┬──────┘
-           │                          ┌──────────────────┐
-    ┌──────▼──────────────┐           │                  │
-    │ Parallel Review      │           │  ITERATION LOOP  │
-    │ (review only)        │◄──────────│  (max N times)   │
-    └──────┬──────────────┘           │                  │
+    │ Filter +     │                   ┌──────────────────┐
+    │ Parallel     │                   │                  │
+    │ Review       │◄──────────────────│  ITERATION LOOP  │
+    │ (review only)│                   │  (max N times)   │
+    └──────┬──────┘                   │                  │
            │                          └────────▲─────────┘
     ┌──────▼──────┐                            │
     │ Validate     │                            │
@@ -249,10 +261,12 @@ Step 1: Parse Input
     - Spec file (markdown describing what to build)
     - Inline prompt (natural language description)
 
-Step 2: Load Rules
-──────────────────
-  - Glob all references/**/rule.md
-  - Read frontmatter: include "always" rules + import-activated rules
+Step 2: Discover & Load Rules
+─────────────────────────────
+  - Run discover-principles skill → all principles + candidate tags
+  - If candidate tags exist: scan source for matching tags, re-run discovery with matched tags
+  - For each active principle: run parse-frontmatter on rule.md
+  - Run load-reference to load rules and references with frontmatter stripped
   - These become active constraints for code generation
 
 Step 3: Write Code
