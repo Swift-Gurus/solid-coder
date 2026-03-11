@@ -58,7 +58,7 @@ references/
 ├── SRP/              activation: always,  tier: core
 ├── OCP/              activation: always,  tier: core
 ├── LSP/              activation: always,  tier: core
-├── ISP/              activation: always,  tier: core      (future)
+├── ISP/              activation: always,  tier: core
 ├── DIP/              activation: always,  tier: core      (future)
 ├── DRY/              activation: always,  tier: practice  (future)
 ├── functions/        activation: always,  tier: practice  (future)

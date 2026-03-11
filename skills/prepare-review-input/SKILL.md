@@ -1,7 +1,7 @@
 ---
 name: prepare-review-input
 description: Normalize input (branch diff, folder, class, buffer) into structured review-input.json for review agents.
-argument-hint: [folder|class|buffer] [target] [--base <branch>]
+argument-hint: [branch|changes|folder|file|buffer] [target] [--base <branch>]
 allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: true
 ---

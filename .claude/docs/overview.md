@@ -37,6 +37,7 @@ solid-coder/
 │   ├── SRP/                  Single Responsibility Principle
 │   ├── OCP/                  Open/Closed Principle
 │   ├── LSP/                  Liskov Substitution Principle
+│   ├── ISP/                  Interface Segregation Principle
 │   └── design_patterns/      Shared pattern references (strategy, adapter, decorator, facade)
 ├── skills/                   Skill definitions + scripts
 │   ├── review/               Orchestrator: review pipeline
@@ -47,7 +48,6 @@ solid-coder/
 │   ├── prepare-review-input/     Input normalizer + diff parser
 │   ├── validate-findings/        Finding filter + reorganizer
 │   ├── synthesize-fixes/         Cross-principle fix planner
-│   ├── refactor-implement/       Code change implementer
 │   └── generate-report/          HTML report generator
 └── requirements.txt          Python deps (pytest, jsonschema)
 ```
@@ -59,7 +59,7 @@ solid-coder/
 | SRP (Single Responsibility) | core | Active |
 | OCP (Open/Closed) | core | Active |
 | LSP (Liskov Substitution) | core | Active |
-| ISP (Interface Segregation) | core | Planned |
+| ISP (Interface Segregation) | core | Active |
 | DIP (Dependency Inversion) | core | Planned |
 | DRY | practice | Planned |
 | Functions/Smells | practice | Planned |

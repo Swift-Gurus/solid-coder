@@ -30,7 +30,7 @@ This prevents a SwiftUI-specific fix from introducing an SRP violation.
 ### Agent Definitions
 
 Each agent is a YAML frontmatter markdown file in `agents/` specifying:
-- **Model**: `opus` for reasoning-heavy work, `sonnet` for mechanical tasks
+- **Model**: `opus` for reasoning-heavy work, `sonnet` for mid-tier analysis, `haiku` for mechanical tasks
 - **Max turns**: Caps agentic loops (100 for implementation agents)
 - **Allowed tools**: Restricts what the agent can do
 - **Skills**: Which internal skills the agent can invoke
@@ -41,20 +41,21 @@ Each agent is a YAML frontmatter markdown file in `agents/` specifying:
 ┌──────────────────────────────┬─────────┬────────────────────────────────────┐
 │ Agent                        │ Model   │ Role                               │
 ├──────────────────────────────┼─────────┼────────────────────────────────────┤
-│ prepare-review-input-agent   │ sonnet  │ Normalizes input into JSON         │
-│ principle-review-agent       │ default │ Review only (no fix)               │
+│ prepare-review-input-agent   │ haiku   │ Normalizes input into JSON         │
+│ principle-review-agent       │ sonnet  │ Review only (no fix)               │
 │ principle-review-fx-agent    │ opus    │ Review + fix suggestion            │
-│ validate-findings-agent      │ sonnet  │ Filters findings to changed ranges │
+│ validate-findings-agent      │ haiku   │ Filters findings to changed ranges │
 │ synthesize-fixes-agent       │ opus    │ Cross-principle fix planning       │
 │ refactor-implement-agent     │ opus    │ Implements code changes from plan  │
 │ code-agent                   │ opus    │ Writes SOLID-compliant code        │
-│ generate-report-agent        │ sonnet  │ Produces HTML report               │
+│ generate-report-agent        │ haiku   │ Produces HTML report               │
 └──────────────────────────────┴─────────┴────────────────────────────────────┘
 ```
 
 **Model assignment rationale:**
 - **Opus** for agents that must reason about code semantics (review, synthesis, implementation)
-- **Sonnet** for agents doing mechanical/structural work (input prep, validation, report generation)
+- **Sonnet** for agents doing mid-tier analysis work (review without fix generation)
+- **Haiku** for agents doing mechanical/structural work (input prep, validation, report generation)
 
 ## Knowledge Base Structure
 

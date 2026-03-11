@@ -49,6 +49,11 @@
             "enum": ["MINOR", "SEVERE"],
             "description": "Severity from the review that triggered this suggestion"
           },
+          "pattern": {
+            "type": "string",
+            "enum": ["extract_class", "extract_protocol", "facade_delegation", "method_grouping"],
+            "description": "Which SRP fix pattern this applies"
+          },
           "suggested_fix": {
             "type": "string",
             "description": "Full text with code snippets showing the refactoring: protocol definitions, extracted types, modified original class, before/after of key methods"

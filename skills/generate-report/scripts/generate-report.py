@@ -61,12 +61,16 @@ def render_verification(verification):
         return ""
 
     items = []
-    orig = verification.get("original_class", {})
-    if orig:
-        sev = orig.get("expected_severity", "")
-        items.append(f'<span class="verification-item">Original &rarr; {escape(sev)}</span>')
+    # SRP/OCP: original_class; ISP: original_protocol
+    for orig_key in ("original_class", "original_protocol"):
+        orig = verification.get(orig_key, {})
+        if orig:
+            sev = orig.get("expected_severity", "")
+            label = "Original"
+            items.append(f'<span class="verification-item">{label} &rarr; {escape(sev)}</span>')
 
-    for key in ("extracted_types", "refactored_types"):
+    # SRP: extracted_types; OCP: refactored_types; ISP: split_protocols
+    for key in ("extracted_types", "refactored_types", "split_protocols"):
         for t in verification.get(key, []):
             name = t.get("name", "")
             sev = t.get("expected_severity", "")

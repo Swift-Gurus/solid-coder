@@ -13,11 +13,11 @@ allowed-tools: Read, Glob, Bash, Write
 
 ## Phase 1: Prepare Input 
 - [ ] 1.1 Prepare a Task call:
-  - subagent_type: `prepare-review-input-agent`
+  - subagent_type: `solid-coder:prepare-review-input-agent`
   - prompt:
    ```
     input: $ARGUMENTS
-    ouput_root: {OUTPUT_ROOT}
+    output_root: {OUTPUT_ROOT}
     ```
 - [ ] 1.2 Launch Task
 - [ ] 1.3 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/prepare)

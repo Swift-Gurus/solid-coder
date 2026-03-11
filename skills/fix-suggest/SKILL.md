@@ -24,7 +24,7 @@ Create Preparation task list and execute it
   - substitute PRINCIPLE_FOLDER_ABSOLUTE_PATH with {RULES_PATH}/{NAME}
 - [ ] 1.4 **Load patterns** — Read the principle's `rule.md` frontmatter. Parse `required_patterns`, for each entry read `{RULES_PATH}/design_patterns/{entry}.md`
 - [ ] 1.5 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
-- [ ] 1.5 **Load source code** — Read each code file from remaining arguments
+- [ ] 1.6 **Load source code** — Read each code file from remaining arguments
 
 ## Phase 2: Analysis
 Creating/appending tasks from the fix instructions.

@@ -25,7 +25,7 @@ For each references/**/rule.md:
           SKIP
 ```
 
-**Current state:** SRP, OCP, LSP are all `activation: always`. Framework-tier principles (SwiftUI, TCA) will use conditional activation when implemented.
+**Current state:** SRP, OCP, LSP, ISP are all `activation: always`. Framework-tier principles (SwiftUI, TCA) will use conditional activation when implemented.
 
 ---
 
@@ -68,6 +68,22 @@ Each principle defines its own metrics and severity bands. The system does not u
 **Exception overrides:**
 - External/framework-forced casts (e.g., `response as? HTTPURLResponse`) → not counted
 - NoOp objects (name contains NoOp + 100% empty methods) → COMPLIANT
+
+### ISP Severity
+
+| Condition | Severity |
+|-----------|----------|
+| Protocol width <= 5 AND all conformer coverage >= 80% | COMPLIANT |
+| Width 6-8 AND all conformers >= 60%, OR width <= 5 AND any conformer 60-79% | MINOR |
+| Width > 8 OR any conformer < 60% OR 2+ cohesion groups OR 1+ conformers with 3+ empty/stub methods | SEVERE |
+
+**Exception overrides:**
+- Non-protocol units → COMPLIANT (ISP applies only to protocols)
+- Marker protocols (zero requirements) → COMPLIANT
+- Single-conformer protocols → flag as "unable to verify" but not a violation
+- Composition protocols (`protocol P: A, B {}`) → not a violation if components are compliant
+- @objc protocols → "framework-constrained"
+- Protocols with default implementations covering non-meaningful methods → not forced
 
 ---
 
@@ -145,6 +161,19 @@ For empty/fatal methods (LSP-3):
     → Composition over inheritance
 ```
 
+### ISP Fix Strategy
+
+```
+For each wide protocol:
+    1. Identify cohesion groups from conformer usage patterns
+    2. Split into role interfaces (one per cohesion group)
+    3. Create a composition protocol: protocol Original: RoleA, RoleB {}
+    4. Update consumers to depend on the narrowest role they need
+    5. Provide default implementations where appropriate
+
+Priority order: split > role_interface > composition_protocol > default_implementation
+```
+
 ---
 
 ## 5. Cross-Principle Conflict Resolution (Synthesis)
@@ -166,6 +195,7 @@ For each draft action A from principle P:
     - SRP action extracts a class → Does this create new sealed points? (OCP)
     - OCP action injects a dependency → Does this create multiple cohesion groups? (SRP)
     - LSP action adds a protocol → Does the hierarchy need type checking? (LSP self-check)
+    - ISP action splits a protocol → Do the split protocols break existing conformers? (LSP check)
 
     if Q's metrics worsen:
         Attempt to patch action A using Q's fix patterns

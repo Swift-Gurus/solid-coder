@@ -22,11 +22,19 @@
         "properties": {
           "agent": {
             "type": "string",
-            "description": "Principle agent id (srp, ocp, lsp)"
+            "description": "Principle agent id (srp, ocp, lsp, isp)"
           },
           "principle": {
             "type": "string",
             "description": "Full principle name"
+          },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the unit (class, struct, protocol, etc.) this entry covers"
+          },
+          "unit_kind": {
+            "type": "string",
+            "description": "Kind of the unit (class, struct, enum, protocol, extension)"
           },
           "severity": {
             "type": "string",

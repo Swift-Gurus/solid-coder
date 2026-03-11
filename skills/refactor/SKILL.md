@@ -32,7 +32,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 - [ ] 1.0 Capture timestamp → store as `time_prepare_start`
 - [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2
 - [ ] 1.2 Prepare a Task call:
-  - subagent_type: `prepare-review-input-agent`
+  - subagent_type: `solid-coder:prepare-review-input-agent`
   - prompt:
    ```
     input: $ARGUMENTS
@@ -148,7 +148,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 ## Phase 8: Iteration loop
 - [ ] 8.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS provide summary and stop
 - [ ] 8.2 Prepare a Task call with `changes` to re-review only staged/unstaged/untracked files:
-    - subagent_type: `prepare-review-input-agent`
+    - subagent_type: `solid-coder:prepare-review-input-agent`
     - prompt:
    ```
     input: "changes"

@@ -12,7 +12,7 @@ User runs `/review` with a target (branch, folder, file, or current changes).
 ```
 Step 1: Prepare Input
 ─────────────────────
-  Agent:  prepare-review-input-agent (sonnet)
+  Agent:  prepare-review-input-agent (haiku)
   Input:  User target (branch name, folder path, file path, or "changes")
   Action:
     - For "changes" mode: runs prepare-changes.py to parse git diff
@@ -60,7 +60,7 @@ Step 4: Collect & Print Summary
 
 Step 5: Validate Findings
 ─────────────────────────
-  Agent:  validate-findings-agent (sonnet)
+  Agent:  validate-findings-agent (haiku)
   Action: Runs validate-findings.py which:
     - Filters findings to only those in changed line ranges
       (skipped for folder/file/buffer source types)
@@ -71,7 +71,7 @@ Step 5: Validate Findings
 
 Step 6: Generate Report
 ───────────────────────
-  Agent:  generate-report-agent (sonnet)
+  Agent:  generate-report-agent (haiku)
   Action: Runs generate-report.py which:
     - Reads all by-file/*.output.json
     - Renders self-contained HTML with:
@@ -97,14 +97,14 @@ User ──► /review target
     │ Principles   │
     └──────┬──────┘
            │
-    ┌──────▼──────────────────────────┐
-    │      Parallel Review + Fix       │
-    │  ┌─────┐  ┌─────┐  ┌─────┐    │
-    │  │ SRP │  │ OCP │  │ LSP │    │
-    │  └──┬──┘  └──┬──┘  └──┬──┘    │
-    └─────┼────────┼────────┼────────┘
-          │        │        │
-          ▼        ▼        ▼
+    ┌──────▼───────────────────────────────────┐
+    │         Parallel Review + Fix            │
+    │  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  │
+    │  │ SRP │  │ OCP │  │ LSP │  │ ISP │  │
+    │  └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘  │
+    └─────┼────────┼────────┼────────┼──────┘
+          │        │        │        │
+          ▼        ▼        ▼        ▼
     ┌─────────────────────────────────┐
     │ Validate Findings                │ ──► by-file/*.output.json
     └──────────────┬──────────────────┘
