@@ -3,6 +3,7 @@ name: review
 description: Orchestrate parallel reviews across all principles. Prepares input once, then fans out.
 argument-hint: [branch|changes|folder|file]
 allowed-tools: Read, Glob, Bash, Write
+user-invocable: true
 ---
 
 # Parallel Review Orchestrator

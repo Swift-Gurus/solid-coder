@@ -8,31 +8,15 @@ Audit of the solid-coder plugin architecture. Each suggestion is independent and
 
 **Impact**: High | **Effort**: Low | **Category**: New capability
 
-**Status**: Blocked — needs design decision
+**Status**: Resolved by design
 
 The full pipeline only runs on explicit `/review` or `/refactor`. During normal coding, developers get zero SOLID guidance.
 
-### Problem with `.claude/rules/`
+### Resolution
 
-Plugins **cannot distribute `.claude/rules/` files**. The plugin system is isolated by design — plugin contents do not merge into the target project's `.claude/` directory. Rules only auto-load from the actual project's `.claude/rules/`. This means:
+A dedicated `/implement` skill will be the SOLID-enforced coding entry point. The skill prompt itself loads SOLID references and enforces principles during execution — no need to distribute `.claude/rules/` files, rely on auto-invocation heuristics, or add hooks. `/code` can reference `/implement` internally.
 
-- Plugin users would have to manually create rule files — breaks the distribution goal
-- Symlinks are a workaround but fragile and not cross-platform
-- Managed CLAUDE.md (system-level) requires IT/admin deployment
-
-### Alternatives to explore
-
-1. **Plugin `settings.json` with `agent` field**: Plugins can override the main agent behavior. Could inject SOLID awareness into the default agent's system prompt. Needs investigation — unclear if this affects all interactions or only plugin-scoped ones.
-
-2. **Skills with auto-invocation**: Skills with a `description` field auto-invoke when Claude detects relevance (unless `disable-model-invocation: true`). A skill described as "Apply SOLID principles when writing Swift code" might auto-trigger. However, auto-invocation is unreliable — it depends on the LLM's judgment.
-
-3. **PostToolUse hook on Write/Edit**: A plugin hook that fires after every file write, running a lightweight SOLID check. Deterministic trigger, but adds latency to every edit.
-
-4. **Documentation-only**: Document that consumers should add `.claude/rules/` files to their projects. Provide the rule files as templates in the plugin's `references/` directory.
-
-### Decision needed
-
-Which approach (or combination) best balances the distribution goal with always-on enforcement? This affects whether the `/code` skill's Phase 2 (manual rule loading) can be simplified.
+This sidesteps all previously considered alternatives (rules distribution, hooks, auto-invocation, documentation-only) because the skill-based workflow **is** the enforcement mechanism — deterministic, every invocation.
 
 ---
 
@@ -67,6 +51,23 @@ Current model assignment:
 
 **Risk**: Sonnet may miss subtle violations. Mitigate by testing against the Examples/ directories for each principle.
 
+### Verified status (2026-03-12)
+
+**Partially implemented.** Actual current model assignments differ from original doc:
+
+| Agent | Actual Model | Notes |
+|-------|-------------|-------|
+| `principle-review-agent` | `sonnet` | Review-only in refactor pipeline — already downgraded |
+| `principle-review-fx-agent` | `opus` | Review + fix in review pipeline — bundles two tasks |
+| `prepare-review-input-agent` | `haiku` | Cheaper than suggested sonnet |
+| `validate-findings-agent` | `haiku` | Cheaper than suggested sonnet |
+| `generate-report-agent` | `haiku` | Cheaper than suggested sonnet |
+| `synthesize-fixes-agent` | `opus` | Correct — needs deep reasoning |
+| `refactor-implement-agent` | `opus` | Could potentially be sonnet |
+| `code-agent` | `opus` | Correct — needs reasoning |
+
+**Remaining optimization:** `principle-review-fx-agent` uses opus because it bundles review + fix suggestions. Could split into sonnet review + separate opus fix-suggest for savings.
+
 ---
 
 ## S-03: Pre-compute a rule index
@@ -96,54 +97,49 @@ One file read replaces N globs + N reads in Phase 2 (Discover Principles) of bot
 
 ---
 
-## S-04: Short-circuit the pipeline for trivial changes
+## S-04: Scope review to what was actually changed
 
 **Impact**: Medium | **Effort**: Low | **Category**: Pipeline efficiency
 
-A 1-line typo fix triggers the full 6-phase pipeline.
+**Status**: In progress — iteration-level scoping being tested
 
-### Caveat: small changes can still contain violations
+### Problem
 
-A single line like `guard let x = obj as? ConcreteType` is an LSP violation (type-casting against a protocol conformer). Line count alone is not a safe proxy for "trivial." Any heuristic must account for this.
+The pipeline reviews entire files/classes even when only a small part was modified. If we updated a caller site, the caller itself shouldn't be reviewed — only the changed code and what it directly affects. Detecting "trivial" changes by line count is unreliable (a single line can be an LSP violation), so that's not the right heuristic.
 
-**Suggestion**: Use a two-tier gate after the prepare phase:
+### Three levels of scoping
 
-```
-Tier 1 — Safe to skip (no false negatives):
-  IF summary.changed_units == 0:
-    → Skip review entirely, emit "no reviewable changes"
-  IF only comments/whitespace changed (detectable from diff content):
-    → Skip review entirely
+**1. Iteration scoping (in progress)**: During refactor iterations, only re-review files that were modified in the previous round — skip files that passed and weren't touched.
 
-Tier 2 — Run lightweight check instead of full pipeline:
-  IF total changed lines < threshold (e.g., 10) AND no new types added:
-    → Run a SINGLE in-context review (no agent spawning)
-    → Load rules inline, check the diff directly
-    → Emit findings or "clean" without the full pipeline overhead
-```
+**2. Target vs dependent scoping (needed)**: When re-reviewing after implementation, distinguish between:
+- **Review candidates**: files that are plan targets OR were **created** during implementation (new types, protocols, extracted classes)
+- **Skip**: files that already existed before the refactor, weren't in any plan, but got modified as a side effect (e.g., call site updates in class N)
 
-Tier 2 avoids the false negative problem: small changes still get reviewed, but without spawning N parallel agents for a few lines. The orchestrator itself (which already has Opus context) checks the rules directly.
+The refactor logs have this data: plan `file` fields = targets, `files_created[]` = new files, everything else modified = dependents.
 
-Make the threshold configurable via `--thorough` flag to force the full pipeline. Add to both review and refactor orchestrator SKILL.md files.
+**Implementation**: This filtering belongs in `prepare-review-input`, not the orchestrator. When `source_type: "files"`, the prepare agent should receive metadata about which files are targets/created vs dependents, and exclude dependents from `review-input.json`.
+
+**Gap**: The plan JSON has a `file` field (target) — that's real. But `files_created[]` in the refactor log is assumed by the orchestrator (step 7.8) without being enforced — the `/code` skill only lists files as a text summary (Phase 5), not structured JSON. To make this filtering work, either:
+- The `/code` skill needs structured output with `files_created[]` and `files_modified[]`
+- Or the orchestrator derives it from git (diff before/after each implement agent run)
+
+**3. Change-boundary scoping (future)**: Even on first pass, scope the review to the changed units (functions, types) rather than the whole file. If a diff only touches a call site, don't review the caller's class for SOLID violations unrelated to the change.
 
 ---
 
 ## S-05: Add post-synthesis verification script
 
-**Impact**: High | **Effort**: Medium | **Category**: Reliability
+**Impact**: Medium | **Effort**: Medium | **Category**: Reliability
+
+**Status**: Deferred — scalability concern, iterative re-review is preferred
 
 Phase 4 of synthesize-fixes asks the LLM to simulate other principles' metrics on proposed code. This is the weakest point — the LLM is likely to rubber-stamp its own output with `"passed": true`.
 
-**Suggestion**: Add a Python verification script (`scripts/verify-synthesis.py`) that performs concrete checks on the `suggested_fix` code in each plan action:
+### Why deferred
 
-- **SRP proxy**: Count distinct method groups / property clusters in proposed types
-- **OCP proxy**: Grep for `.shared`, `.default`, `static func`, direct `init(` of concrete types
-- **LSP proxy**: Count protocol methods vs conformer implementations, detect `fatalError`/empty bodies
-- **ISP proxy**: Flag protocols with 5+ methods (potential fat interface)
+Per-principle verification scripts don't scale. Each new rule (DIP, DRY, etc.) requires its own script with custom proxy checks (grep patterns, count heuristics) that are brittle and produce false positives/negatives. Maintenance burden grows linearly with rule count.
 
-Run this after synthesis, before implementation. If a check fails, annotate the plan action with a warning. The implement agent can then flag it rather than blindly applying.
-
-**Fits the architecture**: This follows the same pattern as `validate-findings.py` — a deterministic script as guardrail on LLM output.
+The iterative re-review approach (S-04) is the scalable alternative — after implementation, the same review agents re-check the changed files against all principles. This is principle-agnostic and reuses existing infrastructure rather than adding parallel validation scripts.
 
 ---
 
@@ -187,6 +183,10 @@ if rules are not provided use PRINCIPLE_FOLDER_ABSOLUTE_PATH/ruler.md path as fa
 
 Should be `rule.md`, not `ruler.md`. This fallback silently fails if the primary path resolution doesn't work.
 
+### Verified status (2026-03-12)
+
+**Already fixed.** No `ruler.md` references remain anywhere in the codebase. `skills/apply-principle-review/SKILL.md` line 25 correctly reads `rule.md`.
+
 ---
 
 ## S-08: Standardize path template substitution
@@ -218,7 +218,9 @@ LLM-interpreted substitution is unreliable. The LLM might forget to substitute, 
 
 **Impact**: Medium | **Effort**: Low | **Category**: Reliability
 
-If iteration 1 fixes issue A but introduces issue B, and iteration 2 fixes B but reintroduces A-like patterns, the loop oscillates without converging.
+**Status**: Not implemented — low practical risk
+
+If iteration 1 fixes issue A but introduces issue B, and iteration 2 fixes B but reintroduces A-like patterns, the loop oscillates without converging. In practice, the pipeline follows patterns properly and oscillation hasn't been observed. The real risk is when a fix modifies a caller site, which then gets re-reviewed in the next iteration and flagged for unrelated violations — this is more of a scoping problem (S-04) than oscillation.
 
 **Suggestion**: In Phase 8 (Iteration Loop), before re-reviewing:
 
@@ -243,6 +245,15 @@ Also: log per-iteration finding IDs in the refactor-log.json so oscillation is v
 - **`/clean` skill**: Manual cleanup command that lists runs with sizes and deletes selected ones
 - **`.gitignore`**: At minimum, ensure `.solid_coder/` is gitignored (check if it is)
 
+### Verified status (2026-03-12)
+
+**Not implemented.** No cleanup step exists in either orchestrator. The project `.gitignore` does NOT include `.solid_coder/` or `.solid-coder-*`, so output directories would be tracked by git in user projects.
+
+**Plan:**
+1. Document that users should add `.solid_coder/` to `.gitignore`
+2. Add a `/clean` skill that lists timestamped runs with sizes and allows selective deletion
+3. Optionally add `--keep N` flag to orchestrators
+
 ---
 
 ## S-11: Prioritize ISP and DIP principles
@@ -266,6 +277,19 @@ The synthesis phase cross-checks against active principles only. Missing ISP/DIP
 
 Even without full review/fix/refactoring docs, having the rule.md enables cross-checking during synthesis (Phase 4 reads rule.md for metric definitions).
 
+### Verified status (2026-03-12)
+
+**ISP: Implemented.** `references/ISP/` has the full structure matching SRP/OCP/LSP: `rule.md` (ISP-1, ISP-2, ISP-3 metrics), `review/instructions.md`, `review/output.schema.json`, `fix/instructions.md`, `fix/output.schema.json`, `refactoring.md`, and `Examples/` with 4 Swift files.
+
+**DIP: Not implemented.** `references/DIP/` does not exist.
+
+**Plan for DIP:** Create `references/DIP/` with full structure:
+- `rule.md` — DIP metrics (dependency direction, abstraction layer analysis, concrete vs protocol deps, init parameter types)
+- `review/instructions.md` + `output.schema.json` — detection phases per SRP/OCP/LSP/ISP pattern
+- `fix/instructions.md` + `output.schema.json` — fix strategies for DIP violations
+- `refactoring.md` — before/after patterns
+- `Examples/` — compliant and violation Swift files
+
 ---
 
 ## S-12: Validate agent output against schemas deterministically
@@ -284,11 +308,29 @@ JSON schema validation currently happens in `validate-findings.py` but is option
    Call this from the orchestrator in Phase 4 (Collect Results) before proceeding
 3. If validation fails, treat as partial failure (see S-06) rather than silent corruption
 
+### Verified status (2026-03-12)
+
+**Partially implemented.** `validate-findings.py` does validate when `plugin_root` is provided (lines 95-96, 122-130). It validates review-input, review-output, and fix.json against their schemas. Uses `jsonschema` library with graceful fallback (warns if not installed).
+
+**Gaps:**
+- Synthesize-fixes output (`plan.json`) is never validated against `plan.schema.json`
+- If `jsonschema` isn't installed, validation silently skips (just stderr warning)
+- No validation of review agent outputs *before* they reach validate-findings
+
+**Plan:**
+- Add `jsonschema` to `requirements.txt` as hard dependency
+- Add schema validation for synthesize-fixes plan output
+- Make jsonschema a hard requirement (fail if not installed)
+
 ---
 
 ## S-13: Delta-aware review — only report regressions, not pre-existing violations
 
 **Impact**: High | **Effort**: High | **Category**: Review quality / noise reduction
+
+**Status**: Deferred — likely unnecessary with `/implement` workflow
+
+If `/implement` follows SOLID guidelines from the start and doesn't repeat itself, the code it produces should be clean by construction. Delta-aware review (comparing base vs modified) is only needed when reviewing *human-written* code that may have pre-existing violations. For the `/implement` workflow, the skill controls the entire output — pre-existing violations don't apply. This remains relevant only for `/review` on legacy codebases.
 
 ### Problem
 
@@ -395,11 +437,26 @@ Files created by iteration 1 remain untracked. When iteration 2 runs `prepare-ch
 
 This supersedes the S-04 "trivial change" short-circuit for modified files. With delta-aware review, a 1-line change that doesn't worsen any metric naturally produces zero findings — no short-circuit needed. S-04's Tier 1 (skip when `changed_units == 0` or comments-only) is still useful as an early exit before even running the review.
 
+### Verified status (2026-03-12)
+
+**Partially implemented.** Three layers of delta-awareness exist:
+1. `prepare-changes.py` produces per-file `changed_ranges` arrays ✓
+2. `apply-principle-review/SKILL.md` Phase 2 skips units where `has_changes == false` ✓
+3. `validate-findings.py` `_filter_findings()` rejects findings whose line ranges don't overlap changed ranges ✓
+
+**Gap:** Review agents analyze the **entire unit** — they report ALL violations within a changed unit, including pre-existing ones. Post-filtering catches findings outside changed ranges, but pre-existing violations whose line ranges overlap changed regions still pass through. No baseline mechanism to distinguish "new violation" from "pre-existing violation in changed region."
+
+None of the review instructions (`references/*/review/instructions.md`) mention delta, regression, or `has_changes`.
+
 ---
 
 ## S-14: Fix iteration loop baseline for created files
 
 **Impact**: High | **Effort**: Low | **Category**: Correctness (bug)
+
+**Status**: Not applicable — iterations use `"files"` mode, not `"changes"`
+
+The iteration loop (Phase 8.2) uses `input: "files" {CHANGED_FILES}`, which sends full file paths to the prepare agent — not git diffs. The `git add` at step 7.8 is for hygiene, not for enabling delta review. Since `source_type: "files"` reviews whole files without consulting git baselines, the untracked-file bug described below doesn't occur. The downside (whole-file review flagging pre-existing violations) is covered by S-13.
 
 ### Problem
 
@@ -452,6 +509,16 @@ The finding ID threading mechanism is broken by a field rename mid-pipeline:
 No schema documents this mapping. The synthesizer must manually translate `addresses` → `resolves`, but nothing validates this happened correctly.
 
 **Fix**: Either rename `addresses` → `resolves` consistently in all fix schemas, or add explicit documentation of the mapping in the synthesis skill. Prefer consistency — pick one name.
+
+### Verified status (2026-03-12)
+
+**Not a real bug — reclassify as non-issue.** Investigation found that `addresses` and `resolves` are used at **different pipeline stages** intentionally:
+- `addresses` is in per-principle fix suggestions (`fix/output.schema.json`) — consumed by `validate-findings.py`
+- `resolves` is in the synthesized fix plan (`plan.schema.json`) — produced by `synthesize-fixes` after consuming validate-findings output
+
+These are separate data structures at different stages. The synthesizer reads **findings** (not suggestions) and produces its own `resolves` field for action items. The field names represent different concepts. No mapping is needed.
+
+**Minor note:** SwiftUI `fix/output.schema.json` has structural differences from the SOLID fix schemas (nests under `files[].suggestions[]` with `suggestion_id` instead of `id`) — this is a schema consistency issue, not the `addresses`/`resolves` bug.
 
 ---
 
@@ -513,6 +580,18 @@ The prepare agent writes `file_path`, the review agent reads it and outputs `fil
 
 **Fix**: Standardize on one name (`file_path` is more explicit). Update all schemas and all skills that reference the field.
 
+### Verified status (2026-03-12)
+
+**Not implemented — inconsistency confirmed.** Full inventory:
+
+**Uses `file_path`:** `prepare-review-input/output.schema.json` (line 23), `prepare-changes.py` (line 150)
+
+**Uses `file`:** All 5 review schemas (SRP, OCP, LSP, ISP, SwiftUI), all 5 fix schemas, `validate-findings/file-output.schema.json` (line 8), `synthesize-fixes/plan.schema.json` (line 8)
+
+**Bridge code:** `validate-findings.py` reads `file_path` from review-input (line 103) and `file` from review output (line 162), outputs `file` (line 233). Works because the Python script manually maps between conventions.
+
+**Plan:** Standardize on `file_path` everywhere (more descriptive). Update all 13 schema files + Python scripts.
+
 ---
 
 ## S-19: Unit context lost in validation schema
@@ -527,6 +606,15 @@ This means:
 - The synthesis agent loses information about which unit a finding belongs to
 
 **Fix**: Add `unit_name` (string) and `unit_kind` (enum: class/struct/enum/protocol/extension) to both `file-output.schema.json` principles items and `plan.schema.json` actions.
+
+### Verified status (2026-03-12)
+
+**Implemented.** Unit context IS preserved through the full pipeline:
+1. `prepare-review-input` outputs `files[].units[]` with `name`, `kind`, `line_start`, `line_end`, `has_changes`
+2. Review agents output `files[].units[]` with `unit_name`, `unit_kind` + findings
+3. `validate-findings.py` (lines 166-198) preserves `unit_name`/`unit_kind` into by-file output
+4. `file-output.schema.json` (lines 31-36) includes these fields
+5. `synthesize-fixes/SKILL.md` (step 3.1) groups findings by unit
 
 ---
 
@@ -557,6 +645,12 @@ Missing test scenarios:
 - Files with special characters in names
 - Hunk regex edge cases
 
+### Verified status (2026-03-12)
+
+**Not implemented — confirmed.** No test file exists for `prepare-changes.py`. Six other scripts DO have tests: `discover-principles`, `generate-report`, `load-reference`, `parse-frontmatter`, `check-severity`, `validate-findings`.
+
+**Plan:** Create `skills/prepare-review-input/scripts/tests/test_prepare_changes.py` following existing test pattern. Key test cases: `parse_diff()` with various unified diff formats, `_coalesce()` with adjacent/non-adjacent ranges, `extract_imports()` with Swift imports, end-to-end `build_output()` (mock git commands), edge cases (empty diff, binary files, renamed files).
+
 ---
 
 ## S-22: Missing JSON error handling in Python scripts
@@ -568,6 +662,18 @@ Missing test scenarios:
 Same applies to `generate-report.py`.
 
 **Fix**: Wrap `json.load()` calls with try/except, print the file path and error, exit with code 1.
+
+### Verified status (2026-03-12)
+
+**Not implemented.** Four scripts have bare `json.load()`/`json.loads()` with no error handling:
+1. `skills/validate-findings/scripts/validate-findings.py` — `load_json()` at line 35-37
+2. `skills/validate-findings/scripts/check-severity.py` — line 44
+3. `skills/generate-report/scripts/generate-report.py` — line 211
+4. `skills/discover-principles/scripts/discover-principles.py` — line 195
+
+Malformed JSON produces unhandled `json.JSONDecodeError` traceback instead of clean error.
+
+**Plan:** Add try/except `json.JSONDecodeError` to each, print file path + error, `sys.exit(1)`.
 
 ---
 
@@ -588,6 +694,10 @@ Claude Code plugging that contains convenient skills/workflows for Reviewing/ref
 
 **Fix**: Rewrite README to cover: what it does, how to install, how to use, what principles are implemented.
 
+### Verified status (2026-03-12)
+
+**Not implemented.** README is still 2 lines with "plugging" typo. No install, usage, skills listing, or architecture overview.
+
 ---
 
 ## S-24: Empty `design_patterns/creational/` directory
@@ -597,6 +707,10 @@ Claude Code plugging that contains convenient skills/workflows for Reviewing/ref
 The directory exists but is empty. No principle references it. No docs mention it.
 
 **Fix**: Delete it, or add a `.gitkeep` with a comment if it's planned for future use.
+
+### Verified status (2026-03-12)
+
+**Confirmed still empty.** `references/design_patterns/behavioral/` has `strategy.md`, `structural/` has `adapter.md`, `decorator.md`, `facade.md`. `creational/` exists with zero files.
 
 ---
 
@@ -620,6 +734,21 @@ Key scenarios with no defined behavior:
 - After each agent call, validate that expected output files exist and are valid JSON
 - After parallel launches, count successes/failures and decide: all-fail = stop, partial = continue with warning
 - After Phase 2, require at least 1 principle found or stop with "no principles configured" error
+
+### Verified status (2026-03-12)
+
+**Partially implemented.** Explicit error handling exists for `prepare-review-input` failures (Phase 2.3 in both orchestrators: "If the Task failed, stop and report the error"). Refactor pipeline handles all-compliant (Phase 4.5) and all-skipped (Phase 7.6).
+
+**Gaps — no defined behavior for:**
+- Parallel review agent failures: "wait for all to complete" with no partial failure handling
+- Synthesis failure in refactor pipeline
+- Implementation agent failures
+- What constitutes "failure" (crash? empty output? malformed JSON?)
+
+**Plan:** Add explicit clauses to each Task-launching phase:
+- Parallel agents: "If any Task fails, collect successful results and report which failed with error messages. Continue with available results if ≥1 succeeded."
+- Synthesis: "If Task fails, write diagnostic log and stop"
+- Implementation: "If any Task fails, report failure but don't roll back successful implementations"
 
 ---
 
@@ -918,6 +1047,14 @@ Based on IAPManager data:
 
 The review iteration still runs after implementation. If the plan was wrong, the normal loop catches remaining issues — worst case is back to the current behavior. Planning is additive, not replacing the safety net.
 
+### Verified status (2026-03-12)
+
+**Partially implemented.** `synthesize-fixes/SKILL.md` acts as per-file architecture planning — reads all findings, drafts fixes in dependency order (OCP → LSP → ISP → SRP), cross-checks against other principles, and produces ordered plans. This is architecturally aware.
+
+**Gap:** Planning happens at the **per-file** level, not system/module level. No cross-file architectural vision — doesn't consider how changes to file A affect file B, doesn't plan shared types/protocols across files, each file gets an independent plan.
+
+**Plan:** Add "Phase 0: Architecture Vision" to `synthesize-fixes/SKILL.md` that reads all per-file findings together, identifies cross-file dependencies, produces a global type map before per-file planning.
+
 ---
 
 ## S-28: Short-circuit MINOR-only findings — skip synthesis and implementation
@@ -988,38 +1125,404 @@ Add a fallback chain to Phase 2.2:
 
 This mirrors how `/review` and `/refactor` don't have this problem — they always operate on existing code.
 
+### Verified status (2026-03-12)
+
+**Implemented.** `skills/code/SKILL.md` Phase 2, step 2.2 (line 34) explicitly says: "NOTE: If Phase 1 loaded no source files (greenfield — spec or prompt only), skip tag scanning and use all principles from step 2.1."
+
 ---
+
+## S-30: SwiftUI SUI-2 (state width) and SUI-3 (responsibility mixing) — validate SOLID coverage
+
+**Impact**: Medium | **Effort**: Medium | **Category**: Metric design | **Status**: Validate
+
+SwiftUI rule was initially designed with three metrics: SUI-1 (body complexity), SUI-2 (state width/cohesion), and SUI-3 (responsibility mixing). SUI-2 and SUI-3 were removed because they overlap with SRP (cohesion groups, verb count) and OCP (sealed points).
+
+**Hypothesis:** SRP and OCP will catch state proliferation and mixed responsibilities in SwiftUI views.
+
+**Risk:** SRP's cohesion analysis works on method-variable relationships. In a SwiftUI view, all `@State` properties feed into `body` (one computed property), so SRP may see 1 cohesion group even when state properties serve 3 unrelated concerns. If SRP consistently misses this, SUI-2 should be re-added.
+
+**Validation plan:**
+1. Run SRP on 3-5 SwiftUI views with known state proliferation (8+ state props, 2+ concerns)
+2. Run SRP on 3-5 SwiftUI views with inline business logic (formatting, data fetching)
+3. Run OCP on views with `APIClient.shared` or singleton usage
+4. If SRP/OCP flag >= 80% of cases correctly → keep SUI-1 only
+5. If SRP/OCP miss > 50% → re-add SUI-2 and/or SUI-3
+
+---
+
+## S-31: SwiftUI "dumb view" rule — views must not contain business logic
+
+**Impact**: High | **Effort**: Low | **Category**: Metric design | **Status**: Validate
+
+Core principle: SwiftUI views should be dumb — they represent state, nothing more. Business logic (fetching, sorting, filtering, validation, computation) belongs in a ViewModel or domain layer, not in the View struct.
+
+**The gap:** A view with a single `fetchData()` method still has 1 verb by SRP metrics → COMPLIANT. SRP doesn't distinguish between "renders" (acceptable view verb) and "fetches" (unacceptable view verb). The issue is not verb *count* but verb *type* relative to the unit's architectural role.
+
+**Options:**
+1. Add as SUI-2 (SwiftUI-specific) — "Non-view logic count" metric, any data/business method in a View struct → SEVERE
+2. Extend SRP with a View-aware rule — when unit conforms to `View`, any non-view verb escalates severity
+3. Keep as a general convention without metric enforcement
+
+Depends on S-30 validation results.
+
+---
+
+## S-32: DRY principle — full `references/DRY/` implementation
+
+**Impact**: High | **Effort**: High | **Category**: Review quality
+
+**Status**: Pending
+
+No `references/DRY/` directory exists. The DRY principle needs the same full structure as SRP/OCP/LSP/ISP: rule.md, review/, fix/, refactoring.md, Examples/.
+
+### DRY Metrics (for `rule.md`)
+
+Follow the same quantitative pattern as other principles:
+
+- **DRY-1: Structural duplication** — Identical or near-identical view hierarchies with the same layout primitives and spacing values appearing in more than one non-Shared file.
+- **DRY-2: Semantic duplication** — Two or more components in `Shared/` with `use-when` similarity > 0.85 (measured by registry script). Should be one configurable component.
+- **DRY-3: Inline shared logic** — Business logic or layout recipes in feature files instead of `Shared/` — a missing abstraction.
+
+### Severity bands
+
+| Condition | Severity |
+|---|---|
+| 0 duplicates detected | COMPLIANT |
+| Similar component exists but not generic enough for new case | MINOR |
+| Structural/semantic duplicate exists and was not reused | SEVERE |
+| New component created without running DRY check | SEVERE |
+
+### Exceptions (NOT violations)
+
+- Feature-specific one-off views with no reuse potential
+- Views similar but serving fundamentally different interaction models
+- Components under 5 lines (too small to abstract)
+
+### SwiftUI-specific fix hierarchy
+
+| Problem | Solution |
+|---|---|
+| Repeated types/logic | Protocols + generics |
+| Repeated layout structure | `@ViewBuilder` containers |
+| Repeated styling/spacing | `ViewModifier` + `View` extensions |
+
+### Files to create
+
+1. `references/DRY/rule.md` — metrics + severity bands + exceptions
+2. `references/DRY/review/instructions.md` — how the review agent applies DRY metrics
+3. `references/DRY/review/output.schema.json` — follow existing schema pattern
+4. `references/DRY/fix/instructions.md` — generalization strategies (ViewBuilder, ViewModifier, protocols)
+5. `references/DRY/fix/output.schema.json` — follow existing schema pattern
+6. `references/DRY/refactoring.md` — before/after Swift examples
+7. `references/DRY/Examples/generic-list-compliant.swift`
+8. `references/DRY/Examples/generic-list-violation.swift`
+
+### Open questions
+
+1. Should `registry.py --validate` fail on ANY missing frontmatter, or only files above a size threshold?
+2. What similarity threshold triggers SEVERE vs MINOR? (Suggested: 0.85 SEVERE, 0.70 MINOR)
+3. Should DRY review also scan feature files for inline duplication (DRY-3), or only check `Shared/`?
+
+### Relationship to other suggestions
+
+- Depends on S-33 (registry script) for DRY-2 semantic duplication detection
+- S-34 (code skill modification) depends on this
+- ISP (S-11) and DRY share detection logic (protocol splitting vs component splitting)
+
+---
+
+## S-33: Component registry script (`scripts/registry.py`)
+
+**Impact**: High | **Effort**: Medium | **Category**: Tooling
+
+**Status**: Pending
+
+No `scripts/` directory exists in the project. The registry script is the foundation for DRY enforcement — it scans Swift files in `Sources/Shared/` for YAML frontmatter comments and returns structured JSON.
+
+### Frontmatter format (in Swift files)
+
+```swift
+// ---
+// name: GenericRow
+// category: layout/row
+// description: HStack with configurable leading icon and content slots
+// use-when: any row needing a leading icon with flexible content
+// do-not-use-when: grids, sectioned lists, rows with trailing actions (use ActionRow)
+// props: icon: String?, leading: @ViewBuilder, trailing: @ViewBuilder?
+// added: 2026-01-15
+// ---
+```
+
+Required fields: `name`, `category`, `description`, `use-when`, `do-not-use-when`, `props`, `added`
+
+Categories: `layout/row`, `layout/container`, `modifier`, `service`, `utility`
+
+### Output format
+
+```json
+[
+  {
+    "name": "GenericRow",
+    "file": "Sources/Shared/Components/GenericRow.swift",
+    "category": "layout/row",
+    "description": "HStack with configurable leading icon and content slots",
+    "use-when": "any row needing a leading icon with flexible content",
+    "do-not-use-when": "grids, sectioned lists, rows with trailing actions",
+    "props": "icon: String?, leading: @ViewBuilder, trailing: @ViewBuilder?"
+  }
+]
+```
+
+### Validation mode
+
+```bash
+python scripts/registry.py --validate
+# Fails if: any Shared/ file missing frontmatter
+# Fails if: similarity score > 0.85 between any two use-when fields
+# Fails if: required fields are empty
+```
+
+### Synonym groups for semantic grep (Layer 1)
+
+- row: cell, item, tile, entry, listRow
+- icon: symbol, image, leading, badge
+- container: wrapper, shell, frame, card
+- loading: spinner, skeleton, placeholder, shimmer
+- list: collection, feed, grid, stack
+
+### Verified status (2026-03-12)
+
+**Not implemented.** No top-level `scripts/` directory exists. Scripts live within individual skills (`skills/*/scripts/`). Existing `parse-frontmatter.py` parses YAML frontmatter from markdown files. `discover-principles.py` discovers principles by globbing `*/rule.md`. Neither handles Swift file frontmatter.
+
+**Plan:** Create `scripts/registry.py` that: (1) walks `Sources/Shared/**/*.swift`, (2) parses Swift comment frontmatter (`// ---` blocks), (3) outputs structured JSON, (4) `--validate` mode checks for missing frontmatter + use-when similarity. Could reuse `parse-frontmatter.py` logic for YAML parsing.
+
+---
+
+## S-34: `/code` skill Section 3.5 — Shared Component Creation
+
+**Impact**: Medium | **Effort**: Low | **Category**: Pipeline enhancement
+
+**Status**: Pending — depends on S-32, S-33
+
+Add Section 3.5 to `skills/code/SKILL.md` Phase 3 (File Organization). When creating ANY new file in `Sources/Shared/`:
+
+1. Run DRY check (both layers): `python scripts/registry.py` + grep synonyms
+2. If match found → configure existing component, do NOT create new file
+3. If no match → design generic component, prefill frontmatter FIRST, then write Swift
+
+### Verified status (2026-03-12)
+
+**Not implemented.** `skills/code/SKILL.md` Phase 3 has sections 3.1-3.4 only. No mention of shared components, DRY checks, or frontmatter prefill. Closest existing logic is 3.1's "Always search before creating" instruction.
+
+**Plan:** Add Section 3.5 "Shared Component Creation" after 3.4 in `skills/code/SKILL.md`: search for existing shared components, place reusable types in shared location, add frontmatter to new files, cross-reference with DRY rules.
+
+---
+
+## S-35: Pre-commit hook for frontmatter validation
+
+**Impact**: Medium | **Effort**: Low | **Category**: Enforcement
+
+**Status**: Pending — depends on S-33
+
+Create `scripts/hooks/pre-commit` that runs `python scripts/registry.py --validate`. Blocks commits if any `Shared/` file is missing frontmatter. Three enforcement gates:
+
+1. **Gate 1 — CC skill** (creation time) — DRY check + frontmatter prefill in `/code` skill
+2. **Gate 2 — Pre-commit hook** (human-created files) — blocks commit
+3. **Gate 3 — PR check** (CI) — same script, nothing merges without it
+
+---
+
+## S-36: Two-tier rule system — formalize always-on vs dynamic rules
+
+**Impact**: High | **Effort**: Medium | **Category**: Architecture
+
+**Status**: Pending
+
+`discover-principles` already does tag-based activation, but there's no formal tier model. The handover proposes:
+
+**Tier 1 — SOLID (always loaded, full pipeline):**
+- `activation: always` — goes through full review → synthesize → implement pipeline
+
+**Tier 2 — Dynamic (loaded based on detected context):**
+- SwiftUI: `activation: imports: [SwiftUI]`
+- Concurrency: `activation: imports: [Combine, _Concurrency]`
+- GCD: `activation: patterns: [DispatchQueue, DispatchGroup]`
+- Testing: `activation: context: [XCTestCase, Testing]`
+
+### Key insight
+
+`refactor-implement` should only receive rules referenced in the analysis — not everything available. Currently may load too broadly.
+
+### Verified status (2026-03-12)
+
+**Partially implemented.** Tag-based activation works: `discover-principles.py` filters by tags. Rules without `tags` (SRP, OCP, LSP, ISP) are always active. SwiftUI has `tags: [swiftui]` making it conditional.
+
+**Gaps:**
+- No `category` or `cross_check_tier` fields in any actual `rule.md` frontmatter (ARCHITECTURE.md describes these but they're aspirational)
+- `synthesize-fixes/SKILL.md` cross-checks against "all OTHER active principles" without tier hierarchy — doesn't implement directional cross-checking from ARCHITECTURE.md
+- Tag system is binary: no tags = always, has tags = conditional. No formal tier concept.
+
+**Plan:**
+1. Add `tier: core|practice|framework` to each `rule.md` frontmatter
+2. Update `discover-principles.py` to parse and expose tier field
+3. Update `synthesize-fixes/SKILL.md` Phase 4.1 to respect tier-based cross-check direction
+
+---
+
+## S-37: Style rules separate pipeline — review-only, no fix generation
+
+**Impact**: Medium | **Effort**: Medium | **Category**: Architecture
+
+**Status**: Pending
+
+Naming conventions, function smells, general code style do not fit the existing rule mechanics. No deterministic fix, no cross-principle synthesis. Feeding them into synthesize adds noise.
+
+### Proposed structure
+
+```
+references/style/
+  naming-conventions/
+    rule.md              ← metrics + severity (MINOR only)
+    review/
+      instructions.md
+      output.schema.json
+    # NO fix/ folder — absence is the signal
+    # NO refactoring.md
+```
+
+### Frontmatter flag
+
+```yaml
+---
+name: naming-conventions
+tier: style
+severity-max: minor
+synthesize: false    # explicit signal — skip fix generation
+---
+```
+
+### Separate output contract
+
+```json
+{
+  "solid_findings": [...],    // → synthesize → implement pipeline
+  "style_findings": [...]     // → report only, no fix generation
+}
+```
+
+`generate-report-agent` renders style findings as a separate section — observations, not actionable violations.
+
+### Future style rules (planned)
+
+- Naming conventions
+- Function length / smells
+- SwiftUI-specific style
+- Concurrency patterns
+- GCD usage guidelines
+
+### Verified status (2026-03-12)
+
+**Not implemented.** No concept of review-only rules exists anywhere:
+- No `rule.md` frontmatter has `synthesize: false`, `fix: false`, or `review-only: true`
+- `discover-principles.py` doesn't parse any such field
+- `synthesize-fixes/SKILL.md` processes ALL non-COMPLIANT principles — no exclusion
+- `generate-report.py` treats all findings uniformly — no fixable vs report-only distinction
+
+**Plan:**
+1. Add `fixable: false` (or `synthesize: false`) field to `rule.md` frontmatter for style rules
+2. Update `discover-principles.py` to expose this field
+3. In `synthesize-fixes/SKILL.md` Phase 1.4, exclude non-fixable principles
+4. In `generate-report/SKILL.md`, render non-fixable findings as separate "observations" section
+5. In `refactor/SKILL.md` Phase 4.6, only count fixable findings for `MINOR_ONLY` vs `HAS_SEVERE`
+
+---
+
+## S-38: Extend `prepare-review-input` context detection
+
+**Impact**: Medium | **Effort**: Medium | **Category**: Pipeline enhancement
+
+**Status**: Pending
+
+Tag matching in `prepare-review-input` exists but doesn't detect:
+
+- **Concurrency model**: async/await vs GCD (`DispatchQueue`) vs Combine (`Publisher`/`Subscriber`)
+- **Test target vs production target**: presence of `XCTestCase`, `@testable import`, `Testing` framework
+- **UI framework**: SwiftUI vs UIKit vs AppKit
+
+This detection is needed for Tier 2 dynamic rule loading (S-36). The `prepare-review-input` skill already collects imports — extend it to also classify these dimensions.
+
+### Verified status (2026-03-12)
+
+**Partially implemented.** The SKILL.md Tag Matching section (lines 96-106) describes import detection and pattern matching including concurrency model detection (`DispatchQueue` → gcd, `async/await` → structured-concurrency, `Publisher/Subscriber` → combine). UI framework handled through import detection.
+
+**Gaps:**
+- Test vs production target detection: no mechanism for `XCTest` import, `*Tests.swift` naming, or test target membership
+- Concurrency model detection described in SKILL.md instructions but NOT codified in `prepare-changes.py` — the script only extracts raw imports. Semantic pattern matching relies entirely on LLM judgment at runtime.
+- No structured taxonomy — tag matching is open-ended ("use your judgment")
+
+**Plan:**
+1. Add test file detection to `prepare-changes.py`: check `XCTest`/`Testing` imports, `*Tests.swift` naming, add `is_test_file` field per file
+2. Move semantic pattern matching from LLM instructions into Python script for deterministic results
+3. Add framework detection patterns beyond imports (e.g., `@Observable` → SwiftUI, `UIViewController` → UIKit)
+
+---
+
+## S-39: Skip empty plans — don't synthesize or implement when no changes needed
+
+**Impact**: Medium | **Effort**: Low | **Category**: Pipeline efficiency
+
+### Problem
+
+The synthesizer writes plan files for every reviewed file, even when there are no actionable findings. The refactor orchestrator (Phase 7) then spawns implement agents for these empty plans, wasting agent invocations.
+
+### Fix
+
+Two levels:
+
+1. **Synthesizer**: Do not write a `.plan.json` file if there are zero suggestions or zero `to_do` items for a file. No file = no implement agent spawned.
+2. **Orchestrator fallback**: Before spawning an implement agent, check if the plan has any actions. Skip if empty.
+
+Level 1 is preferred — it's cleaner to not produce empty artifacts than to filter them downstream.
 
 ## Suggestion Status Tracker
 
-| ID | Summary | Impact | Effort | Status |
-|----|---------|--------|--------|--------|
-| S-01 | Always-on SOLID enforcement (rules not distributable via plugin) | High | Low | Blocked — needs design decision |
-| S-02 | Fix model selection (Sonnet for mechanical tasks) | High | Low | Pending |
-| S-03 | Pre-compute rule index | Medium | Low | Partial — `discover-principles` script replaces manual glob+parse; caching is remaining optimization |
-| S-04 | Short-circuit trivial changes (with LSP-safe tier 2) | Medium | Low | Pending |
-| S-05 | Post-synthesis verification script | High | Medium | Pending |
-| S-06 | Graceful degradation for partial failures | Medium | Medium | Pending |
-| S-07 | Fix `ruler.md` typo | Low | Trivial | Pending |
-| S-08 | Standardize path template substitution | Medium | Medium | Partial |
-| S-09 | Detect oscillation in iteration loop | Medium | Low | Pending |
-| S-10 | Output cleanup mechanism | Low | Low | Pending |
-| S-11 | Prioritize ISP and DIP principles | High | High | Pending |
-| S-12 | Schema validation for all agent outputs | Medium | Medium | Pending |
-| S-13 | Delta-aware review — only report regressions | High | High | Pending |
-| S-14 | Fix iteration loop: `git add` between iterations | High | Low | Done |
-| S-15 | **CRITICAL**: `addresses` vs `resolves` field name break | Critical | Low | Pending |
-| S-16 | **CRITICAL**: validate-findings passes unknown files | Critical | Low | Pending |
-| S-17 | Missing `tier`/`activation` in rule.md frontmatter | High | Low | Done — replaced with tag-based activation via `discover-principles` skill. No tags = always active. |
-| S-18 | `file_path` vs `file` field inconsistency | High | Medium | Pending |
-| S-19 | Unit context lost in validation/synthesis schemas | High | Low | Pending |
-| S-20 | Missing `has_changes` in prepare-input schema | Medium | Trivial | Done — field exists in schema; tightened type from `["boolean", "null"]` to `"boolean"` and clarified prepare-input must never emit null |
-| S-21 | No tests for `prepare-changes.py` | High | Medium | Pending |
-| S-22 | Missing JSON error handling in Python scripts | Medium | Low | Pending |
-| S-23 | README.md rewrite | Medium | Low | Pending |
-| S-24 | Empty `design_patterns/creational/` directory | Low | Trivial | Pending |
-| S-25 | Orchestrator error handling is ambiguous | High | Medium | Pending |
-| S-26 | AST-based metric extraction (tree-sitter) | High | High | POC needed — validate on Examples/ first |
-| S-27 | Pre-plan target architecture before incremental refactoring | High | Medium | Pending |
-| S-28 | Short-circuit MINOR-only findings — skip synthesis/implement | Medium | Low | Pending |
-| S-29 | `/code` greenfield gap — no source files for tag matching | Medium | Low | Pending |
+| ID | Summary | Impact | Effort | Status | Verified |
+|----|---------|--------|--------|--------|----------|
+| S-01 | Always-on SOLID enforcement (rules not distributable via plugin) | High | Low | Blocked — needs design decision | — |
+| S-02 | Fix model selection (Sonnet for mechanical tasks) | High | Low | Partial — refactor pipeline uses sonnet for review, haiku for mechanical; review pipeline bundles review+fix in opus | 2026-03-12 |
+| S-03 | Pre-compute rule index | Medium | Low | Partial — `discover-principles` script replaces manual glob+parse; caching is remaining optimization | — |
+| S-04 | Short-circuit trivial changes (with LSP-safe tier 2) | Medium | Low | Partial — MINOR-only short-circuit exists in refactor; no pre-review triviality detection | 2026-03-12 |
+| S-05 | Post-synthesis verification script | High | Medium | Not implemented — synthesis cross-check is LLM mental exercise, not automated | 2026-03-12 |
+| S-06 | Graceful degradation for partial failures | Medium | Medium | Pending | — |
+| S-07 | Fix `ruler.md` typo | Low | Trivial | Done — no `ruler.md` references remain | 2026-03-12 |
+| S-08 | Standardize path template substitution | Medium | Medium | Partial | — |
+| S-09 | Detect oscillation in iteration loop | Medium | Low | Not implemented — only hard MAX_ITERATIONS cap, no cross-iteration comparison | 2026-03-12 |
+| S-10 | Output cleanup mechanism | Low | Low | Not implemented — no cleanup, `.solid_coder/` not gitignored | 2026-03-12 |
+| S-11 | Prioritize ISP and DIP principles | High | High | Partial — ISP complete. DIP not started. | 2026-03-12 |
+| S-12 | Schema validation for all agent outputs | Medium | Medium | Partial — validate-findings validates when plugin_root provided; synthesis output not validated; jsonschema silently optional | 2026-03-12 |
+| S-13 | Delta-aware review — only report regressions | High | High | Partial — unit-level `has_changes` + line-range filtering work; no baseline for pre-existing violations in changed regions | 2026-03-12 |
+| S-14 | Fix iteration loop: `git add` between iterations | High | Low | Done | — |
+| S-15 | `addresses` vs `resolves` field name | Low | — | Not a bug — different fields at different pipeline stages, intentional design | 2026-03-12 |
+| S-16 | **CRITICAL**: validate-findings passes unknown files | Critical | Low | Not implemented — `_filter_findings()` line 253 treats unknown files as "entire file new" | 2026-03-12 |
+| S-17 | Missing `tier`/`activation` in rule.md frontmatter | High | Low | Done — replaced with tag-based activation via `discover-principles` skill | — |
+| S-18 | `file_path` vs `file` field inconsistency | High | Medium | Not implemented — `prepare-review-input` uses `file_path`, all 13 other schemas use `file` | 2026-03-12 |
+| S-19 | Unit context lost in validation/synthesis schemas | High | Low | Done — unit_name/unit_kind preserved through full pipeline | 2026-03-12 |
+| S-20 | Missing `has_changes` in prepare-input schema | Medium | Trivial | Done — type is `"boolean"`, not nullable | 2026-03-12 |
+| S-21 | No tests for `prepare-changes.py` | High | Medium | Not implemented — 6 other scripts have tests, this one has zero | 2026-03-12 |
+| S-22 | Missing JSON error handling in Python scripts | Medium | Low | Not implemented — 4 scripts have bare json.load() with no error handling | 2026-03-12 |
+| S-23 | README.md rewrite | Medium | Low | Not implemented — still 2 lines with typo | 2026-03-12 |
+| S-24 | Empty `design_patterns/creational/` directory | Low | Trivial | Confirmed empty | 2026-03-12 |
+| S-25 | Orchestrator error handling is ambiguous | High | Medium | Partial — prepare-input failures handled; parallel agent failures unspecified | 2026-03-12 |
+| S-26 | AST-based metric extraction (tree-sitter) | High | High | POC needed — validate on Examples/ first | — |
+| S-27 | Pre-plan target architecture before incremental refactoring | High | Medium | Partial — per-file planning exists in synthesize-fixes; no cross-file architectural vision | 2026-03-12 |
+| S-28 | Short-circuit MINOR-only findings — skip synthesis/implement | Medium | Low | Done — refactor pipeline Phase 4.6 with check-severity.py | 2026-03-12 |
+| S-29 | `/code` greenfield gap — no source files for tag matching | Medium | Low | Done — Phase 2.2 line 34 explicitly handles greenfield | 2026-03-12 |
+| S-30 | SwiftUI SUI-2/SUI-3 — validate SOLID coverage | Medium | Medium | Validate — needs testing | — |
+| S-31 | SwiftUI "dumb view" rule | High | Low | Done — implemented as SUI-2 (View Purity) metric | — |
+| S-32 | DRY principle — full `references/DRY/` implementation | High | High | Not implemented — no `references/DRY/` directory | 2026-03-12 |
+| S-33 | Component registry script (`scripts/registry.py`) | High | Medium | Not implemented — no `scripts/` directory exists | 2026-03-12 |
+| S-34 | `/code` skill Section 3.5 — Shared Component Creation | Medium | Low | Not implemented — no Section 3.5 in SKILL.md | 2026-03-12 |
+| S-35 | Pre-commit hook for frontmatter validation | Medium | Low | Not implemented — depends on S-33 | — |
+| S-36 | Two-tier rule system | High | Medium | Partial — tag-based activation works; no formal tier model or directional cross-checking | 2026-03-12 |
+| S-37 | Style rules separate pipeline | Medium | Medium | Not implemented — no mechanism for review-only rules | 2026-03-12 |
+| S-38 | Extend `prepare-review-input` context detection | Medium | Medium | Partial — imports + tag matching exist; test detection missing; semantic patterns LLM-dependent | 2026-03-12 |

@@ -13,7 +13,137 @@
     },
     "files": {
       "type": "array",
-      "items": {}
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file", "units"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "units": {
+            "type": "array",
+            "description": "Per-unit analysis results within this file",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": {
+                  "type": "string",
+                  "description": "Name of the analyzed view (e.g., struct name)"
+                },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension"],
+                  "description": "Kind of the analyzed unit"
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["body_complexity", "view_purity", "modifier_chain"],
+                  "properties": {
+                    "body_complexity": {
+                      "type": "object",
+                      "required": ["max_nesting_depth", "view_expression_count"],
+                      "properties": {
+                        "max_nesting_depth": { "type": "integer" },
+                        "view_expression_count": { "type": "integer" }
+                      }
+                    },
+                    "view_purity": {
+                      "type": "object",
+                      "required": ["impure_count", "has_data_fetch", "table"],
+                      "properties": {
+                        "impure_count": { "type": "integer" },
+                        "has_data_fetch": { "type": "boolean" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["method", "classification", "reason"],
+                            "properties": {
+                              "method": { "type": "string" },
+                              "classification": {
+                                "type": "string",
+                                "enum": ["PURE_VIEW", "DATA_FETCH", "TRANSFORM", "FORMAT", "VALIDATE", "COMPUTE"]
+                              },
+                              "reason": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "modifier_chain": {
+                      "type": "object",
+                      "required": ["max_nested_chain", "flagged_views"],
+                      "properties": {
+                        "max_nested_chain": {
+                          "type": "integer",
+                          "description": "Highest modifier count on any nested child view"
+                        },
+                        "flagged_views": {
+                          "type": "array",
+                          "description": "Nested child views with modifier count > 2",
+                          "items": {
+                            "type": "object",
+                            "required": ["view_expression", "location", "modifier_count"],
+                            "properties": {
+                              "view_expression": { "type": "string" },
+                              "location": { "type": "string", "description": "Which property/closure this appears in" },
+                              "modifier_count": { "type": "integer" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "final_severity"],
+                  "properties": {
+                    "body_severity": { "type": "string" },
+                    "purity_severity": { "type": "string" },
+                    "modifier_chain_severity": { "type": "string" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^sui-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["SUI-1", "SUI-2", "SUI-3"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

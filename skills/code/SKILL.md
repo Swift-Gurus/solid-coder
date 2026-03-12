@@ -3,6 +3,7 @@ name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
 allowed-tools: Read, Grep, Glob, Write, Edit
+user-invocable: true
 ---
 
 # Coding Skill

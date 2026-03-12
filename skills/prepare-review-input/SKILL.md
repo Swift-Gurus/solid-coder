@@ -1,15 +1,15 @@
 ---
 name: prepare-review-input
-description: Normalize input (branch diff, folder, class, buffer) into structured review-input.json for review agents.
-argument-hint: [branch|changes|folder|file|buffer] [target] [--base <branch>]
+description: Normalize input (branch diff, folder, files, class, buffer) into structured review-input.json for review agents.
+argument-hint: [branch|changes|folder|file|files|buffer] [target] [--base <branch>]
 allowed-tools: Read, Grep, Glob, Bash, Write
-user-invocable: true
+user-invocable: false
 ---
 
 # Prepare Review Input
 
 ## Input
-- SOURCE_TYPE: $ARGUMENTS[0] — one of: branch, changes, folder, file, buffer
+- SOURCE_TYPE: $ARGUMENTS[0] — one of: branch, changes, folder, file, files, buffer
   - If $ARGUMENTS[0] is not a known type you must stop and show an error message. Unknown Type
   - If NO arguments provided → default to branch diff (current branch vs base)
 - OUTPUT_ROOT: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
@@ -35,6 +35,7 @@ Create Preparation task list and execute it.
    - if mode is Changes then load content using Phase 2.1
    - if mode is Folder then load content using Phase 2.2
    - if mode is File then load content using Phase 2.3
+   - if mode is Files then load content using Phase 2.5
    - if mode is Buffer then load content using Phase 2.4
 
 #### Phase 2.1: Changes 
@@ -62,6 +63,14 @@ Create Preparation task list and execute it.
 #### Phase 2.3: File
 - [ ] 2.3.1 **Read the file**
 - [ ] 2.3.2 **Match tags** — If CANDIDATE_TAGS were provided, match them against the code (see Tag Matching)
+
+#### Phase 2.5: Files (explicit file list)
+- [ ] 2.5.1 **Parse file list** — Extract the list of file paths from the input (provided as JSON array or space-separated paths)
+- [ ] 2.5.2 **Read each file** — Read all listed files from disk. If a file doesn't exist (was deleted), skip it.
+- [ ] 2.5.3 **Identify units** — Run unit identification on each file (see Unit Identification). Set `has_changes = true` for ALL units (whole-file review).
+- [ ] 2.5.4 **Set changed_ranges** — Set `changed_ranges: null` for every file (triggers whole-file review)
+- [ ] 2.5.5 **Match tags** — If CANDIDATE_TAGS were provided, match them against the code (see Tag Matching)
+- [ ] 2.5.6 **Write structured output** — Write to `OUTPUT_PATH/review-input.json` with `source_type: "files"`
 
 #### Phase 2.4: Buffer
 - [ ] 2.4.1 **Capture buffer string** — Store raw input

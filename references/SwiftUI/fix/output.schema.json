@@ -9,7 +9,70 @@
     "timestamp": { "type": "string", "format": "date-time" },
     "files": {
       "type": "array",
-      "items": {}
+      "items": {
+        "type": "object",
+        "required": ["file", "suggestions"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["suggestion_id", "addresses", "suggested_fix", "todo_items", "verification"],
+              "properties": {
+                "suggestion_id": {
+                  "type": "string",
+                  "pattern": "^sui-fix-\\d{3}$"
+                },
+                "addresses": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Finding IDs this suggestion resolves (e.g., sui-001)"
+                },
+                "suggested_fix": {
+                  "type": "string",
+                  "description": "Full text description with code snippets showing the refactored code"
+                },
+                "todo_items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["step", "action"],
+                    "properties": {
+                      "step": { "type": "integer" },
+                      "action": { "type": "string" }
+                    }
+                  }
+                },
+                "verification": {
+                  "type": "object",
+                  "description": "Predicted post-fix metrics for each resulting view/type",
+                  "required": ["predicted_metrics"],
+                  "properties": {
+                    "predicted_metrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["unit_name", "nesting_depth", "view_expressions", "impure_count", "max_nested_modifier_chain"],
+                        "properties": {
+                          "unit_name": { "type": "string" },
+                          "nesting_depth": { "type": "integer" },
+                          "view_expressions": { "type": "integer" },
+                          "impure_count": { "type": "integer" },
+                          "max_nested_modifier_chain": { "type": "integer", "description": "Highest modifier count on any nested child view after fix" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

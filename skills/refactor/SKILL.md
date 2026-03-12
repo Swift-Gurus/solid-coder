@@ -3,6 +3,7 @@ name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, then generates a holistic cross-principle fix plan, then implements it.
 argument-hint: [branch|changes|folder|file]
 allowed-tools: Read, Glob, Bash, Write, Edit
+user-invocable: true
 ---
 
 # Refactor Review Orchestrator
@@ -140,20 +141,21 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
     "...": "rest of existing fields"
   }
   ```
-- [ ] 7.8 Stage implemented changes so the next iteration sees only its own delta:
+- [ ] 7.8 Collect changed file list for next iteration:
   - From the refactor logs collected in 7.5, collect:
     - Each log's `file` (the modified source file)
     - Each log's `files_created[]` entries
-  - Run: `git add <file1> <file2> ...` with all collected paths
+  - Store this list as CHANGED_FILES (used in Phase 8)
+  - Run: `git add <file1> <file2> ...` with all collected paths (for git hygiene)
 - [ ] 7.9 Go to Phase 8
 
 ## Phase 8: Iteration loop
 - [ ] 8.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS provide summary and stop
-- [ ] 8.2 Prepare a Task call with `changes` to re-review only staged/unstaged/untracked files:
+- [ ] 8.2 Prepare a Task call with `files` to re-review only files modified in the previous iteration:
     - subagent_type: `solid-coder:prepare-review-input-agent`
     - prompt:
    ```
-    input: "changes"
+    input: "files" {CHANGED_FILES as space-separated paths}
     output_root: {OUTPUT_ROOT}/{ITERATION}
     candidate_tags: {all_candidate_tags from Phase 1}
     ```
