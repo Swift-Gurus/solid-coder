@@ -11,6 +11,30 @@ When making changes to a module (skill, agent, or principle):
 
 **After every edit to a module file**, re-read the module's spec and check if the change affects any spec section (purpose, inputs/outputs, connections, design decisions, gotchas). If it does, update the spec in the same edit session — do not defer.
 
+# Spec Lifecycle
+
+Specs start in `.claude/specs/` as drafts. When a spec is implemented and its module has a `.claude/CLAUDE.md`, the spec content moves into that module spec — **including the YAML frontmatter** (number, feature, status, blocked-by, blocking). Update `status` to `done` when moving. Then delete the original file from `.claude/specs/`.
+
+This keeps the spec traceable (the number and dependency chain stay with the module) while eliminating the duplicate.
+
+**Do NOT remove entries from `blocked-by`** when a dependency is completed. The dependency chain is a permanent record. Resolution is tracked by `status`, not by list membership.
+
+## Dependency Validation (before implementing a spec)
+
+Before starting implementation of any spec, validate that all `blocked-by` dependencies have `status: done`. Specs may live in two places:
+
+1. `.claude/specs/SPEC-NNN-*.md` — draft specs not yet implemented
+2. `*/.claude/CLAUDE.md` — implemented specs (moved into their module)
+
+**Validation procedure:**
+
+For each `SPEC-NNN` in the spec's `blocked-by` list:
+1. Grep for `number: SPEC-NNN` across both `.claude/specs/` and all `*/.claude/CLAUDE.md` files
+2. Read the matched file's frontmatter and check `status:`
+3. If status is NOT `done` → **stop execution** and report: "Blocked: SPEC-NNN (status: {status}) must be done before this spec can be implemented."
+
+If ANY dependency is not `done`, do not proceed. List all blocking specs and their current statuses.
+
 # New Module Creation
 
 When creating a new module (skill, agent, or principle), always create a spec (`.claude/CLAUDE.md`) within the module's folder. The spec should document purpose, inputs/outputs, connections to other modules, design decisions, and gotchas.
@@ -36,3 +60,9 @@ The skill executor resolves the reference and handles invocation. The calling sk
 # Rules Are the Source of Truth
 
 When a loaded rule explains how to do something (e.g., agent-wrapping-rules explains agent file structure), follow the rule directly. Do not read existing files "for reference" to verify the rule — that is redundant and wastes context.
+
+# Confirm approach before acting
+Before starting non-trivial work, use AskUserQuestion to confirm your understanding of the task and proposed approach.
+
+# Use AskUserQuestion for choices
+Whenever you need to present the user with multiple options or choices, use the AskUserQuestion tool instead of listing them in text output.

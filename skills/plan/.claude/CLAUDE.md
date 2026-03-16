@@ -1,3 +1,11 @@
+---
+number: SPEC-002
+feature: plan (architect)
+status: done
+blocked-by: []
+blocking: [SPEC-001]
+---
+
 # /plan — Architecture Decomposition
 
 ## Description

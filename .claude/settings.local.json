@@ -35,7 +35,8 @@
       "Bash(mkdir:*)",
       "WebFetch(domain:docs.claude.ai)",
       "WebFetch(domain:docs.anthropic.com)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
