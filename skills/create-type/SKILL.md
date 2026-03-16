@@ -3,7 +3,7 @@ name: create-type
 description: Enforce naming conventions, file organization, and solid- frontmatter when creating new types. Applies to any new class, struct, protocol, enum, etc.
 argument-hint: <file-path> [<file-path> ...]
 allowed-tools: Read, Grep, Glob, Edit, Write
-user-invocable: true
+user-invocable: false
 ---
 
 # Create Type

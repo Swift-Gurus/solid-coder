@@ -96,6 +96,33 @@ Detect inline views nested inside `@ViewBuilder` closures that accumulate too ma
 |----------------|----------|---------------|----------|
 | | | | |
 
+
+### SUI-4: ViewModel Injection
+
+Detect views that depend on a concrete ViewModel type for logic or data access.
+
+**Definition:** When a view delegates logic or data access to a ViewModel,                                                                                                                                                            
+that dependency must be injected via protocol interfaces — a State protocol                                                                                                                                                         
+(what the view reads) and an Actions protocol (what the view triggers).                                                                                                                                                               
+A view referencing a concrete ViewModel class is sealed to that implementation.
+
+**Detection:**
+
+1. **Identify the ViewModel property** — the stored property that serves as                                                                                                                                                           
+   the view's logic/data source (typically @Observable class, ObservableObject,                                                                                                                                                     
+   or any type providing business state + actions)
+2. **Check injection style:**
+    - Concrete class type → VIOLATION
+    - Generic constrained to protocol(s) → COMPLIANT
+3. **Not in scope:** plain value properties (String, Bool, structs),                                                                                                                                                                  
+   closures/actions, nested child views, style/configuration types
+
+**Result:**
+
+| Property | Type | Concrete/Protocol | Severity |                                                                                                                                                                                    
+|----------|------|-------------------|----------|     
+| | | | |                                                                                                                                                                                                                             
+
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
@@ -104,22 +131,25 @@ Detect inline views nested inside `@ViewBuilder` closures that accumulate too ma
 5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
     - 1+ impure methods
     - Any nested child view with 3+ modifiers
+    - Concrete VM injection
 ---
 
 ## Quantitative Metrics Summary
-| ID    | Metric                  | Threshold                                         | Severity   |
-|-------|-------------------------|---------------------------------------------------|------------|
-| SUI-0 | Exception              | Falls into exception category                     | COMPLIANT  |
-| SUI-1 | Body complexity        | Nesting < 3, expressions < 5                      | COMPLIANT  |
-| SUI-2 | View purity            | 0 impure methods                                  | COMPLIANT  |
-| SUI-3 | Modifier chain length  | All nested child modifiers <= 2                   | COMPLIANT  |
-| SUI-1 | Body complexity        | Nesting >= 3 OR expressions >= 5                  | SEVERE     |
-| SUI-2 | View purity            | 1+ impure methods                                 | SEVERE     |
-| SUI-3 | Modifier chain length  | Any nested child view with 3+ modifiers           | SEVERE     |
+| ID    | Metric                | Threshold                                              | Severity  |
+|-------|-----------------------|--------------------------------------------------------|-----------|
+| SUI-0 | Exception             | Falls into exception category                          | COMPLIANT |
+| SUI-1 | Body complexity       | Nesting < 3, expressions < 5                           | COMPLIANT |
+| SUI-2 | View purity           | 0 impure methods                                       | COMPLIANT |
+| SUI-3 | Modifier chain length | All nested child modifiers <= 2                        | COMPLIANT |
+| SUI-4 | VM injection          | VM injected as an interface, view has generic signature | COMPLIANT |
+| SUI-1 | Body complexity       | Nesting >= 3 OR expressions >= 5                       | SEVERE    |
+| SUI-2 | View purity           | 1+ impure methods                                      | SEVERE    |
+| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers                | SEVERE    |
+| SUI-4 | VM injection          | VM injected as a concrete implementation               | SEVERE    |    
 ---

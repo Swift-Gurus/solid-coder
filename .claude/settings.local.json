@@ -32,7 +32,10 @@
       "Bash(for i in 1 2 3 4 5)",
       "Read(//Users/crowea/Developer/Swift-Gurus/claude-code-usage-monitor/.solid_coder/refactor-20260313135342/**)",
       "Bash(for i in 1 2 3 4)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "WebFetch(domain:docs.claude.ai)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(cat:*)"
     ]
   }
 }

@@ -84,22 +84,31 @@ FOR each draft action:
 FOR each cross-check principle:
 - [ ] Read the proposed code in the action's `suggested_fix`
 - [ ] Apply that principle's `rule.md` metrics to the proposed code. Specifically check for new or modified types/protocols introduced by the fix:
+  - **SRP**: Count cohesion groups and verbs in any new/modified type. Does any have >1 cohesion group or 2+ stakeholders?
+  - **OCP**: Count sealed variation points in any new/modified type. Are there singletons, static calls, or internal construction?
+  - **LSP**: Check any new protocol — will conformers have empty methods? Are there type checks against the new types?
+  - **ISP**: Check any new/modified protocol — does it force conformers to implement methods they don't need? Would any realistic conformer leave a method empty?
+  - **SwiftUI**: Check body complexity (SUI-1), view purity (SUI-2), modifier chains (SUI-3), VM injection (SUI-4) on any new/modified views.
 - [ ] Record result: `{ principle, passed: true/false, detail: "what was checked and why" }`
 
 ### 4.3 Patch Failures
-IF any cross-check fails, retry up to **3 attempts**:
+IF any cross-check fails:
 - [ ] Load the failing principle's `fix/instructions.md` from the Phase 2 lookup
-- [ ] Apply its standard fix pattern to patch the action's `suggested_fix`
+- [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
+  - **SRP fail** → split the extracted type further along cohesion group boundaries
+  - **OCP fail** → wrap concrete dependencies behind protocols, inject via init instead of direct/singleton reference
+  - **LSP fail** → split the protocol so conformers only implement what they use; remove type checks by improving the abstraction
+  - **ISP fail** → split the fat protocol into focused role protocols; conformers adopt only what they need
+  - **SwiftUI fail** → extract subviews (SUI-1), move logic to ViewModel (SUI-2), extract modifier chains to named variables (SUI-3), inject VM via protocol interfaces (SUI-4)
 - [ ] Update `todo_items` to include the patch steps
 - [ ] Re-run the failed cross-check on the patched code
-- [ ] If pass → break
-- [ ] If violations remain after 3 attempts → move the affected findings to `unresolved[]` with reason including attempt history
+- [ ] If still fails → move the affected findings to `unresolved[]` with reason explaining why the patch was insufficient
 - [ ] Add a `note` explaining what was patched and why
 
 ### 4.4 Record Results
 - [ ] Record all `cross_check_results` on the action
 
-**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. Retry attempts follow the limit defined in Constraints.
+**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. Do NOT attempt to recursively fix your own fixes.
 
 END (per action)
 
@@ -140,15 +149,14 @@ END (per file)
 ## Phase 6: Validate merged fixes against rules
 Merging actions in Phase 5 can introduce new violations that didn't exist in the individually-verified drafts. Re-validate only actions that were created or modified during Phase 5.
 
-FOR EVERY suggested_fix that was **merged in step 5.1**:                                                                                                                                                                              
-    - [ ] 6.1 Read the proposed code in the action's `suggested_fix`                                                                                                                                                                
+FOR EVERY suggested_fix that was **merged in step 5.1**:
+    - [ ] 6.1 Read the proposed code in the action's `suggested_fix`
     - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
-    - [ ] 6.3 IF violations found, retry up to **3 attempts**:                                                                                                                                                                        
-        - [ ] 6.3.1 Adjust `suggested_fix` using `fix/instructions.md` for each violation                                                                                                                                             
-        - [ ] 6.3.2 Adjust `todo_items` to reflect the changes                                                                                                                                                                        
-        - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles                                                                                                                                                        
-        - [ ] 6.3.4 If no violations remain → break (pass)                                                                                                                                                                            
-    - [ ] 6.4 IF violations remain after 3 attempts → move affected findings to `unresolved[]` with reason including the attempt history                                                                                              
+    - [ ] 6.3 IF violations found:
+        - [ ] 6.3.1 Adjust `suggested_fix` using `fix/instructions.md` for each violation
+        - [ ] 6.3.2 Adjust `todo_items` to reflect the changes
+        - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles
+    - [ ] 6.4 IF still fails → move affected findings to `unresolved[]` with reason explaining why the patch was insufficient
 END (per fix)
 
 ## Phase 7: Output
@@ -177,7 +185,7 @@ END (per fix)
 - Load principle fix knowledge DYNAMICALLY — only for principles that have findings
 - Phase 3 (Draft) is single-principle focused — do NOT cross-check during drafting
 - Phase 4 (Verify & Patch) reuses each principle's existing rule.md metrics and fix/instructions.md patterns — no separate recipe files
-- If a fix attempt introduces violations, retry up to 3 times using the relevant fix/instructions.md. If violations remain after 3 attempts, mark as unresolved. Do NOT exceed 3 attempts.
+- If a cross-check fails and patch fails, mark as `unresolved` — do NOT recursively fix fixes
 - Do NOT invent findings — only address findings from the review outputs
 - Include full code snippets in `suggested_fix` (protocols, types, modified class)
 - `todo_items` must be concrete and implementable (not vague)

@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -96,15 +96,39 @@
                         }
                       }
                     }
+                  },
+                  "vm_injection": {
+                    "type": "object",
+                    "required": ["has_vm", "injection_style"],
+                    "properties": {
+                      "has_vm": {
+                        "type": "boolean",
+                        "description": "Whether the view has a ViewModel dependency for logic/data access"
+                      },
+                      "injection_style": {
+                        "type": "string",
+                        "enum": ["protocol", "concrete", "n/a"],
+                        "description": "How the VM is injected: protocol (generic constraint), concrete (class type), or n/a (no VM)"
+                      },
+                      "vm_property": {
+                        "type": "string",
+                        "description": "Name of the VM property (if applicable)"
+                      },
+                      "vm_type": {
+                        "type": "string",
+                        "description": "Type of the VM property (if applicable)"
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
                     "modifier_chain_severity": { "type": "string" },
+                    "vm_injection_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -127,7 +151,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },
