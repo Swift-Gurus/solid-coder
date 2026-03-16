@@ -101,7 +101,7 @@ class UserDatabaseManager {
 2. **Helpers** — with no dependencies — Encoders, Formatters, Locks, Queues, Multithreading.
 3. **Pure data structures** — no business logic, no dependencies, no side effects
 4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
-
+5. **Pure Views UI elements** - UI elements that don't have any business logic dependencies.
     When encountering a `.shared` / `.default` / static access, **inspect the returned type** before deciding:
 
     | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |

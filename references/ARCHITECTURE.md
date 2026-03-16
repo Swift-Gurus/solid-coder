@@ -170,10 +170,10 @@ For each draft action:
    - SRP fail → split the type further along cohesion boundaries
    - OCP fail → wrap concrete deps behind protocols, inject via init
    - LSP fail → split protocol so conformers only implement what they use
-4. Re-verify after patching. If still failing → mark as `unresolved` with reason
+4. Re-verify after patching. Retry up to 3 attempts. If violations remain after 3 attempts → mark as `unresolved` with reason
 5. Record cross-check results in the action
 
-**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. This is by design — the iteration loop (Phase 8 of refactor) is the safety net. The synthesizer does not attempt to recursively fix its own fixes.
+**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. This is by design — the iteration loop (Phase 8 of refactor) is the safety net. Fix attempts are capped at 3 retries before marking as unresolved.
 
 ### Pass 3: Merge & Order
 

@@ -18,7 +18,7 @@ output_schema: output.schema.json
 
 - [ ] **1.2 Identify which metrics triggered the severity**
     - SUI-1 (body complexity) → Extract Subview pattern
-    - SUI-2 (view purity) → Move to ViewModel pattern
+    - SUI-2 (view purity) → Move to ViewModel pattern (injected via interfaces, see examples)
     - SUI-3 (modifier chain) → Extract to Named Variable pattern
     - Multiple → combine patterns as needed
 

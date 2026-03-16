@@ -33,7 +33,7 @@ Load fix knowledge **only for principles that have findings** (keeps context bou
   `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.2>`
 - [ ] 2.4 **Load fix knowledge** — Run:
   `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {principle_folder}/fix/instructions.md {principle_folder}/refactoring.md {principle_folder}/rule.md`
-- [ ] 2.7 Build a lookup: `principle_id → { fix_instructions, refactoring_patterns, metrics, patterns, examples }`
+- [ ] 2.5 **Build a lookup:** `principle_id → { fix_instructions, refactoring_patterns, metrics, patterns, examples }`
 
 ## Phase 3: Draft Fix Actions
 
@@ -47,7 +47,12 @@ FOR each file that has non-COMPLIANT findings:
 
 ### 3.2 Draft Per-Principle Actions
 
-**Principle order:** Process principles from smallest to largest blast radius — resolve dependencies before restructuring. The order is: OCP → LSP → ISP → SRP. Each principle's fixes build on the previous — OCP resolves sealed dependencies so LSP can fix abstractions cleanly, ISP splits fat protocols so extracted types get narrow interfaces, and SRP extracts types that already have proper injection.
+**Principle order:** Process principles from smallest to largest blast radius 
+    - Resolve dependencies before restructuring. The order is: Functions -> Any UI -> OCP → LSP → ISP → SRP. 
+    - Each principle's fixes build on the previous:
+        - OCP resolves sealed dependencies so LSP can fix abstractions cleanly, 
+        - ISP splits fat protocols so extracted types get narrow interfaces,  
+        - SRP extracts types that already have proper injection.
 
 FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:
 - [ ] Using ONLY that principle's `fix/instructions.md` + `refactoring.md` from the Phase 2 lookup
@@ -79,27 +84,22 @@ FOR each draft action:
 FOR each cross-check principle:
 - [ ] Read the proposed code in the action's `suggested_fix`
 - [ ] Apply that principle's `rule.md` metrics to the proposed code. Specifically check for new or modified types/protocols introduced by the fix:
-  - **SRP**: Count cohesion groups and verbs in any new/modified type. Does any have >1 cohesion group or 2+ stakeholders?
-  - **OCP**: Count sealed variation points in any new/modified type. Are there singletons, static calls, or internal construction?
-  - **LSP**: Check any new protocol — will conformers have empty methods? Are there type checks against the new types?
 - [ ] Record result: `{ principle, passed: true/false, detail: "what was checked and why" }`
 
 ### 4.3 Patch Failures
-IF any cross-check fails:
+IF any cross-check fails, retry up to **3 attempts**:
 - [ ] Load the failing principle's `fix/instructions.md` from the Phase 2 lookup
-- [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
-  - **SRP fail** → split the extracted type further along cohesion group boundaries
-  - **OCP fail** → wrap concrete dependencies behind protocols, inject via init instead of direct/singleton reference
-  - **LSP fail** → split the protocol so conformers only implement what they use; remove type checks by improving the abstraction
+- [ ] Apply its standard fix pattern to patch the action's `suggested_fix`
 - [ ] Update `todo_items` to include the patch steps
 - [ ] Re-run the failed cross-check on the patched code
-- [ ] If still fails → move the affected findings to `unresolved[]` with reason explaining why the patch was insufficient
+- [ ] If pass → break
+- [ ] If violations remain after 3 attempts → move the affected findings to `unresolved[]` with reason including attempt history
 - [ ] Add a `note` explaining what was patched and why
 
 ### 4.4 Record Results
 - [ ] Record all `cross_check_results` on the action
 
-**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. Do NOT attempt to recursively fix your own fixes.
+**Unresolved findings are not failures.** The synthesizer's job is to not make things worse and be honest about what it couldn't fix. Unresolved findings surface as new findings in the next iteration's re-review, where they get their own focused fix with fresh context. Retry attempts follow the limit defined in Constraints.
 
 END (per action)
 
@@ -137,10 +137,24 @@ END (per file)
 
 ---
 
-## Phase 6: Output
+## Phase 6: Validate merged fixes against rules
+Merging actions in Phase 5 can introduce new violations that didn't exist in the individually-verified drafts. Re-validate only actions that were created or modified during Phase 5.
 
-- [ ] 6.1 Read the output schema from `${SKILL_DIR}/plan.schema.json`
-- [ ] 6.2 For each file, write `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` matching the schema:
+FOR EVERY suggested_fix that was **merged in step 5.1**:                                                                                                                                                                              
+    - [ ] 6.1 Read the proposed code in the action's `suggested_fix`                                                                                                                                                                
+    - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
+    - [ ] 6.3 IF violations found, retry up to **3 attempts**:                                                                                                                                                                        
+        - [ ] 6.3.1 Adjust `suggested_fix` using `fix/instructions.md` for each violation                                                                                                                                             
+        - [ ] 6.3.2 Adjust `todo_items` to reflect the changes                                                                                                                                                                        
+        - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles                                                                                                                                                        
+        - [ ] 6.3.4 If no violations remain → break (pass)                                                                                                                                                                            
+    - [ ] 6.4 IF violations remain after 3 attempts → move affected findings to `unresolved[]` with reason including the attempt history                                                                                              
+END (per fix)
+
+## Phase 7: Output
+
+- [ ] 7.1 Read the output schema from `${SKILL_DIR}/plan.schema.json`
+- [ ] 7.2 For each file, write `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` matching the schema:
   - `file`: source file path
   - `actions[]`: ordered list of fix actions, each with:
     - `suggestion_id`: generated ID (e.g., `holistic-fix-001`)
@@ -153,7 +167,7 @@ END (per file)
     - `note`: explanation of design decisions, merges, or patches applied
   - `unresolved[]`: findings no action resolves, each with `finding_id` and `reason`
   - `conflicts_detected[]`: cross-principle conflicts found and how resolved
-- [ ] 6.3 Print summary:
+- [ ] 7.3 Print summary:
 
   | File | Actions | Cross-Checks Passed | Unresolved |
   |------|---------|---------------------|------------|
@@ -163,7 +177,7 @@ END (per file)
 - Load principle fix knowledge DYNAMICALLY — only for principles that have findings
 - Phase 3 (Draft) is single-principle focused — do NOT cross-check during drafting
 - Phase 4 (Verify & Patch) reuses each principle's existing rule.md metrics and fix/instructions.md patterns — no separate recipe files
-- If a cross-check fails and patch fails, mark as `unresolved` — do NOT recursively fix fixes
+- If a fix attempt introduces violations, retry up to 3 times using the relevant fix/instructions.md. If violations remain after 3 attempts, mark as unresolved. Do NOT exceed 3 attempts.
 - Do NOT invent findings — only address findings from the review outputs
 - Include full code snippets in `suggested_fix` (protocols, types, modified class)
 - `todo_items` must be concrete and implementable (not vague)

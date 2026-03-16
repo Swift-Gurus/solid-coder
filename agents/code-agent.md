@@ -4,8 +4,9 @@ description: SOLID-compliant coding agent — writes code with principle rules l
 argument-hint: [file|prompt]
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 skills:
-- discover-principles
-- code
+  - create-type
+  - discover-principles
+  - code
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 maxTurns: 100

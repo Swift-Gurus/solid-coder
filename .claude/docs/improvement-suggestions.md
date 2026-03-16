@@ -119,9 +119,7 @@ The refactor logs have this data: plan `file` fields = targets, `files_created[]
 
 **Implementation**: This filtering belongs in `prepare-review-input`, not the orchestrator. When `source_type: "files"`, the prepare agent should receive metadata about which files are targets/created vs dependents, and exclude dependents from `review-input.json`.
 
-**Gap**: The plan JSON has a `file` field (target) — that's real. But `files_created[]` in the refactor log is assumed by the orchestrator (step 7.8) without being enforced — the `/code` skill only lists files as a text summary (Phase 5), not structured JSON. To make this filtering work, either:
-- The `/code` skill needs structured output with `files_created[]` and `files_modified[]`
-- Or the orchestrator derives it from git (diff before/after each implement agent run)
+**Addressed**: The `/code` skill (Phase 5) now writes a structured `refactor-log.json` with `file` (target), `files_created[]` (new types), and `files_modified[]` (side-effect changes like call sites). The orchestrator (step 7.8) uses this to build `REVIEW_FILES` (targets + created) vs `DEPENDENT_FILES` (modified side effects), and only passes `REVIEW_FILES` to Phase 8.
 
 **3. Change-boundary scoping (future)**: Even on first pass, scope the review to the changed units (functions, types) rather than the whole file. If a diff only touches a call site, don't review the caller's class for SOLID violations unrelated to the change.
 
@@ -1231,58 +1229,79 @@ Follow the same quantitative pattern as other principles:
 
 ---
 
-## S-33: Component registry script (`scripts/registry.py`)
+## S-33: Component discovery script (`scripts/find-component.py`) and validation (`scripts/registry.py`)
 
 **Impact**: High | **Effort**: Medium | **Category**: Tooling
 
 **Status**: Pending
 
-No `scripts/` directory exists in the project. The registry script is the foundation for DRY enforcement — it scans Swift files in `Sources/Shared/` for YAML frontmatter comments and returns structured JSON.
+No `scripts/` directory exists in the project. Two scripts are needed:
 
-### Frontmatter format (in Swift files)
+### Script 1: `scripts/find-component.py` — grep-based discovery (fast, no full scan)
 
-```swift
-// ---
-// name: GenericRow
-// category: layout/row
-// description: HStack with configurable leading icon and content slots
-// use-when: any row needing a leading icon with flexible content
-// do-not-use-when: grids, sectioned lists, rows with trailing actions (use ActionRow)
-// props: icon: String?, leading: @ViewBuilder, trailing: @ViewBuilder?
-// added: 2026-01-15
-// ---
+Accepts keywords, greps `solid-tags` and `solid-use-when` across `Sources/`, returns matching **file paths only**. Does NOT read file contents or parse frontmatter — that's the calling agent's job.
+
+```bash
+python scripts/find-component.py "row icon toggle settings"
+# 1. Splits input into keywords
+# 2. Greps solid-tags: and solid-use-when: for each keyword
+# 3. Ranks files by keyword hit count
+# 4. Returns file paths (top N matches)
 ```
 
-Required fields: `name`, `category`, `description`, `use-when`, `do-not-use-when`, `props`, `added`
-
-Categories: `layout/row`, `layout/container`, `modifier`, `service`, `utility`
-
-### Output format
-
+**Output:** JSON array of file paths, ranked by relevance:
 ```json
 [
-  {
-    "name": "GenericRow",
-    "file": "Sources/Shared/Components/GenericRow.swift",
-    "category": "layout/row",
-    "description": "HStack with configurable leading icon and content slots",
-    "use-when": "any row needing a leading icon with flexible content",
-    "do-not-use-when": "grids, sectioned lists, rows with trailing actions",
-    "props": "icon: String?, leading: @ViewBuilder, trailing: @ViewBuilder?"
-  }
+  "Sources/Shared/Components/GenericRow.swift",
+  "Sources/Features/Settings/SettingsToggleRow.swift"
 ]
 ```
 
-### Validation mode
+**The calling agent/skill then:**
+1. Reads the matched files' frontmatter (`solid-use-when`, `solid-do-not-use-when`)
+2. Checks if the intent matches what it's about to create
+3. If match → reads the code to validate it satisfies the need
+4. If no match or not sufficient → creates new type with frontmatter
+
+### Script 2: `scripts/registry.py --validate` — validation only (CI/pre-commit)
 
 ```bash
 python scripts/registry.py --validate
-# Fails if: any Shared/ file missing frontmatter
-# Fails if: similarity score > 0.85 between any two use-when fields
+# Fails if: any Sources/ .swift file with a type declaration is missing solid- frontmatter
+# Fails if: similarity score > 0.85 between any two solid-use-when fields
 # Fails if: required fields are empty
 ```
 
-### Synonym groups for semantic grep (Layer 1)
+### Frontmatter format (in Swift files)
+
+All keys use `solid-` prefix to avoid false matches from regular comments/DocC. Multiple blocks per file supported — one per type declaration. Parser strips `// ` prefix → valid YAML block.
+
+```swift
+// ---
+// solid-name: GenericRow
+// solid-category: layout/row
+// solid-tags: [row, icon, leading, hstack, swiftui, shared]
+// solid-use-when: any row with leading icon and flexible content
+// solid-do-not-use-when: grids, sectioned lists, trailing actions (use ActionRow)
+// solid-props: icon: String?, leading: @ViewBuilder, trailing: @ViewBuilder?
+// solid-added: 2026-01-15
+// ---
+struct GenericRow<Content: View>: View { ... }
+```
+
+Required fields: `solid-name`, `solid-category`, `solid-tags`, `solid-use-when`, `solid-do-not-use-when`, `solid-props` (Views and services only), `solid-added`
+
+### Categories
+
+- `layout/row` — HStack-based row components
+- `layout/container` — wrapping/shell components
+- `modifier` — ViewModifier extensions
+- `service/protocol` — protocol definitions
+- `service/implementation` — concrete implementations
+- `service/mock` — test doubles
+- `utility` — pure functions, formatters, helpers
+
+### Synonym groups (built into `find-component.py`)
 
 - row: cell, item, tile, entry, listRow
 - icon: symbol, image, leading, badge
@@ -1294,7 +1313,7 @@ python scripts/registry.py --validate
 
 **Not implemented.** No top-level `scripts/` directory exists. Scripts live within individual skills (`skills/*/scripts/`). Existing `parse-frontmatter.py` parses YAML frontmatter from markdown files. `discover-principles.py` discovers principles by globbing `*/rule.md`. Neither handles Swift file frontmatter.
 
-**Plan:** Create `scripts/registry.py` that: (1) walks `Sources/Shared/**/*.swift`, (2) parses Swift comment frontmatter (`// ---` blocks), (3) outputs structured JSON, (4) `--validate` mode checks for missing frontmatter + use-when similarity. Could reuse `parse-frontmatter.py` logic for YAML parsing.
+**Plan:** Create `scripts/find-component.py` that: (1) accepts keywords, (2) greps `solid-tags` and `solid-use-when` across `Sources/**/*.swift`, (3) ranks by hit count, (4) returns file paths only — no content reading. Create `scripts/registry.py --validate` for CI/pre-commit: checks all types have frontmatter, flags similar `solid-use-when` fields.
 
 ---
 
@@ -1304,17 +1323,31 @@ python scripts/registry.py --validate
 
 **Status**: Pending — depends on S-32, S-33
 
-Add Section 3.5 to `skills/code/SKILL.md` Phase 3 (File Organization). When creating ANY new file in `Sources/Shared/`:
+Add Section 3.5 to `skills/code/SKILL.md` Phase 3 (File Organization). When creating ANY new type (class, struct, protocol, enum, extension):
 
-1. Run DRY check (both layers): `python scripts/registry.py` + grep synonyms
-2. If match found → configure existing component, do NOT create new file
-3. If no match → design generic component, prefill frontmatter FIRST, then write Swift
+1. Run DRY check (both layers):
+   - `python scripts/registry.py` → check `solid-use-when` for intent overlap
+   - Grep synonyms for the concept being implemented
+   - If match found → configure existing component, do NOT create new file
+2. If no match → design generic component using `@ViewBuilder` for slots, `ViewModifier` for styling, protocols + generics for types
+3. Prefill `solid-` prefixed frontmatter FIRST, then write Swift:
+   ```swift
+   // ---
+   // solid-name: [TypeName]
+   // solid-category: [layout/row | layout/container | modifier | service/protocol | service/implementation | utility]
+   // solid-tags: [relevant tags]
+   // solid-use-when: [specific intent — what problem does this solve]
+   // solid-do-not-use-when: [what it's NOT for — name alternatives if they exist]
+   // solid-props: [key parameters]
+   // solid-added: [today's date]
+   // ---
+   ```
 
 ### Verified status (2026-03-12)
 
 **Not implemented.** `skills/code/SKILL.md` Phase 3 has sections 3.1-3.4 only. No mention of shared components, DRY checks, or frontmatter prefill. Closest existing logic is 3.1's "Always search before creating" instruction.
 
-**Plan:** Add Section 3.5 "Shared Component Creation" after 3.4 in `skills/code/SKILL.md`: search for existing shared components, place reusable types in shared location, add frontmatter to new files, cross-reference with DRY rules.
+**Plan:** Add Section 3.5 "Shared Component Creation" after 3.4 in `skills/code/SKILL.md`: search for existing shared components via `find-component.py`, place reusable types in shared location, add `solid-` prefixed frontmatter to new files, cross-reference with DRY rules.
 
 ---
 
@@ -1520,9 +1553,10 @@ Level 1 is preferred — it's cleaner to not produce empty artifacts than to fil
 | S-30 | SwiftUI SUI-2/SUI-3 — validate SOLID coverage | Medium | Medium | Validate — needs testing | — |
 | S-31 | SwiftUI "dumb view" rule | High | Low | Done — implemented as SUI-2 (View Purity) metric | — |
 | S-32 | DRY principle — full `references/DRY/` implementation | High | High | Not implemented — no `references/DRY/` directory | 2026-03-12 |
-| S-33 | Component registry script (`scripts/registry.py`) | High | Medium | Not implemented — no `scripts/` directory exists | 2026-03-12 |
-| S-34 | `/code` skill Section 3.5 — Shared Component Creation | Medium | Low | Not implemented — no Section 3.5 in SKILL.md | 2026-03-12 |
+| S-33 | Grep-based discovery (`find-component.py`) + validation (`registry.py --validate`) | High | Medium | Not implemented — no `scripts/` directory exists | 2026-03-13 |
+| S-34 | `/code` skill Section 3.5 — Shared Component Creation (`solid-` prefixed frontmatter) | Medium | Low | Not implemented — no Section 3.5 in SKILL.md | 2026-03-13 |
 | S-35 | Pre-commit hook for frontmatter validation | Medium | Low | Not implemented — depends on S-33 | — |
 | S-36 | Two-tier rule system | High | Medium | Partial — tag-based activation works; no formal tier model or directional cross-checking | 2026-03-12 |
 | S-37 | Style rules separate pipeline | Medium | Medium | Not implemented — no mechanism for review-only rules | 2026-03-12 |
 | S-38 | Extend `prepare-review-input` context detection | Medium | Medium | Partial — imports + tag matching exist; test detection missing; semantic patterns LLM-dependent | 2026-03-12 |
+| S-40 | `solid-spec` frontmatter field — link types to requirement specs | Medium | Low | Future — validate current 4 fields first, add when spec workflow exists | — |

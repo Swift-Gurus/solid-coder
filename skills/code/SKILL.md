@@ -81,9 +81,9 @@ When splitting a type along responsibility boundaries:
 
 ### 3.3 File Organization
 
-- Protocol + its base implementation → same file, named after the implementation
+- Protocol + one implementation → same file, named after the implementation
   - e.g. `ProductFetchService.swift` contains `protocol ProductFetching` + `final class ProductFetchService: ProductFetching`
-- Additional conformers (decorators, adapters, alternatives) → separate file each, named after the conformer
+  - Additional conformers (decorators, adapters, alternatives) → separate file each, named after the conformer
 - Small helpers (<10 lines, or private/fileprivate) → stay in the source file
 - New files go in the same directory as the source file
 - Copy necessary `import` statements to each new file
@@ -92,6 +92,10 @@ When splitting a type along responsibility boundaries:
 
 - Every conformer must meaningfully implement every method. If a conformer would leave methods empty or crash (fatalError), the protocol is too wide — split it.
 - Client code must not type-check against conformers (`is`, `as?`, `as!`). If it needs to, the abstraction is wrong — redesign it.
+
+### 3.5 New Types
+
+After creating or extracting any new type, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter.
 
 ## Phase 4: Self-Check
 

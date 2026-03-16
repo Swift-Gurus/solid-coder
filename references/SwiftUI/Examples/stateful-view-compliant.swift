@@ -24,10 +24,10 @@ protocol UserProfileActions {
 }
 
 // MARK: - View (dumb — binds State to UI, forwards gestures to Actions)
-
-struct UserProfileView: View {
-    let state: any UserProfileState
-    let actions: any UserProfileActions
+// Proper injection of view model as separated interfaces
+struct UserProfileView<State: UserProfileState>: View {
+    let state: State
+    let actions: UserProfileActions
 
     var body: some View {
         ScrollView {
@@ -73,6 +73,15 @@ struct UserProfileView: View {
             Button("Follow") { actions.onFollowTapped() }
             Button("Edit") { actions.onEditProfileTapped() }
         }
+    }
+}
+
+// Alternative approach for Proper injection of view model as single object, applicable for small VMs
+struct UserProfileViewSingleVM<VM: UserProfileState & UserProfileActions>: View {
+    let vm: VM
+
+    var body: some View {
+        // body implementation
     }
 }
 

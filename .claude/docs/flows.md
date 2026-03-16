@@ -170,7 +170,7 @@ Step 6: Synthesize Fixes (Two-Pass)
         - Would this OCP injection create multiple cohesion groups? (SRP check)
         - Would this new protocol hierarchy need type checking? (LSP check)
       - If a cross-check fails: patch the action using the failing principle's patterns
-      - If patching fails: mark finding as "unresolved" with reason
+      - Retry up to 3 attempts. If violations remain after 3 attempts: mark finding as "unresolved" with reason
 
     Phase 4 — Merge & Order:
       - Merge synergistic actions (e.g., SRP extraction + OCP injection for same code)
