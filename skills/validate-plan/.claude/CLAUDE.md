@@ -10,21 +10,20 @@ blocking: [SPEC-001, SPEC-004]
 
 ## Purpose
 
-Takes an architect's decomposition (`arch.json` from `/plan`) and validates it against the existing codebase. Finds reusable types, identifies conflicts, and annotates each component with its reuse status. Does NOT redesign the architecture.
+Takes an architect's decomposition (`arch.json` from `/plan`) and validates it against the existing codebase. Finds reusable types, identifies conflicts, and annotates each component with its reuse status. Does NOT redesign the architecture — does NOT decide what actions to take.
 
 ## Inputs / Outputs
 
 - **Input**: `arch.json` path, `--output` path (no spec needed — `arch.json` contains `spec_summary`)
-- **Output**: `validation.json` — each component annotated with `create|reuse|adjust|conflict` status, matched files, confidence scores, and concrete adjustment actions. Schema: `skills/validate-plan/validation.schema.json`
+- **Output**: `validation.json` — each component annotated with `create|reuse|adjust|conflict` status, matched files, and confidence scores. Schema: `skills/validate-plan/validation.schema.json`
 
 ## Pipeline
 
 1. **Phase 0 (LLM)**: Read `arch.json` (uses `spec_summary` for context), generate synonym keywords from component responsibilities/categories
 2. **Phase 1+2 (Script)**: `search-codebase.py` greps files for `solid-category`/`solid-description` frontmatter, matches against synonyms
-3. **Phase 3 (LLM)**: Read matched files, analyze responsibility fit and interface compatibility, score confidence
+3. **Phase 3 (LLM)**: Read matched files, extract existing interfaces and fields, analyze responsibility fit, score confidence
 4. **Phase 4 (LLM)**: Classify each component as `create`, `reuse`, `adjust`, or `conflict`
-5. **Phase 5 (LLM)**: Detail adjustments (concrete actions, breaking change checks) and conflicts (incompatibility reasons, alternatives)
-6. **Phase 6 (LLM)**: Assemble and write `validation.json`
+5. **Phase 5 (LLM)**: Assemble and write `validation.json`
 
 ## Connections
 
@@ -46,9 +45,12 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 - **matched_terms[] per file**: Helps the LLM understand why a file was returned, informing confidence scoring.
 - **No spec input needed**: `arch.json` already contains `spec_summary` — a separate spec file is redundant.
 - **No Sources/ glob**: The script handles empty/missing directories by returning zero matches. Just pass `.` as sources.
+- **Report, don't decide**: The validator reports what exists (interfaces, fields, confidence). The synthesizer decides what actions to take (add method, change type, etc.).
+- **Data models are components**: Components with `category: "model"` have `existing_fields` populated in matches. The `solid-category: model` frontmatter is the differentiation signal.
 
 ## Gotchas
 
 - Requires `solid-category` and `solid-description` frontmatter in codebase files — files without these are invisible to the search.
-- `best_match` is `null` when status is `create`, otherwise an index into `matches[]`.
+- `matches[]` is sorted by `match_confidence` descending — consumers take `matches[0]` for the best match.
 - The validator is read-only — it never modifies codebase files.
+- The validator does not prescribe actions — it reports what exists and classifies fit. The synthesizer decides remediation.

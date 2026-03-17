@@ -43,14 +43,17 @@ Iterate over each matched file from the script output. For each file, analyze it
 **FOR** each file in `matches[]` from script output **DO**:
 
 - [ ] 3.1 Read the file's source code.
-- [ ] 3.2 Extract `type_name` from the source code (class/struct/enum/protocol declaration).
+- [ ] 3.2 Extract from the source code:
+  - `type_name` (class/struct/enum/protocol declaration)
+  - `existing_interfaces` — protocols the type conforms to
+  - `existing_fields` — field declarations (for structs/classes with `solid-category: model`)
 - [ ] 3.3 For each architect component that could relate to this file:
-  - Compare the file's methods, properties, and protocols against the component's `responsibility`, `interfaces`, and `dependencies`.
-- [ ] 3.4 Analyze interface compatibility:
-  - Does the type already conform to the needed protocols?
-  - Could it conform with minor additions (new method, generic parameter)?
-  - Does it need an adapter or wrapper?
-  - Would it need a new protocol?
+  - Compare the file's responsibility, interfaces, fields against the component's `responsibility`, `interfaces`, `dependencies`, `fields`.
+  - Record specific `differences` — concrete mismatches the synthesizer needs to make decisions:
+    - Field differences: `"field name: String? vs expected name: String"`, `"missing field email: String"`
+    - Interface differences: `"missing protocol conformance to ProductReading"`, `"has extra conformance to Cacheable"`
+    - Signature differences: `"method fetchAll() returns [Product] vs expected async throws -> [Product]"`, `"missing method fetchByCategory(_: String)"`
+    - Responsibility differences: `"responsibility is caching, arch expects fetching"`
 - [ ] 3.5 Score `match_confidence`:
   - `high` — same responsibility + compatible interface
   - `medium` — similar responsibility, interface needs work
@@ -68,29 +71,19 @@ For each component, assign a status:
 - [ ] 4.3 `adjust` — match fulfills responsibility but needs interface changes (new method, extended protocol, additional conformance, generic parameter).
 - [ ] 4.4 `conflict` — match has same name or overlapping responsibility but incompatible design. Cannot reuse without major rework.
 
-## Phase 5: Detail (LLM)
+## Phase 5: Output
 
-- [ ] 5.1 For `adjust` components:
-  - List each change as a concrete action (e.g., "add method `fetchByCategory(_:)` to protocol `ProductReading`").
-  - Grep for all call sites of the affected protocol/type to check for breaking changes.
-  - If adjustment breaks existing consumers, set `"breaking": true` with affected files listed.
-- [ ] 5.2 For `conflict` components:
-  - Document what exists and why it's incompatible.
-  - Suggest alternatives (rename, new type, adapter pattern).
-
-## Phase 6: Output
-
-- [ ] 6.1 Create structured output `validation.json` that corresponds to `${SKILL_DIR}/validation.schema.json`
-- [ ] 6.2 Validate:
+- [ ] 5.1 Create structured output `validation.json` that corresponds to `${SKILL_DIR}/validation.schema.json`
+- [ ] 5.2 Sort `matches[]` by `match_confidence` descending (high → medium → low). Consumers read `matches[0]` for the best match.
+- [ ] 5.3 Validate:
   - Every component from `arch.json` has an entry
-  - `best_match` is `null` when `status` is `create`, otherwise an index into `matches[]`
   - `matches[]` is empty array for `create` status
   - Summary counts match actual statuses
-- [ ] 6.3 Write `validation.json` to OUTPUT_PATH.
+- [ ] 5.4 Write `validation.json` to OUTPUT_PATH.
 
 ## Edge Cases
 
-- **EC-1**: Multiple types match a single component — list all in `matches[]`, rank by `match_confidence`, set `best_match` to highest confidence.
+- **EC-1**: Multiple types match a single component — list all in `matches[]`, sorted by `match_confidence` descending. Consumer reads `matches[0]`.
 - **EC-2**: Architect proposes splitting a monolithic type — classify as `adjust` with note about extraction needed.
 
 ## Constraints
@@ -98,4 +91,4 @@ For each component, assign a status:
 - Do NOT redesign the architecture — only report what exists and how it fits.
 - Do NOT modify any codebase files — this is read-only analysis.
 - Do NOT read file contents beyond frontmatter in the script — the LLM reads full files in Phase 3.
-- Keep `adjustments[].detail` concrete and actionable — the synthesizer (SPEC-004) uses these directly.
+- Do NOT decide what actions to take — report what exists. The synthesizer decides actions.

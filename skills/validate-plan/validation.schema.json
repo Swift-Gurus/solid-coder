@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Codebase Validation",
-  "description": "Validation result from /validate-plan. Each arch.json component is annotated with reuse status, matched files, confidence scores, and concrete adjustment actions.",
+  "description": "Validation result from /validate-plan. Each arch.json component is annotated with reuse status, matched files, and confidence scores.",
   "type": "object",
   "required": ["components", "summary"],
   "properties": {
@@ -10,7 +10,7 @@
       "description": "One entry per component from arch.json, annotated with codebase validation results",
       "items": {
         "type": "object",
-        "required": ["name", "status", "matches", "best_match"],
+        "required": ["name", "status", "matches"],
         "properties": {
           "name": {
             "type": "string",
@@ -23,10 +23,10 @@
           },
           "matches": {
             "type": "array",
-            "description": "Existing codebase types that match this component. Empty for 'create' status.",
+            "description": "Existing codebase types that match this component. Sorted by match_confidence descending (high → medium → low). Empty for 'create' status.",
             "items": {
               "type": "object",
-              "required": ["file", "type_name", "existing_interfaces", "match_confidence", "adjustments", "notes"],
+              "required": ["file", "type_name", "existing_interfaces", "existing_fields", "match_confidence", "differences", "notes"],
               "properties": {
                 "file": {
                   "type": "string",
@@ -39,44 +39,22 @@
                 "existing_interfaces": {
                   "type": "array",
                   "items": { "type": "string" },
-                  "description": "Protocols the existing type already conforms to"
+                  "description": "Protocols the existing type already conforms to. Empty array for data models."
+                },
+                "existing_fields": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Field declarations found in the existing type (e.g., 'id: String'). Empty array for non-model types."
                 },
                 "match_confidence": {
                   "type": "string",
                   "enum": ["high", "medium", "low"],
                   "description": "How closely the existing type matches the architect's component"
                 },
-                "adjustments": {
+                "differences": {
                   "type": "array",
-                  "description": "Concrete changes needed to make the existing type fit the architect's design",
-                  "items": {
-                    "type": "object",
-                    "required": ["action", "target", "detail", "breaking", "affected_files"],
-                    "properties": {
-                      "action": {
-                        "type": "string",
-                        "enum": ["add_method", "add_conformance", "add_protocol", "wrap_adapter", "extend_generic"],
-                        "description": "Type of adjustment needed"
-                      },
-                      "target": {
-                        "type": "string",
-                        "description": "Target type or protocol to modify"
-                      },
-                      "detail": {
-                        "type": "string",
-                        "description": "Concrete description of the change"
-                      },
-                      "breaking": {
-                        "type": "boolean",
-                        "description": "Whether this change breaks existing consumers"
-                      },
-                      "affected_files": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "Files that would need updating if this is a breaking change"
-                      }
-                    }
-                  }
+                  "items": { "type": "string" },
+                  "description": "Specific differences between the existing type and the arch.json component. E.g., 'field name: String? vs expected name: String', 'missing protocol conformance to ProductReading', 'responsibility is caching, arch expects fetching'. Empty array for reuse matches."
                 },
                 "notes": {
                   "type": "string",
@@ -84,10 +62,6 @@
                 }
               }
             }
-          },
-          "best_match": {
-            "type": ["integer", "null"],
-            "description": "Index into matches[] for the best match. null when status is 'create'."
           }
         }
       }

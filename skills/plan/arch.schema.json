@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Architecture Decomposition",
-  "description": "High-level architecture decomposition produced by /plan. Describes components, their interfaces, dependencies, wiring, and data models.",
+  "description": "High-level architecture decomposition produced by /plan. Describes components, their interfaces, dependencies, wiring, and composition root.",
   "type": "object",
-  "required": ["spec_summary", "components", "wiring", "composition_root", "data_models"],
+  "required": ["spec_summary", "components", "wiring", "composition_root"],
   "properties": {
     "spec_summary": {
       "type": "string",
@@ -11,10 +11,10 @@
     },
     "components": {
       "type": "array",
-      "description": "Decomposed components with responsibilities, interfaces, and dependencies",
+      "description": "All types in the architecture — services, ViewModels, views, data models, protocols. Data models use category 'model' and populate fields[].",
       "items": {
         "type": "object",
-        "required": ["name", "category", "stack", "responsibility", "interfaces", "dependencies", "produces"],
+        "required": ["name", "category", "stack", "responsibility", "interfaces", "dependencies", "produces", "fields"],
         "properties": {
           "name": {
             "type": "string",
@@ -22,7 +22,7 @@
           },
           "category": {
             "type": "string",
-            "description": "solid-category vocabulary value (e.g., network, viewmodel, repository)"
+            "description": "solid-category vocabulary value (e.g., network, viewmodel, model, repository)"
           },
           "stack": {
             "type": "array",
@@ -36,17 +36,22 @@
           "interfaces": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Protocols this component exposes"
+            "description": "Protocols this component exposes. Empty array for data models."
           },
           "dependencies": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Protocols this component consumes (injected)"
+            "description": "Protocols this component consumes (injected). Empty array for data models."
           },
           "produces": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "Data types this component outputs"
+            "description": "Data types this component outputs. Empty array for data models."
+          },
+          "fields": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Field declarations (e.g., 'id: String', 'name: String'). Populated for data models (category: 'model'), empty array for other types."
           }
         }
       }
@@ -77,29 +82,6 @@
     "composition_root": {
       "type": "string",
       "description": "Name of the factory or assembly point where concrete types are wired together"
-    },
-    "data_models": {
-      "type": "array",
-      "description": "Data types used across components",
-      "items": {
-        "type": "object",
-        "required": ["name", "category", "fields"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Model type name"
-          },
-          "category": {
-            "type": "string",
-            "description": "Always 'model'"
-          },
-          "fields": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Field declarations (e.g., 'id: String', 'name: String')"
-          }
-        }
-      }
     }
   }
 }

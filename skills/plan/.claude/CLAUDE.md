@@ -63,12 +63,7 @@ Input: spec (prompt or markdown filepath) + output-path
            │
            ▼
 ┌──────────────────────────────────┐
-│ 5. Define data models            │
-└──────────┬───────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────┐
-│ 6. Output                        │
+│ 5. Output                        │
 │    - Assemble & validate         │
 │    - Write arch.json             │
 └──────────┬───────────────────────┘
@@ -94,7 +89,8 @@ Output: arch.json → written to output-path
 
 ### REQ-1: Component Decomposition
 
-- REQ-1.1: Each component has: `name`, `category` (from `solid-category` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.2), `stack` (from `solid-stack` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.3; empty array if pure Swift), `responsibility` (one sentence), `interfaces` (protocols it exposes), `dependencies` (protocols it consumes), `produces` (data types it outputs).
+- REQ-1.1: Each component has: `name`, `category` (from `solid-category` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.2), `stack` (from `solid-stack` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.3; empty array if pure Swift), `responsibility` (one sentence), `interfaces` (protocols it exposes), `dependencies` (protocols it consumes), `produces` (data types it outputs), `fields` (field declarations — populated for data models, empty array for other types).
+- REQ-1.4: Data models are components with `category: "model"`. They have populated `fields[]` and empty `interfaces[]`, `dependencies[]`, `produces[]`. No separate `data_models` array — everything lives in `components[]`.
 - REQ-1.2: Follow **solid-coder:create-type** naming conventions (SKILL.md Phase 1): actor protocols use `-ing` suffix, subject protocols use `-able` suffix, general contracts use `-Providing` suffix.
 - REQ-1.3: Every dependency between components must be through a protocol — no concrete type references in the wiring.
 
