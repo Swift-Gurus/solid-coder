@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Implementation Plan",
+  "description": "Ordered implementation plan produced by /synthesize-implementation. Reconciles arch.json with validation.json into concrete /code directives.",
+  "type": "object",
+  "required": ["spec_summary", "plan_items", "reconciliation_decisions", "summary"],
+  "properties": {
+    "spec_summary": {
+      "type": "string",
+      "description": "From arch.json — one-line summary of what's being built"
+    },
+    "plan_items": {
+      "type": "array",
+      "description": "Ordered list of /code directives. Empty array if all components are reused.",
+      "items": {
+        "type": "object",
+        "required": ["id", "action", "directive", "depends_on", "component", "notes"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Plan item ID for readability and depends_on references (e.g., plan-001)"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["create", "modify"],
+            "description": "create: new file (no file field). modify: change existing file (file field required)."
+          },
+          "file": {
+            "type": "string",
+            "description": "Path to existing file to modify. Required for action: modify. Omitted for action: create."
+          },
+          "directive": {
+            "type": "string",
+            "description": "Natural language instruction for /code — what to build or change"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Plan item IDs that must complete before this item"
+          },
+          "component": {
+            "type": "string",
+            "description": "Name of the arch.json component this item implements or modifies"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Human-readable context — why this action was chosen, what reconciliation decided"
+          }
+        }
+      }
+    },
+    "reconciliation_decisions": {
+      "type": "array",
+      "description": "One entry per arch.json component documenting the reconciliation outcome",
+      "items": {
+        "type": "object",
+        "required": ["component", "validation_status", "action", "reason"],
+        "properties": {
+          "component": {
+            "type": "string",
+            "description": "Component name from arch.json"
+          },
+          "validation_status": {
+            "type": "string",
+            "enum": ["create", "reuse", "adjust", "conflict"],
+            "description": "Status from validation.json"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["create", "modify", "reuse"],
+            "description": "Resolved outcome: reuse (no plan item), create (new file), modify (change existing)"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Human-readable explanation of why this decision was made"
+          },
+          "existing_file": {
+            "type": ["string", "null"],
+            "description": "Path to existing file if action is reuse or modify. Null if action is create."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["create", "modify", "reuse"],
+      "description": "Counts by resolved action type",
+      "properties": {
+        "create": {
+          "type": "integer",
+          "description": "Components that need new files"
+        },
+        "modify": {
+          "type": "integer",
+          "description": "Components that need changes to existing files"
+        },
+        "reuse": {
+          "type": "integer",
+          "description": "Components with no plan item — existing types are sufficient"
+        }
+      }
+    }
+  }
+}

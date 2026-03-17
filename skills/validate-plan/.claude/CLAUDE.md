@@ -46,6 +46,8 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 - **No spec input needed**: `arch.json` already contains `spec_summary` — a separate spec file is redundant.
 - **No Sources/ glob**: The script handles empty/missing directories by returning zero matches. Just pass `.` as sources.
 - **Report, don't decide**: The validator reports what exists (interfaces, fields, confidence). The synthesizer decides what actions to take (add method, change type, etc.).
+- **`create` means truly nothing found**: `create` status is only assigned when zero matches exist from Phase 3. If any match exists (even low confidence), it should be classified as `adjust` or `conflict` — never `create`. This ensures `matches[]` is always empty for `create` and the synthesizer gets the full picture for other statuses.
+- **`adjust` is broad**: Covers interface changes, protocol conformance additions, enum case extensions, field additions — any case where the existing type's responsibility overlaps and it's cheaper to modify than create new.
 - **Data models are components**: Components with `category: "model"` have `existing_fields` populated in matches. The `solid-category: model` frontmatter is the differentiation signal.
 
 ## Gotchas

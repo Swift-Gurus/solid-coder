@@ -51,6 +51,7 @@ These are triggered by other skills or agents — not directly by the user:
 | `generate-report` | Produces HTML report from validated findings and suggestions |
 | `parse-frontmatter` | Parses YAML frontmatter from markdown files. Utility |
 | `validate-plan` | Validates arch.json against the codebase — finds reusable types, conflicts, annotates components with reuse status |
+| `synthesize-implementation` | Reconciles arch.json + validation.json into ordered implementation plan of /code directives |
 | `load-reference` | Loads reference files with frontmatter stripped. Utility |
 
 ## Agents
@@ -65,6 +66,7 @@ Agent wrappers allow skills to run as subagents — enabling parallel execution 
 | `principle-review-fx-agent` | Runs a single-principle review + fix suggestion |
 | `plan-agent` | Architecture decomposition from a feature spec |
 | `validate-plan-agent` | Validates arch.json against the codebase (model: sonnet) |
+| `synthesize-implementation-agent` | Reconciles arch + validation into implementation plan (model: opus) |
 
 ## Principles (`references/`)
 

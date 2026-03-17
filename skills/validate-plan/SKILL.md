@@ -66,9 +66,13 @@ Iterate over each matched file from the script output. For each file, analyze it
 
 For each component, assign a status:
 
-- [ ] 4.1 `create` — zero matches from script, or all matches scored `low`. Must be built from scratch.
+- [ ] 4.1 `create` — zero matches from Phase 3. No existing type relates to this component. Must be built from scratch.
 - [ ] 4.2 `reuse` — match fulfills responsibility AND interface. No changes needed.
-- [ ] 4.3 `adjust` — match fulfills responsibility but needs interface changes (new method, extended protocol, additional conformance, generic parameter).
+- [ ] 4.3 `adjust` — match can serve the component's purpose with modifications. This includes:
+  - Interface changes (new method, extended protocol, additional conformance, generic parameter)
+  - Adding a protocol conformance to an existing concrete type (e.g., arch wants an abstraction, existing type has the right data/behavior but no protocol)
+  - Extending an existing type with new capabilities (e.g., adding a case to an enum, adding fields to a model)
+  - The key test: the existing type's responsibility **overlaps** with the component's, and it's cheaper to adjust than to create new
 - [ ] 4.4 `conflict` — match has same name or overlapping responsibility but incompatible design. Cannot reuse without major rework.
 
 ## Phase 5: Output
@@ -77,7 +81,7 @@ For each component, assign a status:
 - [ ] 5.2 Sort `matches[]` by `match_confidence` descending (high → medium → low). Consumers read `matches[0]` for the best match.
 - [ ] 5.3 Validate:
   - Every component from `arch.json` has an entry
-  - `matches[]` is empty array for `create` status
+  - `matches[]` is empty array for `create` status (4.1 guarantees no matches exist)
   - Summary counts match actual statuses
 - [ ] 5.4 Write `validation.json` to OUTPUT_PATH.
 
