@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Codebase Validation",
+  "description": "Validation result from /validate-plan. Each arch.json component is annotated with reuse status, matched files, confidence scores, and concrete adjustment actions.",
+  "type": "object",
+  "required": ["components", "summary"],
+  "properties": {
+    "components": {
+      "type": "array",
+      "description": "One entry per component from arch.json, annotated with codebase validation results",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "matches", "best_match"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Component name (matches arch.json component name)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["create", "reuse", "adjust", "conflict"],
+            "description": "create: no match found. reuse: exact match. adjust: match needs modifications. conflict: match is incompatible."
+          },
+          "matches": {
+            "type": "array",
+            "description": "Existing codebase types that match this component. Empty for 'create' status.",
+            "items": {
+              "type": "object",
+              "required": ["file", "type_name", "existing_interfaces", "match_confidence", "adjustments", "notes"],
+              "properties": {
+                "file": {
+                  "type": "string",
+                  "description": "Path to the matched source file"
+                },
+                "type_name": {
+                  "type": "string",
+                  "description": "Name of the existing type in the file"
+                },
+                "existing_interfaces": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Protocols the existing type already conforms to"
+                },
+                "match_confidence": {
+                  "type": "string",
+                  "enum": ["high", "medium", "low"],
+                  "description": "How closely the existing type matches the architect's component"
+                },
+                "adjustments": {
+                  "type": "array",
+                  "description": "Concrete changes needed to make the existing type fit the architect's design",
+                  "items": {
+                    "type": "object",
+                    "required": ["action", "target", "detail", "breaking", "affected_files"],
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "enum": ["add_method", "add_conformance", "add_protocol", "wrap_adapter", "extend_generic"],
+                        "description": "Type of adjustment needed"
+                      },
+                      "target": {
+                        "type": "string",
+                        "description": "Target type or protocol to modify"
+                      },
+                      "detail": {
+                        "type": "string",
+                        "description": "Concrete description of the change"
+                      },
+                      "breaking": {
+                        "type": "boolean",
+                        "description": "Whether this change breaks existing consumers"
+                      },
+                      "affected_files": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Files that would need updating if this is a breaking change"
+                      }
+                    }
+                  }
+                },
+                "notes": {
+                  "type": "string",
+                  "description": "Why this match was identified"
+                }
+              }
+            }
+          },
+          "best_match": {
+            "type": ["integer", "null"],
+            "description": "Index into matches[] for the best match. null when status is 'create'."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["create", "reuse", "adjust", "conflict"],
+      "description": "Count of components by status",
+      "properties": {
+        "create": { "type": "integer" },
+        "reuse": { "type": "integer" },
+        "adjust": { "type": "integer" },
+        "conflict": { "type": "integer" }
+      }
+    }
+  }
+}

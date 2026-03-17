@@ -106,7 +106,7 @@ Invocation pattern: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/<scrip
 
 | Direction | Module | Relationship |
 |-----------|--------|-------------|
-| Wrapped by | `principle-review-agent` | Agent wrapper for parallel execution (Sonnet) |
+| Wrapped by | `apply-principle-review-agent` | Agent wrapper for parallel execution (Sonnet) |
 | Wrapped by | `principle-review-fx-agent` | Agent wrapper that chains review + fix-suggest (being sunset) |
 | Upstream | `prepare-review-input` | Produces the normalized input JSON this skill consumes |
 | Upstream | `discover-principles` | Determines which principles are active and matched |
@@ -115,7 +115,7 @@ Invocation pattern: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/<scrip
 
 ## Model Choice
 
-Sonnet is used for review via `principle-review-agent`. Sonnet follows structured instructions well for this task, which is pattern matching against defined rules rather than open-ended reasoning.
+Sonnet is used for review via `apply-principle-review-agent`. Sonnet follows structured instructions well for this task, which is pattern matching against defined rules rather than open-ended reasoning.
 
 ## Error Handling
 

@@ -94,7 +94,7 @@ Output: arch.json → written to output-path
 
 ### REQ-1: Component Decomposition
 
-- REQ-1.1: Each component has: `name`, `category` (from `solid-category` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.2), `responsibility` (one sentence), `interfaces` (protocols it exposes), `dependencies` (protocols it consumes), `produces` (data types it outputs).
+- REQ-1.1: Each component has: `name`, `category` (from `solid-category` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.2), `stack` (from `solid-stack` vocabulary — see **solid-coder:create-type** SKILL.md Phase 3.3; empty array if pure Swift), `responsibility` (one sentence), `interfaces` (protocols it exposes), `dependencies` (protocols it consumes), `produces` (data types it outputs).
 - REQ-1.2: Follow **solid-coder:create-type** naming conventions (SKILL.md Phase 1): actor protocols use `-ing` suffix, subject protocols use `-able` suffix, general contracts use `-Providing` suffix.
 - REQ-1.3: Every dependency between components must be through a protocol — no concrete type references in the wiring.
 
@@ -106,37 +106,7 @@ Output: arch.json → written to output-path
 ### REQ-3: Output
 
 - REQ-3.1: The skill writes `arch.json` to the path specified by the `output-path` argument.
-- REQ-3.2: `arch.json` structure:
-  ```json
-  {
-    "spec_summary": "one-line summary of what's being built",
-    "components": [
-      {
-        "name": "ProductFetchService",
-        "category": "network",
-        "responsibility": "Fetches product data from REST API with pagination",
-        "interfaces": ["ProductReading"],
-        "dependencies": ["URLSessionProviding", "JSONDecoding"],
-        "produces": ["Product", "ProductPage"]
-      }
-    ],
-    "wiring": [
-      {
-        "from": "ProductListViewModel",
-        "to": "ProductReading",
-        "via": "init"
-      }
-    ],
-    "composition_root": "ProductListFactory or AppAssembly",
-    "data_models": [
-      {
-        "name": "Product",
-        "category": "model",
-        "fields": ["id: String", "name: String", "price: Decimal"]
-      }
-    ]
-  }
-  ```
+- REQ-3.2: `arch.json` must conform to the schema at `skills/plan/arch.schema.json`.
 
 ### Edge Cases
 

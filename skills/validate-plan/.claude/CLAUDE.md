@@ -15,7 +15,7 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 ## Inputs / Outputs
 
 - **Input**: `arch.json` path, `--output` path (no spec needed — `arch.json` contains `spec_summary`)
-- **Output**: `validation.json` — each component annotated with `create|reuse|adjust|conflict` status, matched files, confidence scores, and concrete adjustment actions
+- **Output**: `validation.json` — each component annotated with `create|reuse|adjust|conflict` status, matched files, confidence scores, and concrete adjustment actions. Schema: `skills/validate-plan/validation.schema.json`
 
 ## Pipeline
 

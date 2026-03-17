@@ -54,7 +54,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 - [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json`
 - [ ] 3.2 Use `active_principles` from the output — these are the principles to review
 - [ ] 3.3 For EACH active principle, prepare a Task call:
-    - subagent_type: `solid-coder:principle-review-agent`
+    - subagent_type: `solid-coder:apply-principle-review-agent`
     - prompt:
       ```
       principle: {NAME}

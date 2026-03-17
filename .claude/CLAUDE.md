@@ -61,10 +61,9 @@ Agent wrappers allow skills to run as subagents — enabling parallel execution 
 |-------|------|
 | `code-agent` | SOLID-compliant coding agent — loads principle rules as constraints |
 | `synthesize-fixes-agent` | Runs the holistic fix planner |
-| `principle-review-agent` | Runs a single-principle review |
+| `apply-principle-review-agent` | Runs a single-principle review |
 | `principle-review-fx-agent` | Runs a single-principle review + fix suggestion |
 | `plan-agent` | Architecture decomposition from a feature spec |
-| `refactor-implement-agent` | Implements a fix plan on a single file |
 | `validate-plan-agent` | Validates arch.json against the codebase (model: sonnet) |
 
 ## Principles (`references/`)

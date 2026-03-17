@@ -80,42 +80,7 @@ For each component, assign a status:
 
 ## Phase 6: Output
 
-- [ ] 6.1 Assemble `validation.json` with this structure:
-  ```json
-  {
-    "components": [
-      {
-        "name": "ComponentName",
-        "status": "create|reuse|adjust|conflict",
-        "matches": [
-          {
-            "file": "path/to/file.swift",
-            "type_name": "ExistingTypeName",
-            "existing_interfaces": ["ProtocolA"],
-            "match_confidence": "high|medium|low",
-            "adjustments": [
-              {
-                "action": "add_method|add_conformance|add_protocol|wrap_adapter|extend_generic",
-                "target": "TargetTypeOrProtocol",
-                "detail": "concrete description of the change",
-                "breaking": false,
-                "affected_files": []
-              }
-            ],
-            "notes": "Why this match was identified"
-          }
-        ],
-        "best_match": 0
-      }
-    ],
-    "summary": {
-      "create": 0,
-      "reuse": 0,
-      "adjust": 0,
-      "conflict": 0
-    }
-  }
-  ```
+- [ ] 6.1 Create structured output `validation.json` that corresponds to `${SKILL_DIR}/validation.schema.json`
 - [ ] 6.2 Validate:
   - Every component from `arch.json` has an entry
   - `best_match` is `null` when `status` is `create`, otherwise an index into `matches[]`

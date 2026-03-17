@@ -29,9 +29,8 @@ Current model assignment:
 | Agent | Current Model | Task Type |
 |-------|--------------|-----------|
 | `principle-review-fx-agent` | Opus | Following documented checklists |
-| `principle-review-agent` | Default | Following documented checklists |
+| `apply-principle-review-agent` | Default | Following documented checklists |
 | `synthesize-fixes-agent` | Opus | Deep cross-principle reasoning |
-| `refactor-implement-agent` | Opus | Following a plan with code snippets |
 | `code-agent` | Opus | Writing code with rules as constraints |
 | `prepare-review-input-agent` | Sonnet | Diff parsing + unit detection |
 | `validate-findings-agent` | Sonnet | Running Python script |
@@ -42,9 +41,8 @@ Current model assignment:
 | Agent | Suggested Model | Rationale |
 |-------|----------------|-----------|
 | `principle-review-fx-agent` | **Sonnet** | Checklist execution with documented metrics — mechanical |
-| `principle-review-agent` | **Sonnet** | Same reasoning |
+| `apply-principle-review-agent` | **Sonnet** | Same reasoning |
 | `synthesize-fixes-agent` | Opus (keep) | Genuine deep reasoning needed |
-| `refactor-implement-agent` | **Sonnet** | Implementing from detailed plan with code snippets provided |
 | `code-agent` | Opus (keep) | Needs reasoning to satisfy rules while writing |
 
 **Estimated savings**: ~50-60% token cost reduction per run. Review agents are the most parallelized (3x), so downgrading them has outsized impact.
@@ -57,13 +55,12 @@ Current model assignment:
 
 | Agent | Actual Model | Notes |
 |-------|-------------|-------|
-| `principle-review-agent` | `sonnet` | Review-only in refactor pipeline — already downgraded |
+| `apply-principle-review-agent` | `sonnet` | Review-only in refactor pipeline — already downgraded |
 | `principle-review-fx-agent` | `opus` | Review + fix in review pipeline — bundles two tasks |
 | `prepare-review-input-agent` | `haiku` | Cheaper than suggested sonnet |
 | `validate-findings-agent` | `haiku` | Cheaper than suggested sonnet |
 | `generate-report-agent` | `haiku` | Cheaper than suggested sonnet |
 | `synthesize-fixes-agent` | `opus` | Correct — needs deep reasoning |
-| `refactor-implement-agent` | `opus` | Could potentially be sonnet |
 | `code-agent` | `opus` | Correct — needs reasoning |
 
 **Remaining optimization:** `principle-review-fx-agent` uses opus because it bundles review + fix suggestions. Could split into sonnet review + separate opus fix-suggest for savings.

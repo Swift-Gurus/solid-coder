@@ -51,11 +51,10 @@ Each agent is a YAML frontmatter markdown file in `agents/` specifying:
 │ Agent                        │ Model   │ Role                               │
 ├──────────────────────────────┼─────────┼────────────────────────────────────┤
 │ prepare-review-input-agent   │ haiku   │ Normalizes input into JSON         │
-│ principle-review-agent       │ sonnet  │ Review only (no fix)               │
+│ apply-principle-review-agent  │ sonnet  │ Review only (no fix)               │
 │ principle-review-fx-agent    │ opus    │ Review + fix suggestion            │
 │ validate-findings-agent      │ haiku   │ Filters findings to changed ranges │
 │ synthesize-fixes-agent       │ opus    │ Cross-principle fix planning       │
-│ refactor-implement-agent     │ opus    │ Implements code changes from plan  │
 │ code-agent                   │ opus    │ Writes SOLID-compliant code        │
 │ generate-report-agent        │ haiku   │ Produces HTML report               │
 └──────────────────────────────┴─────────┴────────────────────────────────────┘

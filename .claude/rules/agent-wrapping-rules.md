@@ -53,11 +53,9 @@ For single-skill agents that are purely wrappers (no custom instructions), the b
 ## Naming Convention
 
 Agent names mirror the skill they wrap, with `-agent` suffix:
-- `apply-principle-review` → `principle-review-agent`
+- `apply-principle-review` → `apply-principle-review-agent`
 - `synthesize-fixes` → `synthesize-fixes-agent`
 - `code` → `code-agent`
-
-If the agent combines multiple skills or has a specialized role, use a descriptive name (e.g., `refactor-implement-agent`).
 
 ## Arguments
 

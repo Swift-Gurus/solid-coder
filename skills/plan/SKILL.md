@@ -35,10 +35,11 @@ For each identified behavior or capability, define a component.
 - [ ] 2.1 Use skill **solid-coder:create-type** skill for naming conventions and solid-category vocabulary - Don't create files
 - [ ] 2.2 Identify all types needed — services, ViewModels, views, models, protocols
 - [ ] 2.3 For each component, use  skill **solid-coder:create-type** conventions to determine:
-  - `name` 
-  - `category` 
-  - `responsibility` 
-  - `interfaces` 
+  - `name`
+  - `category`
+  - `stack` — from `solid-stack` vocabulary (see **solid-coder:create-type** SKILL.md Phase 3.3). Omit or use empty array `[]` if pure Swift with no framework dependencies.
+  - `responsibility`
+  - `interfaces`
   - `dependencies`
   - `produces`
 
@@ -73,43 +74,14 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 
 ## Phase 6: Output
 
-- [ ] 6.1 Assemble `arch.json` with structure:
-  ```json
-  {
-    "spec_summary": "one-line summary",
-    "components": [
-      {
-        "name": "ProductFetchService",
-        "category": "network",
-        "responsibility": "Fetches product data from REST API with pagination",
-        "interfaces": ["ProductReading"],
-        "dependencies": ["URLSessionProviding"],
-        "produces": ["Product", "ProductPage"]
-      }
-    ],
-    "wiring": [
-      {
-        "from": "ProductListViewModel",
-        "to": "ProductReading",
-        "via": "init"
-      }
-    ],
-    "composition_root": "ProductListFactory",
-    "data_models": [
-      {
-        "name": "Product",
-        "category": "model",
-        "fields": ["id: String", "name: String", "price: Decimal"]
-      }
-    ]
-  }
-  ```
+- [ ] 6.1 Create structured output `arch.json` that corresponds to `${SKILL_DIR}/arch.schema.json`
 - [ ] 6.2 Validate:
   - Every component `dependencies[]` entry appears as some component's `interfaces[]` entry
   - Every wiring `to` matches an existing protocol in some component's `interfaces[]`
   - Every wiring `from` matches an existing component `name`
   - No concrete types in `dependencies[]` — only protocol names
   - All `category` values are from the solid-category vocabulary
+  - All `stack` values are from the solid-stack vocabulary (see **solid-coder:create-type** Phase 3.3)
 
 - [ ] 6.3 Write `arch.json` to OUTPUT_PATH
 

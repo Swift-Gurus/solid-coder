@@ -141,7 +141,7 @@ Steps 1–3: Same as Review (Discover Principles + Prepare Input + Filter)
 
 Step 4: Parallel Principle Review (review only, no fix)
 ──────────────────────────────────────────────────────
-  Agent:  principle-review-agent × N (parallel)
+  Agent:  apply-principle-review-agent × N (parallel)
   Why:    Synthesis handles fix planning holistically — individual fix suggestions
           would be generated in isolation without cross-principle awareness
   Output: {OUTPUT_ROOT}/rules/{PRINCIPLE}/review-output.json
@@ -182,7 +182,7 @@ Step 6: Synthesize Fixes (Two-Pass)
 
 Step 7: Parallel Implementation
 ────────────────────────────────
-  Agent:  refactor-implement-agent × M (opus, parallel, one per file)
+  Agent:  code-agent × M (opus, parallel, one per file)
   Input:  plan.json for one file
   Action:
     - Read plan, order by depends_on graph + severity
