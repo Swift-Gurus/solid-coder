@@ -79,6 +79,11 @@ Create Preparation task list and execute it.
 ### Phase 3: Assembly & Output
 - [ ] 3.1 **Extract imports** (for folder/file/buffer modes) — Scan the loaded source code for `import <ModuleName>` statements. Collect unique module names into `detected_imports` array (sorted). For changes mode, the script already handles this.
 - [ ] 3.2 **Write structured output** - using defined schema write to `OUTPUT_PATH/review-input.json` (include `detected_imports` and `matched_tags`)
+- [ ] 3.3 **Validate output** — Run schema validation on the written file:
+  ```bash
+  python3 {SKILL_ROOT}/scripts/validate-output.py OUTPUT_PATH/review-input.json {SKILL_ROOT}/output.schema.json
+  ```
+  If validation fails, read the error message, fix the JSON to match the schema, re-write, and re-validate.
 
 ## Diff Parsing
 
