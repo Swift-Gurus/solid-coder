@@ -103,7 +103,7 @@ def find_specs_root(given: Optional[str]) -> Path:
 
 def load_all_specs(specs_root: Path) -> List[Dict[str, Any]]:
     specs = []
-    for md_file in sorted(specs_root.rglob("*.md")):
+    for md_file in sorted(specs_root.rglob("Spec.md")):
         content = md_file.read_text(encoding="utf-8")
         fm = parse_frontmatter(content)
         if not fm.get("number"):

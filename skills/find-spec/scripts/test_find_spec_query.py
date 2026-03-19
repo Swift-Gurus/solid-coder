@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for find-spec/scripts/spec-query.py"""
+"""Unit tests for find-spec/scripts/find-spec-query.py"""
 
 import json
 import os
@@ -21,8 +21,10 @@ def run(args: list, specs_root: str = None) -> tuple:
 
 
 def make_spec(folder: Path, number: str, feature: str, spec_type: str, status: str, parent: str = "") -> Path:
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{number}-{feature}.md"
+    """Create a spec as folder/Spec.md (new folder-per-spec convention)."""
+    spec_folder = folder / f"{number}-{feature}"
+    spec_folder.mkdir(parents=True, exist_ok=True)
+    path = spec_folder / "Spec.md"
     parent_line = f"parent: {parent}" if parent else ""
     path.write_text(f"---\nnumber: {number}\nfeature: {feature}\ntype: {spec_type}\nstatus: {status}\n{parent_line}\n---\n\n# {feature}\n")
     return path

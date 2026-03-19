@@ -168,8 +168,9 @@ For `epic` specs, validate-spec applies epic-specific rules (scope clarity, subt
   python3 @scripts/build-spec-query.py resolve-path <type> <SPEC-NNN> <slug> [--parent <parent-SPEC-NNN>]
   ```
   If non-zero exit: stop and report error.
-- [ ] 7.3 If `epic_mode = split`: write epic first (`status: ready`), then scaffold each child with frontmatter only — `number`, `feature`, `type`, `status: draft`, `parent: SPEC-{epic-N}`. No `blocked-by` wiring — dependencies are set later.
-- [ ] 7.4 Confirm to user with list of all files written.
+- [ ] 7.3 Create empty `resources/` directory alongside each `Spec.md` written.
+- [ ] 7.4 If `epic_mode = split`: write epic first (`status: ready`), then scaffold each child with frontmatter only — `number`, `feature`, `type`, `status: draft`, `parent: SPEC-{epic-N}`. No `blocked-by` wiring — dependencies are set later. Each child gets its own folder with `Spec.md` + `resources/`.
+- [ ] 7.5 Confirm to user with list of all files written.
 
 ---
 

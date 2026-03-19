@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for build-spec/scripts/spec-query.py"""
+"""Unit tests for build-spec/scripts/build-spec-query.py"""
 
 import json
 import os
@@ -21,8 +21,10 @@ def run(args: list, specs_root: str = None) -> tuple:
 
 
 def make_spec(folder: Path, number: str, feature: str, spec_type: str, status: str, parent: str = "") -> Path:
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / f"{number}-{feature}.md"
+    """Create a spec as folder/Spec.md (new folder-per-spec convention)."""
+    spec_folder = folder / f"{number}-{feature}"
+    spec_folder.mkdir(parents=True, exist_ok=True)
+    path = spec_folder / "Spec.md"
     parent_line = f"parent: {parent}" if parent else ""
     path.write_text(f"---\nnumber: {number}\nfeature: {feature}\ntype: {spec_type}\nstatus: {status}\n{parent_line}\n---\n\n# {feature}\n")
     return path
@@ -58,33 +60,37 @@ class TestResolvePath(unittest.TestCase):
             code, out, _ = run(["resolve-path", "epic", "SPEC-001", "my-epic"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("SPEC-001-my-epic/SPEC-001-my-epic.md"))
+            self.assertTrue(path.endswith("SPEC-001-my-epic/Spec.md"))
 
     def test_feature_under_epic(self):
         with TemporaryDirectory() as tmp:
-            make_spec(Path(tmp) / "SPEC-001-my-epic", "SPEC-001", "my-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-001", "my-epic", "epic", "draft")
             code, out, _ = run(["resolve-path", "feature", "SPEC-002", "my-feature", "--parent", "SPEC-001"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("features/SPEC-002-my-feature.md"))
+            self.assertTrue(path.endswith("features/SPEC-002-my-feature/Spec.md"))
 
     def test_subtask_under_feature(self):
         with TemporaryDirectory() as tmp:
-            feat_dir = Path(tmp) / "SPEC-001-epic" / "features"
+            epic_dir = Path(tmp)
+            make_spec(epic_dir, "SPEC-001", "epic", "epic", "draft")
+            feat_dir = epic_dir / "SPEC-001-epic" / "features"
             make_spec(feat_dir, "SPEC-002", "my-feature", "feature", "draft", "SPEC-001")
             code, out, _ = run(["resolve-path", "subtask", "SPEC-003", "my-subtask", "--parent", "SPEC-002"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("subtasks/SPEC-003-my-subtask.md"))
+            self.assertTrue(path.endswith("subtasks/SPEC-003-my-subtask/Spec.md"))
 
     def test_bug_under_feature(self):
         with TemporaryDirectory() as tmp:
-            feat_dir = Path(tmp) / "SPEC-001-epic" / "features"
+            epic_dir = Path(tmp)
+            make_spec(epic_dir, "SPEC-001", "epic", "epic", "draft")
+            feat_dir = epic_dir / "SPEC-001-epic" / "features"
             make_spec(feat_dir, "SPEC-002", "my-feature", "feature", "draft", "SPEC-001")
             code, out, _ = run(["resolve-path", "bug", "SPEC-003", "my-bug", "--parent", "SPEC-002"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("bugs/SPEC-003-my-bug.md"))
+            self.assertTrue(path.endswith("bugs/SPEC-003-my-bug/Spec.md"))
 
     def test_missing_parent_for_feature(self):
         with TemporaryDirectory() as tmp:
@@ -102,10 +108,10 @@ class TestResolvePath(unittest.TestCase):
 class TestUpdateStatus(unittest.TestCase):
     def test_updates_status_field(self):
         with TemporaryDirectory() as tmp:
-            make_spec(Path(tmp), "SPEC-001", "my-epic", "epic", "draft")
+            spec_path = make_spec(Path(tmp), "SPEC-001", "my-epic", "epic", "draft")
             code, out, _ = run(["update-status", "SPEC-001", "ready"], tmp)
             self.assertEqual(code, 0)
-            content = (Path(tmp) / "SPEC-001-my-epic.md").read_text()
+            content = spec_path.read_text()
             self.assertIn("status: ready", content)
 
     def test_returns_modified_list(self):
@@ -139,20 +145,20 @@ class TestUpdateStatus(unittest.TestCase):
 
     def test_propagates_ready_to_parent(self):
         with TemporaryDirectory() as tmp:
-            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            parent_path = make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
             make_spec(Path(tmp), "SPEC-002", "feat-a", "feature", "ready", "SPEC-001")
             make_spec(Path(tmp), "SPEC-003", "feat-b", "feature", "draft", "SPEC-001")
             run(["update-status", "SPEC-003", "ready"], tmp)
-            content = (Path(tmp) / "SPEC-001-root-epic.md").read_text()
+            content = parent_path.read_text()
             self.assertIn("status: ready", content)
 
     def test_propagates_done_to_parent(self):
         with TemporaryDirectory() as tmp:
-            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "ready")
+            parent_path = make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "ready")
             make_spec(Path(tmp), "SPEC-002", "feat-a", "feature", "done", "SPEC-001")
             make_spec(Path(tmp), "SPEC-003", "feat-b", "feature", "ready", "SPEC-001")
             run(["update-status", "SPEC-003", "done"], tmp)
-            content = (Path(tmp) / "SPEC-001-root-epic.md").read_text()
+            content = parent_path.read_text()
             self.assertIn("status: done", content)
 
 

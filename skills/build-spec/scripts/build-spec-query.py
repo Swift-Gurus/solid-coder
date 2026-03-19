@@ -10,12 +10,13 @@ Subcommands:
 
     resolve-path <type> <SPEC-NNN> <slug> [--parent <SPEC-NNN>] [--specs-root <path>]
                Return the output file path for a new spec.
+               Every spec is a folder containing Spec.md + resources/.
                Path rules:
-                 - Root epic (no parent) → .claude/specs/SPEC-N-slug/SPEC-N-slug.md
-                 - Child epic            → {parent-folder}/SPEC-N-slug/SPEC-N-slug.md
-                 - feature               → {parent-folder}/features/SPEC-N-slug.md
-                 - subtask               → {parent-folder}/features/subtasks/SPEC-N-slug.md
-                 - bug                   → {parent-folder}/features/bugs/SPEC-N-slug.md
+                 - Root epic (no parent) → .claude/specs/SPEC-N-slug/Spec.md
+                 - Child epic            → {parent-folder}/SPEC-N-slug/Spec.md
+                 - feature               → {parent-folder}/features/SPEC-N-slug/Spec.md
+                 - subtask               → {parent-folder}/features/subtasks/SPEC-N-slug/Spec.md
+                 - bug                   → {parent-folder}/features/bugs/SPEC-N-slug/Spec.md
 
     update-status <SPEC-NNN> <new-status> [--specs-root <path>]
                Write new status to spec file, then propagate up the hierarchy.
@@ -127,7 +128,7 @@ def find_specs_root(given: Optional[str]) -> Path:
 
 def load_all_specs(specs_root: Path) -> List[Dict[str, Any]]:
     specs = []
-    for md_file in sorted(specs_root.rglob("*.md")):
+    for md_file in sorted(specs_root.rglob("Spec.md")):
         content = md_file.read_text(encoding="utf-8")
         fm = parse_frontmatter(content)
         if not fm.get("number"):
@@ -182,10 +183,10 @@ def cmd_resolve_path(
         print(json.dumps({"error": "invalid_type", "message": f"'{spec_type}' must be one of: {', '.join(VALID_TYPES)}"}))
         sys.exit(1)
 
-    filename = f"{number}-{slug}.md"
+    folder_name = f"{number}-{slug}"
 
     if spec_type == "epic" and not parent_number:
-        path = specs_root / f"{number}-{slug}" / filename
+        path = specs_root / folder_name / "Spec.md"
     else:
         if not parent_number:
             print(json.dumps({"error": "missing_parent", "message": f"--parent is required for type '{spec_type}'"}))
@@ -197,13 +198,13 @@ def cmd_resolve_path(
             sys.exit(1)
         parent_folder = Path(parent["path"]).parent
         if spec_type == "epic":
-            path = parent_folder / f"{number}-{slug}" / filename
+            path = parent_folder / folder_name / "Spec.md"
         elif spec_type == "feature":
-            path = parent_folder / "features" / filename
+            path = parent_folder / "features" / folder_name / "Spec.md"
         elif spec_type == "subtask":
-            path = parent_folder / "features" / "subtasks" / filename
+            path = parent_folder / "features" / "subtasks" / folder_name / "Spec.md"
         elif spec_type == "bug":
-            path = parent_folder / "features" / "bugs" / filename
+            path = parent_folder / "features" / "bugs" / folder_name / "Spec.md"
 
     print(json.dumps({"path": str(path)}))
 

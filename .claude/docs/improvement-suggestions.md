@@ -1557,3 +1557,4 @@ Level 1 is preferred — it's cleaner to not produce empty artifacts than to fil
 | S-37 | Style rules separate pipeline | Medium | Medium | Not implemented — no mechanism for review-only rules | 2026-03-12 |
 | S-38 | Extend `prepare-review-input` context detection | Medium | Medium | Partial — imports + tag matching exist; test detection missing; semantic patterns LLM-dependent | 2026-03-12 |
 | S-40 | `solid-spec` frontmatter field — link types to requirement specs | Medium | Low | Future — validate current 4 fields first, add when spec workflow exists | — |
+| S-41 | Local MCP server for `references/` — language-scoped principle loading | Medium | Medium | Not implemented — would replace file-based `load-reference` with stdio MCP server; enables language namespacing (`principle://swift/SRP/rule`), server-side tag filtering, and partial section loading without reading whole files | — |

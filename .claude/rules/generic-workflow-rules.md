@@ -13,7 +13,7 @@ When making changes to a module (skill, agent, or principle):
 
 # Spec Lifecycle
 
-Specs start in `.claude/specs/` as drafts. When a spec is implemented and its module has a `.claude/CLAUDE.md`, the spec content moves into that module spec — **including the YAML frontmatter** (number, feature, status, blocked-by, blocking). Update `status` to `done` when moving. Then delete the original file from `.claude/specs/`.
+Specs start in `.claude/specs/` as drafts. Each spec is a folder (e.g. `SPEC-NNN-slug/`) containing `Spec.md` and an optional `resources/` directory for designs, images, and other materials. When a spec is implemented and its module has a `.claude/CLAUDE.md`, the spec content moves into that module spec — **including the YAML frontmatter** (number, feature, status, blocked-by, blocking). Update `status` to `done` when moving. Then delete the original spec folder from `.claude/specs/`.
 
 This keeps the spec traceable (the number and dependency chain stay with the module) while eliminating the duplicate.
 
@@ -23,7 +23,7 @@ This keeps the spec traceable (the number and dependency chain stay with the mod
 
 Before starting implementation of any spec, validate that all `blocked-by` dependencies have `status: done`. Specs may live in two places:
 
-1. `.claude/specs/SPEC-NNN-*.md` — draft specs not yet implemented
+1. `.claude/specs/**/Spec.md` — draft specs not yet implemented (each in its own folder)
 2. `*/.claude/CLAUDE.md` — implemented specs (moved into their module)
 
 **Validation procedure:**
