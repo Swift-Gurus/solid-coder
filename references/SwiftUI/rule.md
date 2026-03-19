@@ -123,6 +123,32 @@ A view referencing a concrete ViewModel class is sealed to that implementation.
 |----------|------|-------------------|----------|     
 | | | | |                                                                                                                                                                                                                             
 
+### SUI-5: Preview-Only View Containment
+
+Detect views that exist solely for Xcode Previews but are declared at file scope, causing them to ship in the production binary.
+
+**Definition:** A view whose only purpose is visual validation in Xcode Previews (design token galleries, component showcases, layout experiments) must be defined entirely inside a `#Preview` block or `PreviewProvider` struct. The compiler strips `#Preview` blocks and `PreviewProvider` types from release builds, so code inside them never ships. Views and helper types declared at file scope — even if only referenced from `#Preview` — are included in the binary as dead code.
+
+**Detection:**
+
+1. **Identify file-scope view structs** — list every `struct` conforming to `View` declared at file scope (not nested inside `#Preview`, `PreviewProvider`, or another type)
+2. **Identify file-scope helper types** — list every `struct`, `class`, or `enum` at file scope that does NOT conform to `View` but is only referenced by a preview-only view (support models, mock data, factory types)
+3. **For each file-scope view, check caller sites:**
+   - Search the file and codebase for references to this view outside of `#Preview` blocks and `PreviewProvider` structs
+   - If the view is referenced ONLY inside `#Preview` or `PreviewProvider` → mark as **PREVIEW_ONLY**
+   - If the view is referenced in production code (other views, app entry point, navigation) → mark as **PRODUCTION** — not a violation
+   - If the view has ZERO references anywhere (orphan) → mark as **PREVIEW_ONLY** (dead code)
+4. **For each PREVIEW_ONLY view**, also flag its helper types (step 2) as PREVIEW_ONLY
+5. **Score:**
+   - All file-scope views are PRODUCTION → COMPLIANT
+   - Any file-scope view is PREVIEW_ONLY → SEVERE
+
+**Result:**
+
+| Type | Name | Location | References | Classification |
+|------|------|----------|------------|----------------|
+| | | | | |
+
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
@@ -131,25 +157,28 @@ A view referencing a concrete ViewModel class is sealed to that implementation.
 5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
     - 1+ impure methods
     - Any nested child view with 3+ modifiers
     - Concrete VM injection
+    - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
 ---
 
 ## Quantitative Metrics Summary
-| ID    | Metric                | Threshold                                              | Severity  |
-|-------|-----------------------|--------------------------------------------------------|-----------|
-| SUI-0 | Exception             | Falls into exception category                          | COMPLIANT |
-| SUI-1 | Body complexity       | Nesting < 3, expressions < 5                           | COMPLIANT |
-| SUI-2 | View purity           | 0 impure methods                                       | COMPLIANT |
-| SUI-3 | Modifier chain length | All nested child modifiers <= 2                        | COMPLIANT |
-| SUI-4 | VM injection          | VM injected as an interface, view has generic signature | COMPLIANT |
-| SUI-1 | Body complexity       | Nesting >= 3 OR expressions >= 5                       | SEVERE    |
-| SUI-2 | View purity           | 1+ impure methods                                      | SEVERE    |
-| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers                | SEVERE    |
-| SUI-4 | VM injection          | VM injected as a concrete implementation               | SEVERE    |    
+| ID    | Metric                | Threshold                                                          | Severity  |
+|-------|-----------------------|--------------------------------------------------------------------|-----------|
+| SUI-0 | Exception             | Falls into exception category                                      | COMPLIANT |
+| SUI-1 | Body complexity       | Nesting < 3, expressions < 5                                       | COMPLIANT |
+| SUI-2 | View purity           | 0 impure methods                                                   | COMPLIANT |
+| SUI-3 | Modifier chain length | All nested child modifiers <= 2                                    | COMPLIANT |
+| SUI-4 | VM injection          | VM injected as an interface, view has generic signature            | COMPLIANT |
+| SUI-5 | Preview containment   | All file-scope views have production callers                       | COMPLIANT |
+| SUI-1 | Body complexity       | Nesting >= 3 OR expressions >= 5                                   | SEVERE    |
+| SUI-2 | View purity           | 1+ impure methods                                                  | SEVERE    |
+| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers                            | SEVERE    |
+| SUI-4 | VM injection          | VM injected as a concrete implementation                           | SEVERE    |    
+| SUI-5 | Preview containment   | Any file-scope view only referenced from #Preview/PreviewProvider  | SEVERE    | 
 ---

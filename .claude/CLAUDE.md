@@ -92,3 +92,15 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 - **Single-attempt patching** — if a cross-check fails and the patch also fails, mark as `unresolved`. The iteration loop is the retry mechanism, not the synthesizer.
 - **Unresolved findings** — not failures. They resurface as new findings in the next iteration's fresh review.
 - **Iteration loop** — stateless across iterations. Each re-runs a fresh review on modified files; no state carried forward.
+
+## Docs (`.claude/docs/`)
+
+| File | What's in it |
+|------|-------------|
+| @docs/overview.md | High-level plugin overview |
+| @docs/architecture.md | System architecture and data flow |
+| @docs/flows.md | Detailed pipeline execution flows |
+| @docs/decision-making.md | Design decisions and rationale |
+| @docs/improvements-open.md | Unimplemented improvement suggestions (18 items) |
+| @docs/improvements-partial.md | Partially implemented improvements (12 items) |
+| @docs/improvements-archive.md | Completed/resolved improvements (12 items) |

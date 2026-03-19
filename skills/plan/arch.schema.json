@@ -132,6 +132,24 @@
         "type": "string",
         "description": "A single design decision — verbatim from spec's Design Decisions section"
       }
+    },
+    "technical_requirements": {
+      "type": "array",
+      "description": "Verbatim technical requirements from the spec — type definitions, package structure, usage patterns, API signatures. Carried through the pipeline so the code agent has exact specifications.",
+      "items": {
+        "type": "object",
+        "required": ["section", "content"],
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Subsection heading from Technical Requirements (e.g., 'Package Structure', 'Type Definitions', 'Consumer Usage Pattern')"
+          },
+          "content": {
+            "type": "string",
+            "description": "Verbatim markdown content including code blocks — not summarized"
+          }
+        }
+      }
     }
   }
 }

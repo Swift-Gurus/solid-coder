@@ -40,7 +40,10 @@
       "Skill(solid-coder:parse-frontmatter)",
       "Bash(/usr/local/bin/python3:*)",
       "Read(//opt/homebrew/opt/python@3.14/**)",
-      "Read(//opt/homebrew/bin/**)"
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(for f in 438ddd23-ca0a-4875-8f3d-f5e342882080.jsonl e972c96d-ef1e-47f0-82b8-8fb62ef4bbfe.jsonl 4f4288cd-c7fd-449f-ae4c-588a4025beb8.jsonl 310a9143-60be-478e-911f-d455420dde01.jsonl f50303f4-3ee4-45e4-acbd-0c2f2a6d4b51.jsonl c58885af-9578-4de0-9ae9-e044f0c7bb54.jsonl 75baf622-f17b-416b-8f04-145b0f233f46.jsonl 8208d09a-e0d6-494c-aca1-935c73ca3460.jsonl)",
+      "Read(//Users/crowea/Developer/Swift-Gurus/solid-coder/skills/build-spec/scripts/**)",
+      "Bash(sort:*)"
     ]
   }
 }

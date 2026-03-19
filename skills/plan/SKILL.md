@@ -38,6 +38,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - **Acceptance criteria** — from each user story, extract the story text and its criteria list. Store as `acceptance_criteria[]` array of `{story, criteria[]}` objects.
   - **Design references** — from `## UI / Mockup` section: if ASCII mockup exists, store as `{type: "inline", content: <markdown>, label: <description>}`. If `resources/` files are referenced, store as `{type: "file", content: <path>, label: <description>}`. From `## Diagrams` section: store Mermaid diagrams as `{type: "inline", content: <mermaid>, label: <description>}`.
   - **Design decisions** — from `## Design Decisions` section: extract each decision as a verbatim string. Store as `design_decisions[]` string array.
+  - **Technical requirements** — from `## Technical Requirements` section (if present): extract each subsection as a `{section, content}` object. `section` is the subsection heading (e.g., "Package Structure", "Type Definitions"). `content` is the full markdown including code blocks — verbatim, not summarized. Store as `technical_requirements[]`.
 
 - [ ] 1.5 Write a one-line `spec_summary` of what's being built
 
@@ -86,6 +87,7 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
   - `acceptance_criteria[]` — verbatim from Phase 1.4
   - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)
   - `design_decisions[]` — verbatim from Phase 1.4
+  - `technical_requirements[]` — verbatim from Phase 1.4 (subsections with code blocks preserved)
 - [ ] 5.2 Validate:
   - Every component `dependencies[]` entry appears as some component's `interfaces[]` entry
   - Every wiring `to` matches an existing protocol in some component's `interfaces[]`
