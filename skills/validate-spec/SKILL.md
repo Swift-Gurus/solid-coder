@@ -28,9 +28,10 @@ Verify the spec has all required sections for its type:
 - [ ] 2.2 **feature / subtask**: Input / Output, User Stories, Connects To
 - [ ] 2.3 **epic**: User Stories, Features list (subtask breakdown)
 - [ ] 2.4 **bug**: Steps to Reproduce, Expected vs Actual, Affected Component
-- [ ] 2.5 **UI / Mockup** (conditional): if description or any user story mentions screens, views, components, or user interaction — `## UI / Mockup` section must be present and must not contain only a `<!-- TODO -->` placeholder
-- [ ] 2.6 **Diagrams completeness**: `## Diagrams` section must contain at least a connection diagram and a flow diagram. If the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors — a sequence diagram must also be present.
-- [ ] 2.7 Report missing sections as `structural` gaps
+- [ ] 2.5 **Technical Requirements** (conditional): `## Technical Requirements` section must be present for `subtask` specs. For `feature` specs, required only if description or user stories mention business logic, integration, APIs, or external systems. Not required for `epic` or `bug`.
+- [ ] 2.6 **UI / Mockup** (conditional): if description or any user story mentions screens, views, components, or user interaction — `## UI / Mockup` section must be present and must not contain only a `<!-- TODO -->` placeholder
+- [ ] 2.7 **Diagrams completeness**: `## Diagrams` section must contain at least a connection diagram and a flow diagram. If the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors — a sequence diagram must also be present.
+- [ ] 2.8 Report missing sections as `structural` gaps
 
 ## Phase 3: Buildability Scan
 

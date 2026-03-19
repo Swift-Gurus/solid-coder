@@ -154,17 +154,24 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
 
   Acceptance criteria rules: each criterion must be independently verifiable. No "works correctly", no "handles edge cases" — name the specific value, behavior, or condition.
 
-- [ ] 4.5 **UI / Mockup** (conditional) — if the description or any user story mentions screens, views, components, or user interaction:
+- [ ] 4.5 **Technical Requirements** (conditional) —
+  - **Subtask**: always ask.
+  - **Feature**: ask only if touching business logic or integration.
+  - **Epic / Bug**: skip.
+  - Ask using AskUserQuestion: "What technical constraints or requirements apply? Think about: specific APIs or frameworks, libraries/dependencies, error codes or failure modes, patterns to follow (or avoid), integration points with existing code."
+  - Free-text. Store answers for the `## Technical Requirements` section in the draft.
+
+- [ ] 4.6 **UI / Mockup** (conditional) — if the description or any user story mentions screens, views, components, or user interaction:
   - Generate an ASCII mockup of the UI layout.
   - Ask using AskUserQuestion: "Here's a mockup I sketched. Keep this, or will you provide a design/screenshot?"
   - If keep: embed mockup under `## UI / Mockup` in the draft.
   - If provide: insert `## UI / Mockup\n<!-- TODO: attach image or design -->` placeholder. validate-spec will flag this as a structural gap.
 
-- [ ] 4.6 **Dependency chain** — use skill **solid-coder:find-spec** with `scan --parent <parent_spec> --status draft,ready` to get siblings, then ask:
+- [ ] 4.7 **Dependency chain** — use skill **solid-coder:find-spec** with `scan --parent <parent_spec> --status draft,ready` to get siblings, then ask:
   - "Which specs must be done before this can start? (`blocked-by`)" — multi-select from results.
   - "Which specs are waiting on this to be done first? (`blocking`)" — multi-select from results.
 
-- [ ] 4.7 **Epic breakdown** (only if type is `epic`):
+- [ ] 4.8 **Epic breakdown** (only if type is `epic`):
   ```
   Here is a suggested feature breakdown:
   1. <feature 1>
@@ -177,7 +184,7 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
   ```
   Store choice as `epic_mode` (`single` or `split`).
 
-- [ ] 4.8 **Diagrams** — generate Mermaid diagrams from the collected answers:
+- [ ] 4.9 **Diagrams** — generate Mermaid diagrams from the collected answers:
   - **Connection diagram** (all types): upstream inputs, downstream consumers, sibling specs, external dependencies.
   - **Flow diagram** (all types):
     - Epic: high-level user journey across subtasks.
@@ -196,6 +203,7 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
 - **Bug report section** (bugs): steps to reproduce, expected vs actual, affected component
 - **Features section** (epics): ordered list with assigned spec numbers
 - **User Stories** (features/epics/subtasks): stories with acceptance criteria, type-differentiated depth
+- **Technical Requirements** (subtasks always, features if business logic/integration): APIs, libraries, error codes, patterns, integration points
 - **UI / Mockup** (conditional): ASCII mockup or `<!-- TODO: attach image or design -->` placeholder
 - **Diagrams**: Mermaid connection diagram, flow diagram, sequence diagram (if applicable)
 - **Connects To table**: upstream and downstream from interview answers
