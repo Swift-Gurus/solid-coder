@@ -11,12 +11,14 @@ Subcommands:
     resolve-path <type> <SPEC-NNN> <slug> [--parent <SPEC-NNN>] [--specs-root <path>]
                Return the output file path for a new spec.
                Every spec is a folder containing Spec.md + resources/.
-               Path rules:
-                 - Root epic (no parent) → .claude/specs/SPEC-N-slug/Spec.md
-                 - Child epic            → {parent-folder}/SPEC-N-slug/Spec.md
-                 - feature               → {parent-folder}/features/SPEC-N-slug/Spec.md
-                 - subtask               → {parent-folder}/features/subtasks/SPEC-N-slug/Spec.md
-                 - bug                   → {parent-folder}/features/bugs/SPEC-N-slug/Spec.md
+               Path depends on parent type:
+                 - Root epic (no parent)       → .claude/specs/SPEC-N-slug/Spec.md
+                 - Child epic (under epic)     → {parent}/SPEC-N-slug/Spec.md
+                 - feature (under epic)        → {parent}/features/SPEC-N-slug/Spec.md
+                 - subtask (under feature)     → {parent}/subtasks/SPEC-N-slug/Spec.md
+                 - subtask (under epic)        → {parent}/features/subtasks/SPEC-N-slug/Spec.md
+                 - bug (under feature)         → {parent}/bugs/SPEC-N-slug/Spec.md
+                 - bug (under epic)            → {parent}/features/bugs/SPEC-N-slug/Spec.md
 
     update-status <SPEC-NNN> <new-status> [--specs-root <path>]
                Write new status to spec file, then propagate up the hierarchy.
@@ -197,14 +199,21 @@ def cmd_resolve_path(
             print(json.dumps({"error": "not_found", "message": f"parent {parent_number} not found"}))
             sys.exit(1)
         parent_folder = Path(parent["path"]).parent
+        parent_type = parent.get("type", "")
         if spec_type == "epic":
             path = parent_folder / folder_name / "Spec.md"
         elif spec_type == "feature":
             path = parent_folder / "features" / folder_name / "Spec.md"
         elif spec_type == "subtask":
-            path = parent_folder / "features" / "subtasks" / folder_name / "Spec.md"
+            if parent_type == "feature":
+                path = parent_folder / "subtasks" / folder_name / "Spec.md"
+            else:
+                path = parent_folder / "features" / "subtasks" / folder_name / "Spec.md"
         elif spec_type == "bug":
-            path = parent_folder / "features" / "bugs" / folder_name / "Spec.md"
+            if parent_type == "feature":
+                path = parent_folder / "bugs" / folder_name / "Spec.md"
+            else:
+                path = parent_folder / "features" / "bugs" / folder_name / "Spec.md"
 
     print(json.dumps({"path": str(path)}))
 

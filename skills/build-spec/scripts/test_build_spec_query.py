@@ -71,6 +71,7 @@ class TestResolvePath(unittest.TestCase):
             self.assertTrue(path.endswith("features/SPEC-002-my-feature/Spec.md"))
 
     def test_subtask_under_feature(self):
+        """Subtask under feature parent → parent/subtasks/ (no features/ prefix)."""
         with TemporaryDirectory() as tmp:
             epic_dir = Path(tmp)
             make_spec(epic_dir, "SPEC-001", "epic", "epic", "draft")
@@ -79,9 +80,20 @@ class TestResolvePath(unittest.TestCase):
             code, out, _ = run(["resolve-path", "subtask", "SPEC-003", "my-subtask", "--parent", "SPEC-002"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("subtasks/SPEC-003-my-subtask/Spec.md"))
+            self.assertIn("SPEC-002-my-feature/subtasks/SPEC-003-my-subtask/Spec.md", path)
+            self.assertNotIn("features/subtasks", path.split("SPEC-002-my-feature/")[1])
+
+    def test_subtask_under_epic(self):
+        """Subtask under epic parent → parent/features/subtasks/."""
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "my-epic", "epic", "draft")
+            code, out, _ = run(["resolve-path", "subtask", "SPEC-002", "my-subtask", "--parent", "SPEC-001"], tmp)
+            self.assertEqual(code, 0)
+            path = json.loads(out)["path"]
+            self.assertIn("features/subtasks/SPEC-002-my-subtask/Spec.md", path)
 
     def test_bug_under_feature(self):
+        """Bug under feature parent → parent/bugs/ (no features/ prefix)."""
         with TemporaryDirectory() as tmp:
             epic_dir = Path(tmp)
             make_spec(epic_dir, "SPEC-001", "epic", "epic", "draft")
@@ -90,7 +102,17 @@ class TestResolvePath(unittest.TestCase):
             code, out, _ = run(["resolve-path", "bug", "SPEC-003", "my-bug", "--parent", "SPEC-002"], tmp)
             self.assertEqual(code, 0)
             path = json.loads(out)["path"]
-            self.assertTrue(path.endswith("bugs/SPEC-003-my-bug/Spec.md"))
+            self.assertIn("SPEC-002-my-feature/bugs/SPEC-003-my-bug/Spec.md", path)
+            self.assertNotIn("features/bugs", path.split("SPEC-002-my-feature/")[1])
+
+    def test_bug_under_epic(self):
+        """Bug under epic parent → parent/features/bugs/."""
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "my-epic", "epic", "draft")
+            code, out, _ = run(["resolve-path", "bug", "SPEC-002", "my-bug", "--parent", "SPEC-001"], tmp)
+            self.assertEqual(code, 0)
+            path = json.loads(out)["path"]
+            self.assertIn("features/bugs/SPEC-002-my-bug/Spec.md", path)
 
     def test_missing_parent_for_feature(self):
         with TemporaryDirectory() as tmp:
