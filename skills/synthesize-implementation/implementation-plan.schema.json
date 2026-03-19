@@ -45,6 +45,36 @@
           "notes": {
             "type": "string",
             "description": "Human-readable context — why this action was chosen, what reconciliation decided"
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Acceptance criteria this plan item must fulfill — verbatim from spec. For modify actions, only unsatisfied criteria (not already met by existing code)."
+          },
+          "design_references": {
+            "type": "array",
+            "description": "Design assets relevant to this plan item — inline mockups/diagrams or file paths.",
+            "items": {
+              "type": "object",
+              "required": ["type", "content"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["inline", "file"]
+                },
+                "content": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "design_decisions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Design decisions from the spec that apply to this plan item — constraints the code agent must respect."
           }
         }
       }

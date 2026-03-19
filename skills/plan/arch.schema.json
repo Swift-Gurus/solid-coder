@@ -82,6 +82,56 @@
     "composition_root": {
       "type": "string",
       "description": "Name of the factory or assembly point where concrete types are wired together"
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "description": "Verbatim acceptance criteria from the spec's user stories. Carried through the pipeline so downstream phases can verify fulfillment.",
+      "items": {
+        "type": "object",
+        "required": ["story", "criteria"],
+        "properties": {
+          "story": {
+            "type": "string",
+            "description": "The user story this criterion belongs to (e.g., 'As a user, I want to filter products')"
+          },
+          "criteria": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Individual acceptance criteria — verbatim from spec, not summarized"
+          }
+        }
+      }
+    },
+    "design_references": {
+      "type": "array",
+      "description": "Design assets and mockups from the spec. Includes inline markdown (ASCII mockups, Mermaid diagrams) and file paths to resources/.",
+      "items": {
+        "type": "object",
+        "required": ["type", "content"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["inline", "file"],
+            "description": "inline: content is the markdown/ASCII directly. file: content is a path to a resource file."
+          },
+          "content": {
+            "type": "string",
+            "description": "The design content (inline markdown) or file path (relative to spec)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Short description of what this design shows (e.g., 'Main screen layout', 'Data flow diagram')"
+          }
+        }
+      }
+    },
+    "design_decisions": {
+      "type": "array",
+      "description": "Verbatim design decisions from the spec. The planner uses these to inform architecture, and they flow downstream so no phase contradicts them.",
+      "items": {
+        "type": "string",
+        "description": "A single design decision — verbatim from spec's Design Decisions section"
+      }
     }
   }
 }

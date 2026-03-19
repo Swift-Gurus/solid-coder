@@ -14,6 +14,8 @@ A sub-skill that reads a feature spec and produces a high-level architecture dec
 
 The architect is a **black-box**: it does NOT check the codebase for existing types. It designs the ideal solution from the spec alone. Codebase reconciliation (finding duplicates, reusing existing types) is the responsibility of the validator (SPEC-003).
 
+When the spec has a `parent` field, the planner loads ancestor specs for context (scope boundaries, shared types, patterns). It also extracts and carries forward verbatim: acceptance criteria, design references (mockups, diagrams, resource paths), and design decisions. These flow through `arch.json` to downstream phases so nothing is lost or summarized.
+
 When called by `/implement`, the orchestrator provides the output path. When called standalone for testing, the caller provides the output path directly.
 
 ## Input
@@ -28,12 +30,17 @@ Input: spec (prompt or markdown filepath) + output-path
           │
           ▼
 ┌──────────────────────────────────┐
-│ 1. Parse spec                    │
+│ 1. Parse spec & load context     │
+│    - Load ancestors (if parent)  │
 │    - Extract user stories        │
 │    - Extract data models         │
 │    - Extract behaviors           │
 │    - Extract requirements/flows  │
+│    - Extract technical reqs      │
 │    - Extract definition of done  │
+│    - Carry forward verbatim:     │
+│      acceptance criteria,        │
+│      design refs, design decs    │
 └──────────┬───────────────────────┘
            │
            ▼
@@ -76,6 +83,8 @@ Output: arch.json → written to output-path
 
 | Skill | Relationship |
 |-------|-------------|
+| **solid-coder:parse-frontmatter** | Phase 1 — extract `parent` field to determine if ancestors exist |
+| **solid-coder:find-spec** | Phase 1 — load ancestor specs via `ancestors` subcommand |
 | **solid-coder:create-type** | Phase 2 — naming conventions and solid-category vocabulary (read only, don't create files) |
 | **solid-coder:discover-principles** | Phase 3 — discover and filter active principles by component tags |
 | **solid-coder:load-reference** | Phase 3 — load active principle rule.md content (frontmatter stripped) |
@@ -103,6 +112,7 @@ Output: arch.json → written to output-path
 
 - REQ-3.1: The skill writes `arch.json` to the path specified by the `output-path` argument.
 - REQ-3.2: `arch.json` must conform to the schema at `skills/plan/arch.schema.json`.
+- REQ-3.3: `arch.json` must include `acceptance_criteria[]` (verbatim from spec), `design_references[]` (inline mockups/diagrams + resource paths), and `design_decisions[]` (verbatim from spec). These are carried through the pipeline — not summarized.
 
 ### Edge Cases
 

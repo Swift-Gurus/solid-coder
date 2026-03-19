@@ -59,6 +59,16 @@
                 "notes": {
                   "type": "string",
                   "description": "Why this match was identified"
+                },
+                "satisfied_criteria": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Acceptance criteria (verbatim from arch.json) that the existing code already satisfies. Empty array if none."
+                },
+                "unsatisfied_criteria": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Acceptance criteria (verbatim from arch.json) that the existing code does NOT satisfy — gaps the synthesizer needs to address. Empty array if none."
                 }
               }
             }

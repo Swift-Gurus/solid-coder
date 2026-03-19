@@ -21,7 +21,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 
 - [ ] 0.1 Parse arguments. If `--refs-root` is missing, abort with error: "Missing required --refs-root argument."
 - [ ] 0.2 If `--output` is missing, abort with error: "Missing required --output argument."
-- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields.
+- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, and `design_decisions[]` — these are used to enrich directives in Phase 2.
 - [ ] 0.4 Read `validation.json` from VALIDATION_PATH. Verify it has `components` and `summary`. If any are missing, abort with error listing missing fields.
 
 ## Phase 1: Discover & Load Principles
@@ -79,6 +79,16 @@ FOR EACH component in `arch.json` DO:
   - [ ] 2.2.5 If >5 consumers, flag in `notes` that this is a high-impact change
 
 END (per component)
+
+## Phase 2.5: Enrich Directives
+
+For each plan item produced in Phase 2, enrich its `directive` with spec context from `arch.json`:
+
+- [ ] 2.5.1 **Acceptance criteria** — find criteria from `arch.json.acceptance_criteria[]` relevant to this plan item's component. For `modify` actions, also check `validation.json` matches — include only `unsatisfied_criteria[]` (criteria the existing code doesn't meet). Append to the directive: "Must fulfill: <criteria list>".
+
+- [ ] 2.5.2 **Design references** — if the component is a view, screen, or UI-related (`category` contains view, screen, modifier, or `stack` contains swiftui): find relevant `design_references[]` from `arch.json`. For `inline` type: embed the mockup/diagram markdown directly in the directive. For `file` type: include the path as "Reference design: <path>".
+
+- [ ] 2.5.3 **Design decisions** — scan `design_decisions[]` from `arch.json` for decisions that apply to this component (mention the component's type, pattern, or domain). Include applicable decisions in the directive as "Design constraint: <decision>".
 
 ## Phase 3: Order Plan Items
 

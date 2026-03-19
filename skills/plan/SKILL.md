@@ -15,22 +15,35 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 - SPEC: $ARGUMENTS[0] — a prompt string OR a filepath to a markdown spec file. If a filepath is provided (ends in `.md`), read the file. Otherwise use the string directly.
 - OUTPUT_PATH: value after `--output` flag — filepath where `arch.json` will be written (e.g., `./arch.json`). Parent directories are created automatically.
 
-## Phase 1: Parse Spec
+## Phase 1: Parse Spec & Load Context
 
 - [ ] 1.1 Determine if SPEC is a filepath or prompt string
   - If filepath (ends in `.md` and file exists) → read the file contents
   - Otherwise → use the string as-is
-- [ ] 1.2 Extract from the spec:
+
+- [ ] 1.2 **Load ancestors** (only if SPEC is a filepath with frontmatter containing a `parent` field):
+  - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `parent`
+  - If `parent` exists (e.g., `SPEC-005`): use skill **solid-coder:find-spec** with `ancestors <parent-SPEC-NNN>`. Read each file in the returned `path` fields (root → leaf). Hold all content as ancestor context.
+  - Ancestor context informs architectural decisions (scope boundaries, shared types, patterns established by parent features) but is NOT included in arch.json output.
+
+- [ ] 1.3 Extract from the spec:
   - **User stories / features** — what the user can do
   - **Data models** — nouns/entities mentioned
   - **Behaviors** — actions, transformations, side effects
-  - **Requirements** - flows, edge-cases
-  - **Definition of done** - check list to see if the arch will resolve them
-- [ ] 1.3 Write a one-line `spec_summary` of what's being built
+  - **Requirements** — flows, edge-cases
+  - **Technical Requirements** — APIs, libraries, patterns, constraints (if present)
+  - **Definition of done** — checklist to verify the arch resolves them
+
+- [ ] 1.4 **Extract carry-forward fields** (verbatim, not summarized):
+  - **Acceptance criteria** — from each user story, extract the story text and its criteria list. Store as `acceptance_criteria[]` array of `{story, criteria[]}` objects.
+  - **Design references** — from `## UI / Mockup` section: if ASCII mockup exists, store as `{type: "inline", content: <markdown>, label: <description>}`. If `resources/` files are referenced, store as `{type: "file", content: <path>, label: <description>}`. From `## Diagrams` section: store Mermaid diagrams as `{type: "inline", content: <mermaid>, label: <description>}`.
+  - **Design decisions** — from `## Design Decisions` section: extract each decision as a verbatim string. Store as `design_decisions[]` string array.
+
+- [ ] 1.5 Write a one-line `spec_summary` of what's being built
 
 ## Phase 2: Decompose into Components
 
-For each identified behavior or capability, define a component.
+For each identified behavior or capability, define a component. Respect `design_decisions[]` — if the spec prescribes a pattern (e.g., "use coordinator pattern", "prefer value types"), the decomposition must follow it.
 
 - [ ] 2.1 Use skill **solid-coder:create-type** skill for naming conventions and solid-category vocabulary - Don't create files
 - [ ] 2.2 Identify all types needed — services, ViewModels, views, data models, protocols
@@ -68,7 +81,11 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 
 ## Phase 5: Output
 
-- [ ] 5.1 Create structured output `arch.json` that corresponds to `${SKILL_DIR}/arch.schema.json`
+- [ ] 5.1 Create structured output `arch.json` that corresponds to `${SKILL_DIR}/arch.schema.json`. Include:
+  - `spec_summary`, `components`, `wiring`, `composition_root` (existing)
+  - `acceptance_criteria[]` — verbatim from Phase 1.4
+  - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)
+  - `design_decisions[]` — verbatim from Phase 1.4
 - [ ] 5.2 Validate:
   - Every component `dependencies[]` entry appears as some component's `interfaces[]` entry
   - Every wiring `to` matches an existing protocol in some component's `interfaces[]`

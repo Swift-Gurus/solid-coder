@@ -17,7 +17,7 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
 
 ## Phase 0: Prep — Generate Synonyms
 
-- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context.
+- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context. Note `acceptance_criteria[]` and `design_decisions[]` for use in Phase 3.
 - [ ] 0.2 For each component in `arch.json`:
   - Split `responsibility` into keywords (remove stop words: the, a, an, is, are, with, from, for, to, of, and, or, in, on, by, that, this, it)
   - Add `category`
@@ -63,6 +63,7 @@ Iterate over each matched file from the combined results. For each file, analyze
   - `existing_fields` — field declarations (for structs/classes with `solid-category: model`)
 - [ ] 3.3 For each architect component that could relate to this file:
   - Compare the file's responsibility, interfaces, fields against the component's `responsibility`, `interfaces`, `dependencies`, `fields`.
+  - Check `acceptance_criteria[]` from `arch.json` — for criteria related to this component, note which ones the existing code already satisfies and which it does not. Record in `satisfied_criteria[]` and `unsatisfied_criteria[]`.
   - Record specific `differences` — concrete mismatches the synthesizer needs to make decisions:
     - Field differences: `"field name: String? vs expected name: String"`, `"missing field email: String"`
     - Interface differences: `"missing protocol conformance to ProductReading"`, `"has extra conformance to Cacheable"`
