@@ -41,6 +41,7 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 
 ## Design Decisions
 
+- **Rewrite mode bypass**: When `arch.json` has `mode: "rewrite"`, all search and analysis phases are skipped. Every component is classified as `create` with empty `matches[]`. This supports greenfield rebuilds where existing code is intentionally being replaced, not reused. The orchestrator doesn't need to know about rewrite mode — validate-plan handles it internally.
 - **Script is component-agnostic**: Returns all files matching any synonym. The LLM maps files to components in Phase 3. This keeps the script simple and reusable.
 - **Synonym generation is LLM-driven**: The LLM generates domain-aware synonyms (3 per keyword) rather than using a static thesaurus. Passed as JSON string directly — no temp file.
 - **matched_terms[] per file**: Helps the LLM understand why a file was returned, informing confidence scoring.

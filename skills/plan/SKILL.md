@@ -40,7 +40,9 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - **Design decisions** — from `## Design Decisions` section: extract each decision as a verbatim string. Store as `design_decisions[]` string array.
   - **Technical requirements** — from `## Technical Requirements` section (if present): extract each subsection as a `{section, content}` object. `section` is the subsection heading (e.g., "Package Structure", "Type Definitions"). `content` is the full markdown including code blocks — verbatim, not summarized. Store as `technical_requirements[]`.
 
-- [ ] 1.5 Write a one-line `spec_summary` of what's being built
+- [ ] 1.5 **Extract mode** — if the spec frontmatter contains a `mode` field (e.g., `mode: rewrite`), store it. Otherwise default to `"default"`. This is passed through to arch.json unchanged.
+
+- [ ] 1.6 Write a one-line `spec_summary` of what's being built
 
 ## Phase 2: Decompose into Components
 
@@ -83,6 +85,7 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 ## Phase 5: Output
 
 - [ ] 5.1 Create structured output `arch.json` that corresponds to `${SKILL_DIR}/arch.schema.json`. Include:
+  - `mode` — from Phase 1.5 (`"default"` or `"rewrite"`)
   - `spec_summary`, `components`, `wiring`, `composition_root` (existing)
   - `acceptance_criteria[]` — verbatim from Phase 1.4
   - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)

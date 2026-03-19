@@ -15,6 +15,11 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
 - ARCH_JSON_PATH: $ARGUMENTS[0] — filepath to `arch.json` produced by `/plan`. Contains `spec_summary` for context.
 - OUTPUT_PATH: value after `--output` flag — filepath where `validation.json` will be written.
 
+## Phase -1: Check Mode
+
+- [ ] -1.1 Read `arch.json` from ARCH_JSON_PATH. Check `mode` field. If missing, treat as `"default"`.
+- [ ] -1.2 If `mode == "rewrite"`: skip Phases 0–4. Write `validation.json` to OUTPUT_PATH with every component from `arch.json` set to `status: "create"` and `matches: []`. Include `summary` with `create` = total component count, all others = 0. Jump to Phase 5 (Output) step 5.4 to write the file. Done.
+
 ## Phase 0: Prep — Generate Synonyms
 
 - [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context. Note `acceptance_criteria[]` and `design_decisions[]` for use in Phase 3.

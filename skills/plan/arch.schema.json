@@ -5,6 +5,11 @@
   "type": "object",
   "required": ["spec_summary", "components", "wiring", "composition_root"],
   "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["default", "rewrite"],
+      "description": "Pipeline mode from spec frontmatter. 'rewrite' causes validate-plan to skip search and classify all components as create. Defaults to 'default' if absent."
+    },
     "spec_summary": {
       "type": "string",
       "description": "One-line summary of what's being built"
