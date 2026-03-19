@@ -21,6 +21,7 @@ output_schema: output.schema.json
     - SUI-2 (view purity) → Move to ViewModel pattern (injected via interfaces, see examples and SUI-4 guidance)
     - SUI-3 (modifier chain) → Extract to Named Variable pattern
     - SUI-4 (VM injection) → Extract State + Actions protocols pattern (see examples)
+    - SUI-5 (Preview containment) → Move into #Preview block pattern (see examples)
     - Multiple → combine patterns as needed
 
 #### Phase 2: Identify Suggestions
@@ -32,6 +33,7 @@ output_schema: output.schema.json
     - [ ] For SUI-2: create ViewModel (if none exists by following SUI-4 guidance fix) or move impure methods to existing ViewModel, update view to read from ViewModel
     - [ ] For SUI-3: identify nested views with >2 modifiers, extract each to a `private var` with a descriptive name, replace inline usage with the variable reference
     - [ ] For SUI-4: extract State protocol (readable properties) and Actions protocol (methods the view triggers) from existing concrete ViewModel, add generic constraint to view, replace concrete property with protocol-typed properties
+    - [ ] For SUI-5: identify all file-scope views and helper types only referenced from `#Preview`/`PreviewProvider`, move their declarations inside the `#Preview` block, update the preview return to use the now-nested types
     - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix

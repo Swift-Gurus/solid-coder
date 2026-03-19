@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -119,16 +119,36 @@
                         "description": "Type of the VM property (if applicable)"
                       }
                     }
+                  },
+                  "preview_containment": {
+                    "type": "object",
+                    "required": ["preview_only_types"],
+                    "properties": {
+                      "preview_only_types": {
+                        "type": "array",
+                        "description": "File-scope types only referenced from #Preview/PreviewProvider. Empty array if all types have production callers.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "kind", "classification"],
+                          "properties": {
+                            "name": { "type": "string", "description": "Type name" },
+                            "kind": { "type": "string", "enum": ["view", "helper"], "description": "Whether it's a View struct or a supporting helper type" },
+                            "classification": { "type": "string", "enum": ["PREVIEW_ONLY", "PRODUCTION"], "description": "PREVIEW_ONLY if only referenced from preview blocks" }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
                     "modifier_chain_severity": { "type": "string" },
                     "vm_injection_severity": { "type": "string" },
+                    "preview_containment_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -151,7 +171,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },

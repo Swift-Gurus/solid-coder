@@ -14,7 +14,7 @@ A sub-skill that reads a feature spec and produces a high-level architecture dec
 
 The architect is a **black-box**: it does NOT check the codebase for existing types. It designs the ideal solution from the spec alone. Codebase reconciliation (finding duplicates, reusing existing types) is the responsibility of the validator (SPEC-003).
 
-When the spec has a `parent` field, the planner loads ancestor specs for context (scope boundaries, shared types, patterns). It also extracts and carries forward verbatim: acceptance criteria, design references (mockups, diagrams, resource paths), design decisions, and technical requirements (type definitions, package structure, API signatures, usage patterns). These flow through `arch.json` to downstream phases so nothing is lost or summarized.
+When the spec has a `parent` field, the planner loads ancestor specs for context (scope boundaries, shared types, patterns). It also extracts and carries forward verbatim: acceptance criteria (from user stories AND Definition of Done), design references (mockups, diagrams, resource paths), design decisions, and technical requirements (type definitions, package structure, API signatures, usage patterns). These flow through `arch.json` to downstream phases so nothing is lost or summarized. Definition of Done items are included as an additional `acceptance_criteria[]` entry with `story: "Definition of Done"` — this ensures DoD artifact requirements (e.g., "contains a `#Preview`") reach the synthesizer and code agent.
 
 When called by `/implement`, the orchestrator provides the output path. When called standalone for testing, the caller provides the output path directly.
 
@@ -40,6 +40,7 @@ Input: spec (prompt or markdown filepath) + output-path
 │    - Extract definition of done  │
 │    - Carry forward verbatim:     │
 │      acceptance criteria,        │
+│      DoD items (as criteria),    │
 │      design refs, design decs    │
 └──────────┬───────────────────────┘
            │

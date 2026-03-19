@@ -735,6 +735,107 @@ This enables a Claude Code session to autonomously implement an entire epic: bre
 
 ---
 
+## S-43: Rewrite mode for `/implement` pipeline — greenfield bypass in validate-plan
+
+**Impact**: High | **Effort**: Low | **Category**: Pipeline enhancement
+
+**Status**: Not implemented — design decided
+
+### Problem
+
+When rewriting an existing component from scratch (e.g., decomposing a monolithic `IAPManager`), the `/implement` pipeline's validate-plan phase finds the very types being rewritten and classifies them as `reuse` or `adjust`. The synthesizer then emits `modify` directives when the intent is to build from scratch with a clean architecture.
+
+### Decision: Handle in validate-plan, not the orchestrator
+
+The implement orchestrator still calls validate-plan normally. validate-plan itself detects `mode: rewrite` and short-circuits: skip all search phases (Phase 0 synonym generation, Phase 1+2 script search, Phase 1.5 name-based search, Phase 3 match analysis), classify all components as `create` with empty `matches[]`, and output a valid `validation.json`. The orchestrator doesn't need to know about rewrite mode.
+
+### Signal mechanism
+
+`mode: rewrite` in spec YAML frontmatter:
+
+```yaml
+---
+number: SPEC-042
+mode: rewrite
+---
+```
+
+The `build-spec-from-code` skill (S-44) auto-populates this field. The mode flows through: spec → arch.json (plan agent preserves frontmatter fields) → validate-plan reads it.
+
+### Why skip validation entirely (not exclude/filter)
+
+Considered alternatives:
+1. **Exclusion list** — validate-plan ignores specific rewrite-target files but searches everything else. Rejected: in a rewrite, the new architecture has its own interfaces. Integration with the old world is a separate concern.
+2. **New `replace` status** — validate-plan finds existing code but classifies as `replace` instead of `reuse`. Rejected: unnecessary complexity. The rewrite is a clean break.
+3. **Skip Phase 2 in orchestrator** — orchestrator skips validate-plan entirely and generates stub validation.json. Rejected: leaks mode awareness into the orchestrator. Cleaner for validate-plan to handle it internally.
+
+### Rewrite produces subtasks for integration
+
+The key insight: `build-spec-from-code` (S-44) doesn't just produce a rewrite spec — it produces subtasks:
+
+```
+existing code → build-spec-from-code → spec with subtasks:
+  ├── SPEC-NNN-1: rebuild component (mode: rewrite, skip validation)
+  ├── SPEC-NNN-2: bridge old interface → new interface
+  └── SPEC-NNN-3: migrate consumers (optional)
+```
+
+Subtask 1 runs `/implement` with `mode: rewrite` — pure greenfield. Subtask 2 runs `/implement` normally — validation finds the old types AND the newly created types, wires them via bridge/adapter pattern. This separates "build the new thing" from "integrate with the old thing."
+
+### Implementation plan
+
+1. **Spec frontmatter**: Add `mode` field (values: `default`, `rewrite`). Optional — absence means `default`.
+2. **plan agent**: Preserve `mode` from spec frontmatter into `arch.json` (pass-through, no special behavior).
+3. **validate-plan SKILL.md**: Add Phase -1 (before Phase 0): read `mode` from `arch.json`. If `mode == "rewrite"`, skip to Phase 5 and emit all-`create` validation.json.
+4. **validate-plan CLAUDE.md**: Document rewrite mode behavior.
+5. **No changes** to: implement orchestrator, synthesize-implementation, code agent, refactor.
+
+### Relationship to other suggestions
+
+- **Depends on S-44** (`build-spec-from-code`) — the skill that produces rewrite specs with subtasks
+- **S-42** (full automation loop) could chain rewrite subtasks automatically
+
+---
+
+## S-44: `build-spec-from-code` skill — analyze existing code and produce rewrite spec
+
+**Impact**: High | **Effort**: High | **Category**: New skill
+
+**Status**: Not implemented — design pending
+
+### Problem
+
+Before rewriting a component, someone needs to analyze the existing code, understand its responsibilities, interfaces, consumers, and pain points, then produce a spec describing the desired new architecture. Today this is manual.
+
+### Proposed skill
+
+`/build-spec-from-code <target>` — analyzes existing code and produces a rewrite spec through user interview.
+
+### Flow
+
+1. **Analyze**: Read the target code. Extract types, responsibilities, interfaces, dependencies, consumers.
+2. **Interview**: Ask the user what to change, what to keep, what the pain points are, what the desired architecture looks like.
+3. **Produce spec**: Write a spec with `mode: rewrite` in frontmatter describing the desired new architecture.
+4. **Generate subtasks**:
+   - Subtask 1: Rebuild component (`mode: rewrite`) — pure greenfield implementation
+   - Subtask 2: Bridge old interface → new interface (normal mode) — adapter/bridge wiring
+   - Subtask 3: Migrate consumers (optional, normal mode) — update call sites
+
+### Key design decisions
+
+- The spec describes the **desired** architecture, not "fix the current code." It's forward-looking.
+- Integration with the old world is explicitly separated into its own subtask. The rewrite itself is a clean break.
+- The user interview resolves ambiguity about what to keep vs what to redesign — same pattern as `/build-spec`.
+- The plan agent doesn't need rewrite-specific behavior — it decomposes whatever the spec describes.
+
+### Open questions
+
+- Should the analysis phase run existing `/review` to surface SOLID violations as input to the interview?
+- How deep should consumer analysis go? (direct callers only, or transitive?)
+- Should the bridge subtask always be generated, or only when the old interface has external consumers?
+
+---
+
 ## Open Suggestion Status Tracker
 
 | ID | Summary | Impact | Effort | Status | Verified |
@@ -757,3 +858,5 @@ This enables a Claude Code session to autonomously implement an entire epic: bre
 | S-40 | `solid-spec` frontmatter field — link types to requirement specs | Medium | Low | Future — validate current 4 fields first, add when spec workflow exists | — |
 | S-41 | Local MCP server for `references/` — language-scoped principle loading | Medium | Medium | Not implemented — would replace file-based `load-reference` with stdio MCP server | — |
 | S-42 | Full automation loop: spec → code → test → commit → PR | High | High | Not implemented — needs `next-ready-spec` script and orchestrator loop | — |
+| S-43 | Rewrite mode — greenfield bypass in validate-plan | High | Low | Not implemented — design decided, depends on S-44 | 2026-03-19 |
+| S-44 | `build-spec-from-code` skill — analyze existing code, produce rewrite spec with subtasks | High | High | Not implemented — design pending | 2026-03-19 |

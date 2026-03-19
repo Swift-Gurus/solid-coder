@@ -32,10 +32,10 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - **Behaviors** — actions, transformations, side effects
   - **Requirements** — flows, edge-cases
   - **Technical Requirements** — APIs, libraries, patterns, constraints (if present)
-  - **Definition of done** — checklist to verify the arch resolves them
+  - **Definition of Done** — the authoritative "done means done" checklist. Can contain both verification checks and code artifact requirements.
 
 - [ ] 1.4 **Extract carry-forward fields** (verbatim, not summarized):
-  - **Acceptance criteria** — from each user story, extract the story text and its criteria list. Store as `acceptance_criteria[]` array of `{story, criteria[]}` objects.
+  - **Acceptance criteria** — from each user story, extract the story text and its criteria list. Store as `acceptance_criteria[]` array of `{story, criteria[]}` objects. Then extract all Definition of Done items and append as an additional entry: `{story: "Definition of Done", criteria: [<each DoD item verbatim>]}`. This ensures DoD items flow through the pipeline alongside user story criteria.
   - **Design references** — from `## UI / Mockup` section: if ASCII mockup exists, store as `{type: "inline", content: <markdown>, label: <description>}`. If `resources/` files are referenced, store as `{type: "file", content: <path>, label: <description>}`. From `## Diagrams` section: store Mermaid diagrams as `{type: "inline", content: <mermaid>, label: <description>}`.
   - **Design decisions** — from `## Design Decisions` section: extract each decision as a verbatim string. Store as `design_decisions[]` string array.
   - **Technical requirements** — from `## Technical Requirements` section (if present): extract each subsection as a `{section, content}` object. `section` is the subsection heading (e.g., "Package Structure", "Type Definitions"). `content` is the full markdown including code blocks — verbatim, not summarized. Store as `technical_requirements[]`.

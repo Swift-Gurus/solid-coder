@@ -105,6 +105,7 @@ After writing all code, verify your output against every loaded rule:
 - [ ] 4.2 If any metric crosses a severity threshold into SEVERE, fix it inline
 - [ ] 4.3 If a fix introduces logic governed by a principle you haven't loaded yet, load that `rule.md` and check again
 - [ ] 4.4 Repeat until all loaded rules read COMPLIANT or MINOR on your output
+- [ ] 4.5 **Build & test** (conditional) — if build or test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
 
 Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems in place.
 
@@ -114,7 +115,6 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 - [ ] 5.2 Brief summary of what was done and key design decisions made
 
 ## Constraints
-
 - Follow the spec — do not invent scope beyond what was asked
 - The loaded `rule.md` files are the source of truth for what constitutes a violation. Do not invent additional rules
 - Always search the project before creating new protocols, wrappers, or abstractions
