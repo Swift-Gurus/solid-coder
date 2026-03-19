@@ -21,9 +21,10 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 
 1. **Phase 0 (LLM)**: Read `arch.json` (uses `spec_summary` for context), generate synonym keywords from component responsibilities/categories
 2. **Phase 1+2 (Script)**: `search-codebase.py` greps files for `solid-category`/`solid-description` frontmatter, matches against synonyms
-3. **Phase 3 (LLM)**: Read matched files, extract existing interfaces and fields, analyze responsibility fit, score confidence
-4. **Phase 4 (LLM)**: Classify each component as `create`, `reuse`, `adjust`, or `conflict`
-5. **Phase 5 (LLM)**: Assemble and write `validation.json`
+3. **Phase 1.5 (LLM)**: Name-based fallback — greps filenames and file contents for component names and synonyms (language-agnostic). Catches legacy code without frontmatter. Always runs; merges new hits into `matches[]`.
+4. **Phase 3 (LLM)**: Read matched files from both passes, extract existing interfaces and fields, analyze responsibility fit, score confidence
+5. **Phase 4 (LLM)**: Classify each component as `create`, `reuse`, `adjust`, or `conflict`
+6. **Phase 5 (LLM)**: Assemble and write `validation.json`
 
 ## Connections
 
@@ -49,10 +50,11 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 - **`create` means truly nothing found**: `create` status is only assigned when zero matches exist from Phase 3. If any match exists (even low confidence), it should be classified as `adjust` or `conflict` — never `create`. This ensures `matches[]` is always empty for `create` and the synthesizer gets the full picture for other statuses.
 - **`adjust` is broad**: Covers interface changes, protocol conformance additions, enum case extensions, field additions — any case where the existing type's responsibility overlaps and it's cheaper to modify than create new.
 - **Data models are components**: Components with `category: "model"` have `existing_fields` populated in matches. The `solid-category: model` frontmatter is the differentiation signal.
+- **Name-based fallback is language-agnostic**: Phase 1.5 uses Grep/Glob on component names and synonyms — no hardcoded language patterns (`class`, `struct`, etc.). This works for any language in the codebase. Always runs alongside the frontmatter search; results merge into the same `matches[]`.
 
 ## Gotchas
 
-- Requires `solid-category` and `solid-description` frontmatter in codebase files — files without these are invisible to the search.
+- The script (Phase 1) only finds files with `solid-category`/`solid-description` frontmatter. Phase 1.5 compensates by searching filenames and contents for component names — catching legacy code without frontmatter.
 - `matches[]` is sorted by `match_confidence` descending — consumers take `matches[0]` for the best match.
 - The validator is read-only — it never modifies codebase files.
 - The validator does not prescribe actions — it reports what exists and classifies fit. The synthesizer decides remediation.

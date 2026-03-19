@@ -30,6 +30,8 @@ These are invoked directly by the user via slash commands:
 
 | Skill | Usage | What it does |
 |-------|-------|-------------|
+ | `build-spec` | `/build-spec <prompt>` | Interview-driven spec builder — classifies prompt, resolves ambiguity, writes spec file |
+| `implement` | `/implement <spec-file>` | Spec-to-code orchestrator — architects, validates, synthesizes, implements, and reviews a feature |
 | `refactor` | `/refactor <target> [--iterations N]` | Full review/synthesize/implement/iterate loop |
 | `code` | `/code <prompt or spec>` | Writes code with principle rules loaded as constraints |
 | `review` | `/review <target>` | Fans out parallel per-principle reviews across all matched principles |
@@ -49,7 +51,9 @@ These are triggered by other skills or agents — not directly by the user:
 | `discover-principles` | Discovers principles from `references/` and filters by input tags |
 | `validate-findings` | Filters findings to changed code only, reorganizes outputs by file |
 | `generate-report` | Produces HTML report from validated findings and suggestions |
+| `find-spec` | Navigates spec hierarchy interactively, returns selected spec. Used by build-spec |
 | `parse-frontmatter` | Parses YAML frontmatter from markdown files. Utility |
+| `validate-spec` | Checks a spec for buildability — flags vague terms, undefined types, implicit contracts. Used by build-spec Phase 4 |
 | `validate-plan` | Validates arch.json against the codebase — finds reusable types, conflicts, annotates components with reuse status |
 | `synthesize-implementation` | Reconciles arch.json + validation.json into ordered implementation plan of /code directives |
 | `load-reference` | Loads reference files with frontmatter stripped. Utility |

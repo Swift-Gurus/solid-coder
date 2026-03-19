@@ -57,6 +57,46 @@ Use the exact phrase: `use skill **solid-coder:<skill-name>** to <what it does>`
 
 The skill executor resolves the reference and handles invocation. The calling skill only needs to specify the skill name and arguments.
 
+# Invoking Skills as Subagents
+
+When a skill needs to run another skill as a **subagent** (isolated context, specific model), use the Task call pattern instead of inline skill references. This is the standard pattern for orchestrator skills that coordinate multi-phase workflows.
+
+**Pattern:**
+```markdown
+- [ ] N.1 Prepare a Task call:
+  - subagent_type: `solid-coder:<agent-name>`
+  - prompt:
+    ```
+    <arguments as key-value pairs>
+    ```
+- [ ] N.2 Launch Task
+- [ ] N.3 From the Task result, extract <what you need>
+  - If the Task failed, stop and report the error
+```
+
+**When to use subagents vs inline skills:**
+- **Subagent** (Task call): When the skill needs isolation, runs on a specific model, or could run in parallel with others. Always use the `-agent` wrapper (e.g., `plan-agent`, not `plan`).
+- **Inline skill** (`**solid-coder:<skill>**`): For lightweight utilities that run in the caller's context (e.g., `parse-frontmatter`, `load-reference`, `discover-principles`).
+
+**For parallel execution**, prepare multiple Task calls and launch ALL in a SINGLE message:
+```markdown
+- [ ] N.3 For EACH item, prepare a Task call:
+    - subagent_type: `solid-coder:<agent-name>`
+    - prompt: ...
+- [ ] N.4 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
+- [ ] N.5 Wait for all to complete
+```
+
+# Scripts and Tests
+
+When a skill includes Python scripts, run the tests before considering the work done:
+```
+cd skills/<skill-name>/scripts && python3 test_<script-name>.py -v
+```
+Tests use `subprocess` to call the script directly — no imports needed. Always use `sys.executable` in tests so they run with the same Python as the caller.
+
+If the script uses syntax that requires a specific Python version, check `python3 --version` first and rewrite to be compatible if needed.
+
 # Rules Are the Source of Truth
 
 When a loaded rule explains how to do something (e.g., agent-wrapping-rules explains agent file structure), follow the rule directly. Do not read existing files "for reference" to verify the rule — that is redundant and wastes context.

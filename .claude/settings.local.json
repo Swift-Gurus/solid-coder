@@ -36,7 +36,11 @@
       "WebFetch(domain:docs.claude.ai)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(cat:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Skill(solid-coder:parse-frontmatter)",
+      "Bash(/usr/local/bin/python3:*)",
+      "Read(//opt/homebrew/opt/python@3.14/**)",
+      "Read(//opt/homebrew/bin/**)"
     ]
   }
 }

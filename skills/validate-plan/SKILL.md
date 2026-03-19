@@ -34,11 +34,25 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
     --sources <sources-dir> \
     --synonyms '<json-array-string>'
   ```
-- [ ] 1.2 Parse the JSON output. If `files_matched` is 0, skip to Phase 4 and classify everything as `create`.
+- [ ] 1.2 Parse the JSON output.
+
+## Phase 1.5: Name-Based Search (LLM)
+
+A language-agnostic fallback that catches legacy code without solid-frontmatter. Always runs regardless of Phase 1 results.
+
+- [ ] 1.5.1 For each component in `arch.json`, collect search terms:
+  - The component `name` (e.g., `ProductRepository`)
+  - Key words from the component `name` split on camelCase/PascalCase boundaries (e.g., `Product`, `Repository`)
+  - The synonym keywords from Phase 0
+- [ ] 1.5.2 For each search term, use Grep to search filenames and file contents across the codebase. Use Glob to find files whose names contain the term.
+- [ ] 1.5.3 Collect any files found that are NOT already in `matches[]` from Phase 1.
+- [ ] 1.5.4 Merge new hits into `matches[]` with `matched_terms` set to the terms that matched. These go through the same Phase 3 analysis as frontmatter matches — no separate treatment.
 
 ## Phase 3: Match Analysis (LLM)
 
-Iterate over each matched file from the script output. For each file, analyze it against all architect components.
+If `matches[]` is empty after both Phase 1 and Phase 1.5, skip to Phase 4 and classify everything as `create`.
+
+Iterate over each matched file from the combined results. For each file, analyze it against all architect components.
 
 **FOR** each file in `matches[]` from script output **DO**:
 
