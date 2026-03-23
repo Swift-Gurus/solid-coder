@@ -2,7 +2,7 @@
 name: build-spec
 description: Interview-driven spec builder — creates, resumes, edits, and breaks down specs within the hierarchy.
 argument-hint: ""
-allowed-tools: Read, Write, Bash, AskUserQuestion
+allowed-tools: Read, Write, Bash, Skill, AskUserQuestion
 user-invocable: true
 ---
 
@@ -25,7 +25,8 @@ user-invocable: true
 - [ ] 0.1 If the user provided a spec number (e.g. `SPEC-003`) as an argument or in their prompt:
   - Look it up — use skill **solid-coder:find-spec** with `scan --status draft,ready,in-progress`. Find the matching spec in the results.
   - If not found: report error and stop.
-  - If found: load the spec, then ask using AskUserQuestion:
+  - If found: load the spec, then load ancestors — use skill **solid-coder:find-spec** with `ancestors <target-SPEC-NNN>`. Read each file in the returned `path` fields (root → leaf). Hold all content as context.
+  - Ask using AskUserQuestion:
     ```
     Found: SPEC-NNN — <feature> [<type>, <status>]
     What would you like to do?

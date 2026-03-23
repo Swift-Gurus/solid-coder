@@ -231,7 +231,7 @@ class TestIntegration:
         by_file.mkdir()
 
         output_data = {
-            "file": "/project/MyFile.swift",
+            "file_path": "/project/MyFile.swift",
             "timestamp": "2026-01-01T00:00:00Z",
             "principles": [
                 {

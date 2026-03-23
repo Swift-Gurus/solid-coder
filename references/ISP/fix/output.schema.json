@@ -2,12 +2,12 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ISP Fix Suggestion Output",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "file", "suggestions"],
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
   "properties": {
     "agent": { "const": "isp" },
     "principle": { "const": "Interface Segregation Principle" },
     "timestamp": { "type": "string", "format": "date-time" },
-    "file": {
+    "file_path": {
       "type": "string",
       "description": "Full path to the file being analyzed"
     },

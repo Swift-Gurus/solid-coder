@@ -55,12 +55,13 @@ spec file → Phase 1: /plan → arch.json
 - **Orchestrator never reads phase outputs** — only passes file paths between phases. This keeps the orchestrator thin and decoupled from schema changes.
 - **No loopback** — the synthesizer reconciles arch/validation conflicts. The orchestrator is strictly sequential.
 - **No short-circuit** — even when `plan_items[]` is empty (all reuse), all phases run. This keeps the orchestrator simple and predictable. Short-circuiting is a future improvement.
-- **Phase 5 uses `/refactor changes`** — stages all Phase 4 output via `git add`, then runs the same principle-driven review loop that `/refactor` uses, limited to 1 iteration.
+- **Phase 5 defaults to 1 iteration** — safety review runs by default. Use `--iterations 0` to skip. Stages all Phase 4 output via `git add`, then runs `/refactor changes --iterations N`.
+- **Logging is opt-in** — per-phase timestamps and `implement-log.json` only written when `--verbose` is passed. Default: off.
 - **Partial failure preserved** — if code-agent fails mid-plan, completed items are kept. No rollback.
 
 ## Gotchas
 
 - Input MUST be a spec file with frontmatter — inline prompts are not accepted.
 - The `number` field in frontmatter is used for the `OUTPUT_ROOT` directory name.
-- Phase 5 violations after the single pass are informational, not blocking — the implementation is considered complete.
-- `implement-log.json` records per-phase timing and status for debugging.
+- Phase 5 violations are informational, not blocking — the implementation is considered complete.
+- `implement-log.json` is only written when `--verbose` is used.

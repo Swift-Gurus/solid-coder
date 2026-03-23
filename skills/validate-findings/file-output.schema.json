@@ -3,9 +3,9 @@
   "title": "Validated File Output",
   "description": "Filtered findings and suggestions for a single file, grouped by principle.",
   "type": "object",
-  "required": ["file", "timestamp", "principles"],
+  "required": ["file_path", "timestamp", "principles"],
   "properties": {
-    "file": {
+    "file_path": {
       "type": "string",
       "description": "Full path to the source file"
     },

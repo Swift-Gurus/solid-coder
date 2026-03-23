@@ -219,7 +219,7 @@ def main():
     # Build summary rows
     summary_rows = []
     for fd in file_data:
-        file_path = fd.get("file", "")
+        file_path = fd.get("file_path", "")
         filename = os.path.basename(file_path)
         principles = fd.get("principles", [])
 
@@ -241,7 +241,7 @@ def main():
     # Build file sections
     file_sections = []
     for fd in file_data:
-        file_path = fd.get("file", "")
+        file_path = fd.get("file_path", "")
         filename = os.path.basename(file_path)
         principles = fd.get("principles", [])
 

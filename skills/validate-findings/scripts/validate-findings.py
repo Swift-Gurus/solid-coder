@@ -159,7 +159,7 @@ def main():
 
         # Process each file in review output
         for file_entry in review.get("files", []):
-            file_path = file_entry.get("file", "")
+            file_path = file_entry.get("file_path", "")
 
             # Support both unit-based (new) and flat (legacy) review output
             units = file_entry.get("units")
@@ -231,7 +231,7 @@ def main():
     for file_path, data in sorted(by_file.items()):
         filename = os.path.basename(file_path)
         output = {
-            "file": file_path,
+            "file_path": file_path,
             "timestamp": data["timestamp"],
             "principles": data["principles"],
         }

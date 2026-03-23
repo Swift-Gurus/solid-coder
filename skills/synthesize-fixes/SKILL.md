@@ -18,7 +18,7 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 - [ ] 1.1 Glob for `{OUTPUT_ROOT}/by-file/*.output.json`
 - [ ] 1.2 For each file output JSON, read the JSON — it contains `principles[]` with `findings[]` (suggestions may be empty)
-- [ ] 1.3 Read the source file referenced in the `file` field of each output
+- [ ] 1.3 Read the source file referenced in the `file_path` field of each output
 - [ ] 1.4 Collect the set of principle agent IDs (e.g., `srp`, `ocp`, `lsp`) that have **non-COMPLIANT** severity across all files
 - [ ] 1.5 If ALL files are COMPLIANT (no findings), write empty plans and stop
 
@@ -32,8 +32,8 @@ Load fix knowledge **only for principles that have findings** (keeps context bou
 - [ ] 2.3 **Load references** — Run:
   `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.2>`
 - [ ] 2.4 **Load fix knowledge** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {principle_folder}/fix/instructions.md {principle_folder}/refactoring.md {principle_folder}/rule.md`
-- [ ] 2.5 **Build a lookup:** `principle_id → { fix_instructions, refactoring_patterns, metrics, patterns, examples }`
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {principle_folder}/fix/instructions.md {principle_folder}/rule.md`
+- [ ] 2.5 **Build a lookup:** `principle_id → { fix_instructions, metrics, patterns, examples }`
 
 ## Phase 3: Draft Fix Actions
 
@@ -55,7 +55,7 @@ FOR each file that has non-COMPLIANT findings:
         - SRP extracts types that already have proper injection.
 
 FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:
-- [ ] Using ONLY that principle's `fix/instructions.md` + `refactoring.md` from the Phase 2 lookup
+- [ ] Using ONLY that principle's `fix/instructions.md` from the Phase 2 lookup
 - [ ] Generate a draft action:
   - `suggestion_id`: e.g., `draft-srp-001`
   - `principle`: the owning principle
@@ -163,7 +163,7 @@ END (per fix)
 
 - [ ] 7.1 Read the output schema from `${SKILL_DIR}/plan.schema.json`
 - [ ] 7.2 For each file, write `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` matching the schema:
-  - `file`: source file path
+  - `file_path`: source file path
   - `actions[]`: ordered list of fix actions, each with:
     - `suggestion_id`: generated ID (e.g., `holistic-fix-001`)
     - `principle`: primary principle this action addresses

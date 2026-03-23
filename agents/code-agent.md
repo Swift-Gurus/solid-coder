@@ -6,6 +6,8 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 skills:
   - create-type
   - discover-principles
+  - parse-frontmatter
+  - load-reference
   - code
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus

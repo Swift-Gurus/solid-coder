@@ -349,3 +349,36 @@ struct InvoiceView: View {
 **After refactoring:**
 - `InvoiceView`: 0 IMPURE → COMPLIANT
 - `InvoiceViewModel`: not a View — SUI-2 does not apply (SRP/OCP handle it)
+
+---
+
+## Two-Way Bindings with Protocol-Constrained ViewModels (SUI-4)
+
+When a view needs `$vm.property` bindings (TextField, Toggle, Picker, etc.) after refactoring to protocol-constrained generics, use a **local `@Bindable` wrap** — never manual `Binding(get:set:)`.
+
+```swift
+// State protocol exposes get set for bindable properties
+protocol SettingsState: Observable {
+    var name: String { get set }
+    var notificationsEnabled: Bool { get set }
+}
+
+protocol SettingsActions {
+    func save()
+}
+
+struct SettingsView<VM: SettingsState & SettingsActions>: View {
+    var vm: VM
+
+    var body: some View {
+        @Bindable var bindable = vm  // local wrap for $ projection
+        Form {
+            TextField("Name", text: $bindable.name)
+            Toggle("Notifications", isOn: $bindable.notificationsEnabled)
+            Button("Save") { vm.save() }
+        }
+    }
+}
+```
+
+**Key:** `@Bindable` works with protocol-constrained generics because the `Observable` conformance is guaranteed by the constraint. The local `@Bindable var bindable = vm` inside `body` gives access to the `$` projection. Manual `Binding(get:set:)` is a code smell with `@Observable` — it bypasses the observation system.

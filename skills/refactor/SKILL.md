@@ -1,7 +1,7 @@
 ---
 name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, then generates a holistic cross-principle fix plan, then implements it.
-argument-hint: [branch|changes|folder|file]
+argument-hint: [branch|changes|folder|file] [--iterations N] [--verbose]
 allowed-tools: Read, Glob, Bash, Write, Edit
 user-invocable: true
 ---
@@ -13,25 +13,14 @@ user-invocable: true
 - OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/refactor-<YYYYMMDDhhmmss>
 - MAX_ITERATIONS: 2
 - ITERATION: 1 (counter)
+- VERBOSE: false
 
-## Timing
+## Timing (verbose only)
 
-At the **start** of each major phase, capture a timestamp by running:
-```bash
-date -u +%Y-%m-%dT%H:%M:%SZ
-```
-Store timestamps in memory using these names:
-- `time_prepare_start`, `time_prepare_end`
-- `time_review_start`, `time_review_end`
-- `time_validate_start`, `time_validate_end`
-- `time_synthesize_start`, `time_synthesize_end`
-- `time_implement_start`, `time_implement_end`
-
-The "end" of one phase equals the "start" of the next (reuse the same timestamp to avoid redundant calls). Include all timestamps in `refactor-log.json` as the `phase_timings` object.
+When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +%Y-%m-%dT%H:%M:%SZ` and include them in `refactor-log.json` as the `phase_timings` object. When VERBOSE is off, skip all timestamp captures and omit `phase_timings` from logs.
 
 ## Phase 1: Discover Principles
-- [ ] 1.0 Capture timestamp → store as `time_prepare_start`
-- [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2
+- [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2. Extract `--verbose` flag → set VERBOSE.
 - [ ] 1.2 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH`
 - [ ] 1.3 Parse JSON output — extract `all_candidate_tags` and the full principle list
 
@@ -50,7 +39,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 
 ## Phase 3: Filter Principles & Launch Reviews (wait for phase 2)
 
-- [ ] 3.0 Capture timestamp → store as `time_prepare_end` AND `time_review_start`
+- [ ] 3.0 If VERBOSE: capture timestamp → store as `time_prepare_end` AND `time_review_start`
 - [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json`
 - [ ] 3.2 Use `active_principles` from the output — these are the principles to review
 - [ ] 3.3 For EACH active principle, prepare a Task call:
@@ -75,20 +64,19 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
   |-----------|----------|----------|-------------|
 
 - [ ] 4.4 List all output file paths
-- [ ] 4.5 If ALL principles are COMPLIANT (no findings), capture timestamp as `time_review_end`. Write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` including `phase_timings` for `prepare` and `review` (set validate/synthesize/implement to `null`). Stop.
+- [ ] 4.5 If ALL principles are COMPLIANT (no findings), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` (if VERBOSE: include `phase_timings`). Stop.
 - [ ] 4.6 Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-findings/scripts/check-severity.py {OUTPUT_ROOT}/{ITERATION}`
   - If output contains `MINOR_ONLY`:
-    - Capture timestamp → store as `time_review_end`
     - Write `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with:
       - `status: "all_compliant"`
       - `stop_reason`: the summary line from script output
-      - `phase_timings` with validate/synthesize/implement set to `null`
+      - If VERBOSE: include `phase_timings`
       - `minor_findings` array: read each `rules/*/review-output.json`, collect findings with severity MINOR
     - Print summary and STOP (do not proceed to Phase 5)
   - If output contains `HAS_SEVERE`: continue to Phase 5
 
 ## Phase 5: Validate Findings (wait for phase 4)
-- [ ] 5.0 Capture timestamp → store as `time_review_end` AND `time_validate_start`
+- [ ] 5.0 If VERBOSE: capture timestamp → store as `time_review_end` AND `time_validate_start`
 - [ ] 5.1 Prepare a Task call:
   - subagent_type: `solid-coder:validate-findings-agent`
   - prompt:
@@ -100,7 +88,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 
 ## Phase 6: Holistic Fix Planning (wait for phase 5)
 
-- [ ] 6.0 Capture timestamp → store as `time_validate_end` AND `time_synthesize_start`
+- [ ] 6.0 If VERBOSE: capture timestamp → store as `time_validate_end` AND `time_synthesize_start`
 - [ ] 6.1 Prepare a Task call:
   - subagent_type: `solid-coder:synthesize-fixes-agent`
   - prompt:
@@ -113,7 +101,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 
 ## Phase 7: Implement from Plans (wait for phase 6)
 
-- [ ] 7.0 Capture timestamp → store as `time_synthesize_end` AND `time_implement_start`
+- [ ] 7.0 If VERBOSE: capture timestamp → store as `time_synthesize_end` AND `time_implement_start`
 - [ ] 7.1 Glob for `{OUTPUT_ROOT}/{ITERATION}/synthesized/*.plan.json`
 - [ ] 7.2 For EACH plan JSON, prepare a Task call:
     - subagent_type: `solid-coder:code-agent`
@@ -126,14 +114,14 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 - [ ] 7.4 Wait for all to complete
 - [ ] 7.5 For EACH completed implement agent, write `{OUTPUT_ROOT}/{ITERATION}/implement/{base-filename}.refactor-log.json`:
   - `base-filename`: derived from the plan JSON filename (e.g., `MyClass` from `MyClass.plan.json`)
-  - `file`: the target file from the plan JSON's `file` field
+  - `file_path`: the target file from the plan JSON's `file_path` field
   - Classify files touched by the implement agent:
     - `files_created`: files that did not exist before implementation (new types, protocols, extracted classes)
-    - `files_modified`: pre-existing files changed as side effects (e.g., call site updates) — excludes the target `file`
+    - `files_modified`: pre-existing files changed as side effects (e.g., call site updates) — excludes the target `file_path`
   - Schema:
     ```json
     {
-      "file": "<target file from plan JSON>",
+      "file_path": "<target file from plan JSON>",
       "status": "changes_applied | all_compliant",
       "files_created": [],
       "files_modified": [],
@@ -143,24 +131,18 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
   - If no changes were needed, set `status: "all_compliant"` and both arrays to `[]`
 - [ ] 7.6 Collect all refactor logs from `{OUTPUT_ROOT}/{ITERATION}/implement/*.refactor-log.json`
 - [ ] 7.7 If all files were skipped (all compliant), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` and stop
-- [ ] 7.8 Capture timestamp as `time_implement_end`. Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs AND phase timings:
+- [ ] 7.8 Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs:
   ```json
   {
     "iteration": "<ITERATION>",
-    "phase_timings": {
-      "prepare":    { "start": "<time_prepare_start>",    "end": "<time_prepare_end>" },
-      "review":     { "start": "<time_review_start>",     "end": "<time_review_end>" },
-      "validate":   { "start": "<time_validate_start>",   "end": "<time_validate_end>" },
-      "synthesize": { "start": "<time_synthesize_start>", "end": "<time_synthesize_end>" },
-      "implement":  { "start": "<time_implement_start>",  "end": "<time_implement_end>" }
-    },
     "status": "changes_applied | all_compliant",
     "...": "rest of existing fields"
   }
   ```
+  If VERBOSE: capture timestamp as `time_implement_end` and include `phase_timings` in the log.
 - [ ] 7.9 Collect changed file list for next iteration:
   - From the refactor logs collected in 7.6, collect:
-    - Each log's `file` (the plan target)
+    - Each log's `file_path` (the plan target)
     - Each log's `files_created[]` entries (new types, protocols, extracted classes)
   - Store as CHANGED_FILES (used in Phase 8) — excludes `files_modified[]` (call site side effects don't need re-review)
   - Run: `git add <CHANGED_FILES + all files_modified entries>` (for git hygiene)
@@ -179,7 +161,7 @@ The "end" of one phase equals the "start" of the next (reuse the same timestamp 
 - [ ] 8.3 Launch Task
 - [ ] 8.4 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
     - If the Task failed, stop and report the error
-- [ ] 8.5 Capture timestamp → store as `time_prepare_start` AND `time_prepare_end` (Phase 8 replaces Phase 1 for subsequent iterations). Go to 3.1
+- [ ] 8.5 If VERBOSE: capture timestamp → store as `time_prepare_start` AND `time_prepare_end`. Go to 3.1
 
 
 ## Constraints

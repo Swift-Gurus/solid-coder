@@ -2,7 +2,7 @@
 name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
-allowed-tools: Read, Grep, Glob, Write, Edit
+allowed-tools: Read, Grep, Glob, Write, Edit, Skill
 user-invocable: true
 ---
 
@@ -20,8 +20,9 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 ## Phase 1: Load Context
 
 - [ ] 1.1 Parse INPUT:
-  - If it contains a path to a JSON file with `file` and `directive` fields → read it as a refactor plan, extract the target source file and directive, read the target source file
+  - If it contains a path to a JSON file with `file_path` and `directive` fields → read it as a refactor plan, extract the target source file and directive, read the target source file
   - If it contains a path to a spec/markdown file → read it as requirements
+  - If the directive or spec contains design references (paths to images, screenshots, mockups), **read each file** using the Read tool before writing any code. These are the source of truth for layout, spacing, colors, and visual structure. Match them precisely.
   - Treat any remaining text as the prompt (what to build)
 - [ ] 1.2 If a refactor plan, read the target source file and understand its structure
 
@@ -33,13 +34,11 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
   - Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH} --matched-tags {matched tags as comma-separated}`
   - Use `active_principles` from the output
   - NOTE: If Phase 1 loaded no source files (greenfield — spec or prompt only), skip tag scanning and use all principles from step 2.1
-- [ ] 2.3 For each active principle, run parse-frontmatter on its rule.md:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py {rule_path}`
-- [ ] 2.4 **Load rules** — For each active rule.md, run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {rule_path}`
-- [ ] 2.5 **Load references** — For each active rule, run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.3>`
-- [ ] 2.6 Hold all loaded rules and references in context — they apply to every line of code you write
+- [ ] 2.3 For each active principle, use skill **solid-coder:parse-frontmatter** with its rule.md path. Store the returned `files_to_load` array.
+- [ ] 2.4 **Load rules** — For each active rule.md, use skill **solid-coder:load-reference** with the rule.md path.
+- [ ] 2.5 **Load references** — For each active rule, use skill **solid-coder:load-reference** with each path from the `files_to_load` array (step 2.3).
+- [ ] 2.6 **Load fix instructions** — For each active principle, use skill **solid-coder:load-reference** with `{principle_dir}/fix/instructions.md`. These contain fix patterns and strategies to follow when writing code.
+- [ ] 2.7 Hold all loaded rules, references, and fix instructions in context — they apply to every line of code you write
 
 ## Phase 3: Write Code
 

@@ -13,7 +13,7 @@ Discover all principles in the references directory and optionally filter by tag
 ## Execution
 
 ```bash
-! python3 ${CLAUDE_PLUGIN_ROOT}/skills/discover-principles/scripts/discover-principles.py $ARGUMENTS
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/discover-principles/scripts/discover-principles.py $ARGUMENTS
 ```
 
 ## Arguments

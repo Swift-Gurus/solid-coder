@@ -35,6 +35,7 @@ These are invoked directly by the user via slash commands:
 | `refactor` | `/refactor <target> [--iterations N]` | Full review/synthesize/implement/iterate loop |
 | `code` | `/code <prompt or spec>` | Writes code with principle rules loaded as constraints |
 | `review` | `/review <target>` | Fans out parallel per-principle reviews across all matched principles |
+| `build-spec-from-code` | `/build-spec-from-code <path>` | Analyzes existing code, extracts functionalities as stories, produces rewrite spec with subtasks |
 
 ### Internal (used by workflows and agents)
 
@@ -101,6 +102,7 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | @docs/architecture.md | System architecture and data flow |
 | @docs/flows.md | Detailed pipeline execution flows |
 | @docs/decision-making.md | Design decisions and rationale |
-| @docs/improvements-open.md | Unimplemented improvement suggestions (18 items) |
+| @docs/improvements-open.md | Unimplemented improvement suggestions — small/medium items |
+| @docs/improvements-open-arch.md | Unimplemented improvement suggestions — large architectural items (S-26, S-32, S-33, S-42, S-43, S-44) |
 | @docs/improvements-partial.md | Partially implemented improvements (12 items) |
 | @docs/improvements-archive.md | Completed/resolved improvements (12 items) |

@@ -3,9 +3,9 @@
   "title": "Synthesized Fix Plan",
   "description": "Holistic, cross-principle-aware implementation plan for a single source file. Each action has been cross-checked against all principles' metrics.",
   "type": "object",
-  "required": ["file", "timestamp", "actions", "unresolved", "conflicts_detected"],
+  "required": ["file_path", "timestamp", "actions", "unresolved", "conflicts_detected"],
   "properties": {
-    "file": {
+    "file_path": {
       "type": "string",
       "description": "Path to the source file these actions target"
     },

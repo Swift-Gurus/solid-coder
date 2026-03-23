@@ -16,9 +16,9 @@
       "description": "Per-file analysis results",
       "items": {
         "type": "object",
-        "required": ["file", "units"],
+        "required": ["file_path", "units"],
         "properties": {
-          "file": {
+          "file_path": {
             "type": "string",
             "description": "Full path to the reviewed file"
           },

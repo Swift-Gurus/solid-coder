@@ -32,7 +32,7 @@ output_schema: output.schema.json
     - [ ] For SUI-1: identify coherent body sections, name new subviews, define their inputs
     - [ ] For SUI-2: create ViewModel (if none exists by following SUI-4 guidance fix) or move impure methods to existing ViewModel, update view to read from ViewModel
     - [ ] For SUI-3: identify nested views with >2 modifiers, extract each to a `private var` with a descriptive name, replace inline usage with the variable reference
-    - [ ] For SUI-4: extract State protocol (readable properties) and Actions protocol (methods the view triggers) from existing concrete ViewModel, add generic constraint to view, replace concrete property with protocol-typed properties
+    - [ ] For SUI-4: extract State protocol (readable properties) and Actions protocol (methods the view triggers) from existing concrete ViewModel, add generic constraint to view, replace concrete property with protocol-typed properties. For two-way bindings (`$vm.property`): use a local `@Bindable var bindable = vm` inside `body` to get the `$` projection — do NOT use manual `Binding(get:set:)`. State protocol properties that need binding must be `{ get set }`. See `bindable-view-compliant.swift` example.
     - [ ] For SUI-5: identify all file-scope views and helper types only referenced from `#Preview`/`PreviewProvider`, move their declarations inside the `#Preview` block, update the preview return to use the now-nested types
     - Each todo item should be a single, implementable action
 

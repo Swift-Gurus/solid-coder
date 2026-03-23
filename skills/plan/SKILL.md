@@ -2,7 +2,7 @@
 name: plan
 description: Architecture decomposition — reads a feature spec and produces a high-level component breakdown with protocols, wiring, and composition root.
 argument-hint: <spec> --output <output-path>
-allowed-tools: Read, Glob, Write, Bash
+allowed-tools: Read, Glob, Write, Bash, Skill
 user-invocable: true
 ---
 

@@ -11,9 +11,9 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["file", "suggestions"],
+        "required": ["file_path", "suggestions"],
         "properties": {
-          "file": {
+          "file_path": {
             "type": "string",
             "description": "Full path to the reviewed file"
           },

@@ -202,7 +202,7 @@ def _build_review_output():
         "timestamp": "2026-01-01T00:00:00Z",
         "files": [
             {
-                "file": "/project/MyFile.swift",
+                "file_path": "/project/MyFile.swift",
                 "units": [
                     {
                         "unit_name": "MyClass",
@@ -278,7 +278,7 @@ class TestIntegration:
         assert len(outputs) == 1
 
         data = json.loads(outputs[0].read_text())
-        assert data["file"] == "/project/MyFile.swift"
+        assert data["file_path"] == "/project/MyFile.swift"
         assert len(data["principles"]) == 1
         assert data["principles"][0]["severity"] == "SEVERE"
 

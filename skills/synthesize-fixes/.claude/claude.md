@@ -16,7 +16,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 |-----------|------|--------|----------|
 | Input | Per-file review outputs | JSON (principle-specific schemas) | `{OUTPUT_ROOT}/by-file/*.output.json` |
 | Input | Source files | Swift | Path from each output JSON's `file` field |
-| Input | Principle fix knowledge | Markdown | `{RULES_PATH}/{PRINCIPLE}/rule.md`, `fix/instructions.md`, `refactoring.md` |
+| Input | Principle fix knowledge | Markdown | `{RULES_PATH}/{PRINCIPLE}/rule.md`, `fix/instructions.md` |
 | Output | Per-file fix plans | JSON (`plan.schema.json`) | `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` |
 
 ## Connects To
@@ -24,7 +24,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 | Upstream | Relationship |
 |----------|-------------|
 | `skills/run-code-review` | Produces the `by-file/*.output.json` files this skill consumes |
-| `references/{PRINCIPLE}/` | Each principle folder provides `rule.md` (metrics), `fix/instructions.md` (fix patterns), `refactoring.md` (refactoring examples) |
+| `references/{PRINCIPLE}/` | Each principle folder provides `rule.md` (metrics), `fix/instructions.md` (fix patterns) |
 | `skills/parse-frontmatter` | Used in Phase 2 to extract frontmatter from `rule.md` |
 | `skills/load-reference` | Used in Phase 2 to load referenced files from frontmatter |
 
