@@ -8,7 +8,7 @@ output_schema: output.schema.json
 ### Phase 0: Load Examples for context.
 - [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
 
-#### Phase 1: Detection (SUI-1, SUI-2, and SUI-3 run independently and in parallel if possible)
+#### Phase 1: Detection (SUI-1 through SUI-6 run independently and in parallel if possible)
 
 - [ ] **1.1 SUI-1: Measure Body Complexity**
     - [ ] 1.1.1 Identify all view-returning properties — `body` plus any `var`/`func` returning `some View`
@@ -47,6 +47,18 @@ output_schema: output.schema.json
 
     - [ ] 1.3.4 Max nested modifier chain: ___
 
+- [ ] **1.6 SUI-6: Check Preview Coverage**
+    - [ ] 1.6.1 List every `struct` conforming to `View` at file scope
+    - [ ] 1.6.2 For each, search the same file for `#Preview` or `PreviewProvider` that instantiates it
+    - [ ] 1.6.3 If not found in the same file, search in other files in the module for `#Preview` blocks or `PreviewProvider` structs that instantiate it (e.g., dedicated preview files)
+    - [ ] 1.6.4 Record results:
+
+      | View | File | Has Preview | Preview Location |
+      |------|------|-------------|-----------------|
+      | | | | |
+
+    - [ ] 1.6.5 Views with no preview instantiation anywhere: count ___
+
 #### Phase 2: Filter Out Exceptions
 
 - [ ] **2.1 Cross-check exceptions** — mark exceptions
@@ -62,8 +74,9 @@ output_schema: output.schema.json
     - [ ] 3.1.1 Body complexity: nesting ___, expressions ___, severity: ___
     - [ ] 3.1.2 View purity: impure count ___, has data fetch ___, severity: ___
     - [ ] 3.1.3 Modifier chain: max nested chain ___, severity: ___
-    - [ ] 3.1.4 Adjust severity considering exceptions.
-    - [ ] 3.1.5 Final severity: ___
+    - [ ] 3.1.4 Preview coverage: views without preview ___, severity: ___
+    - [ ] 3.1.5 Adjust severity considering exceptions.
+    - [ ] 3.1.6 Final severity: ___
 
 #### Phase 4: Output
 
@@ -72,3 +85,4 @@ output_schema: output.schema.json
     - [ ] 4.1.2 Show view purity classification table
     - [ ] 4.1.3 Show modifier chain length table (if any flagged)
     - [ ] 4.1.4 Show cross-reference table with found exceptions
+    - [ ] 4.1.5 Show preview coverage table (if any views lack previews)

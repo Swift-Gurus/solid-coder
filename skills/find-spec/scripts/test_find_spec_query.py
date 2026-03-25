@@ -20,13 +20,16 @@ def run(args: list, specs_root: str = None) -> tuple:
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
 
-def make_spec(folder: Path, number: str, feature: str, spec_type: str, status: str, parent: str = "") -> Path:
+def make_spec(folder: Path, number: str, feature: str, spec_type: str, status: str, parent: str = "", blocked_by: list = None) -> Path:
     """Create a spec as folder/Spec.md (new folder-per-spec convention)."""
     spec_folder = folder / f"{number}-{feature}"
     spec_folder.mkdir(parents=True, exist_ok=True)
     path = spec_folder / "Spec.md"
     parent_line = f"parent: {parent}" if parent else ""
-    path.write_text(f"---\nnumber: {number}\nfeature: {feature}\ntype: {spec_type}\nstatus: {status}\n{parent_line}\n---\n\n# {feature}\n")
+    blocked_lines = ""
+    if blocked_by:
+        blocked_lines = "blocked-by:\n" + "".join(f"  - {b}\n" for b in blocked_by)
+    path.write_text(f"---\nnumber: {number}\nfeature: {feature}\ntype: {spec_type}\nstatus: {status}\n{parent_line}\n{blocked_lines}---\n\n# {feature}\n")
     return path
 
 
@@ -130,6 +133,53 @@ class TestAncestors(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             code, out, _ = run(["ancestors", "SPEC-999"], tmp)
             self.assertEqual(code, 1)
+
+    def test_blocked_flag_merges_into_flat_array(self):
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-002", "dep-feat", "feature", "done", "SPEC-001")
+            make_spec(Path(tmp), "SPEC-003", "target-feat", "feature", "ready", "SPEC-001", blocked_by=["SPEC-002"])
+            code, out, _ = run(["ancestors", "SPEC-003", "--blocked"], tmp)
+            self.assertEqual(code, 0)
+            data = json.loads(out)
+            self.assertIsInstance(data, list)
+            numbers = [s["number"] for s in data]
+            self.assertEqual(numbers, ["SPEC-001", "SPEC-003", "SPEC-002"])
+
+    def test_blocked_flag_empty_blocked_by(self):
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-002", "child-feat", "feature", "draft", "SPEC-001")
+            code, out, _ = run(["ancestors", "SPEC-002", "--blocked"], tmp)
+            data = json.loads(out)
+            self.assertIsInstance(data, list)
+            self.assertEqual(len(data), 2)  # just ancestors, no blocked-by
+
+    def test_blocked_flag_missing_spec_skipped(self):
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-002", "target", "feature", "draft", "SPEC-001", blocked_by=["SPEC-999"])
+            code, out, _ = run(["ancestors", "SPEC-002", "--blocked"], tmp)
+            data = json.loads(out)
+            self.assertEqual(len(data), 2)  # SPEC-999 not found, skipped
+
+    def test_blocked_flag_deduplicates(self):
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-002", "child-feat", "feature", "draft", "SPEC-001", blocked_by=["SPEC-001"])
+            code, out, _ = run(["ancestors", "SPEC-002", "--blocked"], tmp)
+            data = json.loads(out)
+            numbers = [s["number"] for s in data]
+            self.assertEqual(numbers, ["SPEC-001", "SPEC-002"])  # SPEC-001 not duplicated
+
+    def test_without_blocked_flag_returns_flat_array(self):
+        with TemporaryDirectory() as tmp:
+            make_spec(Path(tmp), "SPEC-001", "root-epic", "epic", "draft")
+            make_spec(Path(tmp), "SPEC-002", "child-feat", "feature", "draft", "SPEC-001", blocked_by=["SPEC-001"])
+            code, out, _ = run(["ancestors", "SPEC-002"], tmp)
+            data = json.loads(out)
+            self.assertIsInstance(data, list)
+            self.assertEqual(len(data), 2)  # blocked-by not included without flag
 
 
 class TestNextNumber(unittest.TestCase):

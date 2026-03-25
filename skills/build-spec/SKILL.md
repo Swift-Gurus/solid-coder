@@ -38,14 +38,17 @@ user-invocable: true
     - If option 2: set `target_spec` and proceed to Phase 3.6 (Breakdown).
     - If option 3: set `target_spec` and proceed to Phase 2.2 (Load context), then Phase 4.
 
-- [ ] 0.2 Otherwise, ask using AskUserQuestion:
+- [ ] 0.2 If the user provided a descriptive prompt (not a spec number, not empty):
+  - Proceed to Phase 1 (Prompt-Aware Create).
+
+- [ ] 0.3 Otherwise (no argument), ask using AskUserQuestion:
   ```
   What would you like to do?
   1. Create a new spec
   2. Resume a draft spec
   3. Edit an existing spec
   ```
-  - If option 1: proceed to Phase 1.
+  - If option 1: proceed to Phase 1 (with empty prompt — full interview).
   - If option 2: proceed to Phase 2.
   - If option 3: proceed to Phase 3.
 
@@ -53,17 +56,46 @@ user-invocable: true
 
 ## Phase 1: Create New Spec
 
-- [ ] 1.1 Run `python3 @scripts/build-spec-query.py types` and ask using AskUserQuestion: "What type is this?" — required choice, no other option, no default.
+- [ ] 1.1 **Analyze prompt** — if the user provided a descriptive prompt, infer as much as possible:
+  - **Type** — from language cues (e.g., "bug" → bug, "screen/view/feature" → feature, "break down/epic/initiative" → epic)
+  - **Title** — the core noun/action from the prompt
+  - **Description** — the full prompt, cleaned up
+  - **Parent** — use skill **solid-coder:find-spec** with `scan --status draft,ready,in-progress`. Match the prompt topic against existing epics/features. If one clearly matches, suggest it. If ambiguous or none match, suggest root.
+  - **User stories (draft)** — extract any behaviors, goals, or actions mentioned in the prompt. Format as stories. These are drafts — Phase 4 will refine them.
+  - If no prompt was provided, set all inferences to empty.
 
-- [ ] 1.2 **Where does it belong?** — use skill **solid-coder:find-spec** with `--status draft,ready --action Select as parent`. Returns selected spec. Store as `parent_epic` (or none if user chose root epic).
+- [ ] 1.2 **Present inference** — if any fields were inferred, present them via AskUserQuestion:
+  ```
+  Here's what I got from your prompt:
 
-- [ ] 1.3 "Give it a short title." — ask using AskUserQuestion free-text only. This becomes the `feature` slug.
+  Type: <inferred type>
+  Title: <inferred title>
+  Parent: <inferred parent or "root">
 
-- [ ] 1.4 "What are we building?" — ask using AskUserQuestion free-text description only.
+  Description: <inferred description>
 
-- [ ] 1.5 Get next spec number — use skill **solid-coder:find-spec** with `next-number`. Store result as `next_number`.
+  User Stories (draft):
+  - <story 1>
+  - <story 2>
+  ...
 
-Continue to Phase 4.
+  1. Looks good, continue to detail questions [default]
+  2. Needs adjustments
+  3. Start fresh (full interview)
+  ```
+  - If "looks good": store all inferred values, proceed to Phase 1.4.
+  - If "needs adjustments": ask what to change, incorporate, re-present.
+  - If "start fresh": clear all inferences, proceed to Phase 1.3.
+
+- [ ] 1.3 **Manual create** (when no prompt, or user chose "start fresh"):
+  - Run `python3 @scripts/build-spec-query.py types` and ask using AskUserQuestion: "What type is this?"
+  - **Where does it belong?** — use skill **solid-coder:find-spec** with `--status draft,ready --action Select as parent`. Store as `parent_epic`.
+  - "Give it a short title." — ask using AskUserQuestion free-text only.
+  - "What are we building?" — ask using AskUserQuestion free-text description only.
+
+- [ ] 1.4 Get next spec number — use skill **solid-coder:find-spec** with `next-number`. Store result as `next_number`.
+
+Continue to Phase 4. If stories were inferred in 1.1, Phase 4.4 presents them as `[default]` for confirmation instead of asking from scratch. Same for any other Phase 4 question where the answer is already inferred from the prompt.
 
 ---
 
@@ -136,6 +168,8 @@ Continue to Phase 4.
 ## Phase 4: Interview
 
 For each question, infer suggestions from the loaded ancestor context (epic/feature specs read in Phase 2, 3, or 1.2). Present suggestions as numbered options. Always include a free-text fallback as the last option so the user can describe or discuss freely.
+
+**Pre-filled answers:** If Phase 1 inferred answers from the prompt (stories, connections, UI elements), present them as `[default]` options for confirmation. Only ask open-ended questions for fields that have no inferred value. This means a rich prompt can skip most of the interview — the user just confirms or adjusts.
 
 - [ ] 4.1 **Connections & context** — "What does this connect to, depend on, or interact with?". Ask using AskUserQuestion. Suggest related features/modules inferred from ancestor specs. Free-text fallback.
 

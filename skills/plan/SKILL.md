@@ -23,8 +23,9 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 
 - [ ] 1.2 **Load ancestors** (only if SPEC is a filepath with frontmatter containing a `parent` field):
   - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `parent`
-  - If `parent` exists (e.g., `SPEC-005`): use skill **solid-coder:find-spec** with `ancestors <parent-SPEC-NNN>`. Read each file in the returned `path` fields (root → leaf). Hold all content as ancestor context.
-  - Ancestor context informs architectural decisions (scope boundaries, shared types, patterns established by parent features) but is NOT included in arch.json output.
+  - If `parent` exists (e.g., `SPEC-005`): use skill **solid-coder:find-spec** with `ancestors <parent-SPEC-NNN> --blocked`. Read each file in the returned `path` fields (root → leaf). Hold all content as ancestor context.
+  -  Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
+     For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
 
 - [ ] 1.3 Extract from the spec:
   - **User stories / features** — what the user can do

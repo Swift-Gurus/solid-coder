@@ -37,6 +37,7 @@ Validates that a spec is concrete enough to implement without ambiguity. Catches
 - **User story quality check (Phase 3-Standard)** — validates story format, flags acceptance criteria that are not independently verifiable (e.g. "works correctly"), and flags criteria that describe implementation rather than observable behavior.
 - **Structural checks updated** — all specs require Diagrams (connection + flow, sequence if async/multi-actor). Features/subtasks require User Stories instead of Workflow. UI/Mockup section required when spec mentions screens, views, components, or user interaction — placeholder counts as a gap.
 - **Question-per-finding** — in interactive mode, each finding becomes a focused question. Answers are returned to the caller (build-spec) for draft patching.
+- **AC-architecture disconnect check (Phase 3.8)** — verifies that every behavioral AC traces to a specific architectural mechanism in Technical Requirements, and that every claimed architectural mechanism handles all interaction types shown in mockups. Catches specs where behavior is described but no architecture supports it, or where a "unified" mechanism doesn't actually cover all cases.
 
 ## Gotchas
 

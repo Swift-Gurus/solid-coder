@@ -9,6 +9,11 @@
       "type": "string",
       "description": "From arch.json — one-line summary of what's being built"
     },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Cross-cutting acceptance criteria and Definition of Done items that apply to the module as a whole — not matched to any specific component."
+    },
     "plan_items": {
       "type": "array",
       "description": "Ordered list of /code directives. Empty array if all components are reused.",

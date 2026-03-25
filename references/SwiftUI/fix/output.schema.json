@@ -63,7 +63,8 @@
                           "view_expressions": { "type": "integer" },
                           "impure_count": { "type": "integer" },
                           "max_nested_modifier_chain": { "type": "integer", "description": "Highest modifier count on any nested child view after fix" },
-                          "vm_injection_style": { "type": "string", "enum": ["protocol", "concrete", "n/a"], "description": "VM injection style after fix: protocol (generic constraint), concrete (class type), or n/a (no VM)" }
+                          "vm_injection_style": { "type": "string", "enum": ["protocol", "concrete", "n/a"], "description": "VM injection style after fix: protocol (generic constraint), concrete (class type), or n/a (no VM)" },
+                          "has_preview": { "type": "boolean", "description": "Whether the view has preview coverage after fix" }
                         }
                       }
                     }

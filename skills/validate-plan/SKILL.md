@@ -31,7 +31,7 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
 - [ ] 0.4 Deduplicate and lowercase the list.
 - [ ] 0.5 Store as a JSON array string for passing to the script.
 
-## Phase 1+2: Codebase Search (Script)
+## Phase 1: Codebase Search (Script)
 
 - [ ] 1.1 Run the search script (pass `.` as sources — the script handles empty/missing dirs gracefully):
   ```bash
@@ -41,17 +41,17 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
   ```
 - [ ] 1.2 Parse the JSON output.
 
-## Phase 1.5: Name-Based Search (LLM)
+## Phase 2: Name-Based Search (LLM)
 
 A language-agnostic fallback that catches legacy code without solid-frontmatter. Always runs regardless of Phase 1 results.
 
-- [ ] 1.5.1 For each component in `arch.json`, collect search terms:
+- [ ] 2.5.1 For each component in `arch.json`, collect search terms:
   - The component `name` (e.g., `ProductRepository`)
   - Key words from the component `name` split on camelCase/PascalCase boundaries (e.g., `Product`, `Repository`)
   - The synonym keywords from Phase 0
-- [ ] 1.5.2 For each search term, use Grep to search filenames and file contents across the codebase. Use Glob to find files whose names contain the term.
-- [ ] 1.5.3 Collect any files found that are NOT already in `matches[]` from Phase 1.
-- [ ] 1.5.4 Merge new hits into `matches[]` with `matched_terms` set to the terms that matched. These go through the same Phase 3 analysis as frontmatter matches — no separate treatment.
+- [ ] 2.5.2 For each search term, use Grep to search filenames and file contents across the codebase. Use Glob to find files whose names contain the term.
+- [ ] 2.5.3 Collect any files found that are NOT already in `matches[]` from Phase 1.
+- [ ] 2.5.4 Merge new hits into `matches[]` with `matched_terms` set to the terms that matched. These go through the same Phase 3 analysis as frontmatter matches — no separate treatment.
 
 ## Phase 3: Match Analysis (LLM)
 

@@ -55,6 +55,15 @@ Verify the spec has all required sections for its type:
 - [ ] E.4 **Ambiguous ownership** — behaviors or components that span multiple subtasks without a clear owner:
   - Shared state, shared protocols, or cross-cutting concerns mentioned in the epic but not assigned to a subtask
   - For each: which subtask owns this?
+  
+- [ ] E.5 **Duplication** — the same concepts, flows, or behaviors explained multiple times across different sections:
+  - For each: define ownership — which section is the source of truth?
+  - Consolidate into corresponding user stories
+
+- [ ] E.6 **Framework prescription** — epic prescribes a specific framework, library, or technology that should be a child spec's decision:
+  - Epics describe what to achieve, not what tools to use
+  - For each: reframe as a capability requirement (e.g., "reactive state management" instead of "use Combine", "unidirectional architecture" instead of "use TCA")
+
 
 ### Phase 3-Standard (feature / bug / subtask)
 
@@ -74,6 +83,7 @@ Verify the spec has all required sections for its type:
 
 - [ ] 3.3 **Intent-described operations** — workflow steps that describe what should happen but not how:
   - "instantiate with config", "parse the response", "validate input", "set up the connection"
+  - Do NOT flag operations that include pseudo code, algorithms, or step-by-step logic explaining how it works — those are concrete enough
   - For each: what is the concrete initializer, method, or API call?
 
 - [ ] 3.4 **Implicit consumer contracts** — outputs produced but no specification of:
@@ -91,9 +101,22 @@ Verify the spec has all required sections for its type:
   - Behaviors that could live in this feature or an adjacent one
   - For each: who owns this?
 
+- [ ] 3.7 **Implementation leaking** — no language-specific syntax in specs. All requirements must be behavioral.
+  - **Flag**: backtick-wrapped code, type names, method signatures, attributes, decorators, framework-specific types, protocol conformances, generic constraints
+  - **Allowed**: pseudo code, algorithms, math, diagrams, design pattern names (strategy, factory, decorator), schema contracts, naming a framework or API as the chosen approach without mandating its syntax
+  - Skip findings already flagged by 3.0 (acceptance criteria describing implementation)
+  - For each: rewrite as the behavioral requirement it's trying to express
+
+- [ ] 3.8 **AC-architecture disconnects** — acceptance criteria that describe behavior without a traceable path through the spec's architectural model:
+  - For each AC that describes a state change or user interaction outcome: does the spec's Technical Requirements or architecture description define a mechanism (method, operation, data flow) that performs it?
+  - For each architectural mechanism described in Technical Requirements (e.g., "single method", "unified API", "one callback"): does it handle ALL the interaction types visible in the mockups and described in ACs?
+  - Flag when an AC says "X updates Y" but no described operation covers that update for all contexts (tree levels, screen types, option types) shown in mockups
+  - Flag when Technical Requirements claim a unified mechanism but ACs or mockups show interactions with different semantics that the mechanism doesn't distinguish
+  - For each: which AC is ungrounded, and what architectural mechanism is missing or underspecified?
+
 ## Phase 4: Report
 
-- [ ] 4.1 Group findings by category (structural, vague_term, undefined_type, intent_described, implicit_contract, unverified_api, ambiguous_scope)
+- [ ] 4.1 Group findings by category (structural, user_story_quality, vague_term, undefined_type, intent_described, implicit_contract, unverified_api, ambiguous_scope, implementation_leaking, ac_architecture_disconnect, duplication)
 - [ ] 4.2 For each finding, include:
   - `category`: which check caught it
   - `location`: the phrase or section in the spec

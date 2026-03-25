@@ -20,11 +20,19 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 ## Phase 1: Load Context
 
 - [ ] 1.1 Parse INPUT:
-  - If it contains a path to a JSON file with `file_path` and `directive` fields → read it as a refactor plan, extract the target source file and directive, read the target source file
+  - If it contains a path to a JSON file, read the JSON and detect format:
+    - Has `plan_items[]` → **implementation plan**.
+        - [ ] Iterate items in order (respecting `depends_on`).
+        - [ ] For each item: use `directive` as the instruction, `action` + `file` as the target, `acceptance_criteria` as verification checklist.
+            - For `design_references[]`: if `type` is `"file"` read the file at `content` path before writing code;
+            - if `type` is `"inline"` follow the embedded content (mockups, diagrams) as layout/structure reference.
+        - [ ] Note top-level `acceptance_criteria[]` for cross-cutting verification in Phase 4.
+    - Has `file_path` + `actions[]` 
+        - [ ] **refactor plan**. Read `file_path` as the target source file. 
+        - [ ] Iterate actions in order (respecting `depends_on`). 
+        - [ ] For each action: use `todo_items` as implementation steps, `suggested_fix` as reference code, `resolves` for traceability.
   - If it contains a path to a spec/markdown file → read it as requirements
-  - If the directive or spec contains design references (paths to images, screenshots, mockups), **read each file** using the Read tool before writing any code. These are the source of truth for layout, spacing, colors, and visual structure. Match them precisely.
   - Treat any remaining text as the prompt (what to build)
-- [ ] 1.2 If a refactor plan, read the target source file and understand its structure
 
 ## Phase 2: Discover & Load Rules
 
@@ -42,7 +50,7 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 
 ## Phase 3: Write Code
 
-Follow the spec. While writing, rigorously satisfy every loaded rule. The rules define metrics and thresholds — write code that stays within COMPLIANT bands.
+Follow the spec. Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. These are active constraints — apply them proactively while writing, don't defer to the self-check. For each type you create or modify, check which loaded rules apply and follow the compliant patterns from the loaded examples.
 
 ### 3.1 Dependency Resolution
 
@@ -104,7 +112,9 @@ After writing all code, verify your output against every loaded rule:
 - [ ] 4.2 If any metric crosses a severity threshold into SEVERE, fix it inline
 - [ ] 4.3 If a fix introduces logic governed by a principle you haven't loaded yet, load that `rule.md` and check again
 - [ ] 4.4 Repeat until all loaded rules read COMPLIANT or MINOR on your output
-- [ ] 4.5 **Build & test** (conditional) — if build or test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
+- [ ] 4.5 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
+- [ ] 4.6 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
+- [ ] 4.7 **Build & test** (conditional) — if build or test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
 
 Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems in place.
 

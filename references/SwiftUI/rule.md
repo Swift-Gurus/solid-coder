@@ -108,13 +108,18 @@ A view referencing a concrete ViewModel class is sealed to that implementation.
 
 **Detection:**
 
-1. **Identify the ViewModel property** — the stored property that serves as                                                                                                                                                           
-   the view's logic/data source (typically @Observable class, ObservableObject,                                                                                                                                                     
+1. **Identify the ViewModel property** — the stored property that serves as
+   the view's logic/data source (typically @Observable class, ObservableObject,
    or any type providing business state + actions)
 2. **Check injection style:**
     - Concrete class type → VIOLATION
-    - Generic constrained to protocol(s) → COMPLIANT
-3. **Not in scope:** plain value properties (String, Bool, structs),                                                                                                                                                                  
+    - Protocol that extends `Observable` → must use generic constraint
+      (SwiftUI's observation tracking needs the concrete type at compile time).
+      Generic constrained to protocol(s) → COMPLIANT.
+      Plain protocol property → VIOLATION (observation won't work)
+    - Protocol that does NOT extend `Observable` → plain protocol-typed
+      property is COMPLIANT. No generic needed.
+3. **Not in scope:** plain value properties (String, Bool, structs),
    closures/actions, nested child views, style/configuration types
 
 **Result:**
@@ -149,6 +154,28 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
 |------|------|----------|------------|----------------|
 | | | | | |
 
+### SUI-6: Preview Coverage
+
+Detect View structs that have no preview anywhere in the codebase.
+
+**Definition:** Every View struct declared at file scope must be instantiated in at least one `#Preview` block or `PreviewProvider` struct — either in the same file or in a separate preview file. Views without previews cannot be visually validated during development.
+
+**Detection:**
+
+1. **Identify file-scope View structs** — list every `struct` conforming to `View` declared at file scope
+2. **Search for preview instantiation** — for each View struct, search:
+   - The same file for `#Preview` blocks or `PreviewProvider` structs that instantiate it
+   - Other files in the module for `#Preview` blocks or `PreviewProvider` structs that instantiate it (e.g., dedicated preview files)
+3. **Score:**
+   - View is instantiated in at least one preview → COMPLIANT
+   - View has no preview instantiation anywhere → SEVERE
+
+**Result:**
+
+| View | File | Has Preview | Preview Location | Severity |
+|------|------|-------------|-----------------|----------|
+| | | | | |
+
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
@@ -157,7 +184,7 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
 5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
@@ -165,6 +192,7 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
     - Any nested child view with 3+ modifiers
     - Concrete VM injection
     - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
+    - File-scope view with no #Preview or PreviewProvider instantiation anywhere
 ---
 
 ## Quantitative Metrics Summary
@@ -176,9 +204,11 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
 | SUI-3 | Modifier chain length | All nested child modifiers <= 2                                    | COMPLIANT |
 | SUI-4 | VM injection          | VM injected as an interface, view has generic signature            | COMPLIANT |
 | SUI-5 | Preview containment   | All file-scope views have production callers                       | COMPLIANT |
+| SUI-6 | Preview coverage      | All file-scope views instantiated in a preview                     | COMPLIANT |
 | SUI-1 | Body complexity       | Nesting >= 3 OR expressions >= 5                                   | SEVERE    |
 | SUI-2 | View purity           | 1+ impure methods                                                  | SEVERE    |
 | SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers                            | SEVERE    |
 | SUI-4 | VM injection          | VM injected as a concrete implementation                           | SEVERE    |    
-| SUI-5 | Preview containment   | Any file-scope view only referenced from #Preview/PreviewProvider  | SEVERE    | 
+| SUI-5 | Preview containment   | Any file-scope view only referenced from #Preview/PreviewProvider  | SEVERE    |
+| SUI-6 | Preview coverage      | Any file-scope view with no preview instantiation                  | SEVERE    |
 ---

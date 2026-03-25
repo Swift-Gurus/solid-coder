@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -138,17 +138,36 @@
                         }
                       }
                     }
+                  },
+                  "preview_coverage": {
+                    "type": "object",
+                    "required": ["views_without_preview"],
+                    "properties": {
+                      "views_without_preview": {
+                        "type": "array",
+                        "description": "File-scope View structs with no #Preview or PreviewProvider instantiation anywhere. Empty array if all views have preview coverage.",
+                        "items": {
+                          "type": "object",
+                          "required": ["name", "file"],
+                          "properties": {
+                            "name": { "type": "string", "description": "View struct name" },
+                            "file": { "type": "string", "description": "File where the view is declared" }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
                     "modifier_chain_severity": { "type": "string" },
                     "vm_injection_severity": { "type": "string" },
                     "preview_containment_severity": { "type": "string" },
+                    "preview_coverage_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -171,7 +190,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },

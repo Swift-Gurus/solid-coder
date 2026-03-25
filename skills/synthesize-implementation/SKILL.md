@@ -84,13 +84,23 @@ END (per component)
 
 For each plan item produced in Phase 2, enrich its `directive` with spec context from `arch.json`:
 
-- [ ] 2.5.1 **Acceptance criteria** — find criteria from `arch.json.acceptance_criteria[]` relevant to this plan item's component. For `modify` actions, also check `validation.json` matches — include only `unsatisfied_criteria[]` (criteria the existing code doesn't meet). Append to the directive: "Must fulfill: <criteria list>".
+- [ ] 2.5.1 **Acceptance criteria** — find criteria from `arch.json.acceptance_criteria[]` relevant to this plan item's component. For `modify` actions, also check `validation.json` matches — include only `unsatisfied_criteria[]` (criteria the existing code doesn't meet). Append to the directive: "Must fulfill: <criteria list>". Track which criteria were attached to at least one plan item.
 
 - [ ] 2.5.2 **Design references** — if the component is a view, screen, or UI-related (`category` contains view, screen, modifier, or `stack` contains swiftui): find relevant `design_references[]` from `arch.json`. For `inline` type: embed the mockup/diagram markdown directly in the directive. For `file` type: include the path as "Reference design: <path>".
 
 - [ ] 2.5.3 **Design decisions** — scan `design_decisions[]` from `arch.json` for decisions that apply to this component (mention the component's type, pattern, or domain). Include applicable decisions in the directive as "Design constraint: <decision>".
 
 - [ ] 2.5.4 **Technical requirements** — scan `technical_requirements[]` from `arch.json` for subsections relevant to this component (type definitions, file structure, usage patterns that mention this component's name or type). For relevant subsections: embed the verbatim content (including code blocks) in the directive as "Technical spec: <content>". This gives the code agent exact type definitions, file paths, and API signatures from the spec.
+
+## Phase 2.6: Create Plan Items for Unmatched Criteria
+
+After Phase 2.5, some `arch.json.acceptance_criteria[]` entries will not have been attached to any plan item — they describe work that no architectural component covers (e.g., test suites, documentation, configuration, integration verification). These MUST become plan items or top-level criteria — nothing from the spec is silently dropped.
+
+- [ ] 2.6.1 Collect every criterion from `arch.json.acceptance_criteria[]` (across all stories, including Definition of Done) that was NOT attached to any plan item in Phase 2.5.1.
+- [ ] 2.6.2 For EACH unmatched criterion:
+  - If fulfilling it requires producing any artifact → create an additional plan item with `action: "create"` and a directive describing what to produce. Set `depends_on` to the plan items whose components the criterion exercises or depends on.
+  - If it describes a constraint on existing work (nothing new to produce, only to verify) → place in top-level `acceptance_criteria[]` for post-implementation verification.
+- [ ] 2.6.3 Verify: the union of (criteria attached to plan items in 2.5.1) + (plan items created in 2.6.2) + (top-level `acceptance_criteria[]` from 2.6.2) must cover ALL entries from `arch.json.acceptance_criteria[]`. If any criterion is unaccounted for, stop and report which ones were missed.
 
 ## Phase 3: Order Plan Items
 

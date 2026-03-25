@@ -12,9 +12,12 @@ Subcommands:
     children <SPEC-NNN> [--specs-root <path>]
                Direct children of a spec (one level).
 
-    ancestors <SPEC-NNN> [--specs-root <path>]
+    ancestors <SPEC-NNN> [--blocked] [--specs-root <path>]
                All ancestor specs from root down to the given spec (inclusive),
                ordered root → leaf.
+               --blocked   Also resolve and append blocked-by specs to the
+                           array. Output stays a flat list. Deduplicates by
+                           spec number.
 
     next-number [--specs-root <path>]
                Next available SPEC number (zero-padded to 3 digits).
@@ -174,7 +177,7 @@ def cmd_children(specs_root: Path, number: str) -> None:
     print(json.dumps(children, indent=2))
 
 
-def cmd_ancestors(specs_root: Path, number: str) -> None:
+def cmd_ancestors(specs_root: Path, number: str, include_blocked: bool = False) -> None:
     specs = load_all_specs(specs_root)
     spec = find_spec(specs, number)
     if not spec:
@@ -187,6 +190,17 @@ def cmd_ancestors(specs_root: Path, number: str) -> None:
         parent_num = current.get("parent")
         current = find_spec(specs, parent_num) if parent_num else None
     chain.reverse()
+
+    if include_blocked:
+        seen = {s["number"] for s in chain}
+        blocked_by_nums = spec.get("blocked_by") or []
+        for num in blocked_by_nums:
+            if num not in seen:
+                found = find_spec(specs, num)
+                if found:
+                    chain.append(found)
+                    seen.add(num)
+
     print(json.dumps(chain, indent=2))
 
 
@@ -245,9 +259,10 @@ def main() -> None:
         cmd_children(specs_root, args[1])
     elif subcommand == "ancestors":
         if len(args) < 2:
-            print("Usage: spec-query.py ancestors <SPEC-NNN>", file=sys.stderr)
+            print("Usage: spec-query.py ancestors <SPEC-NNN> [--blocked]", file=sys.stderr)
             sys.exit(1)
-        cmd_ancestors(specs_root, args[1])
+        include_blocked = "--blocked" in args
+        cmd_ancestors(specs_root, args[1], include_blocked=include_blocked)
     elif subcommand == "next-number":
         cmd_next_number(specs_root)
     else:
