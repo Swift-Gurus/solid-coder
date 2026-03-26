@@ -12,25 +12,27 @@ blocking: []
 
 ## Description
 
-Internal skill that navigates the spec hierarchy interactively and returns the selected spec. Takes a `--status` filter so callers control which specs are visible (e.g. `draft` for resume, `draft,ready` for parent selection when creating).
+Internal skill that navigates the spec hierarchy interactively and returns the selected spec, or performs non-interactive queries (ancestors, next-number) against the spec tree.
 
-## Input
+## Modes
 
-- `--status` — comma-separated list of statuses to show (e.g. `draft`, `draft,ready`)
-- `--action` — label for "select this" option at each level (defaults to `Select this`)
-
-## Output
-
-JSON to stdout: `{number, feature, type, status, path}`
+| Mode | Input | Output | Interactive |
+|------|-------|--------|-------------|
+| `navigate` | `navigate <statuses> [<action label>]` | Single spec JSON `{number, feature, type, status, path}` | Yes |
+| `ancestors` | `ancestors <SPEC-NNN> [--blocked]` | JSON array of specs, root → leaf (+ blocked-by if `--blocked`) | No |
+| `scan` | `scan [--type X] [--status X] [--no-parent] [--parent X]` | JSON array of matching specs | No |
+| `next-number` | `next-number` | `{"next": "SPEC-NNN"}` | No |
 
 ## Connects To
 
 | Skill | Relationship |
 |-------|-------------|
 | `build-spec` | Called in Phase 0 (navigate to parent) and Phase 1-Resume (find target) |
+| `plan` | Called in Phase 1.2 (load ancestor context via `ancestors --blocked`) |
 
 ## Design Decisions
 
-- **Status filter at call site** — callers pass `--status` so the same skill serves both resume (draft only) and new spec parent selection (draft+ready). No logic duplication.
+- **Mode-first arguments** — `$ARGUMENTS[0]` is always the mode (`next-number`, `ancestors`, `scan`, `navigate`). Remaining args are mode-specific. Callers never mix flag styles.
+- **Status filter at call site** — `navigate` mode takes statuses as $ARGUMENTS[1] so callers control which specs are visible (e.g. `draft` for resume, `draft,ready` for parent selection). No logic duplication.
 - **Script owns discovery** — `find-spec/scripts/find-spec-query.py` handles all file system queries. The skill handles only the interactive drill-down.
 - **Returns leaf automatically** — if a level has no matching children, the current item is returned without asking.

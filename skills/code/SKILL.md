@@ -12,26 +12,34 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 
 ## Input
 - RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
-- INPUT: $ARGUMENTS — what to do. Can be:
-  - A path to a file (spec document, plan JSON, source file to modify)
-  - An inline prompt describing what to build or change
-  - A combination of both
+- MODE: $ARGUMENTS[0] — one of `refactor`, `implement`, or `code`
+- Arguments per mode:
+  - `refactor`: PLANS_DIR = $ARGUMENTS[1], OUTPUT_ROOT = $ARGUMENTS[2]
+  - `implement`: PLAN_PATH = $ARGUMENTS[1]
+  - `code`: PROMPT = $ARGUMENTS[1..] (spec file path, inline prompt, or both)
 
 ## Phase 1: Load Context
 
-- [ ] 1.1 Parse INPUT:
-  - If it contains a path to a JSON file, read the JSON and detect format:
-    - Has `plan_items[]` → **implementation plan**.
-        - [ ] Iterate items in order (respecting `depends_on`).
-        - [ ] For each item: use `directive` as the instruction, `action` + `file` as the target, `acceptance_criteria` as verification checklist.
-            - For `design_references[]`: if `type` is `"file"` read the file at `content` path before writing code;
-            - if `type` is `"inline"` follow the embedded content (mockups, diagrams) as layout/structure reference.
-        - [ ] Note top-level `acceptance_criteria[]` for cross-cutting verification in Phase 4.
-    - Has `file_path` + `actions[]` 
-        - [ ] **refactor plan**. Read `file_path` as the target source file. 
-        - [ ] Iterate actions in order (respecting `depends_on`). 
-        - [ ] For each action: use `todo_items` as implementation steps, `suggested_fix` as reference code, `resolves` for traceability.
-  - If it contains a path to a spec/markdown file → read it as requirements
+- [ ] 1.1 Read MODE and load context accordingly:
+
+  **MODE = `refactor`**:
+  - Glob `{PLANS_DIR}/*.plan.json` to discover all plan files
+  - Read each plan JSON — each has `file_path` + `actions[]`
+  - For each plan:
+    - [ ] Read `file_path` as the target source file
+    - [ ] Iterate actions in order (respecting `depends_on`)
+    - [ ] For each action: use `todo_items` as implementation steps, `suggested_fix` as reference code, `resolves` for traceability
+
+  **MODE = `implement`**:
+  - Read the plan JSON at PLAN_PATH — has `plan_items[]`
+  - [ ] Iterate items in order (respecting `depends_on`)
+  - [ ] For each item: use `directive` as the instruction, `action` + `file` as the target, `acceptance_criteria` as verification checklist
+      - For `design_references[]`: if `type` is `"file"` read the file at `content` path before writing code;
+      - if `type` is `"inline"` follow the embedded content (mockups, diagrams) as layout/structure reference
+  - [ ] Note top-level `acceptance_criteria[]` for cross-cutting verification in Phase 4
+
+  **MODE = `code`** (default if omitted):
+  - If PROMPT contains a path to a spec/markdown file → read it as requirements
   - Treat any remaining text as the prompt (what to build)
 
 ## Phase 2: Discover & Load Rules

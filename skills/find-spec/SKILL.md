@@ -1,56 +1,70 @@
 ---
 name: find-spec
-description: Navigate the spec hierarchy interactively and return the selected spec. Internal skill used by build-spec.
-argument-hint: "--status <draft|ready|draft,ready> [--action <label>]"
+description: Navigate the spec hierarchy interactively, query ancestors, scan specs, or get next available spec number.
+argument-hint: <mode> [mode-specific args]
 allowed-tools: Read, Bash, AskUserQuestion
 user-invocable: false
 ---
 
 # find-spec — Spec Hierarchy Navigator
 
-Drills down through the spec tree level by level using AskUserQuestion. Returns the selected spec as JSON.
+Query the spec tree or drill down interactively. Returns JSON.
 
 ## Input
 
-- `next-number` — non-interactive mode: returns the next available SPEC number as `{"next": "SPEC-NNN"}`
-- `--status` — comma-separated statuses to show at each level (e.g. `draft`, `draft,ready`)
-- `--action` — label for the "select this item" option at each level (e.g. `Resume this`, `Select as parent`). Defaults to `Select this`.
+- MODE: $ARGUMENTS[0] — one of `next-number`, `ancestors`, `scan`, or `navigate`
+- Arguments per mode:
+  - `next-number`: (no additional arguments)
+  - `ancestors`: SPEC_NUMBER = $ARGUMENTS[1], BLOCKED = `--blocked` flag if present in $ARGUMENTS[2]
+  - `scan`: SCAN_ARGS = $ARGUMENTS[1..] (passed through to script — supports `--type`, `--status`, `--no-parent`, `--parent`)
+  - `navigate`: STATUS = $ARGUMENTS[1] (comma-separated statuses), ACTION = $ARGUMENTS[2] (label for select option, defaults to `Select this`)
 
 ## Output
 
-JSON written to stdout:
-```json
-{
-  "number": "SPEC-NNN",
-  "feature": "...",
-  "type": "...",
-  "status": "...",
-  "path": "..."
-}
-```
+| Mode | Output |
+|------|--------|
+| `next-number` | `{"next": "SPEC-NNN"}` |
+| `ancestors` | JSON array of `{number, feature, type, status, path}`, ordered root → leaf |
+| `scan` | JSON array of `{number, feature, type, status, path}` matching filters |
+| `navigate` | Single `{number, feature, type, status, path}` |
 
 ## Modes
 
 ### Mode: next-number
 
-If called with `next-number` as the argument:
 - Run:
   ```
   python3 @scripts/find-spec-query.py next-number
   ```
-- Return the JSON result `{"next": "SPEC-NNN"}` to the caller. Do not enter the interactive drill-down.
+- Return the JSON result to the caller.
 
-### Mode: interactive navigation
+### Mode: ancestors
 
-If called with `--status` (and optional `--action`), enter the drill-down phases below.
+- Run:
+  ```
+  python3 @scripts/find-spec-query.py ancestors {SPEC_NUMBER} [--blocked]
+  ```
+- Return the JSON array result to the caller. When `--blocked` is present, blocked-by specs are appended after the ancestor chain.
 
-## Phases
+### Mode: scan
+
+- Run:
+  ```
+  python3 @scripts/find-spec-query.py scan {SCAN_ARGS}
+  ```
+- Return the JSON array result to the caller. Supports all script scan flags: `--type <type>`, `--status <statuses>`, `--no-parent`, `--parent <SPEC-NNN>`.
+
+### Mode: navigate
+
+Enter the interactive drill-down phases below.
+
+## Phases (navigate mode only)
 
 - [ ] 1. **Root level** — run:
   ```
   python3 @scripts/find-spec-query.py scan --type epic --no-parent
   ```
-  Filter results to allowed statuses. If empty: report "No specs found matching status filter." and exit with error.
+  Filter results to STATUS. If empty: report "No specs found matching status filter." and exit with error.
   Present results + "Create new root epic" (if caller supports creation) using AskUserQuestion (`"SPEC-NNN — <feature> [<status>]"` per option).
 
 - [ ] 2. **Drill down** — repeat until user selects the action or "Create new":
@@ -58,8 +72,8 @@ If called with `--status` (and optional `--action`), enter the drill-down phases
     ```
     python3 @scripts/find-spec-query.py scan --parent <current-SPEC-NNN>
     ```
-    Filter results to allowed statuses.
-  - Present results + `{--action}` for current item using AskUserQuestion.
-  - If user selects `{--action}`: return current item as JSON output.
+    Filter results to STATUS.
+  - Present results + `{ACTION}` for current item using AskUserQuestion.
+  - If user selects `{ACTION}`: return current item as JSON output.
   - If results are empty: automatically return current item (it is the leaf).
   - Otherwise: update current to selected item and repeat.

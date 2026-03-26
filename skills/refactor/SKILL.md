@@ -102,17 +102,17 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 ## Phase 7: Implement from Plans (wait for phase 6)
 
 - [ ] 7.0 If VERBOSE: capture timestamp → store as `time_synthesize_end` AND `time_implement_start`
-- [ ] 7.1 Glob for `{OUTPUT_ROOT}/{ITERATION}/synthesized/*.plan.json`
-- [ ] 7.2 For EACH plan JSON, prepare a Task call:
+- [ ] 7.1 Prepare a Task call:
     - subagent_type: `solid-coder:code-agent`
     - prompt:
       ```
-      plan-json: {OUTPUT_ROOT}/{ITERATION}/synthesized/{filename}.plan.json
+      mode: refactor
+      plans-dir: {OUTPUT_ROOT}/{ITERATION}/synthesized
       output-root: {OUTPUT_ROOT}/{ITERATION}
       ```
-- [ ] 7.3 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
-- [ ] 7.4 Wait for all to complete
-- [ ] 7.5 For EACH completed implement agent, write `{OUTPUT_ROOT}/{ITERATION}/implement/{base-filename}.refactor-log.json`:
+- [ ] 7.2 Launch Task and wait for completion
+- [ ] 7.3 From the Task result, extract the list of files created and modified per plan
+- [ ] 7.4 For EACH plan that was implemented, write `{OUTPUT_ROOT}/{ITERATION}/implement/{base-filename}.refactor-log.json`:
   - `base-filename`: derived from the plan JSON filename (e.g., `MyClass` from `MyClass.plan.json`)
   - `file_path`: the target file from the plan JSON's `file_path` field
   - Classify files touched by the implement agent:
@@ -129,9 +129,9 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
     }
     ```
   - If no changes were needed, set `status: "all_compliant"` and both arrays to `[]`
-- [ ] 7.6 Collect all refactor logs from `{OUTPUT_ROOT}/{ITERATION}/implement/*.refactor-log.json`
-- [ ] 7.7 If all files were skipped (all compliant), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` and stop
-- [ ] 7.8 Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs:
+- [ ] 7.5 Collect all refactor logs from `{OUTPUT_ROOT}/{ITERATION}/implement/*.refactor-log.json`
+- [ ] 7.6 If all files were skipped (all compliant), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` and stop
+- [ ] 7.7 Write combined Refactor Log — `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with summary of all per-file logs:
   ```json
   {
     "iteration": "<ITERATION>",
@@ -140,13 +140,13 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
   }
   ```
   If VERBOSE: capture timestamp as `time_implement_end` and include `phase_timings` in the log.
-- [ ] 7.9 Collect changed file list for next iteration:
-  - From the refactor logs collected in 7.6, collect:
+- [ ] 7.8 Collect changed file list for next iteration:
+  - From the refactor logs collected in 7.5, collect:
     - Each log's `file_path` (the plan target)
     - Each log's `files_created[]` entries (new types, protocols, extracted classes)
   - Store as CHANGED_FILES (used in Phase 8) — excludes `files_modified[]` (call site side effects don't need re-review)
   - Run: `git add <CHANGED_FILES + all files_modified entries>` (for git hygiene)
-- [ ] 7.10 Go to Phase 8
+- [ ] 7.9 Go to Phase 8
 
 ## Phase 8: Iteration loop
 - [ ] 8.1 Increment ITERATION counter. If ITERATION > MAX_ITERATIONS provide summary and stop

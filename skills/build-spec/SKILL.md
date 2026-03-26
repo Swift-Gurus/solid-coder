@@ -89,7 +89,7 @@ user-invocable: true
 
 - [ ] 1.3 **Manual create** (when no prompt, or user chose "start fresh"):
   - Run `python3 @scripts/build-spec-query.py types` and ask using AskUserQuestion: "What type is this?"
-  - **Where does it belong?** — use skill **solid-coder:find-spec** with `--status draft,ready --action Select as parent`. Store as `parent_epic`.
+  - **Where does it belong?** — use skill **solid-coder:find-spec** with `navigate draft,ready Select as parent`. Store as `parent_epic`.
   - "Give it a short title." — ask using AskUserQuestion free-text only.
   - "What are we building?" — ask using AskUserQuestion free-text description only.
 
@@ -101,7 +101,7 @@ Continue to Phase 4. If stories were inferred in 1.1, Phase 4.4 presents them as
 
 ## Phase 2: Resume Draft Spec
 
-- [ ] 2.1 **Find target** — use skill **solid-coder:find-spec** with `--status draft --action Resume this`. Returns selected spec as `target_spec`.
+- [ ] 2.1 **Find target** — use skill **solid-coder:find-spec** with `navigate draft Resume this`. Returns selected spec as `target_spec`.
 
 - [ ] 2.2 **Load context** — use skill **solid-coder:find-spec** with `ancestors <target-SPEC-NNN>`. Read each file in the returned `path` fields (root → leaf). Hold all content as context.
 
@@ -111,7 +111,7 @@ Continue to Phase 4.
 
 ## Phase 3: Edit Existing Spec
 
-- [ ] 3.1 **Find target** — use skill **solid-coder:find-spec** with `--status draft,ready,in-progress --action Edit this`. Returns selected spec as `target_spec`.
+- [ ] 3.1 **Find target** — use skill **solid-coder:find-spec** with `navigate draft,ready,in-progress Edit this`. Returns selected spec as `target_spec`.
 
 - [ ] 3.2 **Load spec** — read the target spec file. Hold its full content as context.
 

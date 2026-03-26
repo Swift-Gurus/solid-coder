@@ -80,7 +80,8 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
   - subagent_type: `solid-coder:code-agent`
   - prompt:
     ```
-    implementation-plan: {OUTPUT_ROOT}/implementation-plan.json
+    mode: implement
+    plan: {OUTPUT_ROOT}/implementation-plan.json
     ```
   The code-agent reads the plan, iterates over `plan_items[]` in order (respecting `depends_on`), and executes each directive. Do NOT iterate plan items yourself — the code-agent handles this.
 - [ ] 4.2 Launch Task
