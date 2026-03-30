@@ -21,7 +21,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 
 - [ ] 0.1 Parse arguments. If `--refs-root` is missing, abort with error: "Missing required --refs-root argument."
 - [ ] 0.2 If `--output` is missing, abort with error: "Missing required --output argument."
-- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, `design_decisions[]`, and `technical_requirements[]` — these are used to enrich directives in Phase 2.
+- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, and `technical_requirements[]` — these are used to enrich directives in Phase 2.
 - [ ] 0.4 Read `validation.json` from VALIDATION_PATH. Verify it has `components` and `summary`. If any are missing, abort with error listing missing fields.
 
 ## Phase 1: Discover & Load Principles
@@ -88,9 +88,7 @@ For each plan item produced in Phase 2, enrich its `directive` with spec context
 
 - [ ] 2.5.2 **Design references** — if the component is a view, screen, or UI-related (`category` contains view, screen, modifier, or `stack` contains swiftui): find relevant `design_references[]` from `arch.json`. For `inline` type: embed the mockup/diagram markdown directly in the directive. For `file` type: include the path as "Reference design: <path>".
 
-- [ ] 2.5.3 **Design decisions** — scan `design_decisions[]` from `arch.json` for decisions that apply to this component (mention the component's type, pattern, or domain). Include applicable decisions in the directive as "Design constraint: <decision>".
-
-- [ ] 2.5.4 **Technical requirements** — scan `technical_requirements[]` from `arch.json` for subsections relevant to this component (type definitions, file structure, usage patterns that mention this component's name or type). For relevant subsections: embed the verbatim content (including code blocks) in the directive as "Technical spec: <content>". This gives the code agent exact type definitions, file paths, and API signatures from the spec.
+- [ ] 2.5.3 **Technical requirements** — scan `technical_requirements[]` from `arch.json` for subsections relevant to this component (type definitions, file structure, usage patterns that mention this component's name or type). For relevant subsections: convert the requirement into concrete acceptance criteria and append to the plan item's `acceptance_criteria[]`. Preserve code blocks verbatim within the criterion text. If a technical requirement cannot be associated with a specific component, add it to root-level `acceptance_criteria[]` for post-implementation verification.
 
 ## Phase 2.6: Create Plan Items for Unmatched Criteria
 

@@ -175,7 +175,7 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
 
 - [ ] 4.2 **Inputs & Outputs** — "What goes in and what comes out? Who consumes the output, how do they get it, and what's its lifetime?". Ask using AskUserQuestion. Suggest input/output patterns inferred from sibling specs in the same epic. Free-text fallback.
 
-- [ ] 4.3 **Edge Cases** — "What could go wrong or behave unexpectedly?". Ask using AskUserQuestion. Suggest edge cases inferred from context (e.g. missing data, failures, boundary conditions mentioned in the epic). Free-text fallback.
+- [ ] 4.3 **Edge cases & design choices** — "What could go wrong or behave unexpectedly? Any key design choices or constraints?". Ask using AskUserQuestion. Suggest edge cases inferred from context (e.g. missing data, failures, boundary conditions mentioned in the epic). Free-text fallback. Hold answers — these will be written as acceptance criteria on the relevant user stories in 4.4, not as a separate section.
 
 - [ ] 4.4 **User Stories** — type-differentiated. Ask using AskUserQuestion.
   - **Epic**: "List the main things a user can do with this. I'll turn each into a story." Push for breadth — one story per major capability. Acceptance criteria can be high-level outcomes (each will be detailed in child specs).
@@ -187,7 +187,7 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
   - User-facing: `As a [user], I want [goal] so that [reason]`
   - Business logic / system: `As the system, when [trigger], [outcome]`
 
-  Acceptance criteria rules: each criterion must be independently verifiable. No "works correctly", no "handles edge cases" — name the specific value, behavior, or condition.
+  Acceptance criteria rules: each criterion must be independently verifiable. No "works correctly", no "handles edge cases" — name the specific value, behavior, or condition. Incorporate edge cases and design choices from 4.3 as concrete acceptance criteria on the relevant stories.
 
 - [ ] 4.5 **Technical Requirements** (conditional) —
   - **Subtask**: always ask.
@@ -242,8 +242,6 @@ For each question, infer suggestions from the loaded ancestor context (epic/feat
 - **UI / Mockup** (conditional): ASCII mockup or `<!-- TODO: attach image or design -->` placeholder
 - **Diagrams**: Mermaid connection diagram, flow diagram, sequence diagram (if applicable)
 - **Connects To table**: upstream and downstream from interview answers
-- **Edge Cases**: from interview
-- **Design Decisions**: key choices and rationale
 - **Definition of Done**: verifiable checklist
 
 If `epic_mode = split`: Epic = `next_number`, children = `next_number+1…N`, children get `status: draft`.

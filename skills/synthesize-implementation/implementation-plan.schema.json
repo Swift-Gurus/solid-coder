@@ -75,11 +75,6 @@
                 }
               }
             }
-          },
-          "design_decisions": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Design decisions from the spec that apply to this plan item — constraints the code agent must respect."
           }
         }
       }

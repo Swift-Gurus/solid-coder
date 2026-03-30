@@ -115,8 +115,6 @@ Analyzes existing code and produces a rewrite spec. Extracts functionalities as 
 - **Technical Requirements**: External/boundary constraints only — what the component must satisfy, not how the old code satisfied it. For UI code: colors, fonts, spacing, padding, links to design files/screenshots. For non-UI code: API contracts, performance constraints, threading model, platform requirements. Do NOT carry forward internal implementation details — capture the underlying need, not the concrete type that currently provides it.
 - **Diagrams**: current state diagrams from Phase 1.3 + target state diagrams generated from interview answers
 - **Connects To**: from integration map
-- **Edge Cases**: from extracted acceptance criteria + interview
-- **Design Decisions**: from Phase 3.1 and 3.2
 - **Definition of Done**: verifiable checklist
 
 ### 5.2 Rebuild Feature (scaffold)

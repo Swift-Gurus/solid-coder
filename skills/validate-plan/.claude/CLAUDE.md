@@ -45,7 +45,7 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 - **Script is component-agnostic**: Returns all files matching any synonym. The LLM maps files to components in Phase 3. This keeps the script simple and reusable.
 - **Synonym generation is LLM-driven**: The LLM generates domain-aware synonyms (3 per keyword) rather than using a static thesaurus. Passed as JSON string directly — no temp file.
 - **matched_terms[] per file**: Helps the LLM understand why a file was returned, informing confidence scoring.
-- **No spec input needed**: `arch.json` already contains `spec_summary`, `acceptance_criteria[]`, `design_references[]`, and `design_decisions[]` — a separate spec file is redundant.
+- **No spec input needed**: `arch.json` already contains `spec_summary`, `acceptance_criteria[]`, and `design_references[]` — a separate spec file is redundant.
 - **Acceptance criteria checking**: During Phase 3 match analysis, the validator checks which acceptance criteria the existing code already satisfies and which it doesn't. This is recorded per match as `satisfied_criteria[]` and `unsatisfied_criteria[]`, so the synthesizer knows what gaps remain.
 - **No Sources/ glob**: The script handles empty/missing directories by returning zero matches. Just pass `.` as sources.
 - **Report, don't decide**: The validator reports what exists (interfaces, fields, confidence). The synthesizer decides what actions to take (add method, change type, etc.).

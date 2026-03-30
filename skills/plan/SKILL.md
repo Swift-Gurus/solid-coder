@@ -31,14 +31,13 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - **User stories / features** — what the user can do
   - **Data models** — nouns/entities mentioned
   - **Behaviors** — actions, transformations, side effects
-  - **Requirements** — flows, edge-cases
+  - **Requirements** — flows, constraints
   - **Technical Requirements** — APIs, libraries, patterns, constraints (if present)
   - **Definition of Done** — the authoritative "done means done" checklist. Can contain both verification checks and code artifact requirements.
 
 - [ ] 1.4 **Extract carry-forward fields** (verbatim, not summarized):
   - **Acceptance criteria** — from each user story, extract the story text and its criteria list. Store as `acceptance_criteria[]` array of `{story, criteria[]}` objects. Then extract all Definition of Done items and append as an additional entry: `{story: "Definition of Done", criteria: [<each DoD item verbatim>]}`. This ensures DoD items flow through the pipeline alongside user story criteria.
   - **Design references** — from `## UI / Mockup` section: if ASCII mockup exists, store as `{type: "inline", content: <markdown>, label: <description>}`. If `resources/` files are referenced, store as `{type: "file", content: <path>, label: <description>}`. From `## Diagrams` section: store Mermaid diagrams as `{type: "inline", content: <mermaid>, label: <description>}`.
-  - **Design decisions** — from `## Design Decisions` section: extract each decision as a verbatim string. Store as `design_decisions[]` string array.
   - **Technical requirements** — from `## Technical Requirements` section (if present): extract each subsection as a `{section, content}` object. `section` is the subsection heading (e.g., "Package Structure", "Type Definitions"). `content` is the full markdown including code blocks — verbatim, not summarized. Store as `technical_requirements[]`.
 
 - [ ] 1.5 **Extract mode** — if the spec frontmatter contains a `mode` field (e.g., `mode: rewrite`), store it. Otherwise default to `"default"`. This is passed through to arch.json unchanged.
@@ -47,7 +46,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 
 ## Phase 2: Decompose into Components
 
-For each identified behavior or capability, define a component. Respect `design_decisions[]` — if the spec prescribes a pattern (e.g., "use coordinator pattern", "prefer value types"), the decomposition must follow it.
+For each identified behavior or capability, define a component. Respect acceptance criteria and technical requirements — if a criterion says "uses coordinator pattern" or "prefer value types", or a technical requirement specifies API signatures, type definitions, or patterns, the decomposition must follow them.
 
 - [ ] 2.1 Use skill **solid-coder:create-type** skill for naming conventions and solid-category vocabulary - Don't create files
 - [ ] 2.2 Identify all types needed — services, ViewModels, views, data models, protocols
@@ -90,7 +89,6 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
   - `spec_summary`, `components`, `wiring`, `composition_root` (existing)
   - `acceptance_criteria[]` — verbatim from Phase 1.4
   - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)
-  - `design_decisions[]` — verbatim from Phase 1.4
   - `technical_requirements[]` — verbatim from Phase 1.4 (subsections with code blocks preserved)
 - [ ] 5.2 Validate:
   - Every component `dependencies[]` entry appears as some component's `interfaces[]` entry

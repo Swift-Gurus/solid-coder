@@ -130,14 +130,6 @@
         }
       }
     },
-    "design_decisions": {
-      "type": "array",
-      "description": "Verbatim design decisions from the spec. The planner uses these to inform architecture, and they flow downstream so no phase contradicts them.",
-      "items": {
-        "type": "string",
-        "description": "A single design decision — verbatim from spec's Design Decisions section"
-      }
-    },
     "technical_requirements": {
       "type": "array",
       "description": "Verbatim technical requirements from the spec — type definitions, package structure, usage patterns, API signatures. Carried through the pipeline so the code agent has exact specifications.",

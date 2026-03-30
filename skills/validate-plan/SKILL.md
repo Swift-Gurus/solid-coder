@@ -22,7 +22,7 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
 
 ## Phase 0: Prep — Generate Synonyms
 
-- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context. Note `acceptance_criteria[]` and `design_decisions[]` for use in Phase 3.
+- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context. Note `acceptance_criteria[]` for use in Phase 3.
 - [ ] 0.2 For each component in `arch.json`:
   - Split `responsibility` into keywords (remove stop words: the, a, an, is, are, with, from, for, to, of, and, or, in, on, by, that, this, it)
   - Add `category`
