@@ -54,11 +54,11 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 - [ ] 2.4 **Load rules** — For each active rule.md, use skill **solid-coder:load-reference** with the rule.md path.
 - [ ] 2.5 **Load references** — For each active rule, use skill **solid-coder:load-reference** with each path from the `files_to_load` array (step 2.3).
 - [ ] 2.6 **Load fix instructions** — For each active principle, use skill **solid-coder:load-reference** with `{principle_dir}/fix/instructions.md`. These contain fix patterns and strategies to follow when writing code.
-- [ ] 2.7 Hold all loaded rules, references, and fix instructions in context — they apply to every line of code you write
+- [ ] 2.7 Hold all loaded rules, references, fix instructions, and coding patterns in context — they apply to every line of code you write. Note: if a principle's `files_to_load` included `code/rule.md`, it was already loaded in step 2.5 — these contain coding patterns and guidelines for that domain.
 
 ## Phase 3: Write Code
 
-Follow the spec. Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. These are active constraints — apply them proactively while writing, don't defer to the self-check. For each type you create or modify, check which loaded rules apply and follow the compliant patterns from the loaded examples.
+Follow the spec. Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. These are active constraints — apply them proactively while writing, don't defer to the self-check. For each type you create or modify, check which loaded rules apply and follow the compliant patterns from the loaded examples. If any principle included a `code/rule.md`, treat each gotcha as a hard constraint — verify none of the anti-patterns appear in your output.
 
 ### 3.1 Dependency Resolution
 
@@ -122,7 +122,10 @@ After writing all code, verify your output against every loaded rule:
 - [ ] 4.4 Repeat until all loaded rules read COMPLIANT or MINOR on your output
 - [ ] 4.5 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
 - [ ] 4.6 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
-- [ ] 4.7 **Build & test** (conditional) — if build or test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
+- [ ] 4.7 **Build & test** (conditional) — if build, test or ui test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
+    1. Run unit tests for the component you developed
+    2. Run full test suite to validate nothing's broken
+    3. If you worked on UI — also run UI tests
 
 Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems in place.
 

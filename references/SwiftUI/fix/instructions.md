@@ -23,6 +23,7 @@ output_schema: output.schema.json
     - SUI-4 (VM injection) → Extract State + Actions protocols pattern (see examples)
     - SUI-5 (Preview containment) → Move into #Preview block pattern (see examples)
     - SUI-6 (preview coverage) → Create Preview File pattern
+    - SUI-7 (container a11y ID) → Add `.accessibilityElement(children: .contain)` before `.accessibilityIdentifier(...)` pattern
     - Multiple → combine patterns as needed
 
 #### Phase 2: Identify Suggestions
@@ -38,6 +39,10 @@ output_schema: output.schema.json
         - **Non-observable protocols** (Actions protocol, data sources read once): use plain protocol-typed property (`let actions: MyActions`). No generic needed. See `stateful-view-compliant.swift` — `actions` is a plain protocol property, only `state` uses generic. See `non-observable-vm-compliant.swift` for a full example.
     - [ ] For SUI-5: identify all file-scope views and helper types only referenced from `#Preview`/`PreviewProvider`, move their declarations inside the `#Preview` block, update the preview return to use the now-nested types
     - [ ] For SUI-6: create a dedicated preview file in a `Previews/` folder at the component root. File named `{ViewName}Previews.swift`. Include `#Preview` blocks showing the view's key states (default, edge cases, different configurations). Use sample data — no real dependencies.
+    - [ ] For SUI-7: for each flagged container, insert `.accessibilityElement(children: .contain)` immediately before the existing `.accessibilityIdentifier(...)` modifier. Choose the `children:` strategy:
+        - `.contain` — children remain individually accessible (default, most common for test containers)
+        - `.combine` — children merge into a single accessible element (use when the container is a single semantic unit, e.g., a label + value pair)
+        - `.ignore` — children hidden from accessibility (rare, only when children are decorative)
     - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix
@@ -47,6 +52,7 @@ output_schema: output.schema.json
     - New or updated ViewModel with moved methods, State + Actions protocols, ViewModel conforming to both, view with generic constraint (if SUI-2/SUI-4)
     - Modified view with extracted subviews and delegated logic
     - Before/after of body structure
+    - Container with `.accessibilityElement(children: .contain)` inserted before `.accessibilityIdentifier(...)` (if SUI-7)
 - [ ] **3.2 Predict post-fix metrics** (nesting depth, view expression count, impure count per view)
 
 #### Phase 4: Generate Output

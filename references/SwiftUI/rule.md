@@ -38,13 +38,6 @@ Measure nesting depth and view expression count across `body` AND all view-retur
 3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
 4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
 
-**Result:**
-
-| Property | Nesting Depth | Expression Count | Severity |
-|----------|--------------|------------------|----------|
-| body | ___ | ___ | ___ |
-| ___ | ___ | ___ | ___ |
-
 ### SUI-2: View Purity
 
 Detect business logic embedded in the view struct. A SwiftUI view must be dumb — it represents state, nothing more.
@@ -64,17 +57,6 @@ Detect business logic embedded in the view struct. A SwiftUI view must be dumb �
      - COMPUTE — calculations, state machine transitions, derived business state
 3. **Count IMPURE methods/properties**
 
-**Result:**
-
-| Method/Property | Classification | Reason |
-|-----------------|---------------|--------|
-| | | |
-
-| Category | Count |
-|----------|-------|
-| PURE_VIEW | ___ |
-| IMPURE | ___ |
-
 ### SUI-3: Modifier Chain Length
 
 Detect inline views nested inside `@ViewBuilder` closures that accumulate too many modifiers. Long modifier chains on nested views hurt readability — extract them into named computed properties.
@@ -89,13 +71,6 @@ Detect inline views nested inside `@ViewBuilder` closures that accumulate too ma
 2. **For each child view expression** inside that closure (not the outermost container)
 3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
 4. **Flag** if modifier count > 2
-
-**Result:**
-
-| View Expression | Location | Modifier Count | Severity |
-|----------------|----------|---------------|----------|
-| | | | |
-
 
 ### SUI-4: ViewModel Injection
 
@@ -122,12 +97,6 @@ A view referencing a concrete ViewModel class is sealed to that implementation.
 3. **Not in scope:** plain value properties (String, Bool, structs),
    closures/actions, nested child views, style/configuration types
 
-**Result:**
-
-| Property | Type | Concrete/Protocol | Severity |                                                                                                                                                                                    
-|----------|------|-------------------|----------|     
-| | | | |                                                                                                                                                                                                                             
-
 ### SUI-5: Preview-Only View Containment
 
 Detect views that exist solely for Xcode Previews but are declared at file scope, causing them to ship in the production binary.
@@ -148,12 +117,6 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
    - All file-scope views are PRODUCTION → COMPLIANT
    - Any file-scope view is PREVIEW_ONLY → SEVERE
 
-**Result:**
-
-| Type | Name | Location | References | Classification |
-|------|------|----------|------------|----------------|
-| | | | | |
-
 ### SUI-6: Preview Coverage
 
 Detect View structs that have no preview anywhere in the codebase.
@@ -170,11 +133,20 @@ Detect View structs that have no preview anywhere in the codebase.
    - View is instantiated in at least one preview → COMPLIANT
    - View has no preview instantiation anywhere → SEVERE
 
-**Result:**
+### SUI-7: Accessibility Identifier on Containers
 
-| View | File | Has Preview | Preview Location | Severity |
-|------|------|-------------|-----------------|----------|
-| | | | | |
+Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, `Group`) that have `.accessibilityIdentifier(...)` without a preceding `.accessibilityElement(children: .contain)` modifier.
+
+**Definition:** Container views are not exposed in the accessibility hierarchy by default. Applying `.accessibilityIdentifier(...)` alone is invisible to the accessibility tree — XCUI tests will fail to find the element. The container must first opt into the hierarchy with `.accessibilityElement(children: .contain)` (or `.combine`/`.ignore` depending on intent) before the identifier becomes discoverable.
+
+**Detection:**
+
+1. **Identify container views** — any `HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, or `Group` expression
+2. **For each container view with `.accessibilityIdentifier(...)`:**
+   - Check if `.accessibilityElement(children:)` appears in the modifier chain **before** `.accessibilityIdentifier(...)`
+   - If missing → VIOLATION
+   - If present → COMPLIANT
+3. **Containers without `.accessibilityIdentifier(...)`** are not in scope — no finding
 
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
@@ -182,9 +154,10 @@ Detect View structs that have no preview anywhere in the codebase.
 3. **Inline format specifiers** — `Text(price, format: .currency(code: "USD"))` and similar SwiftUI-native format APIs used directly in `body` are idiomatic, not impurity.
 4. **Simple action forwarding** — A method that only calls one ViewModel method with no additional logic (e.g., `func retry() { viewModel.retry() }`) is PURE_VIEW.
 5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
+6. **Custom container wrappers** — If a custom view wraps a container internally and applies `.accessibilityElement(children:)` inside its own `body`, callers adding `.accessibilityIdentifier(...)` externally are COMPLIANT — the element is already in the hierarchy.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
@@ -193,22 +166,25 @@ Detect View structs that have no preview anywhere in the codebase.
     - Concrete VM injection
     - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
     - File-scope view with no #Preview or PreviewProvider instantiation anywhere
+    - Container view with `.accessibilityIdentifier(...)` missing preceding `.accessibilityElement(children:)`
 ---
 
 ## Quantitative Metrics Summary
-| ID    | Metric                | Threshold                                                          | Severity  |
-|-------|-----------------------|--------------------------------------------------------------------|-----------|
-| SUI-0 | Exception             | Falls into exception category                                      | COMPLIANT |
-| SUI-1 | Body complexity       | Nesting < 3, expressions < 5                                       | COMPLIANT |
-| SUI-2 | View purity           | 0 impure methods                                                   | COMPLIANT |
-| SUI-3 | Modifier chain length | All nested child modifiers <= 2                                    | COMPLIANT |
-| SUI-4 | VM injection          | VM injected as an interface, view has generic signature            | COMPLIANT |
-| SUI-5 | Preview containment   | All file-scope views have production callers                       | COMPLIANT |
-| SUI-6 | Preview coverage      | All file-scope views instantiated in a preview                     | COMPLIANT |
-| SUI-1 | Body complexity       | Nesting >= 3 OR expressions >= 5                                   | SEVERE    |
-| SUI-2 | View purity           | 1+ impure methods                                                  | SEVERE    |
-| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers                            | SEVERE    |
-| SUI-4 | VM injection          | VM injected as a concrete implementation                           | SEVERE    |    
-| SUI-5 | Preview containment   | Any file-scope view only referenced from #Preview/PreviewProvider  | SEVERE    |
-| SUI-6 | Preview coverage      | Any file-scope view with no preview instantiation                  | SEVERE    |
+| ID | Metric | Threshold | Severity |
+|----|--------|-----------|----------|
+| SUI-0 | Exception | Falls into exception category | COMPLIANT |
+| SUI-1 | Body complexity | Nesting < 3, expressions < 5 | COMPLIANT |
+| SUI-2 | View purity | 0 impure methods | COMPLIANT |
+| SUI-3 | Modifier chain length | All nested child modifiers <= 2 | COMPLIANT |
+| SUI-4 | VM injection | VM injected as an interface, view has generic signature | COMPLIANT |
+| SUI-5 | Preview containment | All file-scope views have production callers | COMPLIANT |
+| SUI-6 | Preview coverage | All file-scope views instantiated in a preview | COMPLIANT |
+| SUI-7 | Container a11y ID | All container `.accessibilityIdentifier` preceded by `.accessibilityElement` | COMPLIANT |
+| SUI-1 | Body complexity | Nesting >= 3 OR expressions >= 5 | SEVERE |
+| SUI-2 | View purity | 1+ impure methods | SEVERE |
+| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers | SEVERE |
+| SUI-4 | VM injection | VM injected as a concrete implementation | SEVERE |
+| SUI-5 | Preview containment | Any file-scope view only referenced from #Preview/PreviewProvider | SEVERE |
+| SUI-6 | Preview coverage | Any file-scope view with no preview instantiation | SEVERE |
+| SUI-7 | Container a11y ID | Container with `.accessibilityIdentifier` missing `.accessibilityElement` | SEVERE |
 ---

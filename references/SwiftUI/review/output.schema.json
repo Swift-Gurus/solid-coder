@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage", "container_accessibility"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -156,11 +156,31 @@
                         }
                       }
                     }
+                  },
+                  "container_accessibility": {
+                    "type": "object",
+                    "required": ["flagged_containers"],
+                    "properties": {
+                      "flagged_containers": {
+                        "type": "array",
+                        "description": "Container views with .accessibilityIdentifier but missing .accessibilityElement(children:). Empty array if all containers are compliant.",
+                        "items": {
+                          "type": "object",
+                          "required": ["container_type", "location", "has_accessibility_element", "has_accessibility_identifier"],
+                          "properties": {
+                            "container_type": { "type": "string", "description": "Container view type (e.g., HStack, VStack, List)" },
+                            "location": { "type": "string", "description": "Line number or property where the container appears" },
+                            "has_accessibility_element": { "type": "boolean" },
+                            "has_accessibility_identifier": { "type": "boolean" }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "container_accessibility_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
@@ -168,6 +188,7 @@
                     "vm_injection_severity": { "type": "string" },
                     "preview_containment_severity": { "type": "string" },
                     "preview_coverage_severity": { "type": "string" },
+                    "container_accessibility_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -190,7 +211,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6", "SUI-7"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },

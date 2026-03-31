@@ -8,7 +8,7 @@ output_schema: output.schema.json
 ### Phase 0: Load Examples for context.
 - [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
 
-#### Phase 1: Detection (SUI-1 through SUI-6 run independently and in parallel if possible)
+#### Phase 1: Detection (SUI-1 through SUI-7 run independently and in parallel if possible)
 
 - [ ] **1.1 SUI-1: Measure Body Complexity**
     - [ ] 1.1.1 Identify all view-returning properties — `body` plus any `var`/`func` returning `some View`
@@ -59,6 +59,19 @@ output_schema: output.schema.json
 
     - [ ] 1.6.5 Views with no preview instantiation anywhere: count ___
 
+- [ ] **1.7 SUI-7: Check Container Accessibility Identifiers**
+    - [ ] 1.7.1 Identify all container views: `HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, `Group`
+    - [ ] 1.7.2 For each container that has `.accessibilityIdentifier(...)`:
+        - Check if `.accessibilityElement(children:)` appears in the modifier chain **before** `.accessibilityIdentifier(...)`
+        - If missing → flag as VIOLATION
+    - [ ] 1.7.3 Record results:
+
+      | Container | Location | Has `.accessibilityElement` | Has `.accessibilityIdentifier` | Severity |
+      |-----------|----------|----------------------------|-------------------------------|----------|
+      | | | | | |
+
+    - [ ] 1.7.4 Containers missing `.accessibilityElement`: count ___
+
 #### Phase 2: Filter Out Exceptions
 
 - [ ] **2.1 Cross-check exceptions** — mark exceptions
@@ -75,8 +88,9 @@ output_schema: output.schema.json
     - [ ] 3.1.2 View purity: impure count ___, has data fetch ___, severity: ___
     - [ ] 3.1.3 Modifier chain: max nested chain ___, severity: ___
     - [ ] 3.1.4 Preview coverage: views without preview ___, severity: ___
-    - [ ] 3.1.5 Adjust severity considering exceptions.
-    - [ ] 3.1.6 Final severity: ___
+    - [ ] 3.1.5 Container accessibility: containers missing `.accessibilityElement` ___, severity: ___
+    - [ ] 3.1.6 Adjust severity considering exceptions.
+    - [ ] 3.1.7 Final severity: ___
 
 #### Phase 4: Output
 
@@ -86,3 +100,4 @@ output_schema: output.schema.json
     - [ ] 4.1.3 Show modifier chain length table (if any flagged)
     - [ ] 4.1.4 Show cross-reference table with found exceptions
     - [ ] 4.1.5 Show preview coverage table (if any views lack previews)
+    - [ ] 4.1.6 Show container accessibility table (if any containers flagged)

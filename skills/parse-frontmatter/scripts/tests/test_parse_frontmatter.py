@@ -349,6 +349,62 @@ class TestFilesToLoad:
         assert str(rule_file.resolve()) in data["files_to_load"]
 
 
+class TestCodeDirectory:
+    """code/ directory auto-discovered and included in files_to_load."""
+
+    def test_code_dir_auto_discovered(self, tmp_path):
+        md = tmp_path / "rule.md"
+        _write_md(md, {
+            "name": "swiftui",
+            "category": "framework",
+            "description": "SwiftUI rules",
+        })
+        code_dir = tmp_path / "code"
+        code_dir.mkdir()
+        code_rule = code_dir / "rule.md"
+        code_rule.write_text("# Coding patterns\n")
+
+        result = _run(str(md))
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert str(code_rule) in data["files_to_load"]
+
+    def test_no_code_dir_no_field(self, tmp_path):
+        md = tmp_path / "rule.md"
+        _write_md(md, {
+            "name": "srp",
+            "category": "solid",
+            "description": "desc",
+        })
+        result = _run(str(md))
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        assert "code" not in data
+
+    def test_code_dir_with_examples(self, tmp_path):
+        """code/ files appear alongside examples in files_to_load."""
+        md = tmp_path / "rule.md"
+        _write_md(md, {
+            "name": "swiftui",
+            "category": "framework",
+            "description": "desc",
+        })
+        (tmp_path / "Examples").mkdir()
+        ex = tmp_path / "Examples" / "sample.swift"
+        ex.write_text("// sample")
+        code_dir = tmp_path / "code"
+        code_dir.mkdir()
+        code_rule = code_dir / "rule.md"
+        code_rule.write_text("# Patterns\n")
+
+        result = _run(str(md))
+        assert result.returncode == 0
+        data = json.loads(result.stdout)
+        ftl = data["files_to_load"]
+        assert str(ex) in ftl
+        assert str(code_rule) in ftl
+
+
 class TestBooleanAndNumericValues:
     def test_boolean_true(self, tmp_path):
         md = tmp_path / "skill.md"

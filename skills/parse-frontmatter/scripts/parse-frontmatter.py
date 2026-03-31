@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 
 # Fields whose values are file paths relative to the file's parent directory
-LOCAL_PATH_FIELDS = {"rules", "output_schema", "input_schema", "examples"}
+LOCAL_PATH_FIELDS = {"rules", "output_schema", "input_schema", "examples", "code"}
 
 # Fields whose values are paths relative to the references root
 REFS_PATH_FIELDS = {"required_patterns"}
@@ -194,6 +194,12 @@ def main() -> None:
         if default_examples.is_dir():
             data["examples"] = ["Examples"]
 
+    # Default code to ["code"] when not specified
+    if "code" not in data:
+        default_code = file_dir / "code"
+        if default_code.is_dir():
+            data["code"] = ["code"]
+
     resolved = resolve_paths(data, file_dir, refs_root)
 
     # Add source metadata
@@ -202,7 +208,7 @@ def main() -> None:
 
     # Build files_to_load — flat list of all files the consumer should read
     files_to_load: List[str] = []
-    for field in ("required_patterns", "examples", "rules"):
+    for field in ("required_patterns", "examples", "rules", "code"):
         value = resolved.get(field)
         if value is None:
             continue
