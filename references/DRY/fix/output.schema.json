@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DRY Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
+  "properties": {
+    "agent": { "const": "dry" },
+    "principle": { "const": "Don't Repeat Yourself" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file_path": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^dry-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., dry-fix-001"
+          },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the unit this suggestion targets"
+          },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension"],
+            "description": "Kind of the unit this suggestion targets"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['dry-001', 'dry-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the refactoring"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": ["use_existing", "extract_shared", "extract_abstraction"],
+            "description": "Which DRY fix pattern this applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the refactoring: shared abstractions, modified types, before/after of key sections"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task that can be fed to a code agent."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted DRY metrics after the suggestion is applied",
+            "properties": {
+              "original_type": {
+                "type": "object",
+                "properties": {
+                  "reuse_misses": { "type": "integer" },
+                  "inlined_duplications": { "type": "integer" },
+                  "missing_abstractions": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              },
+              "extracted_types": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "reuse_misses": { "type": "integer" },
+                    "inlined_duplications": { "type": "integer" },
+                    "missing_abstractions": { "type": "integer" },
+                    "expected_severity": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DRY Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "dry" },
+    "principle": { "const": "Don't Repeat Yourself" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "units": {
+            "type": "array",
+            "description": "Per-unit analysis results within this file",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": {
+                  "type": "string",
+                  "description": "Name of the analyzed unit (e.g., class name, struct name)"
+                },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension"],
+                  "description": "Kind of the analyzed unit"
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["reuse_misses", "inlined_duplications", "missing_abstractions"],
+                  "properties": {
+                    "reuse_misses": {
+                      "type": "object",
+                      "required": ["count", "table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["new_type", "existing_type", "confidence", "classification"],
+                            "properties": {
+                              "new_type": { "type": "string" },
+                              "existing_type": { "type": "string" },
+                              "existing_file": {
+                                "type": "string",
+                                "description": "File path where the existing type was found"
+                              },
+                              "confidence": {
+                                "type": "string",
+                                "enum": ["high", "medium", "low"],
+                                "description": "Match confidence based on responsibility and interface fit"
+                              },
+                              "responsibility_fit": {
+                                "type": "string",
+                                "description": "How the existing type's responsibility relates to the new type's"
+                              },
+                              "interface_differences": {
+                                "type": "array",
+                                "items": { "type": "string" },
+                                "description": "Specific differences: missing protocols, method signature mismatches, field differences"
+                              },
+                              "classification": {
+                                "type": "string",
+                                "enum": ["EXACT", "EXTENSIBLE", "PARTIAL"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "inlined_duplications": {
+                      "type": "object",
+                      "required": ["count", "table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["method_a", "location_a", "method_b", "location_b", "classification"],
+                            "properties": {
+                              "method_a": { "type": "string" },
+                              "location_a": { "type": "string" },
+                              "method_b": { "type": "string" },
+                              "location_b": { "type": "string" },
+                              "classification": {
+                                "type": "string",
+                                "enum": ["IDENTICAL", "STRUCTURAL", "SIMILAR"]
+                              },
+                              "reasoning": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "missing_abstractions": {
+                      "type": "object",
+                      "required": ["count", "table"],
+                      "properties": {
+                        "count": { "type": "integer" },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["type", "pattern", "reuse_potential"],
+                            "properties": {
+                              "type": { "type": "string" },
+                              "pattern": { "type": "string" },
+                              "reuse_potential": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["reuse_severity", "duplication_severity", "infrastructure_severity", "final_severity"],
+                  "properties": {
+                    "reuse_severity": { "type": "string" },
+                    "duplication_severity": { "type": "string" },
+                    "infrastructure_severity": { "type": "string" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^dry-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["DRY-1", "DRY-2", "DRY-3"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
