@@ -47,11 +47,12 @@ FOR each file that has non-COMPLIANT findings:
 
 ### 3.2 Draft Per-Principle Actions
 
-**Principle order:** Process principles from smallest to largest blast radius 
-    - Resolve dependencies before restructuring. The order is: Functions -> Any UI -> OCP → LSP → ISP → SRP. 
+**Principle order:** Deduplicate first, then process from smallest to largest blast radius
+    - The order is: DRY → Functions → Any UI → OCP → LSP → ISP → SRP.
     - Each principle's fixes build on the previous:
-        - OCP resolves sealed dependencies so LSP can fix abstractions cleanly, 
-        - ISP splits fat protocols so extracted types get narrow interfaces,  
+        - DRY removes redundant types and extracts shared abstractions so all subsequent principles operate on deduplicated code,
+        - OCP resolves sealed dependencies so LSP can fix abstractions cleanly,
+        - ISP splits fat protocols so extracted types get narrow interfaces,
         - SRP extracts types that already have proper injection.
 
 FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:

@@ -36,7 +36,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 ## Key Design Decisions
 
 - **Dynamic knowledge loading** — only loads fix knowledge for principles that have findings. Keeps context bounded as principles scale. Don't preload everything.
-- **Principle ordering** — Phase 3 processes principles smallest-to-largest blast radius: Functions -> UI -> OCP -> LSP -> ISP -> SRP. Each builds on the previous (e.g., OCP resolves sealed deps before LSP fixes abstractions).
+- **Principle ordering** — Phase 3 deduplicates first, then processes smallest-to-largest blast radius: DRY -> Functions -> UI -> OCP -> LSP -> ISP -> SRP. DRY runs first so all subsequent principles operate on deduplicated code.
 - **Single-principle drafting, cross-principle verification** — Phase 3 drafts focus on one principle at a time. Phase 4 cross-checks against all others. This separation prevents conflated fixes.
 - **Inline cross-check guidance** — Phases 4.2 and 4.3 include per-principle quick-reference checklists (SRP, OCP, LSP, ISP, SwiftUI) so the agent doesn't have to derive what to check from rule.md alone. These are summaries, not replacements — rule.md is still loaded and applied.
 - **Single-attempt patching** — if a cross-check or post-merge validation fails and the patch also fails, mark as `unresolved`. No recursive fix loops. The iteration loop (refactor Phase 8) is the retry mechanism.

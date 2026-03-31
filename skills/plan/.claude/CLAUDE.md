@@ -113,7 +113,7 @@ Output: arch.json → written to output-path
 
 - REQ-3.1: The skill writes `arch.json` to the path specified by the `output-path` argument.
 - REQ-3.2: `arch.json` must conform to the schema at `skills/plan/arch.schema.json`.
-- REQ-3.3: `arch.json` must include `acceptance_criteria[]` (verbatim from spec), `design_references[]` (inline mockups/diagrams + resource paths), and `technical_requirements[]` (subsections with code blocks from `## Technical Requirements`). These are carried through the pipeline — not summarized.
+- REQ-3.3: `arch.json` must include `acceptance_criteria[]` (verbatim from spec), `design_references[]` (inline mockups/diagrams from spec content + all files from sibling `resources/` directory), and `technical_requirements[]` (subsections with code blocks from `## Technical Requirements`). These are carried through the pipeline — not summarized.
 
 ### Edge Cases
 
