@@ -1,0 +1,313 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Testing Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "testing" },
+    "principle": { "const": "Unit Testing" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "units": {
+            "type": "array",
+            "description": "Per-unit analysis results within this file",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": {
+                  "type": "string",
+                  "description": "Name of the analyzed test class/struct"
+                },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension"],
+                  "description": "Kind of the analyzed unit"
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["isolation", "structure", "naming", "test_doubles", "setup_complexity"],
+                  "properties": {
+                    "isolation": {
+                      "type": "object",
+                      "required": ["violation_count", "shared_state", "interdependencies"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "shared_state": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["property", "scope", "reset_in_setup"],
+                            "properties": {
+                              "property": { "type": "string" },
+                              "scope": { "type": "string" },
+                              "reset_in_setup": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "interdependencies": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "depends_on", "reason"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "depends_on": { "type": "string" },
+                              "reason": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "structure": {
+                      "type": "object",
+                      "required": ["violation_count", "logic_in_tests", "phase_analysis", "multiple_behaviors", "sleep_waiting"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "logic_in_tests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "logic_type", "code"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "logic_type": {
+                                "type": "string",
+                                "enum": ["conditional", "loop", "try_swallow", "conditional_assertion", "phase_comment"]
+                              },
+                              "code": { "type": "string" }
+                            }
+                          }
+                        },
+                        "phase_analysis": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "has_arrange", "has_act", "has_assert", "interleaved"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "has_arrange": { "type": "boolean" },
+                              "has_act": { "type": "boolean" },
+                              "has_assert": { "type": "boolean" },
+                              "interleaved": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "multiple_behaviors": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "assertion_count", "behaviors_tested"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "assertion_count": { "type": "integer" },
+                              "behaviors_tested": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "sleep_waiting": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "sleep_call", "location"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "sleep_call": {
+                                "type": "string",
+                                "description": "The sleep API used (e.g., Task.sleep, Thread.sleep, usleep)"
+                              },
+                              "location": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "naming": {
+                      "type": "object",
+                      "required": ["violation_count", "table", "convention"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "convention": {
+                          "type": "string",
+                          "description": "Detected naming convention pattern"
+                        },
+                        "table": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "describes_scenario", "describes_expectation"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "describes_scenario": { "type": "boolean" },
+                              "describes_expectation": { "type": "boolean" },
+                              "violation_type": {
+                                "type": "string",
+                                "enum": ["non_descriptive", "missing_condition", "missing_expectation", "inconsistent_convention", "none"]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "test_doubles": {
+                      "type": "object",
+                      "required": ["violation_count", "inventory", "over_mocking", "brittle_verification", "mock_logic"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "inventory": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["name", "double_type", "replaces"],
+                            "properties": {
+                              "name": { "type": "string" },
+                              "double_type": {
+                                "type": "string",
+                                "enum": ["mock", "stub", "fake", "spy"]
+                              },
+                              "replaces": { "type": "string" },
+                              "necessary": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "over_mocking": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "mock", "issue"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "mock": { "type": "string" },
+                              "issue": {
+                                "type": "string",
+                                "enum": ["value_type_mocked", "partial_mock", "pure_logic_mocked"]
+                              }
+                            }
+                          }
+                        },
+                        "brittle_verification": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "verification", "issue"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "verification": { "type": "string" },
+                              "issue": { "type": "string" }
+                            }
+                          }
+                        },
+                        "mock_logic": {
+                          "type": "array",
+                          "description": "Tests that verify mock behavior instead of SUT behavior",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "issue"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "issue": {
+                                "type": "string",
+                                "enum": ["circular_mock_assertion", "facade_deps_mocked"]
+                              },
+                              "detail": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "setup_complexity": {
+                      "type": "object",
+                      "required": ["violation_count", "dependency_count", "inline_constructions"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "dependency_count": {
+                          "type": "integer",
+                          "description": "Number of mock/stub dependencies the SUT requires — informs fix strategy"
+                        },
+                        "inline_constructions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "sut_type", "dependency_count"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "sut_type": {
+                                "type": "string",
+                                "description": "The type being constructed inline"
+                              },
+                              "dependency_count": {
+                                "type": "integer",
+                                "description": "Number of dependencies passed in this construction"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["isolation_severity", "structure_severity", "naming_severity", "test_double_severity", "setup_severity", "final_severity"],
+                  "properties": {
+                    "isolation_severity": { "type": "string" },
+                    "structure_severity": { "type": "string" },
+                    "naming_severity": { "type": "string" },
+                    "test_double_severity": { "type": "string" },
+                    "setup_severity": { "type": "string" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^test-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE", "MINOR"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["TEST-1", "TEST-2", "TEST-3", "TEST-4", "TEST-5"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

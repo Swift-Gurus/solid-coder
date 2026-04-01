@@ -89,10 +89,30 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - [ ] 4.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "code", "status": "success" }`
 - [ ] 4.4 If the Task failed → report which plan items completed, which failed, and which remain. Suggestion: "You can re-run `/code` with the remaining items or fix the issue and retry." Do NOT rollback already-completed items. STOP.
 
+## Phase 4.5: Validate Implementation
+
+- [ ] 4.5.1 Use skill **solid-coder:validate-implementation** with: `{OUTPUT_ROOT}`
+- [ ] 4.5.2 If result `status` == `"skipped"` or `"approved"` → proceed to Phase 5
+- [ ] 4.5.3 If result `status` == `"has_fixes"`:
+  - Prepare a Task call:
+    - subagent_type: `solid-coder:code-agent`
+    - prompt:
+      ```
+      mode: code
+      Fix the following design issues:
+      {read design-fixes.json from fixes_path}
+      ```
+  - Launch Task
+  - After fixes applied, ask user: "Fixes applied. Would you like to re-validate, continue to refactor, or stop?"
+    - **Re-validate** → return to 4.5.1 (max 2 re-validates — after that, offer only continue or stop)
+    - **Continue** → proceed to Phase 5 with remaining issues noted
+    - **Stop** → STOP. Report what was implemented and what design issues remain.
+- [ ] 4.5.4 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "validate-implementation", "status": "success" }`
+
 ## Phase 5: Safety Review (conditional)
 
 - [ ] 5.0 If ITERATIONS == 0: **skip this phase entirely** — go to Phase 6.
-- [ ] 5.1 Stage all files created/modified by Phase 4: run `git add -A` to capture all changes
+- [ ] 5.1 Stage all files created/modified by Phase 4 and 4.5: run `git add -A` to capture all changes
 - [ ] 5.2 Invoke skill **solid-coder:refactor** with: `changes --iterations {ITERATIONS}` (if VERBOSE: append `--verbose`)
 - [ ] 5.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "refactor", "status": "success" }`
 - [ ] 5.4 If refactor found violations that persist → report remaining violations to the user. This is informational — the implementation is complete.

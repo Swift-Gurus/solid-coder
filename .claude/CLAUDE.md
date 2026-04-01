@@ -57,6 +57,7 @@ These are triggered by other skills or agents — not directly by the user:
 | `validate-spec` | Checks a spec for buildability — flags vague terms, undefined types, implicit contracts. Used by build-spec Phase 4 |
 | `validate-plan` | Validates arch.json against the codebase — finds reusable types, conflicts, annotates components with reuse status |
 | `synthesize-implementation` | Reconciles arch.json + validation.json into ordered implementation plan of /code directives |
+| `validate-implementation` | Post-code checkpoint — collects user screenshots and feedback, compares against design references, produces fix directives |
 | `load-reference` | Loads reference files with frontmatter stripped. Utility |
 
 ## Agents

@@ -36,6 +36,10 @@ spec file → Phase 1: /plan → arch.json
                                  ↓
            Phase 4: code-agent → source files
                                  ↓
+           Phase 4.5: /validate-implementation → user screenshots + feedback
+                      ↓ approved        ↓ has_fixes
+                      ↓           code-agent fixes → re-validate
+                      ↓                ↓
            Phase 5: /refactor changes --iterations 1 → safety review
 ```
 
@@ -45,6 +49,7 @@ spec file → Phase 1: /plan → arch.json
 |-------------|-------|-------------|
 | `solid-coder:parse-frontmatter` | 0 | Validates spec frontmatter |
 | `solid-coder:plan` | 1 | Produces `arch.json` |
+| `solid-coder:validate-implementation` | 4.5 | User checkpoint — collects screenshots/feedback, gates refactor |
 | `solid-coder:validate-plan` | 2 | Produces `validation.json` |
 | `solid-coder:synthesize-implementation` | 3 | Produces `implementation-plan.json` |
 | `code-agent` | 4 | Executes plan items, writes source files |

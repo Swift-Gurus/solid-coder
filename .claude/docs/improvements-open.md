@@ -326,6 +326,95 @@ Level 1 is preferred — it's cleaner to not produce empty artifacts than to fil
 
 ---
 
+## S-45: Design verification — structured pixel diff before refactor
+
+**Impact**: High | **Effort**: High | **Category**: Pipeline enhancement
+
+**Status**: POC needed — validate approach before committing
+
+### Problem
+
+`/implement` Phase 4.5 checks design compliance by having the LLM compare screenshots against code. The LLM checks for **presence** of elements ("app icon — present, title — present") but misses **visual accuracy** (spacing, alignment, colors, proportions). Result: "layout matches well" when the design is actually off.
+
+### Why LLM-only comparison fails
+
+- LLMs reason about structure, not pixels
+- Comparing an image to code is fundamentally different from comparing two images
+- "All elements present" ≠ "looks correct"
+
+### Proposed solution: structured diff → LLM
+
+Convert the visual comparison into structured data the LLM can reason about:
+
+```
+Design.png + Implementation.png
+    ↓
+compare-design.py (OpenCV / pixelmatch)
+    ↓
+{
+  "match_percentage": 87.3,
+  "diff_regions": [
+    {
+      "bounds": { "x": 20, "y": 150, "w": 300, "h": 50 },
+      "diff_percentage": 34.2,
+      "design_dominant_color": "#F5F5F5",
+      "actual_dominant_color": "#FFFFFF"
+    }
+  ],
+  "layout_shift": { "vertical_offset": 12, "horizontal_offset": 0 },
+  "diff_image": "path/to/diff.png"
+}
+    ↓
+LLM receives: design image + implementation image + diff image + structured JSON
+    → Strong signals, not "does it look right?"
+    → Outputs actionable fix directives
+```
+
+### Pipeline integration
+
+New Phase 4.5 in `/implement`, between code and refactor:
+
+1. Build target (`xcodebuild`)
+2. Capture implementation screenshots (simulator or snapshot test)
+3. Run `compare-design.py` → structured diff JSON + diff image
+4. If `match_percentage` < threshold → LLM reads both images + diff data → fix directives
+5. Feed fixes back to `/code` before refactor runs
+
+### Screenshot capture options (need POC)
+
+| Approach | Pros | Cons |
+|---|---|---|
+| `swift-snapshot-testing` (Point-Free) | Deterministic, works macOS+iOS, renders SwiftUI views | Needs test target, library dependency |
+| `xcrun simctl io booted screenshot` | No library needed | Needs running simulator, app must be launched |
+| Xcode preview rendering | Closest to dev workflow | Flaky, undocumented API |
+
+### Comparison tool options (need POC)
+
+| Tool | Output | Language |
+|---|---|---|
+| OpenCV (`cv2.absdiff` + `findContours`) | Bounding boxes, color histograms, edge comparison | Python |
+| `pixelmatch` | Diff percentage + diff image | JS/Node |
+| ImageMagick `compare` | Diff image, metrics | CLI |
+| Resemble.js | JSON with mismatch %, bounding boxes | JS/Node |
+
+### POC plan
+
+1. Take 2-3 design screenshots from a recent `/implement` run
+2. Manually capture implementation screenshots
+3. Try OpenCV diff → evaluate quality of structured output
+4. Try pixelmatch → evaluate quality
+5. Feed structured diff to LLM → evaluate if fix directives are actionable
+6. Compare against current LLM-only approach (Phase 4.5)
+
+### Dependencies
+
+- Build infrastructure (xcodebuild must work in the project)
+- Screenshot capture mechanism (TBD from POC)
+- OpenCV or similar (`pip install opencv-python numpy`)
+- `swift-snapshot-testing` if using snapshot approach
+
+---
+
 ## Open Suggestion Status Tracker
 
 | ID | Summary | Impact | Effort | Status | Verified |
@@ -350,3 +439,4 @@ Level 1 is preferred — it's cleaner to not produce empty artifacts than to fil
 | S-42 | Full automation loop: spec → code → test → commit → PR | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-42) | — |
 | S-43 | Rewrite mode — greenfield bypass in validate-plan | High | Low | Not implemented — see [arch file](improvements-open-arch.md#s-43) | 2026-03-19 |
 | S-44 | `build-spec-from-code` skill — rewrite spec from code | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-44) | 2026-03-19 |
+| S-45 | Design verification — structured pixel diff before refactor | High | High | POC needed — validate OpenCV/pixelmatch approach | — |

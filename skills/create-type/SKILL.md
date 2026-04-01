@@ -73,7 +73,8 @@ For each type needing frontmatter:
   - `utility` — used for pure functions, formatters, helpers, extensions
   - `navigation` — used for routing, coordinators, deep linking
   - `service` - anything that doesn't fall into any mentioned categories that can be qualified as business logic
-  - `testing` — used for test helpers, fixtures, shared test utilities
+  - `unit-test` — used for unit tests, test helpers, fixtures, shared test utilities for business logic
+  - `ui-test` — used for UI tests, snapshot tests, accessibility tests
 
   Categories are extensible — use the closest match or introduce a new one if none fits.
 

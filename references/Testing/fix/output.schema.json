@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Testing Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
+  "properties": {
+    "agent": { "const": "testing" },
+    "principle": { "const": "Unit Testing" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file_path": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^test-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., test-fix-001"
+          },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the test class this suggestion targets"
+          },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension"],
+            "description": "Kind of the unit this suggestion targets"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['test-001', 'test-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the fix"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "reset_state",
+              "break_interdependency",
+              "split_test",
+              "restructure_aaa",
+              "replace_sleep_with_expectation",
+              "replace_try_swallow",
+              "rename",
+              "replace_doubles",
+              "replace_mock_logic",
+              "extract_sut_property",
+              "extract_sut_factory",
+              "extract_sut_builder"
+            ],
+            "description": "Which testing fix pattern this applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the fix: test doubles, restructured tests, factories, renamed methods, before/after"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task that can be fed to a code agent."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted testing metrics after the suggestion is applied",
+            "properties": {
+              "test_class": {
+                "type": "object",
+                "properties": {
+                  "isolation_violations": { "type": "integer" },
+                  "structure_violations": { "type": "integer" },
+                  "naming_violations": { "type": "integer" },
+                  "test_double_violations": { "type": "integer" },
+                  "setup_violations": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

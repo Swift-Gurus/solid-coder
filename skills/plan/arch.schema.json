@@ -147,6 +147,41 @@
           }
         }
       }
+    },
+    "test_plan": {
+      "type": "array",
+      "description": "Test cases extracted from Test Plan section. Each entry is a specific test to implement, classified by type and associated with a component where possible.",
+      "items": {
+        "type": "object",
+        "required": ["type", "description", "given", "when", "expect"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["unit", "ui", "integration"],
+            "description": "Test category"
+          },
+          "description": {
+            "type": "string",
+            "description": "Verbatim test case description from the spec"
+          },
+          "given": {
+            "type": "string",
+            "description": "Preconditions — what state is set up before the action (e.g., 'WindowManager has one tracked project')"
+          },
+          "when": {
+            "type": "string",
+            "description": "Action — what is performed (e.g., 'open the same project URL again')"
+          },
+          "expect": {
+            "type": "string",
+            "description": "Expected outcome — what should happen (e.g., 'existing window is brought to front, no new window created')"
+          },
+          "component": {
+            "type": ["string", "null"],
+            "description": "Name of the component this test targets. Null if the test spans multiple components or can't be associated with one."
+          }
+        }
+      }
     }
   }
 }

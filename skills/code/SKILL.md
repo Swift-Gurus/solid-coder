@@ -36,6 +36,7 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
   - [ ] For each item: use `directive` as the instruction, `action` + `file` as the target, `acceptance_criteria` as verification checklist
       - For `design_references[]`: if `type` is `"file"` read the file at `content` path before writing code;
       - if `type` is `"inline"` follow the embedded content (mockups, diagrams) as layout/structure reference
+      - For `test_cases[]`: implement each test case exactly as described. Each entry has `type` (unit/ui/integration) and `description` (verbatim from spec). Write the test method matching the description — do not invent additional tests, do not skip any.
   - [ ] Note top-level `acceptance_criteria[]` for cross-cutting verification in Phase 4
 
   **MODE = `code`** (default if omitted):
@@ -121,6 +122,12 @@ After writing all code, verify your output against every loaded rule:
 - [ ] 4.3 If a fix introduces logic governed by a principle you haven't loaded yet, load that `rule.md` and check again
 - [ ] 4.4 Repeat until all loaded rules read COMPLIANT or MINOR on your output
 - [ ] 4.5 **Design reference compliance** — for each plan item that had `design_references`, verify the implemented code matches the provided designs. For `type: "file"` references, read the file (screenshots, mockups, schemas). For `type: "inline"` references, use the embedded content (mermaid diagrams, ASCII mockups). Check layout structure, component hierarchy, spacing, naming, and behavior match the design. If any mismatch is found, fix it inline.
+  - [ ] 4.5.1 Verify paddings are matched 
+  - [ ] 4.5.2 Verity colors are matched
+  - [ ] 4.5.3 Verify positions of elements and their sized are matched
+  - [ ] 4.5.4 Verify composition of elements is matched
+  - [ ] 4.5.5 Verify no text or element is clipped or overflows its container
+  - [ ] 4.5.6 Verify all elements visible in the design are present in the implementation — nothing is missing
 - [ ] 4.6 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
 - [ ] 4.7 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
 - [ ] 4.8 **Build & test** (conditional) — if build, test or ui test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.

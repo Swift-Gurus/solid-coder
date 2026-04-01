@@ -75,6 +75,36 @@
                 }
               }
             }
+          },
+          "test_cases": {
+            "type": "array",
+            "description": "Test cases this plan item must implement — from spec's Test Plan section.",
+            "items": {
+              "type": "object",
+              "required": ["type", "description", "given", "when", "expect"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["unit", "ui", "integration"]
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Verbatim test case description from the spec"
+                },
+                "given": {
+                  "type": "string",
+                  "description": "Preconditions — what state is set up before the action"
+                },
+                "when": {
+                  "type": "string",
+                  "description": "Action — what is performed"
+                },
+                "expect": {
+                  "type": "string",
+                  "description": "Expected outcome — what should happen"
+                }
+              }
+            }
           }
         }
       }

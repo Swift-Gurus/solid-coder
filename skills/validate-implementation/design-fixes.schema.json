@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Design Fixes",
+  "type": "object",
+  "required": ["status", "fixes"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["approved", "has_fixes", "skipped", "stopped"],
+      "description": "Outcome of the validation"
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "criteria_checked": { "type": "integer" },
+        "criteria_met": { "type": "integer" },
+        "design_references_checked": { "type": "integer" },
+        "visual_differences_found": { "type": "integer" }
+      }
+    },
+    "criteria_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["criterion", "visual", "met"],
+        "properties": {
+          "criterion": { "type": "string" },
+          "source": {
+            "type": "string",
+            "description": "Where this criterion came from (spec, arch, plan item)"
+          },
+          "visual": { "type": "boolean" },
+          "met": { "type": "boolean" },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "visual_comparisons": {
+      "type": "array",
+      "description": "Per design-reference comparison results",
+      "items": {
+        "type": "object",
+        "required": ["design_reference", "differences"],
+        "properties": {
+          "design_reference": {
+            "type": "string",
+            "description": "Filename or label of the design reference"
+          },
+          "differences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["element", "expected", "actual", "type"],
+              "properties": {
+                "element": {
+                  "type": "string",
+                  "description": "What visual element differs"
+                },
+                "expected": {
+                  "type": "string",
+                  "description": "What the design shows"
+                },
+                "actual": {
+                  "type": "string",
+                  "description": "What the implementation shows"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": ["missing", "extra", "wrong", "clipped"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "user_feedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["feedback", "action"],
+        "properties": {
+          "feedback": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["visual", "functional", "other"]
+          },
+          "action": { "type": "string" }
+        }
+      }
+    },
+    "fixes": {
+      "type": "array",
+      "description": "Approved fix directives",
+      "items": {
+        "type": "object",
+        "required": ["element", "expected", "actual", "type", "action"],
+        "properties": {
+          "element": { "type": "string" },
+          "expected": { "type": "string" },
+          "actual": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["missing", "extra", "wrong", "clipped", "incomplete"]
+          },
+          "action": {
+            "type": "string",
+            "description": "Specific fix instruction for the code agent"
+          },
+          "file_hint": {
+            "type": "string",
+            "description": "File path if known"
+          }
+        }
+      }
+    }
+  }
+}

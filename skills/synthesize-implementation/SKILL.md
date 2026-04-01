@@ -21,7 +21,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 
 - [ ] 0.1 Parse arguments. If `--refs-root` is missing, abort with error: "Missing required --refs-root argument."
 - [ ] 0.2 If `--output` is missing, abort with error: "Missing required --output argument."
-- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, and `technical_requirements[]` — these are used to enrich directives in Phase 2.
+- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, `technical_requirements[]`, and `test_plan[]` — these are used to enrich directives in Phase 2.
 - [ ] 0.4 Read `validation.json` from VALIDATION_PATH. Verify it has `components` and `summary`. If any are missing, abort with error listing missing fields.
 
 ## Phase 1: Discover & Load Principles
@@ -90,15 +90,19 @@ For each plan item produced in Phase 2, enrich its `directive` with spec context
 
 - [ ] 2.5.3 **Technical requirements** — scan `technical_requirements[]` from `arch.json` for subsections relevant to this component (type definitions, file structure, usage patterns that mention this component's name or type). For relevant subsections: convert the requirement into concrete acceptance criteria and append to the plan item's `acceptance_criteria[]`. Preserve code blocks verbatim within the criterion text. If a technical requirement cannot be associated with a specific component, add it to root-level `acceptance_criteria[]` for post-implementation verification.
 
-## Phase 2.6: Create Plan Items for Unmatched Criteria
+- [ ] 2.5.4 **Test plan** — find test cases from `arch.json.test_plan[]` where `component` matches this plan item's component name. Attach matching test cases to the plan item's `test_cases[]`. Track which test cases were attached to at least one plan item.
 
-After Phase 2.5, some `arch.json.acceptance_criteria[]` entries will not have been attached to any plan item — they describe work that no architectural component covers (e.g., test suites, documentation, configuration, integration verification). These MUST become plan items or top-level criteria — nothing from the spec is silently dropped.
+## Phase 2.6: Create Plan Items for Unmatched Criteria and Test Cases
+
+After Phase 2.5, some `arch.json.acceptance_criteria[]` and `arch.json.test_plan[]` entries will not have been attached to any plan item. These MUST become plan items or top-level fields — nothing from the spec is silently dropped.
 
 - [ ] 2.6.1 Collect every criterion from `arch.json.acceptance_criteria[]` (across all stories, including Definition of Done) that was NOT attached to any plan item in Phase 2.5.1.
 - [ ] 2.6.2 For EACH unmatched criterion:
   - If fulfilling it requires producing any artifact → create an additional plan item with `action: "create"` and a directive describing what to produce. Set `depends_on` to the plan items whose components the criterion exercises or depends on.
   - If it describes a constraint on existing work (nothing new to produce, only to verify) → place in top-level `acceptance_criteria[]` for post-implementation verification.
-- [ ] 2.6.3 Verify: the union of (criteria attached to plan items in 2.5.1) + (plan items created in 2.6.2) + (top-level `acceptance_criteria[]` from 2.6.2) must cover ALL entries from `arch.json.acceptance_criteria[]`. If any criterion is unaccounted for, stop and report which ones were missed.
+- [ ] 2.6.3 Collect every test case from `arch.json.test_plan[]` where `component` is `null` or was NOT matched to any plan item in Phase 2.5.4. For each:
+  - Create a plan item with `action: "create"`, directive describing the test to write, and `test_cases[]` containing the test case. Set `depends_on` to plan items whose components the test exercises.
+- [ ] 2.6.4 Verify: all `arch.json.acceptance_criteria[]` are accounted for (attached to items, created as items, or in top-level criteria). All `arch.json.test_plan[]` entries are accounted for (attached to items or created as items). If any are missing, stop and report.
 
 ## Phase 3: Order Plan Items
 

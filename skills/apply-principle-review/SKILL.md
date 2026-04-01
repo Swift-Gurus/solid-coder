@@ -2,7 +2,7 @@
 name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: false
 ---
 
@@ -48,6 +48,9 @@ END
 Creating output.
 - [ ] 3.1 **Load output schema** — Read the schema file referenced in frontmatter
 - [ ] 3.2 **Generate output** — Produce structured output matching the output schema, write to created FOLDER `review-output.json`
+- [ ] 3.3 **Validate output** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/scripts/validate-output.py FOLDER/review-output.json RULES_PATH/NAME/review/output.schema.json`
+  If validation fails, read the error, fix the output JSON, re-write, and re-validate.
 
 ## Constraints
 - Do NOT invent rules — only apply what is in the rules file
