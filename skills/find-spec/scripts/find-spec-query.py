@@ -74,7 +74,11 @@ def parse_frontmatter(content: str) -> Dict[str, Any]:
             key = stripped[:colon_idx].strip()
             value = stripped[colon_idx + 1:].strip()
             if value:
-                result[key] = value
+                if value.startswith("[") and value.endswith("]"):
+                    inner = value[1:-1].strip()
+                    result[key] = [item.strip() for item in inner.split(",")] if inner else []
+                else:
+                    result[key] = value
                 current_key = None
                 current_list = None
             else:

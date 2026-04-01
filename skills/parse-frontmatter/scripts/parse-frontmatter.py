@@ -69,8 +69,15 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
             value = stripped[colon_idx + 1:].strip()
 
             if value:
+                # Inline array: [item1, item2]
+                if value.startswith("[") and value.endswith("]"):
+                    inner = value[1:-1].strip()
+                    if inner:
+                        result[key] = [item.strip() for item in inner.split(",")]
+                    else:
+                        result[key] = []
                 # Scalar value — handle booleans and numbers
-                if value.lower() in ("true", "yes"):
+                elif value.lower() in ("true", "yes"):
                     result[key] = True
                 elif value.lower() in ("false", "no"):
                     result[key] = False

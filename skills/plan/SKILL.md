@@ -21,9 +21,9 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - If filepath (ends in `.md` and file exists) → read the file contents
   - Otherwise → use the string as-is
 
-- [ ] 1.2 **Load ancestors** (only if SPEC is a filepath with frontmatter containing a `parent` field):
-  - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `parent`
-  - If `parent` exists (e.g., `SPEC-005`): use skill **solid-coder:find-spec** with `ancestors <parent-SPEC-NNN> --blocked`. Read each file in the returned `path` fields (root → leaf). Hold all content as ancestor context.
+- [ ] 1.2 **Load ancestors and dependencies** (only if SPEC is a filepath with frontmatter containing a `parent` or `blocked-by` field):
+  - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `number` and `blocked-by`
+  - Use skill **solid-coder:find-spec** with `ancestors <current-SPEC-NNN> --blocked`. The script walks up from the current spec to root (ancestor chain) and appends blocked-by specs. Read each file in the returned `path` fields. Hold all content as context — ancestors provide scope, blocked-by specs provide components and patterns to reference.
   -  Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
      For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
 
