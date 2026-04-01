@@ -120,9 +120,10 @@ After writing all code, verify your output against every loaded rule:
 - [ ] 4.2 If any metric crosses a severity threshold into SEVERE, fix it inline
 - [ ] 4.3 If a fix introduces logic governed by a principle you haven't loaded yet, load that `rule.md` and check again
 - [ ] 4.4 Repeat until all loaded rules read COMPLIANT or MINOR on your output
-- [ ] 4.5 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
-- [ ] 4.6 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
-- [ ] 4.7 **Build & test** (conditional) — if build, test or ui test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
+- [ ] 4.5 **Design reference compliance** — for each plan item that had `design_references`, verify the implemented code matches the provided designs. For `type: "file"` references, read the file (screenshots, mockups, schemas). For `type: "inline"` references, use the embedded content (mermaid diagrams, ASCII mockups). Check layout structure, component hierarchy, spacing, naming, and behavior match the design. If any mismatch is found, fix it inline.
+- [ ] 4.6 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
+- [ ] 4.7 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
+- [ ] 4.8 **Build & test** (conditional) — if build, test or ui test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
     1. Run unit tests for the component you developed
     2. Run full test suite to validate nothing's broken
     3. If you worked on UI — also run UI tests

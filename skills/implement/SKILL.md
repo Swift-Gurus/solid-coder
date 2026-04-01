@@ -31,7 +31,8 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - [ ] 0.4 Generate timestamp: run `date -u +%Y%m%d-%H%M%S`
 - [ ] 0.5 Set OUTPUT_ROOT to `.solid_coder/implement-{number}-{timestamp}/` (where `{number}` is the frontmatter `number` value)
 - [ ] 0.6 Copy the spec file to `{OUTPUT_ROOT}/spec.md`
-- [ ] 0.7 If VERBOSE: initialize `implement-log.json` at `{OUTPUT_ROOT}/implement-log.json` with empty phases array
+- [ ] 0.7 Check if a `resources/` directory exists as a sibling of the spec file. If yes, copy it to `{OUTPUT_ROOT}/resources/` (preserving all files — screenshots, schemas, etc.)
+- [ ] 0.8 If VERBOSE: initialize `implement-log.json` at `{OUTPUT_ROOT}/implement-log.json` with empty phases array
 
 ## Phase 1: Architecture Decomposition
 
