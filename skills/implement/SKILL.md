@@ -1,8 +1,13 @@
 ---
 name: implement
-description: Spec-to-code orchestrator — architects, validates, synthesizes, implements, and reviews a feature from a spec file.
+description: >-
+  Orchestrate implementation of a spec, reads the spec, finds dependencies, plans architecture,
+  validates plan with the current codebase, synthesize implementation plan, write code,
+  does validation of the implementation with checkpoint asking user validation,
+  does on round of refactoring for self-validation
+  TRIGGER when: user says "implement spec", "implement" and passes spec file  
 argument-hint: <spec-file-path> [--verbose] [--iterations N]
-allowed-tools: Read, Glob, Bash, Write, Edit
+allowed-tools: Read, Glob, Bash, Write, Edit, AskUserQuestion, Skill
 user-invocable: true
 ---
 
@@ -82,9 +87,9 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
   - prompt:
     ```
     mode: implement
-    plan: {OUTPUT_ROOT}/implementation-plan.json
+    plan: {OUTPUT_ROOT}/implementation-plan/
     ```
-  The code-agent reads the plan, iterates over `plan_items[]` in order (respecting `depends_on`), and executes each directive. Do NOT iterate plan items yourself — the code-agent handles this.
+  The code-agent reads chunk files from the directory (`01-plan.json`, `02-plan.json`, etc.) in order, processing each chunk's plan items sequentially. Do NOT iterate plan items yourself — the code-agent handles this.
 - [ ] 4.2 Launch Task
 - [ ] 4.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "code", "status": "success" }`
 - [ ] 4.4 If the Task failed → report which plan items completed, which failed, and which remain. Suggestion: "You can re-run `/code` with the remaining items or fix the issue and retry." Do NOT rollback already-completed items. STOP.
@@ -94,16 +99,15 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - [ ] 4.5.1 Use skill **solid-coder:validate-implementation** with: `{OUTPUT_ROOT}`
 - [ ] 4.5.2 If result `status` == `"skipped"` or `"approved"` → proceed to Phase 5
 - [ ] 4.5.3 If result `status` == `"has_fixes"`:
-  - Prepare a Task call:
+  - [ ] 4.5.3.1 Prepare a Task call:
     - subagent_type: `solid-coder:code-agent`
     - prompt:
       ```
-      mode: code
-      Fix the following design issues:
-      {read design-fixes.json from fixes_path}
+      mode: implement
+      plan: {fixes_path}
       ```
-  - Launch Task
-  - After fixes applied, ask user: "Fixes applied. Would you like to re-validate, continue to refactor, or stop?"
+  - [ ] 4.5.3.2 Launch Task
+  - [ ] 4.5.3.3 After fixes applied, ask user: "Fixes applied. Would you like to re-validate, continue to refactor, or stop?"
     - **Re-validate** → return to 4.5.1 (max 2 re-validates — after that, offer only continue or stop)
     - **Continue** → proceed to Phase 5 with remaining issues noted
     - **Stop** → STOP. Report what was implemented and what design issues remain.
@@ -129,6 +133,7 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
   Phases:  plan ✓ | validate ✓ | synthesize ✓ | code ✓ | review ✓
   ```
   (Mark failed/skipped phases accordingly)
+- [ ] 6.3 **Cleanup** — only if all phases succeeded: delete the `.solid_coder/` directory in the project root. If any phase failed or stopped early, keep artifacts for debugging.
 
 ## Constraints
 

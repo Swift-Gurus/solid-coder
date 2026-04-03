@@ -11,17 +11,17 @@ output_schema: output.schema.json
 #### Phase 1: Detection (DRY-1, DRY-2, and DRY-3 run independently and in parallel if possible)
 
 - [ ] **1.1 DRY-1: Detect Reuse Misses**
-    - [ ] 1.1.1 For each new or modified type, identify its responsibility — what does it do?
+    - [ ] 1.1.1 Inventory all new or modified code units at every granularity — types, functions (any access level), views, view builders, computed properties, extensions, inline expressions. For each, identify its responsibility — what does it do?
 
-      | Type | Responsibility |
-      |------|---------------|
-      |      |               |
+      | Code Unit | Kind | Responsibility |
+      |-----------|------|---------------|
+      |           |      |               |
 
-    - [ ] 1.1.2 Generate synonym keywords for each type's responsibility (3 synonyms per keyword, domain-aware)
+    - [ ] 1.1.2 Generate synonym keywords for each code unit's responsibility (3 synonyms per keyword, domain-aware)
 
-      | Type | Keywords | Synonyms |
-      |------|----------|----------|
-      |      |          |          |
+      | Code Unit | Keywords | Synonyms |
+      |-----------|----------|----------|
+      |           |          |          |
 
     - [ ] 1.1.3 **Frontmatter search (script)** — run the search script to find files with `solid-` frontmatter matching the synonyms:
         ```
@@ -32,26 +32,27 @@ output_schema: output.schema.json
         Parse the JSON output — collect `matches[]` with `matched_terms[]` per file.
 
     - [ ] 1.1.4 **Name-based search (LLM fallback)** — always runs regardless of 1.1.3 results. Catches code without frontmatter:
-        - For each type, collect search terms: type name, camelCase-split keywords, synonyms from 1.1.2
+        - For each code unit, collect search terms: name, camelCase-split keywords, synonyms from 1.1.2
+        - Search for extensions on types being used (`extension <TypeName>`) — convenience wrappers are commonly missed
+        - Search shared/common directories and design system modules for equivalent components, views, or layouts
         - Use Grep to search file contents and Glob to search filenames across the codebase
         - Merge new hits into matches (skip files already found in 1.1.3)
 
     - [ ] 1.1.5 **Analyze matches** — for each matched file:
         - Read the file's source code
-        - Extract: type name, protocols it conforms to, method signatures, stored properties
-        - Compare against the new type's responsibility, interfaces, and methods:
-            - Responsibility fit: does the existing type serve the same purpose?
-            - Interface differences: missing/extra protocol conformances, missing/extra methods
-            - Signature differences: return types, parameter types, async/throws mismatches
-            - Property differences: missing/extra fields, type mismatches
+        - Extract: type name, protocols, method signatures, properties, static members, extensions, view body structure
+        - Compare against the code unit's responsibility and interfaces:
+            - Responsibility fit: does the existing code serve the same purpose?
+            - Interface coverage: does it expose what the new code needs?
+            - Can it be used directly, configured, or extended to fit?
         - Score match confidence:
             - high — same responsibility + compatible interface
-            - medium — similar responsibility, interface needs extension
+            - medium — similar responsibility, needs extension or configuration
             - low — overlapping keywords but different purpose
 
-      | New Type | Existing Type | Confidence | Responsibility Fit | Interface Differences | Classification |
-      |----------|--------------|------------|-------------------|----------------------|---------------|
-      |          |              |            |                   |                      |               |
+      | New Code Unit | Existing Code | Confidence | Responsibility Fit | Interface Differences | Classification |
+      |---------------|--------------|------------|-------------------|----------------------|---------------|
+      |               |              |            |                   |                      |               |
 
     - [ ] 1.1.6 Count EXACT (high confidence, no interface differences) and EXTENSIBLE (high/medium confidence, interface differences resolvable via extension) matches that were not reused
       Reuse misses: ___

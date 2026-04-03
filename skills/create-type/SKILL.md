@@ -70,7 +70,7 @@ For each type needing frontmatter:
   - `screen` — used for full screen / page
   - `modifier` — used for full styling or behavior modifier
   - `crud` — used for full objects that reads, writes, updates, deletes data
-  - `utility` — used for pure functions, formatters, helpers, extensions
+  - `utility` — used for pure functions, formatters, helpers, and extensions that add convenience functionality (new methods, computed properties, static helpers) beyond protocol conformance
   - `navigation` — used for routing, coordinators, deep linking
   - `service` - anything that doesn't fall into any mentioned categories that can be qualified as business logic
   - `unit-test` — used for unit tests, test helpers, fixtures, shared test utilities for business logic
@@ -132,4 +132,5 @@ final class ProductFetchService: ProductReading { ... }
 - Do NOT modify any code logic — only insert doc comment blocks and flag naming issues
 - Do NOT change existing doc comments or annotations
 - Do NOT add frontmatter to private/fileprivate nested types — only top-level declarations
-- Do NOT add frontmatter to extensions that merely add protocol conformance (e.g., `extension Foo: Codable {}`) — only extensions that add meaningful functionality
+- Do NOT add frontmatter to extensions that merely add protocol conformance (e.g., `extension Foo: Codable {}`)
+- DO add frontmatter (category: `utility`) to extensions that add convenience functionality — new methods, computed properties, static helpers, or subscripts beyond what a protocol requires

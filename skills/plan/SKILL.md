@@ -75,12 +75,8 @@ For each identified behavior or capability, define a component. Respect acceptan
 
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
-- [ ] 3.1 **Derive matched tags from components** — map component categories to tags for filtering:
-  - `screen`, `view-component`, `modifier`, `viewmodel` → tag `swiftui`
-  - `unit-test` → tag `testing`
-  - `ui-test` → tag `ui-testing`
-  - (extend mapping as new framework principles are added)
-- [ ] 3.2 **Discover active principles** — use skill **solid-coder:discover-principles** to discover active principles with `--refs-root references/` and `--matched-tags <comma-separated tags from 3.1>`. If no UI components, omit `--matched-tags` to get only always-active (tagless) principles.
+- [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
+- [ ] 3.2 **Discover active principles** — use skill **solid-coder:discover-principles** to discover active principles with `--refs-root references/` and `--matched-tags <comma-separated tags from 3.1>`. If no tags derived, omit `--matched-tags` to get only always-active (tagless) principles.
 - [ ] 3.3 **Load active principle rules** — use skill **solid-coder:load-reference** to load the `rule_path` from each `active_principles[]` entry.
 - [ ] 3.4 **Apply loaded rules as constraints** — verify the decomposition from Phase 2 against the loaded principles. Adjust components if violations are found (e.g., a component with too many responsibilities per SRP, a sealed dependency per OCP, a fat protocol per ISP).
 

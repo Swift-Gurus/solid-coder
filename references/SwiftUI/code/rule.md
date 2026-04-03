@@ -9,16 +9,26 @@ Common mistakes the code agent makes. These are NOT covered by examples or revie
 When a view uses a generic ViewModel constrained to an Observable protocol (`<VM: SomeState & SomeActions>`), use `@Bindable` to create bindings — never create manual `Binding(get:set:)` wrappers to re-pass the VM's properties.
 
 ```swift
-struct SettingsView<VM: SettingsState & SettingsActions>: View {
+struct SettingsViewViolation<VM: SettingsState & SettingsActions>: View {
     @State private var vm: VM
 
+    @ViewBuilder
     var body: some View {
         // WRONG — manual Binding to bridge protocol properties
         TextField("Name", text: Binding(
             get: { vm.name },
             set: { vm.name = $0 }
         ))
+    }
+}
+```
 
+```swift
+struct SettingsViewCompliant<VM: SettingsState & SettingsActions>: View {
+    @State private var vm: VM
+
+    @ViewBuilder
+    var body: some View {
         // RIGHT — @Bindable works with protocol-constrained generics
         // because Observable conformance is guaranteed by the constraint
         @Bindable var bindable = vm

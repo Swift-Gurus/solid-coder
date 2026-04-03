@@ -148,6 +148,29 @@ Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`
    - If present → COMPLIANT
 3. **Containers without `.accessibilityIdentifier(...)`** are not in scope — no finding
 
+### SUI-8: Adaptive Sizing
+
+Detect fixed-size frames on non-leaf views and parents that use hardcoded sizes instead of proportional layout.
+
+**Definition:** SwiftUI's layout system is built on a propose-respond model — parents propose sizes, children respond. 
+Views that participate in layout should size proportionally or with constraints, not with hardcoded literal values. 
+Fixed frames prevent adaptation to different window sizes, device orientations, Dynamic Type, and localization.
+
+There are two distinct violations:
+
+1. **Child self-sizing** — a child view hardcodes its own external dimensions internally (e.g., `.frame(width: 240)` inside their logic) instead of letting its parent control the size
+2. **Parent rigid sizing** — a parent composes a child with a hardcoded size (e.g., `SomeView().frame(width: 240)`) instead of using proportional layout
+
+**Detection:**
+
+1. **Find all `.frame()` calls with literal numeric width/height values** — hardcoded point values anywhere in view code
+2. **Every literal numeric frame is a violation** — regardless of where it appears:
+   - A view hardcoding its own external size → should let its parent decide
+   - A parent hardcoding a child's size → should use proportional sizing
+   - A view hardcoding an internal element's size → remove frame, let element adapt to parent-given space or use proportional sizing
+3. **Count** fixed-frame violations
+
+
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
@@ -155,9 +178,14 @@ Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`
 4. **Simple action forwarding** — A method that only calls one ViewModel method with no additional logic (e.g., `func retry() { viewModel.retry() }`) is PURE_VIEW.
 5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
 6. **Custom container wrappers** — If a custom view wraps a container internally and applies `.accessibilityElement(children:)` inside its own `body`, callers adding `.accessibilityIdentifier(...)` externally are COMPLIANT — the element is already in the hierarchy.
+7. **Frame Constraints** - `frame(minWidth:)`, `frame(maxWidth:)`, `frame(idealWidth:)` and height equivalents — constraints, not fixed sizes
+8. **Flexible Modifier** - `frame(maxWidth: .infinity)` and height equivalents — explicit flexible fill
+9. **Proportional Modifier** - `containerRelativeFrame` — proportional by definition
+10. **Geometry Reader** - `GeometryReader`-based calculations — adaptive by definition
+11. **Explicit in instructions** - if prompt, instructions says to use explicit size.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
@@ -167,6 +195,7 @@ Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`
     - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
     - File-scope view with no #Preview or PreviewProvider instantiation anywhere
     - Container view with `.accessibilityIdentifier(...)` missing preceding `.accessibilityElement(children:)`
+    - Any `.frame()` with literal numeric width/height value
 ---
 
 ## Quantitative Metrics Summary
@@ -187,4 +216,6 @@ Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`
 | SUI-5 | Preview containment | Any file-scope view only referenced from #Preview/PreviewProvider | SEVERE |
 | SUI-6 | Preview coverage | Any file-scope view with no preview instantiation | SEVERE |
 | SUI-7 | Container a11y ID | Container with `.accessibilityIdentifier` missing `.accessibilityElement` | SEVERE |
+| SUI-8 | Adaptive sizing | No literal fixed frames | COMPLIANT |
+| SUI-8 | Adaptive sizing | Any `.frame()` with literal numeric width/height | SEVERE |
 ---

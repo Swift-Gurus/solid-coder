@@ -20,22 +20,29 @@ abstraction identification — all directly observable from code.
 
 ### DRY-1: Reuse Miss
 
-Detect when new code was created for a responsibility that an existing type, protocol, or extension already covers.
+Detect when new code was created for a responsibility that an existing type, function, view, extension, or convenience wrapper already covers.
 
-**Definition:** A "reuse miss" occurs when a developer creates a new type or function that duplicates the purpose of an existing abstraction in the codebase. The existing type may have a different name, live in a different module, or use slightly different naming conventions — but it serves the same role.
+**Definition:** A "reuse miss" occurs when a developer creates a new type, function, private view, computed property, or inline expression that duplicates the purpose of an existing abstraction in the codebase. The existing code may have a different name, live in a different module, or use slightly different naming conventions — but it serves the same role. This applies at every granularity — not just top-level types but also private helpers, view builders, and convenience extensions.
+
+**Scope:** Every piece of new or modified code triggers a reuse check — types, functions (including private/internal), views, view builders, computed properties, extensions, inline expressions. Any granularity. If the code does something, search whether something in the codebase already does it.
 
 **Detection:**
 
-1. **Identify the responsibility** of each new or modified type — what does it do? What problem does it solve?
-2. **Search the codebase** for existing types that serve the same responsibility:
-   - Generate synonyms for the type name and its responsibility
-   - Search by name variants (e.g., a new `ProductList` when `ItemCatalog` already exists)
-   - Search by method signatures and protocol conformances
-   - Search by variable types and relationships
+1. **Identify the responsibility** of each new or modified code unit — what does it do? What problem does it solve? This includes:
+   - A new type or function (any access level)
+   - A private view or view builder that composes a layout
+   - A computed property that transforms or formats data
+   - An inline expression that could be wrapped by an existing convenience
+   - An object that provides functionality another object already provides
+2. **Search the codebase** for existing code that serves the same responsibility:
+   - Generate synonyms for the name and its responsibility (3 per keyword)
+   - Search by name variants, method signatures, protocol conformances, variable types, and relationships
+   - Search extensions on types being used — convenience wrappers are commonly missed
+   - Search shared/common directories and design system modules for equivalent components, views, or layouts
 3. **Classify matches:**
-   - EXACT — existing type covers 100% of the need, could be used directly
-   - EXTENSIBLE — existing type covers the core need, could be extended (via protocol extension, subclass, or configuration) to cover the rest
-   - PARTIAL — existing type covers some overlap but serves a genuinely different purpose
+   - EXACT — existing code covers 100% of the need, could be used directly
+   - EXTENSIBLE — existing code covers the core need, could be extended (via protocol extension, overload, or configuration) to cover the rest
+   - PARTIAL — existing code covers some overlap but serves a genuinely different purpose
 4. **Count** EXACT and EXTENSIBLE matches that were not reused = reuse misses
 
 ### DRY-2: Inlined Duplication
@@ -98,7 +105,7 @@ Detect generic patterns buried inside domain-specific code instead of extracted 
 | DRY-1 | Reuse miss          | 0 reuse misses                               | COMPLIANT |
 | DRY-2 | Inlined duplication | 0 inlined duplications                       | COMPLIANT |
 | DRY-3 | Missing abstraction | 0 missing abstractions                       | COMPLIANT |
-| DRY-1 | Reuse miss          | 1+ existing type not reused                  | SEVERE    |
+| DRY-1 | Reuse miss          | 1+ existing code not reused                  | SEVERE    |
 | DRY-2 | Inlined duplication | 1+ duplicated logic across locations          | SEVERE    |
 | DRY-3 | Missing abstraction | 1+ generic pattern not extracted for reuse   | SEVERE    |
 ---

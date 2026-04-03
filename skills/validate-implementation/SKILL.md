@@ -3,7 +3,7 @@ name: validate-implementation
 description: Post-implementation checkpoint — verifies code against spec, arch, plan, and design references. Collects user screenshots and feedback.
 argument-hint: <output-root>
 allowed-tools: Read, Glob, Bash, Write, AskUserQuestion
-output_schema: design-fixes.schema.json
+output_schema: ${CLAUDE_PLUGIN_ROOT}/skills/synthesize-implementation/implementation-plan.schema.json
 user-invocable: false
 ---
 
@@ -40,7 +40,7 @@ The skill discovers what's available in OUTPUT_ROOT:
   - Has acceptance criteria? → criteria validation needed
   - None of the above? → return `{ "status": "skipped", "reason": "no design, UI, or criteria to validate" }`
 
-## Phase 2: Soft-check Spec Requirements
+## Phase 2: Spec Requirements Validation
 
 - [ ] 2.1 Read the spec's user stories and acceptance criteria
 - [ ] 2.2 For each criterion, quick check — does the code appear to address it?
@@ -56,7 +56,7 @@ The skill discovers what's available in OUTPUT_ROOT:
 Only runs if Phase 1.6 determined visual validation is needed.
 
 - [ ] 3.1 Load design reference images from `resources/` and `design_references[]`
-- [ ] 3.2 For each design reference, ask user for a matching screenshot:
+- [ ] 3.2 For each design reference, ask user using AskUserQuestion: for a matching screenshot:
   - Include the resource filename and describe the state shown in it
   - Example: "Please provide a screenshot matching: `Screenshot 2026-03-30 at 5.19.04 PM.png` (empty state — no recent projects)"
   - Ask one at a time or grouped if multiple states of the same screen
@@ -72,44 +72,48 @@ Only runs if Phase 1.6 determined visual validation is needed.
 ## Phase 4: Collect User Feedback
 
 - [ ] 4.1 Present findings from Phase 2 and Phase 3 to user
-- [ ] 4.2 Ask user:
+- [ ] 4.2 Ask using AskUserQuestion:
   "Here's what I found. Select an option:"
   - **Approved** — everything looks correct, proceed to refactor
   - **Has Issues** — provide additional feedback on what's wrong
   - **Stop** — don't proceed, I'll fix things manually
 - [ ] 4.3 If "Has Issues" → collect free-form feedback, add to findings
 
-## Phase 5: Produce Fix Directives
+## Phase 5: Produce Fix Plan
 
-Only runs if there are actionable findings (missing components, design mismatches, failed criteria).
+Only runs if there are actionable findings (design mismatches, failed criteria, user feedback).
 
-- [ ] 5.1 For each finding, produce a fix directive:
-  ```json
-  {
-    "element": "<what needs fixing>",
-    "expected": "<what the spec/design requires>",
-    "actual": "<what was found or missing>",
-    "type": "missing | extra | wrong | clipped | incomplete",
-    "action": "<specific fix instruction>",
-    "file_hint": "<file path if known>"
-  }
-  ```
+- [ ] 5.1 For each finding, produce a plan item in `implementation-plan.json` format:
+  - `id`: `fix-001`, `fix-002`, etc.
+  - `action`: `"modify"` (design fixes target existing files)
+  - `file`: path to the file that needs fixing (from file_hint or search)
+  - `directive`: specific fix instruction (e.g., "Replace app icon — use SF Symbol 'command' on blue rounded rectangle. Current icon is a gradient wave graphic.")
+  - `depends_on`: `[]` (fixes are independent unless one depends on another)
+  - `component`: component name if known
+  - `notes`: what was wrong (expected vs actual)
+  - `acceptance_criteria`: the spec criteria this fix addresses
 
-- [ ] 5.2 Ask user to confirm directives — "Which of these should I fix?"
+- [ ] 5.2 Ask user using AskUserQuestion: to confirm directives — "Which of these should I fix?"
   - User can approve all, select specific ones, or dismiss all
-- [ ] 5.3 Assemble `design-fixes.json` matching `${SKILL_DIR}/design-fixes.schema.json`
+
+- [ ] 5.3 Assemble `design-fix-plan.json` matching implementation-plan schema:
+  - `spec_summary`: "Design fixes from validate-implementation"
+  - `matched_tags`: read from the original `implementation-plan.json` in OUTPUT_ROOT
+  - `plan_items[]`: approved fix items from 5.1
+  - `reconciliation_decisions`: `[]` (not applicable)
+  - `summary`: counts
+
 - [ ] 5.4 Validate before writing — run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/scripts/validate-output.py {OUTPUT_ROOT}/design-fixes.json ${SKILL_DIR}/design-fixes.schema.json`
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/scripts/validate-output.py {OUTPUT_ROOT}/design-fix-plan.json ${CLAUDE_PLUGIN_ROOT}/skills/synthesize-implementation/implementation-plan.schema.json`
   If validation fails, fix the JSON and re-validate.
-- [ ] 5.5 Write validated `design-fixes.json` to `{OUTPUT_ROOT}/`
+- [ ] 5.5 Write validated `design-fix-plan.json` to `{OUTPUT_ROOT}/`
 
 ## Phase 6: Output
 
 Return result:
 - `status`: `"approved"` | `"has_fixes"` | `"skipped"` | `"stopped"`
-- `fixes_path`: path to `design-fixes.json` (if has_fixes)
+- `fixes_path`: path to `design-fix-plan.json` (if has_fixes)
 - `fix_count`: number of approved fixes
-- `summary`: completeness report (components found/missing, criteria met/unmet)
 
 ## Constraints
 

@@ -2,7 +2,7 @@
 name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, then generates a holistic cross-principle fix plan, then implements it.
 argument-hint: [branch|changes|folder|file] [--iterations N] [--verbose]
-allowed-tools: Read, Glob, Bash, Write, Edit
+allowed-tools: Read, Glob, Bash, Write, Edit, Skill
 user-invocable: true
 ---
 

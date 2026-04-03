@@ -17,7 +17,7 @@ Post-implementation checkpoint that gates the expensive refactor phase. Reads th
 | Input | Output root directory | Path containing spec.md, arch.json, validation.json, implementation-plan.json, resources/ |
 | Input | User screenshots | Images provided via AskUserQuestion |
 | Input | User feedback | Text provided via AskUserQuestion |
-| Output | Fix directives | JSON at `{OUTPUT_ROOT}/design-fixes.json` |
+| Output | Fix plan | JSON at `{OUTPUT_ROOT}/design-fix-plan.json` (implementation-plan schema) |
 | Output | Status | `approved`, `has_fixes`, `skipped`, or `stopped` |
 
 ## Flow
@@ -32,9 +32,9 @@ Phase 3: Visual validation (if UI — ask user for screenshots, compare images)
 Phase 4: Present findings, collect user feedback
     ↓ approved → return
     ↓ has issues → Phase 5
-Phase 5: Produce fix directives, user confirms
+Phase 5: Produce fix plan (implementation-plan format), user confirms
     ↓
-Phase 6: Write design-fixes.json
+Phase 6: Write design-fix-plan.json
 ```
 
 ## Connects To
@@ -42,7 +42,7 @@ Phase 6: Write design-fixes.json
 | Skill/Agent | Relationship |
 |-------------|-------------|
 | `/implement` | Called inline at Phase 4.5, between code and refactor |
-| `code-agent` | Consumes `design-fixes.json` to apply fixes (called by /implement if has_fixes) |
+| `code-agent` | Consumes `design-fix-plan.json` (implementation-plan format) via `mode: implement`. Rules load from `matched_tags`. |
 
 ## Design Decisions
 

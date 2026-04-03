@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage", "container_accessibility"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage", "container_accessibility", "adaptive_sizing"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -176,11 +176,34 @@
                         }
                       }
                     }
+                  },
+                  "adaptive_sizing": {
+                    "type": "object",
+                    "required": ["fixed_frame_count", "flagged_frames"],
+                    "properties": {
+                      "fixed_frame_count": {
+                        "type": "integer",
+                        "description": "Number of .frame() calls with literal numeric width/height values"
+                      },
+                      "flagged_frames": {
+                        "type": "array",
+                        "description": ".frame() calls with hardcoded literal numeric width or height. Empty array if no fixed frames.",
+                        "items": {
+                          "type": "object",
+                          "required": ["view_expression", "location", "fixed_dimension"],
+                          "properties": {
+                            "view_expression": { "type": "string", "description": "The view expression with the fixed frame" },
+                            "location": { "type": "string", "description": "Line number or property where the frame appears" },
+                            "fixed_dimension": { "type": "string", "description": "Which dimension is hardcoded (width, height, or both)" }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "container_accessibility_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "container_accessibility_severity", "adaptive_sizing_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
@@ -189,6 +212,7 @@
                     "preview_containment_severity": { "type": "string" },
                     "preview_coverage_severity": { "type": "string" },
                     "container_accessibility_severity": { "type": "string" },
+                    "adaptive_sizing_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -211,7 +235,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6", "SUI-7"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6", "SUI-7", "SUI-8"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },

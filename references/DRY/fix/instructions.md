@@ -26,14 +26,15 @@ output_schema: output.schema.json
 - [ ] **2.1 Analyze findings** — read metrics (reuse miss table with confidence/interface differences, duplication table, missing abstractions table)
 - [ ] **2.2 Propose suggestion** — which types to reuse, which logic to extract, which patterns to separate
 - [ ] **2.3 Create todo items** — concrete actionable steps to implement the fix:
-    - [ ] For DRY-1: use the review's match analysis (existing type, confidence, interface differences) to determine the fix approach:
-        - EXACT match (high confidence, no interface differences) → replace the new type with direct usage of the existing type, remove the redundant type
-        - EXTENSIBLE match (high/medium confidence, resolvable differences) → read the existing type, determine what extension is needed:
-            - Missing protocol conformance → add extension conformance on the existing type
+    - [ ] For DRY-1: use the review's match analysis (existing code, confidence, interface differences) to determine the fix approach:
+        - EXACT match (high confidence, no interface differences) → replace the new code with direct usage of the existing code, remove the redundant code
+        - EXTENSIBLE match (high/medium confidence, resolvable differences) → read the existing code, determine what adaptation is needed:
+            - Missing protocol conformance → add extension conformance
             - Missing method → add method via extension or protocol default implementation
             - Signature mismatch → add adapter or overload
-        - Update all call sites to use the existing type instead of the new one
-        - Remove the redundant new type
+            - Needs configuration → use the existing code's parameters instead of reimplementing
+        - Update all call sites to use the existing code
+        - Remove the redundant new code
     - [ ] For DRY-2: identify the shared logical sequence across locations, extract into a shared function or type, choose the appropriate abstraction level:
         - Same types → shared function or method
         - Different types, same algorithm → generic function or protocol with default implementation

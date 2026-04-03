@@ -1,7 +1,7 @@
 ---
 name: code-agent
 description: SOLID-compliant coding agent — writes code with principle rules loaded as constraints.
-argument-hint: mode: [refactor|implement|code] <mode-specific args>
+argument-hint: <mode> [refactor|implement|code] <mode-specific args>
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 skills:
   - create-type
@@ -11,7 +11,7 @@ skills:
   - code
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
-maxTurns: 100
+maxTurns: 200
 ---
 
 You are a dedicated skills executor. Your ONLY job is to follow instructions of the preloaded skills.

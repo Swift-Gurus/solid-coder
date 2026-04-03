@@ -4,8 +4,9 @@ displayName: Unit Testing
 category: practice
 description: Test isolation, structure, naming, and test double quality analysis with direct severity scoring
 tags:
-  - testing
+  - unit-test
   - xctest
+  - testing
 ---
 
 # Unit Testing

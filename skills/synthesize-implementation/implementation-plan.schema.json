@@ -9,6 +9,11 @@
       "type": "string",
       "description": "From arch.json — one-line summary of what's being built"
     },
+    "matched_tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags derived from component categories and stacks — passed to discover-principles as matched tags."
+    },
     "acceptance_criteria": {
       "type": "array",
       "items": { "type": "string" },

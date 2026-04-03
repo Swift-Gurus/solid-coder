@@ -58,7 +58,10 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
             value = stripped[colon_idx + 1:].strip()
 
             if value:
-                if value.lower() in ("true", "yes"):
+                if value.startswith("[") and value.endswith("]"):
+                    inner = value[1:-1].strip()
+                    result[key] = [item.strip() for item in inner.split(",")] if inner else []
+                elif value.lower() in ("true", "yes"):
                     result[key] = True
                 elif value.lower() in ("false", "no"):
                     result[key] = False
