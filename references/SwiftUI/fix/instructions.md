@@ -24,7 +24,8 @@ output_schema: output.schema.json
     - SUI-5 (Preview containment) → Move into #Preview block pattern (see examples)
     - SUI-6 (preview coverage) → Create Preview File pattern
     - SUI-7 (container a11y ID) → Add `.accessibilityElement(children: .contain)` before `.accessibilityIdentifier(...)` pattern
-    - SUI-8 (adaptive sizing) → Remove literal frame, apply proportional sizing or design system tokens pattern
+    - SUI-8 (adaptive sizing) → Remove literal frame, apply proportional sizing
+    - SUI-9 (actor isolation) → Remove type-level `@MainActor`, apply per-member isolation pattern
     - Multiple → combine patterns as needed
 
 #### Phase 2: Identify Suggestions
@@ -45,13 +46,20 @@ output_schema: output.schema.json
         - `.combine` — children merge into a single accessible element (use when the container is a single semantic unit, e.g., a label + value pair)
         - `.ignore` — children hidden from accessibility (rare, only when children are decorative)
     - [ ] For SUI-8: for each literal `.frame(width:height:)`, determine the fix based on context:
-        - **Child self-sizing** (view sets its own external size internally) → remove the frame entirely, let the parent control sizing
+        - **Child/internal self-sizing** (view hardcodes its own or its sub-elements' size) → remove the frame entirely, let the parent control sizing using the proportional approach below
         - **Parent rigid sizing** (parent hardcodes a child's size) → replace with proportional approach:
             - `containerRelativeFrame` (preferred, iOS 17+) — when the size should be a fraction of the container. Does not disrupt stack layout negotiation.
             - `frame(minWidth:maxWidth:)` — when you need a flexible range with safety bounds
             - `frame(maxWidth: .infinity)` — when the view should fill available space
             - `GeometryReader` — last resort only. It returns a flexible preferred size that expands greedily, which breaks layout negotiation in stacks. Only use when `containerRelativeFrame` is not available or when you need the geometry for non-sizing purposes (e.g., scroll offsets, position-dependent effects).
-        - **Internal element sizing** (view hardcodes size of its own sub-elements) → remove the fixed frame. Let the element adapt to space given by its parent, or use proportional sizing. The parent decides how big things are, not the element itself.
+    - [ ] For SUI-9: for each over-isolated type, apply per-member isolation:
+        - **Type-level over-isolation** → remove `@MainActor` from the type declaration. Add `@MainActor` only to:
+            - `@Published`/`@Observable`-tracked properties that Views read
+            - Methods whose **sole purpose** is mutating those UI-driving properties
+            - Direct UIKit/AppKit main-thread API calls
+            - For fetch-then-assign methods: do NOT mark the whole method `@MainActor`. Keep the method unannotated and isolate the state mutation via a **separate `@MainActor` method** that handles the UI update (preferred — cleanest separation), or assign to a `@MainActor` property.
+        - **Protocol-level over-isolation** → only flagged when a production conformer needs background work. Remove `@MainActor` from the protocol declaration. Add `@MainActor` only to specific requirements that must run on main thread (UI-state properties, UI-triggering methods). This frees that conformer to implement non-UI requirements on any executor. **Do NOT remove protocol-level `@MainActor` if all production conformers are `@MainActor`** — doing so causes Swift 6 "crosses into main actor-isolated code" errors.
+        - **nonisolated escape hatch** → remove type-level `@MainActor`, remove all `nonisolated` keywords. Add `@MainActor` only to the members that actually need it — the previously-nonisolated members were already correct to be off main thread.
     - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix
@@ -63,7 +71,8 @@ output_schema: output.schema.json
     - Before/after of body structure
     - Container with `.accessibilityElement(children: .contain)` inserted before `.accessibilityIdentifier(...)` (if SUI-7)
     - Before/after of frame usage showing literal replaced with proportional sizing, design system token, or removed entirely (if SUI-8)
-- [ ] **3.2 Predict post-fix metrics** (nesting depth, view expression count, impure count per view, fixed frame count)
+    - Before/after of type declaration showing type-level `@MainActor` replaced with per-member annotations (if SUI-9)
+- [ ] **3.2 Predict post-fix metrics** (nesting depth, view expression count, impure count per view, fixed frame count, over-isolated type count)
 
 #### Phase 4: Generate Output
 

@@ -142,3 +142,4 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - The orchestrator runs phases 1-4 in sequence. Phase 5 (safety review) runs only when `--iterations N` is set with N > 0.
 - Do NOT build the project.
 - Do NOT deviate from the instructions. Follow them thoroughly.
+- ALL Task calls must run in foreground (never `run_in_background: true`) — background agents hit permission prompts silently and stall.

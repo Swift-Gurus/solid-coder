@@ -56,7 +56,7 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "required": ["unit_name", "nesting_depth", "view_expressions", "impure_count", "max_nested_modifier_chain", "vm_injection_style", "fixed_frame_count"],
+                        "required": ["unit_name", "nesting_depth", "view_expressions", "impure_count", "max_nested_modifier_chain", "vm_injection_style", "fixed_frame_count", "over_isolated_types"],
                         "properties": {
                           "unit_name": { "type": "string" },
                           "nesting_depth": { "type": "integer" },
@@ -65,7 +65,8 @@
                           "max_nested_modifier_chain": { "type": "integer", "description": "Highest modifier count on any nested child view after fix" },
                           "vm_injection_style": { "type": "string", "enum": ["protocol", "concrete", "n/a"], "description": "VM injection style after fix: protocol (generic constraint), concrete (class type), or n/a (no VM)" },
                           "has_preview": { "type": "boolean", "description": "Whether the view has preview coverage after fix" },
-                          "fixed_frame_count": { "type": "integer", "description": "Number of .frame() calls with literal numeric width/height after fix" }
+                          "fixed_frame_count": { "type": "integer", "description": "Number of .frame() calls with literal numeric width/height after fix" },
+                          "over_isolated_types": { "type": "integer", "description": "Number of types/protocols with over-broad @MainActor after fix" }
                         }
                       }
                     }

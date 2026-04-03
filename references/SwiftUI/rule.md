@@ -171,6 +171,45 @@ There are two distinct violations:
 3. **Count** fixed-frame violations
 
 
+### SUI-9: Actor Isolation Granularity
+
+Detect `@MainActor` applied to entire types or protocols when only specific members need main-thread isolation.
+
+**Definition:** 
+Marking a whole class or protocol `@MainActor` forces every property and method onto the main thread. 
+For ViewModels this is especially dangerous — methods that perform network calls, parsing, 
+or heavy computation cannot run on a background thread without explicit `nonisolated` or `Task.detached` workarounds. 
+Protocols marked `@MainActor` can be problematic — they constrain **all** conformers to the main thread. However, protocol-level `@MainActor` is correct when all production conformers are legitimately `@MainActor` (facades, UI coordinators). In Swift 6 strict concurrency, removing `@MainActor` from a protocol while keeping it on the conformer causes "crosses into main actor-isolated code" errors.
+
+The correct pattern for **types** is per-member isolation: annotate only the properties and methods that must run on main (published state, UI callbacks), leaving the rest free to run on any executor.
+
+The correct pattern for **protocols** depends on conformer analysis: check whether any production conformer needs to run requirements off main thread.
+
+**There are three distinct violations:**
+
+1. **Type-level over-isolation** — `@MainActor` on a class/struct where not all members need main thread. The type should use per-member `@MainActor` annotations instead.
+2. **Protocol-level over-isolation** — `@MainActor` on a protocol where a **production conformer** needs to run some requirements off main thread. The protocol should annotate only the requirements that must be main-isolated. **Requires conformer analysis** — see detection step 4.
+3. **nonisolated escape hatch** — A type marked `@MainActor` that uses `nonisolated` on individual members to opt them out. This is a code smell indicating the type-level annotation is too broad — if members need to escape, the type shouldn't be globally isolated.
+
+**Detection:**
+
+1. **Find all `@MainActor` annotations on type declarations** — `@MainActor class`, `@MainActor struct`, `@MainActor protocol`, `@MainActor extension`
+2. **For each annotated class/struct, analyze members:**
+   - List all methods and properties
+   - Classify each as:
+     - NEEDS_MAIN — members that **directly drive UI updates**: `@Published` or `@Observable`-tracked properties read by a View, methods whose sole purpose is mutating those properties, direct UIKit/AppKit main-thread API calls
+     - BACKGROUND_SAFE — everything else: network/API calls, parsing, decoding, computation, filtering, sorting, file I/O, database access, caching. Methods that fetch-then-assign are BACKGROUND_SAFE — only the final state mutation needs main, not the whole method.
+   - Count BACKGROUND_SAFE members
+3. **Check for `nonisolated` escape hatches** — any `nonisolated` keyword on members within a `@MainActor` type
+4. **Check protocols — conformer analysis required:**
+   - For each `@MainActor protocol`, find all production conformers (exclude preview-only and test doubles)
+   - If ALL production conformers are `@MainActor` (e.g., the protocol abstracts a facade or UI coordinator) → COMPLIANT. Protocol-level `@MainActor` correctly reflects conformer reality and avoids Swift 6 crossing errors.
+   - If ANY production conformer has background-safe work (needs to run requirements off main) → SEVERE. The protocol forces that conformer onto main thread unnecessarily.
+   - If the protocol has NO production conformers yet (only preview/test) → COMPLIANT. Default to protocol-level until a real conformer needs otherwise.
+5. **Score:**
+   - All type members genuinely need main thread AND no `nonisolated` present AND protocol conformers are all `@MainActor` → COMPLIANT
+   - Any BACKGROUND_SAFE member on a type OR any `nonisolated` escape hatch OR protocol forcing a conformer off main → SEVERE
+
 ### Exceptions (NOT violations):
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
@@ -183,9 +222,11 @@ There are two distinct violations:
 9. **Proportional Modifier** - `containerRelativeFrame` — proportional by definition
 10. **Geometry Reader** - `GeometryReader`-based calculations — adaptive by definition
 11. **Explicit in instructions** - if prompt, instructions says to use explicit size.
+12. **View structs** — SwiftUI `View` structs are value types that only live during `body` evaluation. `@MainActor` on a View struct is harmless and often compiler-inferred — not a SUI-9 violation.
+13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames)
+- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames AND no over-broad @MainActor)
 - SEVERE (any of the following):
     - Nesting depth >= 3
     - View expressions > 5
@@ -196,6 +237,7 @@ There are two distinct violations:
     - File-scope view with no #Preview or PreviewProvider instantiation anywhere
     - Container view with `.accessibilityIdentifier(...)` missing preceding `.accessibilityElement(children:)`
     - Any `.frame()` with literal numeric width/height value
+    - `@MainActor` on type/protocol with background-safe members or `nonisolated` escape hatches
 ---
 
 ## Quantitative Metrics Summary
@@ -218,4 +260,6 @@ There are two distinct violations:
 | SUI-7 | Container a11y ID | Container with `.accessibilityIdentifier` missing `.accessibilityElement` | SEVERE |
 | SUI-8 | Adaptive sizing | No literal fixed frames | COMPLIANT |
 | SUI-8 | Adaptive sizing | Any `.frame()` with literal numeric width/height | SEVERE |
+| SUI-9 | Actor isolation granularity | All members need main thread, no `nonisolated` | COMPLIANT |
+| SUI-9 | Actor isolation granularity | `@MainActor` on type/protocol with background-safe members or `nonisolated` escape hatches | SEVERE |
 ---

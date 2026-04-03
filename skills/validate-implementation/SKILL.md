@@ -67,7 +67,9 @@ Only runs if Phase 1.6 determined visual validation is needed.
       - List every visual element in the implementation screenshot
       - Compare element by element
       - Classify differences: `missing` | `extra` | `wrong` | `clipped`
-  - [ ] 3.2.2 If user selects "Approved" → note visual validation approved by user, proceed to Phase 4
+    - Record findings, then continue to next design reference (or Phase 4 if last)
+  - [ ] 3.2.2 If user selects "Approved" → note visual validation approved by user
+    - Continue to next design reference (or Phase 4 if last)
 
 ## Phase 4: Collect User Feedback
 

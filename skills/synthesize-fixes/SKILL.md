@@ -16,11 +16,12 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 ## Phase 1: Load Context
 
-- [ ] 1.1 Glob for `{OUTPUT_ROOT}/by-file/*.output.json`
-- [ ] 1.2 For each file output JSON, read the JSON — it contains `principles[]` with `findings[]` (suggestions may be empty)
-- [ ] 1.3 Read the source file referenced in the `file_path` field of each output
-- [ ] 1.4 Collect the set of principle agent IDs (e.g., `srp`, `ocp`, `lsp`) that have **non-COMPLIANT** severity across all files
-- [ ] 1.5 If ALL files are COMPLIANT (no findings), write empty plans and stop
+- [ ] 1.1 Run the context loader script:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/synthesize-fixes/scripts/load-context.py {OUTPUT_ROOT}`
+- [ ] 1.2 Parse the JSON output — it contains `files[]` (with per-file principle summaries), `active_principles[]`, and `summary`
+- [ ] 1.3 If `all_compliant` is true → write empty plans and stop
+- [ ] 1.4 For each file in `files[]` that has non-COMPLIANT principles, read the source file referenced in `file_path`
+- [ ] 1.5 The `active_principles[]` list is the set of principle agent IDs for Phase 2
 
 ## Phase 2: Load Principle Fix Knowledge
 

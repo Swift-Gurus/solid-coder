@@ -3,6 +3,7 @@ name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, then generates a holistic cross-principle fix plan, then implements it.
 argument-hint: [branch|changes|folder|file] [--iterations N] [--verbose]
 allowed-tools: Read, Glob, Bash, Write, Edit, Skill
+tools: Read, Glob, Bash, Write, Edit, Skill
 user-invocable: true
 ---
 
@@ -52,7 +53,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
       principle-folder: {FOLDER from discovery output}
       output-path: {OUTPUT_ROOT}/{ITERATION}/rules/{NAME}
       ```
-- [ ] 3.4 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
+- [ ] 3.4 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution). Do NOT run in background — all agents must run in foreground to avoid permission issues.
 - [ ] 3.5 Wait for all to complete
 
 ## Phase 4: Collect Results
@@ -172,3 +173,4 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 - Do NOT auto-resolve issues: if anything fails, report the error
 - Do NOT build the project.
 - DO NOT Deviate from the instructions, Follow them thoroughly.
+- ALL Task calls must run in foreground (never `run_in_background: true`) — background agents hit permission prompts silently and stall.

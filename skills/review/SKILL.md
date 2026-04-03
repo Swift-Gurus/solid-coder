@@ -44,7 +44,7 @@ user-invocable: true
       principle-folder: {FOLDER from discovery output}
       output-path: {OUTPUT_ROOT}/rules/{NAME}
       ```
-- [ ] 4.2 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution)
+- [ ] 4.2 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution). Do NOT run in background — all agents must run in foreground to avoid permission issues.
 - [ ] 4.3 Wait for all to complete
 
 ## Phase 5: Collect Results
@@ -84,3 +84,4 @@ user-invocable: true
 - Launch ALL reviews in parallel for maximum throughput
 - Each review agent is independent — no shared state between principles
 - Do NOT auto-resolve issues: if anything fails, report the error
+- ALL Task calls must run in foreground (never `run_in_background: true`) — background agents hit permission prompts silently and stall.

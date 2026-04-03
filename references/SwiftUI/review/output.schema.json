@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage", "container_accessibility", "adaptive_sizing"],
+                  "required": ["body_complexity", "view_purity", "modifier_chain", "vm_injection", "preview_containment", "preview_coverage", "container_accessibility", "adaptive_sizing", "actor_isolation"],
                   "properties": {
                     "body_complexity": {
                       "type": "object",
@@ -199,11 +199,72 @@
                         }
                       }
                     }
+                  },
+                  "actor_isolation": {
+                    "type": "object",
+                    "required": ["over_isolated_count", "nonisolated_escape_count", "flagged_types"],
+                    "properties": {
+                      "over_isolated_count": {
+                        "type": "integer",
+                        "description": "Number of types/protocols with @MainActor that have background-safe members"
+                      },
+                      "nonisolated_escape_count": {
+                        "type": "integer",
+                        "description": "Total nonisolated members across @MainActor types (code smell indicator)"
+                      },
+                      "flagged_types": {
+                        "type": "array",
+                        "description": "Types/protocols with over-broad @MainActor. Empty array if all actor annotations are granular.",
+                        "items": {
+                          "type": "object",
+                          "required": ["type_name", "type_kind", "total_members", "background_safe_members", "nonisolated_members", "violation_kind"],
+                          "properties": {
+                            "type_name": { "type": "string", "description": "Name of the over-isolated type" },
+                            "type_kind": { "type": "string", "enum": ["class", "struct", "protocol", "extension"], "description": "Kind of type declaration" },
+                            "total_members": { "type": "integer", "description": "Total methods and properties" },
+                            "background_safe_members": {
+                              "type": "array",
+                              "items": { "type": "string" },
+                              "description": "Names of members that don't need main thread"
+                            },
+                            "nonisolated_members": {
+                              "type": "array",
+                              "items": { "type": "string" },
+                              "description": "Names of members marked nonisolated (escape hatch smell)"
+                            },
+                            "violation_kind": {
+                              "type": "string",
+                              "enum": ["type_over_isolation", "protocol_over_isolation", "nonisolated_escape"],
+                              "description": "Which SUI-9 violation pattern this matches"
+                            },
+                            "conformer_analysis": {
+                              "type": "object",
+                              "description": "For protocols only — analysis of production conformers",
+                              "properties": {
+                                "production_conformers": {
+                                  "type": "array",
+                                  "items": { "type": "string" },
+                                  "description": "Names of production conformers (excluding preview/test doubles)"
+                                },
+                                "all_conformers_main_actor": {
+                                  "type": "boolean",
+                                  "description": "True if all production conformers are @MainActor — protocol-level @MainActor is COMPLIANT"
+                                },
+                                "conformer_needing_background": {
+                                  "type": "string",
+                                  "description": "Name of the conformer that needs background work (if any — triggers SEVERE)"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "container_accessibility_severity", "adaptive_sizing_severity", "final_severity"],
+                  "required": ["body_severity", "purity_severity", "modifier_chain_severity", "vm_injection_severity", "preview_containment_severity", "preview_coverage_severity", "container_accessibility_severity", "adaptive_sizing_severity", "actor_isolation_severity", "final_severity"],
                   "properties": {
                     "body_severity": { "type": "string" },
                     "purity_severity": { "type": "string" },
@@ -213,6 +274,7 @@
                     "preview_coverage_severity": { "type": "string" },
                     "container_accessibility_severity": { "type": "string" },
                     "adaptive_sizing_severity": { "type": "string" },
+                    "actor_isolation_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "SEVERE"]
@@ -235,7 +297,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6", "SUI-7", "SUI-8"],
+                        "enum": ["SUI-1", "SUI-2", "SUI-3", "SUI-4", "SUI-5", "SUI-6", "SUI-7", "SUI-8", "SUI-9"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },

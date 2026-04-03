@@ -125,6 +125,7 @@ When splitting a type along responsibility boundaries:
 - Small helpers (<10 lines, or private/fileprivate) → stay in the source file
 - New files go in the same directory as the source file
 - Copy necessary `import` statements to each new file
+- Group files representing the same domain under the same directory (files that has the same prefix, represent the same domain, functionality)
 
 #### Protocol Design
 
