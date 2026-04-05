@@ -9,7 +9,7 @@ Principles are organized into tiers that control activation and cross-checking b
 | Tier | Always applies? | Examples | Cross-checked BY |
 |------|----------------|----------|------------------|
 | **core** | Yes | SRP, OCP, LSP, ISP, DIP | Other core principles |
-| **practice** | Yes | DRY, functions/smells | Core + other practices |
+| **practice** | Yes | DRY, Bugs, functions/smells | Core + other practices |
 | **framework** | Only when detected | SwiftUI, TCA | Core + practice (one-way up) |
 
 ### Cross-Check Direction
@@ -60,7 +60,8 @@ references/
 ├── LSP/              activation: always,  tier: core
 ├── ISP/              activation: always,  tier: core
 ├── DIP/              activation: always,  tier: core      (future)
-├── DRY/              activation: always,  tier: practice  (future)
+├── DRY/              activation: always,  tier: practice
+├── Bugs/             activation: always,  tier: practice
 ├── functions/        activation: always,  tier: practice  (future)
 ├── SwiftUI/          activation: import,  tier: framework (future)
 ├── TCA/              activation: import,  tier: framework (future)

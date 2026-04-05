@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bugs Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "bugs" },
+    "principle": { "const": "Bug Patterns" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "description": "Per-file analysis results",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Full path to the reviewed file"
+          },
+          "units": {
+            "type": "array",
+            "description": "Per-unit analysis results within this file",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": {
+                  "type": "string",
+                  "description": "Name of the analyzed type, function, or file-scope block"
+                },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension", "function", "file"],
+                  "description": "Kind of the analyzed unit. Includes function and file for file-scope bugs"
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["unsafe_unwrap", "logic_semantic", "concurrency", "safety_correctness"],
+                  "properties": {
+                    "unsafe_unwrap": {
+                      "type": "object",
+                      "required": ["violation_count", "force_unwraps", "unhandled_optionals", "unguarded_access"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "force_unwraps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "code"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": {
+                                "type": "string",
+                                "enum": ["force_unwrap", "force_cast", "force_try", "implicitly_unwrapped"]
+                              },
+                              "code": { "type": "string" }
+                            }
+                          }
+                        },
+                        "unhandled_optionals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "code"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": {
+                                "type": "string",
+                                "enum": ["discarded_optional", "unused_chain", "try_discard"]
+                              },
+                              "code": { "type": "string" }
+                            }
+                          }
+                        },
+                        "unguarded_access": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "code"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": {
+                                "type": "string",
+                                "enum": ["direct_subscript", "dictionary_force", "first_last_force"]
+                              },
+                              "code": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "logic_semantic": {
+                      "type": "object",
+                      "required": ["violation_count", "unreachable_code", "dead_branches", "contradictory_conditions", "missing_edge_cases"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "unreachable_code": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "statement", "after"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "statement": { "type": "string" },
+                              "after": { "type": "string" }
+                            }
+                          }
+                        },
+                        "dead_branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "condition", "reason"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "condition": { "type": "string" },
+                              "reason": { "type": "string" }
+                            }
+                          }
+                        },
+                        "contradictory_conditions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "conditions", "contradiction"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "conditions": { "type": "string" },
+                              "contradiction": { "type": "string" }
+                            }
+                          }
+                        },
+                        "missing_edge_cases": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "missing_case"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": { "type": "string" },
+                              "missing_case": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "concurrency": {
+                      "type": "object",
+                      "required": ["violation_count", "data_races", "deadlock_risks", "main_thread_blocking", "unsafe_shared_state"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "data_races": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "shared_state", "access_contexts", "protection"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "shared_state": { "type": "string" },
+                              "access_contexts": { "type": "string" },
+                              "protection": { "type": "string" }
+                            }
+                          }
+                        },
+                        "deadlock_risks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "context"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": { "type": "string" },
+                              "context": { "type": "string" }
+                            }
+                          }
+                        },
+                        "main_thread_blocking": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "blocking_call", "queue_context"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "blocking_call": { "type": "string" },
+                              "queue_context": { "type": "string" }
+                            }
+                          }
+                        },
+                        "unsafe_shared_state": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "declaration", "reason"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "declaration": { "type": "string" },
+                              "reason": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "safety_correctness": {
+                      "type": "object",
+                      "required": ["violation_count", "resource_leaks", "error_handling_gaps", "correctness_violations"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "resource_leaks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "resource", "acquisition", "release_present"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "resource": { "type": "string" },
+                              "acquisition": { "type": "string" },
+                              "release_present": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "error_handling_gaps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "detail"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": {
+                                "type": "string",
+                                "enum": ["empty_catch", "print_only_catch", "incomplete_catch", "missing_completion_call"]
+                              },
+                              "detail": { "type": "string" }
+                            }
+                          }
+                        },
+                        "correctness_violations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "pattern", "code"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "pattern": {
+                                "type": "string",
+                                "enum": ["float_equality", "identity_vs_equality", "mutation_during_iteration", "non_deterministic"]
+                              },
+                              "code": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["unsafe_unwrap_severity", "logic_semantic_severity", "concurrency_severity", "safety_correctness_severity", "final_severity"],
+                  "properties": {
+                    "unsafe_unwrap_severity": { "type": "string" },
+                    "logic_semantic_severity": { "type": "string" },
+                    "concurrency_severity": { "type": "string" },
+                    "safety_correctness_severity": { "type": "string" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^bug-\\d{3}$"
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE", "MINOR"]
+                      },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["BUG-1", "BUG-2", "BUG-3", "BUG-4"],
+                        "description": "Which metric triggered this finding"
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

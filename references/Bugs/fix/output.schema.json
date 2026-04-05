@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bugs Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
+  "properties": {
+    "agent": { "const": "bugs" },
+    "principle": { "const": "Bug Patterns" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file_path": {
+      "type": "string",
+      "description": "Full path to the file being analyzed"
+    },
+    "review_source": {
+      "type": "string",
+      "description": "Path to the review findings JSON this suggestion is based on"
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^bug-fix-\\d{3}$",
+            "description": "Suggestion ID, e.g., bug-fix-001"
+          },
+          "unit_name": {
+            "type": "string",
+            "description": "Name of the unit this suggestion targets"
+          },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension", "function", "file"],
+            "description": "Kind of the unit this suggestion targets"
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Finding IDs this suggestion resolves, e.g., ['bug-001', 'bug-002']"
+          },
+          "title": {
+            "type": "string",
+            "description": "Short description of the fix"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"],
+            "description": "Severity from the review that triggered this suggestion"
+          },
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "guard_clause",
+              "optional_binding",
+              "nil_coalescing",
+              "safe_subscript",
+              "remove_dead_code",
+              "add_missing_case",
+              "actor_isolation",
+              "dispatch_to_background",
+              "add_synchronization",
+              "weak_capture",
+              "add_error_propagation",
+              "add_resource_cleanup"
+            ],
+            "description": "Which bug fix pattern this applies"
+          },
+          "suggested_fix": {
+            "type": "string",
+            "description": "Full text with code snippets showing the fix: before/after for each fix site"
+          },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Actionable steps to implement this fix. Each item is a concrete task that can be fed to a code agent."
+          },
+          "verification": {
+            "type": "object",
+            "description": "Predicted bug metrics after the suggestion is applied",
+            "properties": {
+              "unit": {
+                "type": "object",
+                "properties": {
+                  "unsafe_unwrap_violations": { "type": "integer" },
+                  "logic_semantic_violations": { "type": "integer" },
+                  "concurrency_violations": { "type": "integer" },
+                  "safety_correctness_violations": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
