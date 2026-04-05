@@ -110,6 +110,38 @@ output_schema: output.schema.json
     - [ ] 1.4.4 Count safety/correctness violations
       Violations: ___
 
+#### Phase 1.5: Reconstruction Verification (hallucination guard)
+
+For EACH finding from Phase 1, verify it is grounded in actual code — not hallucinated.
+
+- [ ] **1.5.1 For each finding, run the reconstruction test:**
+
+  1. **Take** the finding description (the `issue` field)
+  2. **Ask yourself**: "What code pattern would produce this finding?"
+  3. **Generate** a reconstructed description of the code you expect to see
+  4. **Compare** the original finding against the reconstructed description
+  5. **Score** similarity 0–1:
+     - **1.0** — reconstruction matches the actual code exactly
+     - **0.7–0.9** — reconstruction describes the same pattern with minor wording differences
+     - **0.4–0.6** — reconstruction is vaguely related but misses key details
+     - **0.0–0.3** — reconstruction does not match the actual code at all
+
+  | Finding ID | Issue (original) | Reconstructed Pattern | Actual Code (quote) | Similarity | Keep? |
+  |------------|-----------------|----------------------|--------------------|-----------:|-------|
+  |            |                 |                      |                    |            |       |
+
+- [ ] **1.5.2 Drop findings with similarity < 0.7**
+  These findings are likely hallucinated — the model described a bug that
+  doesn't match the actual code. Remove them from the findings list before
+  proceeding.
+
+- [ ] **1.5.3 Flag findings with similarity 0.7–0.8 as LOW_CONFIDENCE**
+  These findings may be real but the description is imprecise. Keep them but
+  mark them so downstream consumers (synthesize, report) can weigh them
+  accordingly.
+
+- [ ] **1.5.4 Update violation counts** — recount after dropping failed reconstructions
+
 #### Phase 2: Filter Out Exceptions
 
 - [ ] **2.1 Cross-check exceptions** — mark exceptions

@@ -295,7 +295,33 @@
                       "title": { "type": "string" },
                       "issue": { "type": "string" },
                       "impact": { "type": "string" },
-                      "rule_source": { "type": "string" }
+                      "rule_source": { "type": "string" },
+                      "reconstruction": {
+                        "type": "object",
+                        "description": "Reconstruction verification — hallucination guard. The reviewer reconstructs what code pattern would produce this finding, then scores similarity against actual code.",
+                        "required": ["reconstructed_pattern", "actual_code", "similarity"],
+                        "properties": {
+                          "reconstructed_pattern": {
+                            "type": "string",
+                            "description": "What code pattern the reviewer expects to see based on the finding description alone"
+                          },
+                          "actual_code": {
+                            "type": "string",
+                            "description": "Direct quote of the actual code from the source file"
+                          },
+                          "similarity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "description": "Similarity score 0-1. Findings below 0.7 are dropped as likely hallucinated."
+                          },
+                          "confidence": {
+                            "type": "string",
+                            "enum": ["HIGH", "LOW"],
+                            "description": "HIGH if similarity >= 0.8, LOW if 0.7-0.8. Findings below 0.7 are dropped."
+                          }
+                        }
+                      }
                     }
                   }
                 }
