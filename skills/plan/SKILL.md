@@ -27,6 +27,13 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   -  Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
      For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
 
+- [ ] 1.2.5 **Extract architectural constraints from loaded context** — From any CLAUDE.md instructions already in context, identify and hold as hard constraints:
+  - **Available packages / modules** — local packages, libraries, or shared modules the project provides. Use these as dependencies rather than re-implementing them.
+  - **Required patterns** — architectural patterns the project enforces (e.g., coordinator pattern, specific DI approach, mandatory base classes).
+  - **Forbidden approaches** — things explicitly prohibited (e.g., "do not use singletons", "no direct URLSession usage").
+  - **Test infrastructure** — test frameworks, helpers, or base classes that all tests must use.
+  These override free architectural choices during decomposition.
+
 - [ ] 1.3 Extract from the spec:
   - **User stories / features** — what the user can do
   - **Data models** — nouns/entities mentioned

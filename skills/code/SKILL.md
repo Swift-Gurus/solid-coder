@@ -173,5 +173,5 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 - Run build, test, ui tests ONLY when build/test instructions were loaded into context. Never guess or search for build/test commands.
 - NEVER run test steps in parallel — always sequential, always wait for completion before proceeding to the next step.
 - NEVER run test as background tasks
-- Fix all linting issues — both errors and warnings. Fix the code, never modify lint rules or configuration.
+- Fix all build errors and linting issues — both errors and warnings, including pre-existing ones unrelated to your changes. A partial build (scoped scheme, skipped targets) is not valid verification. Fix the code, never modify lint rules or configuration.
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.
