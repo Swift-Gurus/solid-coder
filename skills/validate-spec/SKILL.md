@@ -129,11 +129,15 @@ Verify the spec has all required sections for its type:
 
   **Verdict:** `pass` (0 findings) or `needs_clarification` (>0 findings)
 
-- [ ] 4.4 If called with `--interactive` or by another skill: for each finding, ask the user to resolve it using AskUserQuestion. Return answers alongside findings.
+- [ ] 4.4 **Mode-dependent output:**
+  - `--batch`: return all findings as structured output (no user interaction). The caller (build-spec) handles batching findings into a single AskUserQuestion.
+  - `--interactive`: for each finding, ask the user to resolve it using AskUserQuestion. Return answers alongside findings. (Legacy mode — prefer `--batch` for fewer round-trips.)
+  - No flag: report only, no user interaction.
 
 ## Constraints
 
 - Do NOT modify the spec file — only read and report
 - Do NOT invent requirements — only flag what's missing or vague in what's written
 - Structural checks are based on spec type — don't require bug sections in a feature spec
-- When used by `build-spec` Phase 4, pass `--interactive` to enable the question loop
+- `--batch` mode returns findings without asking — the caller presents them to the user
+- `--interactive` mode asks one-by-one (legacy, kept for backward compatibility)

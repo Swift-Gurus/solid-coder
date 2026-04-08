@@ -19,5 +19,8 @@ user-invocable: false
   ```
 - [ ] 1.2 **Return output** — The script outputs each file's content (frontmatter stripped) to stdout, separated by `=== <path> ===` headers.
 
+## Constraints
+- NEVER truncate the output — no `head`, `tail`, `| head -N`, or line limits. The full content of every file must be returned. Truncated rules lead to missed constraints and violations.
+
 ## Output
 Clean content from each file, with YAML frontmatter removed. Directories are expanded to all files within them.

@@ -141,3 +141,4 @@ After Phase 2.5, some `arch.json.acceptance_criteria[]` and `arch.json.test_plan
 - If `arch.json` or `validation.json` is malformed, abort with clear error — do not attempt partial reconciliation
 - Every `arch.json` component must appear in exactly one reconciliation decision
 - Directives should describe patterns informed by loaded principles (e.g., "inject via protocol" not "use singleton") without embedding the rules themselves
+- NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.

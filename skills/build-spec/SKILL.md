@@ -138,25 +138,28 @@ Continue to Phase 4.
 
   ---
 
-  ### Phase 3.6: Break Down Into Subtasks
+  ### Phase 3.6: Break Down Into Subtasks (lightweight)
 
-  - [ ] 3.6.1 Analyze the target spec's user stories, acceptance criteria, and scope. Suggest a subtask breakdown:
+  Do NOT rerun the full Phase 4 interview per child. Derive child specs from the parent's stories.
+
+  - [ ] 3.6.1 Analyze the target spec's user stories, acceptance criteria, and scope. Suggest a subtask breakdown — each story or story group becomes a subtask:
     ```
     Based on this spec, here's a suggested breakdown:
-    1. <subtask title> — <one-line scope>
-    2. <subtask title> — <one-line scope>
+    1. <subtask title> — <one-line scope> (from story: <story reference>)
+    2. <subtask title> — <one-line scope> (from story: <story reference>)
     ...
     ```
     Ask using AskUserQuestion: "Adjust, add, remove, or confirm these subtasks?"
 
   - [ ] 3.6.2 Finalize the subtask list. For each subtask, get the next spec number — use skill **solid-coder:find-spec** with `next-number` before each.
 
-  - [ ] 3.6.3 **For each subtask**, run the full interview and write flow:
+  - [ ] 3.6.3 **For each subtask**, generate a pre-filled draft directly from parent context:
     - Set `type = subtask`, `parent = <target_spec number>`, title from the breakdown list.
-    - Run Phase 4 (Interview) with the parent spec loaded as ancestor context.
-    - Run Phase 5 (Generate Draft).
+    - Derive stories, connections, I/O, technical requirements, and edge cases from the parent spec's content. The parent already has all the context — the child spec narrows scope, it doesn't re-discover it.
+    - Run Phase 5 (Generate Draft) — no Phase 4 interview.
     - Run Phase 6 (Buildability Gate).
-    - Run Phase 7 (User Review).
+    - Present each child draft to the user with a single AskUserQuestion: "Write this subtask spec, or adjust?"
+    - If "adjust": user provides changes in one free-text response, apply, then write.
     - Run Phase 8 (Write) — each subtask gets its own folder with `Spec.md` + `resources/`.
 
   - [ ] 3.6.4 After all subtasks are written, confirm to user with list of all files created.
@@ -165,68 +168,88 @@ Continue to Phase 4.
 
 ---
 
-## Phase 4: Interview
+## Phase 4: Interview (3 steps)
 
-For each question, infer suggestions from the loaded ancestor context (epic/feature specs read in Phase 2, 3, or 1.2). Present suggestions as numbered options. Always include a free-text fallback as the last option so the user can describe or discuss freely.
+Infer suggestions from loaded ancestor context. Present inferences as `[default]` options. Always include a free-text fallback. The goal is **3 user interactions** for Phase 4 — not 9.
 
-**Pre-filled answers:** If Phase 1 inferred answers from the prompt (stories, connections, UI elements), present them as `[default]` options for confirmation. Only ask open-ended questions for fields that have no inferred value. This means a rich prompt can skip most of the interview — the user just confirms or adjusts.
+### Step 1: Stories — "What is this?"
 
-- [ ] 4.1 **Connections & context** — "What does this connect to, depend on, or interact with?". Ask using AskUserQuestion. Suggest related features/modules inferred from ancestor specs. Free-text fallback.
+Stories are the anchor. Everything else flows from them.
 
-- [ ] 4.2 **Inputs & Outputs** — "What goes in and what comes out? Who consumes the output, how do they get it, and what's its lifetime?". Ask using AskUserQuestion. Suggest input/output patterns inferred from sibling specs in the same epic. Free-text fallback.
-
-- [ ] 4.3 **Edge cases & design choices** — "What could go wrong or behave unexpectedly? Any key design choices or constraints?". Ask using AskUserQuestion. Suggest edge cases inferred from context (e.g. missing data, failures, boundary conditions mentioned in the epic). Free-text fallback. Hold answers — these will be written as acceptance criteria on the relevant user stories in 4.4, not as a separate section.
-
-- [ ] 4.4 **User Stories** — type-differentiated. Ask using AskUserQuestion.
+- [ ] 4.1 **User Stories** — type-differentiated. Ask using AskUserQuestion.
   - **Epic**: "List the main things a user can do with this. I'll turn each into a story." Push for breadth — one story per major capability. Acceptance criteria can be high-level outcomes (each will be detailed in child specs).
   - **Feature**: "What are the distinct user goals this covers?" — 1–3 stories. For each: "What exactly makes this done?" Push for concrete, independently verifiable acceptance criteria.
   - **Subtask**: One story. Push for specificity — placement, connection, and integration details in acceptance criteria.
   - **Bug**: Skip — bugs use reproduction steps, not stories.
 
+  If Phase 1 inferred stories from the prompt, present them as `[default]` for confirmation.
+
   Story format:
   - User-facing: `As a [user], I want [goal] so that [reason]`
   - Business logic / system: `As the system, when [trigger], [outcome]`
 
-  Acceptance criteria rules: each criterion must be independently verifiable. No "works correctly", no "handles edge cases" — name the specific value, behavior, or condition. Incorporate edge cases and design choices from 4.3 as concrete acceptance criteria on the relevant stories.
+  Acceptance criteria rules: each criterion must be independently verifiable. No "works correctly", no "handles edge cases" — name the specific value, behavior, or condition.
 
-- [ ] 4.5 **Technical Requirements** (conditional) —
-  - **Subtask**: always ask.
-  - **Feature**: ask only if touching business logic or integration.
-  - **Epic / Bug**: skip.
-  - Ask using AskUserQuestion: "What technical constraints or requirements apply? Think about: specific APIs or frameworks, libraries/dependencies, error codes or failure modes, patterns to follow (or avoid), integration points with existing code."
-  - Free-text. Store answers for the `## Technical Requirements` section in the draft.
+  - **Epic breakdown** (only if type is `epic`): after confirming stories, suggest a feature breakdown:
+    ```
+    Here is a suggested feature breakdown:
+    1. <feature 1>
+    2. <feature 2>
+    ...
 
-- [ ] 4.6 **UI / Mockup** (conditional) — if the description or any user story mentions screens, views, components, or user interaction:
-  - Generate an ASCII mockup of the UI layout.
-  - Ask using AskUserQuestion: "Here's a mockup I sketched. Keep this, or will you provide a design/screenshot?"
-  - If keep: embed mockup under `## UI / Mockup` in the draft.
-  - If provide: insert `## UI / Mockup\n<!-- TODO: attach image or design -->` placeholder. validate-spec will flag this as a structural gap.
+    How should I proceed?
+    1. Write as a single epic spec (features listed in Definition of Done)
+    2. Write the epic + scaffold each feature now (frontmatter only, dependencies set later)
+    ```
+    Store choice as `epic_mode` (`single` or `split`).
 
-- [ ] 4.7 **Dependency chain** — use skill **solid-coder:find-spec** with `scan --parent <parent_spec> --status draft,ready` to get siblings, then ask:
-  - "Which specs must be done before this can start? (`blocked-by`)" — multi-select from results.
-  - "Which specs are waiting on this to be done first? (`blocking`)" — multi-select from results.
+### Step 2: Context — "What surrounds it?"
 
-- [ ] 4.8 **Epic breakdown** (only if type is `epic`):
-  ```
-  Here is a suggested feature breakdown:
-  1. <feature 1>
-  2. <feature 2>
-  ...
+Batch related context questions into a single AskUserQuestion with multiple questions (the tool supports up to 4 questions per call). Pre-fill from ancestor context and stories.
 
-  How should I proceed?
-  1. Write as a single epic spec (features listed in Definition of Done)
-  2. Write the epic + scaffold each feature now (frontmatter only, dependencies set later)
-  ```
-  Store choice as `epic_mode` (`single` or `split`).
+- [ ] 4.2 Ask using AskUserQuestion with up to 4 questions in one call:
 
-- [ ] 4.9 **Diagrams** — generate Mermaid diagrams from the collected answers:
+  **Q1 — Connections**: "What does this connect to, depend on, or interact with?"
+  - Suggest related features/modules inferred from ancestor specs. Free-text fallback.
+
+  **Q2 — Inputs & Outputs**: "What goes in and what comes out? Who consumes the output?"
+  - Suggest I/O patterns inferred from stories and sibling specs. Free-text fallback.
+
+  **Q3 — Technical constraints** (conditional — skip for epics/bugs):
+  - "What technical constraints apply? (APIs, libraries, patterns, error modes)"
+  - Free-text fallback.
+
+  **Q4 — Dependencies**: "Any specs this is blocked by or blocking?"
+  - Use skill **solid-coder:find-spec** with `scan --parent <parent_spec> --status draft,ready` to get siblings.
+  - Present as multi-select from results. Free-text fallback.
+
+### Step 3: Edge cases — "What could go wrong?"
+
+Now asked AFTER stories exist — answers become acceptance criteria on specific stories.
+
+- [ ] 4.3 **Edge cases & design choices** — infer edge cases from the stories and context already collected. Present inferred edge cases as `[default]` options. Ask using AskUserQuestion:
+  - "Based on the stories, here are the edge cases and design choices I see. Confirm, add, or adjust."
+  - Suggest: error conditions, boundary values, failure modes, race conditions inferred from the stories and technical context.
+  - Free-text fallback.
+  - Hold answers — these will be written as acceptance criteria on the relevant user stories, not as a separate section.
+
+### Silent generation (no user interaction)
+
+These are generated automatically and shown in the draft for review in Phase 7. No separate confirmation step.
+
+- [ ] 4.4 **UI / Mockup** — ask using AskUserQuestion:
+  - If UI elements detected in description/stories: "I sketched a mockup based on the stories. Will you provide design screenshots, or should I keep this ASCII mockup?"
+    - If provide: insert `## UI / Mockup\n<!-- User will provide design screenshots in resources/ -->` placeholder.
+    - If keep mockup: embed generated ASCII mockup under `## UI / Mockup`.
+  - If no UI elements detected: "Do you have design screenshots or mockups to include?"
+    - If yes: insert placeholder, user adds to `resources/` before or after writing.
+    - If no: skip `## UI / Mockup` section entirely.
+
+- [ ] 4.5 **Diagrams** — generate Mermaid diagrams from the collected answers:
   - **Connection diagram** (all types): upstream inputs, downstream consumers, sibling specs, external dependencies.
-  - **Flow diagram** (all types):
-    - Epic: high-level user journey across subtasks.
-    - Feature/subtask: data/control path end-to-end.
+  - **Flow diagram** (all types): epic = high-level user journey, feature/subtask = data/control path end-to-end.
   - **Sequence diagram** (conditional): generate if the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors.
-  - Present all generated diagrams using AskUserQuestion: "Here are the diagrams I generated. Keep, revise, or describe what to change?"
-  - Incorporate any revisions before proceeding.
+  - Embed all in draft under `## Diagrams`. User reviews them in Phase 7.
 
 ---
 
@@ -248,28 +271,36 @@ If `epic_mode = split`: Epic = `next_number`, children = `next_number+1…N`, ch
 
 ---
 
-## Phase 6: Buildability Gate (max 3 rounds)
+## Phase 6: Buildability Gate (max 2 rounds)
 
-Use skill **solid-coder:validate-spec** with `--interactive` on the draft spec.
+Use skill **solid-coder:validate-spec** with `--batch` on the draft spec. Batch mode returns all findings at once instead of asking one-by-one.
 
 For `epic` specs, validate-spec applies epic-specific rules (scope clarity, subtask breakdown completeness) instead of the standard buildability scan. See validate-spec for details.
 
-- [ ] 6.1 Run validate-spec on the current draft. It will flag gaps and ask the user to resolve them.
-- [ ] 6.2 Incorporate the user's answers into the draft.
-- [ ] 6.3 Re-run validate-spec on the updated draft. Repeat until clean or 3 rounds reached.
-- [ ] 6.4 If gaps remain after 3 rounds, annotate them as `TBD` in the spec with a note explaining what's unresolved. Proceed to Phase 7.
+- [ ] 6.1 Run validate-spec with `--batch` on the current draft. Collect all findings.
+- [ ] 6.2 If findings exist, present ALL of them in a single AskUserQuestion (multiSelect: true):
+  ```
+  Buildability findings — select which to resolve now (rest will be marked TBD):
+  1. [category] location — question
+  2. [category] location — question
+  ...
+  ```
+  User selects which findings to address and provides answers.
+- [ ] 6.3 Incorporate selected answers into the draft. Mark unselected findings as `TBD`.
+- [ ] 6.4 Re-run validate-spec with `--batch`. If new findings → repeat 6.2 (max 1 more round).
+- [ ] 6.5 If gaps remain after 2 rounds, annotate remaining as `TBD`. Proceed to Phase 7.
 
 ---
 
 ## Phase 7: User Review (max 2 rounds)
 
-- [ ] 7.1 Present the full draft spec.
-- [ ] 7.2 Ask:
+- [ ] 7.1 Present the full draft spec (includes diagrams and mockups generated in Phase 4).
+- [ ] 7.2 Ask using AskUserQuestion:
   ```
   1. Yes, write it
-  2. Needs changes
+  2. Specific changes needed — describe ALL changes at once
   ```
-- [ ] 7.3 If "needs changes": ask what to adjust, incorporate, re-present. Max 2 rounds.
+- [ ] 7.3 If "specific changes": user provides all changes in one free-text response. Apply all changes, re-present once. Max 1 re-present — after 2 total rounds, write what exists.
 - [ ] 7.4 Proceed to Phase 8.
 
 ---

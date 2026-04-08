@@ -149,12 +149,12 @@ After writing all code, verify your output against every loaded rule:
   - [ ] 4.5.6 Verify all elements visible in the design are present in the implementation — nothing is missing
 - [ ] 4.6 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
 - [ ] 4.7 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
-- [ ] 4.8 **Build & test** (conditional) — if build, test or ui test instructions were loaded into context (e.g., from a project's CLAUDE.md or the spec), run them. Do NOT search for build systems, guess commands, or attempt to run any build/test tool on your own. If no instructions are in context, skip this step entirely.
-    1. Run unit tests for the component you developed. If broken -> fix it using all the loaded rules
-    2. Run full unit test suite to validate nothing's broken. If broken -> fix it using all the loaded rules
-    3. If you worked on UI
-       3.1. run UI tests for your logic only. If broken -> fix it using loaded rules
-       3.2. run full UI tests suit. If broken -> fix it using loaded rules
+- [ ] 4.8 **Build & test**
+    - [ ] 4.8.1 Build the project. If build fails → fix it, rebuild, then continue.
+    - [ ] 4.8.2 Run unit tests for the component you developed. If broken → fix using all loaded rules, re-run until green.
+    - [ ] 4.8.3 Run the full unit test suite. If broken → fix using all loaded rules, re-run until green.
+    - [ ] 4.8.4 If you worked on UI: run UI tests for your component only. If broken → fix using loaded rules, re-run until green.
+    - [ ] 4.8.5 If you worked on UI: run the full UI test suite. If broken → fix using loaded rules, re-run until green.
 
 Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems in place.
 
@@ -165,8 +165,13 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 
 ## Constraints
 - Follow the spec — do not invent scope beyond what was asked
-- The loaded `rule.md` files are the source of truth for what constitutes a violation. Do not invent additional rules
+- The loaded `rule.md` and `instructions.md` files are the source of truth for what constitutes a violation and how to write and fix code. Do not invent additional rules
 - Always search the project before creating new protocols, wrappers, or abstractions
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it
 - Do not add unnecessary error handling, comments, or abstractions beyond what the spec and rules require
+- Run build, test, ui tests ONLY when build/test instructions were loaded into context. Never guess or search for build/test commands.
+- NEVER run test steps in parallel — always sequential, always wait for completion before proceeding to the next step.
+- NEVER run test as background tasks
+- Fix all linting issues — both errors and warnings. Fix the code, never modify lint rules or configuration.
+- NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.

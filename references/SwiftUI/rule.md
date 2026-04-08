@@ -27,7 +27,7 @@ State proliferation is handled by SRP (cohesion groups, verb count). Sealed depe
 
 Measure nesting depth and view expression count across `body` AND all view-returning computed properties/methods (any property or method that returns `some View`).
 
-**Definition:** A deeply nested or sprawling view hierarchy indicates a view that should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
+**Definition:** Even moderately nested view hierarchies should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
 
 **Detection:**
 
@@ -61,7 +61,7 @@ Detect business logic embedded in the view struct. A SwiftUI view must be dumb �
 
 Detect inline views nested inside `@ViewBuilder` closures that accumulate too many modifiers. Long modifier chains on nested views hurt readability — extract them into named computed properties.
 
-**Definition:** When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has more than 2 chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
+**Definition:** When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has 2 or more chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
 
 **Scope:** Only counts modifiers on **nested child views** inside a closure — NOT on the top-level return value of `body` or a computed property. The top-level view's own modifiers are part of its external API and don't hurt readability.
 
@@ -70,7 +70,7 @@ Detect inline views nested inside `@ViewBuilder` closures that accumulate too ma
 1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
 2. **For each child view expression** inside that closure (not the outermost container)
 3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
-4. **Flag** if modifier count > 2
+4. **Flag** if modifier count >= 2
 
 ### SUI-4: ViewModel Injection
 
@@ -226,12 +226,12 @@ The correct pattern for **protocols** depends on conformer analysis: check wheth
 13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
 
 ### Severity Bands:
-- COMPLIANT (nesting < 3 AND expressions < 5 AND impure == 0 AND max nested modifier chain <= 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames AND no over-broad @MainActor)
+- COMPLIANT (nesting < 2 AND expressions < 5 AND impure == 0 AND max nested modifier chain < 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames AND no over-broad @MainActor)
 - SEVERE (any of the following):
-    - Nesting depth >= 3
-    - View expressions > 5
+    - Nesting depth >= 2
+    - View expressions >= 5
     - 1+ impure methods
-    - Any nested child view with 3+ modifiers
+    - Any nested child view with 2+ modifiers
     - Concrete VM injection
     - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
     - File-scope view with no #Preview or PreviewProvider instantiation anywhere
@@ -244,16 +244,16 @@ The correct pattern for **protocols** depends on conformer analysis: check wheth
 | ID | Metric | Threshold | Severity |
 |----|--------|-----------|----------|
 | SUI-0 | Exception | Falls into exception category | COMPLIANT |
-| SUI-1 | Body complexity | Nesting < 3, expressions < 5 | COMPLIANT |
+| SUI-1 | Body complexity | Nesting < 2, expressions < 5 | COMPLIANT |
 | SUI-2 | View purity | 0 impure methods | COMPLIANT |
-| SUI-3 | Modifier chain length | All nested child modifiers <= 2 | COMPLIANT |
+| SUI-3 | Modifier chain length | All nested child modifiers < 2 | COMPLIANT |
 | SUI-4 | VM injection | VM injected as an interface, view has generic signature | COMPLIANT |
 | SUI-5 | Preview containment | All file-scope views have production callers | COMPLIANT |
 | SUI-6 | Preview coverage | All file-scope views instantiated in a preview | COMPLIANT |
 | SUI-7 | Container a11y ID | All container `.accessibilityIdentifier` preceded by `.accessibilityElement` | COMPLIANT |
-| SUI-1 | Body complexity | Nesting >= 3 OR expressions >= 5 | SEVERE |
+| SUI-1 | Body complexity | Nesting >= 2 OR expressions >= 5 | SEVERE |
 | SUI-2 | View purity | 1+ impure methods | SEVERE |
-| SUI-3 | Modifier chain length | Any nested child view with 3+ modifiers | SEVERE |
+| SUI-3 | Modifier chain length | Any nested child view with 2+ modifiers | SEVERE |
 | SUI-4 | VM injection | VM injected as a concrete implementation | SEVERE |
 | SUI-5 | Preview containment | Any file-scope view only referenced from #Preview/PreviewProvider | SEVERE |
 | SUI-6 | Preview coverage | Any file-scope view with no preview instantiation | SEVERE |
