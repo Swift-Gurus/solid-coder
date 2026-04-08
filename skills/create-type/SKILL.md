@@ -134,3 +134,4 @@ final class ProductFetchService: ProductReading { ... }
 - Do NOT add frontmatter to private/fileprivate nested types — only top-level declarations
 - Do NOT add frontmatter to extensions that merely add protocol conformance (e.g., `extension Foo: Codable {}`)
 - DO add frontmatter (category: `utility`) to extensions that add convenience functionality — new methods, computed properties, static helpers, or subscripts beyond what a protocol requires
+

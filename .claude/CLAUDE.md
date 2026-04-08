@@ -107,3 +107,4 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | @docs/improvements-open-arch.md | Unimplemented improvement suggestions — large architectural items (S-26, S-32, S-33, S-42, S-43, S-44) |
 | @docs/improvements-partial.md | Partially implemented improvements (12 items) |
 | @docs/improvements-archive.md | Completed/resolved improvements (12 items) |
+| @docs/create-type-notes.md | **Read before modifying `create-type`** — hardcoded dependencies on its vocabulary (e.g. `VALID_STACKS`) |

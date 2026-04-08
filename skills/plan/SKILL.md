@@ -100,14 +100,11 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
   - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)
   - `technical_requirements[]` — verbatim from Phase 1.4 (subsections with code blocks preserved)
   - `test_plan[]` — from Phase 1.4 (test cases classified by type, associated with components where possible)
-- [ ] 5.2 Validate:
-  - Every component `dependencies[]` entry appears as some component's `interfaces[]` entry
-  - Every wiring `to` matches an existing protocol in some component's `interfaces[]`
-  - Every wiring `from` matches an existing component `name`
-  - No concrete types in `dependencies[]` — only protocol names
-  - All `category` values are from the solid-category vocabulary
-  - All `stack` values are from the solid-stack vocabulary (see **solid-coder:create-type** Phase 3.3)
-  - Data models (`category: "model"`) have populated `fields[]` and empty `interfaces[]`, `dependencies[]`, `produces[]`
+- [ ] 5.2 Validate by running:
+  ```
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/plan/scripts/validate-arch.py <OUTPUT_PATH> --schema ${CLAUDE_PLUGIN_ROOT}/skills/plan/arch.schema.json
+  ```
+  If the script exits non-zero, fix the arch.json and re-run before proceeding.
 
 - [ ] 5.3 Write `arch.json` to OUTPUT_PATH
 
