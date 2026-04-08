@@ -88,7 +88,7 @@ user-invocable: true
   - If "start fresh": clear all inferences, proceed to Phase 1.3.
 
 - [ ] 1.3 **Manual create** (when no prompt, or user chose "start fresh"):
-  - Run `python3 @scripts/build-spec-query.py types` and ask using AskUserQuestion: "What type is this?"
+  - Run `python3 ${CLAUDE_PLUGIN_ROOT}/skills/build-spec/scripts/build-spec-query.py types` and ask using AskUserQuestion: "What type is this?"
   - **Where does it belong?** — use skill **solid-coder:find-spec** with `navigate draft,ready Select as parent`. Store as `parent_epic`.
   - "Give it a short title." — ask using AskUserQuestion free-text only.
   - "What are we building?" — ask using AskUserQuestion free-text description only.
@@ -310,7 +310,7 @@ For `epic` specs, validate-spec applies epic-specific rules (scope clarity, subt
 - [ ] 8.1 Derive slug: lowercase, spaces → hyphens, strip special chars.
 - [ ] 8.2 Resolve output path — run:
   ```
-  python3 @scripts/build-spec-query.py resolve-path <type> <SPEC-NNN> <slug> [--parent <parent-SPEC-NNN>]
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/build-spec/scripts/build-spec-query.py resolve-path <type> <SPEC-NNN> <slug> [--parent <parent-SPEC-NNN>]
   ```
   If non-zero exit: stop and report error.
 - [ ] 8.3 Create empty `resources/` directory alongside each `Spec.md` written.

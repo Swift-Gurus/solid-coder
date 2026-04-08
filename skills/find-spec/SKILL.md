@@ -34,7 +34,7 @@ Query the spec tree or drill down interactively. Returns JSON.
 
 - Run:
   ```
-  python3 @scripts/find-spec-query.py next-number
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/find-spec/scripts/find-spec-query.py next-number
   ```
 - Return the JSON result to the caller.
 
@@ -42,7 +42,7 @@ Query the spec tree or drill down interactively. Returns JSON.
 
 - Run:
   ```
-  python3 @scripts/find-spec-query.py ancestors {SPEC_NUMBER} [--blocked]
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/find-spec/scripts/find-spec-query.py ancestors {SPEC_NUMBER} [--blocked]
   ```
 - Return the JSON array result to the caller. When `--blocked` is present, blocked-by specs are appended after the ancestor chain.
 
@@ -50,7 +50,7 @@ Query the spec tree or drill down interactively. Returns JSON.
 
 - Run:
   ```
-  python3 @scripts/find-spec-query.py scan {SCAN_ARGS}
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/find-spec/scripts/find-spec-query.py scan {SCAN_ARGS}
   ```
 - Return the JSON array result to the caller. Supports all script scan flags: `--type <type>`, `--status <statuses>`, `--no-parent`, `--parent <SPEC-NNN>`.
 
@@ -62,7 +62,7 @@ Enter the interactive drill-down phases below.
 
 - [ ] 1. **Root level** — run:
   ```
-  python3 @scripts/find-spec-query.py scan --type epic --no-parent
+  python3 ${CLAUDE_PLUGIN_ROOT}/skills/find-spec/scripts/find-spec-query.py scan --type epic --no-parent
   ```
   Filter results to STATUS. If empty: report "No specs found matching status filter." and exit with error.
   Present results + "Create new root epic" (if caller supports creation) using AskUserQuestion (`"SPEC-NNN — <feature> [<status>]"` per option).
@@ -70,7 +70,7 @@ Enter the interactive drill-down phases below.
 - [ ] 2. **Drill down** — repeat until user selects the action or "Create new":
   - Run:
     ```
-    python3 @scripts/find-spec-query.py scan --parent <current-SPEC-NNN>
+    python3 ${CLAUDE_PLUGIN_ROOT}/skills/find-spec/scripts/find-spec-query.py scan --parent <current-SPEC-NNN>
     ```
     Filter results to STATUS.
   - Present results + `{ACTION}` for current item using AskUserQuestion.
