@@ -28,7 +28,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
     ```
     python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py --sources . --spec <SPEC-NNN>
     ```
-    Each match is a type already created for that spec. Read the matched files' frontmatter (`solid-name`, `solid-category`, `solid-description`) to understand what exists. Reference these types in the architecture rather than proposing duplicates.
+    Each match is a type already created for that spec. Read the matched files' full source and frontmatter (`solid-name`, `solid-category`, `solid-description`) to understand what exists. For each matched type, verify whether it satisfies the current spec's requirements (user stories, acceptance criteria, technical requirements). If it fully satisfies a requirement → reference it as a dependency, do not redesign it. If it partially satisfies → reference it and note what gaps remain so validate-plan can classify it as `adjust`. If it does not satisfy → design a new component.
   - Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
      For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
 
