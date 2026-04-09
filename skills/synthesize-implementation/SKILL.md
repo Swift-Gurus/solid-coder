@@ -21,7 +21,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 
 - [ ] 0.1 Parse arguments. If `--refs-root` is missing, abort with error: "Missing required --refs-root argument."
 - [ ] 0.2 If `--output` is missing, abort with error: "Missing required --output argument."
-- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `acceptance_criteria[]`, `design_references[]`, `technical_requirements[]`, and `test_plan[]` — these are used to enrich directives in Phase 2.
+- [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `spec_number` (optional), `acceptance_criteria[]`, `design_references[]`, `technical_requirements[]`, and `test_plan[]` — these are used to enrich directives in Phase 2.
 - [ ] 0.4 Read `validation.json` from VALIDATION_PATH. Verify it has `components` and `summary`. If any are missing, abort with error listing missing fields.
 
 ## Phase 1: Discover & Load Principles
@@ -117,6 +117,7 @@ After Phase 2.5, some `arch.json.acceptance_criteria[]` and `arch.json.test_plan
 
 - [ ] 4.1 Read the output schema from `${SKILL_DIR}/implementation-plan.schema.json`
 - [ ] 4.2 Assemble `implementation-plan.json`:
+  - `spec_number`: from `arch.json` (pass through unchanged, omit if not present)
   - `spec_summary`: from `arch.json`
   - `matched_tags[]`: the deduplicated tags from Phase 1.1 (categories + stacks)
   - `plan_items[]`: ordered list from Phase 3

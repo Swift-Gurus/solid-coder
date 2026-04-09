@@ -13,6 +13,7 @@ Enforce naming conventions, file organization, and `/** solid-... */` frontmatte
 ## Input
 
 - FILES: $ARGUMENTS — one or more file paths (existing files to annotate, or context for new types being created)
+- SPEC_NUMBER: value after `--spec` flag (optional) — the spec number being implemented (e.g., `SPEC-016`). When provided, written as `solid-spec` in the frontmatter.
 
 ## Phase 1: Naming Conventions
 
@@ -100,12 +101,13 @@ For each type needing frontmatter:
 
 ## Phase 4: Insert Frontmatter
 
-- [ ] 4.1 For each type, insert a doc comment block **immediately before** the type declaration (before any attributes like `@Observable`, `@MainActor`, etc.):
+- [ ] 4.1 For each type, insert a doc comment block **immediately before** the type declaration (before any attributes like `@Observable`, `@MainActor`, etc.). Include `solid-spec` only when `--spec` was provided:
 
 ```swift
 /**
  solid-name: ProductReading
  solid-category: abstraction
+ solid-spec: [SPEC-016]
  solid-description: Contract for reading product data from remote or local sources. Supports pagination and filtering by category.
  */
 protocol ProductReading { ... }
@@ -114,6 +116,7 @@ protocol ProductReading { ... }
  solid-name: ProductFetchService
  solid-category: network
  solid-stack: [combine, structured-concurrency]
+ solid-spec: [SPEC-016]
  solid-description: Fetches product data from the REST API. Implements pagination, category filtering, and response caching.
  */
 final class ProductFetchService: ProductReading { ... }
@@ -121,11 +124,21 @@ final class ProductFetchService: ProductReading { ... }
 
 - [ ] 4.2 Preserve existing doc comments — if a type already has `///` or `/** ... */` comments that are NOT solid-frontmatter, place the solid block above them.
 
+- [ ] 4.3 **Update existing frontmatter** — if the type already has a frontmatter block, apply these targeted updates:
+  - **`solid-spec`** — if `--spec` was provided: append the new spec number if not already present. Example: `solid-spec: [SPEC-016]` + `--spec SPEC-025` → `solid-spec: [SPEC-016, SPEC-025]`. If the field does not exist yet, insert it. If spec already in list, skip.
+  - **`solid-stack`** — if the current changes introduce or remove a framework dependency, update the stack array accordingly. Add new frameworks, remove ones no longer used. No change if frameworks are unchanged.
+  - **`solid-description`** — if the current changes materially add or remove a capability or responsibility, update the description to reflect the current state. Rules:
+    - Keep it keyword-rich — domain terms, structural hints, capability nouns (see Phase 3.4 rules)
+    - Extend, don't replace — preserve existing capabilities unless the spec explicitly removes them
+    - Only rewrite if the change meaningfully alters what the type does; leave unchanged for bug fixes, refactors, or minor additions
+  - Do NOT change `solid-name`, `solid-category`, or any other fields.
+
 ## Phase 5: Output
 
-- [ ] 5.1 List every type that received frontmatter
-- [ ] 5.2 List types that were skipped (already had frontmatter)
-- [ ] 5.3 Flag any naming convention violations found
+- [ ] 5.1 List every type that received new frontmatter
+- [ ] 5.2 List types whose `solid-spec` was updated (appended)
+- [ ] 5.3 List types that were skipped (already had frontmatter, no spec update needed)
+- [ ] 5.4 Flag any naming convention violations found
 
 ## Constraints
 

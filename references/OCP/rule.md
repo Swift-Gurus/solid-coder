@@ -102,6 +102,7 @@ class UserDatabaseManager {
 3. **Pure data structures** — no business logic, no dependencies, no side effects
 4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
 5. **Pure Views UI elements** - UI elements that don't have any business logic dependencies.
+6. **Test code** — unit tests, UI tests, integration tests, mocks, stubs, fakes, and test helpers are exempt. Test code intentionally uses concrete types and is not subject to OCP review.
     When encountering a `.shared` / `.default` / static access, **inspect the returned type** before deciding:
 
     | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |

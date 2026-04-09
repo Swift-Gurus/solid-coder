@@ -37,7 +37,8 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
   ```bash
   python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py \
     --sources <sources-dir> \
-    --synonyms '<json-array-string>'
+    --synonyms '<json-array-string>' \
+    --spec <spec_number>     # include when arch.json has spec_number
   ```
 - [ ] 1.2 Parse the JSON output.
 
@@ -97,7 +98,7 @@ For each component, assign a status:
 
 ## Phase 5: Output
 
-- [ ] 5.1 Create structured output `validation.json` that corresponds to `${SKILL_DIR}/validation.schema.json`
+- [ ] 5.1 Create structured output `validation.json` that corresponds to `${SKILL_DIR}/validation.schema.json`. Include `spec_number` from `arch.json` unchanged.
 - [ ] 5.2 Sort `matches[]` by `match_confidence` descending (high → medium → low). Consumers read `matches[0]` for the best match.
 - [ ] 5.3 Validate:
   - Every component from `arch.json` has an entry

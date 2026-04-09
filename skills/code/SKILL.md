@@ -79,7 +79,7 @@ Before writing any code, review all loaded rule.md metrics and fix/instructions.
 
 - [ ] 3.1 For each plan item (in dependency order), write code following `directive` and `acceptance_criteria`. Apply the constraints below to every line of code.
 - [ ] 3.2 For each plan item with `design_references`: re-read the design screenshots and verify your code matches the layout, spacing, colors, and element sizes before moving to the next item.
-- [ ] 3.3 After creating or extracting any new type, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter.
+- [ ] 3.3 After creating or extracting any new type, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
 
 ### Constraints (apply to all code written above)
 
@@ -149,19 +149,28 @@ After writing all code, verify your output against every loaded rule:
   - [ ] 4.5.6 Verify all elements visible in the design are present in the implementation — nothing is missing
 - [ ] 4.6 **Per-item acceptance criteria** — for each plan item that had `acceptance_criteria`, verify the implemented code satisfies every criterion. If any is not met, fix it inline.
 - [ ] 4.7 **Cross-cutting acceptance criteria** — if the implementation plan had top-level `acceptance_criteria[]`, verify each one is satisfied across the full set of files created/modified. If any is not met, fix it inline.
-- [ ] 4.8 **Build & test**
-    - [ ] 4.8.1 Build the project. If build fails → fix it, rebuild, then continue.
-    - [ ] 4.8.2 Run unit tests for the component you developed. If broken → fix using all loaded rules, re-run until green.
-    - [ ] 4.8.3 Run the full unit test suite. If broken → fix using all loaded rules, re-run until green.
-    - [ ] 4.8.4 If you worked on UI: run UI tests for your component only. If broken → fix using loaded rules, re-run until green.
-    - [ ] 4.8.5 If you worked on UI: run the full UI test suite. If broken → fix using loaded rules, re-run until green.
-
 Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems in place.
 
-## Phase 5: Output
+## Phase 5: Build & Test
 
-- [ ] 5.1 List every file created or modified
-- [ ] 5.2 Brief summary of what was done and key design decisions made
+Use commands from CLAUDE.md instructions already in context. If no build/test commands are available in context, skip this phase and explicitly state why.
+
+- [ ] 5.1 **Build your targets** — build the target(s) containing the files you created or modified. Wait for the result before proceeding.
+  - Fix all compiler errors, compiler warnings, and linter errors/warnings. Fix the code, never modify lint rules or build configuration.
+  - Rebuild until the target compiles clean.
+- [ ] 5.2 **Build your test targets** — build the test target(s) for the tests you created or modified. Wait for the result before proceeding.
+  - Fix all compiler errors, compiler warnings, and linter errors/warnings in test code.
+  - Rebuild until the test target compiles clean.
+- [ ] 5.3 **Run your unit tests** — run unit tests for the component you developed or modified. Wait for the result before proceeding. If broken → fix using all loaded rules, re-run until green.
+- [ ] 5.4 **Run full unit test suite** — run all unit tests. Wait for the result before proceeding. If broken → fix using all loaded rules, re-run until green.
+- [ ] 5.5 **Run your UI tests** — run UI tests for the component(s) you worked on. If no UI tests exist for your component → skip this step only, proceed to 5.6. Wait for the result before proceeding. If broken → fix using loaded rules, re-run until green.
+- [ ] 5.6 **Run full UI test suite** — run the full UI test suite. If no UI test suite exists in the project → skip this step only, proceed to 5.7. Wait for the result before proceeding. If broken → fix using loaded rules, re-run until green.
+- [ ] 5.7 If any step was skipped, explicitly state which step and why.
+
+## Phase 6: Output
+
+- [ ] 6.1 List every file created or modified
+- [ ] 6.2 Brief summary of what was done and key design decisions made
 
 ## Constraints
 - Follow the spec — do not invent scope beyond what was asked
@@ -169,9 +178,6 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 - Always search the project before creating new protocols, wrappers, or abstractions
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it
-- Do not add unnecessary error handling, comments, or abstractions beyond what the spec and rules require
-- Run build, test, ui tests ONLY when build/test instructions were loaded into context. Never guess or search for build/test commands.
-- NEVER run test steps in parallel — always sequential, always wait for completion before proceeding to the next step.
-- NEVER run test as background tasks
-- Fix all build errors and linting issues — both errors and warnings, including pre-existing ones unrelated to your changes. A partial build (scoped scheme, skipped targets) is not valid verification. Fix the code, never modify lint rules or configuration.
+- Do NOT add code comments, inline comments, or mark comments (// MARK:, // TODO:, // FIXME:) — write self-documenting code instead
+- Add error handling only when the spec requires it or when the call can inherently fail (network, file I/O, async throws)
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.

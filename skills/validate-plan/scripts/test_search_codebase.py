@@ -10,9 +10,13 @@ SCRIPT = os.path.join(os.path.dirname(__file__), "search-codebase.py")
 FIXTURES = os.path.join(os.path.dirname(__file__), "test_fixtures")
 
 
-def run_script(synonyms, sources=None):
+def run_script(synonyms=None, sources=None, specs=None):
     """Run search-codebase.py and return (exit_code, parsed_json_or_stderr)."""
-    cmd = [sys.executable, SCRIPT, "--sources", sources or FIXTURES, "--synonyms", json.dumps(synonyms)]
+    cmd = [sys.executable, SCRIPT, "--sources", sources or FIXTURES]
+    if synonyms is not None:
+        cmd += ["--synonyms", json.dumps(synonyms)]
+    for spec in (specs or []):
+        cmd += ["--spec", spec]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         return 0, json.loads(result.stdout)
@@ -67,9 +71,63 @@ def test_summary_counts():
     """Summary should report correct totals."""
     code, out = run_script(["network"])
     assert code == 0
-    assert out["summary"]["total_files_scanned"] == 6
-    assert out["summary"]["files_with_frontmatter"] == 5  # 5 files have frontmatter
+    assert out["summary"]["total_files_scanned"] == 7  # 6 original + MultiSpecService
+    assert out["summary"]["files_with_frontmatter"] == 6  # 6 files have frontmatter
     assert out["summary"]["files_matched"] == 1  # only ProductFetchService has category "network"
+
+
+def test_spec_matches_single():
+    """--spec SPEC-010 should return ProductFetchService and MultiSpecService."""
+    code, out = run_script(specs=["SPEC-010"])
+    assert code == 0
+    paths = [m["path"] for m in out["matches"]]
+    assert any("ProductFetchService.swift" in p for p in paths), f"Expected ProductFetchService in {paths}"
+    assert any("MultiSpecService.swift" in p for p in paths), f"Expected MultiSpecService in {paths}"
+    match = next(m for m in out["matches"] if "ProductFetchService" in m["path"])
+    assert "SPEC-010" in match["matched_specs"]
+
+
+def test_spec_matches_multi_spec_file():
+    """MultiSpecService has [SPEC-010, SPEC-011] — should match either spec."""
+    code, out = run_script(specs=["SPEC-011"])
+    assert code == 0
+    paths = [m["path"] for m in out["matches"]]
+    assert any("MultiSpecService.swift" in p for p in paths)
+    match = next(m for m in out["matches"] if "MultiSpecService" in m["path"])
+    assert "SPEC-011" in match["matched_specs"]
+
+
+def test_spec_no_match():
+    """Unknown spec number yields no matches."""
+    code, out = run_script(specs=["SPEC-999"])
+    assert code == 0
+    assert len(out["matches"]) == 0
+
+
+def test_spec_multiple_specs_or_logic():
+    """--spec SPEC-010 --spec SPEC-011 returns union of matches."""
+    code, out = run_script(specs=["SPEC-010", "SPEC-011"])
+    assert code == 0
+    paths = [m["path"] for m in out["matches"]]
+    assert any("ProductFetchService.swift" in p for p in paths)
+    assert any("MultiSpecService.swift" in p for p in paths)
+
+
+def test_spec_and_synonyms_combined():
+    """Combining --spec and --synonyms returns files matching either."""
+    code, out = run_script(synonyms=["viewmodel"], specs=["SPEC-010"])
+    assert code == 0
+    paths = [m["path"] for m in out["matches"]]
+    assert any("ProductFetchService.swift" in p for p in paths)  # from spec
+    assert any("CartViewModel.swift" in p for p in paths)  # from synonym
+
+
+def test_no_args_exits_with_error():
+    """Running with neither --synonyms nor --spec should exit 1."""
+    cmd = [sys.executable, SCRIPT, "--sources", FIXTURES]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    assert result.returncode == 1
+    assert "required" in result.stderr.lower()
 
 
 def test_invalid_sources_path():

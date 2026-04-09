@@ -148,6 +148,7 @@ Group protocol methods by which conformers actually use them together. Disjoint 
 4. **Composition protocols** — protocols defined as `protocol P: A, B {}` (or `typealias P = A & B`) where A and B are already narrow. The composition itself is not a violation if each component protocol is compliant. **Prefer `protocol P: A, B {}` over `typealias`** — a typealias cannot be conformed to directly (you cannot write `class Decorator: MyTypealias`), which breaks the decorator pattern and other composition patterns that need a single nominal type to conform to.
 5. **@objc protocols** — Objective-C interop protocols may require specific method sets dictated by the framework. Flag as "framework-constrained" rather than violation.
 6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
+7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
 
 ### Severity Bands:
 - COMPLIANT (protocol width <= 5 AND minimum conformer coverage >= 80%)

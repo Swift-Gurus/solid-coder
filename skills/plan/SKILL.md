@@ -24,7 +24,12 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 - [ ] 1.2 **Load ancestors and dependencies** (only if SPEC is a filepath with frontmatter containing a `parent` or `blocked-by` field):
   - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `number` and `blocked-by`
   - Use skill **solid-coder:find-spec** with `ancestors <current-SPEC-NNN> --blocked`. The script walks up from the current spec to root (ancestor chain) and appends blocked-by specs. Read each file in the returned `path` fields. Hold all content as context — ancestors provide scope, blocked-by specs provide components and patterns to reference.
-  -  Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
+  - After loading ancestor/blocked-by spec files, run the search script for each spec number in the ancestor/blocked-by chain:
+    ```
+    python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py --sources . --spec <SPEC-NNN>
+    ```
+    Each match is a type already created for that spec. Read the matched files' frontmatter (`solid-name`, `solid-category`, `solid-description`) to understand what exists. Reference these types in the architecture rather than proposing duplicates.
+  - Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
      For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
 
 - [ ] 1.2.5 **Extract architectural constraints from loaded context** — From any CLAUDE.md instructions already in context, identify and hold as hard constraints:
@@ -59,6 +64,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
     Non-test DoD items (e.g., "Visual design matches reference screenshots", "Services remain alive") stay in `acceptance_criteria` as before. Only items that describe specific test cases to implement go into `test_plan`.
 
 - [ ] 1.5 **Extract mode** — if the spec frontmatter contains a `mode` field (e.g., `mode: rewrite`), store it. Otherwise default to `"default"`. This is passed through to arch.json unchanged.
+- [ ] 1.5.1 **Extract spec_number** — if the spec frontmatter contains a `number` field (e.g., `SPEC-016`), store it as `spec_number`. Otherwise leave empty. This is carried through the pipeline so created types can be tagged with `solid-spec` frontmatter.
 
 - [ ] 1.6 Write a one-line `spec_summary` of what's being built
 
@@ -101,6 +107,7 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 ## Phase 5: Output
 
 - [ ] 5.1 Create structured output `arch.json` that corresponds to `${SKILL_DIR}/arch.schema.json`. Include:
+  - `spec_number` — from Phase 1.5.1 (e.g., `"SPEC-016"`, or omit if not available)
   - `mode` — from Phase 1.5 (`"default"` or `"rewrite"`)
   - `spec_summary`, `components`, `wiring`, `composition_root` (existing)
   - `acceptance_criteria[]` — verbatim from Phase 1.4

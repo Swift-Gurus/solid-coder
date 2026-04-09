@@ -35,9 +35,12 @@ Takes an architect's decomposition (`arch.json` from `/plan`) and validates it a
 ## Script: `search-codebase.py`
 
 - **Location**: `skills/validate-plan/scripts/search-codebase.py`
-- **Input**: `--sources <dir>` (default `.`), `--synonyms <json-array-string>` (required)
-- **Output**: JSON with `matches[]` ({path, matched_terms[]}) and `summary` ({total_files_scanned, files_with_frontmatter, files_matched})
-- **Behavior**: Scans entire file for `solid-category`/`solid-description` in comment-prefixed lines. Supports multiple frontmatter blocks per file (e.g., one per type). Matches description words and category against synonyms with OR logic. Component-agnostic — returns flat file list.
+- **Input**: `--sources <dir>` (default `.`), plus one or both of:
+  - `--synonyms <json-array-string>` — matches files by `solid-category`/`solid-description` keywords
+  - `--spec SPEC-NNN` (repeatable) — matches files by `solid-spec` tag (e.g., `--spec SPEC-015 --spec SPEC-016`)
+- **Output**: JSON with `matches[]` (`{path, matched_terms[], matched_specs[]}`) and `summary` ({total_files_scanned, files_with_frontmatter, files_matched})
+- **Behavior**: Scans entire file for solid-frontmatter fields in comment-prefixed lines. Supports multiple frontmatter blocks per file (e.g., one per type). OR logic across synonyms and spec numbers. Component-agnostic — returns flat file list.
+- **Reused by**: `validate-plan` (synonym mode) and `plan` skill (spec mode — find types already built for ancestor specs)
 
 ## Design Decisions
 
