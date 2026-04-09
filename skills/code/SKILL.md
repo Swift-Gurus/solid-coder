@@ -179,4 +179,7 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it
 - Do NOT add code comments, inline comments, or mark comments (// MARK:, // TODO:, // FIXME:) — write self-documenting code instead
+- Fix all compiler errors, compiler warnings, and linter errors/warnings — including pre-existing ones unrelated to your changes. "Pre-existing" is not a valid reason to leave a warning or error unfixed.
+- NEVER run build or test commands as background tasks — always run in foreground and wait for completion before proceeding.
+- NEVER run Phase 5 steps in parallel — always sequential, one step at a time.
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.
