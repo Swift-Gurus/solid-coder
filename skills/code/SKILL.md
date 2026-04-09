@@ -179,5 +179,4 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it
 - Do NOT add code comments, inline comments, or mark comments (// MARK:, // TODO:, // FIXME:) — write self-documenting code instead
-- Add error handling only when the spec requires it or when the call can inherently fail (network, file I/O, async throws)
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.
