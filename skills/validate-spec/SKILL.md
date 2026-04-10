@@ -1,6 +1,9 @@
 ---
 name: validate-spec
-description: Validates a spec for buildability — flags vague terms, undefined types, missing signatures, implicit contracts, and unresolved design decisions.
+description: >-
+  Detailed workflow for validating a spec is ready to build — covers buildability rules, required sections, story quality,
+  AC-architecture alignment, and what makes a spec concrete vs vague.
+  TRIGGER when: checking if a spec is ready for implementation, after editing a spec's content, or when build-spec reaches its buildability gate.
 argument-hint: <spec-file-path>
 allowed-tools: Read, Grep, Glob, AskUserQuestion
 user-invocable: true

@@ -1,6 +1,10 @@
 ---
 name: build-spec
-description: Interview-driven spec builder — creates, resumes, edits, and breaks down specs within the hierarchy.
+description: >-
+  Detailed workflow for creating and updating specs — covers spec structure, required sections, status lifecycle,
+  dependency wiring (blocked-by/blocking), subtask breakdown, and rules for what belongs in a spec vs what doesn't.
+  TRIGGER when: creating a new spec, modifying or editing an existing spec, updating a spec's status,
+  adding or removing blocked-by/blocking dependencies, breaking a spec into subtasks, or resuming a draft spec.
 argument-hint: ""
 allowed-tools: Read, Write, Bash, Skill, AskUserQuestion
 user-invocable: true

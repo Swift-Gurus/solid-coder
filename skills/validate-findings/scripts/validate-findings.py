@@ -120,14 +120,20 @@ def main():
         review_data = load_json(review_path)
         fix_data = load_json(fix_path) if fix_path.exists() else None
         if plugin_root:
-            principle_name_upper = principle_dir.name.upper()
-            review_schema = plugin_root / "references" / principle_name_upper / "review" / "output.schema.json"
-            if review_schema.exists():
-                validate_json(review_data, review_schema)
-            if fix_data:
-                fix_schema = plugin_root / "references" / principle_name_upper / "fix" / "output.schema.json"
-                if fix_schema.exists():
-                    validate_json(fix_data, fix_schema)
+            # Case-insensitive folder lookup — references/ uses mixed case (e.g. Testing, SwiftUI, UITesting)
+            refs_root = plugin_root / "references"
+            principle_folder = next(
+                (d for d in refs_root.iterdir() if d.is_dir() and d.name.lower() == principle_dir.name.lower()),
+                None,
+            )
+            if principle_folder:
+                review_schema = principle_folder / "review" / "output.schema.json"
+                if review_schema.exists():
+                    validate_json(review_data, review_schema)
+                if fix_data:
+                    fix_schema = principle_folder / "fix" / "output.schema.json"
+                    if fix_schema.exists():
+                        validate_json(fix_data, fix_schema)
         entry = {
             "review": review_data,
             "fix": fix_data,

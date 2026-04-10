@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UI Testing Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "uitesting" },
+    "principle": { "const": "UI Testing" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": { "type": "string" },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": { "type": "string" },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension"]
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["flow_encapsulation", "base_class_structure", "assertion_grouping", "synchronization", "typed_identifiers"],
+                  "properties": {
+                    "flow_encapsulation": {
+                      "type": "object",
+                      "required": ["violation_count", "inline_flows", "duplicated_sequences", "coordinator_not_composing"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "inline_flows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "step_count", "coordinator_used"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "step_count": { "type": "integer" },
+                              "coordinator_used": { "type": "boolean" },
+                              "steps_summary": { "type": "string" }
+                            }
+                          }
+                        },
+                        "duplicated_sequences": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["flow_summary", "appears_in", "coordinator_exists"],
+                            "properties": {
+                              "flow_summary": { "type": "string" },
+                              "appears_in": { "type": "array", "items": { "type": "string" } },
+                              "coordinator_exists": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "coordinator_not_composing": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["coordinator", "duplicates_from"],
+                            "properties": {
+                              "coordinator": { "type": "string" },
+                              "duplicates_from": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "base_class_structure": {
+                      "type": "object",
+                      "required": ["violation_count", "base_class", "inherits_directly_from_xctestcase", "lifecycle_in_suites", "conditional_setup_in_tests"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "base_class": { "type": "string" },
+                        "inherits_directly_from_xctestcase": { "type": "boolean" },
+                        "lifecycle_in_suites": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_class", "overrides_setup", "overrides_teardown", "manages_app_directly"],
+                            "properties": {
+                              "test_class": { "type": "string" },
+                              "overrides_setup": { "type": "boolean" },
+                              "overrides_teardown": { "type": "boolean" },
+                              "manages_app_directly": { "type": "boolean" }
+                            }
+                          }
+                        },
+                        "conditional_setup_in_tests": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "config_applied"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "config_applied": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "assertion_grouping": {
+                      "type": "object",
+                      "required": ["violation_count", "fragmented_groups"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "fragmented_groups": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["setup_preamble", "tests_in_group", "assertions_per_test", "could_be_one_test"],
+                            "properties": {
+                              "setup_preamble": { "type": "string" },
+                              "tests_in_group": { "type": "array", "items": { "type": "string" } },
+                              "assertions_per_test": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "required": ["test_method", "assertion_count"],
+                                  "properties": {
+                                    "test_method": { "type": "string" },
+                                    "assertion_count": { "type": "integer" }
+                                  }
+                                }
+                              },
+                              "could_be_one_test": { "type": "boolean" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "synchronization": {
+                      "type": "object",
+                      "required": ["violation_count", "time_based_waits", "unchecked_accesses"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "time_based_waits": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "wait_call"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "wait_call": { "type": "string" },
+                              "line": { "type": "integer" }
+                            }
+                          }
+                        },
+                        "unchecked_accesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "element_access", "call_chain_waits"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "element_access": { "type": "string" },
+                              "after_action": { "type": "string" },
+                              "call_chain_waits": { "type": "boolean" }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "typed_identifiers": {
+                      "type": "object",
+                      "required": ["violation_count", "identifier_system_exists", "raw_string_queries"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "identifier_system_exists": { "type": "boolean" },
+                        "raw_string_queries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["test_method", "query", "raw_string", "element_owner"],
+                            "properties": {
+                              "test_method": { "type": "string" },
+                              "query": { "type": "string" },
+                              "raw_string": { "type": "string" },
+                              "element_owner": {
+                                "type": "string",
+                                "enum": ["app", "system"],
+                                "description": "Whether this is an app-owned or system-owned element"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["flow_severity", "base_class_severity", "grouping_severity", "synchronization_severity", "identifier_severity", "final_severity"],
+                  "properties": {
+                    "flow_severity": { "type": "string" },
+                    "base_class_severity": { "type": "string" },
+                    "grouping_severity": { "type": "string" },
+                    "synchronization_severity": { "type": "string" },
+                    "identifier_severity": { "type": "string" },
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "properties": {
+                      "id": { "type": "string", "pattern": "^uitest-\\d{3}$" },
+                      "severity": { "type": "string", "enum": ["SEVERE", "MINOR"] },
+                      "metric": {
+                        "type": "string",
+                        "enum": ["UITEST-1", "UITEST-2", "UITEST-3", "UITEST-4", "UITEST-5"]
+                      },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" },
+                      "title": { "type": "string" },
+                      "issue": { "type": "string" },
+                      "impact": { "type": "string" },
+                      "rule_source": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

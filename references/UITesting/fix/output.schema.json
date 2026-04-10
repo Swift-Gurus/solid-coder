@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UI Testing Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
+  "properties": {
+    "agent": { "const": "uitesting" },
+    "principle": { "const": "UI Testing" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file_path": { "type": "string" },
+    "review_source": { "type": "string" },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^uitest-fix-\\d{3}$" },
+          "unit_name": { "type": "string" },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension"]
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "title": { "type": "string" },
+          "severity": { "type": "string", "enum": ["MINOR", "SEVERE"] },
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "extract_coordinator",
+              "compose_coordinator",
+              "extract_base_class",
+              "merge_assertions",
+              "replace_time_based_wait",
+              "replace_raw_identifiers",
+              "create_identifier_system"
+            ]
+          },
+          "suggested_fix": { "type": "string" },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "test_class": {
+                "type": "object",
+                "properties": {
+                  "flow_violations": { "type": "integer" },
+                  "base_class_violations": { "type": "integer" },
+                  "grouping_violations": { "type": "integer" },
+                  "synchronization_violations": { "type": "integer" },
+                  "identifier_violations": { "type": "integer" },
+                  "expected_severity": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
