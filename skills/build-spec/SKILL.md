@@ -242,14 +242,27 @@ Now asked AFTER stories exist — answers become acceptance criteria on specific
 These are generated automatically and shown in the draft for review in Phase 7. No separate confirmation step.
 
 - [ ] 4.4 **UI / Mockup** — ask using AskUserQuestion:
-  - If UI elements detected in description/stories: "I sketched a mockup based on the stories. Will you provide design screenshots, or should I keep this ASCII mockup?"
-    - If provide: insert `## UI / Mockup\n<!-- User will provide design screenshots in resources/ -->` placeholder.
-    - If keep mockup: embed generated ASCII mockup under `## UI / Mockup`.
-  - If no UI elements detected: "Do you have design screenshots or mockups to include?"
-    - If yes: insert placeholder, user adds to `resources/` before or after writing.
+  - If UI elements detected in description/stories: "Do you have design screenshots to include in resources/?"
+    - If yes: write `## UI / Mockup\nReference screenshots are in the \`resources/\` directory adjacent to this spec file.`
     - If no: skip `## UI / Mockup` section entirely.
+  - If no UI elements detected: skip.
 
-- [ ] 4.5 **Diagrams** — generate Mermaid diagrams from the collected answers:
+- [ ] 4.5 **Test Plan** — generate test cases from user stories and edge cases collected in steps 4.1–4.3:
+  - Derive test cases from every acceptance criterion and edge case — both happy paths and failure/boundary paths
+  - Language: `"When [precondition or state], [action], [observable outcome]"` — present tense, no "should", no "verify that"
+  - Group by component or screen: Unit Tests per service/model, UI Tests per screen or flow (if UI spec)
+  - Each case is one sentence — concrete and independently runnable
+  - After generating, present to user via AskUserQuestion:
+    ```
+    Here are the test cases I derived. Add, remove, or adjust:
+    ### Unit Tests — <ComponentName>
+    - When ...
+    ### UI Tests — <ScreenName>
+    - When ...
+    ```
+  - Incorporate user's changes. Store final list for Phase 5.
+
+- [ ] 4.6 **Diagrams** — generate Mermaid diagrams from the collected answers:
   - **Connection diagram** (all types): upstream inputs, downstream consumers, sibling specs, external dependencies.
   - **Flow diagram** (all types): epic = high-level user journey, feature/subtask = data/control path end-to-end.
   - **Sequence diagram** (conditional): generate if the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors.
@@ -267,6 +280,7 @@ These are generated automatically and shown in the draft for review in Phase 7. 
 - **User Stories** (features/epics/subtasks): stories with acceptance criteria, type-differentiated depth
 - **Technical Requirements** (subtasks always, features if business logic/integration): APIs, libraries, error codes, patterns, integration points
 - **UI / Mockup** (conditional): ASCII mockup or `<!-- TODO: attach image or design -->` placeholder
+- **Test Plan** (feature/subtask/bug with testable behavior): grouped by component/screen, test cases in `"When [condition], [action], [outcome]"` format covering happy paths and edge cases. For bugs: must include at least one regression test case that would have caught the bug.
 - **Diagrams**: Mermaid connection diagram, flow diagram, sequence diagram (if applicable)
 - **Connects To table**: upstream and downstream from interview answers
 - **Definition of Done**: verifiable checklist

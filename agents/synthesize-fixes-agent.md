@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob, Bash, Write
 skills:
 - synthesize-fixes
 tools: Read, Grep, Glob, Bash, Write
-model: opus
+model: inherit
 maxTurns: 100
 ---
 

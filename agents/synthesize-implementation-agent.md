@@ -10,7 +10,7 @@ skills:
   - load-reference
   - create-type
 tools: Read, Grep, Glob, Bash, Write, Edit
-model: opus
+model: inherit
 maxTurns: 50
 ---
 

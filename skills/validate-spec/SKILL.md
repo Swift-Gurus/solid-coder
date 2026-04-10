@@ -32,9 +32,10 @@ Verify the spec has all required sections for its type:
 - [ ] 2.3 **epic**: User Stories, Features list (subtask breakdown)
 - [ ] 2.4 **bug**: Steps to Reproduce, Expected vs Actual, Affected Component
 - [ ] 2.5 **Technical Requirements** (conditional): `## Technical Requirements` section must be present for `subtask` specs. For `feature` specs, required only if description or user stories mention business logic, integration, APIs, or external systems. Not required for `epic` or `bug`.
-- [ ] 2.6 **UI / Mockup** (conditional): if description or any user story mentions screens, views, components, or user interaction — `## UI / Mockup` section must be present and must not contain only a `<!-- TODO -->` placeholder
+- [ ] 2.6 **UI / Mockup** (conditional): if description or any user story mentions screens, views, components, or user interaction — `## UI / Mockup` section must be present. Acceptable content: a reference to `resources/` directory, an ASCII mockup, or an embedded image. Flag only if the section is entirely absent or contains only a `<!-- TODO -->` placeholder.
 - [ ] 2.7 **Diagrams completeness**: `## Diagrams` section must contain at least a connection diagram and a flow diagram. If the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors — a sequence diagram must also be present.
-- [ ] 2.8 Report missing sections as `structural` gaps
+- [ ] 2.8 **Test Plan** (conditional): `## Test Plan` section must be present for `feature`, `subtask`, and `bug` specs where behavior is testable. For `bug` specs, must include at least one test case that would have caught the bug (a regression test). Not required for `epic` or for specs whose stories describe only internal/infrastructure behavior with no observable output. The section must have at least one test case.
+- [ ] 2.9 Report missing sections as `structural` gaps
 
 ## Phase 3: Buildability Scan
 

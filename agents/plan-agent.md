@@ -11,7 +11,7 @@ skills:
 - parse-frontmatter
 - find-spec
 tools: Read, Grep, Glob, Write, Edit, Bash
-model: opus
+model: inherit
 maxTurns: 50
 ---
 
