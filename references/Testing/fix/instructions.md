@@ -22,6 +22,7 @@ output_schema: output.schema.json
     - TEST-3 (naming) → Rename pattern
     - TEST-4 (test doubles) → Replace Doubles pattern
     - TEST-5 (setup complexity) → Extract Factory/Builder pattern
+    - TEST-6 (testing framework) → Migrate to Swift Testing pattern
     - Multiple → combine patterns as needed
 
 #### Phase 2: Identify Suggestions
@@ -45,6 +46,21 @@ output_schema: output.schema.json
         - Add assertions to tests that verify nothing
         - Replace loops with parameterized tests (@Testing) or individual test cases
         - Replace `try?` with throwing `try` — mark test method as `throws`
+        - Replace `do { try ... } catch { XCTFail(...) }` with bare `try` — mark
+          test method as `throws` and remove the do-catch entirely; XCTest
+          captures the thrown error automatically with full stack trace
+        - Replace decomposed field-by-field model assertions with a single whole-model
+          assertion — two steps:
+          1. If the model does not conform to `Equatable`, add conformance in the
+             production type (or via extension if the type is external):
+             `extension MyModel: Equatable {}`  — for structs with `Equatable` fields
+             this is synthesized automatically; no manual `==` needed
+          2. Replace all `#expect(model.x == a)` + `#expect(model.y == b)` with
+             `#expect(model == MyModel(x: a, y: b))` — one assertion, full diff on failure
+        - Replace `guard let value = optional else { XCTFail(...); return }` and
+          force unwraps (`optional!`) with `try #require(optional)` — Swift
+          Testing's built-in unwrap that throws and records the failure with
+          full context when the value is nil; no custom extension needed
         - Replace sleep-based waiting with `async/await` test methods
           and `await fulfillment(of:timeout:)` — put expectations inside
           test doubles so they fulfill when called by the SUT
@@ -71,6 +87,19 @@ output_schema: output.schema.json
           builder methods to the factory (e.g., `factory.withFailingNetwork()`,
           `factory.withEmptyCache()`) so each test declares only the condition
           it varies
+    - [ ] For TEST-6 (testing framework):
+        - Replace `import XCTest` with `import Testing`
+        - Replace `class FooTests: XCTestCase` with `struct FooTests` annotated with `@Suite`
+        - Replace `func testSomething()` with `@Test func something()`
+        - Replace `XCTAssertEqual(a, b)` → `#expect(a == b)`
+        - Replace `XCTAssertTrue(x)` → `#expect(x)`
+        - Replace `XCTAssertNil(x)` → `#expect(x == nil)`
+        - Replace `XCTAssertNotNil(x)` → `#expect(x != nil)`
+        - Replace `try XCTUnwrap(optional)` → `try #require(optional)`
+        - Replace `XCTFail("message")` → `Issue.record("message")`
+        - Replace `setUp()` / `tearDown()` → `init()` / `deinit`
+        - Replace `setUpWithError()` / `tearDownWithError()` → `init() throws` / `deinit`
+        - Test method names no longer need the `test` prefix — rename for clarity
     - Each todo item should be a single, implementable action
 
 #### Phase 3: Write suggested_fix
@@ -81,8 +110,9 @@ output_schema: output.schema.json
     - For TEST-3: renamed test methods with descriptive names
     - For TEST-4: real instances replacing unnecessary mocks; state-based assertions replacing interaction verification; facade tests with real services and mocked boundaries
     - For TEST-5: factory type with mocks and makeSUT(); builder methods for varying conditions; computed sut property
+    - For TEST-6: migrated file using Swift Testing — full before/after showing XCTest → Swift Testing equivalents
     - Before/after of the affected test code
-- [ ] **3.2 Predict post-fix metrics** (isolation violations, structure violations, naming violations, double violations, setup violations per test class)
+- [ ] **3.2 Predict post-fix metrics** (isolation violations, structure violations, naming violations, double violations, setup violations, framework violations per test class)
 
 #### Phase 4: Generate Output
 

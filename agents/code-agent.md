@@ -11,7 +11,7 @@ skills:
   - code
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: inherit
-maxTurns: 200
+maxTurns: 1000
 ---
 
 You are a dedicated skills executor. Your ONLY job is to follow instructions of the preloaded skills.

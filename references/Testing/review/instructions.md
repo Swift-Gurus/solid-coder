@@ -119,6 +119,26 @@ output_schema: output.schema.json
     - [ ] 1.5.4 Count setup complexity violations
       Setup violations: ___
 
+- [ ] **1.6 TEST-6: Detect Testing Framework Violations**
+    - [ ] 1.6.1 Check if the file uses `XCUIApplication` — if yes, XCTest is required and exempt
+
+      Is UI test file: ___
+
+    - [ ] 1.6.2 Scan for XCTest usage in non-UI test files
+
+      | Location | XCTest API Used | Swift Testing Equivalent |
+      |----------|----------------|--------------------------|
+      |          |                |                          |
+
+    - [ ] 1.6.3 Scan for decomposed model assertions and missing `Equatable` conformance
+
+      | Test Method | Assertion Pattern | Model Equatable? | Violation? |
+      |-------------|------------------|------------------|------------|
+      |             |                  |                  |            |
+
+    - [ ] 1.6.4 Count framework violations
+      Framework violations: ___
+
 #### Phase 2: Filter Out Exceptions
 
 - [ ] **2.1 Cross-check exceptions** — mark exceptions
@@ -127,7 +147,7 @@ output_schema: output.schema.json
   |------------|-----------------|
   |            |                 |
 
-- [ ] **2.2 Exclude exceptions** — exclude integration tests, snapshot tests, performance tests, parameterized loops, shared immutable fixtures
+- [ ] **2.2 Exclude exceptions** — exclude integration tests, snapshot tests, performance tests, parameterized loops, shared immutable fixtures; exclude UI test files from TEST-6
 
 #### Phase 3: Scoring
 
@@ -137,8 +157,9 @@ output_schema: output.schema.json
     - [ ] 3.1.3 Naming violations: ___, severity: ___
     - [ ] 3.1.4 Test double violations: ___, severity: ___
     - [ ] 3.1.5 Setup complexity violations: ___, severity: ___
-    - [ ] 3.1.6 Adjust severity considering exceptions.
-    - [ ] 3.1.7 Final severity: ___
+    - [ ] 3.1.6 Framework violations: ___, severity: ___
+    - [ ] 3.1.7 Adjust severity considering exceptions.
+    - [ ] 3.1.8 Final severity: ___
 
 #### Phase 4: Output
 
@@ -148,4 +169,5 @@ output_schema: output.schema.json
     - [ ] 4.1.3 Show naming analysis with descriptiveness assessment
     - [ ] 4.1.4 Show test double analysis with mock inventory, over-mocking, brittle verification, and mock logic tables
     - [ ] 4.1.5 Show setup complexity analysis with inline construction and dependency count
-    - [ ] 4.1.6 Show cross-reference table with found exceptions
+    - [ ] 4.1.6 Show framework analysis with XCTest usage table and decomposed assertion table
+    - [ ] 4.1.7 Show cross-reference table with found exceptions

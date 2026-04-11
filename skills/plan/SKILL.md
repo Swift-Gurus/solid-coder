@@ -14,6 +14,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 
 - SPEC: $ARGUMENTS[0] — a prompt string OR a filepath to a markdown spec file. If a filepath is provided (ends in `.md`), read the file. Otherwise use the string directly.
 - OUTPUT_PATH: value after `--output` flag — filepath where `arch.json` will be written (e.g., `./arch.json`). Parent directories are created automatically.
+- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 
 ## Phase 1: Parse Spec & Load Context
 
@@ -89,7 +90,7 @@ For each identified behavior or capability, define a component. Respect acceptan
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
-- [ ] 3.2 **Discover active principles** — use skill **solid-coder:discover-principles** to discover active principles with `--refs-root references/` and `--matched-tags <comma-separated tags from 3.1>`. If no tags derived, omit `--matched-tags` to get only always-active (tagless) principles.
+- [ ] 3.2 **Discover active principles** — use skill **solid-coder:discover-principles** to discover active principles with `--refs-root {RULES_PATH}` and `--matched-tags <comma-separated tags from 3.1>`. If no tags derived, omit `--matched-tags` to get only always-active (tagless) principles.
 - [ ] 3.3 **Load active principle rules** — use skill **solid-coder:load-reference** to load the `rule_path` from each `active_principles[]` entry.
 - [ ] 3.4 **Apply loaded rules as constraints** — verify the decomposition from Phase 2 against the loaded principles. Adjust components if violations are found (e.g., a component with too many responsibilities per SRP, a sealed dependency per OCP, a fat protocol per ISP).
 

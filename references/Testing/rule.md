@@ -55,6 +55,19 @@ Detect tests that contain logic, lack clear phases, or verify too many behaviors
    - `try?` that silently swallows errors — in tests, prefer `try` (throwing)
      so failures surface as test errors with stack traces instead of being
      silently ignored (see `Examples/try-swallowing-*.swift`)
+   - `do { try ... } catch { XCTFail(...) }` — wrapping a throwing call in a
+     do-catch and manually calling `XCTFail` in the catch block loses the
+     original error and stack trace, adds boilerplate, and hides the real
+     failure reason; mark the test function as `throws` and use bare `try`
+     instead — XCTest records the thrown error automatically with full context
+   - `guard let value = optional else { XCTFail(...); return }` or
+     `guard let value = optional else { Issue.record(...); return }` — control
+     flow to unwrap optionals adds logic to the test body and swallows the
+     failure location; use `try #require(optional)` so the test propagates
+     the error naturally with full context
+   - Force unwrap (`!`) on optional values produced by the system under test —
+     crashes instead of recording a test failure with a useful message; use
+     `try #require(optional)` instead
    - Conditional assertions (`if condition { XCTAssert... }`)
 2. **Missing phases** — check for:
    - No clear separation between setup, action, and assertion
@@ -68,6 +81,13 @@ Detect tests that contain logic, lack clear phases, or verify too many behaviors
    - Tests that exercise multiple independent code paths that could be
      tested separately (e.g., testing validation AND persistence in one
      test when they have no dependency on each other)
+   - Decomposed model assertions — asserting individual properties (`model.text == x`,
+     `model.number == y`) when a single whole-model comparison would cover all of
+     them; prefer `#expect(model == expected)` which verifies the entire model in
+     one assertion and produces a full diff on failure
+   - Model not conforming to `Equatable` when it is used in assertions — if a model
+     lacks `Equatable` conformance, the test is forced into field-by-field comparisons;
+     flag the missing conformance as the root cause
 4. **Sleep-based waiting** — detect:
    - `Thread.sleep`, `Task.sleep`, `sleep()`, `usleep()` used to wait
      for async operations to complete
@@ -147,9 +167,31 @@ its scenario, not on assembling the SUT.
 
 **Count:** Number of setup complexity violations found.
 
+### TEST-6: Testing Framework
+
+Detect use of XCTest in non-UI test files.
+
+**Definition:** Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`). XCTest (`import XCTest`, `XCTestCase`) is reserved for UI tests that use `XCUIApplication`. Swift Testing produces clearer failure messages, supports parameterized tests natively, and eliminates the `XCTestCase` subclass requirement.
+
+**Detection:**
+
+1. **XCTest in non-UI test files** — flag any file that:
+   - Contains `import XCTest` and does NOT also import or use `XCUIApplication`
+   - Defines a class inheriting from `XCTestCase` for unit or integration tests
+   - Uses `XCTAssert*`, `XCTUnwrap`, `XCTFail` macros outside of UI test context
+2. **XCTest assertion macros** — flag in unit test context:
+   - `XCTAssertEqual`, `XCTAssertTrue`, `XCTAssertNil`, etc. → use `#expect(...)`
+   - `XCTUnwrap` / `try XCTUnwrap(optional)` → use `try #require(optional)`
+   - `XCTFail(...)` → use `Issue.record(...)`
+   - `XCTSkipIf`, `XCTSkipUnless` → use `try #require(condition)`
+
+**Count:** Number of framework violations found.
+
+---
+
 ### Exceptions (NOT violations):
-1. **Integration tests** — tests explicitly marked as integration (file name, class name, or annotation) are exempt from isolation rules for real external calls. They still must not have shared mutable state.
-2. **Snapshot/UI tests** — different testing paradigm, not governed by these rules
+1. **UI tests** — `import XCTest` and `XCTestCase` are required for any test that uses `XCUIApplication`. UI tests cannot use Swift Testing.
+2. **Integration tests** — tests explicitly marked as integration (file name, class name, or annotation) are exempt from isolation rules for real external calls. They still must not have shared mutable state.
 3. **Performance tests** — `measure {}` blocks have different structural needs
 4. **Parameterized test loops** — `for` loops that iterate test data to run the same assertion with different inputs are not a structure violation
 5. **Test helpers/fixtures in shared setUp** — shared immutable fixtures reset per test are not isolation violations
@@ -165,6 +207,7 @@ its scenario, not on assembling the SUT.
     - 3+ naming violations
     - 1+ test double quality violations (over-mocking, brittle verification)
     - 1+ setup complexity violations (repeated inline SUT construction)
+    - 1+ framework violations (XCTest used in non-UI test files)
 ---
 
 ## Quantitative Metrics Summary
@@ -176,10 +219,12 @@ its scenario, not on assembling the SUT.
 | TEST-3 | Naming              | 0 violations                                 | COMPLIANT |
 | TEST-4 | Test doubles        | 0 violations                                 | COMPLIANT |
 | TEST-5 | Setup complexity    | 0 violations                                 | COMPLIANT |
+| TEST-6 | Testing framework   | 0 violations                                 | COMPLIANT |
 | TEST-3 | Naming              | 1-2 naming violations, all else clean        | MINOR     |
 | TEST-1 | Isolation           | 1+ shared state or test dependencies         | SEVERE    |
 | TEST-2 | Structure           | 1+ logic, missing phases, or multi-behavior  | SEVERE    |
 | TEST-3 | Naming              | 3+ naming violations                         | SEVERE    |
-| TEST-4 | Test doubles        | 1+ over-mock, brittle verify, or mock logic  | SEVERE |
-| TEST-5 | Setup complexity    | 1+ repeated inline SUT construction          | SEVERE |
+| TEST-4 | Test doubles        | 1+ over-mock, brittle verify, or mock logic  | SEVERE    |
+| TEST-5 | Setup complexity    | 1+ repeated inline SUT construction          | SEVERE    |
+| TEST-6 | Testing framework   | 1+ XCTest usage in non-UI test files         | SEVERE    |
 ---

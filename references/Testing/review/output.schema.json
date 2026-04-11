@@ -40,7 +40,7 @@
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["isolation", "structure", "naming", "test_doubles", "setup_complexity"],
+                  "required": ["isolation", "structure", "naming", "test_doubles", "setup_complexity", "testing_framework"],
                   "properties": {
                     "isolation": {
                       "type": "object",
@@ -257,18 +257,40 @@
                           }
                         }
                       }
+                    },
+                    "testing_framework": {
+                      "type": "object",
+                      "required": ["violation_count", "uses_xctest", "xctest_usages"],
+                      "properties": {
+                        "violation_count": { "type": "integer" },
+                        "uses_xctest": { "type": "boolean" },
+                        "is_ui_test": { "type": "boolean", "description": "True if file uses XCUIApplication — XCTest is exempt" },
+                        "xctest_usages": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "required": ["location", "xctest_api", "swift_testing_equivalent"],
+                            "properties": {
+                              "location": { "type": "string" },
+                              "xctest_api": { "type": "string" },
+                              "swift_testing_equivalent": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                 },
                 "scoring": {
                   "type": "object",
-                  "required": ["isolation_severity", "structure_severity", "naming_severity", "test_double_severity", "setup_severity", "final_severity"],
+                  "required": ["isolation_severity", "structure_severity", "naming_severity", "test_double_severity", "setup_severity", "framework_severity", "final_severity"],
                   "properties": {
                     "isolation_severity": { "type": "string" },
                     "structure_severity": { "type": "string" },
                     "naming_severity": { "type": "string" },
                     "test_double_severity": { "type": "string" },
                     "setup_severity": { "type": "string" },
+                    "framework_severity": { "type": "string" },
                     "final_severity": {
                       "type": "string",
                       "enum": ["COMPLIANT", "MINOR", "SEVERE"]
@@ -291,7 +313,7 @@
                       },
                       "metric": {
                         "type": "string",
-                        "enum": ["TEST-1", "TEST-2", "TEST-3", "TEST-4", "TEST-5"],
+                        "enum": ["TEST-1", "TEST-2", "TEST-3", "TEST-4", "TEST-5", "TEST-6"],
                         "description": "Which metric triggered this finding"
                       },
                       "line_start": { "type": "integer" },
