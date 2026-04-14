@@ -90,8 +90,15 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
 - [ ] 3.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`.
+- [ ] 3.3 **Verify each component against loaded rules.** For EACH component from Phase 2:
+  - **SRP** — does this component have a single responsibility? Count the verbs (what it does). If 2+ cohesion groups or 3+ verbs serving different stakeholders → split into separate components.
+  - **OCP** — are all its dependencies protocol-typed? If any dependency is concrete and non-injectable → add a protocol interface for it.
+  - **ISP** — are the protocols it exposes narrow enough? If a protocol has methods that some consumers won't use → split into role interfaces.
+  - **DRY** — does an existing component in the decomposition or the codebase already cover this responsibility? If yes → remove and reference the existing one.
+  If any component violates → adjust the decomposition (split, merge, add protocol, remove duplicate) and re-verify the affected components.
 
-- [ ] 3.3 **Verify decomposition against constraints** — check each component from Phase 2 against the constraint summary from load-reference. Adjust if violations are found (e.g., a component with too many responsibilities per SRP, a sealed dependency per OCP, a fat protocol per ISP).
+  NOTE: A separate review subagent will also validate the plan after it's fully written. This inline check catches obvious issues early.
+
 
 ## Phase 4: Define Wiring
 

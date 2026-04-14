@@ -60,41 +60,22 @@ After Phase 2, process each chunk sequentially in Phase 3:
 - [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {tags}` (if any)
 
 ## Phase 3: Write Code
-
 Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.
 
 ### Steps
 
-- [ ] 3.1 For each plan item (in dependency order), write code following `directive` and `acceptance_criteria`. Apply the constraints below to every line of code.
+- [ ] 3.1 For each plan item (in dependency order), 
+  - [ ] 3.1.1 - summarize your idea what you are going to implement based on `directive` and `acceptance_criteria`. Print it out
+  - [ ] 3.1.2 - validate your idea using loaded rules, if it violates, redesign approach by repeating 3.1.1 and 3.1.2 until it doesn't violate
+  - [ ] 3.1.3 - write code following your polished idea
+  - [ ] 3.1.4 - validate your code using loaded rules, if it violates repeat from 3.1.1 by choosing different approach
+  - [ ] 3.1.5 - summarize what was done, what violations where found, how they were resolved
 - [ ] 3.2 For each plan item with `design_references`: re-read the design screenshots and verify your code matches the layout, spacing, colors, and element sizes before moving to the next item.
 - [ ] 3.3 After creating or extracting any new type, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
 
-### Constraints (apply to all code written above)
-
-#### Dependency Resolution
-
-When your code needs to use a concrete dependency, follow this decision tree:
-
-```
-Encounter concrete dependency (.shared, .default, static call, direct instantiation) →
-
-1. Search project source for the type declaration (Grep/Glob)
-
-2. Type found in project source?
-   → YES: Does it already have a protocol?
-     → YES: Use the existing protocol. Inject the instance via init.
-     → NO:  Can you instantiate or subclass it? (not enum-static-only, not global func)
-       → YES: Write extension conformance to a new protocol. Inject the instance via init.
-       → NO:  Boundary adapter — wrap in a struct behind a protocol.
-   → NO (external SDK / system framework):
-     Can you instantiate or subclass it?
-       → YES: Write extension conformance to a new protocol. Inject the instance via init.
-       → NO:  Boundary adapter — wrap in a struct behind a protocol.
-
-3. Type not found anywhere (not in project, not in SDK) → helper exception, don't wrap.
-```
-
-IMPORTANT: Always search before creating. Do not create new protocols or wrappers without first checking if one already exists in the project.
+### Plan extension.
+- you are allowed to extend plan to create other interfaces, object to satisfy loaded rules.
+- always reuse what already exist, DRY has instructions how to do it.
 
 #### Extraction
 
