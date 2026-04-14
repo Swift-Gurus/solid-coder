@@ -22,15 +22,19 @@ import sys
 from pathlib import Path
 
 
-def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <output-root>", file=sys.stderr)
-        sys.exit(1)
 
-    rules_dir = Path(sys.argv[1]) / "rules"
+# --- Public API ---
+
+
+def check_severity(output_root: str) -> dict:
+    """Check if review findings contain any SEVERE violations.
+
+    Returns dict with verdict, severe_count, minor_count, total, principles_count, summary.
+    Raises FileNotFoundError if rules directory not found.
+    """
+    rules_dir = Path(output_root) / "rules"
     if not rules_dir.is_dir():
-        print(f"Error: {rules_dir} not found", file=sys.stderr)
-        sys.exit(1)
+        raise FileNotFoundError(f"{rules_dir} not found")
 
     severe_count = 0
     minor_count = 0
@@ -55,8 +59,32 @@ def main():
     total = severe_count + minor_count
     verdict = "HAS_SEVERE" if severe_count > 0 else "MINOR_ONLY"
 
-    print(verdict)
-    print(f"{total} findings: {severe_count} severe, {minor_count} minor across {principles_count} principles")
+    return {
+        "verdict": verdict,
+        "severe_count": severe_count,
+        "minor_count": minor_count,
+        "total": total,
+        "principles_count": principles_count,
+        "summary": f"{total} findings: {severe_count} severe, {minor_count} minor across {principles_count} principles",
+    }
+
+
+# --- CLI entry point ---
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} <output-root>", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        result = check_severity(sys.argv[1])
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(result["verdict"])
+    print(result["summary"])
 
 
 if __name__ == "__main__":

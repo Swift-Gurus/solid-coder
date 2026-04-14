@@ -6,10 +6,9 @@ allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 skills:
 - plan
 - create-type
-- discover-principles
-- load-reference
 - parse-frontmatter
 - find-spec
+- load-reference
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: inherit
 maxTurns: 50

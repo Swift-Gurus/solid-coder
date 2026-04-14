@@ -120,12 +120,14 @@ def main():
         review_data = load_json(review_path)
         fix_data = load_json(fix_path) if fix_path.exists() else None
         if plugin_root:
-            # Case-insensitive folder lookup — references/ uses mixed case (e.g. Testing, SwiftUI, UITesting)
+            # Find principle folder by searching recursively for matching name
+            # (handles nested structure: principles/SRP/, coding/apple/SwiftUI/, etc.)
             refs_root = plugin_root / "references"
-            principle_folder = next(
-                (d for d in refs_root.iterdir() if d.is_dir() and d.name.lower() == principle_dir.name.lower()),
-                None,
-            )
+            principle_folder = None
+            for candidate in refs_root.rglob("*/"):
+                if candidate.name.lower() == principle_dir.name.lower() and (candidate / "rule.md").exists():
+                    principle_folder = candidate
+                    break
             if principle_folder:
                 review_schema = principle_folder / "review" / "output.schema.json"
                 if review_schema.exists():

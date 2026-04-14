@@ -14,7 +14,7 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 
 - SPEC: $ARGUMENTS[0] — a prompt string OR a filepath to a markdown spec file. If a filepath is provided (ends in `.md`), read the file. Otherwise use the string directly.
 - OUTPUT_PATH: value after `--output` flag — filepath where `arch.json` will be written (e.g., `./arch.json`). Parent directories are created automatically.
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
+- GATEWAY: ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py
 
 ## Phase 1: Parse Spec & Load Context
 
@@ -24,14 +24,13 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
 
 - [ ] 1.2 **Load ancestors and dependencies** (only if SPEC is a filepath with frontmatter containing a `parent` or `blocked-by` field):
   - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `number` and `blocked-by`
-  - Use skill **solid-coder:find-spec** with `ancestors <current-SPEC-NNN> --blocked`. The script walks up from the current spec to root (ancestor chain) and appends blocked-by specs. Read each file in the returned `path` fields. Hold all content as context — ancestors provide scope, blocked-by specs provide components and patterns to reference.
-  - After loading ancestor/blocked-by spec files, run the search script for each spec number in the ancestor/blocked-by chain:
+  - Use skill **solid-coder:find-spec** with `load <current-SPEC-NNN> --blocked`. This loads the full content of all ancestor and blocked-by specs as readable text. Hold all content as context — ancestors provide scope, blocked-by specs provide components and patterns to reference.
+  - After loading specs, search for types already built by each spec in the chain:
     ```
-    python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py --sources . --spec <SPEC-NNN>
+    python3 {GATEWAY} search_codebase --sources-dir . --spec-numbers <comma-separated SPEC-NNNs from the chain>
     ```
-    Each match is a type already created for that spec. Read the matched files' full source and frontmatter (`solid-name`, `solid-category`, `solid-description`) to understand what exists. For each matched type, verify whether it satisfies the current spec's requirements (user stories, acceptance criteria, technical requirements). If it fully satisfies a requirement → reference it as a dependency, do not redesign it. If it partially satisfies → reference it and note what gaps remain so validate-plan can classify it as `adjust`. If it does not satisfy → design a new component.
-  - Ancestor and blocked-by context provides knowledge of what was built by prior specs — components, capabilities, and patterns that already exist. Reference these in the architecture rather than proposing duplicates.
-     For example, if a blocked-by spec built a reusable view component, the plan should reference that component as a dependency, not design a new one
+    Each match is a type already created for that spec. Read the matched files' full source and frontmatter to understand what exists. If it fully satisfies a current requirement → reference as dependency. If partially → note gaps for validate-plan to classify as `adjust`.
+  - Ancestor and blocked-by context provides knowledge of what was built by prior specs. Reference these in the architecture rather than proposing duplicates.
 
 - [ ] 1.2.5 **Extract architectural constraints from loaded context** — From any CLAUDE.md instructions already in context, identify and hold as hard constraints:
   - **Available packages / modules** — local packages, libraries, or shared modules the project provides. Use these as dependencies rather than re-implementing them.
@@ -90,9 +89,9 @@ For each identified behavior or capability, define a component. Respect acceptan
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
-- [ ] 3.2 **Discover active principles** — use skill **solid-coder:discover-principles** to discover active principles with `--refs-root {RULES_PATH}` and `--matched-tags <comma-separated tags from 3.1>`. If no tags derived, omit `--matched-tags` to get only always-active (tagless) principles.
-- [ ] 3.3 **Load active principle rules** — use skill **solid-coder:load-reference** to load the `rule_path` from each `active_principles[]` entry.
-- [ ] 3.4 **Apply loaded rules as constraints** — verify the decomposition from Phase 2 against the loaded principles. Adjust components if violations are found (e.g., a component with too many responsibilities per SRP, a sealed dependency per OCP, a fat protocol per ISP).
+- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`.
+
+- [ ] 3.3 **Verify decomposition against constraints** — check each component from Phase 2 against the constraint summary from load-reference. Adjust if violations are found (e.g., a component with too many responsibilities per SRP, a sealed dependency per OCP, a fat protocol per ISP).
 
 ## Phase 4: Define Wiring
 

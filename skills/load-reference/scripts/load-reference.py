@@ -51,6 +51,31 @@ def collect_files(paths: List[str]) -> List[Path]:
     return files
 
 
+
+# --- Public API ---
+
+
+def load(file_paths: List[str]) -> List[dict]:
+    """Load reference files, stripping frontmatter.
+
+    Returns list of {path: str, content: str} dicts.
+    Skips missing files with a warning to stderr.
+    """
+    files = collect_files(file_paths)
+    results = []
+    for f in files:
+        content = f.read_text(encoding="utf-8", errors="replace")
+        body = strip_frontmatter(content)
+        results.append({
+            "path": str(f.resolve()),
+            "content": body,
+        })
+    return results
+
+
+# --- CLI entry point ---
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <path> [<path> ...]", file=sys.stderr)

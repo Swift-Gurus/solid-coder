@@ -163,6 +163,79 @@ def resolve_paths(
     return result
 
 
+
+# --- Public API ---
+
+
+def parse(file_path: str, refs_root: str = None) -> dict:
+    """Parse YAML frontmatter from a file and resolve all paths.
+
+    Returns dict with resolved paths, files_to_load, and metadata.
+    Raises FileNotFoundError if file doesn't exist.
+    Raises ValueError if no frontmatter found.
+    """
+    fp = Path(file_path)
+    if not fp.exists():
+        raise FileNotFoundError(f"{fp} not found")
+
+    rr = Path(refs_root).resolve() if refs_root else None
+
+    content = fp.read_text(encoding="utf-8")
+    yaml_text = extract_frontmatter(content)
+    if yaml_text is None:
+        raise ValueError(f"no frontmatter found in {fp}")
+
+    data = parse_yaml_simple(yaml_text)
+    file_dir = fp.resolve().parent
+
+    # Auto-detect refs-root by walking up from the file
+    if rr is None and REFS_PATH_FIELDS & data.keys():
+        candidate = file_dir
+        while candidate != candidate.parent:
+            if (candidate / "ARCHITECTURE.md").exists() or (candidate / "design_patterns").is_dir():
+                rr = candidate
+                break
+            candidate = candidate.parent
+        if rr is None:
+            rr = file_dir.parent
+
+    # Default examples/code directories
+    if "examples" not in data:
+        default_examples = file_dir / "Examples"
+        if default_examples.is_dir():
+            data["examples"] = ["Examples"]
+    if "code" not in data:
+        default_code = file_dir / "code"
+        if default_code.is_dir():
+            data["code"] = ["code"]
+
+    resolved = resolve_paths(data, file_dir, rr)
+    resolved["_source"] = str(fp.resolve())
+    resolved["_dir"] = str(file_dir)
+
+    # Build files_to_load
+    files_to_load = []
+    for field in ("required_patterns", "examples", "rules", "code"):
+        value = resolved.get(field)
+        if value is None:
+            continue
+        paths = value if isinstance(value, list) else [value]
+        for p in paths:
+            pp = Path(p)
+            if pp.is_dir():
+                files_to_load.extend(str(f) for f in sorted(pp.iterdir()) if f.is_file())
+            else:
+                files_to_load.append(str(pp))
+
+    if files_to_load:
+        resolved["files_to_load"] = files_to_load
+
+    return resolved
+
+
+# --- CLI entry point ---
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(f"Usage: {sys.argv[0]} <file> [--refs-root <path>]", file=sys.stderr)
@@ -190,10 +263,19 @@ def main() -> None:
     data = parse_yaml_simple(yaml_text)
     file_dir = file_path.resolve().parent
 
-    # Default refs-root to grandparent of the file
-    # (e.g., references/SRP/rule.md → refs-root = references/)
+    # Auto-detect refs-root by walking up from the file until we find
+    # a directory containing ARCHITECTURE.md or design_patterns/
+    # (handles arbitrary nesting: principles/SRP/, coding/apple/SwiftUI/, etc.)
     if refs_root is None and REFS_PATH_FIELDS & data.keys():
-        refs_root = file_dir.parent
+        candidate = file_dir
+        while candidate != candidate.parent:
+            if (candidate / "ARCHITECTURE.md").exists() or (candidate / "design_patterns").is_dir():
+                refs_root = candidate
+                break
+            candidate = candidate.parent
+        if refs_root is None:
+            # Fallback: grandparent (legacy behavior)
+            refs_root = file_dir.parent
 
     # Default examples to ["Examples"] when not specified
     if "examples" not in data:

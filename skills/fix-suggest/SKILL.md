@@ -9,8 +9,8 @@ user-invocable: false
 # Fix Suggestion Generator
 
 ## Input
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
-- Principle folder: $ARGUMENTS[0]
+- GATEWAY: ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py
+- Principle name: $ARGUMENTS[0]
 - Findings JSON: $ARGUMENTS[1] (e.g., .solid-coder/review-20260215-002137/SRP/output.json)
 - Code files: remaining arguments
 
@@ -18,16 +18,10 @@ user-invocable: false
 
 ## Phase 1: Preparation
 Create Preparation task list and execute it
-- [ ] 1.1 **Parse fix instruction frontmatter** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py $ARGUMENTS[0]/fix/instructions.md`
-  Extract `rules`, `input_schema`, and `output_schema` paths from the JSON output.
-- [ ] 1.2 **Parse rule frontmatter** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py $ARGUMENTS[0]/rule.md`
-- [ ] 1.3 **Load references** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 1.2>`
-- [ ] 1.4 **Load rules** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <rules path from step 1.1>`
-- [ ] 1.6 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
+- [ ] 1.1 **Load principle rules** — Run:
+  `! python3 {GATEWAY} load_rules --profile code --principle {$ARGUMENTS[0]}`
+  Parse JSON output — `rules[NAME]` contains `rule`, `instructions` (fix), `examples`, `patterns`.
+- [ ] 1.2 **Load findings** — Read the findings JSON from $ARGUMENTS[1]
 - [ ] 1.7 **Load source code** — Read each code file from remaining arguments
 
 ## Phase 2: Analysis

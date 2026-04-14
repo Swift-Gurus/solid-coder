@@ -9,7 +9,6 @@ user-invocable: false
 # Generic Code Review
 
 ## Input
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 - INPUT_SCHEMA: ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/output.schema.json
 - NAME: $ARGUMENTS[0] (e.g., SRP,OCP)
 - OUTPUT_PATH: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
@@ -19,17 +18,12 @@ user-invocable: false
 ## Phase 1
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
-- [ ] 1.2 **Parse instruction frontmatter** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py RULES_PATH/NAME/review/instructions.md`
-  Extract `rules` and `output_schema` paths from the JSON output.
-  - if `rules` is not provided, use `RULES_PATH/NAME/rule.md` as fallback
-- [ ] 1.3 **Parse rule frontmatter** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py RULES_PATH/NAME/rule.md`
-- [ ] 1.4 **Load references** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 1.3>`
-- [ ] 1.5 **Load rules** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <rules path from step 1.2>`
-- [ ] 1.6 **Parse input** -
+- [ ] 1.2 **Load rules** — Run:
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --profile review --principle NAME`
+  - This returns the rule content, review instructions, examples, and design patterns for this principle in one call
+  - Parse JSON output. If `errors` is non-empty → fail with the error
+  - Store `rules[NAME]` — contains `rule`, `instructions`, `examples`, `patterns`
+- [ ] 1.3 **Parse input** -
   - read and parse input json
   - extract files and units from json
 ## Phase 2
@@ -49,7 +43,7 @@ Creating output.
 - [ ] 3.1 **Load output schema** — Read the schema file referenced in frontmatter
 - [ ] 3.2 **Generate output** — Produce structured output matching the output schema, write to created FOLDER `review-output.json`
 - [ ] 3.3 **Validate output** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/scripts/validate-output.py FOLDER/review-output.json RULES_PATH/NAME/review/output.schema.json`
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py validate_phase_output --json-path FOLDER/review-output.json --schema-path {principle_folder}/review/output.schema.json`
   If validation fails, read the error, fix the output JSON, re-write, and re-validate.
 
 ## Constraints

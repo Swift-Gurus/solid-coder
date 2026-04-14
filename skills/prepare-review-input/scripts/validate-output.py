@@ -17,37 +17,53 @@ except ImportError:
     sys.exit(1)
 
 
-def main():
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <json-file> <schema-file>", file=sys.stderr)
-        sys.exit(1)
 
-    json_path = Path(sys.argv[1])
-    schema_path = Path(sys.argv[2])
+# --- Public API ---
 
-    if not json_path.exists():
-        print(f"Error: {json_path} not found", file=sys.stderr)
-        sys.exit(1)
-    if not schema_path.exists():
-        print(f"Error: {schema_path} not found", file=sys.stderr)
-        sys.exit(1)
+
+def validate_json(json_path: str, schema_path: str) -> dict:
+    """Validate a JSON file against a JSON schema.
+
+    Returns {valid: bool, error: str|None, path: str|None}.
+    """
+    jp = Path(json_path)
+    sp = Path(schema_path)
+
+    if not jp.exists():
+        return {"valid": False, "error": f"{jp} not found", "path": None}
+    if not sp.exists():
+        return {"valid": False, "error": f"{sp} not found", "path": None}
 
     try:
-        with open(json_path) as f:
+        with open(jp) as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
-        print(f"Error: {json_path} is not valid JSON: {e}", file=sys.stderr)
-        sys.exit(1)
+        return {"valid": False, "error": f"{jp} is not valid JSON: {e}", "path": None}
 
-    with open(schema_path) as f:
+    with open(sp) as f:
         schema = json.load(f)
 
     try:
         jsonschema.validate(instance=data, schema=schema)
     except jsonschema.ValidationError as e:
-        # Build a readable path to the failing field
-        path = " → ".join(str(p) for p in e.absolute_path) if e.absolute_path else "(root)"
-        print(f"Schema validation failed at {path}:\n  {e.message}", file=sys.stderr)
+        error_path = " → ".join(str(p) for p in e.absolute_path) if e.absolute_path else "(root)"
+        return {"valid": False, "error": e.message, "path": error_path}
+
+    return {"valid": True, "error": None, "path": None}
+
+
+# --- CLI entry point ---
+
+
+def main():
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <json-file> <schema-file>", file=sys.stderr)
+        sys.exit(1)
+
+    result = validate_json(sys.argv[1], sys.argv[2])
+    if not result["valid"]:
+        loc = f" at {result['path']}" if result["path"] else ""
+        print(f"Schema validation failed{loc}:\n  {result['error']}", file=sys.stderr)
         sys.exit(1)
 
     print("OK")

@@ -99,7 +99,7 @@ def discover(refs_root: Path, pattern: str) -> List[Dict[str, Any]]:
     principles = []
     search = str(refs_root / pattern)
 
-    for rule_path in sorted(glob(search)):
+    for rule_path in sorted(glob(search, recursive=True)):
         rule_file = Path(rule_path)
         if not rule_file.is_file():
             continue
@@ -162,6 +162,42 @@ def filter_principles(
     return active, skipped
 
 
+
+# --- Public API ---
+
+
+def discover_and_filter(
+    refs_root: str,
+    glob_pattern: str = "**/rule.md",
+    matched_tags: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Discover principles and optionally filter by tags.
+
+    Returns dict with active_principles, skipped_principles, all_candidate_tags.
+    """
+    root = Path(refs_root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"{root} is not a directory")
+
+    principles = discover(root, glob_pattern)
+
+    all_candidate_tags = set()
+    for p in principles:
+        if p["tags"]:
+            all_candidate_tags.update(p["tags"])
+
+    active, skipped = filter_principles(principles, matched_tags)
+
+    return {
+        "all_candidate_tags": sorted(all_candidate_tags),
+        "active_principles": active,
+        "skipped_principles": skipped,
+    }
+
+
+# --- CLI entry point ---
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Discover and filter principles by tags."
@@ -179,8 +215,8 @@ def main() -> None:
         help="Path to review-input.json — reads matched_tags from it (alternative to --matched-tags)",
     )
     parser.add_argument(
-        "--glob", default="*/rule.md",
-        help="Glob pattern for finding rule.md files (default: */rule.md)",
+        "--glob", default="**/rule.md",
+        help="Glob pattern for finding rule.md files (default: **/rule.md)",
     )
     args = parser.parse_args()
 

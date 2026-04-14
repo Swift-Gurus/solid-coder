@@ -2,7 +2,7 @@
 name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
-allowed-tools: Read, Grep, Glob, Write, Edit, Skill
+allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash
 user-invocable: true
 ---
 
@@ -11,7 +11,6 @@ user-invocable: true
 Write or modify code with SOLID principle rules loaded as active constraints. The rules define what constitutes a violation — this skill knows how to write code that doesn't violate.
 
 ## Input
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 - MODE: $ARGUMENTS[0] — one of `refactor`, `implement`, or `code`
 - Arguments per mode:
   - `refactor`: PLANS_DIR = $ARGUMENTS[1], OUTPUT_ROOT = $ARGUMENTS[2]
@@ -50,34 +49,19 @@ After Phase 2, process each chunk sequentially in Phase 3:
 
 ## Phase 2: Discover & Load Rules
 
-- [ ] 2.1 Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH}`
-- [ ] 2.2 Filter principles by mode:
+- [ ] 2.1 Determine matched tags by mode:
 
-  **implement**:
-  - [ ] 2.2.1 Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH} --matched-tags {TAGS as comma-separated}`
-  - [ ] 2.2.2 Use `active_principles` from the output
-
-  **refactor**:
-  - [ ] 2.2.1 If `all_candidate_tags` is non-empty AND Phase 1 loaded source files → scan source files for imports and code patterns that match the candidate tags
-  - [ ] 2.2.2 Use skill **solid-coder:discover-principles** with: `--refs-root {RULES_PATH} --matched-tags {scanned tags as comma-separated}`
-  - [ ] 2.2.3 Use `active_principles` from the output
-
-  **code**:
-  - [ ] 2.2.1 Use all principles from step 2.1 (no filtering — code mode is drafting)
+  **implement** mode: use TAGS from Phase 1.2
   
-- [ ] 2.3 **Collect files** — Pipe the `active_principles` JSON into the collect script:
-  ```
-  echo '<active_principles_json>' | python3 ${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/collect-principle-files.py
-  ```
-  This returns `{"files_to_load": [...]}` — all rule.md files, examples, design patterns, code rules, and fix instructions for every active principle.
-- [ ] 2.4 **Read files** — Read every file path from the `files_to_load` array (step 2.3). These contain rules, examples, design patterns, and fix instructions. Ignore YAML frontmatter (content between `---` delimiters at the top of files).
-- [ ] 2.5 Hold all loaded rules, references, fix instructions, and coding patterns in context — they apply to every line of code you write. If a principle had a `code/rule.md`, it was loaded in step 2.4 — these contain coding patterns and guidelines for that domain.
+  **refactor** mode: run `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py get_candidate_tags`, then scan source files for imports/patterns matching the candidate tags
+
+  **code** mode (default): no tags (load all principles)
+
+- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {tags}` (if any)
 
 ## Phase 3: Write Code
 
-Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. 
-These are active constraints — you MUST apply them proactively while writing, don't defer to the self-check. 
-If any principle included a `code/rule.md`, treat each gotcha as a hard constraint.
+Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.
 
 ### Steps
 

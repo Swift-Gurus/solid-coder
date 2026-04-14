@@ -9,12 +9,11 @@ user-invocable: true
 # Parallel Review Orchestrator
 
 ## Input
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 - OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/review-<YYYYMMDDhhmmss>
 
-## Phase 1: Discover Principles
-- [ ] 1.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH`
-- [ ] 1.2 Parse JSON output — extract `all_candidate_tags` and the full principle list
+## Phase 1: Get Candidate Tags
+- [ ] 1.1 Run: `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py get_candidate_tags`
+- [ ] 1.2 Parse JSON output — store `candidate_tags`
 
 ## Phase 2: Prepare Input (wait for phase 1)
 - [ ] 2.1 Prepare a Task call:
@@ -23,27 +22,30 @@ user-invocable: true
    ```
     input: $ARGUMENTS
     output_root: {OUTPUT_ROOT}
-    candidate_tags: {all_candidate_tags from Phase 1}
+    candidate_tags: {candidate_tags from Phase 1}
     ```
 - [ ] 2.2 Launch Task
 - [ ] 2.3 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/prepare)
   - If the Task failed, stop and report the error
+- [ ] 2.4 Read `{OUTPUT_ROOT}/prepare/review-input.json` and extract `matched_tags`
 
-## Phase 3: Filter Principles (wait for phase 2)
-- [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/prepare/review-input.json`
-- [ ] 3.2 Use `active_principles` from the output — these are the principles to review
+## Phase 3: Discover Active Principles (wait for phase 2)
+- [ ] 3.1 Run: `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py discover_principles --matched-tags {matched_tags as comma-separated}`
+- [ ] 3.2 Parse JSON output. If `active_principles` is empty → STOP: "No principles active for matched tags"
+- [ ] 3.3 Store the `active_principles` list (names only — do NOT load rule content here)
 
 ## Phase 4: Launch Parallel Reviews
+Each review agent loads its own rules via MCP — the orchestrator does NOT load rule content.
+
 - [ ] 4.1 For EACH active principle, prepare a Task call:
     - subagent_type: `solid-coder:principle-review-fx-agent`
     - prompt:
       ```
       principle: {NAME}
       review-input: {OUTPUT_ROOT}/prepare/review-input.json
-      rules-path: {RULES_PATH}
-      principle-folder: {FOLDER from discovery output}
       output-path: {OUTPUT_ROOT}/rules/{NAME}
       ```
+    The agent will call `mcp__solid-coder__load_rules` with `profile: "review"` and `principle: {NAME}` to load its own rules.
 - [ ] 4.2 Launch ALL Tasks in a SINGLE message (multiple Task tool calls for parallel execution). Do NOT run in background — all agents must run in foreground to avoid permission issues.
 - [ ] 4.3 Wait for all to complete
 
@@ -58,24 +60,13 @@ user-invocable: true
 - [ ] 5.4 List all output file paths
 
 ## Phase 6: Validate Findings (wait for phase 5)
-- [ ] 6.1 Prepare a Task call:
-  - subagent_type: `solid-coder:validate-findings-agent`
-  - prompt:
-    ```
-    review-input-root: {OUTPUT_ROOT}
-    output-root: {OUTPUT_ROOT}
-    ```
-- [ ] 6.2 Launch Task
+- [ ] 6.1 Run: `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py validate_findings --output-root {OUTPUT_ROOT}`
+- [ ] 6.2 Parse JSON output. If `success` is false → STOP and report the error
 - [ ] 6.3 Report validated output paths from `{OUTPUT_ROOT}/by-file/`
 
 ## Phase 7: Generate Report (wait for phase 6)
-- [ ] 7.1 Prepare a Task call:
-  - subagent_type: `solid-coder:generate-report-agent`
-  - prompt:
-    ```
-    output-root: {OUTPUT_ROOT}
-    ```
-- [ ] 7.2 Launch Task
+- [ ] 7.1 Run: `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py generate_report --output-root {OUTPUT_ROOT}`
+- [ ] 7.2 Parse JSON output. If `success` is false → STOP and report the error
 - [ ] 7.3 Report the path to the generated HTML: `{OUTPUT_ROOT}/report.html`
 
 ## Constraints

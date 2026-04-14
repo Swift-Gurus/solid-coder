@@ -17,7 +17,6 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 
 ## Constants
 
-- RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
 - OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/implement-{spec-number}-<YYYYMMDDhhmmss>
 
 ## Input
@@ -74,7 +73,6 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
     arch-json: {OUTPUT_ROOT}/arch.json
     validation-json: {OUTPUT_ROOT}/validation.json
     output: {OUTPUT_ROOT}/implementation-plan.json
-    refs-root: {RULES_PATH}
     ```
 - [ ] 3.2 Launch Task
 - [ ] 3.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "synthesize-implementation", "status": "success" }`

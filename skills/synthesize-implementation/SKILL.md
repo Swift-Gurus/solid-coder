@@ -1,7 +1,7 @@
 ---
 name: synthesize-implementation
 description: Reconciles arch.json with validation.json to produce an ordered implementation plan of /code directives.
-argument-hint: <arch.json-path> <validation.json-path> --output <plan-path> --refs-root <references-dir>
+argument-hint: <arch.json-path> <validation.json-path> --output <plan-path>
 allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: true
 ---
@@ -15,12 +15,11 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 - ARCH_PATH: $ARGUMENTS[0] — path to `arch.json` (from `/plan`)
 - VALIDATION_PATH: $ARGUMENTS[1] — path to `validation.json` (from `/validate-plan`)
 - OUTPUT_PATH: extracted from `--output` flag — path to write `implementation-plan.json`
-- REFS_ROOT: extracted from `--refs-root` flag — principle references directory (e.g., `references/`)
+- GATEWAY: ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py
 
 ## Phase 0: Validate Inputs
 
-- [ ] 0.1 Parse arguments. If `--refs-root` is missing, abort with error: "Missing required --refs-root argument."
-- [ ] 0.2 If `--output` is missing, abort with error: "Missing required --output argument."
+- [ ] 0.1 Parse arguments. If `--output` is missing, abort with error: "Missing required --output argument."
 - [ ] 0.3 Read `arch.json` from ARCH_PATH. Verify it has `spec_summary`, `components`, `wiring`, and `composition_root`. If any are missing, abort with error listing missing fields. Also load `spec_number` (optional), `acceptance_criteria[]`, `design_references[]`, `technical_requirements[]`, and `test_plan[]` — these are used to enrich directives in Phase 2.
 - [ ] 0.4 Read `validation.json` from VALIDATION_PATH. Verify it has `components` and `summary`. If any are missing, abort with error listing missing fields.
 
@@ -29,12 +28,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 Load principle knowledge for informed reconciliation — NOT embedded in output.
 
 - [ ] 1.1 Collect all unique `category` and `stack` values from `arch.json` components into a flat, deduplicated list of tags.
-- [ ] 1.2 Use skill **solid-coder:discover-principles** with `--refs-root {REFS_ROOT}` and `--matched-tags {comma-separated tags}`. If no tags derived, omit `--matched-tags` to get only always-active (tagless) principles.
-- [ ] 1.3 For each active principle:
-  1. Use skill **solid-coder:parse-frontmatter** on `{principle_folder}/rule.md` to extract `examples` paths
-  2. Use skill **solid-coder:load-reference** to load the `examples` paths from step 1
-  3. Use skill **solid-coder:load-reference** to load `{principle_folder}/rule.md` and `{principle_folder}/fix/instructions.md`
-- [ ] 1.4 Build lookup: `principle_id -> { rule, fix_instructions, examples }` for use in reconciliation.
+- [ ] 1.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {comma-separated tags from 1.1}`. If no tags derived, omit `--matched-tags`.
 - [ ] 1.5 Loaded principle knowledge informs three things during Phase 2:
   - **Conflict resolution** (2.1.4) — prefer types that already satisfy principle constraints
   - **Breaking change assessment** (2.2) — whether an adjustment violates principle rules

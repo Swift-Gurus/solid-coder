@@ -12,8 +12,10 @@ Query the spec tree or drill down interactively. Returns JSON.
 
 ## Input
 
-- MODE: $ARGUMENTS[0] — one of `next-number`, `ancestors`, `scan`, or `navigate`
+- GATEWAY: ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py
+- MODE: $ARGUMENTS[0] — one of `load`, `next-number`, `ancestors`, `scan`, or `navigate`
 - Arguments per mode:
+  - `load`: SPEC_NUMBER = $ARGUMENTS[1], BLOCKED = `--blocked` flag if present — loads ancestor/blocked-by spec content as readable text
   - `next-number`: (no additional arguments)
   - `ancestors`: SPEC_NUMBER = $ARGUMENTS[1], BLOCKED = `--blocked` flag if present in $ARGUMENTS[2]
   - `scan`: SCAN_ARGS = $ARGUMENTS[1..] (passed through to script — supports `--type`, `--status`, `--no-parent`, `--parent`)
@@ -23,12 +25,23 @@ Query the spec tree or drill down interactively. Returns JSON.
 
 | Mode | Output |
 |------|--------|
+| `load` | Readable text — full content of each ancestor/blocked-by spec file |
 | `next-number` | `{"next": "SPEC-NNN"}` |
 | `ancestors` | JSON array of `{number, feature, type, status, path}`, ordered root → leaf |
 | `scan` | JSON array of `{number, feature, type, status, path}` matching filters |
 | `navigate` | Single `{number, feature, type, status, path}` |
 
 ## Modes
+
+### Mode: load
+
+Loads ancestor and blocked-by spec content as readable text. Use this when you need the full spec content in context (e.g., plan skill Phase 1.2).
+
+- Run:
+  ```
+  python3 {GATEWAY} load_spec_context --spec {SPEC_NUMBER} [--blocked]
+  ```
+- Returns full content of each spec in the chain, with clear separators. No JSON parsing needed.
 
 ### Mode: next-number
 

@@ -1,7 +1,7 @@
 ---
 name: synthesize-fixes
 description: Holistic fix planner — reads all findings from all principles, loads principle fix knowledge dynamically, and generates a unified, cross-checked fix plan per file.
-argument-hint: <output-root> <rules-path>
+argument-hint: <output-root>
 allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: false
 ---
@@ -12,13 +12,11 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 ## Input
 - OUTPUT_ROOT: $ARGUMENTS[0] — iteration output directory (e.g., `.solid_coder/refactor-20260302/1`)
-- RULES_PATH: $ARGUMENTS[1] — principle references root (e.g., `references/`)
 
 ## Phase 1: Load Context
 
-- [ ] 1.1 Run the context loader script:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/synthesize-fixes/scripts/load-context.py {OUTPUT_ROOT}`
-- [ ] 1.2 Parse the JSON output — it contains `files[]` (with per-file principle summaries), `active_principles[]`, and `summary`
+- [ ] 1.1 Run: `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_synthesis_context --output-root {OUTPUT_ROOT}`
+- [ ] 1.2 The result contains `files[]` (with per-file principle summaries), `active_principles[]`, and `summary`
 - [ ] 1.3 If `all_compliant` is true → write empty plans and stop
 - [ ] 1.4 For each file in `files[]` that has non-COMPLIANT principles, read the source file referenced in `file_path`
 - [ ] 1.5 The `active_principles[]` list is the set of principle agent IDs for Phase 2
@@ -27,14 +25,8 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
 
-- [ ] 2.1 For EACH principle agent ID from step 1.4, resolve to the principle folder: `{RULES_PATH}/{UPPERCASE_AGENT_ID}/`
-- [ ] 2.2 **Parse rule frontmatter** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/parse-frontmatter/scripts/parse-frontmatter.py {principle_folder}/rule.md`
-- [ ] 2.3 **Load references** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py <files_to_load paths from step 2.2>`
-- [ ] 2.4 **Load fix knowledge** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/load-reference/scripts/load-reference.py {principle_folder}/fix/instructions.md {principle_folder}/rule.md`
-- [ ] 2.5 **Build a lookup:** `principle_id → { fix_instructions, metrics, patterns, examples }`
+- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--profile code --principle {PRINCIPLE_ID}`
+- [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → { rule, instructions (fix), examples, patterns }`
 
 ## Phase 3: Draft Fix Actions
 
