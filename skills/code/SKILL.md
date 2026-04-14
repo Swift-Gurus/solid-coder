@@ -65,15 +65,19 @@ After Phase 2, process each chunk sequentially in Phase 3:
   **code**:
   - [ ] 2.2.1 Use all principles from step 2.1 (no filtering — code mode is drafting)
   
-- [ ] 2.3 For each active principle, use skill **solid-coder:parse-frontmatter** with its rule.md path. Store the returned `files_to_load` array.
-- [ ] 2.4 **Load rules** — For each active rule.md, use skill **solid-coder:load-reference** with the rule.md path.
-- [ ] 2.5 **Load references** — For each active rule, use skill **solid-coder:load-reference** with each path from the `files_to_load` array (step 2.3).
-- [ ] 2.6 **Load fix instructions** — For each active principle, use skill **solid-coder:load-reference** with `{principle_dir}/fix/instructions.md`. These contain fix patterns and strategies to follow when writing code.
-- [ ] 2.7 Hold all loaded rules, references, fix instructions, and coding patterns in context — they apply to every line of code you write. Note: if a principle's `files_to_load` included `code/rule.md`, it was already loaded in step 2.5 — these contain coding patterns and guidelines for that domain.
+- [ ] 2.3 **Collect files** — Pipe the `active_principles` JSON into the collect script:
+  ```
+  echo '<active_principles_json>' | python3 ${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/collect-principle-files.py
+  ```
+  This returns `{"files_to_load": [...]}` — all rule.md files, examples, design patterns, code rules, and fix instructions for every active principle.
+- [ ] 2.4 **Read files** — Read every file path from the `files_to_load` array (step 2.3). These contain rules, examples, design patterns, and fix instructions. Ignore YAML frontmatter (content between `---` delimiters at the top of files).
+- [ ] 2.5 Hold all loaded rules, references, fix instructions, and coding patterns in context — they apply to every line of code you write. If a principle had a `code/rule.md`, it was loaded in step 2.4 — these contain coding patterns and guidelines for that domain.
 
 ## Phase 3: Write Code
 
-Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. These are active constraints — apply them proactively while writing, don't defer to the self-check. If any principle included a `code/rule.md`, treat each gotcha as a hard constraint.
+Before writing any code, review all loaded rule.md metrics and fix/instructions.md patterns from Phase 2. 
+These are active constraints — you MUST apply them proactively while writing, don't defer to the self-check. 
+If any principle included a `code/rule.md`, treat each gotcha as a hard constraint.
 
 ### Steps
 
@@ -161,10 +165,28 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 - [ ] 5.2 **Build your test targets** — build the test target(s) for the tests you created or modified. Wait for the result before proceeding.
   - Fix all compiler errors, compiler warnings, and linter errors/warnings in test code.
   - Rebuild until the test target compiles clean.
-- [ ] 5.3 **Run your unit tests** — run unit tests for the component you developed or modified. Wait for the result before proceeding. If broken → fix using all loaded rules, re-run until green.
-- [ ] 5.4 **Run full unit test suite** — run all unit tests. Wait for the result before proceeding. If broken → fix using all loaded rules, re-run until green.
-- [ ] 5.5 **Run your UI tests** — run UI tests for the component(s) you worked on. If no UI tests exist for your component → skip this step only, proceed to 5.6. Wait for the result before proceeding. If broken → fix using loaded rules, re-run until green.
-- [ ] 5.6 **Run full UI test suite** — run the full UI test suite. If no UI test suite exists in the project → skip this step only, proceed to 5.7. Wait for the result before proceeding. If broken → fix using loaded rules, re-run until green.
+- [ ] 5.3 **Run your unit tests** — 
+  - [ ] 5.3.1 - run unit tests for the component you developed or modified. 
+  - [ ] 5.3.2 - Wait for the result before proceeding. 
+  - [ ] 5.3.3 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
+  - [ ] 5.3.4 - If green move to step 5.4
+- [ ] 5.4 **Run full unit test suite** — 
+  - [ ] 5.4.1 - run all unit tests. 
+  - [ ] 5.4.2 - Wait for the result before proceeding. 
+  - [ ] 5.4.3 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
+  - [ ] 5.4.4 - If green move to step 5.5
+- [ ] 5.5 **Run your UI tests** — 
+  - [ ] 5.5.1 - run UI tests for the component(s) you worked on. 
+  - [ ] 5.5.2 - If no UI tests exist for your component → skip this step only, proceed to 5.6. 
+  - [ ] 5.5.3 - Wait for the result before proceeding. 
+  - [ ] 5.5.4 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
+  - [ ] 5.5.4 - If green move to step 5.6
+- [ ] 5.6 **Run full UI test suite** — 
+  - [ ] 5.6.1 - run the full UI test suite. 
+  - [ ] 5.6.2 - If no UI test suite exists in the project → skip this step only, proceed to 5.7. 
+  - [ ] 5.6.3 -  Wait for the result before proceeding. 
+  - [ ] 5.6.4 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
+  - [ ] 5.6.4 - If green move to step 5.7
 - [ ] 5.7 If any step was skipped, explicitly state which step and why.
 
 ## Phase 6: Output
@@ -174,7 +196,7 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 
 ## Constraints
 - Follow the spec — do not invent scope beyond what was asked
-- The loaded `rule.md` and `instructions.md` files are the source of truth for what constitutes a violation and how to write and fix code. Do not invent additional rules
+- The loaded `rule.md` and `instructions.md`  files are the source of truth for what constitutes a violation and how to write and fix code. MUST be followed. Do not invent additional rules
 - Always search the project before creating new protocols, wrappers, or abstractions
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it

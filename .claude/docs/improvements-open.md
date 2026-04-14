@@ -40,29 +40,6 @@ Also: log per-iteration finding IDs in the refactor-log.json so oscillation is v
 
 ---
 
-## S-10: Add output cleanup mechanism
-
-**Impact**: Low | **Effort**: Low | **Category**: Maintenance
-
-`.solid_coder/` grows with every run. Timestamped directories accumulate without bounds.
-
-**Suggestion**: Options (pick one or combine):
-
-- **SessionStart hook**: On plugin load, delete runs older than 7 days
-- **Prune at start of run**: Before creating a new output directory, delete all but the last 3 runs
-- **`/clean` skill**: Manual cleanup command that lists runs with sizes and deletes selected ones
-- **`.gitignore`**: At minimum, ensure `.solid_coder/` is gitignored (check if it is)
-
-### Verified status (2026-03-12)
-
-**Not implemented.** No cleanup step exists in either orchestrator. The project `.gitignore` does NOT include `.solid_coder/` or `.solid-coder-*`, so output directories would be tracked by git in user projects.
-
-**Plan:**
-1. Document that users should add `.solid_coder/` to `.gitignore`
-2. Add a `/clean` skill that lists timestamped runs with sizes and allows selective deletion
-3. Optionally add `--keep N` flag to orchestrators
-
----
 
 ## S-16: CRITICAL BUG — validate-findings.py passes findings for unknown files
 
@@ -120,29 +97,6 @@ The prepare agent writes `file_path`, the review agent reads it and outputs `fil
 
 ---
 
-## S-21: No tests for `prepare-changes.py`
-
-**Impact**: High | **Effort**: Medium | **Category**: Test coverage
-
-`validate-findings.py` has 28 tests. `generate-report.py` has 24 tests. `prepare-changes.py` has **zero**. It's the entry point for all diff parsing — the most critical deterministic script.
-
-Missing test scenarios:
-- Empty git repo
-- No changes (clean tree)
-- Staged vs unstaged vs untracked
-- Renamed files
-- Binary files
-- Files with special characters in names
-- Hunk regex edge cases
-
-### Verified status (2026-03-12)
-
-**Not implemented — confirmed.** No test file exists for `prepare-changes.py`. Six other scripts DO have tests: `discover-principles`, `generate-report`, `load-reference`, `parse-frontmatter`, `check-severity`, `validate-findings`.
-
-**Plan:** Create `skills/prepare-review-input/scripts/tests/test_prepare_changes.py` following existing test pattern. Key test cases: `parse_diff()` with various unified diff formats, `_coalesce()` with adjacent/non-adjacent ranges, `extract_imports()` with Swift imports, end-to-end `build_output()` (mock git commands), edge cases (empty diff, binary files, renamed files).
-
----
-
 ## S-22: Missing JSON error handling in Python scripts
 
 **Impact**: Medium | **Effort**: Low | **Category**: Robustness
@@ -164,48 +118,6 @@ Same applies to `generate-report.py`.
 Malformed JSON produces unhandled `json.JSONDecodeError` traceback instead of clean error.
 
 **Plan:** Add try/except `json.JSONDecodeError` to each, print file path + error, `sys.exit(1)`.
-
----
-
-## S-23: README.md is 2 lines with a typo
-
-**Impact**: Medium | **Effort**: Low | **Category**: Documentation
-
-Current README:
-```
-# solid-coder
-Claude Code plugging that contains convenient skills/workflows for Reviewing/refactoring/coding using solid principles
-```
-
-- "plugging" → "plugin"
-- Doesn't list the 3 user-facing skills (`/review`, `/refactor`, `/code`)
-- Doesn't mention the 3 implemented principles (SRP, OCP, LSP)
-- Doesn't describe the pipeline architecture or how to install
-
-**Fix**: Rewrite README to cover: what it does, how to install, how to use, what principles are implemented.
-
-### Verified status (2026-03-12)
-
-**Not implemented.** README is still 2 lines with "plugging" typo. No install, usage, skills listing, or architecture overview.
-
----
-
-## S-30: SwiftUI SUI-2 (state width) and SUI-3 (responsibility mixing) — validate SOLID coverage
-
-**Impact**: Medium | **Effort**: Medium | **Category**: Metric design | **Status**: Validate
-
-SwiftUI rule was initially designed with three metrics: SUI-1 (body complexity), SUI-2 (state width/cohesion), and SUI-3 (responsibility mixing). SUI-2 and SUI-3 were removed because they overlap with SRP (cohesion groups, verb count) and OCP (sealed points).
-
-**Hypothesis:** SRP and OCP will catch state proliferation and mixed responsibilities in SwiftUI views.
-
-**Risk:** SRP's cohesion analysis works on method-variable relationships. In a SwiftUI view, all `@State` properties feed into `body` (one computed property), so SRP may see 1 cohesion group even when state properties serve 3 unrelated concerns. If SRP consistently misses this, SUI-2 should be re-added.
-
-**Validation plan:**
-1. Run SRP on 3-5 SwiftUI views with known state proliferation (8+ state props, 2+ concerns)
-2. Run SRP on 3-5 SwiftUI views with inline business logic (formatting, data fetching)
-3. Run OCP on views with `APIClient.shared` or singleton usage
-4. If SRP/OCP flag >= 80% of cases correctly → keep SUI-1 only
-5. If SRP/OCP miss > 50% → re-add SUI-2 and/or SUI-3
 
 ---
 
@@ -307,14 +219,6 @@ Two levels:
 2. **Orchestrator fallback**: Before spawning an implement agent, check if the plan has any actions. Skip if empty.
 
 Level 1 is preferred — it's cleaner to not produce empty artifacts than to filter them downstream.
-
----
-
-## S-40: `solid-spec` frontmatter field — link types to requirement specs
-
-**Impact**: Medium | **Effort**: Low | **Category**: Future
-
-**Status**: Future — validate current 4 fields first, add when spec workflow exists
 
 ---
 
@@ -421,22 +325,15 @@ New Phase 4.5 in `/implement`, between code and refactor:
 |----|---------|--------|--------|--------|----------|
 | S-05 | Post-synthesis verification script | High | Medium | Not implemented — synthesis cross-check is LLM mental exercise, not automated | 2026-03-12 |
 | S-09 | Detect oscillation in iteration loop | Medium | Low | Not implemented — only hard MAX_ITERATIONS cap, no cross-iteration comparison | 2026-03-12 |
-| S-10 | Output cleanup mechanism | Low | Low | Not implemented — no cleanup, `.solid_coder/` not gitignored | 2026-03-12 |
 | S-16 | **CRITICAL**: validate-findings passes unknown files | Critical | Low | Not implemented — `_filter_findings()` line 253 treats unknown files as "entire file new" | 2026-03-12 |
 | S-18 | `file_path` vs `file` field inconsistency | High | Medium | Not implemented — `prepare-review-input` uses `file_path`, all 13 other schemas use `file` | 2026-03-12 |
-| S-21 | No tests for `prepare-changes.py` | High | Medium | Not implemented — 6 other scripts have tests, this one has zero | 2026-03-12 |
 | S-22 | Missing JSON error handling in Python scripts | Medium | Low | Not implemented — 4 scripts have bare json.load() with no error handling | 2026-03-12 |
-| S-23 | README.md rewrite | Medium | Low | Not implemented — still 2 lines with typo | 2026-03-12 |
 | S-26 | AST-based metric extraction (tree-sitter) | High | High | POC needed — see [arch file](improvements-open-arch.md#s-26) | — |
-| S-30 | SwiftUI SUI-2/SUI-3 — validate SOLID coverage | Medium | Medium | Validate — needs testing | — |
 | S-32 | DRY principle — full `references/DRY/` implementation | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-32) | 2026-03-12 |
 | S-33 | Grep-based discovery + validation scripts | High | Medium | Not implemented — see [arch file](improvements-open-arch.md#s-33) | 2026-03-13 |
 | S-35 | Pre-commit hook for frontmatter validation | Medium | Low | Not implemented — depends on S-33 | — |
 | S-37 | Style rules separate pipeline | Medium | Medium | Not implemented — no mechanism for review-only rules | 2026-03-12 |
 | S-39 | Skip empty plans — don't synthesize or implement when no changes needed | Medium | Low | Not implemented | — |
-| S-40 | `solid-spec` frontmatter field — link types to requirement specs | Medium | Low | Future — validate current 4 fields first, add when spec workflow exists | — |
 | S-41 | Local MCP server for `references/` — language-scoped principle loading | Medium | Medium | Not implemented — would replace file-based `load-reference` with stdio MCP server | — |
 | S-42 | Full automation loop: spec → code → test → commit → PR | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-42) | — |
-| S-43 | Rewrite mode — greenfield bypass in validate-plan | High | Low | Not implemented — see [arch file](improvements-open-arch.md#s-43) | 2026-03-19 |
-| S-44 | `build-spec-from-code` skill — rewrite spec from code | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-44) | 2026-03-19 |
 | S-45 | Design verification — structured pixel diff before refactor | High | High | POC needed — validate OpenCV/pixelmatch approach | — |
