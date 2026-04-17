@@ -2,7 +2,7 @@
 name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write
+allowed-tools: Read, Grep, Glob, Bash, Write, TaskCreate, TaskUpdate
 user-invocable: false
 ---
 
@@ -20,14 +20,18 @@ Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
 - [ ] 1.2 **Load rules** — Run:
   `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --profile review --principle NAME`
-  - This returns the rule content, review instructions, examples, and design patterns for this principle in one call
+  - This returns the rule content, review instructions, examples, and design patterns for this principle
   - Parse JSON output. If `errors` is non-empty → fail with the error
   - Store `rules[NAME]` — contains `rule`, `instructions`, `examples`, `patterns`
 - [ ] 1.3 **Parse input** -
   - read and parse input json
-  - extract files and units from json
+  - extract the list of files and their units (paths, line ranges, has_changes flags)
+  - Do NOT read the source code files here — source files are read one at a time in Phase 2
 ## Phase 2
-FOR each file DO
+Process files **one at a time** — do NOT read all source files upfront.
+
+FOR each file in review-input DO
+  - [ ] 2.1 **Read the source file NOW** — Read only this file's source code. Do NOT read other files yet.
   FOR each unit (class, struct, enum) in file.units that has_changes == true DO
     Creating/appending tasks from the instructions.
     Once you read instructions and rules, they might contain more tasks.

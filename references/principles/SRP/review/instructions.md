@@ -5,9 +5,6 @@ rules: PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md
 output_schema: output.schema.json
 ---
 
-### Phase 0: Load Examples for context.
-- [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
-
 #### Phase 1: Detection (SRP-1 and SRP-2 run independently and in parallel if possible)
 
 - [ ] **1.1 SRP-1: Count Verbs**

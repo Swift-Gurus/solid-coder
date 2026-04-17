@@ -55,6 +55,9 @@ These are triggered by other skills or agents — not directly by the user:
 | `find-spec` | Navigates spec hierarchy interactively, returns selected spec. Used by build-spec |
 | `parse-frontmatter` | Parses YAML frontmatter from markdown files. Utility |
 | `validate-spec` | Checks a spec for buildability — flags vague terms, undefined types, implicit contracts. Used by build-spec Phase 4 |
+| `validate-decomposition` | Validates arch.json against SOLID principles — splits components, adds protocols, restructures hierarchies |
+| `reconstruct-spec` | Reads arch.json ONLY (blind to original spec) and reconstructs what the architecture would deliver |
+| `validate-completeness` | Compares reconstructed spec against original spec, diffs, adds missing components to arch.json |
 | `validate-plan` | Validates arch.json against the codebase — finds reusable types, conflicts, annotates components with reuse status |
 | `synthesize-implementation` | Reconciles arch.json + validation.json into ordered implementation plan of /code directives |
 | `validate-implementation` | Post-code checkpoint — collects user screenshots and feedback, compares against design references, produces fix directives |
@@ -71,8 +74,28 @@ Agent wrappers allow skills to run as subagents — enabling parallel execution 
 | `apply-principle-review-agent` | Runs a single-principle review |
 | `principle-review-fx-agent` | Runs a single-principle review + fix suggestion |
 | `plan-agent` | Architecture decomposition from a feature spec |
+| `validate-decomposition-agent` | Validates arch.json against SOLID principles (model: sonnet) |
+| `reconstruct-spec-agent` | Blindly reconstructs spec from arch.json only (model: sonnet) |
+| `validate-completeness-agent` | Compares reconstructed vs original spec, adds missing components (model: sonnet) |
 | `validate-plan-agent` | Validates arch.json against the codebase (model: sonnet) |
 | `synthesize-implementation-agent` | Reconciles arch + validation into implementation plan (model: opus) |
+
+## Spec Rules (`spec-driven-development/specs/`)
+
+Shared spec rules defining the structure and validation used across `build-spec`, `build-spec-from-code`, and `validate-spec`. Each type folder mirrors the `references/principles/` pattern: `rule.md` defines the structure, `review/instructions.md` defines the validation rules.
+
+| Folder | Files | Purpose |
+|--------|-------|---------|
+| `README.md` | | Common frontmatter fields, section rules, folder structure |
+| `epic/` | `rule.md`, `review/instructions.md` | Large initiative broken into features/subtasks |
+| `feature/` | `rule.md`, `review/instructions.md` | New capability or improvement |
+| `subtask/` | `rule.md`, `review/instructions.md` | Scoped unit of work under a parent |
+| `bug/` | `rule.md`, `review/instructions.md` | Two-phase: report (draft) + ready (fix planned) |
+
+- `build-spec` / `build-spec-from-code` read `<type>/rule.md` to generate drafts.
+- `validate-spec` reads `<type>/review/instructions.md` for structural + buildability checks.
+- Interview flow (question batching, AskUserQuestion mechanics, round limits) lives in the `build-spec` skill — not in the per-type rules. Type-specific generation hints (e.g., "push for breadth on epics") live under "Story Depth" in `rule.md`.
+- Do NOT duplicate structure in skill instructions — always reference the template files.
 
 ## Principles (`references/`)
 

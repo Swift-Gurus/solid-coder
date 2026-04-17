@@ -25,7 +25,7 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
 
-- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--profile code --principle {PRINCIPLE_ID}`
+- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--profile code --exclude examples --principle {PRINCIPLE_ID}`
 - [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → { rule, instructions (fix), examples, patterns }`
 
 ## Phase 3: Draft Fix Actions
@@ -41,7 +41,7 @@ FOR each file that has non-COMPLIANT findings:
 ### 3.2 Draft Per-Principle Actions
 
 **Principle order:** Deduplicate first, then process from smallest to largest blast radius
-    - The order is: DRY → Functions → Any UI → OCP → LSP → ISP → SRP.
+    - The order is: Structured Concurrency → DRY → Functions → Any UI → OCP → LSP → ISP → SRP.
     - Each principle's fixes build on the previous:
         - DRY removes redundant types and extracts shared abstractions so all subsequent principles operate on deduplicated code,
         - OCP resolves sealed dependencies so LSP can fix abstractions cleanly,

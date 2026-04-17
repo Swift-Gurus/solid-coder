@@ -15,12 +15,13 @@ Loads principle rules via the gateway and forces you to process them before acti
 - PROFILE: `--profile` value — `review` or `code`
 - PRINCIPLE: (optional) `--principle` value — load one principle by name (e.g., `srp`)
 - MATCHED_TAGS: (optional) `--matched-tags` value — comma-separated tags to filter principles
+- EXCLUDE: (optional) `--exclude` value — comma-separated sections to skip: `examples`, `instructions`, `patterns`, `code_rules`
 
 ## Workflow
 
 - [ ] 1.1 **Run gateway** — Execute:
   ```
-  python3 {GATEWAY} load_rules --profile {PROFILE} [--principle {PRINCIPLE}] [--matched-tags {MATCHED_TAGS}]
+  python3 {GATEWAY} load_rules --profile {PROFILE} [--principle {PRINCIPLE}] [--matched-tags {MATCHED_TAGS}] [--exclude {EXCLUDE}]
   ```
   This outputs the full rule content as readable text — rules, instructions, examples, code rules, and design patterns for each active principle.
 

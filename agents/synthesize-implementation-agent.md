@@ -2,12 +2,12 @@
 name: synthesize-implementation-agent
 description: Reconciles architecture with codebase validation to produce ordered implementation plan.
 argument-hint: <arch.json-path> <validation.json-path> --output <plan-path>
-allowed-tools: Read, Grep, Glob, Bash, Write, Edit
+allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 skills:
   - synthesize-implementation
   - create-type
   - load-reference
-tools: Read, Grep, Glob, Bash, Write, Edit
+tools: Read, Grep, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 model: inherit
 maxTurns: 50
 ---

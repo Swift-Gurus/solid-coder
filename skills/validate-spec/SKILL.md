@@ -7,6 +7,8 @@ description: >-
 argument-hint: <spec-file-path>
 allowed-tools: Read, Grep, Glob, AskUserQuestion
 user-invocable: true
+context: fork
+model: sonnet
 ---
 
 # validate-spec — Spec Buildability Validator
@@ -25,98 +27,25 @@ Validates that a spec is concrete enough for a developer to implement without lo
 
 ## Phase 2: Structural Checks
 
-Verify the spec has all required sections for its type:
-
-- [ ] 2.1 **All types**: Description, Diagrams, Definition of Done
-- [ ] 2.2 **feature / subtask**: Input / Output, User Stories, Connects To
-- [ ] 2.3 **epic**: User Stories, Features list (subtask breakdown)
-- [ ] 2.4 **bug**: Steps to Reproduce, Expected vs Actual, Affected Component
-- [ ] 2.5 **Technical Requirements** (conditional): `## Technical Requirements` section must be present for `subtask` specs. For `feature` specs, required only if description or user stories mention business logic, integration, APIs, or external systems. Not required for `epic` or `bug`.
-- [ ] 2.6 **UI / Mockup** (conditional): if description or any user story mentions screens, views, components, or user interaction — `## UI / Mockup` section must be present. Acceptable content: a reference to `resources/` directory, an ASCII mockup, or an embedded image. Flag only if the section is entirely absent or contains only a `<!-- TODO -->` placeholder.
-- [ ] 2.7 **Diagrams completeness**: `## Diagrams` section must contain at least a connection diagram and a flow diagram. If the spec mentions async operations, callbacks, delegates, notifications, network calls, or multiple distinct actors — a sequence diagram must also be present.
-- [ ] 2.8 **Test Plan** (conditional): `## Test Plan` section must be present for `feature`, `subtask`, and `bug` specs where behavior is testable. For `bug` specs, must include at least one test case that would have caught the bug (a regression test). Not required for `epic` or for specs whose stories describe only internal/infrastructure behavior with no observable output. The section must have at least one test case.
-- [ ] 2.9 Report missing sections as `structural` gaps
+- [ ] 2.1 **Load the validation rules for this type** — Read `${CLAUDE_PLUGIN_ROOT}/spec-driven-development/specs/<type>/review/instructions.md` matching the spec's frontmatter `type` (`epic/`, `feature/`, `subtask/`, or `bug/`). Also read `specs/<type>/rule.md` for the structural contract and `specs/README.md` for common fields.
+- [ ] 2.2 **Run Phase A (structural checks)** from the loaded `review/instructions.md`:
+  - Verify frontmatter fields
+  - Verify required sections (in order)
+  - Verify conditional sections per rule.md
+  - Verify diagrams completeness when diagrams are required
+  - Verify forbidden sections are absent
+- [ ] 2.3 **Bug status-aware check** — The bug validation rules apply status-aware structural checks automatically (draft = Phase 1 only, ready+ = Phase 1 + Phase 2 including regression test). Follow the status branches in `bug/review/instructions.md`.
+- [ ] 2.4 Report missing/incorrect sections as `structural` gaps. Cite the rule file and section name in the finding.
 
 ## Phase 3: Buildability Scan
 
-**If `type = epic`**: apply epic-specific checks only (Phase 3-Epic). Skip Phase 3-Standard.
+Run **Phase B** from the `<type>/review/instructions.md` loaded in Phase 2.1.
 
-**Otherwise**: apply Phase 3-Standard.
+- **Epic** — Phase B contains epic-specific checks: vague scope, undefined subtasks, missing success criteria, ambiguous ownership, duplication, framework prescription. See `epic/review/instructions.md`.
+- **Feature / Subtask** — Phase B contains the Standard buildability scan: user story quality, vague terms, undefined types, intent-described operations, implicit consumer contracts, unverified external APIs, ambiguous scope boundaries, implementation leaking, AC-architecture disconnects. See `feature/review/instructions.md` (subtasks reference the feature rules directly).
+- **Bug** — Phase B is **skipped entirely**. Bugs are reproduction-driven, not requirement-driven. Only Phase A structural checks from Phase 2 apply. See `bug/review/instructions.md`.
 
-### Phase 3-Epic (epics only)
-
-- [ ] E.1 **Vague scope** — the epic's purpose should be concrete enough that a developer can tell whether a given task is in or out of scope:
-  - Flag phrases like "improve the system", "better UX", "various improvements", "general refactor"
-  - For each: what specifically is being changed and why?
-
-- [ ] E.2 **Undefined subtasks** — features listed in the subtask breakdown that are named but not scoped:
-  - A subtask is undefined if its name alone doesn't communicate what needs to be built
-  - For each: what does this subtask deliver?
-
-- [ ] E.3 **Missing success criteria** — the Definition of Done should state what "done" means for the epic as a whole, not just that subtasks are complete:
-  - Flag if DoD only says "all subtasks merged" or similar — what observable outcome does the epic achieve?
-
-- [ ] E.4 **Ambiguous ownership** — behaviors or components that span multiple subtasks without a clear owner:
-  - Shared state, shared protocols, or cross-cutting concerns mentioned in the epic but not assigned to a subtask
-  - For each: which subtask owns this?
-  
-- [ ] E.5 **Duplication** — the same concepts, flows, or behaviors explained multiple times across different sections:
-  - For each: define ownership — which section is the source of truth?
-  - Consolidate into corresponding user stories
-
-- [ ] E.6 **Framework prescription** — epic prescribes a specific framework, library, or technology that should be a child spec's decision:
-  - Epics describe what to achieve, not what tools to use
-  - For each: reframe as a capability requirement (e.g., "reactive state management" instead of "use Combine", "unidirectional architecture" instead of "use TCA")
-
-
-### Phase 3-Standard (feature / bug / subtask)
-
-- [ ] 3.0 **User story quality** (feature / subtask only):
-  - Each story must follow `As a [user/system], I want [goal] so that [reason]` format
-  - Each acceptance criterion must be independently verifiable — flag: "works correctly", "handles edge cases", "behaves as expected", or any criterion that requires interpretation
-  - Flag stories with no acceptance criteria
-  - Flag acceptance criteria that describe implementation rather than observable behavior
-
-- [ ] 3.1 **Vague terms** — words that hide decisions:
-  - "appropriate", "safe default", "suitable", "proper", "as needed", "handle errors", "relevant", "etc."
-  - For each: what specific value, behavior, or choice is meant?
-
-- [ ] 3.2 **Undefined types** — types, protocols, or models referenced but never defined:
-  - No fields listed, no signature given, no link to an existing definition
-  - For each: what are the fields/methods/conformances?
-
-- [ ] 3.3 **Intent-described operations** — workflow steps that describe what should happen but not how:
-  - "instantiate with config", "parse the response", "validate input", "set up the connection"
-  - Do NOT flag operations that include pseudo code, algorithms, or step-by-step logic explaining how it works — those are concrete enough
-  - For each: what is the concrete initializer, method, or API call?
-
-- [ ] 3.4 **Implicit consumer contracts** — outputs produced but no specification of:
-  - Who holds the instance and what's its lifetime (owned, shared, transient)?
-  - How is it passed to consumers (init injection, environment, closure, return value)?
-  - For each: who consumes this, via what mechanism?
-
-- [ ] 3.5 **Unverified external APIs** — references to third-party libraries or system frameworks where:
-  - Method signatures are described by intent rather than actual API
-  - Version or availability constraints are not mentioned
-  - For each: what is the actual method signature?
-
-- [ ] 3.6 **Ambiguous scope boundaries** — places where it's unclear what this spec owns vs what another spec/module owns:
-  - Shared types referenced but not assigned to a module
-  - Behaviors that could live in this feature or an adjacent one
-  - For each: who owns this?
-
-- [ ] 3.7 **Implementation leaking** — no language-specific syntax in specs. All requirements must be behavioral.
-  - **Flag**: backtick-wrapped code, type names, method signatures, attributes, decorators, framework-specific types, protocol conformances, generic constraints
-  - **Allowed**: pseudo code, algorithms, math, diagrams, design pattern names (strategy, factory, decorator), schema contracts, naming a framework or API as the chosen approach without mandating its syntax
-  - Skip findings already flagged by 3.0 (acceptance criteria describing implementation)
-  - For each: rewrite as the behavioral requirement it's trying to express
-
-- [ ] 3.8 **AC-architecture disconnects** — acceptance criteria that describe behavior without a traceable path through the spec's architectural model:
-  - For each AC that describes a state change or user interaction outcome: does the spec's Technical Requirements or architecture description define a mechanism (method, operation, data flow) that performs it?
-  - For each architectural mechanism described in Technical Requirements (e.g., "single method", "unified API", "one callback"): does it handle ALL the interaction types visible in the mockups and described in ACs?
-  - Flag when an AC says "X updates Y" but no described operation covers that update for all contexts (tree levels, screen types, option types) shown in mockups
-  - Flag when Technical Requirements claim a unified mechanism but ACs or mockups show interactions with different semantics that the mechanism doesn't distinguish
-  - For each: which AC is ungrounded, and what architectural mechanism is missing or underspecified?
+Execute every check listed under "Phase B" in the loaded file. Do not invent checks beyond what the file defines. Do not merge or skip.
 
 ## Phase 4: Report
 

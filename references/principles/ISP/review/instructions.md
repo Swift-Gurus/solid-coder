@@ -5,9 +5,6 @@ rules: PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md
 output_schema: output.schema.json
 ---
 
-### Phase 0: Load Examples for context.
-- [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
-
 #### Phase 1: Detection (ISP-1, ISP-2, ISP-3 run per protocol)
 
 - [ ] **1.0 Scope check** — ISP applies ONLY to protocol/interface declarations (see rule.md Exception 1). For each unit:

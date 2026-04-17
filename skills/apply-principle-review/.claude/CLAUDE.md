@@ -59,14 +59,16 @@ Create a tasklist and execute:
 3. **Parse rule frontmatter** — Run `parse-frontmatter.py` on the resolved `rule.md`. Extract `required_patterns` and other metadata.
 4. **Load references** — Run `load-reference.py` with file paths from step 3 (design patterns, referenced documents).
 5. **Load rules** — Run `load-reference.py` with the rules path from step 2.
-6. **Parse input** — Read and parse the review-input JSON. Extract files and units.
+6. **Parse input** — Read and parse the review-input JSON. Extract file list and unit metadata (paths, line ranges, has_changes flags). Do NOT read source code files here — they are loaded one at a time in Phase 2.
 
 ### Phase 2: Analysis (per-unit detection)
 
+Files are processed **one at a time** — source code is read just before reviewing, not all upfront. This keeps context focused on the file being reviewed rather than polluting the window with all files at once.
+
 ```
 FOR each file in input DO
+  1. Read this file's source code NOW
   FOR each unit (class, struct, enum, protocol, extension) where has_changes == true DO
-    1. Load instructions and rules into context
     2. Scope analysis ONLY to this unit's line range (line_start..line_end)
        — ignore other declarations in the same file
     3. Create a second tasklist from the instruction steps

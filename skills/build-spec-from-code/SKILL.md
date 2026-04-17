@@ -105,33 +105,40 @@ Analyzes existing code and produces a rewrite spec. Extracts functionalities as 
 
 ## Phase 5: Generate Draft Specs
 
+- [ ] 5.0 **Load the spec rules** — Read from `${CLAUDE_PLUGIN_ROOT}/spec-driven-development/specs/`:
+  - `README.md` — common frontmatter fields, section rules
+  - `epic/rule.md` — used for the parent rewrite spec
+  - `feature/rule.md` — used for the rebuild/bridge/migrate scaffolds
+
 ### 5.1 Parent Spec (Rewrite)
 
-- **Frontmatter**: `number`, `feature`, `type: epic`, `status: draft`, `mode: rewrite`, `parent` (if non-root), `blocked-by: []`, `blocking: []`
-- **Description**: what this rewrite achieves
-- **Input / Output**: from interview answers
-- **User Stories**: confirmed/adjusted stories from Phase 2.1 (these describe the TARGET behavior, carried forward from the existing code's functionalities)
-- **Current State**: summary from Phase 1 — types, responsibilities, integration map. This is a snapshot, not the target.
-- **Technical Requirements**: External/boundary constraints only — what the component must satisfy, not how the old code satisfied it. For UI code: colors, fonts, spacing, padding, links to design files/screenshots. For non-UI code: API contracts, performance constraints, threading model, platform requirements. Do NOT carry forward internal implementation details — capture the underlying need, not the concrete type that currently provides it.
-- **Diagrams**: current state diagrams from Phase 1.3 + target state diagrams generated from interview answers
-- **Connects To**: from integration map
-- **Definition of Done**: verifiable checklist
+Follow `epic/rule.md`. Frontmatter requires `mode: rewrite`. Populate sections:
+
+- `## Description` — what this rewrite achieves
+- `## User Stories` — confirmed/adjusted stories from Phase 2.1 describing the TARGET behavior (carried forward from existing code's functionalities)
+- `## Current State` — summary from Phase 1 (types, responsibilities, integration map). Snapshot for reference, not a target.
+- `## Technical Requirements` — **boundary/external constraints only**. UI code: colors, fonts, spacing, padding, design file/screenshot links. Non-UI: API contracts, performance constraints, threading model, platform requirements. Do NOT carry forward internal implementation details — capture the underlying need, not the concrete type that currently provides it.
+- `## Diagrams` — current state diagrams from Phase 1.3 + target state diagrams generated from interview answers
+- `## Connects To` — from integration map
+- `## Definition of Done` — verifiable checklist
 
 ### 5.2 Rebuild Feature (scaffold)
 
-- **Frontmatter**: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `mode: rewrite`, `parent: <parent_number>`, `blocked-by: []`, `blocking: []`
+Follow `feature/rule.md` frontmatter. Scaffold-only — full body deferred to `/build-spec` later.
 
+- Frontmatter: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `mode: rewrite`, `parent: <parent_number>`, `blocked-by: []`, `blocking: []`
 
 ### 5.3 Bridge Feature (conditional, scaffold)
 
-- **Frontmatter**: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `parent: <parent_number>`, `blocked-by: [<rebuild_number>]`, `blocking: []`
-- No `mode: rewrite` — runs normal `/implement` (validator finds both old and new types)
+Follow `feature/rule.md` frontmatter. No `mode: rewrite` — runs normal `/implement` (validator finds both old and new types).
+
+- Frontmatter: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `parent: <parent_number>`, `blocked-by: [<rebuild_number>]`, `blocking: []`
 
 ### 5.4 Migrate Feature (conditional, scaffold)
 
-- **Frontmatter**: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `parent: <parent_number>`, `blocked-by: [<bridge_number>]`, `blocking: []`
-- No `mode: rewrite` — runs normal `/implement`
-- User stories describe updating consumers to use the new interface directly (removing the bridge)
+Follow `feature/rule.md` frontmatter. No `mode: rewrite`. User stories describe updating consumers to use the new interface directly (removing the bridge).
+
+- Frontmatter: `number` (next from find-spec), `feature`, `type: feature`, `status: draft`, `parent: <parent_number>`, `blocked-by: [<bridge_number>]`, `blocking: []`
 
 ---
 

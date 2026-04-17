@@ -5,9 +5,6 @@ rules: PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md
 output_schema: output.schema.json
 ---
 
-### Phase 0: Load Examples for context.
-- [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
-
 #### Phase 1: Detection (DRY-1, DRY-2, and DRY-3 run independently and in parallel if possible)
 
 - [ ] **1.1 DRY-1: Detect Reuse Misses**
@@ -64,14 +61,15 @@ output_schema: output.schema.json
       |--------|-----------------|
       |        |                 |
 
-    - [ ] 1.2.2 Search other units in the same module/target for methods with the same logical sequence
-    - [ ] 1.2.3 Classify each match:
+    - [ ] 1.2.2 Compare methods **within the same type first** — do any methods in this type share the same logical sequence (same operations, same error handling, same control flow) even if they differ in what they collect or return?
+    - [ ] 1.2.3 Then search other units in the same module/target for methods with the same logical sequence
+    - [ ] 1.2.4 Classify each match:
 
       | Method A | Location A | Method B | Location B | Classification | Reasoning |
       |----------|-----------|----------|-----------|---------------|-----------|
       |          |           |          |           |               |           |
 
-    - [ ] 1.2.4 Count IDENTICAL and STRUCTURAL matches
+    - [ ] 1.2.5 Count IDENTICAL and STRUCTURAL matches
       Inlined duplications: ___
 
 - [ ] **1.3 DRY-3: Detect Missing Abstractions**

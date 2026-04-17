@@ -78,7 +78,14 @@ For each identified behavior or capability, define a component. Respect acceptan
   - `name`
   - `category` — from `solid-category` vocabulary (see **solid-coder:create-type** SKILL.md Phase 3.2).
   - `stack` — from `solid-stack` vocabulary (see **solid-coder:create-type** SKILL.md Phase 3.3). Empty array `[]` if pure Swift with no framework dependencies.
-  - `responsibility`
+  - `responsibility` — must include:
+    1. **What it does** — the capability
+    2. **Key behaviors from AC** — the specific logic paths, edge cases, and fallbacks from acceptance criteria that this component handles. Include enough detail so a decomposition validator can verify completeness.
+    
+    Do NOT include implementation details (specific APIs, frameworks, data structures, algorithms) unless they are explicitly stated in the spec's acceptance criteria or technical requirements. Describe behaviors, not mechanisms.
+    
+    Example BAD: "Observes file-system changes using DispatchSource and emits void signals via AsyncStream"
+    Example GOOD: "Emits a signal when new content is available in a watched file. Default implementation watches the file system. Can be swapped via dependency injection for testing."
   - `interfaces` — empty array `[]` for data models
   - `dependencies` — empty array `[]` for data models
   - `produces` — empty array `[]` for data models
@@ -89,7 +96,7 @@ For each identified behavior or capability, define a component. Respect acceptan
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
-- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`.
+- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude examples,patterns` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`. The planner only needs rules and code rules for validation — not examples or design patterns.
 - [ ] 3.3 **Verify each component against loaded rules.** For EACH component from Phase 2:
   - **SRP** — does this component have a single responsibility? Count the verbs (what it does). If 2+ cohesion groups or 3+ verbs serving different stakeholders → split into separate components.
   - **OCP** — are all its dependencies protocol-typed? If any dependency is concrete and non-injectable → add a protocol interface for it.
@@ -139,6 +146,5 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
 
 - This skill is a **black box** — it designs from the spec alone. Do NOT read the codebase or check for existing types.
 - Do NOT generate implementation code — only the architecture decomposition.
-- Do NOT add extra components "just in case" — only what the spec requires.
-- Keep `responsibility` to one sentence per component.
+- Do NOT add extra components "just in case" — only what the spec requires or what loaded SOLID rules demand (e.g., splitting a component to satisfy SRP).
 - When in doubt about injection method, default to `init`.

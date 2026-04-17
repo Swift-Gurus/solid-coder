@@ -44,6 +44,12 @@ output_schema: output.schema.json
           blank lines between phases are sufficient
         - Split multi-behavior tests — one test per scenario/behavior
         - Add assertions to tests that verify nothing
+        - Replace vacuous assertions with meaningful ones — the assertion must
+          constrain the result to a specific expected value. Identify what the
+          test is supposed to verify (from the test name and setup), then write
+          an assertion that would fail if the SUT behaved incorrectly
+        - Fix assertion-intent mismatch — if the test name claims to verify X
+          but the assertion checks Y, rewrite the assertion to actually verify X
         - Replace loops with parameterized tests (@Testing) or individual test cases
         - Replace `try?` with throwing `try` — mark test method as `throws`
         - Replace `do { try ... } catch { XCTFail(...) }` with bare `try` — mark
@@ -76,6 +82,10 @@ output_schema: output.schema.json
           with assertions on SUT output/state
         - For facades/coordinators: use real service implementations with their
           boundaries mocked — don't mock the direct dependencies
+        - For stub-in-integration: replace stubs with real implementations.
+          Integration tests must use real types. If environment setup is needed
+          (e.g., setting an environment variable, creating fixture directories),
+          do it in the test setup — don't substitute the component with a stub
     - [ ] For TEST-5 (setup complexity) — read `setup_complexity.dependency_count`:
         - **< 3 dependencies**: extract SUT construction to a `var sut` computed
           property or `setUp` method

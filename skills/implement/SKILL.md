@@ -7,7 +7,7 @@ description: >-
   does on round of refactoring for self-validation
   TRIGGER when: user says "implement spec", "implement" and passes spec file  
 argument-hint: <spec-file-path> [--verbose] [--iterations N]
-allowed-tools: Read, Glob, Bash, Write, Edit, AskUserQuestion, Skill
+allowed-tools: Read, Glob, Bash, Write, Edit, AskUserQuestion, Skill, TaskCreate, TaskUpdate
 user-invocable: true
 ---
 
@@ -92,52 +92,52 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - [ ] 4.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "code", "status": "success" }`
 - [ ] 4.4 If the Task failed → report which plan items completed, which failed, and which remain. Suggestion: "You can re-run `/code` with the remaining items or fix the issue and retry." Do NOT rollback already-completed items. STOP.
 
-## Phase 4.5: Validate Implementation
-
-- [ ] 4.5.1 Use skill **solid-coder:validate-implementation** with: `{OUTPUT_ROOT}`
-- [ ] 4.5.2 If result `status` == `"skipped"` or `"approved"` → proceed to Phase 5
-- [ ] 4.5.3 If result `status` == `"has_fixes"`:
-  - [ ] 4.5.3.1 Prepare a Task call:
+## Phase 5: Validate Implementation
+SKIP THIS STEP MOVE TO PHASE 6
+- [ ] 5.1 Use skill **solid-coder:validate-implementation** with: `{OUTPUT_ROOT}`
+- [ ] 5.2 If result `status` == `"skipped"` or `"approved"` → proceed to Phase 6
+- [ ] 5.3 If result `status` == `"has_fixes"`:
+  - [ ] 5.3.1 Prepare a Task call:
     - subagent_type: `solid-coder:code-agent`
     - prompt:
       ```
       mode: implement
       plan: {fixes_path}
       ```
-  - [ ] 4.5.3.2 Launch Task
-  - [ ] 4.5.3.3 After fixes applied, ask user: "Fixes applied. Would you like to re-validate, continue to refactor, or stop?"
-    - **Re-validate** → return to 4.5.1 (max 2 re-validates — after that, offer only continue or stop)
-    - **Continue** → proceed to Phase 5 with remaining issues noted
+  - [ ] 5.3.2 Launch Task
+  - [ ] 5.3.3 After fixes applied, ask user: "Fixes applied. Would you like to re-validate, continue to refactor, or stop?"
+    - **Re-validate** → return to 5.1 (max 2 re-validates — after that, offer only continue or stop)
+    - **Continue** → proceed to Phase 6 with remaining issues noted
     - **Stop** → STOP. Report what was implemented and what design issues remain.
-- [ ] 4.5.4 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "validate-implementation", "status": "success" }`
+- [ ] 5.4 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "validate-implementation", "status": "success" }`
 
-## Phase 5: Safety Review (conditional)
+## Phase 6: Safety Review (conditional)
 
-- [ ] 5.0 If ITERATIONS == 0: **skip this phase entirely** — go to Phase 6.
-- [ ] 5.1 Stage all files created/modified by Phase 4 and 4.5: run `git add -A` to capture all changes
-- [ ] 5.2 Invoke skill **solid-coder:refactor** with: `changes --iterations {ITERATIONS}` (if VERBOSE: append `--verbose`)
-- [ ] 5.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "refactor", "status": "success" }`
-- [ ] 5.4 If refactor found violations that persist → report remaining violations to the user. This is informational — the implementation is complete.
-- [ ] 5.5 If refactor found all code compliant → continue.
+- [ ] 6.0 If ITERATIONS == 0: **skip this phase entirely** — go to Phase 7.
+- [ ] 6.1 Stage all files created/modified by Phase 4 and 5: run `git add -A` to capture all changes
+- [ ] 6.2 Invoke skill **solid-coder:refactor** with: `changes --iterations {ITERATIONS}` (if VERBOSE: append `--verbose`)
+- [ ] 6.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "refactor", "status": "success" }`
+- [ ] 6.4 If refactor found violations that persist → report remaining violations to the user. This is informational — the implementation is complete.
+- [ ] 6.5 If refactor found all code compliant → continue.
 
-## Phase 6: Final Summary
+## Phase 7: Final Summary
 
-- [ ] 6.1 If VERBOSE: write final `implement-log.json` with all phase entries
-- [ ] 6.2 Print summary:
+- [ ] 7.1 If VERBOSE: write final `implement-log.json` with all phase entries
+- [ ] 7.2 Print summary:
   ```
   /implement complete
   Spec:    {spec file}
   Run:     {OUTPUT_ROOT}
-  Phases:  plan ✓ | validate ✓ | synthesize ✓ | code ✓ | review ✓
+  Phases:  plan ✓ | codebase ✓ | synthesize ✓ | code ✓ | validate ✓ | review ✓
   ```
   (Mark failed/skipped phases accordingly)
-- [ ] 6.3 **Cleanup** — only if all phases succeeded: delete the `.solid_coder/` directory in the project root. If any phase failed or stopped early, keep artifacts for debugging.
+- [ ] 7.3 **Cleanup** — only if all phases succeeded: delete the `.solid_coder/` directory in the project root. If any phase failed or stopped early, keep artifacts for debugging.
 
 ## Constraints
 
 - The orchestrator NEVER reads phase JSON outputs — it only passes paths forward between phases.
 - The orchestrator does NOT loop back to previous phases. The synthesizer reconciles conflicts.
-- The orchestrator runs phases 1-4 in sequence. Phase 5 (safety review) runs only when `--iterations N` is set with N > 0.
+- The orchestrator runs phases 1-4 in sequence. Phase 6 (safety review) runs only when `--iterations N` is set with N > 0.
 - Do NOT build the project.
 - Do NOT deviate from the instructions. Follow them thoroughly.
 - ALL Task calls must run in foreground (never `run_in_background: true`) — background agents hit permission prompts silently and stall.

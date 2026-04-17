@@ -28,7 +28,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 Load principle knowledge for informed reconciliation — NOT embedded in output.
 
 - [ ] 1.1 Collect all unique `category` and `stack` values from `arch.json` components into a flat, deduplicated list of tags.
-- [ ] 1.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {comma-separated tags from 1.1}`. If no tags derived, omit `--matched-tags`.
+- [ ] 1.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude examples,instructions` and `--matched-tags {comma-separated tags from 1.1}`. If no tags derived, omit `--matched-tags`.
 - [ ] 1.5 Loaded principle knowledge informs three things during Phase 2:
   - **Conflict resolution** (2.1.4) — prefer types that already satisfy principle constraints
   - **Breaking change assessment** (2.2) — whether an adjustment violates principle rules

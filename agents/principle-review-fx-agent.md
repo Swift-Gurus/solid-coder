@@ -2,11 +2,11 @@
 name: principle-review-fx-agent
 description: Generic Skill Wrapper, to allow skill to be run in parallel.
 argument-hint: <principle-name> <review-input-json>
-allowed-tools: Read, Grep, Glob, Bash, Write
+allowed-tools: Read, Grep, Glob, Bash, Write, Skill, TaskCreate, TaskUpdate
 skills:
 - apply-principle-review
 - fix-suggest
-tools: Read, Grep, Glob, Bash, Write
+tools: Read, Grep, Glob, Bash, Write, Skill, TaskCreate, TaskUpdate
 model: opus
 maxTurns: 100
 ---

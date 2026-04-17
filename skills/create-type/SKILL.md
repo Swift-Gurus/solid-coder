@@ -52,7 +52,7 @@ Apply these naming rules when creating or reviewing type names:
 ## Phase 2: Identify Types Needing Frontmatter
 
 - [ ] 2.1 Read each file
-- [ ] 2.2 Find all top-level type declarations: `class`, `struct`, `protocol`, `enum`, `extension`
+- [ ] 2.2 Find all top-level type declarations: `class`, `struct`, `protocol`, `enum`, `extension` `func`
 - [ ] 2.3 For each type, check if it already has a `/** solid-name:` or `/** solid-description:` block immediately above it
   - If yes → skip
   - If no → needs frontmatter
@@ -87,15 +87,17 @@ For each type needing frontmatter:
 
   Omit if the type is pure Swift with no framework dependencies.
 
-- [ ] 3.4 **solid-description** — keyword-rich description of what this type does, when to use it, and what problem it solves. Can be multiple sentences. Write it so that someone grepping for related concepts will find it — include domain terms, structural hints, and the key nouns that describe the type's purpose. This is the primary field used for discovery via grep.
+- [ ] 3.4 **solid-description** — keyword-rich description of what this type does, when to use it, and what problem it solves. Can be multiple sentences. Write it so that someone grepping for related concepts will find it — include domain terms, structural hints, and the key nouns that describe the type's purpose. Should not include any implementation details (e.d referencing wiring, specific types). This is the primary field used for discovery via grep. 
 
   For protocols/interfaces, start with "Contract for..." or "Contract that defines...":
   - Good: "Contract for reading and fetching product data from remote or local sources. Supports pagination and filtering by category."
-  - Good: "Contract that defines cacheable behavior. Types conforming to this can be stored in and retrieved from the app's cache layer."
+  - Good: "Contract that defines cacheable behavior. Types conforming to this can be stored in and retrieved from the app's cache layer. Writes into CoreData/SQL"
+  - Bad: "Contract that defines cacheable behaviour, used in MyNetworkProvider and uses MyStorage"
 
   For implementations:
   - Good: "Compact expandable chip that renders a tool call with name, status, and collapsible detail panel. Used in lists and feeds to show inline tool invocation results."
-  - Good: "Resolves a model ID string into a human-readable display name using a cached lookup table. Handles fallback for unknown model identifiers."
+  - Good: "Resolves a model ID string into a human-readable display name using a cached lookup table. Handles fallback for unknown model identifiers. Sanitizes ID"
+  - Bad: "implements that default cacheable behaviour, used in MyNetworkProvider and uses MyStorage, uses DispatchSource, connects with timeout equals 2."
 
   Bad: "A view" / "A service" / "Handles data"
 
@@ -144,7 +146,6 @@ final class ProductFetchService: ProductReading { ... }
 
 - Do NOT modify any code logic — only insert doc comment blocks and flag naming issues
 - Do NOT change existing doc comments or annotations
-- Do NOT add frontmatter to private/fileprivate nested types — only top-level declarations
-- Do NOT add frontmatter to extensions that merely add protocol conformance (e.g., `extension Foo: Codable {}`)
 - DO add frontmatter (category: `utility`) to extensions that add convenience functionality — new methods, computed properties, static helpers, or subscripts beyond what a protocol requires
+- Every type MUST have a frontmatter.
 

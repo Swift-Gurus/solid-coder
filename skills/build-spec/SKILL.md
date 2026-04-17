@@ -272,20 +272,11 @@ These are generated automatically and shown in the draft for review in Phase 7. 
 
 ## Phase 5: Generate Draft Spec
 
-- **Frontmatter**: `number`, `feature`, `type`, `status: ready`, `blocked-by`, `blocking`, `parent` (SPEC-NNN if non-root)
-- **Description**: 2–4 sentences — purpose, type, where it fits, what it enables
-- **Input / Output table** (features/subtasks): formats and locations
-- **Bug report section** (bugs): steps to reproduce, expected vs actual, affected component
-- **Features section** (epics): ordered list with assigned spec numbers
-- **User Stories** (features/epics/subtasks): stories with acceptance criteria, type-differentiated depth
-- **Technical Requirements** (subtasks always, features if business logic/integration): APIs, libraries, error codes, patterns, integration points
-- **UI / Mockup** (conditional): ASCII mockup or `<!-- TODO: attach image or design -->` placeholder
-- **Test Plan** (feature/subtask/bug with testable behavior): grouped by component/screen, test cases in `"When [condition], [action], [outcome]"` format covering happy paths and edge cases. For bugs: must include at least one regression test case that would have caught the bug.
-- **Diagrams**: Mermaid connection diagram, flow diagram, sequence diagram (if applicable)
-- **Connects To table**: upstream and downstream from interview answers
-- **Definition of Done**: verifiable checklist
+- [ ] 5.1 **Load the per-type rule** — Read `${CLAUDE_PLUGIN_ROOT}/spec-driven-development/specs/<type>/rule.md` for the spec's type (`epic/`, `feature/`, `subtask/`, or `bug/`). Also read `specs/README.md` for common frontmatter fields and section rules.
+- [ ] 5.2 **Generate the draft** following the rule's required frontmatter, required sections (in order), and conditional sections. Apply the common section rules (story format, AC verifiability, no implementation leaking, test case format) and the type-specific Story Depth guidance from `rule.md`.
+- [ ] 5.3 **Bug-specific** — For `type: bug`, generate ONLY Phase 1 (report) sections: Description, Steps to Reproduce, Expected vs Actual, Affected Component. Leave Phase 2 (Root Cause, Fix Plan, Diagrams, Test Plan, Definition of Done) for a later pass after investigation. The spec starts at `status: draft` as a report artifact.
 
-If `epic_mode = split`: Epic = `next_number`, children = `next_number+1…N`, children get `status: draft`.
+The template is the single source of truth for structure — do NOT invent sections or omit required ones. For `epic_mode = split`: Epic = `next_number`, children = `next_number+1…N`, children get `status: draft`.
 
 ---
 

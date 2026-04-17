@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Structured Concurrency Fix Suggestion Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "file_path", "suggestions"],
+  "properties": {
+    "agent": { "const": "structured-concurrency" },
+    "principle": { "const": "Structured Concurrency" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "file_path": { "type": "string" },
+    "review_source": { "type": "string" },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "addresses", "title", "severity", "suggested_fix", "todo_items"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sc-fix-\\d{3}$"
+          },
+          "unit_name": { "type": "string" },
+          "unit_kind": {
+            "type": "string",
+            "enum": ["class", "struct", "enum", "protocol", "extension", "actor"]
+          },
+          "addresses": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "title": { "type": "string" },
+          "severity": {
+            "type": "string",
+            "enum": ["MINOR", "SEVERE"]
+          },
+          "pattern": {
+            "type": "string",
+            "enum": ["migrate_to_async", "store_and_cancel", "remove_bypass", "parallelize_awaits", "remove_blocking_bridge", "use_duration_api"]
+          },
+          "suggested_fix": { "type": "string" },
+          "todo_items": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "verification": {
+            "type": "object",
+            "properties": {
+              "model_mixing_count": { "type": "integer" },
+              "orphaned_tasks": { "type": "integer" },
+              "safety_bypasses": { "type": "integer" },
+              "sequential_awaits": { "type": "integer" },
+              "blocking_bridges": { "type": "integer" },
+              "raw_durations": { "type": "integer" },
+              "expected_severity": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

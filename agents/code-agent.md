@@ -2,12 +2,12 @@
 name: code-agent
 description: SOLID-compliant coding agent — writes code with principle rules loaded as constraints.
 argument-hint: <mode> [refactor|implement|code] <mode-specific args>
-allowed-tools: Read, Grep, Glob, Bash, Write, Edit
+allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 skills:
   - create-type
   - code
   - load-reference
-tools: Read, Grep, Glob, Bash, Write, Edit
+tools: Read, Grep, Glob, Bash, Write, Edit, Skill
 model: inherit
 maxTurns: 1000
 ---

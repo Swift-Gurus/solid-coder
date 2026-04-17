@@ -79,15 +79,14 @@ Detect generic patterns buried inside domain-specific code instead of extracted 
    - UI composition patterns (recurring view structures, repeated styling + layout combinations, common interactive elements with shared behavior)
    - Data flow patterns (transform pipelines, validation chains, mapping sequences)
 3. **Assess reuse potential** — could another part of the codebase need this same pattern?
-   - If YES and the pattern is non-trivial (more than a few lines) → missing abstraction
+   - If YES → missing abstraction
    - If NO (the pattern is inherently domain-specific) → not a violation
 4. **Count** missing abstractions
 
 ### Exceptions (NOT violations):
-1. **Trivial code** — duplicated logic under 3 lines (too small to justify abstraction overhead)
-2. **Intentionally specialized** — same shape but genuinely different domain semantics (e.g., two validation functions that happen to have similar structure but validate different business rules)
-3. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
-4. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
+1. **Intentionally specialized** — same shape but genuinely different domain semantics (e.g., two validation functions that happen to have similar structure but validate different business rules)
+2. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
+3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
 
 ### Severity Bands:
 - COMPLIANT (0 reuse misses AND 0 inlined duplications AND 0 missing abstractions)

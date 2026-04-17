@@ -5,9 +5,6 @@ rules: PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md
 output_schema: output.schema.json
 ---
 
-### Phase 0: Load Examples for context.
-- [ ] **0.1 Read all examples** — Glob `PRINCIPLE_FOLDER_ABSOLUTE_PATH/Examples/*` and read every file found
-
 #### Phase 1: Detection (TEST-1 through TEST-5 run independently and in parallel if possible)
 
 - [ ] **1.1 TEST-1: Detect Isolation Violations**
@@ -57,7 +54,13 @@ output_schema: output.schema.json
       |-------------|-----------|----------|------------|
       |             |           |          |            |
 
-    - [ ] 1.2.5 Count structure violations
+    - [ ] 1.2.5 Detect vacuous assertions — read each assertion's actual condition. Flag if the assertion is always true regardless of SUT behavior (tautology, self-comparison, unconstrained check) or if the assertion doesn't match what the test name/description claims to verify
+
+      | Test Method | Assertion | Always True? | Matches Intent? | Violation? |
+      |-------------|-----------|-------------|-----------------|------------|
+      |             |           |             |                 |            |
+
+    - [ ] 1.2.6 Count structure violations
       Structure violations: ___
 
 - [ ] **1.3 TEST-3: Detect Naming Violations**
@@ -100,7 +103,13 @@ output_schema: output.schema.json
       |-------------|-------|--------|------------|
       |             |       |        |            |
 
-    - [ ] 1.4.5 Count test double violations
+    - [ ] 1.4.5 Detect stub in integration context — test named or categorized as integration but injects stubs/mocks for the component under test. Check: does the test claim to validate real external behavior but substitute the dependency with a test double?
+
+      | Test Method | Claims | Actual SUT | Uses Stub? | Violation? |
+      |-------------|--------|-----------|------------|------------|
+      |             |        |           |            |            |
+
+    - [ ] 1.4.6 Count test double violations
       Test double violations: ___
 
 - [ ] **1.5 TEST-5: Detect Setup Complexity Violations**

@@ -73,6 +73,16 @@ Detect tests that contain logic, lack clear phases, or verify too many behaviors
    - No clear separation between setup, action, and assertion
    - Assertions interleaved with actions (act-assert-act-assert)
    - No assertions at all (test does something but verifies nothing)
+   - **Vacuous assertions** — assertion exists but is always true regardless
+     of SUT behavior. The assertion does not constrain the result to a
+     specific expected value. Signals: assertion uses a tautology,
+     assertion checks a type that's always valid, assertion compares
+     the same value to itself, assertion checks a condition that cannot
+     fail given the setup
+   - **Assertion-intent mismatch** — test name or description claims to
+     verify a specific behavior but assertions check something unrelated
+     or weaker. Read the assertion, not the name — if the assertion
+     doesn't prove what the test claims, it's a violation
    - Phase comments (`// Arrange`, `// Act`, `// Assert`, `// Setup`,
      `// Given`, `// When`, `// Then`) — use blank lines to separate
      phases, the code structure should make them obvious
@@ -146,6 +156,13 @@ Detect improper use of mocks, stubs, and fakes — over-mocking, under-mocking, 
      using real service implementations with their boundaries mocked
      (e.g., real `OrderService` with mocked network layer, not a
      `MockOrderService`)
+4. **Stub in integration context** — detect:
+   - Test named or categorized as "integration" but injects stubs/mocks
+     for the component under test. Integration tests must use real
+     implementations — stubs are for unit test isolation only
+   - Test claims to validate real external behavior (real shell, real
+     file system, real network) but substitutes the dependency with a
+     test double
 
 **Count:** Number of test double quality violations found.
 

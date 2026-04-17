@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Structured Concurrency Review Output",
+  "type": "object",
+  "required": ["agent", "principle", "timestamp", "files"],
+  "properties": {
+    "agent": { "const": "structured-concurrency" },
+    "principle": { "const": "Structured Concurrency" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "documentation_sources": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": { "type": "string" },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "properties": {
+                "unit_name": { "type": "string" },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension", "actor"]
+                },
+                "metrics": {
+                  "type": "object",
+                  "required": ["model_mixing", "task_lifecycle", "safety_bypasses", "sequential_await", "sync_async_bridge", "duration_api"],
+                  "properties": {
+                    "model_mixing": {
+                      "type": "object",
+                      "required": ["async_count", "gcd_count", "completion_handler_count", "mixed"],
+                      "properties": {
+                        "async_count": { "type": "integer" },
+                        "gcd_count": { "type": "integer" },
+                        "completion_handler_count": { "type": "integer" },
+                        "mixed": { "type": "boolean" }
+                      }
+                    },
+                    "task_lifecycle": {
+                      "type": "object",
+                      "required": ["orphaned_count", "leaked_count"],
+                      "properties": {
+                        "orphaned_count": { "type": "integer" },
+                        "leaked_count": { "type": "integer" }
+                      }
+                    },
+                    "safety_bypasses": {
+                      "type": "object",
+                      "required": ["unchecked_sendable_count", "nonisolated_unsafe_count"],
+                      "properties": {
+                        "unchecked_sendable_count": { "type": "integer" },
+                        "nonisolated_unsafe_count": { "type": "integer" }
+                      }
+                    },
+                    "sequential_await": {
+                      "type": "object",
+                      "required": ["independent_sequential_count"],
+                      "properties": {
+                        "independent_sequential_count": { "type": "integer" }
+                      }
+                    },
+                    "sync_async_bridge": {
+                      "type": "object",
+                      "required": ["blocking_count", "unnecessary_continuation_count"],
+                      "properties": {
+                        "blocking_count": { "type": "integer" },
+                        "unnecessary_continuation_count": { "type": "integer" }
+                      }
+                    },
+                    "duration_api": {
+                      "type": "object",
+                      "required": ["raw_nanosecond_count"],
+                      "properties": {
+                        "raw_nanosecond_count": { "type": "integer" }
+                      }
+                    }
+                  }
+                },
+                "scoring": {
+                  "type": "object",
+                  "required": ["final_severity"],
+                  "properties": {
+                    "final_severity": {
+                      "type": "string",
+                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
+                    },
+                    "exceptions": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "metric", "severity", "description", "line_start", "line_end"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "metric": { "type": "string", "enum": ["SC-1", "SC-2", "SC-3", "SC-4", "SC-5", "SC-6"] },
+                      "severity": { "type": "string", "enum": ["MINOR", "SEVERE"] },
+                      "description": { "type": "string" },
+                      "line_start": { "type": "integer" },
+                      "line_end": { "type": "integer" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,12 +1,3 @@
-// SUI-8 Compliant: Adaptive Sizing
-// Views use proportional sizing, design system tokens, and constraints.
-// No hardcoded literal frame values.
-
-import SwiftUI
-
-// --- Compliant: Child does NOT self-size ---
-// BrandingPanel fills whatever width its parent gives it.
-// Internal elements use design system tokens or flexible sizing.
 
 struct BrandingPanel: View {
     let onOpenProject: () -> Void
@@ -38,12 +29,6 @@ struct BrandingPanel: View {
             .frame(maxWidth: .infinity) // ✅ Fills available width
     }
 }
-
-// --- Compliant: Parent uses proportional layout ---
-// WelcomeScreen uses containerRelativeFrame for proportional child sizing.
-// NOTE: Avoid wrapping layout stacks in GeometryReader — it returns a flexible
-// preferred size that expands greedily, breaking stack layout negotiation.
-// Use containerRelativeFrame (iOS 17+) instead.
 
 struct WelcomeScreen: View {
     var body: some View {

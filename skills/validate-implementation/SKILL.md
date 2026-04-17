@@ -43,8 +43,8 @@ The skill discovers what's available in OUTPUT_ROOT:
 ## Phase 2: Spec Requirements Validation
 
 - [ ] 2.1 Read the spec's user stories and acceptance criteria
-- [ ] 2.2 For each criterion, quick check — does the code appear to address it?
-  - Non-visual criteria → skim codebase for evidence (Grep/Glob, don't deep-read)
+- [ ] 2.2 For each criterion, check — does the code appear to address it?
+  - Non-visual criteria → search codebase for evidence (Grep/Glob)
   - Visual criteria → defer to Phase 3
 
   | Criterion | Visual? | Likely met? | Notes |
@@ -83,27 +83,32 @@ Only runs if Phase 1.6 determined visual validation is needed.
 
 ## Phase 5: Produce Fix Plan
 
-Only runs if there are actionable findings (design mismatches, failed criteria, user feedback).
+Only runs if there are actionable findings from any source: unmet criteria (Phase 2), design mismatches (Phase 3), or user feedback (Phase 4).
 
-- [ ] 5.1 For each finding, produce a plan item in `implementation-plan.json` format:
+- [ ] 5.1 Collect all findings into a unified list:
+  - **From Phase 2 (criteria)**: each criterion that appears unmet
+  - **From Phase 3 (visual)**: each design mismatch — missing/wrong/clipped elements
+  - **From Phase 4 (user feedback)**: each issue the user reported
+
+- [ ] 5.2 For each finding, produce a plan item in `implementation-plan.json` format:
   - `id`: `fix-001`, `fix-002`, etc.
-  - `action`: `"modify"` (design fixes target existing files)
-  - `file`: path to the file that needs fixing (from file_hint or search)
-  - `directive`: specific fix instruction (e.g., "Replace app icon — use SF Symbol 'command' on blue rounded rectangle. Current icon is a gradient wave graphic.")
+  - `action`: `"modify"` (fixes target existing files)
+  - `file`: path to the file that needs fixing (from search or file_hint)
+  - `directive`: specific fix instruction derived from the finding
   - `depends_on`: `[]` (fixes are independent unless one depends on another)
   - `component`: component name if known
   - `notes`: what was wrong (expected vs actual)
   - `acceptance_criteria`: the spec criteria this fix addresses
 
-- [ ] 5.2 Ask user using AskUserQuestion: to confirm directives — "Which of these should I fix?"
+- [ ] 5.3 Ask user using AskUserQuestion: to confirm directives — "Which of these should I fix?"
   - User can approve all, select specific ones, or dismiss all
 
-- [ ] 5.3 Assemble `design-fix-plan.json` matching implementation-plan schema:
-  - `spec_summary`: "Design fixes from validate-implementation"
+- [ ] 5.4 Assemble `design-fix-plan.json` matching implementation-plan schema:
+  - `spec_summary`: "Fixes from validate-implementation (criteria + design + user feedback)"
   - `matched_tags`: read from the original `implementation-plan.json` in OUTPUT_ROOT
-  - `plan_items[]`: approved fix items from 5.1
+  - `plan_items[]`: approved fix items from 5.2
   - `reconciliation_decisions`: `[]` (not applicable)
-  - `summary`: counts
+  - `summary`: counts by source (completeness, visual, user feedback)
 
 - [ ] 5.4 Validate before writing — run:
   `! python3 ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/scripts/validate-output.py {OUTPUT_ROOT}/design-fix-plan.json ${CLAUDE_PLUGIN_ROOT}/skills/synthesize-implementation/implementation-plan.schema.json`

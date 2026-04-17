@@ -2,7 +2,7 @@
 name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
-allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash
+allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash, TaskCreate, TaskUpdate
 user-invocable: true
 ---
 
@@ -57,7 +57,7 @@ After Phase 2, process each chunk sequentially in Phase 3:
 
   **code** mode (default): no tags (load all principles)
 
-- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code` and `--matched-tags {tags}` (if any)
+- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude instructions` and `--matched-tags {tags}` (if any). This loads rule.md (metrics, severity bands, exceptions), code/instructions.md (coding decision trees), examples (compliant and violation pairs), and design patterns (only when declared in frontmatter) — no fix instructions to keep context focused.
 
 ## Phase 3: Write Code
 Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.
@@ -71,11 +71,12 @@ Apply every constraint from the Phase 2 summary to every line of code. Do NOT de
   - [ ] 3.1.4 - validate your code using loaded rules, if it violates repeat from 3.1.1 by choosing different approach
   - [ ] 3.1.5 - summarize what was done, what violations where found, how they were resolved
 - [ ] 3.2 For each plan item with `design_references`: re-read the design screenshots and verify your code matches the layout, spacing, colors, and element sizes before moving to the next item.
-- [ ] 3.3 After creating or extracting any new type, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
+
+- [ ] 3.3 After creating or extracting any new type, static function, helpers, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
 
 ### Plan extension.
-- you are allowed to extend plan to create other interfaces, object to satisfy loaded rules.
-- always reuse what already exist, DRY has instructions how to do it.
+- stick as close to the plan as possible.
+- always reuse what already exist, must use DRY principle instructions how to find.
 
 #### Extraction
 

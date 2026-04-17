@@ -108,7 +108,7 @@ def discover_principles_tool(matched_tags=None):
     description=(
         "Load principle rules for a pipeline profile. "
         "Profile 'review': rule.md + review/instructions.md + examples. "
-        "Profile 'code': rule.md + fix/instructions.md + code/rule.md + examples. "
+        "Profile 'code': rule.md + fix/instructions.md + code/instructions.md + examples. "
         "Use 'principle' to load ONE principle (agents), omit to load all (code skill)."
     ),
     input_schema={
@@ -132,7 +132,7 @@ def discover_principles_tool(matched_tags=None):
         "required": ["profile"],
     },
 )
-def load_rules(profile, principle=None, matched_tags=None):
+def load_rules(profile, principle=None, matched_tags=None, exclude=None):
     # Step 1: Discover and filter principles
     result = discover_principles.discover_and_filter(
         str(REFS_ROOT), matched_tags=matched_tags,
@@ -148,6 +148,14 @@ def load_rules(profile, principle=None, matched_tags=None):
                 {"principle": principle, "file": "", "error": f"Principle '{principle}' not found or not active"}
             ], "skipped_principles": result["skipped_principles"]}
 
+    # Parse exclude list: comma-separated string or list
+    skip = set()
+    if exclude:
+        if isinstance(exclude, str):
+            skip = set(e.strip().lower() for e in exclude.split(","))
+        elif isinstance(exclude, list):
+            skip = set(e.lower() for e in exclude)
+
     errors = []
     rules = {}
 
@@ -158,7 +166,7 @@ def load_rules(profile, principle=None, matched_tags=None):
 
         entry = {"rule": None, "instructions": None, "examples": [], "patterns": [], "code_rules": None}
 
-        # Load rule.md
+        # Load rule.md (always loaded)
         try:
             loaded = load_reference.load([rule_path])
             if loaded:
@@ -166,43 +174,46 @@ def load_rules(profile, principle=None, matched_tags=None):
         except Exception as e:
             errors.append({"principle": name, "file": "rule.md", "error": str(e)})
 
-        # Load instructions based on profile
-        if profile == "review":
-            instr_path = folder / "review" / "instructions.md"
-        else:
-            instr_path = folder / "fix" / "instructions.md"
+        # Load instructions
+        if "instructions" not in skip:
+            if profile == "review":
+                instr_path = folder / "review" / "instructions.md"
+            else:
+                instr_path = folder / "fix" / "instructions.md"
 
-        if instr_path.is_file():
-            try:
-                loaded = load_reference.load([str(instr_path)])
-                if loaded:
-                    entry["instructions"] = loaded[0]["content"]
-            except Exception as e:
-                errors.append({"principle": name, "file": str(instr_path.name), "error": str(e)})
+            if instr_path.is_file():
+                try:
+                    loaded = load_reference.load([str(instr_path)])
+                    if loaded:
+                        entry["instructions"] = loaded[0]["content"]
+                except Exception as e:
+                    errors.append({"principle": name, "file": str(instr_path.name), "error": str(e)})
 
         # Load examples
-        examples_dir = folder / "Examples"
-        if examples_dir.is_dir():
+        if "examples" not in skip:
+            examples_dir = folder / "Examples"
+            if examples_dir.is_dir():
+                try:
+                    loaded = load_reference.load([str(examples_dir)])
+                    entry["examples"] = [f["content"] for f in loaded]
+                except Exception:
+                    pass
+
+        # Load design patterns
+        if "patterns" not in skip:
             try:
-                loaded = load_reference.load([str(examples_dir)])
-                entry["examples"] = [f["content"] for f in loaded]
+                parsed = parse_frontmatter.parse(rule_path)
+                for pattern_path in parsed.get("required_patterns", []) if isinstance(parsed.get("required_patterns"), list) else []:
+                    if Path(pattern_path).is_file():
+                        loaded = load_reference.load([pattern_path])
+                        if loaded:
+                            entry["patterns"].append(loaded[0]["content"])
             except Exception:
                 pass
 
-        # Load design patterns (from parse-frontmatter)
-        try:
-            parsed = parse_frontmatter.parse(rule_path)
-            for pattern_path in parsed.get("required_patterns", []) if isinstance(parsed.get("required_patterns"), list) else []:
-                if Path(pattern_path).is_file():
-                    loaded = load_reference.load([pattern_path])
-                    if loaded:
-                        entry["patterns"].append(loaded[0]["content"])
-        except Exception:
-            pass
-
-        # Load code/rule.md (code profile only)
-        if profile == "code":
-            code_rule = folder / "code" / "rule.md"
+        # Load code/instructions.md (code profile only)
+        if "code_rules" not in skip and profile == "code":
+            code_rule = folder / "code" / "instructions.md"
             if code_rule.is_file():
                 try:
                     loaded = load_reference.load([str(code_rule)])
