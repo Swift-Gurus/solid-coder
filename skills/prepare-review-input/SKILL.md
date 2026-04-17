@@ -1,7 +1,7 @@
 ---
 name: prepare-review-input
-description: Normalize input (branch diff, folder, files, class, buffer) into structured review-input.json for review agents.
-argument-hint: [branch|changes|folder|file|files|buffer] [target] [--base <branch>]
+description: Normalize input (changes, folder, files, class, buffer) into structured review-input.json for review agents.
+argument-hint: [changes|folder|file|files|buffer] [target]
 allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: false
 ---
@@ -9,9 +9,9 @@ user-invocable: false
 # Prepare Review Input
 
 ## Input
-- SOURCE_TYPE: $ARGUMENTS[0] — one of: branch, changes, folder, file, files, buffer
+- SOURCE_TYPE: $ARGUMENTS[0] — one of: changes, folder, file, files, buffer
   - If $ARGUMENTS[0] is not a known type you must stop and show an error message. Unknown Type
-  - If NO arguments provided → default to branch diff (current branch vs base)
+  - If NO arguments provided → default to `changes` (staged + unstaged + untracked)
 - OUTPUT_ROOT: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
 - CANDIDATE_TAGS: optional list of tags from the orchestrator (extracted from rule.md frontmatters)
 - OUTPUT_PATH: {OUTPUT_ROOT}/prepare
@@ -23,11 +23,11 @@ Create Preparation task list and execute it.
 - [ ] 1.1 **Create output folder** — Create `OUTPUT_PATH`
 - [ ] 1.2 **Detect source type** — 
   - SOURCE_TYPE not recognized, fail with the message (don't continue):
-  - NO arguments → `branch` (default: review all changes on current branch)
+  - NO arguments → `changes` (default: review current git changes)
   - is a directory path → `folder`
   - is a file path → `file`
   - contains newlines or is after explicit `buffer` keyword → `buffer`
-- [ ] 1.3 **Validate target** — Confirm file/folder is accessible (skip for branch type)
+- [ ] 1.3 **Validate target** — Confirm file/folder is accessible (skip for changes type)
 - [ ] 1.4 **Read output schema** — Read `output.schema.json` from this skill's directory
 
 ### Phase 2: Loading content
@@ -38,43 +38,39 @@ Create Preparation task list and execute it.
    - if mode is Files then load content using Phase 2.5
    - if mode is Buffer then load content using Phase 2.4
 
-#### Phase 2.1: Changes 
-- [ ] 2.1.1 **Run prepare-changes script** — 
+#### Phase 2.1: Changes
+- [ ] 2.1.1 **Run prepare-changes script** —
     ```bash
         python3 {SKILL_ROOT}/scripts/prepare-changes.py -o OUTPUT_PATH/review-input.json
     ```
-  - This collects staged + unstaged + untracked changes, parses diffs, and writes structured JSON with per-file changed ranges
-- [ ] 2.1.2 **Read generated JSON** — Read `OUTPUT_PATH/review-input.json`
-- [ ] 2.1.3 **Read changed files** — Read each file listed in the JSON from disk
-- [ ] 2.1.4 **Identify units** — Run unit identification on each file (see Unit Identification)
-  - Set `has_changes` for every unit — it must be `true` or `false`, NEVER `null`:
-    - if the file's `changed_ranges` is `null`, empty, or missing → set `has_changes = true` for ALL units in that file (whole-file review)
-    - if the file has `changed_ranges` (non-empty array) →
-         check if ANY changed_range overlaps with [unit.line_start, unit.line_end].
-         Overlap = range.start <= unit.line_end AND range.end >= unit.line_start.
-         If overlap exists → has_changes = true, otherwise → has_changes = false
-- [ ] 2.1.5 **Match tags** — If CANDIDATE_TAGS were provided (see Tag Matching section below), match them against the code you've read and merge with `detected_imports` into `matched_tags`
-- [ ] 2.1.6 **Update JSON** — Write units and matched_tags back into `OUTPUT_PATH/review-input.json` and update summary counts
+  - Collects staged + unstaged + untracked changes, parses diffs, writes per-file `changed_ranges`.
+- [ ] 2.1.2 **Extract units + compute has_changes** — Run:
+    ```bash
+        python3 {SKILL_ROOT}/scripts/extract-units.py OUTPUT_PATH/review-input.json
+    ```
+  - Updates the JSON in place: fills `files[].units` with `{name, kind, line_start, line_end, has_changes}` and recomputes `summary.total_units` / `summary.changed_units`.
+  - `has_changes` is `true` if any `changed_range` overlaps the unit's line span, else `false`. For files with null/empty `changed_ranges` (untracked), all units are `has_changes: true`.
+  - Do NOT do this work by hand / via inline Python. If extract-units fails, fix the script instead of bypassing it.
+- [ ] 2.1.3 **Match tags** — Read OUTPUT_PATH/review-input.json, examine `detected_imports` + the source files, merge matched tags into `matched_tags` (see Tag Matching).
+- [ ] 2.1.4 **Write matched_tags back** — Update `matched_tags` in the JSON.
 
 #### Phase 2.2: Folder
-- [ ] 2.2.1 **Read all files**
-- [ ] 2.2.2 **Match tags** — If CANDIDATE_TAGS were provided, match them against the code (see Tag Matching)
+- [ ] 2.2.1 **Discover .swift files** — Glob the folder recursively.
+- [ ] 2.2.2 **Write initial review-input.json** — Build `files[]` with each path and `changed_ranges: null`. Set `source_type: "folder"`. Then run `extract-units.py OUTPUT_PATH/review-input.json` to fill units (all `has_changes: true`).
+- [ ] 2.2.3 **Match tags** — See Tag Matching.
 
 #### Phase 2.3: File
-- [ ] 2.3.1 **Read the file**
-- [ ] 2.3.2 **Match tags** — If CANDIDATE_TAGS were provided, match them against the code (see Tag Matching)
+- [ ] 2.3.1 **Write initial review-input.json** — `files: [{file_path: <path>, changed_ranges: null, units: []}]`, `source_type: "file"`. Run `extract-units.py` to fill units.
+- [ ] 2.3.2 **Match tags** — See Tag Matching.
 
 #### Phase 2.5: Files (explicit file list)
-- [ ] 2.5.1 **Parse file list** — Extract the list of file paths from the input (provided as JSON array or space-separated paths)
-- [ ] 2.5.2 **Read each file** — Read all listed files from disk. If a file doesn't exist (was deleted), skip it.
-- [ ] 2.5.3 **Identify units** — Run unit identification on each file (see Unit Identification). Set `has_changes = true` for ALL units (whole-file review).
-- [ ] 2.5.4 **Set changed_ranges** — Set `changed_ranges: null` for every file (triggers whole-file review)
-- [ ] 2.5.5 **Match tags** — If CANDIDATE_TAGS were provided, match them against the code (see Tag Matching)
-- [ ] 2.5.6 **Write structured output** — Write to `OUTPUT_PATH/review-input.json` with `source_type: "files"`
+- [ ] 2.5.1 **Parse file list** — JSON array or space-separated paths.
+- [ ] 2.5.2 **Write initial review-input.json** — One entry per file with `changed_ranges: null`. Set `source_type: "files"`. Run `extract-units.py`.
+- [ ] 2.5.3 **Match tags** — See Tag Matching.
 
 #### Phase 2.4: Buffer
-- [ ] 2.4.1 **Capture buffer string** — Store raw input
-- [ ] 2.4.2 **Match tags** — If CANDIDATE_TAGS were provided, match them against the buffer (see Tag Matching)
+- [ ] 2.4.1 **Write initial review-input.json** — Put the input string in `buffer.input`, `source_type: "buffer"`. Run `extract-units.py` to fill `buffer.units`.
+- [ ] 2.4.2 **Match tags** — See Tag Matching.
 
 ### Phase 3: Assembly & Output
 - [ ] 3.1 **Extract imports** (for folder/file/buffer modes) — Scan the loaded source code for `import <ModuleName>` statements. Collect unique module names into `detected_imports` array (sorted). For changes mode, the script already handles this.
@@ -100,11 +96,9 @@ Parse unified diff to extract changed line ranges per file:
 
 ## Unit Identification
 
-Read the file and list every top-level declaration:
-- **What to find:** class, struct, protocol, enum, extension
-- **For each:** report `name`, `kind`, `line_start`
-- **line_start** = the line number where the declaration begins
-- **line_end:** = the line number of the next unit - 1
+Handled by `scripts/extract-units.py`. The script finds every top-level `class`, `struct`, `protocol`, `enum`, `extension` declaration in each Swift source file and emits `{name, kind, line_start, line_end, has_changes}`. `line_end` is the line before the next unit (or end-of-file for the last unit).
+
+Do not re-implement this logic in the agent's prompt or via inline Bash heredocs — always call the script.
 
 ## Tag Matching
 

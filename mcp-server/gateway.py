@@ -17,7 +17,7 @@ Examples:
     python3 gateway.py load_synthesis_context --output-root /path/to/output
     python3 gateway.py validate_phase_output --json-path /p/file.json --schema-path /p/schema.json
     python3 gateway.py validate_findings --output-root /path/to/output
-    python3 gateway.py generate_report --output-root /path/to/output
+    python3 gateway.py generate_report --data-dir /path/to/iteration --report-dir /path/to/output
     python3 gateway.py validate_architecture --arch-path /path/to/arch.json
     python3 gateway.py split_implementation_plan --plan-path /p/plan.json --output-dir /p/chunks/
     python3 gateway.py search_codebase --sources-dir /path/to/Sources

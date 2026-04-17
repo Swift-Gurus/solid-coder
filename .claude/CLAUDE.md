@@ -32,9 +32,9 @@ These are invoked directly by the user via slash commands:
 |-------|-------|-------------|
  | `build-spec` | `/build-spec <prompt>` | Interview-driven spec builder — classifies prompt, resolves ambiguity, writes spec file |
 | `implement` | `/implement <spec-file>` | Spec-to-code orchestrator — architects, validates, synthesizes, implements, and reviews a feature |
-| `refactor` | `/refactor <target> [--iterations N]` | Full review/synthesize/implement/iterate loop |
+| `refactor` | `/refactor <target> [--iterations N] [--review-only]` | Full review/synthesize/implement/iterate loop. `--review-only` stops after synthesize (no code changes). |
 | `code` | `/code <prompt or spec>` | Writes code with principle rules loaded as constraints |
-| `review` | `/review <target>` | Fans out parallel per-principle reviews across all matched principles |
+| `review` | `/review <target>` | Thin wrapper: runs `/refactor --review-only` then emits aggregated MD + HTML report |
 | `build-spec-from-code` | `/build-spec-from-code <path>` | Analyzes existing code, extracts functionalities as stories, produces rewrite spec with subtasks |
 
 ### Internal (used by workflows and agents)
@@ -46,12 +46,10 @@ These are triggered by other skills or agents — not directly by the user:
 | `plan` | Architecture decomposition — reads a spec, produces `arch.json` with components, protocols, wiring, and composition root |
 | `apply-principle-review` | Single-principle review — reads rule.md, applies metrics, produces findings |
 | `synthesize-fixes` | Holistic fix planner — sees ALL findings, cross-checks every fix against ALL principles, produces unified plan per file |
-| `fix-suggest` | Per-principle fix suggestion from findings |
 | `create-type` | Enforces naming conventions and file organization when creating new types |
 | `prepare-review-input` | Normalizes input (branch, folder, files) into structured `review-input.json` |
 | `discover-principles` | Discovers principles from `references/` and filters by input tags |
 | `validate-findings` | Filters findings to changed code only, reorganizes outputs by file |
-| `generate-report` | Produces HTML report from validated findings and suggestions |
 | `find-spec` | Navigates spec hierarchy interactively, returns selected spec. Used by build-spec |
 | `parse-frontmatter` | Parses YAML frontmatter from markdown files. Utility |
 | `validate-spec` | Checks a spec for buildability — flags vague terms, undefined types, implicit contracts. Used by build-spec Phase 4 |
@@ -72,7 +70,6 @@ Agent wrappers allow skills to run as subagents — enabling parallel execution 
 | `code-agent` | SOLID-compliant coding agent — loads principle rules as constraints |
 | `synthesize-fixes-agent` | Runs the holistic fix planner |
 | `apply-principle-review-agent` | Runs a single-principle review |
-| `principle-review-fx-agent` | Runs a single-principle review + fix suggestion |
 | `plan-agent` | Architecture decomposition from a feature spec |
 | `validate-decomposition-agent` | Validates arch.json against SOLID principles (model: sonnet) |
 | `reconstruct-spec-agent` | Blindly reconstructs spec from arch.json only (model: sonnet) |
@@ -109,6 +106,26 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | `ISP` | Interface Segregation — fat protocols, unused conformances |
 | `SwiftUI` | View best practices — body complexity, view purity, modifier chains, VM injection |
 
+### Token Cost
+
+Rule docs are injected into the context window on every pipeline run. Budget accordingly against the 200k context ceiling.
+
+- **Per-principle × mode table** (how many tokens each principle costs in each mode): see @docs/token-cost-by-mode.md
+- **Per-folder / per-file breakdown** (drill down into which files drive cost): see @docs/token-budget.md
+  - Regenerate with: `python3 scripts/token-budget.py --out .claude/docs/token-budget.md`
+
+**Mode load profiles** (what each pipeline mode includes from a principle folder):
+
+| Mode | rule.md | code/instructions.md | fix/instructions.md | review/instructions.md | Examples | required_patterns |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `code` (`/code`, `/implement` coding phase) | ✅ | ✅ | — | — | — | ✅ |
+| `review` (`apply-principle-review`) | ✅ | — | — | ✅ | ✅ | ✅ |
+| `planner` (`plan`) | ✅ | ✅ | ✅ | — | — | — |
+| `synth-impl` (`synthesize-implementation`) | ✅ | ✅ | — | — | — | ✅ |
+| `synth-fixes` (`synthesize-fixes`) | ✅ | ✅ | ✅ | — | — | ✅ |
+
+Code-smells has no `review/` subfolder, so it is not active in review mode.
+
 ## Key Concepts
 
 - **Principles are data** — adding a new principle means adding a folder to `references/` with the right file structure. No code changes needed.
@@ -131,3 +148,5 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | @docs/improvements-partial.md | Partially implemented improvements (12 items) |
 | @docs/improvements-archive.md | Completed/resolved improvements (12 items) |
 | @docs/create-type-notes.md | **Read before modifying `create-type`** — hardcoded dependencies on its vocabulary (e.g. `VALID_STACKS`) |
+| @docs/token-cost-by-mode.md | Per-principle × pipeline-mode token cost table |
+| @docs/token-budget.md | Auto-generated per-folder / per-file token breakdown of `references/principles/` (run `scripts/token-budget.py` to refresh) |

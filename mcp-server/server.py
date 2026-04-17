@@ -84,13 +84,17 @@ def get_candidate_tags():
                 "items": {"type": "string"},
                 "description": "Optional tags to filter principles by",
             },
+            "profile": {
+                "type": "string",
+                "description": "Optional profile ('review' or 'code') — filters out principles whose `profile:` list doesn't include it. Principles with no `profile:` field are available everywhere.",
+            },
         },
         "required": [],
     },
 )
-def discover_principles_tool(matched_tags=None):
+def discover_principles_tool(matched_tags=None, profile=None):
     result = discover_principles.discover_and_filter(
-        str(REFS_ROOT), matched_tags=matched_tags,
+        str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
     )
     return {
         "active_principles": result["active_principles"],
@@ -133,9 +137,9 @@ def discover_principles_tool(matched_tags=None):
     },
 )
 def load_rules(profile, principle=None, matched_tags=None, exclude=None):
-    # Step 1: Discover and filter principles
+    # Step 1: Discover and filter principles (by matched tags AND the requested profile)
     result = discover_principles.discover_and_filter(
-        str(REFS_ROOT), matched_tags=matched_tags,
+        str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
     )
 
     active = result["active_principles"]
@@ -331,25 +335,42 @@ def validate_findings(output_root):
 
 @server.tool(
     name="generate_report",
-    description="Generate HTML report from validated findings.",
+    description="Generate MD + HTML reports from validated findings and synthesized fix plans.",
     input_schema={
         "type": "object",
         "properties": {
-            "output_root": {"type": "string", "description": "Path to review output directory"},
+            "data_dir": {
+                "type": "string",
+                "description": "Iteration directory containing by-file/ and optional synthesized/",
+            },
+            "report_dir": {
+                "type": "string",
+                "description": "Where report.md and report.html are written. Defaults to data_dir.",
+            },
+            "output_root": {
+                "type": "string",
+                "description": "Deprecated alias for data_dir — retained for backward compatibility.",
+            },
         },
-        "required": ["output_root"],
     },
 )
-def generate_report(output_root):
+def generate_report(data_dir=None, report_dir=None, output_root=None):
+    data_dir = data_dir or output_root
+    if not data_dir:
+        return {"success": False, "error": "data_dir (or legacy output_root) is required"}
+    report_dir = report_dir or data_dir
+
     script = str(SKILLS_ROOT / "generate-report" / "scripts" / "generate-report.py")
     result = subprocess.run(
-        [sys.executable, script, output_root],
+        [sys.executable, script, data_dir, report_dir],
         capture_output=True, text=True,
     )
-    report_path = str(Path(output_root) / "report.html")
+    md_path = str(Path(report_dir) / "report.md")
+    html_path = str(Path(report_dir) / "report.html")
     return {
         "success": result.returncode == 0,
-        "report_path": report_path if result.returncode == 0 else None,
+        "md_path": md_path if result.returncode == 0 else None,
+        "html_path": html_path if result.returncode == 0 else None,
         "error": result.stderr.strip() if result.returncode != 0 else None,
     }
 

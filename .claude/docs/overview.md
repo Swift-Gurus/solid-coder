@@ -44,7 +44,6 @@ solid-coder/
 │   ├── refactor/             Orchestrator: refactor pipeline
 │   ├── code/                 SOLID-aware code writer
 │   ├── apply-principle-review/   Per-principle review runner
-│   ├── fix-suggest/              Fix suggestion generator
 │   ├── prepare-review-input/     Input normalizer + diff parser
 │   ├── validate-findings/        Finding filter + reorganizer
 │   ├── synthesize-fixes/         Cross-principle fix planner

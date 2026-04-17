@@ -109,7 +109,6 @@ Invocation pattern: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/<scrip
 | Direction | Module | Relationship |
 |-----------|--------|-------------|
 | Wrapped by | `apply-principle-review-agent` | Agent wrapper for parallel execution (Sonnet) |
-| Wrapped by | `principle-review-fx-agent` | Agent wrapper that chains review + fix-suggest (being sunset) |
 | Upstream | `prepare-review-input` | Produces the normalized input JSON this skill consumes |
 | Upstream | `discover-principles` | Determines which principles are active and matched |
 | Downstream | `validate-findings` | Reads the output JSON — straightforward, no special contract |

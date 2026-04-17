@@ -94,7 +94,7 @@ def main():
     review_input = load_json(review_input_path)
     if plugin_root:
         validate_json(review_input, plugin_root / "skills" / "prepare-review-input" / "output.schema.json")
-    source_type = review_input.get("source_type", "branch")
+    source_type = review_input.get("source_type", "changes")
     skip_filtering = source_type in ("folder", "file", "buffer")
 
     # Build lookup: file_path -> changed_ranges

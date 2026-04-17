@@ -57,7 +57,7 @@ After Phase 2, process each chunk sequentially in Phase 3:
 
   **code** mode (default): no tags (load all principles)
 
-- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude instructions` and `--matched-tags {tags}` (if any). This loads rule.md (metrics, severity bands, exceptions), code/instructions.md (coding decision trees), examples (compliant and violation pairs), and design patterns (only when declared in frontmatter) — no fix instructions to keep context focused.
+- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude instructions,examples` and `--matched-tags {tags}` (if any). This loads rule.md (metrics, severity bands, exceptions), code/instructions.md (coding decision trees), and design patterns (only when declared in frontmatter) — no fix instructions and no examples to keep context focused.
 
 ## Phase 3: Write Code
 Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.

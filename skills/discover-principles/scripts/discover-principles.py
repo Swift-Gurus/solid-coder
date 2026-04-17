@@ -8,11 +8,18 @@ Mode 2 — Filter (with --matched-tags):
     Returns only active principles (no tags = always active, has tags = active
     only if any tag intersects with matched-tags).
 
+Mode 3 — Profile filter (with --profile <name>):
+    Also filters out principles that don't support the requested profile.
+    A principle's `profile:` frontmatter is a list of supported profiles
+    (e.g. `profile: [code]`). Missing field → principle is available in all
+    profiles (backward compatible).
+
 Usage:
     python3 discover-principles.py --refs-root <path>
     python3 discover-principles.py --refs-root <path> --matched-tags swiftui,combine
     python3 discover-principles.py --refs-root <path> --review-input path/to/review-input.json
     python3 discover-principles.py --refs-root <path> --glob "*/rule.md"
+    python3 discover-principles.py --refs-root <path> --profile review
 
 Output (stdout): JSON object with active_principles, skipped_principles,
     and all_candidate_tags.
@@ -121,12 +128,22 @@ def discover(refs_root: Path, pattern: str) -> List[Dict[str, Any]]:
             elif isinstance(raw_tags, list):
                 tags = [t.lower() for t in raw_tags]
 
+        # Normalize profile to list of lowercase strings. Missing = available everywhere.
+        raw_profile = data.get("profile")
+        profile = None
+        if raw_profile is not None:
+            if isinstance(raw_profile, str):
+                profile = [raw_profile.lower()]
+            elif isinstance(raw_profile, list):
+                profile = [p.lower() for p in raw_profile]
+
         principles.append({
             "name": data.get("name", folder.name),
             "displayName": data.get("displayName", data.get("name", folder.name)),
             "folder": str(folder.resolve()),
             "rule_path": str(rule_file.resolve()),
             "tags": tags,
+            "profile": profile,
         })
 
     return principles
@@ -135,23 +152,36 @@ def discover(refs_root: Path, pattern: str) -> List[Dict[str, Any]]:
 def filter_principles(
     principles: List[Dict[str, Any]],
     matched_tags: Optional[List[str]],
+    profile: Optional[str] = None,
 ) -> tuple:
-    """Split principles into active and skipped based on matched tags."""
+    """Split principles into active and skipped based on matched tags and profile.
+
+    Profile filtering (when `profile` is provided):
+        - principles with no `profile:` field → included (available everywhere)
+        - principles with `profile: [x, y, ...]` → included only if `profile` is in the list
+    """
     active = []
     skipped = []
 
     matched_set = set(t.lower() for t in matched_tags) if matched_tags else set()
+    profile_key = profile.lower() if profile else None
 
     for p in principles:
+        # Profile filter first — skip principles that don't support the requested profile.
+        profiles = p.get("profile")
+        if profile_key is not None and profiles is not None and profile_key not in profiles:
+            skipped.append({
+                **p,
+                "reason": f"profile '{profile_key}' not in supported profiles {profiles}",
+            })
+            continue
+
         tags = p["tags"]
         if tags is None:
-            # No tags = always active
             active.append(p)
         elif matched_tags is None:
-            # Discovery mode — no filtering, include all
             active.append(p)
         elif set(tags) & matched_set:
-            # Has tags and at least one matches
             active.append(p)
         else:
             skipped.append({
@@ -170,8 +200,9 @@ def discover_and_filter(
     refs_root: str,
     glob_pattern: str = "**/rule.md",
     matched_tags: Optional[List[str]] = None,
+    profile: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Discover principles and optionally filter by tags.
+    """Discover principles and optionally filter by tags and/or profile.
 
     Returns dict with active_principles, skipped_principles, all_candidate_tags.
     """
@@ -186,7 +217,7 @@ def discover_and_filter(
         if p["tags"]:
             all_candidate_tags.update(p["tags"])
 
-    active, skipped = filter_principles(principles, matched_tags)
+    active, skipped = filter_principles(principles, matched_tags, profile)
 
     return {
         "all_candidate_tags": sorted(all_candidate_tags),
@@ -218,6 +249,11 @@ def main() -> None:
         "--glob", default="**/rule.md",
         help="Glob pattern for finding rule.md files (default: **/rule.md)",
     )
+    parser.add_argument(
+        "--profile",
+        help="Filter to principles supporting this profile (e.g. 'review', 'code'). "
+             "Principles with no `profile:` field are always included.",
+    )
     args = parser.parse_args()
 
     refs_root = Path(args.refs_root).resolve()
@@ -246,7 +282,7 @@ def main() -> None:
         if p["tags"]:
             all_candidate_tags.update(p["tags"])
 
-    active, skipped = filter_principles(principles, matched_tags)
+    active, skipped = filter_principles(principles, matched_tags, args.profile)
 
     output = {
         "all_candidate_tags": sorted(all_candidate_tags),

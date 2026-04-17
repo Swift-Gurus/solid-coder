@@ -1,7 +1,7 @@
 ---
 name: refactor
 description: Run refactor using SOLID principles. First conducts review of the code, then generates a holistic cross-principle fix plan, then implements it.
-argument-hint: [branch|changes|folder|file] [--iterations N] [--verbose]
+argument-hint: [changes|folder|file|files|buffer] [target] [--iterations N] [--verbose] [--review-only] [--output-root <path>]
 allowed-tools: Read, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 tools: Read, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 user-invocable: true
@@ -11,17 +11,18 @@ user-invocable: true
 
 ## Input
 - RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
-- OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/refactor-<YYYYMMDDhhmmss>
+- OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/refactor-<YYYYMMDDhhmmss> (can be overridden via `--output-root <path>`)
 - MAX_ITERATIONS: 2
 - ITERATION: 1 (counter)
 - VERBOSE: false
+- REVIEW_ONLY: false (stops after Phase 6 synthesize — no implementation, no iteration)
 
 ## Timing (verbose only)
 
 When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +%Y-%m-%dT%H:%M:%SZ` and include them in `refactor-log.json` as the `phase_timings` object. When VERBOSE is off, skip all timestamp captures and omit `phase_timings` from logs.
 
 ## Phase 1: Discover Principles
-- [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2. Extract `--verbose` flag → set VERBOSE.
+- [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2. Extract `--verbose` flag → set VERBOSE. Extract `--review-only` flag → set REVIEW_ONLY. Extract `--output-root <path>` if present → override OUTPUT_ROOT.
 - [ ] 1.2 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH`
 - [ ] 1.3 Parse JSON output — extract `all_candidate_tags` and the full principle list
 
@@ -41,7 +42,8 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 ## Phase 3: Filter Principles & Launch Reviews (wait for phase 2)
 
 - [ ] 3.0 If VERBOSE: capture timestamp → store as `time_prepare_end` AND `time_review_start`
-- [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json`
+- [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json --profile review`
+  - `--profile review` filters out principles that declare `profile: [code]` (or any list that omits `review`). Principles with no `profile:` field stay active in every profile.
 - [ ] 3.2 Use `active_principles` from the output — these are the principles to review
 - [ ] 3.3 For EACH active principle, prepare a Task call:
     - subagent_type: `solid-coder:apply-principle-review-agent`
@@ -99,6 +101,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
     ```
 - [ ] 6.2 Launch Task
 - [ ] 6.3 Report synthesized plan paths from `{OUTPUT_ROOT}/{ITERATION}/synthesized/`
+- [ ] 6.4 If REVIEW_ONLY: write `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with `status: "review_only"`, include synthesized plan file list. If VERBOSE: capture timestamp as `time_synthesize_end` and include `phase_timings`. STOP — do not proceed to Phase 7 or 8.
 
 ## Phase 7: Implement from Plans (wait for phase 6)
 

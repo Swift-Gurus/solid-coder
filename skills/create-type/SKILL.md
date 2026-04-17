@@ -49,6 +49,30 @@ Apply these naming rules when creating or reviewing type names:
 - New files go in the same directory as the source file unless a specific structure dictates otherwise
 - Copy necessary `import` statements to each new file
 
+### 1.4 Domain / Prefix Folder Grouping (default ON)
+
+When placing files, group related types that share a domain or name prefix into a subfolder named after that domain. Use your judgment about what counts as a meaningful group — if two or more files obviously belong to the same concept, put them under `<Concept>/`.
+
+Examples:
+- `TestSpy.swift`, `TestSpyOutput.swift`, `TestSpyStorage.swift` → `TestSpy/`
+- `UserProfileView.swift`, `UserProfileViewModel.swift`, `UserProfileRepository.swift` → `UserProfile/`
+- `ProductRow.swift` alone does NOT trigger grouping — no siblings.
+
+A flat target directory is NOT a reason to skip — if the files should be grouped, introduce the subfolder and move the related existing siblings into it.
+
+**Apply this by default, but skip grouping when any of these are true:**
+1. The call site's prompt says otherwise (e.g., "do not group", "keep flat").
+2. The consuming project's `CLAUDE.md` or `.claude/` rules set a different layout convention (including one that prescribes flat layout).
+
+**Always:**
+- Name the subfolder after the shared prefix/concept exactly as it appears in the type name (`TestSpy/`, not `test-spy/`).
+- Consider both the new files being added AND the existing siblings in the destination directory when deciding.
+- Do NOT move unrelated pre-existing files into the new subfolder.
+- Do NOT rename files to force a shared prefix.
+- Do NOT create a subfolder for a single file "in anticipation" of future siblings.
+
+Record the grouping decision (and any override reason) in Phase 5 output.
+
 ## Phase 2: Identify Types Needing Frontmatter
 
 - [ ] 2.1 Read each file
@@ -141,6 +165,7 @@ final class ProductFetchService: ProductReading { ... }
 - [ ] 5.2 List types whose `solid-spec` was updated (appended)
 - [ ] 5.3 List types that were skipped (already had frontmatter, no spec update needed)
 - [ ] 5.4 Flag any naming convention violations found
+- [ ] 5.5 Report any prefix-grouping decisions from 1.4: the prefix used, which files were placed under `<Prefix>/`, and if grouping was skipped, the override signal that suppressed it
 
 ## Constraints
 

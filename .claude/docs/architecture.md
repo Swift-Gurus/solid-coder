@@ -52,11 +52,9 @@ Each agent is a YAML frontmatter markdown file in `agents/` specifying:
 ├──────────────────────────────┼─────────┼────────────────────────────────────┤
 │ prepare-review-input-agent   │ haiku   │ Normalizes input into JSON         │
 │ apply-principle-review-agent  │ sonnet  │ Review only (no fix)               │
-│ principle-review-fx-agent    │ opus    │ Review + fix suggestion            │
 │ validate-findings-agent      │ haiku   │ Filters findings to changed ranges │
 │ synthesize-fixes-agent       │ opus    │ Cross-principle fix planning       │
 │ code-agent                   │ opus    │ Writes SOLID-compliant code        │
-│ generate-report-agent        │ haiku   │ Produces HTML report               │
 └──────────────────────────────┴─────────┴────────────────────────────────────┘
 ```
 
@@ -127,10 +125,10 @@ All intermediate data is JSON, schema-validated at each boundary:
                              ▲                           ▼
                     ┌────────┘              ┌─────────────────────┐
                     │                       │  generate-report    │
-            (review only)                   │  -agent             │
+            (review only)                   │  (script, no agent) │
                     │                       └────────┬────────────┘
                     │                                │
-                    │                         report.html
+                    │                        report.md + report.html
                     │
             (refactor continues)
                     │
@@ -175,6 +173,7 @@ Each review/refactor run produces an isolated output directory:
 ├── synthesized/           (refactor only)
 │   ├── SomeFile.swift.plan.json
 │   └── AnotherFile.swift.plan.json
+├── report.md
 ├── report.html
 └── refactor-log.json      (refactor only)
 ```

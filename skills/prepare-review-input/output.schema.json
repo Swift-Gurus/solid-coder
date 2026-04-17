@@ -7,7 +7,7 @@
   "properties": {
     "source_type": {
       "type": "string",
-      "enum": ["branch", "changes", "folder", "file", "files", "buffer"]
+      "enum": ["changes", "folder", "file", "files", "buffer"]
     },
     "metadata": {
       "type": "object",

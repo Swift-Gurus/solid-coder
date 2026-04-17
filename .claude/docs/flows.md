@@ -2,127 +2,39 @@
 
 ## 1. Review Flow (`/review`)
 
-The review flow is **read-only** — it analyzes code and produces an HTML report without modifying any source files.
+`/review` is a **thin wrapper** over `/refactor --review-only`. It delegates the entire review+synthesize pipeline to refactor, then aggregates iteration data into a single MD + HTML report.
 
 ### Trigger
-User runs `/review` with a target (branch, folder, file, or current changes).
+User runs `/review <target>` (branch, folder, file, or current changes).
 
 ### Steps
 
 ```
-Step 1: Discover Principles
-───────────────────────────
-  Agent:  orchestrator (inline)
-  Action:
-    - Runs discover-principles skill → all principles + all_candidate_tags
-  Output: Principle list + candidate tags for activation
-
-Step 2: Prepare Input
-─────────────────────
-  Agent:  prepare-review-input-agent (haiku)
-  Input:  User target + candidate_tags from Step 1
-  Action:
-    - For "changes" mode: runs prepare-changes.py to parse git diff + extract imports
-    - For all modes: identifies Swift units (class, struct, protocol, enum, extension)
-    - Detects which units overlap changed line ranges
-    - Matches candidate_tags against code (imports + usage patterns) → matched_tags
-  Output: {OUTPUT_ROOT}/prepare/review-input.json (with detected_imports + matched_tags)
-
-Step 3: Filter Principles
+Step 1: Stage output root
 ─────────────────────────
-  Agent:  orchestrator (inline)
-  Action:
-    - Runs discover-principles skill with --review-input → active_principles
-    - Rules with no tags → always active
-    - Rules with tags → active only if any tag in matched_tags
-  Output: Filtered list of active principles
+  Action: Compute timestamp, set OUTPUT_ROOT = {project}/.solid_coder/review-<ts>/
 
-Step 4: Parallel Principle Review + Fix
-───────────────────────────────────────
-  Agent:  principle-review-fx-agent × N (opus, parallel)
-  Input:  review-input.json + principle-specific instructions + rule + examples
-  Action per agent:
-    1. Run apply-principle-review skill:
-       - Load rule.md metrics and severity bands
-       - Load review/instructions.md phased checklist
-       - Load design pattern references (if required_patterns set)
-       - For each file/unit with has_changes == true (null is never expected — prepare-input must set true or false):
-         - Compute metrics (e.g., SRP: verb count, cohesion groups, stakeholders)
-         - Check exceptions (facade, helper, boundary adapter, NoOp)
-         - Score severity
-         - Emit findings with IDs (e.g., srp-001)
-    2. Run fix-suggest skill:
-       - Load fix/instructions.md
-       - For each finding, generate fix suggestion with:
-         - Suggested code changes
-         - Todo items (checklist)
-         - Verification criteria
-  Output: {OUTPUT_ROOT}/rules/{PRINCIPLE}/review-output.json + fix.json
+Step 2: Run /refactor --review-only
+───────────────────────────────────
+  Delegates to refactor flow (see §2) with flags:
+    --review-only  stops after Phase 6 (synthesize), no code changes, no iterations
+    --output-root  forces refactor to write under OUTPUT_ROOT
 
-Step 5: Collect & Print Summary
-───────────────────────────────
-  Agent:  orchestrator (inline)
-  Action: Reads all review-output.json files, prints summary table
-  Output: Console summary (principle | files | findings | worst severity)
+  Produces:
+    {OUTPUT_ROOT}/1/by-file/*.output.json
+    {OUTPUT_ROOT}/1/synthesized/*.plan.json
+    {OUTPUT_ROOT}/1/refactor-log.json  (status: "review_only")
 
-Step 6: Validate Findings
-─────────────────────────
-  Agent:  validate-findings-agent (haiku)
-  Action: Runs validate-findings.py which:
-    - Filters findings to only those in changed line ranges
-      (skipped for folder/file/buffer source types)
-    - Reorganizes findings by file path
-    - Schema-validates all inputs
-    - Matches fix suggestions to their findings
-  Output: {OUTPUT_ROOT}/by-file/{filename}.output.json
-
-Step 7: Generate Report
-───────────────────────
-  Agent:  generate-report-agent (haiku)
-  Action: Runs generate-report.py which:
-    - Reads all by-file/*.output.json
-    - Renders self-contained HTML with:
-      - Summary table (file, severity badge, counts)
-      - Per-file sections with principle-grouped findings
-      - Fix suggestions with code blocks and verification
-  Output: {OUTPUT_ROOT}/report.html
-```
-
-### Sequence Diagram
-
-```
-User ──► /review target
-          │
-    ┌─────▼───────┐
-    │ Discover     │ ──► all_candidate_tags
-    │ Principles   │
-    └──────┬──────┘
-           │
-    ┌──────▼──────┐
-    │ Prepare      │ ──► review-input.json (with matched_tags)
-    │ Input        │
-    └──────┬──────┘
-           │
-    ┌──────▼──────┐
-    │ Filter       │ ──► active_principles
-    │ Principles   │
-    └──────┬──────┘
-           │
-    ┌──────▼───────────────────────────────────┐
-    │         Parallel Review + Fix            │
-    │  ┌─────┐  ┌─────┐  ┌─────┐  ┌─────┐  │
-    │  │ SRP │  │ OCP │  │ LSP │  │ ISP │  │
-    │  └──┬──┘  └──┬──┘  └──┬──┘  └──┬──┘  │
-    └─────┼────────┼────────┼────────┼──────┘
-          │        │        │        │
-          ▼        ▼        ▼        ▼
-    ┌─────────────────────────────────┐
-    │ Validate Findings                │ ──► by-file/*.output.json
-    └──────────────┬──────────────────┘
-                   │
-    ┌──────────────▼──────────────────┐
-    │ Generate Report                  │ ──► report.html
-    └─────────────────────────────────┘
+Step 3: Generate reports
+────────────────────────
+  Runs: gateway.py generate_report --data-dir {OUTPUT_ROOT} --report-dir {OUTPUT_ROOT}
+  Behavior:
+    - Aggregates by-file findings across all iteration subdirs (dedup by finding_id)
+    - Aggregates synthesized actions across all iterations (dedup by suggestion_id)
+    - Organizes by file, produces one combined report
+  Outputs:
+    {OUTPUT_ROOT}/report.md
+    {OUTPUT_ROOT}/report.html
 ```
 
 ---
@@ -132,7 +44,7 @@ User ──► /review target
 The refactor flow **modifies source code**. It includes the full review pipeline plus synthesis, implementation, and iteration.
 
 ### Trigger
-User runs `/refactor` with a target and optional `--iterations N` (default 2).
+User runs `/refactor` with a target and optional flags: `--iterations N` (default 2), `--review-only` (stops after synthesize, no code changes), `--output-root <path>`, `--verbose`.
 
 ### Steps
 
@@ -318,9 +230,6 @@ A finding progresses through these states across the pipeline:
 
 ```
 Detection (review)
-    │
-    ▼
-Suggestion (fix-suggest)
     │
     ▼
 Filtered (validate — must overlap changed range)

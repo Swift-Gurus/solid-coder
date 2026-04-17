@@ -197,17 +197,29 @@ header .meta { font-size: 0.8rem; color: #8892a4; margin-top: 4px; }
 }
 
 /* ── Code Blocks ──────────────────────────────── */
-.code-block {
+pre.code-block {
   font-family: "SF Mono", "Fira Code", Consolas, monospace;
   font-size: 0.80rem;
-  line-height: 1.5;
+  line-height: 1.55;
   background: #1e2740;
   color: #c9d1e0;
-  padding: 12px 16px;
-  border-radius: 5px;
+  padding: 14px 18px;
+  border-radius: 6px;
   overflow-x: auto;
+  margin: 8px 0;
+  tab-size: 4;
+  -moz-tab-size: 4;
   white-space: pre;
-  margin: 6px 0;
+  word-wrap: normal;
+}
+pre.code-block code {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  padding: 0;
+  white-space: inherit;
+  display: block;
 }
 
 /* ── Details / Summary ────────────────────────── */

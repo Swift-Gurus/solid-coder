@@ -253,6 +253,62 @@ class TestReviewInput:
         assert len(data["active_principles"]) == 1
 
 
+class TestProfileFilter:
+    """Test --profile filter — principles declare which profiles they support via `profile:` frontmatter."""
+
+    def test_no_profile_field_means_available_everywhere(self, tmp_path):
+        _make_rule(tmp_path, "SRP", "name: srp")
+        for profile in ("review", "code"):
+            rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", profile)
+            assert rc == 0, f"profile={profile}"
+            data = json.loads(out)
+            assert len(data["active_principles"]) == 1
+            assert data["skipped_principles"] == []
+
+    def test_profile_list_excludes_other_profiles(self, tmp_path):
+        _make_rule(tmp_path, "CodeSmells", "name: code-smells\nprofile:\n  - code")
+
+        rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "review")
+        data = json.loads(out)
+        assert len(data["active_principles"]) == 0
+        assert len(data["skipped_principles"]) == 1
+        assert "profile 'review'" in data["skipped_principles"][0]["reason"]
+
+        rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "code")
+        data = json.loads(out)
+        assert [p["name"] for p in data["active_principles"]] == ["code-smells"]
+
+    def test_inline_profile_list(self, tmp_path):
+        _make_rule(tmp_path, "X", "name: x\nprofile: [code, review]")
+
+        for profile in ("review", "code"):
+            rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", profile)
+            data = json.loads(out)
+            assert [p["name"] for p in data["active_principles"]] == ["x"]
+
+    def test_no_profile_arg_ignores_profile_field(self, tmp_path):
+        _make_rule(tmp_path, "CodeOnly", "name: co\nprofile:\n  - code")
+        _make_rule(tmp_path, "Normal", "name: normal")
+
+        rc, out, _ = _run("--refs-root", str(tmp_path))
+        data = json.loads(out)
+        names = sorted(p["name"] for p in data["active_principles"])
+        assert names == ["co", "normal"]
+
+    def test_profile_combines_with_tag_filter(self, tmp_path):
+        _make_rule(tmp_path, "Tagged", "name: tagged\ntags: [swiftui]\nprofile: [review]")
+        _make_rule(tmp_path, "Other", "name: other\ntags: [swiftui]\nprofile: [code]")
+
+        rc, out, _ = _run(
+            "--refs-root", str(tmp_path),
+            "--matched-tags", "swiftui",
+            "--profile", "review",
+        )
+        data = json.loads(out)
+        assert [p["name"] for p in data["active_principles"]] == ["tagged"]
+        assert any(s["name"] == "other" for s in data["skipped_principles"])
+
+
 class TestErrors:
     """Test error cases."""
 
