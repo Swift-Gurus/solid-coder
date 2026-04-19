@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Compute token cost per principle × per pipeline mode.
 
-Invokes the gateway to discover principles and measure what each pipeline mode
-actually loads. Emits a markdown table with:
-  - per-principle × per-mode tokens
-  - per-mode totals: MIN (always-on principles only) and MAX (all principles)
+Modes, their load configuration, and aggregation strategy live in
+`mcp-server/modes.py` — the single source of truth. This script imports from
+there so principle docs stay in sync with what skills actually load.
 
 Usage:
     python3 scripts/token-cost-by-mode.py
@@ -21,47 +20,12 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 GATEWAY = PROJECT_ROOT / "mcp-server" / "gateway.py"
 
+# Import the centralized mode config
+sys.path.insert(0, str(PROJECT_ROOT / "mcp-server"))
+import modes as modes_module  # noqa: E402
 
-# Mode → gateway flags (mirrors what each skill passes to load-reference)
-MODES = {
-    "code":        ["--profile", "code", "--exclude", "instructions,examples"],
-    "review":      ["--profile", "review"],
-    "planner":     ["--profile", "code", "--exclude", "examples,patterns"],
-    "synth-impl":  ["--profile", "code", "--exclude", "examples,instructions"],
-    "synth-fixes": ["--profile", "code", "--exclude", "examples"],
-}
-
-# Aggregation per mode:
-#   "all"           — loads every active principle into the same context (cost = sum)
-#   "per-principle" — each subagent/invocation loads ONE principle in isolation (cost = single principle)
-MODE_AGGREGATION = {
-    "code":        "all",
-    "review":      "per-principle",  # apply-principle-review runs one subagent per principle
-    "planner":     "all",
-    "synth-impl":  "all",
-    "synth-fixes": "all",             # loads in a loop but all land in the same context
-}
-
-# Mode → user-facing skill label
-MODE_LABELS = {
-    "code":        "`code` (`/code`, `/implement` coding phase)",
-    "review":      "`review` (`apply-principle-review`)",
-    "planner":     "`planner` (`plan`)",
-    "synth-impl":  "`synth-impl` (`synthesize-implementation`)",
-    "synth-fixes": "`synth-fixes` (`synthesize-fixes`)",
-}
-
-# Mode → what it loads from a principle folder (for the profile table)
-MODE_LOADS = {
-    #              rule  code   fix   review examples patterns
-    "code":        (True, True, False, False, False, True),
-    "review":      (True, False, False, True, True, True),
-    "planner":     (True, True, True, False, False, False),
-    "synth-impl":  (True, True, False, False, False, True),
-    "synth-fixes": (True, True, True, False, False, True),
-}
-LOAD_COLUMNS = ["rule.md", "code/instructions.md", "fix/instructions.md",
-                "review/instructions.md", "Examples", "required_patterns"]
+MODES = modes_module.MODES
+SECTION_LABELS = modes_module.SECTION_LABELS
 
 CHARS_PER_TOKEN = 4
 
@@ -81,8 +45,8 @@ def discover_principles():
     return data["active_principles"]
 
 
-def tokens_for(mode_args, principle):
-    out, rc, _ = run("load_rules", *mode_args, "--principle", principle)
+def tokens_for(mode, principle):
+    out, rc, _ = run("load_rules", "--mode", mode, "--principle", principle)
     if rc != 0:
         return None
     return len(out) // CHARS_PER_TOKEN
@@ -90,18 +54,20 @@ def tokens_for(mode_args, principle):
 
 def measure():
     principles = discover_principles()
-    table = {}  # (mode, principle) → tokens
+    table = {}
     always_on = []
     conditional = []
     for p in principles:
         name = p["name"]
-        if p.get("tags"):
-            conditional.append(name)
-        else:
-            always_on.append(name)
-        for mode, args in MODES.items():
-            table[(mode, name)] = tokens_for(args, name)
+        (conditional if p.get("tags") else always_on).append(name)
+        for mode in MODES:
+            table[(mode, name)] = tokens_for(mode, name)
     return principles, always_on, conditional, table
+
+
+def render_loads_column(mode: str) -> str:
+    loads = MODES[mode]["loads"]
+    return ", ".join(SECTION_LABELS[s] for s in loads)
 
 
 def render(principles, always_on, conditional, table) -> str:
@@ -114,16 +80,29 @@ def render(principles, always_on, conditional, table) -> str:
     lines.append("python3 scripts/token-cost-by-mode.py --out .claude/docs/token-cost-by-mode.md")
     lines.append("```")
     lines.append("")
-    lines.append(f"Tokens ≈ chars / {CHARS_PER_TOKEN}, measured by invoking `gateway.py load_rules` per principle per mode. YAML frontmatter is stripped.")
+    lines.append(f"Tokens ≈ chars / {CHARS_PER_TOKEN}, measured by invoking `gateway.py load_rules --mode <mode>` per principle per mode. YAML frontmatter is stripped. Mode definitions live in `mcp-server/modes.py`.")
     lines.append("")
-    lines.append("## Per-principle × mode")
+
+    # Per-mode: what it loads
+    lines.append("## What each mode loads")
+    lines.append("")
+    lines.append("| Mode | Loads (from each principle folder) | Aggregation |")
+    lines.append("|---|---|---|")
+    for mode, cfg in MODES.items():
+        agg = "all principles → one context" if cfg["aggregation"] == "all" else "one principle per subagent"
+        lines.append(f"| `{mode}` | {render_loads_column(mode)} | {agg} |")
+    lines.append("")
+    lines.append("Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves profile + exclude from `mcp-server/modes.py`. Skills do not specify exclude lists directly.")
+    lines.append("")
+
+    # Per-principle × mode
+    lines.append("## Per-principle × mode (tokens)")
     lines.append("")
 
     header = ["Principle", "Activation"] + list(MODES.keys())
     lines.append("| " + " | ".join(header) + " |")
     lines.append("|" + "|".join(["---"] + ["---"] + ["---:"] * len(MODES)) + "|")
 
-    # Sort: always-on first (alphabetical), then conditional (alphabetical)
     ordered = sorted(always_on) + sorted(conditional)
     display_names = {p["name"]: p.get("displayName") or p["name"] for p in principles}
 
@@ -135,54 +114,33 @@ def render(principles, always_on, conditional, table) -> str:
             row.append(f"{v:,}" if v is not None else "—")
         lines.append("| " + " | ".join(row) + " |")
 
-    # MIN row — smallest realistic load per mode
+    # MIN row
     min_row = ["**MIN**", ""]
-    min_notes = []
     for mode in MODES:
-        if MODE_AGGREGATION[mode] == "all":
+        if MODES[mode]["aggregation"] == "all":
             total = sum(table[(mode, n)] or 0 for n in always_on)
-            min_row.append(f"**{total:,}**")
         else:
             vals = [table[(mode, n)] for n in ordered if table[(mode, n)] is not None]
             total = min(vals) if vals else 0
-            min_row.append(f"**{total:,}**")
+        min_row.append(f"**{total:,}**")
     lines.append("| " + " | ".join(min_row) + " |")
 
-    # MAX row — heaviest realistic load per mode
+    # MAX row
     max_row = ["**MAX**", ""]
     for mode in MODES:
-        if MODE_AGGREGATION[mode] == "all":
+        if MODES[mode]["aggregation"] == "all":
             total = sum(table[(mode, n)] or 0 for n in ordered)
-            max_row.append(f"**{total:,}**")
         else:
             vals = [table[(mode, n)] for n in ordered if table[(mode, n)] is not None]
             total = max(vals) if vals else 0
-            max_row.append(f"**{total:,}**")
+        max_row.append(f"**{total:,}**")
     lines.append("| " + " | ".join(max_row) + " |")
 
     lines.append("")
-    lines.append("**Aggregation per mode**:")
-    for mode, agg in MODE_AGGREGATION.items():
-        if agg == "all":
-            lines.append(f"- `{mode}` — loads **all** active principles in one context. MIN = {len(always_on)} always-on principles summed. MAX = all {len(ordered)} principles summed.")
-        else:
-            lines.append(f"- `{mode}` — each subagent loads **one** principle in isolation. MIN = smallest single-principle cost. MAX = largest single-principle cost.")
+    lines.append(f"- **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles ({len(always_on)}). For `per-principle`: smallest single principle.")
+    lines.append(f"- **MAX** = heaviest realistic load. For `all`: sum of all discovered principles ({len(ordered)}). For `per-principle`: largest single principle.")
     lines.append("")
 
-    # Mode load profiles
-    lines.append("## Mode load profiles")
-    lines.append("")
-    lines.append("What each mode includes from a principle folder. Source: `mcp-server/server.py::load_rules`.")
-    lines.append("")
-    header = ["Mode"] + LOAD_COLUMNS
-    lines.append("| " + " | ".join(header) + " |")
-    lines.append("|" + "|".join(["---"] + [":-:"] * len(LOAD_COLUMNS)) + "|")
-    for mode, label in MODE_LABELS.items():
-        row = [label]
-        for incl in MODE_LOADS[mode]:
-            row.append("✅" if incl else "—")
-        lines.append("| " + " | ".join(row) + " |")
-    lines.append("")
     lines.append("See [token-budget.md](token-budget.md) for a per-file / per-folder breakdown (independent of mode).")
 
     return "\n".join(lines) + "\n"

@@ -25,7 +25,7 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
 
-- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--profile code --exclude examples --principle {PRINCIPLE_ID}`
+- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--mode synth-fixes --principle {PRINCIPLE_ID}` (the server resolves load shape from `mcp-server/modes.py`)
 - [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → { rule, instructions (fix), examples, patterns }`
 
 ## Phase 3: Draft Fix Actions

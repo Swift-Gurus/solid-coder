@@ -2,7 +2,7 @@
 name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
-allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash, TaskCreate, TaskUpdate
+allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash
 user-invocable: true
 ---
 
@@ -57,7 +57,7 @@ After Phase 2, process each chunk sequentially in Phase 3:
 
   **code** mode (default): no tags (load all principles)
 
-- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude instructions,examples` and `--matched-tags {tags}` (if any). This loads rule.md (metrics, severity bands, exceptions), code/instructions.md (coding decision trees), and design patterns (only when declared in frontmatter) — no fix instructions and no examples to keep context focused.
+- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--mode code` and `--matched-tags {tags}` (if any). The server resolves what to load based on the mode (see `mcp-server/modes.py`): rule.md + code/instructions.md + required_patterns. No fix instructions, no examples — focused coding context.
 
 ## Phase 3: Write Code
 Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.
@@ -171,3 +171,5 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 - NEVER run build or test commands as background tasks — always run in foreground and wait for completion before proceeding.
 - NEVER run Phase 5 steps in parallel — always sequential, one step at a time.
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.
+- NEVER use `cat`, `head`, `tail`, `less`, or any shell command to inspect source files — use the Read tool. Reading a file you just wrote via `cat` duplicates it in context through a separate channel and wastes tokens.
+- **Write before building**: complete all plan items' Write/Edit operations for this chunk BEFORE running any build or test. Do not interleave write → build → fix → write → build. One build surfaces all errors at once; ten iterative builds produce ten rounds of redundant output and re-reads.

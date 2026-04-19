@@ -121,10 +121,11 @@ def main():
     ok, err = run_regen()
     if not ok:
         payload = {
+            "systemMessage": f"❌ Token-doc regeneration failed: {err}",
             "hookSpecificOutput": {
                 "hookEventName": "PostToolUse",
                 "additionalContext": f"Token-doc regeneration failed: {err}",
-            }
+            },
         }
         print(json.dumps(payload))
         return
@@ -132,12 +133,16 @@ def main():
     cost = parse_cost_doc()
     severity, message = build_summary(cost)
 
+    # Only surface a user-visible systemMessage when there's something to flag.
     payload = {
         "hookSpecificOutput": {
             "hookEventName": "PostToolUse",
             "additionalContext": message,
         }
     }
+    if severity in ("warn", "alert"):
+        payload["systemMessage"] = message
+
     print(json.dumps(payload))
 
 

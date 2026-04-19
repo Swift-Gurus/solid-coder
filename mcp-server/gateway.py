@@ -11,8 +11,12 @@ Examples:
     python3 gateway.py get_candidate_tags
     python3 gateway.py discover_principles
     python3 gateway.py discover_principles --matched-tags swiftui,testing
-    python3 gateway.py load_rules --profile review --principle srp
-    python3 gateway.py load_rules --profile code
+    python3 gateway.py load_rules --mode review --principle srp
+    python3 gateway.py load_rules --mode code --matched-tags swiftui,testing
+    python3 gateway.py load_rules --mode planner
+    python3 gateway.py load_rules --mode synth-impl
+    python3 gateway.py load_rules --mode synth-fixes --principle srp
+    python3 gateway.py load_rules --mode planner --output-format hook-json
     python3 gateway.py check_severity --output-root /path/to/output
     python3 gateway.py load_synthesis_context --output-root /path/to/output
     python3 gateway.py validate_phase_output --json-path /p/file.json --schema-path /p/schema.json
@@ -81,19 +85,8 @@ def parse_args(argv):
     return tool, kwargs
 
 
-def load_rules_text(**kwargs):
-    """Load rules and output as readable text sections instead of JSON."""
-    result = load_rules(**kwargs)
-
-    if result.get("errors"):
-        import json as _json
-        print(_json.dumps({"errors": result["errors"]}), file=sys.stderr)
-        sys.exit(1)
-
-    if not result.get("active_principles"):
-        print("No active principles found.", file=sys.stderr)
-        sys.exit(1)
-
+def _format_md(result):
+    """Format load_rules result as readable markdown/text sections."""
     sep = "=" * 72
     sub = "-" * 40
     lines = []
@@ -150,6 +143,62 @@ def load_rules_text(**kwargs):
     lines.append(f"{sep}")
 
     return "\n".join(lines)
+
+
+def _format_hook_json(result):
+    """Format load_rules result as a SubagentStart hook response.
+
+    Wraps the md output in the JSON shape the Claude Code harness expects
+    to inject content into a spawned subagent's context:
+
+        {"hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": "<rules>"
+        }}
+    """
+    md = _format_md(result)
+    response = {
+        "hookSpecificOutput": {
+            "hookEventName": "SubagentStart",
+            "additionalContext": md,
+        }
+    }
+    return json.dumps(response)
+
+
+OUTPUT_FORMATTERS = {
+    "md": _format_md,
+    "hook-json": _format_hook_json,
+}
+
+
+def load_rules_text(profile=None, principle=None, matched_tags=None,
+                    exclude=None, mode=None, output_format="md"):
+    """Load rules and dispatch to the chosen output formatter.
+
+    output_format:
+      - "md"        (default) — readable text sections, for CLI/human reads
+      - "hook-json" — SubagentStart hook response JSON for context injection
+    """
+    if output_format not in OUTPUT_FORMATTERS:
+        valid = ", ".join(sorted(OUTPUT_FORMATTERS.keys()))
+        print(f"Error: invalid --output-format '{output_format}'. Valid: {valid}",
+              file=sys.stderr)
+        sys.exit(1)
+
+    result = load_rules(profile=profile, principle=principle,
+                        matched_tags=matched_tags, exclude=exclude, mode=mode)
+
+    if result.get("errors"):
+        import json as _json
+        print(_json.dumps({"errors": result["errors"]}), file=sys.stderr)
+        sys.exit(1)
+
+    if not result.get("active_principles"):
+        print("No active principles found.", file=sys.stderr)
+        sys.exit(1)
+
+    return OUTPUT_FORMATTERS[output_format](result)
 
 
 def load_spec_ancestors(**kwargs):
@@ -238,6 +287,25 @@ def main():
         print(f"Error: unknown tool '{tool_name}'", file=sys.stderr)
         print(f"Available: {', '.join(sorted(TOOLS.keys()))}", file=sys.stderr)
         sys.exit(1)
+
+    # Validate kwargs against the handler's signature — reject unknown flags loudly.
+    import inspect
+    try:
+        sig = inspect.signature(handler)
+        accepted = {p.name for p in sig.parameters.values()
+                    if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                                  inspect.Parameter.KEYWORD_ONLY)}
+        # Allow VAR_KEYWORD handlers to accept anything
+        if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+            unknown = set(kwargs) - accepted
+            if unknown:
+                valid = ", ".join(sorted(accepted)) or "(none)"
+                bad = ", ".join(sorted(unknown))
+                print(f"Error: unknown argument(s) for '{tool_name}': {bad}", file=sys.stderr)
+                print(f"  Valid arguments: {valid}", file=sys.stderr)
+                sys.exit(1)
+    except (ValueError, TypeError):
+        pass  # signature inspection failed — fall through to runtime check
 
     try:
         result = handler(**kwargs)

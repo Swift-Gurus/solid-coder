@@ -1,7 +1,7 @@
 ---
 name: load-reference
 description: Load principle rules via gateway and internalize them as active constraints. Internal skill — used by other skills before writing code or making architectural decisions.
-argument-hint: --profile <review|code> [--principle <name>] [--matched-tags <tags>]
+argument-hint: --mode <code|review|planner|synth-impl|synth-fixes> [--principle <name>] [--matched-tags <tags>]
 allowed-tools: Bash
 user-invocable: false
 ---
@@ -12,18 +12,17 @@ Loads principle rules via the gateway and forces you to process them before acti
 
 ## Input
 - GATEWAY: ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py
-- PROFILE: `--profile` value — `review` or `code`
+- MODE: `--mode` value — one of `code`, `review`, `planner`, `synth-impl`, `synth-fixes`. Resolves profile + exclude + review-content stripping from `mcp-server/modes.py`.
 - PRINCIPLE: (optional) `--principle` value — load one principle by name (e.g., `srp`)
 - MATCHED_TAGS: (optional) `--matched-tags` value — comma-separated tags to filter principles
-- EXCLUDE: (optional) `--exclude` value — comma-separated sections to skip: `examples`, `instructions`, `patterns`, `code_rules`
 
 ## Workflow
 
-- [ ] 1.1 **Run gateway** — Execute:
+- [ ] 1.1 **Run gateway** — Execute exactly with the caller's `--mode` value (do NOT translate to `--profile`):
   ```
-  python3 {GATEWAY} load_rules --profile {PROFILE} [--principle {PRINCIPLE}] [--matched-tags {MATCHED_TAGS}] [--exclude {EXCLUDE}]
+  python3 {GATEWAY} load_rules --mode {MODE} [--principle {PRINCIPLE}] [--matched-tags {MATCHED_TAGS}]
   ```
-  This outputs the full rule content as readable text — rules, instructions, examples, code rules, and design patterns for each active principle.
+  The mode determines what gets loaded AND whether review-only content (Detection/Scoring/Severity/Result blocks) is stripped. Non-review modes get stripped output.
 
 - [ ] 1.2 If the command fails → report the error and stop.
 

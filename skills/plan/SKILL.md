@@ -96,7 +96,7 @@ For each identified behavior or capability, define a component. Respect acceptan
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
-- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--profile code --exclude examples,patterns` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`. The planner only needs rules and code rules for validation — not examples or design patterns.
+- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--mode planner` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`. The server resolves the planner load shape from `mcp-server/modes.py` — rule.md + code/instructions.md + fix/instructions.md (no examples, no patterns).
 - [ ] 3.3 **Verify each component against loaded rules.** For EACH component from Phase 2:
   - **SRP** — does this component have a single responsibility? Count the verbs (what it does). If 2+ cohesion groups or 3+ verbs serving different stakeholders → split into separate components.
   - **OCP** — are all its dependencies protocol-typed? If any dependency is concrete and non-injectable → add a protocol interface for it.

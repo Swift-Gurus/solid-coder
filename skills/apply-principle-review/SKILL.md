@@ -2,7 +2,7 @@
 name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write, TaskCreate, TaskUpdate
+allowed-tools: Read, Grep, Glob, Bash, Write
 user-invocable: false
 ---
 
@@ -19,7 +19,7 @@ user-invocable: false
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
 - [ ] 1.2 **Load rules** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --profile review --principle NAME`
+  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --mode review --principle NAME`
   - This returns the rule content, review instructions, examples, and design patterns for this principle
   - Parse JSON output. If `errors` is non-empty → fail with the error
   - Store `rules[NAME]` — contains `rule`, `instructions`, `examples`, `patterns`

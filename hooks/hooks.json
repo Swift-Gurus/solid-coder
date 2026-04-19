@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SubagentStart": [
+      {
+        "matcher": "test-preload-probe-agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --mode planner --output-format hook-json | tee /tmp/solid-coder-hook.log"
+          }
+        ]
+      }
+    ]
+  }
+}

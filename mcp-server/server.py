@@ -43,6 +43,8 @@ load_context_mod = importlib.import_module("load-context")
 validate_output_mod = importlib.import_module("validate-output")
 
 from protocol import MCPServer
+import modes as modes_module
+import rule_stripper
 
 server = MCPServer("solid-coder", "1.0.0")
 
@@ -110,18 +112,22 @@ def discover_principles_tool(matched_tags=None, profile=None):
 @server.tool(
     name="load_rules",
     description=(
-        "Load principle rules for a pipeline profile. "
-        "Profile 'review': rule.md + review/instructions.md + examples. "
-        "Profile 'code': rule.md + fix/instructions.md + code/instructions.md + examples. "
-        "Use 'principle' to load ONE principle (agents), omit to load all (code skill)."
+        "Load principle rules. Preferred: pass `mode` (code|review|planner|synth-impl|synth-fixes) — "
+        "the server resolves profile + exclude from mcp-server/modes.py. "
+        "Legacy: pass `profile` + `exclude` directly (kept for backward compatibility)."
     ),
     input_schema={
         "type": "object",
         "properties": {
+            "mode": {
+                "type": "string",
+                "enum": list(modes_module.MODES.keys()),
+                "description": "Pipeline mode — resolves profile + exclude from modes.py. Preferred over profile/exclude.",
+            },
             "profile": {
                 "type": "string",
                 "enum": ["review", "code"],
-                "description": "Loading profile: 'review' or 'code'",
+                "description": "Legacy: explicit profile. Ignored if `mode` is set.",
             },
             "principle": {
                 "type": "string",
@@ -132,11 +138,32 @@ def discover_principles_tool(matched_tags=None, profile=None):
                 "items": {"type": "string"},
                 "description": "Optional tags to filter principles by (only used when principle is omitted)",
             },
+            "exclude": {
+                "type": "string",
+                "description": "Legacy: comma-separated sections to skip. Ignored if `mode` is set.",
+            },
         },
-        "required": ["profile"],
+        "required": [],
     },
 )
-def load_rules(profile, principle=None, matched_tags=None, exclude=None):
+def load_rules(profile=None, principle=None, matched_tags=None, exclude=None, mode=None):
+    # Mode wins — derive profile + exclude from the single source of truth.
+    strip_review = False
+    if mode:
+        if mode not in modes_module.MODES:
+            return {"errors": [{"principle": "", "file": "", "error":
+                f"Invalid --mode '{mode}'. Valid: {', '.join(modes_module.MODES)}"}]}
+        cfg = modes_module.resolve(mode)
+        profile = cfg["profile"]
+        exclude = ",".join(cfg["exclude"]) if cfg["exclude"] else None
+        strip_review = cfg.get("strip_review_content", False)
+    if not profile:
+        return {"errors": [{"principle": "", "file": "", "error": "Either `mode` or `profile` is required"}]}
+    if profile not in ("review", "code"):
+        valid_modes = ", ".join(modes_module.MODES)
+        return {"errors": [{"principle": "", "file": "", "error":
+            f"Invalid --profile '{profile}'. Valid: review, code. "
+            f"For pipeline modes ({valid_modes}), use --mode instead."}]}
     # Step 1: Discover and filter principles (by matched tags AND the requested profile)
     result = discover_principles.discover_and_filter(
         str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
@@ -174,7 +201,15 @@ def load_rules(profile, principle=None, matched_tags=None, exclude=None):
         try:
             loaded = load_reference.load([rule_path])
             if loaded:
-                entry["rule"] = loaded[0]["content"]
+                content = loaded[0]["content"]
+                if strip_review:
+                    content = rule_stripper.strip_review_content(
+                        content,
+                        h2_sections=modes_module.STRIP_H2_SECTIONS,
+                        bold_subsections=modes_module.STRIP_BOLD_SUBSECTIONS,
+                        h3_sections=modes_module.STRIP_H3_SECTIONS,
+                    )
+                entry["rule"] = content
         except Exception as e:
             errors.append({"principle": name, "file": "rule.md", "error": str(e)})
 

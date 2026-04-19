@@ -87,16 +87,6 @@ When a skill needs to run another skill as a **subagent** (isolated context, spe
 - [ ] N.5 Wait for all to complete
 ```
 
-# Scripts and Tests
-
-When a skill includes Python scripts, run the tests before considering the work done:
-```
-cd skills/<skill-name>/scripts && python3 test_<script-name>.py -v
-```
-Tests use `subprocess` to call the script directly — no imports needed. Always use `sys.executable` in tests so they run with the same Python as the caller.
-
-If the script uses syntax that requires a specific Python version, check `python3 --version` first and rewrite to be compatible if needed.
-
 # Rules Are the Source of Truth
 
 When a loaded rule explains how to do something (e.g., agent-wrapping-rules explains agent file structure), follow the rule directly. Do not read existing files "for reference" to verify the rule — that is redundant and wastes context.
