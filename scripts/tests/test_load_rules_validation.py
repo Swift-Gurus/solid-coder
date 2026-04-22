@@ -1,9 +1,10 @@
 """Tests for load_rules input validation in mcp-server/server.py.
 
 Validates that invalid --profile / --mode values fail loudly via the gateway
-CLI, not silently return unstripped content.
+CLI, and that valid inputs return paths_to_load JSON.
 """
 
+import json
 import subprocess
 import sys
 import unittest
@@ -20,12 +21,16 @@ def run(*args):
     )
 
 
+def paths(r):
+    return json.loads(r.stdout)["paths_to_load"]
+
+
 class TestProfileValidation(unittest.TestCase):
     def test_invalid_profile_planner_is_rejected(self):
         r = run("--profile", "planner", "--principle", "srp")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Invalid --profile 'planner'", r.stderr)
-        self.assertIn("--mode", r.stderr)  # suggests the right flag
+        self.assertIn("--mode", r.stderr)
 
     def test_invalid_profile_code_review_is_rejected(self):
         for bad in ["synth-impl", "synth-fixes", "garbage", "Code", "REVIEW"]:
@@ -37,12 +42,14 @@ class TestProfileValidation(unittest.TestCase):
     def test_valid_profile_code_works(self):
         r = run("--profile", "code", "--principle", "srp")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("SRP", r.stdout)
+        ps = paths(r)
+        self.assertTrue(any("SRP" in p for p in ps))
 
     def test_valid_profile_review_works(self):
         r = run("--profile", "review", "--principle", "srp")
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("SRP", r.stdout)
+        ps = paths(r)
+        self.assertTrue(any("SRP" in p for p in ps))
 
 
 class TestUnknownArgs(unittest.TestCase):
@@ -55,7 +62,6 @@ class TestUnknownArgs(unittest.TestCase):
     def test_unknown_arg_lists_all_valid_args(self):
         r = run("--garbage", "foo", "--principle", "srp")
         self.assertNotEqual(r.returncode, 0)
-        # All valid args for load_rules should be enumerated
         for arg in ["mode", "profile", "principle", "matched_tags", "exclude"]:
             self.assertIn(arg, r.stderr, f"valid arg '{arg}' not shown in help")
 
@@ -77,25 +83,32 @@ class TestModeValidation(unittest.TestCase):
             with self.subTest(mode=mode):
                 r = run("--mode", mode, "--principle", "srp")
                 self.assertEqual(r.returncode, 0, f"{mode!r} failed: {r.stderr}")
-                self.assertIn("SRP", r.stdout)
+                ps = paths(r)
+                self.assertTrue(any("SRP" in p for p in ps), f"{mode}: no SRP path")
 
-    def test_mode_strips_review_content_for_non_review(self):
-        # Pick structured-concurrency since it has clear Detection blocks
+    def test_review_mode_includes_review_instructions(self):
+        r = run("--mode", "review", "--principle", "srp")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        ps = paths(r)
+        self.assertTrue(any("review" in p and "instructions.md" in p for p in ps),
+                        "review mode must include review/instructions.md")
+
+    def test_non_review_modes_exclude_review_instructions(self):
         for mode in ["code", "planner", "synth-impl", "synth-fixes"]:
             with self.subTest(mode=mode):
-                r = run("--mode", mode, "--principle", "structured-concurrency")
+                r = run("--mode", mode, "--principle", "srp")
                 self.assertEqual(r.returncode, 0)
-                self.assertNotIn("**Detection:**", r.stdout,
-                                 f"mode={mode} should strip Detection blocks")
-                self.assertNotIn("Quantitative Metrics Summary", r.stdout,
-                                 f"mode={mode} should strip Quantitative section")
+                ps = paths(r)
+                self.assertFalse(any("review/instructions.md" in p for p in ps),
+                                 f"{mode}: must not include review/instructions.md")
 
-    def test_review_mode_keeps_full_content(self):
-        r = run("--mode", "review", "--principle", "structured-concurrency")
-        self.assertEqual(r.returncode, 0)
-        self.assertIn("**Detection:**", r.stdout)
-        # Quantitative summary may or may not be in review/instructions.md depending
-        # on principle structure; the key is Detection IS preserved
+    def test_all_returned_paths_exist(self):
+        for mode in ["code", "review", "planner", "synth-impl", "synth-fixes"]:
+            with self.subTest(mode=mode):
+                r = run("--mode", mode, "--principle", "srp")
+                self.assertEqual(r.returncode, 0)
+                for p in paths(r):
+                    self.assertTrue(Path(p).is_file(), f"{mode}: path missing: {p}")
 
 
 if __name__ == "__main__":

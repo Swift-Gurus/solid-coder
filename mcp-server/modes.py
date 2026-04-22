@@ -12,78 +12,48 @@ Change a mode's load shape in ONE place.
 """
 
 # Sections a principle folder can contribute:
-#   rule          — rule.md (always loaded; can't be excluded)
+#   rule          — rule.md
 #   instructions  — review/instructions.md OR fix/instructions.md (depends on profile)
 #   code_rules    — code/instructions.md (code profile only)
 #   examples      — Examples/*.swift
 #   patterns      — files listed in rule.md frontmatter (required_patterns)
 
-# Rule-content stripping — review-only content (detection checklists, scoring,
-# severity bands) is removed from rule.md for non-review modes. The coder only
-# cares about the rule statement + definition + constraints — not how to detect
-# or score violations.
-STRIP_H2_SECTIONS = [
-    "Quantitative Metrics Summary",  # severity bands + thresholds table
-]
-STRIP_H3_SECTIONS = [
-    "Severity Bands",          # review-only severity bands per rule
-    "Severity Bands:",         # colon variant
-]
-STRIP_BOLD_SUBSECTIONS = [
-    "Detection",       # "how to find violations" checklists
-    "Count",           # counting instructions
-    "Analysis",
-    "Score",
-    "Scoring",
-    "Scope",
-    "Result",          # empty result tables for reviewers
-    "Classify matches",
-    "Classify each as",
-    "Check injection style",
-    "Not in scope",
-]
-
 
 MODES = {
     "code": {
         "profile": "code",
-        "exclude": ["instructions", "examples"],
-        "aggregation": "all",          # loads all active principles into one context
+        "exclude": ["rule", "instructions", "examples", "patterns"],
+        "aggregation": "all",
         "description": "`/code` and `/implement` coding phase — write SOLID-compliant code",
-        "loads": ["rule", "code_rules", "patterns"],
-        "strip_review_content": True,
+        "loads": ["code_rules"],
     },
     "review": {
         "profile": "review",
-        "exclude": [],
-        "aggregation": "per-principle",  # each apply-principle-review subagent loads one principle
+        "exclude": ["patterns"],
+        "aggregation": "per-principle",
         "description": "`apply-principle-review` subagent — detect violations against a single principle",
-        "loads": ["rule", "instructions", "examples", "patterns"],
-        "strip_review_content": False,
+        "loads": ["rule", "instructions", "examples"],
     },
     "planner": {
         "profile": "code",
-        "exclude": ["examples", "instructions"],
+        "exclude": ["examples", "instructions", "code_rules", "patterns"],
         "aggregation": "all",
         "description": "`plan` — architecture decomposition from a feature spec",
-        "loads": ["rule", "code_rules", "patterns"],
-        "strip_review_content": True,
+        "loads": ["rule"],
     },
     "synth-impl": {
         "profile": "code",
-        "exclude": ["examples", "instructions"],
+        "exclude": ["examples", "instructions", "patterns"],
         "aggregation": "all",
         "description": "`synthesize-implementation` — reconcile arch + validation into an implementation plan",
-        "loads": ["rule", "code_rules", "patterns"],
-        "strip_review_content": True,
+        "loads": ["rule", "code_rules"],
     },
     "synth-fixes": {
         "profile": "code",
-        "exclude": ["examples"],
+        "exclude": ["examples", "patterns"],
         "aggregation": "all",
         "description": "`synthesize-fixes` — holistic fix planner (loop loads all principles into one context)",
-        "loads": ["rule", "code_rules", "instructions", "patterns"],
-        "strip_review_content": True,
+        "loads": ["rule", "code_rules", "instructions"],
     },
 }
 

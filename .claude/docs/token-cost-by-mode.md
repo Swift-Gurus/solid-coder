@@ -12,9 +12,9 @@ Tokens ≈ chars / 4, measured by invoking `gateway.py load_rules --mode <mode>`
 
 | Mode | Loads (from each principle folder) | Aggregation |
 |---|---|---|
-| `code` | rule.md, code/instructions.md, required_patterns | all principles → one context |
+| `code` | rule.md, code/instructions.md | all principles → one context |
 | `review` | rule.md, fix or review/instructions.md, Examples/, required_patterns | one principle per subagent |
-| `planner` | rule.md, code/instructions.md, required_patterns | all principles → one context |
+| `planner` | rule.md | all principles → one context |
 | `synth-impl` | rule.md, code/instructions.md, required_patterns | all principles → one context |
 | `synth-fixes` | rule.md, code/instructions.md, fix or review/instructions.md, required_patterns | all principles → one context |
 
@@ -24,18 +24,18 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 
 | Principle | Activation | code | review | planner | synth-impl | synth-fixes |
 |---|---|---:|---:|---:|---:|---:|
-| Code Smells | always | 2,455 | — | 2,455 | 2,455 | 2,455 |
-| Don't Repeat Yourself | always | 1,706 | 6,297 | 1,706 | 1,706 | 2,748 |
-| Interface Segregation Principle | always | 921 | 5,160 | 921 | 921 | 1,721 |
-| Liskov Substitution Principle | always | 663 | 5,540 | 663 | 663 | 1,367 |
-| Open/Closed Principle | always | 1,799 | 3,923 | 1,799 | 1,799 | 2,636 |
-| Single Responsibility Principle | always | 1,478 | 3,246 | 1,478 | 1,478 | 2,051 |
-| Structured Concurrency | conditional | 1,387 | 3,140 | 1,387 | 1,387 | 2,428 |
-| SwiftUI Best Practices | conditional | 3,114 | 14,854 | 3,114 | 3,114 | 5,278 |
-| Unit Testing | conditional | 1,318 | 9,490 | 1,318 | 1,318 | 3,591 |
-| UI Testing | conditional | 1,643 | 9,373 | 1,643 | 1,643 | 3,792 |
-| **MIN** |  | **9,022** | **3,140** | **9,022** | **9,022** | **12,978** |
-| **MAX** |  | **16,484** | **14,854** | **16,484** | **16,484** | **28,067** |
+| Code Smells | always | 70 | — | 43 | 70 | 70 |
+| Don't Repeat Yourself | always | 64 | 251 | 39 | 64 | 90 |
+| Interface Segregation Principle | always | 39 | 186 | 39 | 39 | 64 |
+| Liskov Substitution Principle | always | 39 | 216 | 39 | 39 | 64 |
+| Open/Closed Principle | always | 64 | 295 | 39 | 170 | 195 |
+| Single Responsibility Principle | always | 64 | 155 | 39 | 90 | 115 |
+| Structured Concurrency | conditional | 79 | 80 | 49 | 79 | 109 |
+| SwiftUI Best Practices | conditional | 68 | 516 | 41 | 68 | 95 |
+| Unit Testing | conditional | 67 | 317 | 41 | 67 | 94 |
+| UI Testing | conditional | 72 | 346 | 44 | 72 | 101 |
+| **MIN** |  | **340** | **80** | **238** | **472** | **598** |
+| **MAX** |  | **626** | **516** | **413** | **758** | **997** |
 
 - **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (6). For `per-principle`: smallest single principle.
 - **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (10). For `per-principle`: largest single principle.

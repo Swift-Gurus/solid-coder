@@ -24,7 +24,8 @@ Examples:
     python3 gateway.py generate_report --data-dir /path/to/iteration --report-dir /path/to/output
     python3 gateway.py validate_architecture --arch-path /path/to/arch.json
     python3 gateway.py split_implementation_plan --plan-path /p/plan.json --output-dir /p/chunks/
-    python3 gateway.py search_codebase --sources-dir /path/to/Sources
+    python3 gateway.py search_codebase --sources-dir /path/to/Sources --synonyms json,line,stream --min-matches 3
+    python3 gateway.py search_codebase --sources-dir /path/to/Sources --spec-numbers SPEC-026,SPEC-033
     python3 gateway.py query_specs --action scan --args type=feature status=ready
 
 Exit codes:
@@ -40,6 +41,7 @@ from pathlib import Path
 # Import the server module (same directory)
 from server import SKILLS_ROOT
 from server import (
+    build_pattern_index,
     get_candidate_tags,
     discover_principles_tool,
     load_rules,
@@ -85,120 +87,333 @@ def parse_args(argv):
     return tool, kwargs
 
 
-def _format_md(result):
-    """Format load_rules result as readable markdown/text sections."""
-    sep = "=" * 72
-    sub = "-" * 40
-    lines = []
-    total = len(result["active_principles"])
-    lines.append(f"{sep}")
-    lines.append(f"  ACTIVE PRINCIPLES ({total}): {', '.join(p.upper() for p in result['active_principles'])}")
-    lines.append(f"{sep}\n")
+# -----------------------------------------------------------------------------
+# preload_instruction — SubagentStart hook body
+# -----------------------------------------------------------------------------
+#
+# Reads the SubagentStart hook JSON from stdin, infers mode + principles from
+# the subagent_type and prompt, calls load_rules to get the file paths, and
+# returns the hook response JSON instructing the subagent to read those files.
 
-    for idx, name in enumerate(result["active_principles"], 1):
-        r = result["rules"].get(name, {})
-        lines.append(f"{sep}")
-        lines.append(f"  [{idx}/{total}] {name.upper()}")
-        lines.append(f"{sep}")
+SUBAGENT_TYPE_TO_MODE = {
+    "solid-coder:apply-principle-review-agent": "review",
+    "solid-coder:code-agent": "code",
+    "solid-coder:plan-agent": "planner",
+    "solid-coder:synthesize-fixes-agent": "synth-fixes",
+    "solid-coder:synthesize-implementation-agent": "synth-impl",
+}
 
-        if r.get("rule"):
-            lines.append(f"\n{sub}")
-            lines.append(f"  RULE — {name.upper()}")
-            lines.append(f"{sub}\n")
-            lines.append(r["rule"].strip())
-
-        if r.get("instructions"):
-            lines.append(f"\n{sub}")
-            lines.append(f"  INSTRUCTIONS — {name.upper()}")
-            lines.append(f"{sub}\n")
-            lines.append(r["instructions"].strip())
-
-        if r.get("code_rules"):
-            lines.append(f"\n{sub}")
-            lines.append(f"  CODE RULES — {name.upper()}")
-            lines.append(f"{sub}\n")
-            lines.append(r["code_rules"].strip())
-
-        if r.get("examples"):
-            lines.append(f"\n{sub}")
-            lines.append(f"  EXAMPLES — {name.upper()} ({len(r['examples'])} files)")
-            lines.append(f"{sub}\n")
-            for i, ex in enumerate(r["examples"], 1):
-                lines.append(f"--- Example {i} ---\n")
-                lines.append(ex.strip())
-                lines.append("")
-
-        if r.get("patterns"):
-            lines.append(f"\n{sub}")
-            lines.append(f"  DESIGN PATTERNS — {name.upper()}")
-            lines.append(f"{sub}\n")
-            for p in r["patterns"]:
-                lines.append(p.strip())
-                lines.append("")
-
-        lines.append("")
-
-    lines.append(f"{sep}")
-    lines.append(f"  END OF RULES")
-    lines.append(f"{sep}")
-
-    return "\n".join(lines)
-
-
-def _format_hook_json(result):
-    """Format load_rules result as a SubagentStart hook response.
-
-    Wraps the md output in the JSON shape the Claude Code harness expects
-    to inject content into a spawned subagent's context:
-
-        {"hookSpecificOutput": {
-            "hookEventName": "SubagentStart",
-            "additionalContext": "<rules>"
-        }}
-    """
-    md = _format_md(result)
-    response = {
-        "hookSpecificOutput": {
-            "hookEventName": "SubagentStart",
-            "additionalContext": md,
-        }
-    }
-    return json.dumps(response)
-
-
-OUTPUT_FORMATTERS = {
-    "md": _format_md,
-    "hook-json": _format_hook_json,
+MODE_INSTRUCTION_TEMPLATES = {
+    "review": (
+        "Before starting the review, read the following file(s). They contain "
+        "the full rule, detection instructions, examples, and patterns for "
+        "the principle you are reviewing. You MUST apply them verbatim. Do "
+        "NOT call load_rules — the rules are already resolved for you."
+    ),
+    "code": (
+        "Before writing or modifying any code, read the following file(s). "
+        "They contain the active SOLID rules and code-writing constraints "
+        "you MUST satisfy."
+    ),
+    "planner": (
+        "Before producing the architecture plan, read the following file(s). "
+        "They contain the rules the plan MUST respect."
+    ),
+    "synth-fixes": (
+        "Before synthesizing fixes, read the following file(s). They contain "
+        "the rules and fix patterns you MUST cross-check every action against."
+    ),
+    "synth-impl": (
+        "Before synthesizing the implementation plan, read the following "
+        "file(s). They contain the rules the plan MUST respect."
+    ),
 }
 
 
-def load_rules_text(profile=None, principle=None, matched_tags=None,
-                    exclude=None, mode=None, output_format="md"):
-    """Load rules and dispatch to the chosen output formatter.
+def _parse_principle_from_prompt(prompt):
+    """Extract `principle: NAME` from an agent prompt (case-insensitive)."""
+    if not prompt:
+        return None
+    import re
+    m = re.search(r"(?im)^\s*principle\s*:\s*([A-Za-z0-9_\-]+)\s*$", prompt)
+    return m.group(1).strip() if m else None
 
-    output_format:
-      - "md"        (default) — readable text sections, for CLI/human reads
-      - "hook-json" — SubagentStart hook response JSON for context injection
+
+def _read_agent_prompt(transcript_path, agent_id, retries=120, delay=0.5):
+    """Read the agent's initial prompt from its JSONL file.
+
+    Derives the subagent JSONL path from the parent transcript path and agent_id,
+    reads the first user message, and returns its text content.
+
+    Retries with a short delay because parallel agents are spawned simultaneously —
+    CC fires SubagentStart before the JSONL file is written for all of them.
+    Only retries if the subagents/ directory exists — if no such directory, returns
+    immediately to avoid long waits for fake/test paths.
     """
-    if output_format not in OUTPUT_FORMATTERS:
-        valid = ", ".join(sorted(OUTPUT_FORMATTERS.keys()))
-        print(f"Error: invalid --output-format '{output_format}'. Valid: {valid}",
+    import time
+    if not transcript_path or not agent_id:
+        return ""
+    p = Path(transcript_path)
+    subagent_dir = p.parent / p.stem / "subagents"
+    jsonl = subagent_dir / f"agent-{agent_id}.jsonl"
+    for attempt in range(retries):
+        try:
+            if jsonl.is_file():
+                first_line = jsonl.read_text(encoding="utf-8").splitlines()[0]
+                entry = json.loads(first_line)
+                content = entry.get("message", {}).get("content", "")
+                if isinstance(content, str) and content.strip():
+                    return content
+                if isinstance(content, list):
+                    text = " ".join(
+                        item.get("text", "") for item in content if isinstance(item, dict)
+                    )
+                    if text.strip():
+                        return text
+            elif attempt == 0 and not subagent_dir.exists():
+                return ""
+        except Exception:
+            pass
+        time.sleep(delay)
+    return ""
+
+
+def _parse_matched_tags_from_prompt(prompt):
+    """Extract `matched-tags: a,b,c` from an agent prompt (case-insensitive)."""
+    if not prompt:
+        return None
+    import re
+    m = re.search(r"(?im)^\s*matched[-_]tags\s*:\s*(.+)$", prompt)
+    if not m:
+        return None
+    return [t.strip() for t in m.group(1).split(",") if t.strip()]
+
+
+def _extract_matched_tags_from_cwd(cwd, mode):
+    """Find matched_tags from the most recent pipeline output in {cwd}/.solid_coder/.
+
+    Reads from files written by the previous pipeline phase — no JSONL timing dependency.
+
+    code (implement):   implementation-plan.json      → matched_tags[] field
+    code (refactor):    prepare/review-input.json     → matched_tags[] field
+    synth-fixes:        prepare/review-input.json     → matched_tags[] field
+    synth-impl:         arch.json                     → derive from component category/stack
+    """
+    solid_dir = Path(cwd) / ".solid_coder"
+    if not solid_dir.exists():
+        return None
+
+    def _read_tags(files):
+        for f in sorted(files, key=lambda x: x.stat().st_mtime, reverse=True)[:3]:
+            try:
+                data = json.loads(f.read_text(encoding="utf-8"))
+                tags = data.get("matched_tags", [])
+                if isinstance(tags, list) and tags:
+                    return [t.strip() for t in tags if t.strip()]
+            except Exception:
+                pass
+        return None
+
+    if mode == "code":
+        # Distinguish implement vs refactor by the most recent run folder name
+        run_dirs = sorted(
+            [d for d in solid_dir.iterdir() if d.is_dir()],
+            key=lambda d: d.stat().st_mtime, reverse=True
+        )
+        latest = run_dirs[0].name if run_dirs else ""
+        if latest.startswith("implement-"):
+            return _read_tags(solid_dir.rglob("implementation-plan.json"))
+        if latest.startswith("refactor-"):
+            return _read_tags(solid_dir.rglob("review-input.json"))
+        # Fallback: try both
+        return (_read_tags(solid_dir.rglob("implementation-plan.json"))
+                or _read_tags(solid_dir.rglob("review-input.json")))
+
+    if mode in ("synth-fixes",):
+        return _read_tags(solid_dir.rglob("review-input.json"))
+
+    if mode == "synth-impl":
+        # Derive tags from arch.json components (category + stack) and validation.json
+        def _tags_from_components(data):
+            tags = set()
+            for comp in data.get("components", []):
+                if comp.get("category"):
+                    tags.add(comp["category"].lower())
+                for s in comp.get("stack", []):
+                    tags.add(s.lower())
+            return sorted(tags) if tags else None
+
+        for arch in sorted(solid_dir.rglob("arch.json"),
+                           key=lambda f: f.stat().st_mtime, reverse=True)[:3]:
+            try:
+                tags = _tags_from_components(json.loads(arch.read_text(encoding="utf-8")))
+                if tags:
+                    return tags
+            except Exception:
+                pass
+
+        for val in sorted(solid_dir.rglob("validation.json"),
+                          key=lambda f: f.stat().st_mtime, reverse=True)[:3]:
+            try:
+                tags = _tags_from_components(json.loads(val.read_text(encoding="utf-8")))
+                if tags:
+                    return tags
+            except Exception:
+                pass
+        return None
+
+    return None
+
+
+def _extract_matched_tags_from_output_root(prompt):
+    """Read matched_tags from prepare/review-input.json via `output-root:` in prompt.
+
+    Used for synth-fixes and synth-impl modes whose prompts contain an output-root
+    pointing to a refactor/implement iteration directory.
+    """
+    if not prompt:
+        return None
+    import re
+    m = re.search(r"(?im)^\s*output[-_]root\s*:\s*(.+)$", prompt)
+    if not m:
+        return None
+    output_root = Path(m.group(1).strip())
+    candidates = [
+        output_root / "prepare" / "review-input.json",
+        output_root.parent / "prepare" / "review-input.json",
+    ]
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            tags = data.get("matched_tags", [])
+            if isinstance(tags, list) and tags:
+                return [t.strip() for t in tags if t.strip()]
+        except Exception:
+            pass
+    return None
+
+
+def _extract_matched_tags_from_plan(prompt):
+    """Read matched_tags from implementation-plan.json found via `plan:` in prompt.
+
+    The plan: value may be a directory (chunked) — looks for implementation-plan.json
+    one level up, or reads the first *.json in the directory.
+    Returns list of tags or None if not found / not applicable.
+    """
+    if not prompt:
+        return None
+    import re
+    m = re.search(r"(?im)^\s*plan\s*:\s*(.+)$", prompt)
+    if not m:
+        return None
+    plan_path = Path(m.group(1).strip())
+
+    candidates = []
+    if plan_path.is_dir():
+        # chunked layout: implementation-plan.json sits next to the directory
+        candidates.append(plan_path.parent / "implementation-plan.json")
+        # fallback: first JSON chunk in the directory
+        chunks = sorted(plan_path.glob("*.json"))
+        if chunks:
+            candidates.append(chunks[0])
+    elif plan_path.is_file():
+        candidates.append(plan_path)
+
+    for candidate in candidates:
+        try:
+            data = json.loads(candidate.read_text(encoding="utf-8"))
+            tags = data.get("matched_tags", [])
+            if isinstance(tags, list) and tags:
+                return [t.strip() for t in tags if t.strip()]
+        except Exception:
+            pass
+    return None
+
+
+def _build_additional_context(mode, paths):
+    """Render the SubagentStart additionalContext instruction text."""
+    header = MODE_INSTRUCTION_TEMPLATES.get(
+        mode,
+        "Before starting, read the following file(s). You MUST apply their rules."
+    )
+    file_list = "\n".join(f"- {p}" for p in paths)
+    body = (
+        f"{header}\n\n"
+        f"Files to read (absolute paths):\n{file_list}\n\n"
+        f"If any file is missing or unreadable, stop and report the error."
+    )
+    pattern_index = build_pattern_index()
+    if pattern_index:
+        body += (
+            f"\n\n{pattern_index}\n"
+            f"Whenever you need to use a design pattern — whether writing, "
+            f"reviewing, planning, or synthesizing — read its file (path listed "
+            f"above) before applying or suggesting it."
+        )
+    return body
+
+
+def preload_instruction(**_ignored):
+    """Emit a SubagentStart hook response instructing the subagent to read rule files.
+
+    Reads the hook event JSON from stdin. Expects at least:
+      { "hook_event_name": "SubagentStart",
+        "subagent_type": "solid-coder:apply-principle-review-agent",
+        "prompt": "principle: SRP\\n..." }
+    """
+    try:
+        raw = sys.stdin.read()
+        event = json.loads(raw) if raw.strip() else {}
+    except json.JSONDecodeError as e:
+        print(f"Error: invalid hook JSON on stdin: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    agent_type = event.get("agent_type") or event.get("subagent_type") or event.get("subagentType") or ""
+
+    mode = SUBAGENT_TYPE_TO_MODE.get(agent_type)
+    if not mode:
+        return ""
+
+    cwd = event.get("cwd", "")
+    transcript_path = event.get("transcript_path", "")
+    agent_id = event.get("agent_id", "")
+
+    prompt = _read_agent_prompt(transcript_path, agent_id)
+    principle = _parse_principle_from_prompt(prompt)
+    matched_tags = _parse_matched_tags_from_prompt(prompt)
+
+    # If no matched-tags in prompt, resolve from cwd (no JSONL timing dependency)
+    if not matched_tags and cwd:
+        matched_tags = _extract_matched_tags_from_cwd(cwd, mode)
+
+    # Final fallback: read from prompt-referenced artifacts (for direct CLI calls)
+    if not matched_tags:
+        if mode == "code":
+            matched_tags = (_extract_matched_tags_from_plan(prompt)
+                            or _extract_matched_tags_from_output_root(prompt))
+        elif mode in ("synth-fixes", "synth-impl"):
+            matched_tags = _extract_matched_tags_from_output_root(prompt)
+
+
+    if mode == "review" and not principle:
+        print("Error: mode 'review' requires 'principle: NAME' in prompt",
               file=sys.stderr)
         sys.exit(1)
 
-    result = load_rules(profile=profile, principle=principle,
-                        matched_tags=matched_tags, exclude=exclude, mode=mode)
+    result = load_rules(principle=principle, matched_tags=matched_tags, mode=mode)
 
     if result.get("errors"):
-        import json as _json
-        print(_json.dumps({"errors": result["errors"]}), file=sys.stderr)
+        print(json.dumps({"errors": result["errors"]}), file=sys.stderr)
         sys.exit(1)
 
-    if not result.get("active_principles"):
-        print("No active principles found.", file=sys.stderr)
+    paths = result.get("paths_to_load", [])
+    if not paths:
+        print(f"Error: no files resolved for mode={mode}, principle={principle!r}, "
+              f"matched_tags={matched_tags!r}", file=sys.stderr)
         sys.exit(1)
 
-    return OUTPUT_FORMATTERS[output_format](result)
+    return {"hookSpecificOutput": {"hookEventName": "SubagentStart",
+                                   "additionalContext": _build_additional_context(mode, paths)}}
 
 
 def load_spec_ancestors(**kwargs):
@@ -259,7 +474,7 @@ def load_spec_ancestors(**kwargs):
 TOOLS = {
     "get_candidate_tags": get_candidate_tags,
     "discover_principles": discover_principles_tool,
-    "load_rules": load_rules_text,
+    "load_rules": load_rules,
     "check_severity": check_severity,
     "load_synthesis_context": load_synthesis_context,
     "validate_phase_output": validate_phase_output,
@@ -271,6 +486,7 @@ TOOLS = {
     "query_specs": query_specs,
     "load_spec_context": load_spec_ancestors,
     "prepare_review_input": prepare_review_input,
+    "preload_instruction": preload_instruction,
 }
 
 
@@ -309,6 +525,10 @@ def main():
 
     try:
         result = handler(**kwargs)
+        if isinstance(result, dict) and result.get("errors"):
+            for e in result["errors"]:
+                print(f"Error: {e.get('error', 'unknown error')}", file=sys.stderr)
+            sys.exit(1)
         if isinstance(result, str):
             print(result)
         else:

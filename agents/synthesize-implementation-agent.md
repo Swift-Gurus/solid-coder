@@ -6,7 +6,6 @@ allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdat
 skills:
   - synthesize-implementation
   - create-type
-  - load-reference
 tools: Read, Grep, Glob, Bash, Write, Edit, Skill, TaskCreate, TaskUpdate
 model: inherit
 maxTurns: 50

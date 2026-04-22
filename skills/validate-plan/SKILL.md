@@ -38,8 +38,10 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
   python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py \
     --sources <sources-dir> \
     --synonyms '<json-array-string>' \
+    --min-matches 3 \
     --spec <spec_number>     # include when arch.json has spec_number
   ```
+  `--min-matches 3` filters files that matched only on generic terms (e.g. "file", "url", "key"). Spec matches always pass regardless of this threshold.
 - [ ] 1.2 Parse the JSON output.
 
 ## Phase 2: Name-Based Search (LLM)

@@ -52,3 +52,4 @@ Use the loaded fix instructions to resolve the sealed variation point.
 - Protocol + primary implementation → same file, named after the implementation
 - Additional conformers → separate files, named after the conformer
 - Always search the project for existing protocols before creating new ones
+

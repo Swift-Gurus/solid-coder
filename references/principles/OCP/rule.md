@@ -5,6 +5,9 @@ category: solid
 description: Sealed variation point counting and testability analysis with direct severity scoring
 required_patterns:
   - structural/adapter
+  - creational/factory
+  - creational/factory-method
+  - creational/builder
 ---
 
 # Open/Closed Principle (OCP)

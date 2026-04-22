@@ -18,12 +18,7 @@ user-invocable: false
 ## Phase 1
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
-- [ ] 1.2 **Load rules** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --mode review --principle NAME`
-  - This returns the rule content, review instructions, examples, and design patterns for this principle
-  - Parse JSON output. If `errors` is non-empty → fail with the error
-  - Store `rules[NAME]` — contains `rule`, `instructions`, `examples`, `patterns`
-- [ ] 1.3 **Parse input** -
+- [ ] 1.2 **Parse input** -
   - read and parse input json
   - extract the list of files and their units (paths, line ranges, has_changes flags)
   - Do NOT read the source code files here — source files are read one at a time in Phase 2
@@ -46,9 +41,6 @@ END
 Creating output.
 - [ ] 3.1 **Load output schema** — Read the schema file referenced in frontmatter
 - [ ] 3.2 **Generate output** — Produce structured output matching the output schema, write to created FOLDER `review-output.json`
-- [ ] 3.3 **Validate output** — Run:
-  `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py validate_phase_output --json-path FOLDER/review-output.json --schema-path {principle_folder}/review/output.schema.json`
-  If validation fails, read the error, fix the output JSON, re-write, and re-validate.
 
 ## Constraints
 - Do NOT invent rules — only apply what is in the rules file

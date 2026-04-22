@@ -128,13 +128,7 @@ Load principle rules as architectural constraints. Reuse existing skills for dis
   - `design_references[]` — from Phase 1.4 (inline mockups, diagrams, resource paths)
   - `technical_requirements[]` — verbatim from Phase 1.4 (subsections with code blocks preserved)
   - `test_plan[]` — from Phase 1.4 (test cases classified by type, associated with components where possible)
-- [ ] 5.2 Validate by running:
-  ```
-  python3 ${CLAUDE_PLUGIN_ROOT}/skills/plan/scripts/validate-arch.py <OUTPUT_PATH> --schema ${CLAUDE_PLUGIN_ROOT}/skills/plan/arch.schema.json
-  ```
-  If the script exits non-zero, fix the arch.json and re-run before proceeding.
-
-- [ ] 5.3 Write `arch.json` to OUTPUT_PATH
+- [ ] 5.2 Write `arch.json` to OUTPUT_PATH
 
 ## Edge Cases
 

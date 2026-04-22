@@ -44,9 +44,50 @@ validate_output_mod = importlib.import_module("validate-output")
 
 from protocol import MCPServer
 import modes as modes_module
-import rule_stripper
 
 server = MCPServer("solid-coder", "1.0.0")
+
+PATTERNS_ROOT = REFS_ROOT / "design_patterns"
+
+
+def build_pattern_index(root: Path = PATTERNS_ROOT) -> str:
+    """Render a compact catalog of all design patterns under `root`.
+
+    Scans every `*.md` two levels deep (category/pattern.md), parses frontmatter
+    via `parse_frontmatter`, and emits one line per pattern with name,
+    description, and absolute path. Agents use the index to decide which
+    pattern file(s) to Read next. Generated at call time — no manual
+    maintenance.
+    """
+    if not root.is_dir():
+        return ""
+    by_category: dict[str, list[tuple[str, str, str]]] = {}
+    for path in sorted(root.glob("*/*.md")):
+        try:
+            fm = parse_frontmatter.parse(str(path))
+        except Exception:
+            continue
+        name = fm.get("displayName") or fm.get("name") or path.stem
+        desc = (fm.get("description") or "").strip()
+        category = fm.get("category") or path.parent.name
+        by_category.setdefault(category, []).append((name, desc, str(path)))
+    if not by_category:
+        return ""
+
+    lines: list[str] = []
+    lines.append("# Design Patterns Index")
+    lines.append("")
+    lines.append("Consult this catalog when you need to choose a pattern. Use the Read tool on the file path to load the full contract (structure, recognition conditions, anti-patterns) before applying a pattern.")
+    lines.append("")
+    for category in sorted(by_category):
+        lines.append(f"## {category.capitalize()}")
+        lines.append("")
+        for name, desc, path in by_category[category]:
+            suffix = f" — {desc}" if desc else ""
+            lines.append(f"- **{name}**{suffix}")
+            lines.append(f"  - path: `{path}`")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 # =============================================================================
@@ -147,8 +188,11 @@ def discover_principles_tool(matched_tags=None, profile=None):
     },
 )
 def load_rules(profile=None, principle=None, matched_tags=None, exclude=None, mode=None):
-    # Mode wins — derive profile + exclude from the single source of truth.
-    strip_review = False
+    """Resolve which rule files apply for a given mode/principle.
+
+    Returns {"active_principles": [...], "paths_to_load": [...]} — absolute
+    paths only. No content is loaded or returned.
+    """
     if mode:
         if mode not in modes_module.MODES:
             return {"errors": [{"principle": "", "file": "", "error":
@@ -156,7 +200,6 @@ def load_rules(profile=None, principle=None, matched_tags=None, exclude=None, mo
         cfg = modes_module.resolve(mode)
         profile = cfg["profile"]
         exclude = ",".join(cfg["exclude"]) if cfg["exclude"] else None
-        strip_review = cfg.get("strip_review_content", False)
     if not profile:
         return {"errors": [{"principle": "", "file": "", "error": "Either `mode` or `profile` is required"}]}
     if profile not in ("review", "code"):
@@ -164,22 +207,19 @@ def load_rules(profile=None, principle=None, matched_tags=None, exclude=None, mo
         return {"errors": [{"principle": "", "file": "", "error":
             f"Invalid --profile '{profile}'. Valid: review, code. "
             f"For pipeline modes ({valid_modes}), use --mode instead."}]}
-    # Step 1: Discover and filter principles (by matched tags AND the requested profile)
+
     result = discover_principles.discover_and_filter(
         str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
     )
-
     active = result["active_principles"]
 
-    # Filter to single principle if requested (agent mode)
     if principle:
         active = [p for p in active if p["name"].lower() == principle.lower()]
         if not active:
-            return {"active_principles": [], "rules": {}, "errors": [
+            return {"active_principles": [], "paths_to_load": [], "errors": [
                 {"principle": principle, "file": "", "error": f"Principle '{principle}' not found or not active"}
-            ], "skipped_principles": result["skipped_principles"]}
+            ]}
 
-    # Parse exclude list: comma-separated string or list
     skip = set()
     if exclude:
         if isinstance(exclude, str):
@@ -187,87 +227,44 @@ def load_rules(profile=None, principle=None, matched_tags=None, exclude=None, mo
         elif isinstance(exclude, list):
             skip = set(e.lower() for e in exclude)
 
-    errors = []
-    rules = {}
+    paths = []
 
     for p in active:
-        name = p["name"]
         folder = Path(p["folder"])
         rule_path = p["rule_path"]
 
-        entry = {"rule": None, "instructions": None, "examples": [], "patterns": [], "code_rules": None}
+        if "rule" not in skip:
+            paths.append(rule_path)
 
-        # Load rule.md (always loaded)
-        try:
-            loaded = load_reference.load([rule_path])
-            if loaded:
-                content = loaded[0]["content"]
-                if strip_review:
-                    content = rule_stripper.strip_review_content(
-                        content,
-                        h2_sections=modes_module.STRIP_H2_SECTIONS,
-                        bold_subsections=modes_module.STRIP_BOLD_SUBSECTIONS,
-                        h3_sections=modes_module.STRIP_H3_SECTIONS,
-                    )
-                entry["rule"] = content
-        except Exception as e:
-            errors.append({"principle": name, "file": "rule.md", "error": str(e)})
-
-        # Load instructions
         if "instructions" not in skip:
-            if profile == "review":
-                instr_path = folder / "review" / "instructions.md"
-            else:
-                instr_path = folder / "fix" / "instructions.md"
+            instr = folder / ("review" if profile == "review" else "fix") / "instructions.md"
+            if instr.is_file():
+                paths.append(str(instr))
 
-            if instr_path.is_file():
-                try:
-                    loaded = load_reference.load([str(instr_path)])
-                    if loaded:
-                        entry["instructions"] = loaded[0]["content"]
-                except Exception as e:
-                    errors.append({"principle": name, "file": str(instr_path.name), "error": str(e)})
-
-        # Load examples
-        if "examples" not in skip:
-            examples_dir = folder / "Examples"
-            if examples_dir.is_dir():
-                try:
-                    loaded = load_reference.load([str(examples_dir)])
-                    entry["examples"] = [f["content"] for f in loaded]
-                except Exception:
-                    pass
-
-        # Load design patterns
-        if "patterns" not in skip:
-            try:
-                parsed = parse_frontmatter.parse(rule_path)
-                for pattern_path in parsed.get("required_patterns", []) if isinstance(parsed.get("required_patterns"), list) else []:
-                    if Path(pattern_path).is_file():
-                        loaded = load_reference.load([pattern_path])
-                        if loaded:
-                            entry["patterns"].append(loaded[0]["content"])
-            except Exception:
-                pass
-
-        # Load code/instructions.md (code profile only)
         if "code_rules" not in skip and profile == "code":
             code_rule = folder / "code" / "instructions.md"
             if code_rule.is_file():
-                try:
-                    loaded = load_reference.load([str(code_rule)])
-                    if loaded:
-                        entry["code_rules"] = loaded[0]["content"]
-                except Exception:
-                    pass
+                paths.append(str(code_rule))
 
-        rules[name] = entry
+        if "examples" not in skip:
+            examples_dir = folder / "Examples"
+            if examples_dir.is_dir():
+                for f in sorted(examples_dir.iterdir()):
+                    if f.is_file():
+                        paths.append(str(f))
+
+        if "patterns" not in skip:
+            try:
+                parsed = parse_frontmatter.parse(rule_path)
+                for pattern_path in (parsed.get("required_patterns") or []):
+                    if isinstance(pattern_path, str) and Path(pattern_path).is_file():
+                        paths.append(pattern_path)
+            except Exception:
+                pass
 
     return {
         "active_principles": [p["name"] for p in active],
-        "skipped_principles": result["skipped_principles"],
-        "rules": rules,
-        "errors": errors,
+        "paths_to_load": paths,
     }
 
 
@@ -483,26 +480,37 @@ def split_implementation_plan(plan_path, output_dir):
         "properties": {
             "sources_dir": {"type": "string", "description": "Directory to search"},
             "synonyms": {
-                "type": "object",
-                "description": "Synonym groups as JSON (key: term, value: [synonyms])",
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Flat list of synonym keywords to match against solid-description/solid-category",
             },
             "spec_numbers": {
                 "type": "array",
                 "items": {"type": "string"},
                 "description": "Spec numbers to search for (e.g. SPEC-001)",
             },
+            "min_matches": {
+                "type": "integer",
+                "description": "Minimum synonym terms that must match (default: 1). Spec matches always pass.",
+            },
         },
         "required": ["sources_dir"],
     },
 )
-def search_codebase(sources_dir, synonyms=None, spec_numbers=None):
+def search_codebase(sources_dir, synonyms=None, spec_numbers=None, min_matches=None):
     script = str(SKILLS_ROOT / "validate-plan" / "scripts" / "search-codebase.py")
     args = [sys.executable, script, "--sources", sources_dir]
     if synonyms:
+        if isinstance(synonyms, str):
+            synonyms = [synonyms]
         args.extend(["--synonyms", json.dumps(synonyms)])
     if spec_numbers:
+        if isinstance(spec_numbers, str):
+            spec_numbers = [spec_numbers]
         for spec in spec_numbers:
             args.extend(["--spec", spec])
+    if min_matches is not None:
+        args.extend(["--min-matches", str(min_matches)])
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode == 0:
         return json.loads(result.stdout)

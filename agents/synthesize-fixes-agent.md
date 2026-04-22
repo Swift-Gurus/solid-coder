@@ -5,7 +5,6 @@ argument-hint: <output-root>
 allowed-tools: Read, Grep, Glob, Bash, Write
 skills:
 - synthesize-fixes
-- load-reference
 tools: Read, Grep, Glob, Bash, Write
 model: inherit
 maxTurns: 100

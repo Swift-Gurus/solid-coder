@@ -2,11 +2,44 @@
   "hooks": {
     "SubagentStart": [
       {
-        "matcher": "test-preload-probe-agent",
+        "matcher": "solid-coder:(apply-principle-review|code|plan|synthesize-fixes|synthesize-implementation)-agent",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py load_rules --mode planner --output-format hook-json | tee /tmp/solid-coder-hook.log"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py\" preload_instruction"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/validate_json_schema.py\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/enforce_full_reference_read.py\""
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/allow_plugin_file_access.py\""
           }
         ]
       }

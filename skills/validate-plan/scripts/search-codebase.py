@@ -139,6 +139,8 @@ def main():
     parser.add_argument("--synonyms", default=None, help="JSON array string of synonym keywords")
     parser.add_argument("--spec", action="append", default=[], metavar="SPEC-NNN",
                         help="Spec number to search for (repeatable: --spec SPEC-015 --spec SPEC-016)")
+    parser.add_argument("--min-matches", type=int, default=1, metavar="N",
+                        help="Minimum synonym terms that must match (default: 1). Spec matches always pass.")
     args = parser.parse_args()
 
     if not args.synonyms and not args.spec:
@@ -177,7 +179,8 @@ def main():
         if has_fm:
             files_with_frontmatter += 1
         if match:
-            matches.append(match)
+            if match.get("matched_specs") or len(match.get("matched_terms", [])) >= args.min_matches:
+                matches.append(match)
 
     result = {
         "matches": matches,

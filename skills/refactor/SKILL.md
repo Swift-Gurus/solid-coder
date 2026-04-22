@@ -38,6 +38,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 - [ ] 2.2 Launch Task
 - [ ] 2.3 From the Task result, extract the output path (review-input.json location in {OUTPUT_ROOT}/{ITERATION}/prepare)
   - If the Task failed, stop and report the error
+- [ ] 2.4 Read `{OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json` → extract `matched_tags[]` as comma-separated string. Store as MATCHED_TAGS. If empty or missing, set MATCHED_TAGS to empty string.
 
 ## Phase 3: Filter Principles & Launch Reviews (wait for phase 2)
 
@@ -98,6 +99,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
     ```
     output-root: {OUTPUT_ROOT}/{ITERATION}
     rules-path: {RULES_PATH}
+    matched-tags: {MATCHED_TAGS}
     ```
 - [ ] 6.2 Launch Task
 - [ ] 6.3 Report synthesized plan paths from `{OUTPUT_ROOT}/{ITERATION}/synthesized/`
@@ -113,6 +115,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
       mode: refactor
       plans-dir: {OUTPUT_ROOT}/{ITERATION}/synthesized
       output-root: {OUTPUT_ROOT}/{ITERATION}
+      matched-tags: {MATCHED_TAGS}
       ```
 - [ ] 7.2 Launch Task and wait for completion
 - [ ] 7.3 From the Task result, extract the list of files created and modified per plan

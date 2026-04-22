@@ -30,7 +30,13 @@
       "Bash(wc:*)",
       "Bash(head:*)",
       "WebFetch(domain:status.claude.com)",
-      "Bash(find /Users/crowea/Developer/Swift-Gurus/solid-coder/references -name \"*.swift\" -path \"*/Examples/*\" -exec wc -l {} +)"
+      "Bash(find /Users/crowea/Developer/Swift-Gurus/solid-coder/references -name \"*.swift\" -path \"*/Examples/*\" -exec wc -l {} +)",
+      "Bash(xxd)",
+      "Bash(awk '{print $6, $7, $8, $9}')",
+      "Bash(awk '{print $6, $7, $8, $9, $5}')",
+      "Bash(xargs -I{} python3 -c \" import json, sys d = json.load\\(open\\('{}'\\)\\) print\\('Keys:', list\\(d.keys\\(\\)\\)\\) print\\('matched_tags:', d.get\\('matched_tags', 'NOT FOUND'\\)\\) print\\('tags:', d.get\\('tags', 'NOT FOUND'\\)\\) print\\(\\) \")",
+      "Bash(xargs -I{} python3 -c \" import json, sys d = json.load\\(open\\('{}'\\)\\) print\\('File: {}'\\) print\\('Keys:', list\\(d.keys\\(\\)\\)\\) print\\('matched_tags:', d.get\\('matched_tags', 'NOT FOUND'\\)\\) \")",
+      "Bash(read f *)"
     ]
   },
   "enableAllProjectMcpServers": true,

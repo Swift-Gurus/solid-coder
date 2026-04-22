@@ -77,6 +77,7 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
 - [ ] 3.2 Launch Task
 - [ ] 3.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "synthesize-implementation", "status": "success" }`
 - [ ] 3.4 If the Task failed → report: "Phase 3 (synthesize-implementation) failed: {error}. Run `/synthesize-implementation` manually to debug." STOP.
+- [ ] 3.5 Read `{OUTPUT_ROOT}/implementation-plan.json` → extract `matched_tags[]` as comma-separated string. Store as MATCHED_TAGS. If empty or missing, set MATCHED_TAGS to empty string.
 
 ## Phase 4: Code Implementation
 
@@ -86,6 +87,7 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
     ```
     mode: implement
     plan: {OUTPUT_ROOT}/implementation-plan/
+    matched-tags: {MATCHED_TAGS}
     ```
   The code-agent reads chunk files from the directory (`01-plan.json`, `02-plan.json`, etc.) in order, processing each chunk's plan items sequentially. Do NOT iterate plan items yourself — the code-agent handles this.
 - [ ] 4.2 Launch Task

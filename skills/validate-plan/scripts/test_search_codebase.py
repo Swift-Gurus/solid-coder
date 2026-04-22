@@ -10,13 +10,15 @@ SCRIPT = os.path.join(os.path.dirname(__file__), "search-codebase.py")
 FIXTURES = os.path.join(os.path.dirname(__file__), "test_fixtures")
 
 
-def run_script(synonyms=None, sources=None, specs=None):
+def run_script(synonyms=None, sources=None, specs=None, min_matches=None):
     """Run search-codebase.py and return (exit_code, parsed_json_or_stderr)."""
     cmd = [sys.executable, SCRIPT, "--sources", sources or FIXTURES]
     if synonyms is not None:
         cmd += ["--synonyms", json.dumps(synonyms)]
     for spec in (specs or []):
         cmd += ["--spec", spec]
+    if min_matches is not None:
+        cmd += ["--min-matches", str(min_matches)]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         return 0, json.loads(result.stdout)
@@ -185,6 +187,42 @@ def test_multi_block_file_counted_once():
     # Should not appear twice
     multi_count = sum(1 for m in out["matches"] if "MultiBlock" in m["path"])
     assert multi_count == 1, f"MultiBlock should appear once, got {multi_count}"
+
+
+def test_min_matches_default_same_as_one():
+    """--min-matches 1 (default) returns same results as omitting the flag."""
+    _, out_default = run_script(["network", "product", "cache", "cart"])
+    _, out_explicit = run_script(["network", "product", "cache", "cart"], min_matches=1)
+    assert out_default["matches"] == out_explicit["matches"]
+
+
+def test_min_matches_filters_single_term_hits():
+    """--min-matches 2 drops files that only matched one synonym."""
+    # 'network' alone matches ProductFetchService (category field is a single word).
+    # With a broad synonym list including unrelated terms, files matching only 1 term should drop.
+    _, out1 = run_script(["network", "quantum", "synergy"], min_matches=1)
+    _, out2 = run_script(["network", "quantum", "synergy"], min_matches=2)
+    # ProductFetchService matches 'network' only — should appear at min=1 but not min=2
+    paths1 = [m["path"] for m in out1["matches"]]
+    paths2 = [m["path"] for m in out2["matches"]]
+    assert any("ProductFetchService" in p for p in paths1), "Should match at min=1"
+    assert not any("ProductFetchService" in p for p in paths2), "Should be filtered at min=2"
+
+
+def test_min_matches_retains_strong_matches():
+    """Files matching many synonyms survive high --min-matches thresholds."""
+    # ProductFetchService matches: 'network' (category), 'fetches', 'product', 'data', 'rest', 'api', 'pagination'
+    _, out = run_script(["network", "fetches", "product", "data", "rest", "api", "pagination"], min_matches=3)
+    paths = [m["path"] for m in out["matches"]]
+    assert any("ProductFetchService" in p for p in paths), f"Strong match should survive min=3: {paths}"
+
+
+def test_min_matches_does_not_filter_spec_matches():
+    """--min-matches does not filter files matched by --spec, regardless of synonym hit count."""
+    # ProductFetchService has solid-spec: [SPEC-010] but may have few synonym hits
+    _, out = run_script(synonyms=["quantum"], specs=["SPEC-010"], min_matches=5)
+    paths = [m["path"] for m in out["matches"]]
+    assert any("ProductFetchService" in p for p in paths), "Spec match should bypass min-matches filter"
 
 
 if __name__ == "__main__":
