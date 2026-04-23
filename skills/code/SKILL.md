@@ -13,7 +13,7 @@ Write or modify code with SOLID principle rules loaded as active constraints. Th
 ## Input
 - MODE: $ARGUMENTS[0] — one of `refactor`, `implement`, or `code`
 - Arguments per mode:
-  - `refactor`: PLANS_DIR = $ARGUMENTS[1], OUTPUT_ROOT = $ARGUMENTS[2]
+  - `refactor`: PLANS_DIR = $ARGUMENTS[1] (directory containing `.plan.json` files), OUTPUT_ROOT = $ARGUMENTS[2]
   - `implement`: PLAN_DIR = $ARGUMENTS[1] (directory containing chunk files: `01-plan.json`, `02-plan.json`, etc.)
   - `code`: PROMPT = $ARGUMENTS[1..] (spec file path, inline prompt, or both)
 
@@ -23,19 +23,19 @@ Read MODE and load context for that mode.
 
 ### Mode: refactor
 
-- [ ] 1.1 Glob `{PLANS_DIR}/*.plan.json` to discover all plan files
+- [ ] 1.1 Glob `{PLANS_DIR}/*.plan.json` to discover all plan files → PLAN_FILES list
 - [ ] 1.2 Read each plan JSON — each has `file_path` + `actions[]`
 - [ ] 1.3 For each plan: read `file_path` as the target source file
 - [ ] 1.4 Iterate actions in order (respecting `depends_on`). For each action: use `todo_items` as implementation steps, `suggested_fix` as reference code, `resolves` for traceability
 
 ### Mode: implement
 
-- [ ] 1.1 Glob `{PLAN_DIR}/*.json` and sort alphabetically to get chunk files in order (`01-plan.json`, `02-plan.json`, etc.)
-- [ ] 1.2 Read the first chunk to extract `matched_tags[]` — store as TAGS for Phase 2 principle discovery
+- [ ] 1.1 Glob `{PLAN_DIR}/*.json` and sort alphabetically → CHUNK_FILES list
+- [ ] 1.2 Read the first chunk file to extract `matched_tags[]` — store as TAGS for Phase 2 principle discovery
 - [ ] 1.3 Note top-level `acceptance_criteria[]` for cross-cutting verification in Phase 4
 - [ ] 1.4 Continue to Phase 2 to load rules before writing any code
 
-After Phase 2, process each chunk sequentially in Phase 3:
+After Phase 2, process each chunk in CHUNK_FILES sequentially in Phase 3:
 - For each chunk file, read it, then for each plan item in the chunk:
   - **Design references**: if the item has `design_references[]` with `type: "file"`, Read the screenshot file now. Study layout, spacing, colors, element sizes, and composition before writing code. For `type: "inline"`, read the embedded content as layout/structure reference.
   - **Code**: use `directive` as the instruction, `action` + `file` as the target, `acceptance_criteria` as verification checklist
@@ -123,6 +123,12 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 
 ## Phase 5: Build & Test
 
+**STOP. Before running any build command: have you finished writing ALL files for every plan item in this chunk?**
+- If NO → return to Phase 3 and complete all writes first. Do not build yet.
+- If YES → proceed to 5.1.
+
+Do not interleave write → build → fix → write → build. Write everything first, then build once. One build surfaces all errors together.
+
 Use commands from CLAUDE.md instructions already in context. If no build/test commands are available in context, skip this phase and explicitly state why.
 
 - [ ] 5.1 **Build your targets** — build the target(s) containing the files you created or modified. Wait for the result before proceeding.
@@ -172,4 +178,4 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 - NEVER run Phase 5 steps in parallel — always sequential, one step at a time.
 - NEVER truncate output — no `head`, `tail`, `| head -N`, or line limits on any command, script, or file read. Always read the full content.
 - NEVER use `cat`, `head`, `tail`, `less`, or any shell command to inspect source files — use the Read tool. Reading a file you just wrote via `cat` duplicates it in context through a separate channel and wastes tokens.
-- **Write before building**: complete all plan items' Write/Edit operations for this chunk BEFORE running any build or test. Do not interleave write → build → fix → write → build. One build surfaces all errors at once; ten iterative builds produce ten rounds of redundant output and re-reads.
+- **Write before building**: see Phase 5 gate — all writes must complete before the first build.

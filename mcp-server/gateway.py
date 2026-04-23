@@ -170,7 +170,8 @@ def _read_agent_prompt(transcript_path, agent_id, retries=120, delay=0.5):
                     )
                     if text.strip():
                         return text
-            elif attempt == 0 and not subagent_dir.exists():
+            elif attempt == 0 and not p.parent.exists():
+                # Parent session directory doesn't exist — truly invalid path, don't wait
                 return ""
         except Exception:
             pass
@@ -375,32 +376,16 @@ def preload_instruction(**_ignored):
         return ""
 
     cwd = event.get("cwd", "")
-    transcript_path = event.get("transcript_path", "")
-    agent_id = event.get("agent_id", "")
 
-    prompt = _read_agent_prompt(transcript_path, agent_id)
-    principle = _parse_principle_from_prompt(prompt)
-    matched_tags = _parse_matched_tags_from_prompt(prompt)
+    if mode == "review":
+        return ""  # review agents handle their own rule loading via principle-folder in prompt
 
-    # If no matched-tags in prompt, resolve from cwd (no JSONL timing dependency)
-    if not matched_tags and cwd:
-        matched_tags = _extract_matched_tags_from_cwd(cwd, mode)
+    # Resolve matched_tags from files written before spawning — no JSONL dependency.
+    # JSONL is only written on the agent's first API call which is AFTER the hook
+    # completes, so reading it would deadlock. Use cwd-based resolution instead.
+    matched_tags = _extract_matched_tags_from_cwd(cwd, mode) if cwd else None
 
-    # Final fallback: read from prompt-referenced artifacts (for direct CLI calls)
-    if not matched_tags:
-        if mode == "code":
-            matched_tags = (_extract_matched_tags_from_plan(prompt)
-                            or _extract_matched_tags_from_output_root(prompt))
-        elif mode in ("synth-fixes", "synth-impl"):
-            matched_tags = _extract_matched_tags_from_output_root(prompt)
-
-
-    if mode == "review" and not principle:
-        print("Error: mode 'review' requires 'principle: NAME' in prompt",
-              file=sys.stderr)
-        sys.exit(1)
-
-    result = load_rules(principle=principle, matched_tags=matched_tags, mode=mode)
+    result = load_rules(principle=None, matched_tags=matched_tags, mode=mode)
 
     if result.get("errors"):
         print(json.dumps({"errors": result["errors"]}), file=sys.stderr)

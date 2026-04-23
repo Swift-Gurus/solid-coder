@@ -2,7 +2,7 @@
   "hooks": {
     "SubagentStart": [
       {
-        "matcher": "solid-coder:(apply-principle-review|code|plan|synthesize-fixes|synthesize-implementation)-agent",
+        "matcher": "solid-coder:(code|plan|synthesize-fixes|synthesize-implementation)-agent",
         "hooks": [
           {
             "type": "command",
@@ -18,6 +18,10 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/validate_json_schema.py\""
+          },
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/split_plan_on_write.py\""
           }
         ]
       }

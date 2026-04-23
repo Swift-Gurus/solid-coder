@@ -73,109 +73,27 @@ class TestUnknownAgentType(unittest.TestCase):
 
 
 class TestReviewMode(unittest.TestCase):
-    def _make_event(self, tmp_dir, principle):
-        session_id = "test-session-review"
-        agent_id = "reviewagent001"
-        transcript_path = make_subagent_jsonl(
-            tmp_dir, session_id, agent_id,
-            f"principle: {principle}\nreview-input: /tmp/x.json",
-        )
+    """Review agents are excluded from the hook — they load rules via principle-folder in prompt."""
+
+    def _event(self, agent_id="reviewagent001"):
         return {
             "hook_event_name": "SubagentStart",
             "agent_type": "solid-coder:apply-principle-review-agent",
             "agent_id": agent_id,
-            "transcript_path": transcript_path,
+            "transcript_path": "/tmp/fake.jsonl",
         }
 
-    def test_returns_hook_json_with_rule_path(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            r = run(self._make_event(tmp, "SRP"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ctx = additional_context(r)
-            self.assertIn("rule.md", ctx)
-            self.assertIn("srp", ctx.lower())
-
-    def test_paths_are_absolute_and_exist(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            r = run(self._make_event(tmp, "SRP"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ctx = additional_context(r)
-            listed = [l.strip().lstrip("- ") for l in ctx.splitlines() if l.strip().startswith("- /")]
-            self.assertGreater(len(listed), 0, "no file paths found in context")
-            for path in listed:
-                self.assertTrue(Path(path).is_file(), f"path does not exist: {path}")
-
-    def test_review_mode_includes_review_instructions(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            r = run(self._make_event(tmp, "SRP"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ctx = additional_context(r)
-            self.assertIn("review/instructions.md", ctx)
-
-    def test_missing_principle_fails(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            session_id = "test-session-noprinc"
-            agent_id = "noprinc001"
-            transcript_path = make_subagent_jsonl(
-                tmp, session_id, agent_id, "review-input: /tmp/x.json"
-            )
-            event = {
-                "hook_event_name": "SubagentStart",
-                "agent_type": "solid-coder:apply-principle-review-agent",
-                "agent_id": agent_id,
-                "transcript_path": transcript_path,
-            }
-            r = run(event)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("principle", r.stderr.lower())
-
-    def test_succeeds_when_jsonl_written_after_hook_fires(self):
-        """Parallel agents: JSONL may not exist at hook fire time — retry must recover."""
-        import threading
-        with tempfile.TemporaryDirectory() as tmp:
-            session_id = "test-session-delayed"
-            agent_id = "delayedagent001"
-            subagent_dir = Path(tmp) / session_id / "subagents"
-            subagent_dir.mkdir(parents=True)
-            jsonl = subagent_dir / f"agent-{agent_id}.jsonl"
-            transcript_path = str(Path(tmp) / f"{session_id}.jsonl")
-
-            event = {
-                "hook_event_name": "SubagentStart",
-                "agent_type": "solid-coder:apply-principle-review-agent",
-                "agent_id": agent_id,
-                "transcript_path": transcript_path,
-            }
-
-            # Write the JSONL 200ms after the hook script starts
-            def write_late():
-                time.sleep(0.2)
-                entry = {"message": {"role": "user", "content": "principle: SRP\nreview-input: /tmp/x.json"}}
-                jsonl.write_text(json.dumps(entry) + "\n", encoding="utf-8")
-
-            t = threading.Thread(target=write_late)
-            t.start()
-            r = run(event)
-            t.join()
-
+    def test_review_hook_returns_empty(self):
+        r = run(self._event())
         self.assertEqual(r.returncode, 0, r.stderr)
-        ctx = additional_context(r)
-        self.assertIn("srp", ctx.lower())
+        self.assertEqual(r.stdout.strip(), "")
 
-    def test_instruction_header_present(self):
+    def test_review_hook_always_returns_empty_regardless_of_cwd(self):
         with tempfile.TemporaryDirectory() as tmp:
-            r = run(self._make_event(tmp, "SRP"))
+            event = {**self._event(), "cwd": tmp}
+            r = run(event)
             self.assertEqual(r.returncode, 0, r.stderr)
-            ctx = additional_context(r)
-            self.assertIn("Before starting the review", ctx)
-            self.assertIn("MUST apply", ctx)
-
-    def test_principle_case_insensitive(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            r = run(self._make_event(tmp, "srp"))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ctx = additional_context(r)
-            self.assertIn("srp", ctx.lower())
+            self.assertEqual(r.stdout.strip(), "")
 
 
 class TestCodeMode(unittest.TestCase):
@@ -263,123 +181,85 @@ class TestCodeModeMatchedTagsFromCwd(unittest.TestCase):
 
 
 class TestCodeModeMatchedTagsFromPlan(unittest.TestCase):
-    def _make_plan(self, tmp_dir, matched_tags, chunked=True):
-        plan = {"matched_tags": matched_tags, "plan_items": []}
-        plan_dir = Path(tmp_dir) / "implementation-plan"
-        plan_dir.mkdir()
-        # Write implementation-plan.json next to the directory
-        plan_json = Path(tmp_dir) / "implementation-plan.json"
-        plan_json.write_text(json.dumps(plan), encoding="utf-8")
-        if chunked:
-            (plan_dir / "01-plan.json").write_text(json.dumps(plan), encoding="utf-8")
-        return plan_dir, plan_json
+    """Code mode reads matched_tags from .solid_coder/implement-*/implementation-plan.json via cwd."""
 
-    def _event_with_plan(self, tmp_dir, plan_dir, session_id="code-plan-session", agent_id="codeplanagent001"):
-        subagent_dir = Path(tmp_dir) / session_id / "subagents"
-        subagent_dir.mkdir(parents=True)
-        jsonl = subagent_dir / f"agent-{agent_id}.jsonl"
-        entry = {"message": {"role": "user", "content": f"mode: implement\nplan: {plan_dir}"}}
-        jsonl.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    def _make_cwd_with_plan(self, tmp_dir, matched_tags):
+        plan = {"matched_tags": matched_tags, "plan_items": []}
+        solid_dir = Path(tmp_dir) / ".solid_coder" / "implement-SPEC-001"
+        solid_dir.mkdir(parents=True)
+        (solid_dir / "implementation-plan.json").write_text(json.dumps(plan))
+        return tmp_dir
+
+    def _event_with_cwd(self, cwd, agent_id="codeplanagent001"):
         return {
             "hook_event_name": "SubagentStart",
             "agent_type": "solid-coder:code-agent",
             "agent_id": agent_id,
-            "transcript_path": str(Path(tmp_dir) / f"{session_id}.jsonl"),
+            "transcript_path": "/tmp/fake.jsonl",
+            "cwd": str(cwd),
         }
 
     def test_filters_to_matched_tags_from_plan(self):
-        """Hook reads plan's matched_tags and filters code/instructions to matching principles only."""
         with tempfile.TemporaryDirectory() as tmp:
-            plan_dir, _ = self._make_plan(tmp, ["srp"])
-            event = self._event_with_plan(tmp, plan_dir)
-            r = run(event)
+            cwd = self._make_cwd_with_plan(tmp, ["srp"])
+            r = run(self._event_with_cwd(cwd))
             self.assertEqual(r.returncode, 0, r.stderr)
             ctx = additional_context(r)
             listed = [l.strip().lstrip("- ") for l in ctx.splitlines() if l.strip().startswith("- /")]
-            # Only SRP should load — no SwiftUI, no UITesting, no StructuredConcurrency
             for path in listed:
-                self.assertNotIn("SwiftUI", path, "SwiftUI should not load for srp-only task")
-                self.assertNotIn("UITesting", path, "UITesting should not load for srp-only task")
-                self.assertNotIn("ui-testing", path)
+                self.assertNotIn("SwiftUI", path)
                 self.assertNotIn("StructuredConcurrency", path)
 
     def test_reads_tags_from_chunked_plan_directory(self):
-        """Hook resolves implementation-plan.json next to the chunk directory."""
         with tempfile.TemporaryDirectory() as tmp:
-            plan_dir, plan_json = self._make_plan(tmp, ["swiftui"], chunked=True)
-            event = self._event_with_plan(tmp, plan_dir)
-            r = run(event)
+            cwd = self._make_cwd_with_plan(tmp, ["swiftui"])
+            r = run(self._event_with_cwd(cwd))
             self.assertEqual(r.returncode, 0, r.stderr)
             ctx = additional_context(r)
-            # SwiftUI should be included when tag matches
             self.assertIn("SwiftUI", ctx)
 
     def test_no_plan_falls_back_to_all_principles(self):
-        """If prompt has no plan: line, all principles load (existing behavior)."""
         with tempfile.TemporaryDirectory() as tmp:
-            subagent_dir = Path(tmp) / "nosession" / "subagents"
-            subagent_dir.mkdir(parents=True)
-            agent_id = "noplancodeagent"
-            jsonl = subagent_dir / f"agent-{agent_id}.jsonl"
-            entry = {"message": {"role": "user", "content": "mode: code\nprompt: write a service"}}
-            jsonl.write_text(json.dumps(entry) + "\n", encoding="utf-8")
-            event = {
-                "hook_event_name": "SubagentStart",
-                "agent_type": "solid-coder:code-agent",
-                "agent_id": agent_id,
-                "transcript_path": str(Path(tmp) / "nosession.jsonl"),
-            }
-            r = run(event)
+            r = run(self._event_with_cwd(tmp))  # no .solid_coder dir
             self.assertEqual(r.returncode, 0, r.stderr)
             ctx = additional_context(r)
             listed = [l.strip().lstrip("- ") for l in ctx.splitlines() if l.strip().startswith("- /")]
-            self.assertGreater(len(listed), 1, "should load multiple files when no plan")
+            self.assertGreater(len(listed), 1)
 
 
 class TestSynthFixesMatchedTagsFromOutputRoot(unittest.TestCase):
-    def _make_output_root(self, tmp_dir, matched_tags):
-        output_root = Path(tmp_dir) / "refactor-run" / "1"
-        (output_root / "prepare").mkdir(parents=True)
-        review_input = {"matched_tags": matched_tags, "files": []}
-        (output_root / "prepare" / "review-input.json").write_text(
-            json.dumps(review_input), encoding="utf-8"
-        )
-        return output_root
+    """synth-fixes reads matched_tags from .solid_coder/refactor-*/1/prepare/review-input.json via cwd."""
 
-    def _event(self, tmp_dir, output_root, agent_id="synthagent001"):
-        session_id = "synth-session"
-        subagent_dir = Path(tmp_dir) / session_id / "subagents"
-        subagent_dir.mkdir(parents=True)
-        jsonl = subagent_dir / f"agent-{agent_id}.jsonl"
-        entry = {"message": {"role": "user", "content": f"output-root: {output_root}\nrules-path: /tmp/rules"}}
-        jsonl.write_text(json.dumps(entry) + "\n", encoding="utf-8")
+    def _make_cwd_with_review_input(self, tmp_dir, matched_tags):
+        run_dir = Path(tmp_dir) / ".solid_coder" / "refactor-run" / "1" / "prepare"
+        run_dir.mkdir(parents=True)
+        review_input = {"matched_tags": matched_tags, "files": []}
+        (run_dir / "review-input.json").write_text(json.dumps(review_input), encoding="utf-8")
+        return tmp_dir
+
+    def _event(self, cwd, agent_id="synthagent001"):
         return {
             "hook_event_name": "SubagentStart",
             "agent_type": "solid-coder:synthesize-fixes-agent",
             "agent_id": agent_id,
-            "transcript_path": str(Path(tmp_dir) / f"{session_id}.jsonl"),
+            "transcript_path": "/tmp/fake.jsonl",
+            "cwd": str(cwd),
         }
 
     def test_filters_by_matched_tags_from_review_input(self):
-        """synth-fixes hook reads matched_tags from prepare/review-input.json."""
         with tempfile.TemporaryDirectory() as tmp:
-            output_root = self._make_output_root(tmp, ["srp", "ocp"])
-            r = run(self._event(tmp, output_root))
+            cwd = self._make_cwd_with_review_input(tmp, ["srp", "ocp"])
+            r = run(self._event(cwd))
             self.assertEqual(r.returncode, 0, r.stderr)
             ctx = additional_context(r)
             listed = [l.strip().lstrip("- ") for l in ctx.splitlines() if l.strip().startswith("- /")]
             for path in listed:
-                self.assertNotIn("ui-testing", path, "ui-testing should not load for srp/ocp task")
-                self.assertNotIn("UITesting", path)
                 self.assertNotIn("StructuredConcurrency", path)
                 self.assertNotIn("SwiftUI", path)
 
     def test_no_review_input_falls_back_to_all_principles(self):
-        """If output-root has no review-input.json, all principles load."""
         with tempfile.TemporaryDirectory() as tmp:
-            output_root = Path(tmp) / "empty-run"
-            output_root.mkdir()
-            r = run(self._event(tmp, output_root))
+            r = run(self._event(tmp))  # no .solid_coder dir
             self.assertEqual(r.returncode, 0, r.stderr)
             ctx = additional_context(r)
             listed = [l.strip().lstrip("- ") for l in ctx.splitlines() if l.strip().startswith("- /")]

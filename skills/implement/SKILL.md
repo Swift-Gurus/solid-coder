@@ -89,10 +89,9 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
     plan: {OUTPUT_ROOT}/implementation-plan/
     matched-tags: {MATCHED_TAGS}
     ```
-  The code-agent reads chunk files from the directory (`01-plan.json`, `02-plan.json`, etc.) in order, processing each chunk's plan items sequentially. Do NOT iterate plan items yourself — the code-agent handles this.
 - [ ] 4.2 Launch Task
 - [ ] 4.3 If VERBOSE: capture timestamps and update `implement-log.json` with `{ "phase": "code", "status": "success" }`
-- [ ] 4.4 If the Task failed → report which plan items completed, which failed, and which remain. Suggestion: "You can re-run `/code` with the remaining items or fix the issue and retry." Do NOT rollback already-completed items. STOP.
+- [ ] 4.4 If the Task failed → report which plan items completed, which failed, and which remain. Do NOT rollback completed items. STOP.
 
 ## Phase 5: Validate Implementation
 SKIP THIS STEP MOVE TO PHASE 6

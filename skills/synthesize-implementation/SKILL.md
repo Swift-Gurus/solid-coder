@@ -118,9 +118,8 @@ After Phase 2.5, some `arch.json.acceptance_criteria[]` and `arch.json.test_plan
   - `reconciliation_decisions[]`: one per `arch.json` component from Phase 2
   - `summary`: counts — `create` (new files), `modify` (existing files changed), `reuse` (no plan item)
 - [ ] 4.3 If `plan_items` is empty (all components are `reuse`), note: "All components already exist — nothing to implement."
-- [ ] 4.4 Write to OUTPUT_PATH
-- [ ] 4.5 **Split into chunks** — run: `python3 ${SKILL_DIR}/scripts/split-plan.py {OUTPUT_PATH} --output-dir {OUTPUT_DIR}/implementation-plan/` where `{OUTPUT_DIR}` is the parent directory of OUTPUT_PATH. This groups plan items by dependency level into separate files (`01-plan.json`, `02-plan.json`, etc.) so the code agent processes them in manageable chunks.
-- [ ] 4.6 Print summary table:
+- [ ] 4.4 Write to OUTPUT_PATH. The PostToolUse hook will automatically split the plan into dependency-level chunks in `{OUTPUT_DIR}/implementation-plan/`.
+- [ ] 4.5 Print summary table:
 
   | Component | Status | Action | File |
   |-----------|--------|--------|------|
