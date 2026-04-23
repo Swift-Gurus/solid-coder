@@ -32,10 +32,13 @@ class MCPServer:
 
     def _read_message(self) -> Optional[dict]:
         """Read a content-length framed JSON-RPC message from stdin."""
+        import pathlib, datetime
+        _log = pathlib.Path("/tmp/apple-build-mcp.log")
         headers = {}
         while True:
             line = sys.stdin.buffer.readline()
             if not line:
+                with open(_log, "a") as f: f.write(f"  stdin EOF at {datetime.datetime.now().isoformat()}\n")
                 return None
             line = line.decode("utf-8").strip()
             if not line:
@@ -94,8 +97,9 @@ class MCPServer:
                 return
             try:
                 result = handler(**arguments)
+                text = result if isinstance(result, str) else json.dumps(result, indent=2)
                 self._respond(id, {
-                    "content": [{"type": "text", "text": json.dumps(result, indent=2)}],
+                    "content": [{"type": "text", "text": text}],
                 })
             except Exception as e:
                 self._respond(id, {
