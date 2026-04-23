@@ -37,8 +37,10 @@ class MCPServer:
         headers = {}
         while True:
             line = sys.stdin.buffer.readline()
+            with open(_log, "a") as f:
+                f.write(f"  readline raw={line!r} at {datetime.datetime.now().isoformat()}\n")
             if not line:
-                with open(_log, "a") as f: f.write(f"  stdin EOF at {datetime.datetime.now().isoformat()}\n")
+                with open(_log, "a") as f: f.write(f"  stdin EOF\n")
                 return None
             line = line.decode("utf-8").strip()
             if not line:
