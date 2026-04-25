@@ -9,7 +9,7 @@ Create an agent wrapper when a skill needs to:
 - Run on a **specific model** different from the caller (e.g., Sonnet for reviews, Opus for synthesis)
 - Run in **isolation** as a subagent with its own context window
 
-Not every skill needs an agent. Skills that are always called inline (utilities like `parse-frontmatter`, `load-reference`) do not need wrapping.
+Not every skill needs an agent. Lightweight utilities called inline do not need wrapping.
 
 ## Agent File Structure
 

@@ -52,12 +52,12 @@ After Phase 2, process each chunk in CHUNK_FILES sequentially in Phase 3:
 - [ ] 2.1 Determine matched tags by mode:
 
   **implement** mode: use TAGS from Phase 1.2
-  
-  **refactor** mode: run `! python3 ${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py get_candidate_tags`, then scan source files for imports/patterns matching the candidate tags
+
+  **refactor** mode: call `mcp__plugin_solid-coder_docs__get_candidate_tags()`, then scan source files for imports/patterns matching the returned tags
 
   **code** mode (default): no tags (load all principles)
 
-- [ ] 2.2 Use skill **solid-coder:load-reference** with: `--mode code` and `--matched-tags {tags}` (if any). The server resolves what to load based on the mode (see `mcp-server/modes.py`): rule.md + code/instructions.md + required_patterns. No fix instructions, no examples — focused coding context.
+- [ ] 2.2 Call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "code"` and `matched_tags: [tags from 2.1]` (omit matched_tags if no tags). Apply the returned rules throughout Phase 3.
 
 ## Phase 3: Write Code
 Apply every constraint from the Phase 2 summary to every line of code. Do NOT defer to the self-check — violations must be prevented, not detected after the fact.
@@ -74,9 +74,13 @@ Apply every constraint from the Phase 2 summary to every line of code. Do NOT de
 
 - [ ] 3.3 After creating or extracting any new type, static function, helpers, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
 
+### Design Patterns
+
+Whenever you identify, apply, or reference a design pattern (facade, adapter, decorator, strategy, factory, builder, etc.) — call `mcp__plugin_solid-coder_docs__load_pattern` with the pattern name before writing code that uses it. Apply the returned contract to your implementation.
+
 ### Plan extension.
-- stick as close to the plan as possible.
-- always reuse what already exist, must use DRY principle instructions how to find.
+- Stick as close to the plan as possible.
+- Before creating any new type, protocol, or abstraction — call `mcp__plugin_solid-coder_pipeline__search_codebase` with `sources_dir` set to the project root and `tags` containing the type name + keywords from its responsibility. If a match is returned, read the description and the file. Reuse or adapt it instead of creating new. Only create if no relevant match exists.
 
 #### Extraction
 
@@ -129,36 +133,15 @@ Do NOT spawn another agent. Do NOT produce intermediate artifacts. Fix problems 
 
 Do not interleave write → build → fix → write → build. Write everything first, then build once. One build surfaces all errors together.
 
-Use commands from CLAUDE.md instructions already in context. If no build/test commands are available in context, skip this phase and explicitly state why.
+Use `mcp__plugin_solid-coder_apple-build__build`, `__lint`, and `__test`. Always pass `project_path: CURRENT_PROJECT`.
 
-- [ ] 5.1 **Build your targets** — build the target(s) containing the files you created or modified. Wait for the result before proceeding.
-  - Fix all compiler errors, compiler warnings, and linter errors/warnings. Fix the code, never modify lint rules or build configuration.
-  - Rebuild until the target compiles clean.
-- [ ] 5.2 **Build your test targets** — build the test target(s) for the tests you created or modified. Wait for the result before proceeding.
-  - Fix all compiler errors, compiler warnings, and linter errors/warnings in test code.
-  - Rebuild until the test target compiles clean.
-- [ ] 5.3 **Run your unit tests** — 
-  - [ ] 5.3.1 - run unit tests for the component you developed or modified. 
-  - [ ] 5.3.2 - Wait for the result before proceeding. 
-  - [ ] 5.3.3 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
-  - [ ] 5.3.4 - If green move to step 5.4
-- [ ] 5.4 **Run full unit test suite** — 
-  - [ ] 5.4.1 - run all unit tests. 
-  - [ ] 5.4.2 - Wait for the result before proceeding. 
-  - [ ] 5.4.3 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
-  - [ ] 5.4.4 - If green move to step 5.5
-- [ ] 5.5 **Run your UI tests** — 
-  - [ ] 5.5.1 - run UI tests for the component(s) you worked on. 
-  - [ ] 5.5.2 - If no UI tests exist for your component → skip this step only, proceed to 5.6. 
-  - [ ] 5.5.3 - Wait for the result before proceeding. 
-  - [ ] 5.5.4 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
-  - [ ] 5.5.4 - If green move to step 5.6
-- [ ] 5.6 **Run full UI test suite** — 
-  - [ ] 5.6.1 - run the full UI test suite. 
-  - [ ] 5.6.2 - If no UI test suite exists in the project → skip this step only, proceed to 5.7. 
-  - [ ] 5.6.3 -  Wait for the result before proceeding. 
-  - [ ] 5.6.4 - If broken, MUST fix following all loaded `rule.md` and `instruction.md`, re-run until green.
-  - [ ] 5.6.4 - If green move to step 5.7
+- [ ] 5.1 **Build** — call `mcp__plugin_solid-coder_apple-build__build`. Fix all errors and warnings. Repeat until clean.
+- [ ] 5.2 **Lint** — call `mcp__plugin_solid-coder_apple-build__lint`. Fix all violations. Repeat until clean.
+- [ ] 5.3 **Unit tests (component)** — call `mcp__plugin_solid-coder_apple-build__test`, `skip_ui_tests: true`, for the component you modified. Fix and re-run until green.
+- [ ] 5.4 **Unit tests (full suite)** — call `mcp__plugin_solid-coder_apple-build__test`, `skip_ui_tests: true`, full target. Fix and re-run until green.
+- [ ] 5.5 **UI tests (component)** — call `mcp__plugin_solid-coder_apple-build__test`, `skip_unit_tests: true`, `only_testing: ["UITestTarget/SuiteForComponent"]`. If no UI tests exist for your component → skip to 5.6. If broken: call `mcp__plugin_solid-coder_apple-build__get_test_failures` for activity logs. Fix and re-run until green.
+- [ ] 5.6 **UI tests (full suite)** — call `mcp__plugin_solid-coder_apple-build__test`, `skip_unit_tests: true`, full target. If no UI test suite exists → skip to 5.7. Fix and re-run until green.
+  - [ ] 5.6.5 If green → move to 5.7
 - [ ] 5.7 If any step was skipped, explicitly state which step and why.
 
 ## Phase 6: Output
@@ -169,7 +152,7 @@ Use commands from CLAUDE.md instructions already in context. If no build/test co
 ## Constraints
 - Follow the spec — do not invent scope beyond what was asked
 - The loaded `rule.md` and `instructions.md`  files are the source of truth for what constitutes a violation and how to write and fix code. MUST be followed. Do not invent additional rules
-- Always search the project before creating new protocols, wrappers, or abstractions
+- Always call `mcp__plugin_solid-coder_pipeline__search_codebase` before creating new protocols, wrappers, or abstractions — see Plan extension above
 - Do not produce intermediate plans, JSON artifacts, or structured outputs — write code directly
 - Preserve existing public API unless the spec explicitly asks to change it
 - Do NOT add code comments, inline comments, or mark comments (// MARK:, // TODO:, // FIXME:) — write self-documenting code instead

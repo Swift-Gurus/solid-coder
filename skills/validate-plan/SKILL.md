@@ -22,43 +22,21 @@ Takes an architect's decomposition (`arch.json`) and validates it against the ex
 
 ## Phase 0: Prep — Generate Synonyms
 
-- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Use `spec_summary` for context. Note `acceptance_criteria[]` for use in Phase 3.
-- [ ] 0.2 For each component in `arch.json`:
-  - Split `responsibility` into keywords (remove stop words: the, a, an, is, are, with, from, for, to, of, and, or, in, on, by, that, this, it)
-  - Add `category`
-  - Generate 3 synonyms per keyword (semantic alternatives)
-- [ ] 0.3 Merge all keywords and synonyms across all components into a single flat list.
-- [ ] 0.4 Deduplicate and lowercase the list.
-- [ ] 0.5 Store as a JSON array string for passing to the script.
+- [ ] 0.1 Read `arch.json` from ARCH_JSON_PATH. Note `spec_summary` for context and `acceptance_criteria[]` for use in Phase 3.
+- [ ] 0.2 For each component, extract keywords from `responsibility` (remove stop words: the, a, an, is, are, with, from, for, to, of, and, or, in, on, by, that, this, it). Generate 2–3 semantic synonyms per keyword (e.g. "fetch" → retrieve, load, pull; "store" → persist, save, cache).
+- [ ] 0.3 Merge all keywords and synonyms into a single deduplicated lowercase list → TAGS.
 
-## Phase 1: Codebase Search (Script)
+## Phase 1: Codebase Search
 
-- [ ] 1.1 Run the search script (pass `.` as sources — the script handles empty/missing dirs gracefully):
-  ```bash
-  python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-plan/scripts/search-codebase.py \
-    --sources <sources-dir> \
-    --synonyms '<json-array-string>' \
-    --min-matches 3 \
-    --spec <spec_number>     # include when arch.json has spec_number
-  ```
-  `--min-matches 3` filters files that matched only on generic terms (e.g. "file", "url", "key"). Spec matches always pass regardless of this threshold.
-- [ ] 1.2 Parse the JSON output.
-
-## Phase 2: Name-Based Search (LLM)
-
-A language-agnostic fallback that catches legacy code without solid-frontmatter. Always runs regardless of Phase 1 results.
-
-- [ ] 2.5.1 For each component in `arch.json`, collect search terms:
-  - The component `name` (e.g., `ProductRepository`)
-  - Key words from the component `name` split on camelCase/PascalCase boundaries (e.g., `Product`, `Repository`)
-  - The synonym keywords from Phase 0
-- [ ] 2.5.2 For each search term, use Grep to search filenames and file contents across the codebase. Use Glob to find files whose names contain the term.
-- [ ] 2.5.3 Collect any files found that are NOT already in `matches[]` from Phase 1.
-- [ ] 2.5.4 Merge new hits into `matches[]` with `matched_terms` set to the terms that matched. These go through the same Phase 3 analysis as frontmatter matches — no separate treatment.
+- [ ] 1.1 Call `mcp__plugin_solid-coder_pipeline__search_codebase` with:
+  - `sources_dir`: project sources directory
+  - `plan_path`: ARCH_JSON_PATH — auto-extracts component names, interfaces, categories, and spec numbers
+  - `tags`: TAGS from Phase 0 — semantic synonyms not captured by structural extraction
+- [ ] 1.2 The result is a list of matching files with descriptions. If the output is large it is saved to a file — use the Read tool to load it.
 
 ## Phase 3: Match Analysis (LLM)
 
-If `matches[]` is empty after both Phase 1 and Phase 1.5, skip to Phase 4 and classify everything as `create`.
+If the search returned no matches, skip to Phase 4 and classify everything as `create`.
 
 Iterate over each matched file from the combined results. For each file, analyze it against all architect components.
 

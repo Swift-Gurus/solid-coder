@@ -55,11 +55,8 @@ Review instructions (`review/instructions.md`) use YAML frontmatter to declare p
 Create a tasklist and execute:
 
 1. **Create output folder** — `OUTPUT_PATH/NAME`
-2. **Parse instruction frontmatter** — Run `parse-frontmatter.py` on `RULES_PATH/NAME/review/instructions.md`. Extract `rules` and `output_schema` paths from the JSON output. Fallback: if `rules` is not present in frontmatter, use `RULES_PATH/NAME/rule.md`.
-3. **Parse rule frontmatter** — Run `parse-frontmatter.py` on the resolved `rule.md`. Extract `required_patterns` and other metadata.
-4. **Load references** — Run `load-reference.py` with file paths from step 3 (design patterns, referenced documents).
-5. **Load rules** — Run `load-reference.py` with the rules path from step 2.
-6. **Parse input** — Read and parse the review-input JSON. Extract file list and unit metadata (paths, line ranges, has_changes flags). Do NOT read source code files here — they are loaded one at a time in Phase 2.
+2. **Load principle rules** — Call `mcp__docs__load_rules(mode: "review", principle: NAME)`. This returns rule.md, review/instructions.md, Examples/, and required design pattern files as a single content block. Hold it as active context for Phase 2.
+3. **Parse input** — Read and parse the review-input JSON. Extract file list and unit metadata (paths, line ranges, has_changes flags). Do NOT read source code files here — they are loaded one at a time in Phase 2.
 
 ### Phase 2: Analysis (per-unit detection)
 
@@ -83,7 +80,7 @@ The key mechanism in Phase 2 is **dynamic task creation**: the review instructio
 
 ### Phase 3: Output
 
-1. **Load output schema** — Read the schema file referenced in the instruction frontmatter.
+1. **Load output schema** — Read `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json`.
 2. **Generate output** — Produce structured JSON matching the schema. One finding per triggered metric.
 3. **Write output** — Write to `OUTPUT_PATH/NAME/review-output.json`.
 
@@ -93,16 +90,6 @@ The key mechanism in Phase 2 is **dynamic task creation**: the review instructio
 
 **Output:** `{OUTPUT_PATH}/{NAME}/review-output.json` — structured findings per file per unit, matching the principle's `review/output.schema.json`.
 
-## Utility Scripts
-
-The skill delegates parsing and loading to Python scripts from sibling skills:
-
-| Script | Skill | Purpose |
-|--------|-------|---------|
-| `parse-frontmatter.py` | `parse-frontmatter` | Extracts YAML frontmatter from markdown files as JSON |
-| `load-reference.py` | `load-reference` | Loads reference files with frontmatter stripped |
-
-Invocation pattern: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/<skill>/scripts/<script>.py <args>`
 
 ## Connections
 

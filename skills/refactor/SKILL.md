@@ -23,8 +23,7 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 
 ## Phase 1: Discover Principles
 - [ ] 1.1 Parse $ARGUMENTS: extract `--iterations N` if present set MAX_ITERATIONS, else default MAX_ITERATIONS to 2. Extract `--verbose` flag → set VERBOSE. Extract `--review-only` flag → set REVIEW_ONLY. Extract `--output-root <path>` if present → override OUTPUT_ROOT.
-- [ ] 1.2 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH`
-- [ ] 1.3 Parse JSON output — extract `all_candidate_tags` and the full principle list
+- [ ] 1.2 Call `mcp__plugin_solid-coder_docs__discover_principles`. Extract `all_candidate_tags` and the full principle list.
 
 ## Phase 2: Prepare Input (wait for phase 1)
 - [ ] 2.1 Prepare a Task call:
@@ -43,9 +42,8 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 ## Phase 3: Filter Principles & Launch Reviews (wait for phase 2)
 
 - [ ] 3.0 If VERBOSE: capture timestamp → store as `time_prepare_end` AND `time_review_start`
-- [ ] 3.1 Use skill **solid-coder:discover-principles** with: `--refs-root RULES_PATH --review-input {OUTPUT_ROOT}/{ITERATION}/prepare/review-input.json --profile review`
-  - `--profile review` filters out principles that declare `profile: [code]` (or any list that omits `review`). Principles with no `profile:` field stay active in every profile.
-- [ ] 3.2 Use `active_principles` from the output — these are the principles to review
+- [ ] 3.1 Call `mcp__plugin_solid-coder_docs__discover_principles` with `matched_tags: MATCHED_TAGS` and `profile: "review"`.
+- [ ] 3.2 Use `active_principles` from the result — these are the principles to review
 - [ ] 3.3 For EACH active principle, prepare a Task call:
     - subagent_type: `solid-coder:apply-principle-review-agent`
     - prompt:
@@ -60,24 +58,11 @@ When VERBOSE is enabled, capture timestamps at phase boundaries using `date -u +
 - [ ] 3.5 Wait for all to complete
 
 ## Phase 4: Collect Results
-- [ ] 4.1 Glob for review output files in .OUTPUT_ROOT/{ITERATION}/rules/**
-- [ ] 4.2 Read each output JSON, extract severity and finding count
-- [ ] 4.3 Print summary table:
-
-  | Principle | Severity | Findings | Output Path |
-  |-----------|----------|----------|-------------|
-
-- [ ] 4.4 List all output file paths
-- [ ] 4.5 If ALL principles are COMPLIANT (no findings), write summary to `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` (if VERBOSE: include `phase_timings`). Stop.
-- [ ] 4.6 Run: `python3 ${CLAUDE_PLUGIN_ROOT}/skills/validate-findings/scripts/check-severity.py {OUTPUT_ROOT}/{ITERATION}`
-  - If output contains `MINOR_ONLY`:
-    - Write `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` with:
-      - `status: "all_compliant"`
-      - `stop_reason`: the summary line from script output
-      - If VERBOSE: include `phase_timings`
-      - `minor_findings` array: read each `rules/*/review-output.json`, collect findings with severity MINOR
-    - Print summary and STOP (do not proceed to Phase 5)
-  - If output contains `HAS_SEVERE`: continue to Phase 5
+- [ ] 4.1 Call `mcp__plugin_solid-coder_pipeline__collect_review_results` with `output_root: {OUTPUT_ROOT}/{ITERATION}`.
+- [ ] 4.2 Print the returned `summary` table (principle, severity, findings).
+- [ ] 4.3 Based on `verdict`:
+  - `ALL_COMPLIANT` or `MINOR_ONLY` → write `{OUTPUT_ROOT}/{ITERATION}/refactor-log.json` (`status`, `minor_findings`, `phase_timings` if VERBOSE). STOP.
+  - `HAS_SEVERE` → continue to Phase 5.
 
 ## Phase 5: Validate Findings (wait for phase 4)
 - [ ] 5.0 If VERBOSE: capture timestamp → store as `time_review_end` AND `time_validate_start`

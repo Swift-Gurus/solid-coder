@@ -18,9 +18,6 @@ REFS_ROOT = PLUGIN_ROOT / "references"
 SKILLS_ROOT = PLUGIN_ROOT / "skills"
 
 # Add script directories to path for imports
-sys.path.insert(0, str(SKILLS_ROOT / "discover-principles" / "scripts"))
-sys.path.insert(0, str(SKILLS_ROOT / "parse-frontmatter" / "scripts"))
-sys.path.insert(0, str(SKILLS_ROOT / "load-reference" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "code" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
@@ -32,11 +29,9 @@ sys.path.insert(0, str(SKILLS_ROOT / "validate-plan" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "build-spec" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "find-spec" / "scripts"))
 
-# Import modules using hyphenated filenames
+from lib import discover_principles, parse_frontmatter
 import importlib
-discover_principles = importlib.import_module("discover-principles")
-parse_frontmatter = importlib.import_module("parse-frontmatter")
-load_reference = importlib.import_module("load-reference")
+from lib import load_reference
 collect_principle_files = importlib.import_module("collect-principle-files")
 check_severity_mod = importlib.import_module("check-severity")
 load_context_mod = importlib.import_module("load-context")

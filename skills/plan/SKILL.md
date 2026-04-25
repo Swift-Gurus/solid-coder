@@ -22,14 +22,9 @@ Reads a feature spec (prompt string or markdown file) and produces `arch.json` �
   - If filepath (ends in `.md` and file exists) → read the file contents
   - Otherwise → use the string as-is
 
-- [ ] 1.2 **Load ancestors and dependencies** (only if SPEC is a filepath with frontmatter containing a `parent` or `blocked-by` field):
-  - Use skill **solid-coder:parse-frontmatter** on the spec file to extract `number` and `blocked-by`
-  - Use skill **solid-coder:find-spec** with `load <current-SPEC-NNN> --blocked`. This loads the full content of all ancestor and blocked-by specs as readable text. Hold all content as context — ancestors provide scope, blocked-by specs provide components and patterns to reference.
-  - After loading specs, search for types already built by each spec in the chain:
-    ```
-    python3 {GATEWAY} search_codebase --sources-dir . --spec-numbers <comma-separated SPEC-NNNs from the chain>
-    ```
-    Each match is a type already created for that spec. Read the matched files' full source and frontmatter to understand what exists. If it fully satisfies a current requirement → reference as dependency. If partially → note gaps for validate-plan to classify as `adjust`.
+- [ ] 1.2 **Load ancestors and dependencies** (only if SPEC is a filepath):
+  - Call `mcp__plugin_solid-coder_specs__load_spec_context` with `file_path` and `blocked: true`.
+  - Call `mcp__plugin_solid-coder_pipeline__search_codebase` with `sources_dir: "."` and `spec_numbers: [<all SPEC-NNNs from the ancestor chain>]`. Each match is a type already created for a prior spec. Read the matched files to understand what exists — if it fully satisfies a current requirement, reference as dependency; if partially, note gaps for validate-plan to classify as `adjust`.
   - Ancestor and blocked-by context provides knowledge of what was built by prior specs. Reference these in the architecture rather than proposing duplicates.
 
 - [ ] 1.2.5 **Extract architectural constraints from loaded context** — From any CLAUDE.md instructions already in context, identify and hold as hard constraints:
@@ -96,7 +91,7 @@ For each identified behavior or capability, define a component. Respect acceptan
 Load principle rules as architectural constraints. Reuse existing skills for discovery and loading.
 
 - [ ] 3.1 **Derive matched tags from components** — collect all unique `category` and `stack` values across all components. Both are tags directly (e.g., `unit-test`, `screen`, `swiftui`, `combine`). Deduplicate.
-- [ ] 3.2 Use skill **solid-coder:load-reference** with: `--mode planner` and `--matched-tags {comma-separated tags from 3.1}`. If no tags derived, omit `--matched-tags`. The server resolves the planner load shape from `mcp-server/modes.py` — rule.md + code/instructions.md + fix/instructions.md (no examples, no patterns).
+- [ ] 3.2 Call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "planner"` and `matched_tags: [tags from 3.1]` (omit matched_tags if no tags). Apply the returned rules as architectural constraints.
 - [ ] 3.3 **Verify each component against loaded rules.** For EACH component from Phase 2:
   - **SRP** — does this component have a single responsibility? Count the verbs (what it does). If 2+ cohesion groups or 3+ verbs serving different stakeholders → split into separate components.
   - **OCP** — are all its dependencies protocol-typed? If any dependency is concrete and non-injectable → add a protocol interface for it.

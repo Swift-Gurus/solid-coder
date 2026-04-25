@@ -113,7 +113,7 @@ Same applies to `generate-report.py`.
 1. `skills/validate-findings/scripts/validate-findings.py` — `load_json()` at line 35-37
 2. `skills/validate-findings/scripts/check-severity.py` — line 44
 3. `skills/generate-report/scripts/generate-report.py` — line 211
-4. `skills/discover-principles/scripts/discover-principles.py` — line 195
+4. `mcp-server/lib/discover_principles.py` — line 195
 
 Malformed JSON produces unhandled `json.JSONDecodeError` traceback instead of clean error.
 
@@ -190,13 +190,13 @@ synthesize: false    # explicit signal — skip fix generation
 
 **Not implemented.** No concept of review-only rules exists anywhere:
 - No `rule.md` frontmatter has `synthesize: false`, `fix: false`, or `review-only: true`
-- `discover-principles.py` doesn't parse any such field
+- `discover_principles.py` (in mcp-server/lib/) doesn't parse any such field
 - `synthesize-fixes/SKILL.md` processes ALL non-COMPLIANT principles — no exclusion
 - `generate-report.py` treats all findings uniformly — no fixable vs report-only distinction
 
 **Plan:**
 1. Add `fixable: false` (or `synthesize: false`) field to `rule.md` frontmatter for style rules
-2. Update `discover-principles.py` to expose this field
+2. Update `mcp-server/lib/discover_principles.py` to expose this field
 3. In `synthesize-fixes/SKILL.md` Phase 1.4, exclude non-fixable principles
 4. In `generate-report/SKILL.md`, render non-fixable findings as separate "observations" section
 5. In `refactor/SKILL.md` Phase 4.6, only count fixable findings for `MINOR_ONLY` vs `HAS_SEVERE`

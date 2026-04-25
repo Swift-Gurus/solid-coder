@@ -21,7 +21,7 @@ Validates an architecture decomposition (arch.json) against SOLID principles. Re
 
 - [ ] 1.1 Read arch.json from ARCH_PATH. Extract `components[]`, `wiring[]`, `composition_root`.
 - [ ] 1.2 Read spec file from SPEC_PATH for context (what is being built).
-- [ ] 1.3 Use skill **solid-coder:load-reference** with: `--mode planner` (loads rule statements + code_rules + patterns, with review-only content stripped)
+- [ ] 1.3 Call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "planner"`. Apply the returned rules as validation constraints.
 
 ## Phase 2: Validate Each Component
 

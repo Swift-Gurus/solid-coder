@@ -74,7 +74,7 @@ One file read replaces N globs + N reads in Phase 2 (Discover Principles) of bot
 
 **Maintenance**: Add a script or hook that regenerates the index when any `rule.md` changes.
 
-**Update**: `parse-frontmatter` script now resolves paths and produces `files_to_load` per principle. A cached index would further reduce repeated script calls. Status: **Partially addressed** — caching is the remaining optimization.
+**Update**: frontmatter parsing now handled by mcp-server/lib/ and produces `files_to_load` per principle. A cached index would further reduce repeated script calls. Status: **Partially addressed** — caching is the remaining optimization.
 
 ---
 
@@ -127,7 +127,7 @@ LLM-interpreted substitution is unreliable. The LLM might forget to substitute, 
 - Pass only concrete absolute paths in agent prompts — never template variables
 - Consider using `!`command`` dynamic context injection for paths that need runtime resolution
 
-**Update**: `parse-frontmatter` script now handles `PRINCIPLE_FOLDER_ABSOLUTE_PATH` token replacement and resolves all paths to absolute. `load-reference` strips frontmatter so agents get clean content. Skills use `!` bash calls to run these scripts. Status: **Partially addressed** — `CURRENT_PROJECT` and `{RULES_PATH}` still rely on LLM interpretation.
+**Update**: `parse-frontmatter` script now handles `PRINCIPLE_FOLDER_ABSOLUTE_PATH` token replacement and resolves all paths to absolute. rules loaded via docs MCP with frontmatter stripped get clean content. Skills use `!` bash calls to run these scripts. Status: **Partially addressed** — `CURRENT_PROJECT` and `{RULES_PATH}` still rely on LLM interpretation.
 
 ---
 
@@ -507,7 +507,7 @@ Add Section 3.5 to `skills/code/SKILL.md` Phase 3 (File Organization). When crea
 
 ### Verified status (2026-03-12)
 
-**Partially implemented.** Tag-based activation works: `discover-principles.py` filters by tags. Rules without `tags` (SRP, OCP, LSP, ISP) are always active. SwiftUI has `tags: [swiftui]` making it conditional.
+**Partially implemented.** Tag-based activation works: docs MCP `discover_principles` filters by tags. Rules without `tags` (SRP, OCP, LSP, ISP) are always active. SwiftUI has `tags: [swiftui]` making it conditional.
 
 **Gaps:**
 - No `category` or `cross_check_tier` fields in any actual `rule.md` frontmatter (ARCHITECTURE.md describes these but they're aspirational)
@@ -556,7 +556,7 @@ This detection is needed for Tier 2 dynamic rule loading (S-36). The `prepare-re
 | ID | Summary | Impact | Effort | Status | Verified |
 |----|---------|--------|--------|--------|----------|
 | S-02 | Fix model selection (Sonnet for mechanical tasks) | High | Low | Partial — refactor pipeline uses sonnet for review, haiku for mechanical; review pipeline bundles review+fix in opus | 2026-03-12 |
-| S-03 | Pre-compute rule index | Medium | Low | Partial — `discover-principles` script replaces manual glob+parse; caching is remaining optimization | — |
+| S-03 | Pre-compute rule index | Medium | Low | Partial — `mcp__plugin_solid-coder_docs__discover_principles` tool replaces manual glob+parse; caching is remaining optimization | — |
 | S-04 | Short-circuit trivial changes (with LSP-safe tier 2) | Medium | Low | Partial — MINOR-only short-circuit exists in refactor; no pre-review triviality detection | 2026-03-12 |
 | S-08 | Standardize path template substitution | Medium | Medium | Partial | — |
 | S-11 | Prioritize ISP and DIP principles | High | High | Partial — ISP complete. DIP not started. | 2026-03-12 |

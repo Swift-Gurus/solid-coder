@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "SubagentStart": [
-      {
-        "matcher": "solid-coder:(code|plan|synthesize-fixes|synthesize-implementation)-agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/mcp-server/gateway.py\" preload_instruction"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",

@@ -31,7 +31,7 @@ Accepts a feature spec file and coordinates sub-skills to architect, validate, s
   - Set VERBOSE = true if `--verbose` is present, false otherwise
   - Set ITERATIONS = N if `--iterations N` is present, 1 otherwise
 - [ ] 0.2 Verify the file exists and ends in `.md`. If not, fail with the same message as 0.1.
-- [ ] 0.3 Use skill **solid-coder:parse-frontmatter** to extract YAML frontmatter from the spec file. Verify it contains a `number` field. If not, fail with the same message as 0.1.
+- [ ] 0.3 Call `mcp__plugin_solid-coder_specs__parse_spec` with the spec file path. On error, stop and report the message.
 - [ ] 0.4 Generate timestamp: run `date -u +%Y%m%d-%H%M%S`
 - [ ] 0.5 Set OUTPUT_ROOT to `.solid_coder/implement-{number}-{timestamp}/` (where `{number}` is the frontmatter `number` value)
 - [ ] 0.6 Copy the spec file to `{OUTPUT_ROOT}/spec.md`

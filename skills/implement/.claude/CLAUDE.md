@@ -47,7 +47,7 @@ spec file → Phase 1: /plan → arch.json
 
 | Skill/Agent | Phase | Relationship |
 |-------------|-------|-------------|
-| `solid-coder:parse-frontmatter` | 0 | Validates spec frontmatter |
+| `mcp__plugin_solid-coder_specs__parse_spec` | 0 | Validates spec frontmatter |
 | `solid-coder:plan` | 1 | Produces `arch.json` |
 | `solid-coder:validate-implementation` | 4.5 | User checkpoint — collects screenshots/feedback, gates refactor |
 | `solid-coder:validate-plan` | 2 | Produces `validation.json` |

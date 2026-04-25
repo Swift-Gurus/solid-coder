@@ -18,7 +18,8 @@ user-invocable: false
 ## Phase 1
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
-- [ ] 1.2 **Parse input** -
+- [ ] 1.2 **Load principle rules** — call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "review"` and `principle: NAME`. Apply the returned rules throughout Phase 2.
+- [ ] 1.3 **Parse input** -
   - read and parse input json
   - extract the list of files and their units (paths, line ranges, has_changes flags)
   - Do NOT read the source code files here — source files are read one at a time in Phase 2
@@ -28,18 +29,15 @@ Process files **one at a time** — do NOT read all source files upfront.
 FOR each file in review-input DO
   - [ ] 2.1 **Read the source file NOW** — Read only this file's source code. Do NOT read other files yet.
   FOR each unit (class, struct, enum) in file.units that has_changes == true DO
-    Creating/appending tasks from the instructions.
-    Once you read instructions and rules, they might contain more tasks.
-    Create a second tasklist and execute it
-    IMPORTANT: Scope analysis to ONLY this unit's line range (line_start..line_end).
-    Ignore other declarations in the same file.
+    - [ ] Apply the rules loaded in Phase 1.2 to this unit
+    - [ ] Scope analysis to ONLY this unit's line range (line_start..line_end). Ignore other declarations.
   END
 END
 
 
 ## Phase 3
 Creating output.
-- [ ] 3.1 **Load output schema** — Read the schema file referenced in frontmatter
+- [ ] 3.1 **Load output schema** — Read `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json`
 - [ ] 3.2 **Generate output** — Produce structured output matching the output schema, write to created FOLDER `review-output.json`
 
 ## Constraints

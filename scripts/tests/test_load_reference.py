@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parent.parent / "load-reference.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "mcp-server" / "lib" / "load_reference.py"
 
 
 def _run(*args):

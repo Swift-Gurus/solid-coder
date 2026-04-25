@@ -4,7 +4,14 @@
       "Bash(*)",
       "Write(*)",
       "Edit(*)",
-      "Read(*)"
+      "Read(*)",
+      "mcp__plugin_solid-coder_apple-build__detect_build_system",
+      "mcp__plugin_solid-coder_apple-build__build_target",
+      "mcp__plugin_solid-coder_apple-build__test",
+      "mcp__plugin_solid-coder_apple-build__get_test_failures",
+      "mcp__plugin_solid-coder_docs__load_rules",
+      "mcp__plugin_solid-coder_docs__get_candidate_tags",
+      "mcp__plugin_solid-coder_docs__load_pattern"
     ]
   }
 }

@@ -25,8 +25,8 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 
 Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
 
-- [ ] 2.1 For EACH principle in `active_principles`, use skill **solid-coder:load-reference** with: `--mode synth-fixes --principle {PRINCIPLE_ID}` (the server resolves load shape from `mcp-server/modes.py`)
-- [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → { rule, instructions (fix), examples, patterns }`
+- [ ] 2.1 For EACH principle in `active_principles[]` that has findings, call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "synth-fixes"` and `principle: {PRINCIPLE_ID}`. Apply the returned rules.
+- [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → loaded content`
 
 ## Phase 3: Draft Fix Actions
 
@@ -50,6 +50,7 @@ FOR each file that has non-COMPLIANT findings:
 
 FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:
 - [ ] Using ONLY that principle's `fix/instructions.md` from the Phase 2 lookup
+- [ ] If the fix involves extracting a new type or creating a new protocol — call `mcp__plugin_solid-coder_pipeline__search_codebase` with `tags` containing the proposed type name and responsibility keywords. If a match exists, prefer adapting it over creating new. Record the reuse decision in `todo_items`.
 - [ ] Generate a draft action:
   - `suggestion_id`: e.g., `draft-srp-001`
   - `principle`: the owning principle

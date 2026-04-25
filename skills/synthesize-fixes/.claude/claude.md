@@ -25,8 +25,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 |----------|-------------|
 | `skills/run-code-review` | Produces the `by-file/*.output.json` files this skill consumes |
 | `references/{PRINCIPLE}/` | Each principle folder provides `rule.md` (metrics), `fix/instructions.md` (fix patterns) |
-| `skills/parse-frontmatter` | Used in Phase 2 to extract frontmatter from `rule.md` |
-| `skills/load-reference` | Used in Phase 2 to load referenced files from frontmatter |
+| `mcp__plugin_solid-coder_docs__load_rules` | Used in Phase 2 to load rule definitions and fix instructions |
 
 | Downstream | Relationship |
 |------------|-------------|

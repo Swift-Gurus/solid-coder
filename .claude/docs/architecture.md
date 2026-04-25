@@ -22,7 +22,7 @@ Principles are activated based on **tags** in their `rule.md` frontmatter:
 ```
 
 **Discovery flow:**
-1. Orchestrator runs `discover-principles` skill → gets all principles + `all_candidate_tags`
+1. Orchestrator runs `mcp__plugin_solid-coder_docs__discover_principles` tool → gets all principles + `all_candidate_tags`
 2. Candidate tags are passed to `prepare-review-input` agent
 3. Agent matches tags against code (imports + usage patterns) → `matched_tags` in review-input.json
 4. Orchestrator runs `discover-principles` again with `--review-input` → filtered `active_principles`
@@ -85,7 +85,7 @@ The `rule.md` YAML frontmatter controls:
 - `required_patterns`: Design pattern references the principle needs (e.g., SRP needs `structural/facade`)
 - `examples`: (optional) Paths to example files/folders, defaults to `Examples/` if the directory exists
 
-Frontmatter is parsed by `parse-frontmatter` (script), which resolves all paths to absolute and produces a `files_to_load` array. Content is loaded by `load-reference` (script), which strips YAML frontmatter so agents never see it. Principle discovery and tag-based filtering is handled by `discover-principles` (script/skill).
+Frontmatter is parsed by `mcp__plugin_solid-coder_specs__parse_spec` (script), which resolves all paths to absolute and produces a `files_to_load` array. Content is loaded by `mcp__plugin_solid-coder_docs__load_rules` (script), which strips YAML frontmatter so agents never see it. Principle discovery and tag-based filtering is handled by `discover-principles` (script/skill).
 
 ## Data Flow
 

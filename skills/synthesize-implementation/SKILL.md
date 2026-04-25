@@ -28,7 +28,7 @@ Takes the architect's decomposition (`arch.json`) and the validator's codebase f
 Load principle knowledge for informed reconciliation — NOT embedded in output.
 
 - [ ] 1.1 Collect all unique `category` and `stack` values from `arch.json` components into a flat, deduplicated list of tags.
-- [ ] 1.2 Use skill **solid-coder:load-reference** with: `--mode synth-impl` and `--matched-tags {comma-separated tags from 1.1}`. If no tags derived, omit `--matched-tags`. The server resolves load shape from `mcp-server/modes.py` — rule.md + code/instructions.md + required_patterns.
+- [ ] 1.2 Call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "synth-impl"` and `matched_tags: [tags from 1.1]` (omit matched_tags if no tags). Apply the returned rules.
 - [ ] 1.5 Loaded principle knowledge informs three things during Phase 2:
   - **Conflict resolution** (2.1.4) — prefer types that already satisfy principle constraints
   - **Breaking change assessment** (2.2) — whether an adjustment violates principle rules

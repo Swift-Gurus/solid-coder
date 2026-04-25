@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parent.parent / "parse-frontmatter.py"
+SCRIPT = Path(__file__).resolve().parents[2] / "mcp-server" / "lib" / "parse_frontmatter.py"
 
 
 def _run(*args):

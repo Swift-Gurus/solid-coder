@@ -48,10 +48,8 @@ These are triggered by other skills or agents — not directly by the user:
 | `synthesize-fixes` | Holistic fix planner — sees ALL findings, cross-checks every fix against ALL principles, produces unified plan per file |
 | `create-type` | Enforces naming conventions and file organization when creating new types |
 | `prepare-review-input` | Normalizes input (branch, folder, files) into structured `review-input.json` |
-| `discover-principles` | Discovers principles from `references/` and filters by input tags |
 | `validate-findings` | Filters findings to changed code only, reorganizes outputs by file |
 | `find-spec` | Navigates spec hierarchy interactively, returns selected spec. Used by build-spec |
-| `parse-frontmatter` | Parses YAML frontmatter from markdown files. Utility |
 | `validate-spec` | Checks a spec for buildability — flags vague terms, undefined types, implicit contracts. Used by build-spec Phase 4 |
 | `validate-decomposition` | Validates arch.json against SOLID principles — splits components, adds protocols, restructures hierarchies |
 | `reconstruct-spec` | Reads arch.json ONLY (blind to original spec) and reconstructs what the architecture would deliver |
@@ -59,7 +57,6 @@ These are triggered by other skills or agents — not directly by the user:
 | `validate-plan` | Validates arch.json against the codebase — finds reusable types, conflicts, annotates components with reuse status |
 | `synthesize-implementation` | Reconciles arch.json + validation.json into ordered implementation plan of /code directives |
 | `validate-implementation` | Post-code checkpoint — collects user screenshots and feedback, compares against design references, produces fix directives |
-| `load-reference` | Loads reference files with frontmatter stripped. Utility |
 
 ## Agents
 

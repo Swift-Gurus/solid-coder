@@ -175,7 +175,7 @@ Step 1: Parse Input
 
 Step 2: Discover & Load Rules
 ─────────────────────────────
-  - Run discover-principles skill → all principles + candidate tags
+  - Run mcp__plugin_solid-coder_docs__discover_principles tool → all principles + candidate tags
   - If candidate tags exist: scan source for matching tags, re-run discovery with matched tags
   - For each active principle: run parse-frontmatter on rule.md
   - Run load-reference to load rules and references with frontmatter stripped

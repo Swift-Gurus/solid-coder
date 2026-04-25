@@ -29,10 +29,10 @@ MODES = {
     },
     "review": {
         "profile": "review",
-        "exclude": ["patterns"],
+        "exclude": [],
         "aggregation": "per-principle",
         "description": "`apply-principle-review` subagent — detect violations against a single principle",
-        "loads": ["rule", "instructions", "examples"],
+        "loads": ["rule", "instructions", "examples", "patterns"],
     },
     "planner": {
         "profile": "code",

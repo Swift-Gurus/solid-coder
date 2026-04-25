@@ -46,8 +46,6 @@ Skills can delegate work to other skills. When a skill needs another skill's cap
 Use the exact phrase: `use skill **solid-coder:<skill-name>** to <what it does>`
 
 **Do:**
-- `use skill **solid-coder:discover-principles** to discover active principles with --refs-root references/`
-- `use skill **solid-coder:load-reference** to load the rule_path content`
 - `use skill **solid-coder:create-type** to apply naming conventions`
 
 **Don't:**
@@ -76,7 +74,7 @@ When a skill needs to run another skill as a **subagent** (isolated context, spe
 
 **When to use subagents vs inline skills:**
 - **Subagent** (Task call): When the skill needs isolation, runs on a specific model, or could run in parallel with others. Always use the `-agent` wrapper (e.g., `plan-agent`, not `plan`).
-- **Inline skill** (`**solid-coder:<skill>**`): For lightweight utilities that run in the caller's context (e.g., `parse-frontmatter`, `load-reference`, `discover-principles`).
+- **Inline skill** (`**solid-coder:<skill>**`): For lightweight utilities that run in the caller's context (e.g., `create-type`, `find-spec`).
 
 **For parallel execution**, prepare multiple Task calls and launch ALL in a SINGLE message:
 ```markdown

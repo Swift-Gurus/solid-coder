@@ -56,8 +56,8 @@ Input: spec (prompt or markdown filepath) + output-path
            ▼
 ┌──────────────────────────────────┐
 │ 3. Load principle rules          │
-│    - solid-coder:discover-principles│
-│    - solid-coder:load-reference  │
+│    - mcp__plugin_solid-coder_docs__discover_principles│
+│    - mcp__plugin_solid-coder_docs__load_rules  │
 │    - Verify decomposition        │
 └──────────┬───────────────────────┘
            │
@@ -84,11 +84,11 @@ Output: arch.json → written to output-path
 
 | Skill | Relationship |
 |-------|-------------|
-| **solid-coder:parse-frontmatter** | Phase 1 — extract `parent` field to determine if ancestors exist |
+| **mcp__plugin_solid-coder_specs__parse_spec** | Phase 1 — extract `parent` field to determine if ancestors exist |
 | **solid-coder:find-spec** | Phase 1 — load ancestor specs via `ancestors` subcommand |
 | **solid-coder:create-type** | Phase 2 — naming conventions and solid-category vocabulary (read only, don't create files) |
-| **solid-coder:discover-principles** | Phase 3 — discover and filter active principles by component tags |
-| **solid-coder:load-reference** | Phase 3 — load active principle rule.md content (frontmatter stripped) |
+| **mcp__plugin_solid-coder_docs__discover_principles** | Phase 3 — discover and filter active principles by component tags |
+| **mcp__plugin_solid-coder_docs__load_rules** | Phase 3 — load active principle rule.md content (frontmatter stripped) |
 
 | Downstream | Relationship |
 |------------|-------------|
