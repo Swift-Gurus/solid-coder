@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from protocol import MCPServer
 
-server = MCPServer("apple-build", "1.0.0")
+server = MCPServer("apple-build", "1.1.0")
 
 # ─── Locks ────────────────────────────────────────────────────────────────────
 _locks: dict = {}
