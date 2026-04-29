@@ -87,14 +87,10 @@ def main():
     except (json.JSONDecodeError, ValueError):
         sys.exit(0)
 
-    tool_name = event.get("tool_name")
-    print(f"[schema-hook] invoked tool_name={tool_name!r} keys={list(event.keys())}", file=sys.stderr)
-
-    if tool_name not in ("Write", "Edit"):
+    if event.get("tool_name") not in ("Write", "Edit"):
         sys.exit(0)
 
     file_path_str = event.get("tool_input", {}).get("file_path", "")
-    print(f"[schema-hook] file_path={file_path_str!r}", file=sys.stderr)
     if not file_path_str or not file_path_str.endswith(".json"):
         sys.exit(0)
 

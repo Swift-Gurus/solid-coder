@@ -34,7 +34,7 @@ spec file → Phase 1: /plan → arch.json
                                  ↓
            Phase 3: /synthesize-implementation → implementation-plan.json
                                  ↓
-           Phase 4: code-agent → source files
+           Phase 4: code-agent × N chunks (sequential) → source files
                                  ↓
            Phase 4.5: /validate-implementation → user screenshots + feedback
                       ↓ approved        ↓ has_fixes
@@ -62,7 +62,8 @@ spec file → Phase 1: /plan → arch.json
 - **No short-circuit** — even when `plan_items[]` is empty (all reuse), all phases run. This keeps the orchestrator simple and predictable. Short-circuiting is a future improvement.
 - **Phase 5 defaults to 1 iteration** — safety review runs by default. Use `--iterations 0` to skip. Stages all Phase 4 output via `git add`, then runs `/refactor changes --iterations N`.
 - **Logging is opt-in** — per-phase timestamps and `implement-log.json` only written when `--verbose` is passed. Default: off.
-- **Partial failure preserved** — if code-agent fails mid-plan, completed items are kept. No rollback.
+- **One code-agent per chunk** — each chunk file gets its own code-agent Task call, run sequentially. Fresh context per chunk prevents context accumulation across foundations → implementations → tests → ui-tests.
+- **Partial failure preserved** — if a code-agent fails on a chunk, completed chunks are kept. No rollback.
 
 ## Gotchas
 

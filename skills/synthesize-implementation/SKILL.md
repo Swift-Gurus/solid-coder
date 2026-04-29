@@ -118,7 +118,7 @@ After Phase 2.5, some `arch.json.acceptance_criteria[]` and `arch.json.test_plan
   - `reconciliation_decisions[]`: one per `arch.json` component from Phase 2
   - `summary`: counts — `create` (new files), `modify` (existing files changed), `reuse` (no plan item)
 - [ ] 4.3 If `plan_items` is empty (all components are `reuse`), note: "All components already exist — nothing to implement."
-- [ ] 4.4 Write to OUTPUT_PATH. The PostToolUse hook will automatically split the plan into dependency-level chunks in `{OUTPUT_DIR}/implementation-plan/`.
+- [ ] 4.4 Write to OUTPUT_PATH.
 - [ ] 4.5 Print summary table:
 
   | Component | Status | Action | File |

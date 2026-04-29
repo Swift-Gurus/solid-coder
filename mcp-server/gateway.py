@@ -23,7 +23,7 @@ Examples:
     python3 gateway.py validate_findings --output-root /path/to/output
     python3 gateway.py generate_report --data-dir /path/to/iteration --report-dir /path/to/output
     python3 gateway.py validate_architecture --arch-path /path/to/arch.json
-    python3 gateway.py split_implementation_plan --plan-path /p/plan.json --output-dir /p/chunks/
+    python3 gateway.py split_implementation_plan --plan-path /p/plan.json --output-dir /p/chunks/ [--arch-path /p/arch.json]
     python3 gateway.py search_codebase --sources-dir /path/to/Sources --synonyms json,line,stream --min-matches 3
     python3 gateway.py search_codebase --sources-dir /path/to/Sources --spec-numbers SPEC-026,SPEC-033
     python3 gateway.py query_specs --action scan --args type=feature status=ready

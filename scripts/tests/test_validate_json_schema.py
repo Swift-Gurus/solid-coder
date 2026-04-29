@@ -148,6 +148,8 @@ class TestUnknownFiles(unittest.TestCase):
         try:
             r = run("Write", path, "struct Foo {}")
             self.assertEqual(r.returncode, 0)
+            self.assertEqual(r.stdout, "")
+            self.assertEqual(r.stderr, "")
         finally:
             path.unlink(missing_ok=True)
 

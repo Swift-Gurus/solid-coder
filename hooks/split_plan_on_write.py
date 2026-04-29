@@ -35,10 +35,12 @@ def main():
     output_dir = plan_path.parent / "implementation-plan"
     output_dir.mkdir(exist_ok=True)
 
-    result = subprocess.run(
-        [sys.executable, str(SPLIT_SCRIPT), str(plan_path), "--output-dir", str(output_dir)],
-        capture_output=True, text=True,
-    )
+    cmd = [sys.executable, str(SPLIT_SCRIPT), str(plan_path), "--output-dir", str(output_dir)]
+    arch_path = plan_path.parent / "arch.json"
+    if arch_path.exists():
+        cmd += ["--arch", str(arch_path)]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
         print(json.dumps({

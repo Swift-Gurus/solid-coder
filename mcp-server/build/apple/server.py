@@ -15,9 +15,12 @@ Console output (tool response) is filtered to signal lines only:
 import json
 import os
 import re
+import shutil
+import signal
 import subprocess
 import sys
 import threading
+import time
 import warnings
 warnings.filterwarnings("ignore")
 from pathlib import Path
@@ -211,6 +214,209 @@ def _run(cmd, cwd: Path, timeout: int = 600) -> tuple:
     return r.returncode, r.stdout
 
 
+# ─── Crash detection ──────────────────────────────────────────────────────────
+
+CRASH_PATTERNS = re.compile(
+    r"dyld\[\d+\]:|"
+    r"Library not loaded:|"
+    r"Symbol not found(?: in flat namespace)?:|"
+    r"EXC_BAD_ACCESS|EXC_BAD_INSTRUCTION|"
+    r"signal SIGABRT|signal SIGSEGV|signal SIGBUS|"
+    r"Crashed Thread:|"
+    r"Test Crashed:|"
+    r"Application launched but crashed"
+)
+
+_CRASH_KIND_RULES = [
+    (re.compile(r"dyld\[\d+\]:|Library not loaded:|Symbol not found"), "dyld"),
+    (re.compile(r"EXC_BAD_ACCESS|EXC_BAD_INSTRUCTION|SIGSEGV|SIGBUS"), "memory"),
+    (re.compile(r"SIGABRT|Crashed Thread:|Test Crashed:|Application launched but crashed"), "signal"),
+]
+
+
+def _classify_crash(text: str) -> str:
+    for pattern, kind in _CRASH_KIND_RULES:
+        if pattern.search(text):
+            return kind
+    return "unknown"
+
+
+def _scan_for_crash(xcresult: Path) -> dict:
+    """Walk xcresult/Staging for crash markers in StandardOutputAndStandardError-*.txt.
+
+    Returns a crash_info dict on first hit, or None.
+    """
+    if not xcresult.exists():
+        return None
+    for f in sorted(xcresult.rglob("StandardOutputAndStandardError-*.txt")):
+        try:
+            text = f.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        m = CRASH_PATTERNS.search(text)
+        if not m:
+            continue
+        lines = text.splitlines()
+        idx = next((i for i, ln in enumerate(lines) if CRASH_PATTERNS.search(ln)), 0)
+        excerpt = "\n".join(lines[max(0, idx - 2): idx + 25])
+        bid = re.match(r"StandardOutputAndStandardError-(.+)\.txt$", f.name)
+        return {
+            "kind": _classify_crash(excerpt),
+            "marker": m.group(0),
+            "excerpt": excerpt,
+            "file": str(f),
+            "bundle_id": bid.group(1) if bid else None,
+        }
+    return None
+
+
+def _save_crash_info(root: Path, kind: str, info: dict) -> Path:
+    p = _log_dir(root) / f"{kind}-crash.json"
+    p.write_text(json.dumps(info, indent=2), encoding="utf-8")
+    return p
+
+
+def _clear_crash_info(root: Path, kind: str):
+    p = _log_dir(root) / f"{kind}-crash.json"
+    if p.exists():
+        p.unlink()
+
+
+def _format_crash_response(info: dict, kill_reason: str, kind: str) -> str:
+    label = {
+        "dyld":   "App crashed at launch — missing framework or library",
+        "memory": "App crashed — memory access violation",
+        "signal": "App crashed — fatal signal",
+    }.get(info["kind"], "App crashed")
+
+    bundle = info.get("bundle_id") or "(unknown process)"
+    lines = [
+        f"** TESTS FAILED ** — {label}",
+        "",
+        f"Crash type: {info['kind']}",
+        f"Process:    {bundle}",
+        f"Marker:     {info['marker']}",
+        "",
+        "Excerpt:",
+    ]
+    for ln in info["excerpt"].splitlines()[:30]:
+        lines.append(f"  {ln}")
+    lines += [
+        "",
+        f"For full log + crash trace: get_log(kind=\"{kind}\")",
+    ]
+    if kill_reason == "stall":
+        lines.append("(Detected via stall watchdog — no progress for 90s; process tree killed.)")
+    return "\n".join(lines)
+
+
+def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
+                       hard_timeout: int = 900, stall_timeout: int = 90,
+                       crash_poll: float = 2.0) -> tuple:
+    """Run subprocess with three-tier watchdog. Returns (rc, stdout, crash_info, kill_reason).
+
+    Tier 1 — Crash watcher: poll xcresult/Staging every `crash_poll` seconds for
+             dyld/signal crash markers. Fires within ~3s of the crash hitting disk.
+    Tier 2 — Stall watcher: if no stdout activity for `stall_timeout` seconds, kill.
+    Tier 3 — Hard timeout: kill at `hard_timeout` seconds no matter what.
+
+    Process is started in its own session so we can SIGTERM/SIGKILL the whole tree.
+    """
+    proc = subprocess.Popen(
+        cmd, cwd=str(cwd),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+        start_new_session=True,
+    )
+
+    state = {
+        "stdout": [],
+        "crash": None,
+        "kill_reason": None,
+        "last_progress": time.monotonic(),
+    }
+    stop = threading.Event()
+
+    def reader():
+        try:
+            for line in proc.stdout:
+                state["stdout"].append(line)
+                state["last_progress"] = time.monotonic()
+        except Exception:
+            pass
+
+    def crash_watcher():
+        while not stop.is_set():
+            info = _scan_for_crash(xcresult)
+            if info:
+                state["crash"] = info
+                state["kill_reason"] = "crash"
+                return
+            if stop.wait(crash_poll):
+                return
+
+    def stall_watcher():
+        while not stop.is_set():
+            if stop.wait(5):
+                return
+            if time.monotonic() - state["last_progress"] > stall_timeout:
+                state["kill_reason"] = "stall"
+                return
+
+    threads = [
+        threading.Thread(target=reader, daemon=True),
+        threading.Thread(target=crash_watcher, daemon=True),
+        threading.Thread(target=stall_watcher, daemon=True),
+    ]
+    for t in threads:
+        t.start()
+
+    deadline = time.monotonic() + hard_timeout
+    while proc.poll() is None:
+        if state["kill_reason"]:
+            break
+        if time.monotonic() > deadline:
+            state["kill_reason"] = "hard_timeout"
+            break
+        time.sleep(0.5)
+
+    stop.set()
+
+    if proc.poll() is None:
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+        for _ in range(20):
+            if proc.poll() is not None:
+                break
+            time.sleep(0.1)
+        if proc.poll() is None:
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+    threads[0].join(timeout=2)  # reader
+    if proc.stdout is not None:
+        try:
+            proc.stdout.close()
+        except OSError:
+            pass
+
+    # Final scan — file may have grown between detection and kill
+    if state["kill_reason"] in ("stall", "hard_timeout") and state["crash"] is None:
+        state["crash"] = _scan_for_crash(xcresult)
+    elif state["crash"]:
+        state["crash"] = _scan_for_crash(xcresult) or state["crash"]
+
+    return proc.returncode, "".join(state["stdout"]), state["crash"], state["kill_reason"]
+
+
 def _run_tuist_build(root: Path, target: str, configuration: str) -> str:
     """Full tuist flow: install → generate → build."""
     log = []
@@ -316,7 +522,8 @@ def _run_tuist_test(root: Path, target: str, test_targets: list,
 
     xcresult = _log_dir(root) / f"{kind}.xcresult"
     if xcresult.exists():
-        import shutil; shutil.rmtree(str(xcresult))
+        shutil.rmtree(str(xcresult))
+    _clear_crash_info(root, kind)
 
     cmd = ["tuist", "test", target, "--result-bundle-path", str(xcresult)]
     if test_targets:
@@ -328,9 +535,20 @@ def _run_tuist_test(root: Path, target: str, test_targets: list,
     if only_testing:
         cmd += ["--"] + [f"-only-testing:{t}" for t in only_testing]
 
-    rc, out = _run(cmd, root, timeout=900)
+    rc, out, crash, kill_reason = _run_with_watchdog(cmd, root, xcresult)
     log.append(f"=== tuist test ===\n{out}")
     _save(root, f"{kind}.log", "\n".join(log))  # always written
+
+    if crash:
+        _save_crash_info(root, kind, crash)
+        return _format_crash_response(crash, kill_reason, kind)
+
+    if kill_reason == "stall":
+        return (f"** TESTS FAILED ** — Run stalled (no progress for 90s, process tree killed). "
+                f"No crash trace found in xcresult. See: get_log(kind=\"{kind}\")")
+    if kill_reason == "hard_timeout":
+        return (f"** TESTS FAILED ** — Hard timeout after 900s, process tree killed. "
+                f"See: get_log(kind=\"{kind}\")")
 
     # Count from xcresult (accurate for both XCTest and swift-testing)
     if xcresult.exists():
@@ -346,9 +564,11 @@ def _run_tuist_test(root: Path, target: str, test_targets: list,
 
 
 def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) -> str:
+    kind = "test"
     xcresult = _log_dir(root) / "test.xcresult"
     if xcresult.exists():
-        import shutil; shutil.rmtree(str(xcresult))
+        shutil.rmtree(str(xcresult))
+    _clear_crash_info(root, kind)
 
     if system == "xcode-ws":
         ws = next(f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj"))
@@ -362,10 +582,24 @@ def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) ->
     for t in only_testing:
         cmd += ["-only-testing", t]
 
-    rc, out = _run(cmd, root, timeout=900)
+    rc, out, crash, kill_reason = _run_with_watchdog(cmd, root, xcresult)
     _save(root, "test.log", out)
-    passed = _count_passed(out)
-    failed = _count_failed(out)
+
+    if crash:
+        _save_crash_info(root, kind, crash)
+        return _format_crash_response(crash, kill_reason, kind)
+
+    if kill_reason == "stall":
+        return (f"** TESTS FAILED ** — Run stalled (no progress for 90s, process tree killed). "
+                f"No crash trace found in xcresult. See: get_log(kind=\"{kind}\")")
+    if kill_reason == "hard_timeout":
+        return (f"** TESTS FAILED ** — Hard timeout after 900s, process tree killed. "
+                f"See: get_log(kind=\"{kind}\")")
+
+    if xcresult.exists():
+        passed, failed = _count_from_xcresult(xcresult)
+    else:
+        passed, failed = _count_passed(out), _count_failed(out)
     if rc == 0:
         return f"✓ {passed} tests passed"
     status = f"** TESTS FAILED ** — {failed} failed, {passed} passed"
@@ -562,8 +796,28 @@ def get_log(kind: str = "build", project_path=None, tail: int = None) -> str:
     log = _log_dir(root) / f"{kind}.log"
     if not log.exists():
         return f"No {kind}.log found. Run build/test/lint first."
+
+    parts = []
+    crash_path = _log_dir(root) / f"{kind}-crash.json"
+    if crash_path.exists():
+        try:
+            info = json.loads(crash_path.read_text(encoding="utf-8"))
+            parts.append("=== Crash detected during run ===")
+            parts.append(f"Kind:    {info.get('kind')}")
+            parts.append(f"Process: {info.get('bundle_id') or '(unknown)'}")
+            parts.append(f"Marker:  {info.get('marker')}")
+            parts.append(f"Source:  {info.get('file')}")
+            parts.append("")
+            parts.append("Excerpt:")
+            parts.append(info.get("excerpt", ""))
+            parts.append("")
+            parts.append("=== tuist/xcodebuild stdout follows ===")
+        except (json.JSONDecodeError, OSError):
+            pass
+
     lines = log.read_text(encoding="utf-8").splitlines()
-    return "\n".join(lines[-tail:] if tail else lines)
+    parts.append("\n".join(lines[-tail:] if tail else lines))
+    return "\n".join(parts)
 
 
 @server.tool(

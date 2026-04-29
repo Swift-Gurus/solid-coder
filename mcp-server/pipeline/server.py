@@ -282,19 +282,28 @@ def validate_architecture(arch_path):
 
 @server.tool(
     name="split_implementation_plan",
-    description="Split implementation-plan.json into dependency-level chunks for parallel code agents.",
+    description=(
+        "Split implementation-plan.json into semantically grouped chunks. "
+        "When arch_path is provided, items are classified by component category "
+        "(model/enum/typealias → foundations, unit tests → tests, UI tests → ui-tests). "
+        "Without arch_path, all items are split by dependency level only."
+    ),
     input_schema={
         "type": "object",
         "properties": {
             "plan_path": {"type": "string", "description": "Path to implementation-plan.json"},
             "output_dir": {"type": "string", "description": "Directory to write chunk files"},
+            "arch_path": {"type": "string", "description": "Optional path to arch.json for component category classification"},
         },
         "required": ["plan_path", "output_dir"],
     },
 )
-def split_implementation_plan(plan_path, output_dir):
+def split_implementation_plan(plan_path, output_dir, arch_path=None):
     script = str(SKILLS_ROOT / "synthesize-implementation" / "scripts" / "split-plan.py")
-    ok, out, err = _run_script([sys.executable, script, plan_path, "--output-dir", output_dir])
+    cmd = [sys.executable, script, plan_path, "--output-dir", output_dir]
+    if arch_path:
+        cmd += ["--arch", arch_path]
+    ok, out, err = _run_script(cmd)
     chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
     return {
         "success": ok,
