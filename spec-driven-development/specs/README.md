@@ -2,40 +2,41 @@
 
 Single source of truth for spec structure and validation across the SDD pipeline. Used by:
 
-| Skill | Usage |
-|-------|-------|
-| `build-spec` | Generates drafts following the per-type rule |
+| Skill                  | Usage                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `build-spec`           | Generates drafts following the per-type rule                                                |
 | `build-spec-from-code` | Generates rewrite specs following the per-type rule (with `mode: rewrite` frontmatter flag) |
-| `validate-spec` | Structural + buildability checks verify each spec per type |
+| `validate-spec`        | Structural + buildability checks verify each spec per type                                  |
 
 ## Per-Type Rules
 
 Each type follows the same split pattern as `references/principles/`: `rule.md` defines the structure; `review/instructions.md` defines the validation rules.
 
-| Type | Structure | Validation | When to use |
-|------|-----------|------------|-------------|
-| `epic` | [epic/rule.md](epic/rule.md) | [epic/review/instructions.md](epic/review/instructions.md) | Large initiative broken into subtasks/features |
-| `feature` | [feature/rule.md](feature/rule.md) | [feature/review/instructions.md](feature/review/instructions.md) | New capability or improvement |
-| `subtask` | [subtask/rule.md](subtask/rule.md) | [subtask/review/instructions.md](subtask/review/instructions.md) | Scoped unit of work under a parent epic/feature |
-| `bug` | [bug/rule.md](bug/rule.md) | [bug/review/instructions.md](bug/review/instructions.md) | Something broken that needs fixing (status-aware, two-phase) |
+| Type      | Structure                          | Validation                                                       | When to use                                                  |
+| --------- | ---------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------ |
+| `epic`    | [epic/rule.md](epic/rule.md)       | [epic/review/instructions.md](epic/review/instructions.md)       | Large initiative broken into subtasks/features               |
+| `feature` | [feature/rule.md](feature/rule.md) | [feature/review/instructions.md](feature/review/instructions.md) | New capability or improvement                                |
+| `subtask` | [subtask/rule.md](subtask/rule.md) | [subtask/review/instructions.md](subtask/review/instructions.md) | Scoped unit of work under a parent epic/feature              |
+| `bug`     | [bug/rule.md](bug/rule.md)         | [bug/review/instructions.md](bug/review/instructions.md)         | Something broken that needs fixing (status-aware, two-phase) |
 
 - `build-spec` / `build-spec-from-code` read **`<type>/rule.md`** (structure + story depth + format)
+
 - `validate-spec` reads **`<type>/review/instructions.md`** (structural + buildability rules)
 
 ## Common Frontmatter
 
 Every spec file starts with YAML frontmatter. These fields are **common to all types**:
 
-| Field | Required | Values | Notes |
-|-------|----------|--------|-------|
-| `number` | always | `SPEC-NNN` | Assigned by `find-spec next-number` |
-| `feature` | always | slug string | Lowercase, hyphen-separated |
-| `type` | always | `epic` / `feature` / `subtask` / `bug` | Drives rule selection |
-| `status` | always | `draft` / `ready` / `in-progress` / `done` | Lifecycle state |
-| `parent` | if non-root | `SPEC-NNN` | Parent spec number |
-| `blocked-by` | always (can be `[]`) | array of `SPEC-NNN` | Permanent record — never remove entries |
-| `blocking` | always (can be `[]`) | array of `SPEC-NNN` | Permanent record — never remove entries |
-| `mode` | optional | `rewrite` | Signals greenfield rebuild — validate-plan skips codebase search |
+| Field        | Required             | Values                                     | Notes                                                            |
+| ------------ | -------------------- | ------------------------------------------ | ---------------------------------------------------------------- |
+| `number`     | always               | `SPEC-NNN`                                 | Assigned by `find-spec next-number`                              |
+| `feature`    | always               | slug string                                | Lowercase, hyphen-separated                                      |
+| `type`       | always               | `epic` / `feature` / `subtask` / `bug`     | Drives rule selection                                            |
+| `status`     | always               | `draft` / `ready` / `in-progress` / `done` | Lifecycle state                                                  |
+| `parent`     | if non-root          | `SPEC-NNN`                                 | Parent spec number                                               |
+| `blocked-by` | always (can be `[]`) | array of `SPEC-NNN`                        | Permanent record — never remove entries                          |
+| `blocking`   | always (can be `[]`) | array of `SPEC-NNN`                        | Permanent record — never remove entries                          |
+| `mode`       | optional             | `rewrite`                                  | Signals greenfield rebuild — validate-plan skips codebase search |
 
 ## Common Sections (all types)
 
@@ -63,15 +64,75 @@ Type-specific sections (Input/Output, User Stories, Test Plan, etc.) are documen
 
 These appear when the spec's content warrants them:
 
-| Section | When required |
-|---------|---------------|
-| `## Input / Output` | `feature` / `subtask` always. Formats + locations. |
-| `## User Stories` | `feature` / `subtask` / `epic` (epic = one story per capability) |
-| `## Technical Requirements` | `subtask` always. `feature` if touching business logic/integration/APIs. Not for `epic`/`bug`. |
-| `## UI / Mockup` | When the spec mentions screens, views, components, or user interaction. Content: reference to `resources/`, ASCII mockup, or image. Placeholder-only counts as missing. |
-| `## Test Plan` | `feature` / `subtask` / `bug` where behavior is testable. Not for `epic` or internal/infrastructure-only stories. |
-| `## Current State` | `rewrite` mode specs only. Snapshot of existing code — types, responsibilities, integration map. |
-| `## Features` | `epic` only. Ordered list of child features with assigned spec numbers. |
+| Section                     | When required                                                                                                                                                           |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `## Input / Output`         | `feature` / `subtask` always. Formats + locations.                                                                                                                      |
+| `## User Stories`           | `feature` / `subtask` / `epic` (epic = one story per capability)                                                                                                        |
+| `## Technical Requirements` | `subtask` always. `feature` if touching business logic/integration/APIs. Not for `epic`/`bug`.                                                                          |
+| `## UI / Mockup`            | When the spec mentions screens, views, components, or user interaction. Content: reference to `resources/`, ASCII mockup, or image. Placeholder-only counts as missing. |
+| `## Test Plan`              | `feature` / `subtask` / `bug` where behavior is testable. Not for `epic` or internal/infrastructure-only stories.                                                       |
+| `## Current State`          | `rewrite` mode specs only. Snapshot of existing code — types, responsibilities, integration map.                                                                        |
+| `## Features`               | `epic` only. Ordered list of child features with assigned spec numbers.                                                                                                 |
+
+## Scope Metrics
+
+Used by `validate-spec` Phase C to flag oversized or incohesive specs and recommend splits.
+
+### Index vs leaf
+
+A spec is treated as **index** (exempt from Phase C) when any of:
+
+- has `## Subtasks` AND no `## Technical Requirements` AND no own acceptance criteria
+- `type: epic` (epics are inherently multi-responsibility)
+- `type: bug` AND `status: draft` (a bug report is not a build artifact yet)
+
+Everything else is a **leaf** spec — it produces code itself and gets Phase C applied.
+
+### SCOPE-1 — Predicted production LOC
+
+ACs are the dominant signal: each AC describes a verifiable production behavior that maps to ~10–15 LOC (a method, branch, guard, or property). Types and TR mechanisms are the plumbing that supports those behaviors and would double-count what ACs already capture.
+
+```
+predicted_production_loc ≈ (AC_count × 12) + (screens × 80)
+```
+
+`screens` counts distinct UI views described in `## UI / Mockup` (each carries view body + view model + init wiring independent of AC density).
+
+| predicted_production_loc | Severity  |
+|--------------------------|-----------|
+| < 200                    | COMPLIANT |
+| 200 – 400                | MINOR     |
+| > 400                    | SEVERE    |
+
+Tests are excluded — they scale mechanically with ACs and shouldn't drive split decisions.
+
+Calibrate weights and bands once 5–10 implemented specs have actual production LOC measurements; revise if the formula systematically over- or under-shoots.
+
+### SCOPE-2 — Cohesion groups
+
+Extract four signals per AC:
+
+- **Data type / model** the AC reads or writes
+- **Screen / view** the AC is visible on (if any)
+- **External integration** the AC depends on (API, framework, package)
+- **Lifecycle phase** the AC operates in (construction, subscribe / iterate, observation, cancel)
+
+Two ACs cluster only if they share **at least 2 signals**. Cluster transitively until stable; count disjoint groups.
+
+| cohesion_groups | Severity  |
+|-----------------|-----------|
+| 1               | COMPLIANT |
+| 2               | MINOR     |
+| 3+              | SEVERE    |
+
+A 1-signal cluster rule is too lax — it folds everything together via shared library names. The 2-signal rule produces splits that match real architectural seams.
+
+### Split outcomes
+
+- **SCOPE-2 SEVERE** (semantic seam) → recommend one subtask per cohesion group; parent becomes an index (move TR/ACs into the new subtasks).
+- **SCOPE-1 SEVERE + SCOPE-2 SEVERE** → prefer cohesion-driven split.
+- **SCOPE-1 SEVERE + SCOPE-2 COMPLIANT** → emit `oversized_cohesive` finding. Do NOT auto-recommend a split — the unit is genuinely cohesive. Suggest extraction candidates for human review.
+- **MINOR-only findings** → advisory, do not block.
 
 ## Folder Structure
 
@@ -102,3 +163,6 @@ epic-folder/
             ├── Spec.md
             └── resources/
 ```
+
+## Constrains 
+- TR and DoD must not reinstate what AC and Unit tests specified.

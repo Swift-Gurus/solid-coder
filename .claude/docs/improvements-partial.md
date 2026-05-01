@@ -450,40 +450,6 @@ The review iteration still runs after implementation. If the plan was wrong, the
 
 ---
 
-## S-34: `/code` skill Section 3.5 — Shared Component Creation
-
-**Impact**: Medium | **Effort**: Low | **Category**: Pipeline enhancement
-
-**Status**: Pending — depends on S-32, S-33
-
-Add Section 3.5 to `skills/code/SKILL.md` Phase 3 (File Organization). When creating ANY new type (class, struct, protocol, enum, extension):
-
-1. Run DRY check (both layers):
-   - `python scripts/registry.py` → check `solid-use-when` for intent overlap
-   - Grep synonyms for the concept being implemented
-   - If match found → configure existing component, do NOT create new file
-2. If no match → design generic component using `@ViewBuilder` for slots, `ViewModifier` for styling, protocols + generics for types
-3. Prefill `solid-` prefixed frontmatter FIRST, then write Swift:
-   ```swift
-   // ---
-   // solid-name: [TypeName]
-   // solid-category: [layout/row | layout/container | modifier | service/protocol | service/implementation | utility]
-   // solid-tags: [relevant tags]
-   // solid-use-when: [specific intent — what problem does this solve]
-   // solid-do-not-use-when: [what it's NOT for — name alternatives if they exist]
-   // solid-props: [key parameters]
-   // solid-added: [today's date]
-   // ---
-   ```
-
-### Verified status (2026-03-12)
-
-**Not implemented.** `skills/code/SKILL.md` Phase 3 has sections 3.1-3.4 only. No mention of shared components, DRY checks, or frontmatter prefill. Closest existing logic is 3.1's "Always search before creating" instruction.
-
-**Plan:** Add Section 3.5 "Shared Component Creation" after 3.4 in `skills/code/SKILL.md`: search for existing shared components via `find-component.py`, place reusable types in shared location, add `solid-` prefixed frontmatter to new files, cross-reference with DRY rules.
-
----
-
 ## S-36: Two-tier rule system — formalize always-on vs dynamic rules
 
 **Impact**: High | **Effort**: Medium | **Category**: Architecture
@@ -564,6 +530,5 @@ This detection is needed for Tier 2 dynamic rule loading (S-36). The `prepare-re
 | S-13 | Delta-aware review — only report regressions | High | High | Partial — unit-level `has_changes` + line-range filtering work; no baseline for pre-existing violations in changed regions | 2026-03-12 |
 | S-25 | Orchestrator error handling is ambiguous | High | Medium | Partial — prepare-input failures handled; parallel agent failures unspecified | 2026-03-12 |
 | S-27 | Pre-plan target architecture before incremental refactoring | High | Medium | Partial — per-file planning exists in synthesize-fixes; no cross-file architectural vision | 2026-03-12 |
-| S-34 | `/code` skill Section 3.5 — Shared Component Creation (`solid-` prefixed frontmatter) | Medium | Low | Partial — Section 3.5 exists with create-type invocation; missing DRY checks, component search, frontmatter prefill | 2026-03-19 |
 | S-36 | Two-tier rule system | High | Medium | Partial — tag-based activation works; no formal tier model or directional cross-checking | 2026-03-12 |
 | S-38 | Extend `prepare-review-input` context detection | Medium | Medium | Partial — imports + tag matching exist; test detection missing; semantic patterns LLM-dependent | 2026-03-12 |

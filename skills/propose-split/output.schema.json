@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Split Plan",
+  "description": "Full blueprint for splitting a spec when scope-assessment recommends it. Produced by propose-split skill. Consumed by validate-spec Phase 4 reporting and (future) by build-spec materialisation.",
+  "type": "object",
+  "required": ["spec_path", "applicable"],
+  "additionalProperties": false,
+  "properties": {
+    "spec_path": { "type": "string" },
+    "applicable": {
+      "type": "boolean",
+      "description": "False when verdict was not needs_split — the rest of the document is then absent."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Present only when applicable=false. The verdict that caused the early exit."
+    },
+    "driver": {
+      "enum": ["cohesion", "size"],
+      "description": "Mirror of scope-assessment.split_recommendation.driver."
+    },
+    "split_rationale": {
+      "type": "string",
+      "description": "3–5 sentences explaining why this split — references shared signals for cohesion-driven, extraction heuristics for size-driven."
+    },
+    "parent_residue": {
+      "type": "object",
+      "description": "Cohesion-driven splits only. The parent feature converts to an index; this captures what stays at the parent level.",
+      "required": ["description", "connects_to_kept", "subtasks_table"],
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Reframed parent description (index role)."
+        },
+        "connects_to_kept": {
+          "type": "array",
+          "description": "Connects To rows that remain at the parent level (parent-wide upstream/downstream).",
+          "items": {
+            "type": "object",
+            "required": ["direction", "target", "how"],
+            "properties": {
+              "direction": { "enum": ["depends on", "serves"] },
+              "target": { "type": "string" },
+              "how": { "type": "string" }
+            }
+          }
+        },
+        "subtasks_table": {
+          "type": "array",
+          "description": "Markdown rows for the parent's new ## Subtasks section.",
+          "items": {
+            "type": "object",
+            "required": ["index", "title", "scope"],
+            "properties": {
+              "index": { "type": "integer", "minimum": 1 },
+              "title": { "type": "string" },
+              "spec_placeholder": { "type": "string", "description": "e.g. 'SPEC-NNN-1' — actual numbers assigned at materialisation" },
+              "scope": { "type": "string", "description": "1-line scope summary" }
+            }
+          }
+        }
+      }
+    },
+    "candidate_subtasks": {
+      "type": "array",
+      "description": "Per-candidate full plan when driver=cohesion; thin extraction proposals when driver=size.",
+      "items": {
+        "type": "object",
+        "required": ["title", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string" },
+          "kind": {
+            "enum": ["cohesion", "extraction"],
+            "description": "cohesion = full subtask split; extraction = thin proposal for size-driven case"
+          },
+          "description": {
+            "type": "string",
+            "description": "2–4 sentences. Required for kind=cohesion; optional for kind=extraction."
+          },
+          "user_story": {
+            "type": "object",
+            "required": ["narrative", "acs"],
+            "properties": {
+              "id": { "type": "string", "description": "e.g. US-1 (renumbered for the new subtask)" },
+              "narrative": { "type": "string" },
+              "acs": {
+                "type": "array",
+                "description": "AC text, quoted verbatim from the parent.",
+                "items": {
+                  "type": "object",
+                  "required": ["source_id", "text"],
+                  "properties": {
+                    "source_id": { "type": "string", "description": "Original id in parent (US-N.M / STORY-N.M)" },
+                    "text": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "input_output": {
+            "type": "object",
+            "properties": {
+              "input": { "type": "string" },
+              "output": { "type": "string" },
+              "consumer": { "type": "string" },
+              "lifetime": { "type": "string" }
+            }
+          },
+          "technical_requirements": {
+            "type": "array",
+            "description": "TR bullets that move with this candidate. Each item carries its provenance from the parent for audit.",
+            "items": {
+              "type": "object",
+              "required": ["text", "source"],
+              "properties": {
+                "text": { "type": "string" },
+                "source": { "type": "string", "description": "Provenance — verbatim parent TR bullet, or 'parent TR bullet N (split)' when partitioned" }
+              }
+            }
+          },
+          "connects_to": {
+            "type": "object",
+            "properties": {
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["target", "how"],
+                  "properties": {
+                    "target": { "type": "string" },
+                    "how": { "type": "string" },
+                    "is_sibling": { "type": "boolean", "description": "True when target is another candidate in this plan" }
+                  }
+                }
+              },
+              "serves": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["target", "how"],
+                  "properties": {
+                    "target": { "type": "string" },
+                    "how": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "definition_of_done": {
+            "type": "array",
+            "description": "DoD items that close on this candidate's deliverable.",
+            "items": { "type": "string" }
+          },
+          "blocked_by": {
+            "type": "array",
+            "description": "Sibling candidate titles whose output this one consumes.",
+            "items": { "type": "string" }
+          },
+          "estimated_size_band": { "enum": ["tiny", "small", "medium", "large"] },
+          "rationale": {
+            "type": "string",
+            "description": "Why this candidate exists — for kind=extraction, the heuristic that surfaced it."
+          }
+        }
+      }
+    },
+    "dependency_order": {
+      "type": "array",
+      "description": "Topologically ordered candidate titles. Order in which the candidates should be materialised and implemented.",
+      "items": { "type": "string" }
+    }
+  }
+}

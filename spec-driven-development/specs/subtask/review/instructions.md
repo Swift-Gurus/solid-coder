@@ -29,8 +29,22 @@ Apply every check from [feature/review/instructions.md § Phase B](../../feature
 
 All rules apply identically to subtasks. Do NOT duplicate the rule text here — read them from the feature review instructions.
 
+## Phase C — Scope & Cohesion
+
+Apply every check from [feature/review/instructions.md § Phase C](../../feature/review/instructions.md#phase-c--scope--cohesion):
+
+- C.0 Applicability gate — subtasks are always leaf, so the gate never fires. Phase C always runs.
+- C.1 SCOPE-1 — predicted production LOC.
+- C.2 SCOPE-2 — cohesion groups.
+- C.3 Split recommendation. When a subtask is recommended for split, the parent feature gains new sibling subtasks; the subtask itself either disappears (cohesion split) or stays with extracted helpers carved out (oversized-cohesive case).
+
+All metric definitions live in [README § Scope Metrics](../../README.md#scope-metrics). Do NOT duplicate them here.
+
 ## Reporting
 
-- Group findings by category: `structural`, `user_story_quality`, `vague_term`, `undefined_type`, `intent_described`, `implicit_contract`, `unverified_api`, `ambiguous_scope`, `implementation_leaking`, `ac_architecture_disconnect`.
-- Per finding: `category`, `location` (section or phrase), `question` (what needs to be answered).
-- Verdict: `pass` (0 findings) or `needs_clarification` (>0 findings).
+- Group findings by category: `structural`, `user_story_quality`, `vague_term`, `undefined_type`, `intent_described`, `implicit_contract`, `unverified_api`, `ambiguous_scope`, `implementation_leaking`, `ac_architecture_disconnect`, `scope_oversized`, `incohesive`, `oversized_cohesive`, `split_recommendation`.
+- Per finding: `category`, `location` (section or phrase), `question` (what needs to be answered), and for Phase C: `severity` (MINOR / SEVERE) plus the per-input counts that produced the metric.
+- Verdict:
+  - `pass` — 0 findings across all phases.
+  - `needs_clarification` — any Phase A or B finding, or any Phase C finding at SEVERE.
+  - `advisory` — only Phase C findings at MINOR (spec is buildable but worth reviewing).

@@ -559,6 +559,10 @@ def _run_tuist_test(root: Path, target: str, test_targets: list,
     if rc == 0:
         return f"✓ {passed} tests passed"
     status = f"** TESTS FAILED ** — {failed} failed, {passed} passed"
+    if xcresult.exists():
+        details = _xcresult_failures(xcresult, max_failures=5)
+        if details and details != "(no failures)":
+            return f"{status}\n{details}"
     signals = _filter(out)
     return f"{status}\n{signals}" if signals else status
 
@@ -603,6 +607,10 @@ def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) ->
     if rc == 0:
         return f"✓ {passed} tests passed"
     status = f"** TESTS FAILED ** — {failed} failed, {passed} passed"
+    if xcresult.exists():
+        details = _xcresult_failures(xcresult, max_failures=5)
+        if details and details != "(no failures)":
+            return f"{status}\n{details}"
     signals = _filter(out)
     return f"{status}\n{signals}" if signals else status
 
@@ -660,24 +668,35 @@ def _xcresult_activities(xcresult: Path, test_id: str) -> str:
     return "\n".join(out)
 
 
-def _xcresult_failures(xcresult: Path, include_activities: bool = False) -> str:
-    """Extract failures. For UI tests (include_activities=True), also shows activity timeline."""
+def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
+    """Extract failures with their activity timeline (when present).
+
+    Activities are included whenever xcresulttool returns them — typically rich for
+    UI tests, sparse/empty for unit tests. No need to distinguish kinds.
+
+    If max_failures is set and exceeded, truncates and appends a hint to get_test_failures.
+    """
     data = _xcresulttool_test_results(xcresult)
+    failed = [c for c in _iter_cases(data.get("testNodes", [])) if c.get("result") == "Failed"]
+    if not failed:
+        return "(no failures)"
+
+    shown = failed if max_failures is None else failed[:max_failures]
     lines = []
-    for case in _iter_cases(data.get("testNodes", [])):
-        if case.get("result") != "Failed":
-            continue
+    for case in shown:
         lines.append(f"  ✖ {case.get('name', '?')}")
         for child in case.get("children", []):
             if child.get("nodeType") == "Failure Message":
                 lines.append(f"      {child.get('name', '')}")
-        if include_activities:
-            test_id = case.get("nodeIdentifier", "")
-            if test_id:
-                activities = _xcresult_activities(xcresult, test_id)
-                if activities:
-                    lines.append(activities)
-    return "\n".join(lines) if lines else "(no failures)"
+        test_id = case.get("nodeIdentifier", "")
+        if test_id:
+            activities = _xcresult_activities(xcresult, test_id)
+            if activities:
+                lines.append(activities)
+    if max_failures is not None and len(failed) > max_failures:
+        lines.append(f"  … {len(failed) - max_failures} more failure(s). "
+                     f"Call get_test_failures for the full list.")
+    return "\n".join(lines)
 
 
 # ─── MCP tools ────────────────────────────────────────────────────────────────
@@ -840,7 +859,7 @@ def get_test_failures(kind: str = "test", project_path=None) -> str:
     xcresult = _log_dir(root) / f"{kind}.xcresult"
     if not xcresult.exists():
         return f"No {kind}.xcresult found. Run test first."
-    return _xcresult_failures(xcresult, include_activities=(kind == "ui-test"))
+    return _xcresult_failures(xcresult)
 
 
 @server.tool(

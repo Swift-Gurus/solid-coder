@@ -22,4 +22,7 @@ Completed, resolved, or no-longer-applicable suggestions. Full details were in t
 | S-40 | `solid-spec` frontmatter field | Medium | Low | Done — `solid-spec` field implemented in create-type SKILL.md | 2026-04-13 |
 | S-43 | Rewrite mode — greenfield bypass in validate-plan | High | Low | Done — validate-plan Phase -1.2 detects mode: rewrite and skips to all-create output | 2026-04-13 |
 | S-44 | `build-spec-from-code` skill | High | High | Done — skill created at skills/build-spec-from-code/ | 2026-04-13 |
-| S-10 | Output cleanup mechanism | Low | Low | Done — implement Phase 6.3 deletes .solid_coder/ on successful run | 2026-04-13 |
+| S-10 | Output cleanup mechanism | Low | Low | Reverted 2026-05-01 — Phase 7.3 now keeps `.solid_coder/` artifacts for debugging; per-run timestamped subdirs prevent collision | 2026-05-01 |
+| S-32 | DRY principle — full `references/DRY/` implementation | High | High | Done — `references/principles/DRY/` exists with rule.md, code/, review/, fix/, Examples/ | 2026-05-01 |
+| S-33 | Component discovery (find-component.py / registry.py) | High | Medium | Done via different mechanism — `search_codebase` MCP tool in `mcp-server/pipeline/server.py` greps `solid-description`, `solid-tags`, `solid-spec`, and imports; ranks by hit count; no separate Python script needed | 2026-05-01 |
+| S-34 | `/code` skill Section 3.5 — Shared Component Creation | Medium | Low | Done — `skills/code/SKILL.md` (line 83 + 155) mandates `search_codebase` before creating any new type; also wired into plan, validate-plan, synthesize-fixes | 2026-05-01 |

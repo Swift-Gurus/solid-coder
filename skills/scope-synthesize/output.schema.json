@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Scope Assessment",
+  "description": "Public contract for validate-spec Phase C. Synthesises the three measurement subagent outputs (heuristic, skeleton, cohesion) into a single artifact: verdict, consensus size, cohesion summary, and split recommendation.",
+  "type": "object",
+  "required": ["verdict", "size", "cohesion", "split_recommendation"],
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "enum": ["compliant", "advisory", "needs_split"],
+      "description": "compliant = no findings; advisory = MINOR-only Phase C findings; needs_split = at least one SEVERE."
+    },
+    "size": {
+      "type": "object",
+      "required": ["heuristic_loc", "skeleton_loc", "skeleton_projected_loc", "consensus_loc", "severity", "calibration_drift", "calibration_delta"],
+      "additionalProperties": false,
+      "properties": {
+        "heuristic_loc": { "type": "integer", "minimum": 0 },
+        "skeleton_loc": { "type": "integer", "minimum": 0 },
+        "skeleton_projected_loc": { "type": "integer", "minimum": 0, "description": "skeleton_loc × multiplier_used." },
+        "consensus_loc": { "type": "integer", "minimum": 0, "description": "max(heuristic_loc, skeleton_projected_loc)." },
+        "severity": { "enum": ["COMPLIANT", "MINOR", "SEVERE"] },
+        "calibration_drift": { "type": "boolean", "description": "True when |heuristic - skeleton_projected| / max > 0.5." },
+        "calibration_delta": { "type": "number", "minimum": 0, "description": "Relative delta between the two LOC estimates." }
+      }
+    },
+    "cohesion": {
+      "type": "object",
+      "required": ["group_count", "severity", "groups"],
+      "additionalProperties": false,
+      "properties": {
+        "group_count": { "type": "integer", "minimum": 0 },
+        "severity": { "enum": ["COMPLIANT", "MINOR", "SEVERE"] },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["label", "acs", "shared_signals"],
+            "additionalProperties": false,
+            "properties": {
+              "label": { "type": "string" },
+              "acs": { "type": "array", "items": { "type": "string" } },
+              "shared_signals": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "split_recommendation": {
+      "type": "object",
+      "required": ["should_split", "driver", "candidate_subtasks"],
+      "additionalProperties": false,
+      "properties": {
+        "should_split": { "type": "boolean" },
+        "driver": { "enum": ["cohesion", "size", "none"] },
+        "candidate_subtasks": {
+          "type": "array",
+          "description": "One entry per cohesion group when driver=cohesion; empty when driver=size (oversized_cohesive); empty when driver=none.",
+          "items": {
+            "type": "object",
+            "required": ["title", "acs", "estimated_size_band"],
+            "additionalProperties": false,
+            "properties": {
+              "title": { "type": "string" },
+              "acs": { "type": "array", "items": { "type": "string" } },
+              "estimated_size_band": { "enum": ["tiny", "small", "medium", "large"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

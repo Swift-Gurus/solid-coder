@@ -48,6 +48,12 @@ Acceptance criteria are the most concrete of any spec type — they should read 
 
 **Generation hint for `build-spec`:** push for **specificity** on subtasks — placement, connection, integration details. Ask "which type/protocol/module does this plug into?" — don't accept vague boundaries.
 
+## Scope Metrics
+
+Subtasks are always **leaf** specs — Phase C scope checks always apply. Subtasks cannot be index-only (they have no children).
+
+Formula and bands live in [README § Scope Metrics](../README.md#scope-metrics). Validation runs in [subtask/review/instructions.md § Phase C](review/instructions.md#phase-c--scope--cohesion).
+
 ## Technical Requirements
 
 **Always required for subtasks.** Covers:

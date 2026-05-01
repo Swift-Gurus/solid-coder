@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cohesion Cluster Output",
+  "description": "Output of the cohesion-cluster skill. Groups ACs by 2-signal transitive clustering on (data_type, screen, integration, lifecycle).",
+  "type": "object",
+  "required": ["spec_path", "group_count", "severity", "groups"],
+  "additionalProperties": false,
+  "properties": {
+    "spec_path": {
+      "type": "string",
+      "description": "Absolute path to the analysed spec file."
+    },
+    "group_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of disjoint cohesion groups."
+    },
+    "severity": {
+      "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+      "description": "Band: 1 group = COMPLIANT, 2 = MINOR, 3+ = SEVERE."
+    },
+    "groups": {
+      "type": "array",
+      "description": "Each group is a candidate subtask boundary if a split is recommended.",
+      "items": {
+        "type": "object",
+        "required": ["label", "acs", "shared_signals"],
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Short human-readable name for the seam, derived from dominant shared signals."
+          },
+          "acs": {
+            "type": "array",
+            "description": "AC ids in this group, e.g. ['US-1.1', 'US-1.2', 'US-3.1'] for canonical specs, or ['STORY-1.1', 'STORY-2.1'] when stories are not US-numbered.",
+            "items": { "type": "string", "pattern": "^(US|STORY)-\\d+\\.\\d+$" }
+          },
+          "shared_signals": {
+            "type": "array",
+            "description": "The signals that joined this group, e.g. ['lifecycle:subscribe', 'integration:AsyncRetryPolicy'].",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

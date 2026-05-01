@@ -47,22 +47,94 @@ Run **Phase B** from the `<type>/review/instructions.md` loaded in Phase 2.1.
 
 Execute every check listed under "Phase B" in the loaded file. Do not invent checks beyond what the file defines. Do not merge or skip.
 
-## Phase 4: Report
+## Phase 4: Scope & Cohesion
 
-- [ ] 4.1 Group findings by category (structural, user_story_quality, vague_term, undefined_type, intent_described, implicit_contract, unverified_api, ambiguous_scope, implementation_leaking, ac_architecture_disconnect, duplication)
-- [ ] 4.2 For each finding, include:
+Runs **Phase C** from the loaded `<type>/review/instructions.md`. Skip this entire phase for `bug` (no scope checks defined) and `epic` (epics are inherently multi-responsibility).
+
+- [ ] 4.1 **Applicability gate** — skip Phase 4 entirely if any of:
+  - `type: epic` or `type: bug` (those types do not define Phase C).
+  - The spec has `## Subtasks` AND no `## Technical Requirements` AND no own acceptance criteria (it's acting as an index — children carry the scope).
+
+  If skipped, emit no Phase C findings and proceed to Phase 5.
+
+- [ ] 4.2 **Compute output directory** — set `SCOPE_OUT = <project-root>/.solid_coder/validate-spec/<feature-slug>-<YYYYMMDDhhmmss>/scope/`. Create it (and any parents) before launching subagents.
+
+- [ ] 4.3 **Launch THREE measurement Tasks in a SINGLE message (parallel):**
+
+    Task 1 — heuristic LOC:
+    - subagent_type: `solid-coder:predict-loc-heuristic-agent`
+    - prompt:
+      ```
+      spec-path: <SPEC_FILE>
+      output-dir: <SCOPE_OUT>
+      ```
+
+    Task 2 — skeleton LOC:
+    - subagent_type: `solid-coder:predict-loc-skeleton-agent`
+    - prompt:
+      ```
+      spec-path: <SPEC_FILE>
+      output-dir: <SCOPE_OUT>
+      ```
+
+    Task 3 — cohesion clusters:
+    - subagent_type: `solid-coder:cohesion-cluster-agent`
+    - prompt:
+      ```
+      spec-path: <SPEC_FILE>
+      output-dir: <SCOPE_OUT>
+      ```
+
+- [ ] 4.4 **Wait for all three to complete.** If any failed, stop and report the error. If 1–2 succeeded, you may continue with `partial: true` annotation on the eventual finding — but synthesis requires all three, so a single failure aborts Phase 4.
+
+- [ ] 4.5 **Launch the synthesis Task** (sequential, after the three above complete):
+    - subagent_type: `solid-coder:scope-synthesize-agent`
+    - prompt:
+      ```
+      output-dir: <SCOPE_OUT>
+      ```
+
+- [ ] 4.6 **Read** `<SCOPE_OUT>/scope-assessment.json`. If `verdict == needs_split`, proceed to 4.7 to build a full split plan; otherwise skip to 4.8.
+
+- [ ] 4.7 **Launch the propose-split Task** (sequential, only when split is recommended):
+    - subagent_type: `solid-coder:propose-split-agent`
+    - prompt:
+      ```
+      spec-path: <SPEC_FILE>
+      output-dir: <SCOPE_OUT>
+      ```
+    - On completion, read `<SCOPE_OUT>/split-plan.json`. Use it as the body of the `split_recommendation` (or `oversized_cohesive`) finding emitted in 4.8.
+
+- [ ] 4.8 **Translate** `scope-assessment.json` (and `split-plan.json` when present) into Phase C findings per the table in the loaded `<type>/review/instructions.md` § Phase C.3:
+
+    | scope-assessment field | Emit finding (category, severity)                                            |
+    |------------------------|------------------------------------------------------------------------------|
+    | `size.severity` is `MINOR` or `SEVERE`        | `scope_oversized` at that severity                          |
+    | `cohesion.severity` is `MINOR` or `SEVERE`    | `incohesive` at that severity                                |
+    | `verdict == needs_split` AND `driver == size` | `oversized_cohesive` at SEVERE — body includes `split-plan.json` extraction candidates |
+    | `verdict == needs_split` AND `driver == cohesion` | `split_recommendation` at SEVERE — body includes the full `split-plan.json` (parent residue + per-candidate plans + dependency order) |
+    | `size.calibration_drift == true`              | `loc_calibration_drift` at MINOR                             |
+
+## Phase 5: Report
+
+- [ ] 5.1 Group findings by category (structural, user_story_quality, vague_term, undefined_type, intent_described, implicit_contract, unverified_api, ambiguous_scope, implementation_leaking, ac_architecture_disconnect, duplication, scope_oversized, incohesive, oversized_cohesive, split_recommendation, loc_calibration_drift).
+- [ ] 5.2 For each finding, include:
   - `category`: which check caught it
   - `location`: the phrase or section in the spec
   - `question`: what needs to be answered to resolve it
-- [ ] 4.3 Print summary:
+  - For Phase C findings: `severity` (MINOR / SEVERE) and the per-input counts that produced the metric (read from `scope-assessment.json`).
+- [ ] 5.3 Print summary:
 
   | Category | Count |
   |----------|-------|
   | ... | ... |
 
-  **Verdict:** `pass` (0 findings) or `needs_clarification` (>0 findings)
+  **Verdict:**
+  - `pass` — 0 findings across all phases.
+  - `needs_clarification` — any Phase A or B finding, or any Phase C finding at SEVERE.
+  - `advisory` — only Phase C findings at MINOR (spec is buildable but worth reviewing).
 
-- [ ] 4.4 **Mode-dependent output:**
+- [ ] 5.4 **Mode-dependent output:**
   - `--batch`: return all findings as structured output (no user interaction). The caller (build-spec) handles batching findings into a single AskUserQuestion.
   - `--interactive`: for each finding, ask the user to resolve it using AskUserQuestion. Return answers alongside findings. (Legacy mode — prefer `--batch` for fewer round-trips.)
   - No flag: report only, no user interaction.

@@ -132,7 +132,6 @@ SKIP THIS STEP MOVE TO PHASE 6
   Phases:  plan ✓ | codebase ✓ | synthesize ✓ | code ✓ | validate ✓ | review ✓
   ```
   (Mark failed/skipped phases accordingly)
-- [ ] 7.3 **Cleanup** — only if all phases succeeded: delete the `.solid_coder/` directory in the project root. If any phase failed or stopped early, keep artifacts for debugging.
 
 ## Constraints
 

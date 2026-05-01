@@ -26,7 +26,11 @@ Validates that a spec is concrete enough to implement without ambiguity. Catches
 
 | Downstream | Relationship |
 |------------|-------------|
-| None | Report-only — does not modify specs |
+| `predict-loc-heuristic-agent` | Phase 4 launches it (parallel) for the cheap LOC estimate |
+| `predict-loc-skeleton-agent` | Phase 4 launches it (parallel) for the accurate LOC estimate via skeleton sketching |
+| `cohesion-cluster-agent` | Phase 4 launches it (parallel) for split-seam detection |
+| `scope-synthesize-agent` | Phase 4 launches it after the three above complete; produces `scope-assessment.json` |
+| `propose-split-agent` | Phase 4.7 launches it only when `verdict == needs_split`; reads spec + scope-assessment, produces `split-plan.json` with full per-candidate breakdown and parent residue |
 
 ## Key Design Decisions
 
@@ -38,6 +42,7 @@ Validates that a spec is concrete enough to implement without ambiguity. Catches
 - **Structural checks updated** — all specs require Diagrams (connection + flow, sequence if async/multi-actor). Features/subtasks require User Stories instead of Workflow. UI/Mockup section required when spec mentions screens, views, components, or user interaction — placeholder counts as a gap.
 - **Question-per-finding** — in interactive mode, each finding becomes a focused question. Answers are returned to the caller (build-spec) for draft patching.
 - **AC-architecture disconnect check (Phase 3.8)** — verifies that every behavioral AC traces to a specific architectural mechanism in Technical Requirements, and that every claimed architectural mechanism handles all interaction types shown in mockups. Catches specs where behavior is described but no architecture supports it, or where a "unified" mechanism doesn't actually cover all cases.
+- **Phase 4 — Scope & Cohesion (multi-source)** — three measurement subagents run in parallel (heuristic / skeleton / cohesion), then `scope-synthesize-agent` merges them into `scope-assessment.json`. Skipped for `epic` and `bug` types, and for index-only features (has `## Subtasks` + no own TR/ACs). The synthesis is pure script logic — `max(heuristic, skeleton × multiplier)` for size, cohesion-driven splits when the seams are clear.
 
 ## Gotchas
 

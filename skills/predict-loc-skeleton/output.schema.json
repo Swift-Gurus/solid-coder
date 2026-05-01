@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skeleton LOC Prediction Output",
+  "description": "Output of the predict-loc-skeleton skill. Drafts declaration-only skeleton in the project language, counts non-blank/non-comment lines, applies a per-language multiplier, and projects total LOC.",
+  "type": "object",
+  "required": ["spec_path", "language", "skeleton_loc", "multiplier_used", "projected_loc", "severity", "skeleton_files"],
+  "additionalProperties": false,
+  "properties": {
+    "spec_path": {
+      "type": "string",
+      "description": "Absolute path to the analysed spec file."
+    },
+    "language": {
+      "enum": ["Swift", "Kotlin", "TypeScript", "Python"],
+      "description": "Dominant source language detected for the project."
+    },
+    "skeleton_loc": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Non-blank, non-comment line count across all skeleton files written under {OUTPUT_DIR}/skeleton/."
+    },
+    "multiplier_used": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Per-language multiplier applied to skeleton_loc. Swift 1.7, Kotlin 1.5, TypeScript 1.4, Python 2.0."
+    },
+    "projected_loc": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "round(skeleton_loc × multiplier_used). The size signal consumed by scope-synthesize."
+    },
+    "severity": {
+      "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+      "description": "Band determined by README § Scope Metrics thresholds against projected_loc."
+    },
+    "skeleton_files": {
+      "type": "array",
+      "description": "Relative paths under {OUTPUT_DIR}/skeleton/ for each sketched file.",
+      "items": { "type": "string" }
+    },
+    "unsketched": {
+      "type": "array",
+      "description": "Types or methods the agent could not sketch because the spec was too vague. Acts as a buildability hint.",
+      "items": {
+        "type": "object",
+        "required": ["name", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

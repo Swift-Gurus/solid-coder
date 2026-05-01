@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Heuristic LOC Prediction Output",
+  "description": "Output of the predict-loc-heuristic skill. Counts ACs + screens and applies the README § Scope Metrics formula.",
+  "type": "object",
+  "required": ["spec_path", "ac_count", "screens", "predicted_loc", "formula", "severity", "by_story"],
+  "additionalProperties": false,
+  "properties": {
+    "spec_path": {
+      "type": "string",
+      "description": "Absolute path to the analysed spec file."
+    },
+    "ac_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total acceptance criteria across all user stories."
+    },
+    "screens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Distinct UI screens detected in `## UI / Mockup`."
+    },
+    "predicted_loc": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Result of (ac_count × 12) + (screens × 80)."
+    },
+    "formula": {
+      "type": "string",
+      "description": "Human-readable formula used, for traceability."
+    },
+    "severity": {
+      "enum": ["COMPLIANT", "MINOR", "SEVERE"],
+      "description": "Band determined by README § Scope Metrics thresholds."
+    },
+    "by_story": {
+      "type": "array",
+      "description": "Per-story AC breakdown for traceability and debugging.",
+      "items": {
+        "type": "object",
+        "required": ["story_id", "ac_count"],
+        "additionalProperties": false,
+        "properties": {
+          "story_id": {
+            "type": "string",
+            "description": "Story heading text, e.g. 'US-1: Stream decoded session events'."
+          },
+          "ac_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

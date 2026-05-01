@@ -36,7 +36,10 @@
       "Bash(awk '{print $6, $7, $8, $9, $5}')",
       "Bash(xargs -I{} python3 -c \" import json, sys d = json.load\\(open\\('{}'\\)\\) print\\('Keys:', list\\(d.keys\\(\\)\\)\\) print\\('matched_tags:', d.get\\('matched_tags', 'NOT FOUND'\\)\\) print\\('tags:', d.get\\('tags', 'NOT FOUND'\\)\\) print\\(\\) \")",
       "Bash(xargs -I{} python3 -c \" import json, sys d = json.load\\(open\\('{}'\\)\\) print\\('File: {}'\\) print\\('Keys:', list\\(d.keys\\(\\)\\)\\) print\\('matched_tags:', d.get\\('matched_tags', 'NOT FOUND'\\)\\) \")",
-      "Bash(read f *)"
+      "Bash(read f *)",
+      "Bash(ps -o pid,ppid,etime,command -p 96274,96327)",
+      "Bash(kill -9 87841 87781)",
+      "Bash(xcrun xcresulttool *)"
     ]
   },
   "enableAllProjectMcpServers": true,

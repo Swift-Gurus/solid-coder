@@ -29,12 +29,12 @@ mode: rewrite          # optional — only for rewrite features from build-spec-
 
 ## Conditional Sections
 
-| Section | When required |
-|---------|---------------|
-| `## Technical Requirements` | When touching business logic, integration, APIs, or external systems |
-| `## UI / Mockup` | When description or stories mention screens, views, components, or user interaction |
-| `## Test Plan` | When behavior is testable (almost always — only skip for pure internal/infrastructure stories) |
-| `## Current State` | `mode: rewrite` specs only |
+| Section                     | When required                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `## Technical Requirements` | When touching business logic, integration, APIs, or external systems                           |
+| `## UI / Mockup`            | When description or stories mention screens, views, components, or user interaction            |
+| `## Test Plan`              | When behavior is testable (almost always — only skip for pure internal/infrastructure stories) |
+| `## Current State`          | `mode: rewrite` specs only                                                                     |
 
 ## Story Depth
 
@@ -45,6 +45,12 @@ Feature stories are **concrete and independently verifiable**. Push for specific
 - Edge cases and design choices are captured as acceptance criteria on the relevant story (not a separate section)
 
 **Generation hint for `build-spec`:** push for **concrete ACs** on features. Don't accept "system handles errors" — ask which errors, and what happens for each.
+
+## Scope Metrics
+
+A feature is treated as **leaf** (Phase C scope checks apply) unless it has a `## Subtasks` section AND no `## Technical Requirements` AND no own acceptance criteria — in which case it's an **index** for its subtasks and is exempt.
+
+Formula and bands live in [README § Scope Metrics](../README.md#scope-metrics). Validation runs in [feature/review/instructions.md § Phase C](review/instructions.md#phase-c--scope--cohesion).
 
 ## Input / Output
 

@@ -2,7 +2,7 @@
 
 Suggestions that have not been implemented, need investigation, need POC validation, or are planned for the future.
 
-Large architectural items (S-26, S-32, S-33, S-42, S-43, S-44) are in [@docs/improvements-open-arch.md](improvements-open-arch.md).
+Large architectural items (S-26, S-42, S-43, S-44) are in [@docs/improvements-open-arch.md](improvements-open-arch.md).
 
 ---
 
@@ -125,9 +125,9 @@ Malformed JSON produces unhandled `json.JSONDecodeError` traceback instead of cl
 
 **Impact**: Medium | **Effort**: Low | **Category**: Enforcement
 
-**Status**: Pending — depends on S-33
+**Status**: Pending — supplemental check (the runtime path is already covered by `search_codebase` MCP tool)
 
-Create `scripts/hooks/pre-commit` that runs `python scripts/registry.py --validate`. Blocks commits if any `Shared/` file is missing frontmatter. Three enforcement gates:
+Create `scripts/hooks/pre-commit` that validates `solid-` frontmatter on Swift files. Blocks commits if any file is missing required fields. Three enforcement gates:
 
 1. **Gate 1 — CC skill** (creation time) — DRY check + frontmatter prefill in `/code` skill
 2. **Gate 2 — Pre-commit hook** (human-created files) — blocks commit
@@ -329,9 +329,7 @@ New Phase 4.5 in `/implement`, between code and refactor:
 | S-18 | `file_path` vs `file` field inconsistency | High | Medium | Not implemented — `prepare-review-input` uses `file_path`, all 13 other schemas use `file` | 2026-03-12 |
 | S-22 | Missing JSON error handling in Python scripts | Medium | Low | Not implemented — 4 scripts have bare json.load() with no error handling | 2026-03-12 |
 | S-26 | AST-based metric extraction (tree-sitter) | High | High | POC needed — see [arch file](improvements-open-arch.md#s-26) | — |
-| S-32 | DRY principle — full `references/DRY/` implementation | High | High | Not implemented — see [arch file](improvements-open-arch.md#s-32) | 2026-03-12 |
-| S-33 | Grep-based discovery + validation scripts | High | Medium | Not implemented — see [arch file](improvements-open-arch.md#s-33) | 2026-03-13 |
-| S-35 | Pre-commit hook for frontmatter validation | Medium | Low | Not implemented — depends on S-33 | — |
+| S-35 | Pre-commit hook for frontmatter validation | Medium | Low | Not implemented — supplemental to existing `search_codebase` MCP tool | — |
 | S-37 | Style rules separate pipeline | Medium | Medium | Not implemented — no mechanism for review-only rules | 2026-03-12 |
 | S-39 | Skip empty plans — don't synthesize or implement when no changes needed | Medium | Low | Not implemented | — |
 | S-41 | Local MCP server for `references/` — language-scoped principle loading | Medium | Medium | Not implemented — would replace file-based `load-reference` with stdio MCP server | — |
