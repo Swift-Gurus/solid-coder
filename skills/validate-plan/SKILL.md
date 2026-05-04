@@ -50,15 +50,52 @@ Iterate over each matched file from the combined results. For each file, analyze
 - [ ] 3.3 For each architect component that could relate to this file:
   - Compare the file's responsibility, interfaces, fields against the component's `responsibility`, `interfaces`, `dependencies`, `fields`.
   - Check `acceptance_criteria[]` from `arch.json` — for criteria related to this component, note which ones the existing code already satisfies and which it does not. Record in `satisfied_criteria[]` and `unsatisfied_criteria[]`.
-  - Record specific `differences` — concrete mismatches the synthesizer needs to make decisions:
-    - Field differences: `"field name: String? vs expected name: String"`, `"missing field email: String"`
-    - Interface differences: `"missing protocol conformance to ProductReading"`, `"has extra conformance to Cacheable"`
-    - Signature differences: `"method fetchAll() returns [Product] vs expected async throws -> [Product]"`, `"missing method fetchByCategory(_: String)"`
-    - Responsibility differences: `"responsibility is caching, arch expects fetching"`
-- [ ] 3.5 Score `match_confidence`:
-  - `high` — same responsibility + compatible interface
-  - `medium` — similar responsibility, interface needs work
-  - `low` — overlapping keywords but different purpose
+  - Record each gap as a `differences[]` entry, an object `{category, text}`. `text` is concrete prose describing the specific gap. `category` is one of:
+
+    | Category | Use when… |
+    |---|---|
+    | `scope-mismatch` | The existing code's module/visibility boundary makes it unreachable from the architect's component — the new component's location cannot import or call it without violating the dependency direction or visibility rules of the project. |
+    | `coverage-gap` | Existing logic addresses the same behavior but is functionally narrower than the architect requires — missing cases, conditions, inputs, or branches, but the foundation is correct. |
+    | `shape-mismatch` | Existing type's surface differs from the architect's expectation — declaration kind, supertype/conformance, signatures, return types, parameters, or member visibility. |
+    | `responsibility-mismatch` | Existing type addresses a different behavioral problem, even if name or surface overlaps. |
+    | `missing-entry` | Existing non-code artifact (manifest, config, doc index) is present but lacks specific rows/sections that need appending. |
+    | `other` | Doesn't fit cleanly above. Synthesizer treats as `shape-mismatch`. Use sparingly — frequent `other` means the rubric needs new categories. |
+
+  - Pick exactly one category per entry. If a single fact is genuinely both scope and coverage, split it into two entries.
+  - **Disambiguation rules** for the most-confused pairs:
+    - **scope-mismatch vs shape-mismatch.** Mental test: *"If I delete the new component and just try to reference the existing type from where the new component lives, can I?"* If NO → `scope-mismatch` (the type isn't reachable at all). If YES but the declaration's form needs to change (member visibility, signature, conformance, declaration kind) → `shape-mismatch`.
+    - **shape-mismatch vs coverage-gap.** If the architect requires a declared element that doesn't exist on the existing API surface (missing method, missing protocol member, missing enum case used as a parameter) → `shape-mismatch`. If the existing element exists but handles a narrower set of inputs/conditions than required → `coverage-gap`.
+    - **coverage-gap vs responsibility-mismatch.** Use Q3 (`gap_is_additive`) as the discriminator: additive gap (extending existing logic) → `coverage-gap`; corrective gap (requires rewriting existing logic) → `responsibility-mismatch`.
+  - **`differences[]` is for gaps requiring action.** Observations about reusable patterns or context worth carrying forward go in this match's `notes`, NOT in `differences[]`.
+
+- [ ] 3.5 Score the match by answering three questions, then deriving `match_confidence` mechanically. **Confidence is decoupled from reachability and shape — those facts go in `differences[].category` and drive routing, not scoring.**
+
+  - [ ] 3.5.1 **Q1 — `responsibility_aligned`**: Does the existing type's purpose and the architect's component `responsibility` address the **same behavioral problem**?
+    - Write each in one sentence (verb + object — what it does, not how) and compare.
+    - Different scope, different surface, different visibility, different module — none of these make this false. Only a different *kind of work* does.
+    - If hesitating, write both sentences in `notes` and pick the answer that matches.
+
+  - [ ] 3.5.2 **Q2 — `implements_any_required_behavior`**: Does the existing code already implement at least one of the architect's required behaviors for this component?
+    - Default check: TRUE iff `satisfied_criteria` is non-empty.
+    - Override TRUE when the existing logic demonstrably covers part of the architect's responsibility but the criteria are spelled at a level the existing surface doesn't directly express (note this in `notes`).
+
+  - [ ] 3.5.3 **Q3 — `gap_is_additive`**: Can the unsatisfied behaviors be reached by ADDING code on top of the existing implementation (new methods, new cases, new branches) without rewriting existing logic?
+    - TRUE — the existing code is a foundation; the gap is extension.
+    - FALSE — closing the gap requires rewriting the existing approach; the existing code is competing rather than foundational.
+    - When `unsatisfied_criteria` is empty, set TRUE (no gap).
+    - **Cross-check with categories**: Q3 must agree with the `differences[]` categories on this match. If any difference is `responsibility-mismatch`, Q3 must be FALSE. If every difference is `scope-mismatch`, `coverage-gap`, `shape-mismatch`, or `missing-entry`, Q3 must be TRUE. If they disagree, one of them is wrong — re-examine before scoring.
+
+  - [ ] 3.5.4 Derive `match_confidence` by counting TRUE answers — do NOT vibe-check this:
+    - **3 TRUE** → `high`
+    - **2 TRUE** → `medium`
+    - **0 or 1 TRUE** → `low`
+
+  - [ ] 3.5.5 **Do NOT degrade confidence based on**:
+    - **Reachability** — lives in `differences[].category=scope-mismatch`.
+    - **Shape** — lives in `differences[].category=shape-mismatch`.
+    - **Coverage gaps** — lives in `differences[].category=coverage-gap` and is already factored in via Q3 (additive vs corrective).
+    - These facts go in `differences[]` where they are loud, structured, and routable. They must NOT silently lower confidence, or the synthesizer loses the "relevant logic, awkwardly placed" case that extraction is designed to handle.
+
 - [ ] 3.6 Record the match against the relevant component(s).
 
 **END**

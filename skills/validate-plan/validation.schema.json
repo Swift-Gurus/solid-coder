@@ -30,7 +30,7 @@
             "description": "Existing codebase types that match this component. Sorted by match_confidence descending (high → medium → low). Empty for 'create' status.",
             "items": {
               "type": "object",
-              "required": ["file", "type_name", "existing_interfaces", "existing_fields", "match_confidence", "differences", "notes"],
+              "required": ["file", "type_name", "existing_interfaces", "existing_fields", "responsibility_aligned", "implements_any_required_behavior", "gap_is_additive", "match_confidence", "differences", "notes"],
               "properties": {
                 "file": {
                   "type": "string",
@@ -50,15 +50,49 @@
                   "items": { "type": "string" },
                   "description": "Field declarations found in the existing type (e.g., 'id: String'). Empty array for non-model types."
                 },
+                "responsibility_aligned": {
+                  "type": "boolean",
+                  "description": "Q1: TRUE iff the existing type's purpose and the architect component's responsibility address the same behavioral problem (same kind of work). FALSE iff they solve different problems. Reachability, declaration kind, access level, and coverage gaps DO NOT make this false — those go in differences[].category."
+                },
+                "implements_any_required_behavior": {
+                  "type": "boolean",
+                  "description": "Q2: TRUE iff the existing code already implements at least one of the architect's required behaviors for this component (i.e. satisfied_criteria is non-empty OR the existing logic demonstrably covers part of the architect's responsibility even when criteria are spelled at a different abstraction level)."
+                },
+                "gap_is_additive": {
+                  "type": "boolean",
+                  "description": "Q3: TRUE iff the unsatisfied behaviors can be reached by ADDING code on top of the existing implementation (new methods, new cases, new branches) without rewriting existing logic. FALSE iff closing the gap requires rewriting the existing approach. Set TRUE when there is no gap (unsatisfied_criteria is empty)."
+                },
                 "match_confidence": {
                   "type": "string",
                   "enum": ["high", "medium", "low"],
-                  "description": "How closely the existing type matches the architect's component"
+                  "description": "Derived by counting TRUE answers across the three questions: 3 TRUE = high, 2 TRUE = medium, 0-1 TRUE = low. Reachability, shape, and coverage do not influence this score — they are routing signals carried in differences[].category."
                 },
                 "differences": {
                   "type": "array",
-                  "items": { "type": "string" },
-                  "description": "Specific differences between the existing type and the arch.json component. E.g., 'field name: String? vs expected name: String', 'missing protocol conformance to ProductReading', 'responsibility is caching, arch expects fetching'. Empty array for reuse matches."
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["category", "text"],
+                    "properties": {
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "scope-mismatch",
+                          "shape-mismatch",
+                          "coverage-gap",
+                          "responsibility-mismatch",
+                          "missing-entry",
+                          "other"
+                        ],
+                        "description": "Kind of difference. Drives synthesizer routing — see validate-plan/SKILL.md Phase 3.3."
+                      },
+                      "text": {
+                        "type": "string",
+                        "description": "Concrete prose describing this specific difference."
+                      }
+                    }
+                  },
+                  "description": "Specific gaps between the existing type and the arch.json component, each with a routing category and concrete text. Empty array for reuse matches. Observations about reusable patterns go in `notes`, never here — `differences[]` is for gaps requiring action."
                 },
                 "notes": {
                   "type": "string",

@@ -48,7 +48,36 @@ FOR EACH component in `arch.json` DO:
 
     If `matches[]` is empty OR `matches[0].match_confidence` is `low` → emit plan item with `action: "create"`. Directive includes: type name, category, responsibility, interfaces it must expose, dependencies it consumes, produces, and fields (for models) — all from `arch.json`. No `file` field — the implementation agent resolves file paths. Record reconciliation decision: `action: "create"`, `existing_file: null`.
 
-  - [ ] 2.1.3 **`adjust`** — read the full validation match object (`matches[0]`), including `differences[]`, `existing_interfaces`, `existing_fields`. Emit plan item with `action: "modify"`, `file` from `matches[0].file`. Directive describes the specific adjustments needed, informed by `differences[]` — the validator has already done the comparison. Record reconciliation decision: `action: "modify"`, with `existing_file`.
+  - [ ] 2.1.3 **`adjust`** — read the full validation match object (`matches[0]`), including `differences[]`, `responsibility_aligned`, `existing_interfaces`, `existing_fields`. Route by the category distribution before emitting any plan item.
+
+    - [ ] 2.1.3.0 **Build the `tag_set`** — collect distinct values of `differences[].category` across `matches[0].differences[]`. Note `match_confidence`.
+
+    - [ ] 2.1.3.1 **Route on `(tag_set, match_confidence)`**:
+
+      | If `tag_set` contains… | And confidence is… | Action |
+      |---|---|---|
+      | `responsibility-mismatch` (any combination) | any | Drop to 2.1.4 conflict resolution. The validator over-classified — the existing type addresses a different problem. |
+      | `scope-mismatch` | `high` or `medium` | Coordinated extraction (2.1.3.2). Existing logic is relevant but architecturally unreachable; duplication is the wrong answer. |
+      | `scope-mismatch` | `low` | Fall through to 2.1.2 `create`. Reason: "Cross-scope match too weak to justify extraction overhead." |
+      | only `coverage-gap` and/or `shape-mismatch` | `high` or `medium` | Single `modify` on `matches[0].file`. Directive must address every difference in place — broaden coverage, refactor surface. (Existing 2.1.3 behavior.) |
+      | only `missing-entry` | `high` or `medium` | Single `modify` on `matches[0].file` with **append-only** directive — do not refactor surrounding content, only insert the missing rows/sections. |
+      | only `other` | any | Treat as `shape-mismatch` (single `modify`). |
+
+      After emitting plan items, proceed to 2.2 (breaking-change check) — except when 2.1.3.2 fired, which handles its own dependency wiring.
+
+    - [ ] 2.1.3.2 **Coordinated extraction** — when 2.1.3.1 routed here:
+
+      1. **Resolve the shared destination.** Read both manifests: the new component's intended package (inferred from the `scope-mismatch` text, the architect's `composition_root`, or the package owning the directory the architect implies) and the existing match's package. Find a package both already depend on. If none exists, do NOT extract — fall through to 2.1.2 `create` with reason: "No shared dependency path between consumer locations." Record the chosen destination in `notes`.
+
+      2. **Emit `action: "modify"` on `matches[0].file`** — directive: relocate the type to the resolved shared destination. If `tag_set` also contains `coverage-gap`, broaden the relocated logic during the move so it covers every case the new component requires; list the broadened cases explicitly in the directive.
+
+      3. **For each existing consumer of the moved type** (locate via grep on the symbol name, Phase 2.2-style): emit `action: "modify"` directive to update imports/access to the new location. If broadening happened AND the consumer relied on the narrower semantics, the consumer's directive must preserve that narrow behavior (typically a one-line local predicate filtering the broader result).
+
+      4. **Emit `action: "create"` on the architect's new component** — directive: implement the required shape (struct, protocol conformance, access level) by **delegating** to the shared utility from step 2. Zero duplicated logic — only adaptation (signature, conformance, wrapper).
+
+      Set `depends_on` so items 3 and 4 depend on item 2. Record reconciliation `notes`: "Cross-scope adjust resolved by extraction to <destination>. Differences addressed: <relocation | broadening | wrapping per-entry>."
+
+    Record reconciliation decision: `action: "modify"` (with `existing_file`) for the predominant action, plus a `notes` field explaining which routing branch fired and why.
 
   - [ ] 2.1.4 **`conflict`** — apply conflict resolution rule:
 

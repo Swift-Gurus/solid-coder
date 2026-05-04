@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""PostToolUse hook — validate written JSON files against their schemas.
+"""PreToolUse hook — validate pipeline JSON outputs against their schemas
+BEFORE Write commits them.
 
-Fires after Write or Edit. If the file is a known pipeline JSON output,
-validates it against its registered schema and prints errors so the agent
-can fix the file immediately.
+Fires on Write of known pipeline JSON outputs (arch.json, validation.json,
+implementation-plan.json, review-input.json, *.output.json, *.plan.json,
+principle review-output.json / fix.json). Reads the proposed content from
+tool_input, validates against the registered schema, and emits a
+permissionDecision=deny to block the write when the JSON does not conform.
 
-Silent on success (exit 0, no output). On validation failure: prints errors
-to stdout and exits 1 so the agent sees them.
+Failures unrelated to schema mismatch (missing schema, missing library,
+malformed hook input) fail open — never block on infrastructure problems.
 """
+
 import json
 import os
 import re
@@ -52,32 +56,51 @@ def find_schema(file_path: Path):
     return None
 
 
-def collect_errors(file_path: Path, schema_path: Path):
+def collect_errors(content: str, schema_path: Path):
+    """Return one of:
+      - None  → infrastructure problem (skip validation, fail open)
+      - [str] → list of error lines (empty list = valid)
+    """
     try:
         import jsonschema
     except ImportError:
-        return None  # graceful degradation — schema validation skipped
+        return None
 
     try:
-        data = json.loads(file_path.read_text(encoding="utf-8"))
+        data = json.loads(content)
     except json.JSONDecodeError as e:
-        return [f"Invalid JSON: {e}"]
-    except OSError as e:
-        return [f"Cannot read file: {e}"]
+        return [f"  - <root>: invalid JSON — {e.msg} (line {e.lineno}, col {e.colno})"]
 
     try:
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return None  # unreadable schema — skip
+        return None
 
     validator = jsonschema.Draft7Validator(schema)
     raw = sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path))
     if not raw:
         return []
     return [
-        f"  - {'.'.join(str(p) for p in e.absolute_path) or '(root)'}: {e.message}"
+        f"  - {'.'.join(str(p) for p in e.absolute_path) or '<root>'}: {e.message}"
         for e in raw[:10]
     ]
+
+
+def _allow():
+    sys.exit(0)
+
+
+def _block(reason: str):
+    payload = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }
+    sys.stdout.write(json.dumps(payload))
+    sys.stdout.flush()
+    sys.exit(0)
 
 
 def main():
@@ -85,39 +108,34 @@ def main():
         raw = sys.stdin.read()
         event = json.loads(raw)
     except (json.JSONDecodeError, ValueError):
-        sys.exit(0)
+        _allow()
 
-    if event.get("tool_name") not in ("Write", "Edit"):
-        sys.exit(0)
+    if event.get("tool_name") != "Write":
+        _allow()
 
-    file_path_str = event.get("tool_input", {}).get("file_path", "")
+    tool_input = event.get("tool_input") or {}
+    file_path_str = tool_input.get("file_path") or ""
+    content = tool_input.get("content") or ""
+
     if not file_path_str or not file_path_str.endswith(".json"):
-        sys.exit(0)
+        _allow()
 
     file_path = Path(file_path_str)
-    if not file_path.exists():
-        sys.exit(0)
-
     schema_path = find_schema(file_path)
     if schema_path is None:
-        sys.exit(0)
+        _allow()
 
-    errors = collect_errors(file_path, schema_path)
+    errors = collect_errors(content, schema_path)
     if errors is None or len(errors) == 0:
-        sys.exit(0)
+        _allow()
 
-    lines = [f"Schema validation failed for {file_path.name} ({schema_path.name}):"]
+    lines = [
+        f"Schema validation failed for {file_path.name} ({schema_path.name}) — {len(errors)} error(s):"
+    ]
     lines.extend(errors)
-    lines.append("Fix the JSON and re-write the file.")
-    message = "\n".join(lines)
-
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PostToolUse",
-            "userFacingError": message,
-        }
-    }))
-    sys.exit(1)
+    lines.append("")
+    lines.append("Fix the JSON to match the schema before retrying the write.")
+    _block("\n".join(lines))
 
 
 if __name__ == "__main__":
