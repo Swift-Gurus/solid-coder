@@ -11,14 +11,14 @@ YAML frontmatter is stripped before counting (matches `load-reference` behavior)
 Folder totals are the sum of their children.
 
 **Root**: `/Users/crowea/Developer/Swift-Gurus/solid-coder/references/principles`  
-**Total**: 55,018 tokens (220,153 chars)
+**Total**: 52,948 tokens (211,873 chars)
 
 | Path | Tokens | Chars |
 |---|---:|---:|
-| 📁 `principles` | 55,018 | 220,153 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `code-smells` | 2,273 | 9,096 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 2,202 | 8,811 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 2,202 | 8,811 |
+| 📁 `principles` | 52,948 | 211,873 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `code-smells` | 203 | 816 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 132 | 531 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 132 | 531 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 71 | 285 |
 | &nbsp;&nbsp;&nbsp;&nbsp;📁 `DRY` | 10,807 | 43,245 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 882 | 3,528 |

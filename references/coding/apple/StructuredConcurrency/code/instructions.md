@@ -38,9 +38,16 @@ SC-2: Are you creating a Task?
 SC-3: Are you about to use @unchecked Sendable or nonisolated(unsafe)?
     These bypass the compiler's safety checks. Do NOT use them.
     Instead:
-       → Make properties `let` so the type is naturally Sendable
-       → Convert to an actor if mutable state is needed
-       → Restructure to avoid the boundary crossing
+       → No reference/identity requirement? Convert to struct — synthesised Sendable
+         when all stored properties are Sendable.
+       → Mutable state, needs concurrent access? Use actor — isolation is compiler-verified.
+       → Third-party non-Sendable type you don't own?
+            iOS 16+ / macOS 13+  → wrap in OSAllocatedUnfairLock<T>
+            Older deployment     → check for an existing project lock abstraction;
+                                   if none exists, create Lock<T> backed by os_unfair_lock
+       → @unchecked Sendable is ONLY acceptable on a type that implements a
+         synchronisation primitive using OS-level constructs (e.g. your own Lock<T>).
+         It is a one-time project-level utility — not a per-use-case escape hatch.
          │
          ▼
 SC-4: Are you calling multiple independent async operations?

@@ -62,14 +62,14 @@ Developer escape hatches that silence the compiler without fixing the underlying
 
 **Detection:**
 
-1. Count `@unchecked Sendable` on types with `var` properties — bypasses Sendable checking on mutable types
+1. Count `@unchecked Sendable` on any type — bypasses compiler Sendable verification entirely, regardless of whether properties are `let` or `var`
 2. Count `nonisolated(unsafe)` usages — bypasses actor isolation checking
 
 **Result:**
 
-| Type/Location | Bypass | Has mutable state? | Violation? |
-|--------------|--------|-------------------|------------|
-|              |        |                   |            |
+| Type/Location | Bypass | Violation? |
+|--------------|--------|------------|
+|              |        |            |
 
 ### SC-4: Sequential vs Concurrent Await
 
@@ -121,9 +121,8 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
 
 ### Exceptions (NOT violations):
 1. **Legacy bridge code** — `withCheckedContinuation` wrapping completion-handler APIs (e.g., `URLSession` delegate methods, CoreLocation callbacks, `NotificationCenter` observers) that Apple has not yet provided an `async` alternative for. If an `async` version of the API exists in the SDK, using continuation instead of the async version IS a violation.
-2. **`@unchecked Sendable` on immutable reference types** — classes with only `let` properties that the compiler can't verify
-3. **SwiftUI `.task` modifier** — framework manages Task cancellation automatically, no need to store handle
-4. **Test code** — unit tests are exempt from lifecycle checks (Task { } in tests is acceptable)
+2. **SwiftUI `.task` modifier** — framework manages Task cancellation automatically, no need to store handle
+3. **Test code** — unit tests are exempt from lifecycle checks (Task { } in tests is acceptable)
 
 ### Severity Bands:
 - COMPLIANT (0 violations across all metrics)
@@ -132,7 +131,7 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
 - SEVERE (any of the following):
     - 1+ concurrency model mixing in a type (SC-1)
     - 1+ orphaned or leaked Task (SC-2)
-    - 1+ @unchecked Sendable on type with var properties (SC-3)
+    - 1+ @unchecked Sendable on any type you own (SC-3)
     - 1+ nonisolated(unsafe) usage (SC-3)
     - 3+ independent sequential awaits that should be concurrent (SC-4)
     - 1+ sync-to-async blocking bridge (SC-5)
@@ -145,13 +144,13 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
 | SC-0 | Exception           | Falls into exception category                       | COMPLIANT |
 | SC-1 | Model mixing        | 0 types mixing async/await with GCD/completion      | COMPLIANT |
 | SC-2 | Task lifecycle      | 0 orphaned or leaked tasks                          | COMPLIANT |
-| SC-3 | Safety bypasses     | 0 @unchecked Sendable on var types, 0 nonisolated(unsafe) | COMPLIANT |
+| SC-3 | Safety bypasses     | 0 @unchecked Sendable on owned types, 0 nonisolated(unsafe) | COMPLIANT |
 | SC-4 | Sequential await    | 0-2 independent sequential awaits                   | COMPLIANT |
 | SC-5 | Sync-async bridge   | 0 blocking bridges                                  | COMPLIANT |
 | SC-6 | Duration API        | 0 raw nanosecond/integer durations                  | COMPLIANT |
 | SC-1 | Model mixing        | 1+ type mixing async/await with GCD/completion      | SEVERE    |
 | SC-2 | Task lifecycle      | 1+ orphaned or leaked task                          | SEVERE    |
-| SC-3 | Safety bypasses     | 1+ @unchecked on mutable type or nonisolated(unsafe)| SEVERE    |
+| SC-3 | Safety bypasses     | 1+ @unchecked Sendable on owned type or nonisolated(unsafe) | SEVERE    |
 | SC-4 | Sequential await    | 3+ independent sequential awaits                    | SEVERE    |
 | SC-5 | Sync-async bridge   | 1+ blocking bridge                                  | SEVERE    |
 | SC-6 | Duration API        | 1+ raw nanosecond API or integer duration literal    | SEVERE    |

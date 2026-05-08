@@ -406,10 +406,14 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
 @server.tool(
     name="search_codebase",
     description=(
-        "Search codebase for reusable types before creating new ones. "
-        "Pass plan_path to auto-extract structural terms (component names, interfaces, categories, spec numbers). "
-        "Pass tags with LLM-generated semantic synonyms from component responsibilities "
-        "(e.g. 'fetch' → ['retrieve', 'load', 'pull']). "
+        "Use this every time you need to search the codebase — for reusable types, existing implementations, "
+        "or any concept before creating something new. "
+        "Describe what you are looking for, then split that description into individual words plus "
+        "LLM-generated semantic synonyms (e.g. 'fetch' → ['fetch', 'retrieve', 'load', 'pull', 'get']) and pass them as tags. "
+        "Pass plan_path if you have one (arch.json or implementation-plan.json) to auto-extract structural terms "
+        "(component names, interfaces, categories, spec numbers) — these merge with your tags. "
+        "Pass spec_numbers (or include SPEC-NNN entries inside tags) to match against solid-spec frontmatter; "
+        "spec matches always pass regardless of min_matches. "
         "Matches each file against: solid-description words, solid-tags frontmatter, and import statements. "
         "Returns a compact list of file paths with descriptions — read the description to assess relevance, "
         "use the Read tool to inspect the full source."

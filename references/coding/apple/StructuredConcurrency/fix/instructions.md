@@ -40,7 +40,8 @@ output_schema: output.schema.json
         - Replace `Task.detached { }` with `Task { }` when actor context inheritance is correct
         - Add `try Task.checkCancellation()` inside long loops
     - [ ] For SC-3 (safety bypasses):
-        - `@unchecked Sendable` on type with var → make properties `let`, convert to actor, or use proper synchronization
+        - `@unchecked Sendable` on a type you own → convert to `struct` if no reference/identity requirement; use `actor` if concurrent access to mutable state is needed; for third-party non-`Sendable` types wrap in `OSAllocatedUnfairLock<T>` (iOS 16+ / macOS 13+), or check for an existing project lock abstraction, or create `Lock<T>` backed by `os_unfair_lock`
+        - `@unchecked Sendable` is only acceptable on a type that implements a synchronisation primitive using OS-level constructs — a one-time project-level utility, not a per-use-case escape hatch
         - `nonisolated(unsafe)` → restructure to avoid the boundary crossing, or use actor isolation
     - [ ] For SC-4 (sequential await):
         - 2-3 independent calls → replace with `async let a = ...; async let b = ...`
