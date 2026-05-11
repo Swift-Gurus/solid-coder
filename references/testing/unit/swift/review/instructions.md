@@ -60,7 +60,13 @@ output_schema: output.schema.json
       |-------------|-----------|-------------|-----------------|------------|
       |             |           |             |                 |            |
 
-    - [ ] 1.2.6 Count structure violations
+    - [ ] 1.2.6 Detect multiple test suites per file — count distinct `XCTestCase` subclasses or `@Suite`-annotated / test-bearing structs defined in the same file
+
+      | Suite/Class | Kind | File | Violation? |
+      |-------------|------|------|------------|
+      |             |      |      |            |
+
+    - [ ] 1.2.7 Count structure violations
       Structure violations: ___
 
 - [ ] **1.3 TEST-3: Detect Naming Violations**
@@ -174,7 +180,7 @@ output_schema: output.schema.json
 
 - [ ] **4.1 Report Violations**
     - [ ] 4.1.1 Show isolation analysis with shared state and external call tables
-    - [ ] 4.1.2 Show structure analysis with logic, phase, and sleep-waiting tables
+    - [ ] 4.1.2 Show structure analysis with logic, phase, sleep-waiting, and multiple-suites-per-file tables
     - [ ] 4.1.3 Show naming analysis with descriptiveness assessment
     - [ ] 4.1.4 Show test double analysis with mock inventory, over-mocking, brittle verification, and mock logic tables
     - [ ] 4.1.5 Show setup complexity analysis with inline construction and dependency count

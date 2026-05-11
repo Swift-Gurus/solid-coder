@@ -12,24 +12,18 @@ tags:
 # Unit Testing
 
 > Write tests that are isolated, readable, and verify one behavior each. Tests are documentation — they should explain what the code does and why it matters.
+
 ---
 
-## The Testing Metrics Framework
-
-This framework provides objective scoring for unit test quality. The primary
-metrics are test isolation, test structure, test naming, and test double quality
-— all directly observable from test code.
-
-## Metrics:
+## Metrics
 
 ### TEST-1: Test Isolation
 
-Detect tests that depend on shared mutable state or execution order.
+<definition id="TEST-1" name="Test Isolation">
+An isolated test can run in any order, concurrently, and repeatedly with the same result. Shared mutable state between tests and test interdependencies break isolation.
+</definition>
 
-**Definition:** An isolated test can run in any order, concurrently, and repeatedly with the same result. Shared mutable state between tests and test interdependencies break isolation.
-
-**Detection:**
-
+<detection>
 1. **Shared mutable state** — scan test class for:
    - `static var` / `static let` that is mutated across tests
    - Class-level `var` properties not reset in `setUp`/`init`
@@ -40,15 +34,17 @@ Detect tests that depend on shared mutable state or execution order.
    - `continueAfterFailure = false` combined with dependent assertions
 
 **Count:** Number of isolation violations found.
+</detection>
+
+---
 
 ### TEST-2: Test Structure
 
-Detect tests that contain logic, lack clear phases, or verify too many behaviors at once.
+<definition id="TEST-2" name="Test Structure">
+A well-structured test follows Arrange-Act-Assert (or Given-When-Then): set up preconditions, perform one action, verify one behavior. Tests should not contain conditional logic — a test with an `if` is two tests.
+</definition>
 
-**Definition:** A well-structured test follows Arrange-Act-Assert (or Given-When-Then): set up preconditions, perform one action, verify one behavior. Tests should not contain conditional logic — a test with an `if` is two tests.
-
-**Detection:**
-
+<detection>
 1. **Logic in tests** — flag any of:
    - `if` / `else` / `switch` statements in test body
    - `for` / `while` loops (except parameterized test data setup)
@@ -106,17 +102,23 @@ Detect tests that contain logic, lack clear phases, or verify too many behaviors
      instead — test doubles should hold expectations and fulfill them
      when called, so the test only needs to `await fulfillment`
      (see `Examples/sleep-waiting-*.swift`)
+5. **Multiple test suites per file** — detect:
+   - More than one `XCTestCase` subclass defined in a single file
+   - More than one `@Suite`-annotated type or test-bearing `struct` in a single file
+   - Each file must contain exactly one test suite testing one unit
 
 **Count:** Number of structure violations found.
+</detection>
+
+---
 
 ### TEST-3: Test Naming
 
-Detect tests with unclear, ambiguous, or non-descriptive names that fail to communicate intent.
+<definition id="TEST-3" name="Test Naming">
+A test name should describe the scenario and expected outcome without reading the test body. The name is documentation — it should answer: what is being tested, under what condition, and what should happen.
+</definition>
 
-**Definition:** A test name should describe the scenario and expected outcome without reading the test body. The name is documentation — it should answer: what is being tested, under what condition, and what should happen.
-
-**Detection:**
-
+<detection>
 1. **Non-descriptive names** — flag:
    - Generic names: `test1`, `testIt`, `testFunction`, `testBasic`
    - Method-name-only: `testLogin`, `testFetch`, `testSave` (no condition or expectation)
@@ -129,15 +131,17 @@ Detect tests with unclear, ambiguous, or non-descriptive names that fail to comm
    - No consistent pattern across the test suite
 
 **Count:** Number of naming violations found.
+</detection>
+
+---
 
 ### TEST-4: Test Double Quality
 
-Detect improper use of mocks, stubs, and fakes — over-mocking, under-mocking, and brittle verification.
+<definition id="TEST-4" name="Test Double Quality">
+Test doubles should isolate the unit under test from its dependencies. Good test doubles are minimal (only stub what's needed), verify behavior (not implementation), and don't couple tests to internal call sequences.
+</definition>
 
-**Definition:** Test doubles should isolate the unit under test from its dependencies. Good test doubles are minimal (only stub what's needed), verify behavior (not implementation), and don't couple tests to internal call sequences.
-
-**Detection:**
-
+<detection>
 1. **Over-mocking** — flag:
    - Mocking value types or simple data structures (mock where a real instance works)
    - Subclassing the SUT to override some methods while testing others
@@ -165,17 +169,17 @@ Detect improper use of mocks, stubs, and fakes — over-mocking, under-mocking, 
      test double
 
 **Count:** Number of test double quality violations found.
+</detection>
+
+---
 
 ### TEST-5: Test Setup Complexity
 
-Detect inline SUT construction repeated across tests.
+<definition id="TEST-5" name="Test Setup Complexity">
+Inline SUT construction repeated across test methods is a violation regardless of dependency count. Each test should focus on its scenario, not on assembling the SUT.
+</definition>
 
-**Definition:** Inline SUT construction repeated across test methods is
-a violation regardless of dependency count. Each test should focus on
-its scenario, not on assembling the SUT.
-
-**Detection:**
-
+<detection>
 1. **Repeated inline construction** — flag any test class where:
    - SUT is constructed inline in 2+ test methods
    - Same construction pattern repeated (even with 1 dependency)
@@ -183,15 +187,17 @@ its scenario, not on assembling the SUT.
    SUT requires. This informs fix strategy (see `fix/instructions.md`).
 
 **Count:** Number of setup complexity violations found.
+</detection>
+
+---
 
 ### TEST-6: Testing Framework
 
-Detect use of XCTest in non-UI test files.
+<definition id="TEST-6" name="Testing Framework">
+Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`). XCTest (`import XCTest`, `XCTestCase`) is reserved for UI tests that use `XCUIApplication`. Swift Testing produces clearer failure messages, supports parameterized tests natively, and eliminates the `XCTestCase` subclass requirement.
+</definition>
 
-**Definition:** Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`). XCTest (`import XCTest`, `XCTestCase`) is reserved for UI tests that use `XCUIApplication`. Swift Testing produces clearer failure messages, supports parameterized tests natively, and eliminates the `XCTestCase` subclass requirement.
-
-**Detection:**
-
+<detection>
 1. **XCTest in non-UI test files** — flag any file that:
    - Contains `import XCTest` and does NOT also import or use `XCUIApplication`
    - Defines a class inheriting from `XCTestCase` for unit or integration tests
@@ -203,17 +209,19 @@ Detect use of XCTest in non-UI test files.
    - `XCTSkipIf`, `XCTSkipUnless` → use `try #require(condition)`
 
 **Count:** Number of framework violations found.
+</detection>
 
 ---
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **UI tests** — `import XCTest` and `XCTestCase` are required for any test that uses `XCUIApplication`. UI tests cannot use Swift Testing.
 2. **Integration tests** — tests explicitly marked as integration (file name, class name, or annotation) are exempt from isolation rules for real external calls. They still must not have shared mutable state.
 3. **Performance tests** — `measure {}` blocks have different structural needs
 4. **Parameterized test loops** — `for` loops that iterate test data to run the same assertion with different inputs are not a structure violation
 5. **Test helpers/fixtures in shared setUp** — shared immutable fixtures reset per test are not isolation violations
+</exceptions>
 
-### Severity Bands:
+<severity-bands>
 - COMPLIANT (0 violations across all metrics)
 - MINOR (any of the following):
     - 1-2 naming violations only (no isolation/structure/double/setup issues)
@@ -225,23 +233,27 @@ Detect use of XCTest in non-UI test files.
     - 1+ test double quality violations (over-mocking, brittle verification)
     - 1+ setup complexity violations (repeated inline SUT construction)
     - 1+ framework violations (XCTest used in non-UI test files)
+</severity-bands>
+
 ---
 
-## Quantitative Metrics Summary
-| ID     | Metric              | Threshold                                    | Severity  |
-|--------|---------------------|----------------------------------------------|-----------|
-| TEST-0 | Exception           | Falls into exception category                | COMPLIANT |
-| TEST-1 | Isolation           | 0 violations                                 | COMPLIANT |
-| TEST-2 | Structure           | 0 violations                                 | COMPLIANT |
-| TEST-3 | Naming              | 0 violations                                 | COMPLIANT |
-| TEST-4 | Test doubles        | 0 violations                                 | COMPLIANT |
-| TEST-5 | Setup complexity    | 0 violations                                 | COMPLIANT |
-| TEST-6 | Testing framework   | 0 violations                                 | COMPLIANT |
-| TEST-3 | Naming              | 1-2 naming violations, all else clean        | MINOR     |
-| TEST-1 | Isolation           | 1+ shared state or test dependencies         | SEVERE    |
-| TEST-2 | Structure           | 1+ logic, missing phases, or multi-behavior  | SEVERE    |
-| TEST-3 | Naming              | 3+ naming violations                         | SEVERE    |
-| TEST-4 | Test doubles        | 1+ over-mock, brittle verify, or mock logic  | SEVERE    |
-| TEST-5 | Setup complexity    | 1+ repeated inline SUT construction          | SEVERE    |
-| TEST-6 | Testing framework   | 1+ XCTest usage in non-UI test files         | SEVERE    |
----
+## Summary
+
+<!-- summary-table -->
+| ID     | Metric            | Threshold                                    | Severity  |
+|--------|-------------------|----------------------------------------------|-----------|
+| TEST-0 | Exception         | Falls into exception category                | COMPLIANT |
+| TEST-1 | Isolation         | 0 violations                                 | COMPLIANT |
+| TEST-2 | Structure         | 0 violations                                 | COMPLIANT |
+| TEST-3 | Naming            | 0 violations                                 | COMPLIANT |
+| TEST-4 | Test doubles      | 0 violations                                 | COMPLIANT |
+| TEST-5 | Setup complexity  | 0 violations                                 | COMPLIANT |
+| TEST-6 | Testing framework | 0 violations                                 | COMPLIANT |
+| TEST-3 | Naming            | 1-2 naming violations, all else clean        | MINOR     |
+| TEST-1 | Isolation         | 1+ shared state or test dependencies         | SEVERE    |
+| TEST-2 | Structure         | 1+ logic, missing phases, or multi-behavior  | SEVERE    |
+| TEST-3 | Naming            | 3+ naming violations                         | SEVERE    |
+| TEST-4 | Test doubles      | 1+ over-mock, brittle verify, or mock logic  | SEVERE    |
+| TEST-5 | Setup complexity  | 1+ repeated inline SUT construction          | SEVERE    |
+| TEST-6 | Testing framework | 1+ XCTest usage in non-UI test files         | SEVERE    |
+<!-- /summary-table -->

@@ -70,6 +70,10 @@ output_schema: output.schema.json
         - Replace sleep-based waiting with `async/await` test methods
           and `await fulfillment(of:timeout:)` — put expectations inside
           test doubles so they fulfill when called by the SUT
+        - Split multiple test suites in the same file into separate files —
+          one file per suite, named after the suite (e.g., `FooTests.swift`,
+          `BarTests.swift`); move each `XCTestCase` subclass or
+          `@Suite`-annotated struct to its own file
     - [ ] For TEST-3 (naming):
         - Rename to pattern: `test_<method>_<condition>_<expectedResult>` or equivalent convention
         - Ensure every name includes what is tested, under what condition, and what should happen
@@ -116,7 +120,7 @@ output_schema: output.schema.json
 
 - [ ] **3.1 Write full code snippets** showing:
     - For TEST-1: setUp/tearDown with fresh state, static vars converted to instance vars, independent test preconditions
-    - For TEST-2: split test methods with clear AAA structure; expectations replacing sleep; throwing try replacing try?
+    - For TEST-2: split test methods with clear AAA structure; expectations replacing sleep; throwing try replacing try?; separate files for each suite when multiple suites detected in one file
     - For TEST-3: renamed test methods with descriptive names
     - For TEST-4: real instances replacing unnecessary mocks; state-based assertions replacing interaction verification; facade tests with real services and mocked boundaries
     - For TEST-5: factory type with mocks and makeSUT(); builder methods for varying conditions; computed sut property
