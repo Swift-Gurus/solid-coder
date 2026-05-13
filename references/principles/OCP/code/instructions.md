@@ -5,51 +5,38 @@ type: code
 
 # OCP Coding Instructions
 
-Every dependency, API call, or object creation is a potential sealed variation point. Run this checklist twice — once before writing (plan your approach) and once after writing (verify what you wrote).
+These are mandatory rules that must be followed when writing code. Check each rule before writing — if any gate fails, stop and redesign before proceeding.
 
 ---
 
-## Before Adding a Dependency
+<rule id="OCP-1" name="No Hardcoded Dependencies">
+Before using any concrete type (property, method call, object creation) inside a type:
+- Ask: can this be swapped for a different implementation without modifying this file?
+- YES (it is injected as a protocol-typed parameter) → proceed.
+- NO (it is instantiated internally, accessed via `.shared`, `.default`, or a static call) → do not write it this way. Make it injectable via a protocol instead.
+</rule>
 
-```
-You are about to add a dependency (property, call, construction).
-         │
-         ▼
-OCP-1: Classify the dependency:
-    ABSTRACT (protocol-typed and injected)
-       → Not a sealed point. Proceed.
-    DIRECT → Continue ▼
-         │
-         ▼
-Is it INJECTED or NON-INJECTED?
-    INJECTED (passed via init, factory method, or default parameter)
-       → Note it. Check testability (OCP-2): can the consumer be tested
-         by substituting this dependency?
-         YES → Note as testable.
-         NO  → Note as untestable.
-    NON-INJECTED (constructed internally, singleton, static access)
-       → This is a sealed variation point. Continue ▼
-         │
-         ▼
-Does it fall into an exception? (see rule.md Exceptions)
-    YES → Note it. Not a sealed point.
-    NO  → Note as sealed point. Continue ▼
-         │
-         ▼
-Validate sealed point count + testability against severity bands in rule.md:
-    COMPLIANT or MINOR → Proceed.
-    SEVERE             → Do not write it this way. Use fix approach below.
-```
+<rule id="OCP-2" name="Injectable Dependencies Must Be Testable">
+Before injecting a concrete (non-protocol) type:
+- Ask: can tests substitute this dependency?
+- Non-final class or class that can conform to a protocol → define a protocol, add conformance via extension, inject the protocol.
+- Final class / enum with static members only / global function → wrap in an adapter struct that conforms to a protocol, inject the protocol.
+- The goal: the consumer never names a concrete type — only the protocol.
+</rule>
 
-## When SEVERE — Resolve
+<rule id="OCP-3" name="Reuse Existing Protocols">
+Before creating a new protocol:
+- Search the project for an existing protocol covering this behavior.
+- Exact or extensible match found → use or extend it, do not create a duplicate.
+- Protocol + primary implementation → same file, named after the implementation.
+- Additional conformers → separate files, named after the conformer.
+</rule>
 
-Use the loaded fix instructions to resolve the sealed variation point.
+<exceptions>
+- Factories / Builders — their job is to construct concrete objects. Internal construction is expected.
+- Helpers — Encoders, Formatters, Locks, Queues, threading utilities with no business logic dependencies.
+- Pure data structures — structs or classes with only stored properties, no behavior, no dependencies.
+- Test code — unit tests, mocks, stubs, and test helpers are exempt. Test code intentionally uses concrete types.
 
----
-
-## Protocol & File Conventions
-
-- Protocol + primary implementation → same file, named after the implementation
-- Additional conformers → separate files, named after the conformer
-- Always search the project for existing protocols before creating new ones
-
+If a dependency falls into an exception, proceed without wrapping it in a protocol.
+</exceptions>

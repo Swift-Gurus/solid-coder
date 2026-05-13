@@ -5,82 +5,58 @@ type: code
 
 # Structured Concurrency Coding Instructions
 
-Every async operation, task creation, or concurrency boundary crossing is a potential violation. Run this checklist twice — once before writing (plan your approach) and once after writing (verify what you wrote).
+<rule id="SC-1" name="One Concurrency Model Per Type">
+Before adding any async, GCD, or completion-handler code to an existing type:
+- Type already has `async/await` methods → do NOT add `DispatchQueue.async`, `.sync`, or completion handlers. Write the new code as `async` instead.
+- Type already has GCD or completion handlers → do NOT add `async/await`. Either migrate the whole type or stay consistent with the existing model.
+- One model per type. No mixing.
+</rule>
 
----
+<rule id="SC-2" name="Task Lifecycle">
+Before creating any `Task { }` or `Task.detached { }`:
+- Always store the handle in a property — never fire-and-forget.
+- Always cancel it in `deinit` or a dedicated cleanup method.
+- If the task contains a long-running loop → add `Task.checkCancellation()` inside the loop.
+- `Task.detached` is only justified when you need to escape actor context — default to `Task { }`.
+- Exception: tasks created inside a SwiftUI `.task` modifier — the framework manages cancellation automatically.
+</rule>
 
-## Before Writing Any Concurrent Code
+<rule id="SC-3" name="No Concurrency Safety Bypasses">
+Do NOT use `@unchecked Sendable` or `nonisolated(unsafe)` — they silence the compiler without fixing the problem.
 
-```
-You are about to write async code, create a Task, or bridge between sync and async.
-         │
-         ▼
-SC-1: Are you mixing concurrency models in this type?
-    Does this type already have async/await methods?
-    YES → Do NOT add DispatchQueue.async, .sync, or completion handlers.
-          Migrate the new code to async/await.
-    Does this type already have GCD or completion handlers?
-    YES → Do NOT add async/await. Either migrate the entire type
-          or keep the existing model.
-    One model per type. No mixing.
-         │
-         ▼
-SC-2: Are you creating a Task?
-    Inside SwiftUI .task modifier → framework handles cancellation. Proceed.
-    Otherwise:
-       → Store the Task handle. If the project has a task management library or utility in context knowledge, use it. Otherwise store in a property.
-       → Cancel it in deinit or cleanup.
-       → If the task has a long loop → add Task.checkCancellation() inside.
-    Using Task.detached? → Do you need to escape actor context?
-       Usually no → use regular Task { } instead.
-         │
-         ▼
-SC-3: Are you about to use @unchecked Sendable or nonisolated(unsafe)?
-    These bypass the compiler's safety checks. Do NOT use them.
-    Instead:
-       → No reference/identity requirement? Convert to struct — synthesised Sendable
-         when all stored properties are Sendable.
-       → Mutable state, needs concurrent access? Use actor — isolation is compiler-verified.
-       → Third-party non-Sendable type you don't own?
-            iOS 16+ / macOS 13+  → wrap in OSAllocatedUnfairLock<T>
-            Older deployment     → check for an existing project lock abstraction;
-                                   if none exists, create Lock<T> backed by os_unfair_lock
-       → @unchecked Sendable is ONLY acceptable on a type that implements a
-         synchronisation primitive using OS-level constructs (e.g. your own Lock<T>).
-         It is a one-time project-level utility — not a per-use-case escape hatch.
-         │
-         ▼
-SC-4: Are you calling multiple independent async operations?
-    YES and they don't depend on each other
-       → Use async let for 2-3 calls
-       → Use TaskGroup for dynamic count
-       → Do NOT await them sequentially
-    NO (each depends on the previous result)
-       → Sequential await is correct. Proceed.
-         │
-         ▼
-SC-5: Are you bridging sync → async?
-    Do NOT use DispatchSemaphore or DispatchGroup to block.
-    Instead:
-       → Make the caller async
-       → Or use Task { } at the call boundary
-    Using withCheckedContinuation?
-       → Does a native async API exist? Use that instead.
-       → No async API exists? → Legacy bridge exception, acceptable.
-         │
-         ▼
-Validate against severity bands in rule.md:
-    COMPLIANT or MINOR → Proceed.
-    SEVERE             → Do not write it this way. Use loaded fix instructions to restructure.
-```
+Instead:
+- No reference/identity requirement → convert to `struct` (synthesised `Sendable` when all stored properties are `Sendable`).
+- Mutable state with concurrent access → use `actor` — isolation is compiler-verified.
+- Third-party non-`Sendable` type you don't own:
+  - iOS 16+ / macOS 13+ → wrap in `OSAllocatedUnfairLock<T>`.
+  - Older deployment → use an existing project lock abstraction, or create `Lock<T>` backed by `os_unfair_lock`.
+- `@unchecked Sendable` is only acceptable on a type that IS itself a synchronisation primitive using OS-level constructs (e.g. your own `Lock<T>`). It is a one-time project-level utility, not a per-use-case escape hatch.
+</rule>
 
-## Duration API
+<rule id="SC-4" name="Concurrent Awaits for Independent Calls">
+Before writing two or more sequential `await` calls in the same scope:
+- Ask: does the second call depend on the result of the first?
+- YES → sequential `await` is correct. Proceed.
+- NO (they are independent) → do NOT await sequentially.
+  - 2–3 independent calls → use `async let`.
+  - Dynamic count → use `TaskGroup`.
+</rule>
 
-Always use `Duration` API for time values — never raw nanoseconds:
-- `Task.sleep(for: .seconds(2))` not `Task.sleep(nanoseconds: 2_000_000_000)`
-- `.seconds(5)`, `.milliseconds(500)`, `.minutes(1)` — use the appropriate unit
-- This applies to timeouts, delays, intervals — anywhere a time duration is expressed
+<rule id="SC-5" name="No Sync-to-Async Blocking">
+Before bridging synchronous code to async results:
+- Do NOT use `DispatchSemaphore`, `DispatchGroup.wait()`, or `RunLoop.current.run` to block and wait for async results.
+- Make the caller `async` instead, or use `Task { }` at the boundary.
+- Before using `withCheckedContinuation`: check if a native `async` API exists — if it does, use that instead. `withCheckedContinuation` is only acceptable as a legacy bridge for APIs that have no `async` alternative.
+</rule>
 
-## Exceptions — Not Violations
+<rule id="SC-6" name="Duration API">
+Always use the `Duration` API for time values — never raw integers:
+- `Task.sleep(for: .seconds(2))` not `Task.sleep(nanoseconds: 2_000_000_000)`.
+- Use `.seconds()`, `.milliseconds()`, `.minutes()` for timeouts, delays, and intervals.
+</rule>
 
-These are defined in rule.md. Do not expand this list.
+<exceptions>
+- Legacy bridge — `withCheckedContinuation` wrapping completion-handler APIs (e.g., URLSession delegate methods, CoreLocation callbacks, NotificationCenter observers) where Apple has not yet provided an `async` alternative. If an `async` version exists in the SDK, using continuation instead IS a violation.
+- SwiftUI `.task` modifier — framework manages Task cancellation automatically. No need to store the handle.
+- Test code — unit tests are exempt from Task lifecycle checks.
+</exceptions>

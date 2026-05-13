@@ -39,7 +39,22 @@
       "Bash(read f *)",
       "Bash(ps -o pid,ppid,etime,command -p 96274,96327)",
       "Bash(kill -9 87841 87781)",
-      "Bash(xcrun xcresulttool *)"
+      "Bash(xcrun xcresulttool *)",
+      "Read(//Users/crowea/.claude/projects/-Users-crowea-Developer-Swift-Gurus-claude-code-inspector/**)",
+      "Read(//Users/crowea/.claude/projects/-Users-crowea-Developer-Swift-Gurus-claude-code-inspector/memory/**)",
+      "Bash(claude -p \"reply with only this json: {\\\\\"ok\\\\\": true}\" --output-format json --no-session-persistence)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(claude -p 'Output ONLY this JSON: {\"valid\": false, \"issues\": [\"test\"]}' --output-format json --no-session-persistence --bare)",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/pre_write_gate.py '~/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/pre_write_gate.py')",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/hooks.json '~/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/hooks.json')",
+      "Bash(claude -p --help)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/code_health_check.py '~/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/code_health_check.py')",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/validate_swift_frontmatter.py '~/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/validate_swift_frontmatter.py')",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/prevent_bash_file_write.py '~/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/prevent_bash_file_write.py')",
+      "Bash(echo \"test\")",
+      "Read(//tmp/**)",
+      "Bash(rm /tmp/test_gate.swift)"
     ]
   },
   "enableAllProjectMcpServers": true,

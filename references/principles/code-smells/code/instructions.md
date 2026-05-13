@@ -5,18 +5,17 @@ type: code
 
 # Code Smells — Write-Time Constraints
 
-Hard rules to apply whenever you write or modify Swift code. Treat each rule as a constraint, not a suggestion. If you feel tempted to break one, that's usually a design signal — redesign the approach.
+These are mandatory rules that must be followed when writing code. Treat each rule as a hard constraint, not a suggestion. If you feel tempted to break one, that is usually a design signal — redesign the approach instead.
 
 ---
 
-## CS-1: Do NOT use `static` functions/varialbes
+<rule id="CS-1" name="No Static Functions or Variables">
+- Do not use static methods, vars, or getters to split logic or hold any logic.
+- Use instance methods and dependency injection instead.
+Note any static logic violations.
+</rule>
 
-- Don't use static methods/vars/getter to split logic nor to have any logic, unless you have instructions from the user
-
-
-### Exeption for CS-1
-- Constants 
-- Instead of using factory methods ont the type use convenience init
-
----
-
+<exceptions>
+- Constants — `static let` for true constants is allowed.
+- Use convenience `init` instead of static factory methods on the type.
+</exceptions>

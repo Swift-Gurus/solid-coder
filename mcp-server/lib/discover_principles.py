@@ -163,6 +163,9 @@ def filter_principles(
     active = []
     skipped = []
 
+    # matched_tags may be a string (single tag, no comma in CLI arg) or a list
+    if isinstance(matched_tags, str):
+        matched_tags = [matched_tags]
     matched_set = set(t.lower() for t in matched_tags) if matched_tags else set()
     profile_key = profile.lower() if profile else None
 
