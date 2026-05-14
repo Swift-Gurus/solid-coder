@@ -158,7 +158,9 @@ def _maybe_chunk(content: str, prefix: str) -> str:
 
     lines = [
         f"Content is large ({len(content):,} chars across {len(chunks)} chunks).",
-        "Read each file below in order using the Read tool:",
+        "MANDATORY: you MUST read ALL chunk files below using the Read tool before",
+        "doing anything else. Do NOT use Bash. Do NOT proceed until every chunk is read.",
+        "The pre-tool hook will block any non-Read action until all chunks are consumed.",
         "",
     ] + [f"- {p}" for p in paths]
     return "\n".join(lines)
@@ -386,6 +388,113 @@ def load_pattern(name):
 
     catalog = "\n".join(available) if available else "(none)"
     return f"Pattern '{name}' not found.\n\nAvailable patterns:\n{catalog}"
+
+
+def _find_fix_file(metric_id: str, all_p: list):
+    """Search all principle folders for fix/{metric_id}.md. Returns (principle_entry, path) or (None, None)."""
+    for p in all_p:
+        fp = Path(p["folder"]) / "fix" / f"{metric_id}.md"
+        if fp.is_file():
+            return p, fp
+    return None, None
+
+
+@server.tool(
+    name="load_fix_instructions_for_findings",
+    description=(
+        "Load fix strategies for all findings in a file in one call. "
+        "Pass the absolute path to the by-file validated findings JSON "
+        "(e.g. {OUTPUT_ROOT}/by-file/SomeFile.swift.output.json). "
+        "The tool reads the file, deduplicates by metric_id, searches all principle "
+        "folders for the matching fix file, and returns all fix strategies concatenated. "
+        "Works for any principle (SRP, OCP, SUI, TEST, etc.) — no principle field needed. "
+        "Call once at the start of Phase 3. Use load_fix_for_violation for Phase 4 lookups."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "findings_path": {
+                "type": "string",
+                "description": "Absolute path to the by-file validated findings JSON.",
+            },
+        },
+        "required": ["findings_path"],
+    },
+)
+def load_fix_instructions_for_findings(findings_path):
+    import json as _json
+    try:
+        raw = _json.loads(Path(findings_path).read_text(encoding="utf-8"))
+    except (OSError, _json.JSONDecodeError) as e:
+        return f"Could not read findings file '{findings_path}': {e}"
+
+    # Collect unique metric IDs from the actual by-file output structure:
+    # { "principles": [ { "findings": [ { "metric": "OCP-1" } ] } ] }
+    # Also accept a flat { "findings": [ { "metric_id": "OCP-1" } ] } for testing.
+    metric_ids = []
+    seen = set()
+    for p in raw.get("principles", []):
+        for f in p.get("findings", []):
+            m = (f.get("metric") or f.get("metric_id") or "").strip().upper()
+            if m and m not in seen:
+                seen.add(m)
+                metric_ids.append(m)
+    for f in raw.get("findings", []):  # flat format used in tests
+        m = (f.get("metric_id") or f.get("metric") or "").strip().upper()
+        if m and m not in seen:
+            seen.add(m)
+            metric_ids.append(m)
+
+    all_p = _all_principles()
+    parts, missing = [], []
+    for metric_id in metric_ids:
+        p_entry, fix_path = _find_fix_file(metric_id, all_p)
+        if not fix_path:
+            missing.append(f"no fix file for {metric_id}")
+            continue
+        content = _read(fix_path).rstrip()
+        parts.append(f"# {p_entry['name'].upper()} — {metric_id} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n")
+
+    result = "\n\n---\n\n".join(parts) if parts else ""
+    if missing:
+        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(missing)
+    return result or "No fix strategies found in the findings file."
+
+
+@server.tool(
+    name="load_fix_for_violation",
+    description=(
+        "Load the fix strategy for a specific metric. "
+        "Searches all principle folders for the matching fix file — "
+        "works for any principle (SRP, OCP, SUI, TEST, UITEST, SC, etc.). "
+        "Use in synthesize-fixes Phase 4 when a cross-check failure requires fix patterns "
+        "for a metric not already loaded via load_fix_instructions_for_findings."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "metric_id": {
+                "type": "string",
+                "description": "Metric ID, e.g. 'OCP-1', 'DRY-2', 'SUI-3', 'TEST-2'. No principle needed.",
+            },
+        },
+        "required": ["metric_id"],
+    },
+)
+def load_fix_for_violation(metric_id):
+    norm = metric_id.strip().upper()
+    all_p = _all_principles()
+    p_entry, fix_path = _find_fix_file(norm, all_p)
+    if not fix_path:
+        available = sorted(
+            f.stem
+            for p in all_p
+            for f in (Path(p["folder"]) / "fix").glob("*.md")
+            if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
+        )
+        return f"No fix file for metric '{norm}'. Available: {', '.join(available)}"
+    content = _read(fix_path).rstrip()
+    return f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n"
 
 
 if __name__ == "__main__":

@@ -131,6 +131,29 @@ class TestDetectTags(unittest.TestCase):
     def test_no_match_returns_empty(self):
         self.assertEqual(hook._detect_tags("final class Foo {}", ["swiftui"]), [])
 
+    def test_ui_test_excludes_unit_test_and_xctest(self):
+        # UITest file matches xctest (import XCTest) AND ui-test (XCUIApplication)
+        content = "import XCTest\nlet app = XCUIApplication()"
+        tags = ["unit-test", "xctest", "ui-test"]
+        matched = hook._detect_tags(content, tags)
+        self.assertIn("ui-test", matched)
+        self.assertNotIn("xctest", matched)
+        self.assertNotIn("unit-test", matched)
+
+    def test_unit_test_excludes_ui_test(self):
+        content = "import Testing\n@Test func testFoo() {}"
+        tags = ["unit-test", "xctest", "ui-test"]
+        matched = hook._detect_tags(content, tags)
+        self.assertIn("unit-test", matched)
+        self.assertNotIn("ui-test", matched)
+
+    def test_xctest_without_xcuiapplication_excludes_ui_test(self):
+        content = "import XCTest\nclass FooTests: XCTestCase {}"
+        tags = ["xctest", "ui-test"]
+        matched = hook._detect_tags(content, tags)
+        self.assertIn("xctest", matched)
+        self.assertNotIn("ui-test", matched)
+
 
 class TestLoadRules(unittest.TestCase):
     def test_passes_matched_tags_to_gateway(self):
@@ -234,10 +257,12 @@ class TestMainHook(unittest.TestCase):
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
 
-    def test_short_file_allows_without_gateway(self):
-        with patch("code_health_check.subprocess.run") as mock_run:
+    def test_short_file_runs_health_check(self):
+        """Health check always runs for .swift files regardless of size."""
+        with patch("code_health_check.subprocess.run",
+                   side_effect=self._pipeline([])) as mock_run:
             code, out = _call_main(_write_event("/src/Foo.swift", SHORT_SWIFT))
-        mock_run.assert_not_called()
+        self.assertGreater(mock_run.call_count, 0)
         self.assertEqual(code, 0)
 
     def test_clean_file_allows(self):

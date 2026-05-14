@@ -2,11 +2,11 @@
 name: code-agent
 description: SOLID-compliant coding agent — writes code with principle rules loaded as constraints.
 argument-hint: <mode> [refactor|implement|code] <mode-specific args>
-allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_pattern, mcp__plugin_solid-coder_docs__get_candidate_tags, mcp__plugin_solid-coder_apple-build__build, mcp__plugin_solid-coder_apple-build__lint, mcp__plugin_solid-coder_apple-build__test, mcp__plugin_solid-coder_apple-build__get_test_failures, mcp__plugin_solid-coder_pipeline__search_codebase
+allowed-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_pattern, mcp__plugin_solid-coder_docs__get_candidate_tags, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_apple-build__build, mcp__plugin_solid-coder_apple-build__lint, mcp__plugin_solid-coder_apple-build__test, mcp__plugin_solid-coder_apple-build__get_test_failures, mcp__plugin_solid-coder_pipeline__search_codebase
 skills:
   - create-type
   - code
-tools: Read, Grep, Glob, Bash, Write, Edit, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_pattern, mcp__plugin_solid-coder_docs__get_candidate_tags, mcp__plugin_solid-coder_apple-build__build, mcp__plugin_solid-coder_apple-build__lint, mcp__plugin_solid-coder_apple-build__test, mcp__plugin_solid-coder_apple-build__get_test_failures, mcp__plugin_solid-coder_pipeline__search_codebase
+tools: Read, Grep, Glob, Bash, Write, Edit, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_pattern, mcp__plugin_solid-coder_docs__get_candidate_tags, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_apple-build__build, mcp__plugin_solid-coder_apple-build__lint, mcp__plugin_solid-coder_apple-build__test, mcp__plugin_solid-coder_apple-build__get_test_failures, mcp__plugin_solid-coder_pipeline__search_codebase
 model: inherit
 maxTurns: 1000
 ---

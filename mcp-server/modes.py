@@ -22,10 +22,10 @@ Change a mode's load shape in ONE place.
 MODES = {
     "code": {
         "profile": "code",
-        "exclude": ["rule", "instructions", "examples", "patterns"],
+        "exclude": ["rule", "instructions", "examples"],
         "aggregation": "all",
         "description": "`/code` and `/implement` coding phase — write SOLID-compliant code",
-        "loads": ["code_rules"],
+        "loads": ["code_rules", "patterns"],
     },
     "review": {
         "profile": "review",

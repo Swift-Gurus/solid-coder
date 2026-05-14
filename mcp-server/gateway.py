@@ -27,6 +27,8 @@ Examples:
     python3 gateway.py search_codebase --sources-dir /path/to/Sources --synonyms json,line,stream --min-matches 3
     python3 gateway.py search_codebase --sources-dir /path/to/Sources --spec-numbers SPEC-026,SPEC-033
     python3 gateway.py query_specs --action scan --args type=feature status=ready
+    python3 gateway.py load_fix_for_violation --metric_id OCP-1
+    python3 gateway.py load_fix_instructions_for_findings --findings_path /path/to/by-file/Foo.swift.output.json
 
 Exit codes:
     0 — success (JSON on stdout)
@@ -55,6 +57,8 @@ from server import (
     search_codebase,
     query_specs,
     prepare_review_input,
+    load_fix_instructions_for_findings,
+    load_fix_for_violation,
 )
 
 
@@ -85,7 +89,6 @@ def parse_args(argv):
             kwargs.setdefault("args", []).append(arg)
             i += 1
     return tool, kwargs
-
 
 
 def load_spec_ancestors(**kwargs):
@@ -158,6 +161,8 @@ TOOLS = {
     "query_specs": query_specs,
     "load_spec_context": load_spec_ancestors,
     "prepare_review_input": prepare_review_input,
+    "load_fix_instructions_for_findings": load_fix_instructions_for_findings,
+    "load_fix_for_violation": load_fix_for_violation,
 }
 
 

@@ -2,7 +2,7 @@
 name: code
 description: Write SOLID-compliant code with principle rules loaded as constraints. Takes a prompt, a spec file, or both.
 argument-hint: [file|prompt]
-allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash
+allowed-tools: Read, Grep, Glob, Write, Edit, Skill, Bash, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_pattern, mcp__plugin_solid-coder_docs__get_candidate_tags, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__search_codebase
 user-invocable: true
 ---
 

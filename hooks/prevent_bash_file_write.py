@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""PreToolUse hook — block Bash writes to source code files.
+"""PreToolUse hook — block Bash writes to source code files and reads of MCP chunk files.
 
-Prevents agents from using Bash to write or modify source code files
-(sed -i, perl -pi, tee, redirects, etc.). Source code changes must go
-through the Write or Edit tools so the pre-write quality gate can review.
-
-Only blocks commands that target protected extensions (.swift, .kt, .java).
-Non-code files (JSON, Markdown, scripts, build artifacts) are not affected.
+Prevents agents from using Bash to:
+  1. Write or modify source code files (sed -i, perl -pi, tee, redirects, etc.).
+     Source code changes must go through the Write or Edit tools so the
+     pre-write quality gate can review.
+  2. Read MCP chunk files. When an MCP tool returns content too large to fit
+     in a single response, it writes numbered chunk files prefixed with
+     "solid-coder-" and instructs the agent to read them with the Read tool.
+     Using Bash (cat, head, tail, etc.) skips or truncates chunks — use the
+     Read tool instead.
 
 Allows:
   - Redirects to /dev/null
@@ -47,6 +50,18 @@ _SAFE_PATTERNS = [
     r">&\s*[0-9]",           # fd redirect >&1, >&2
     r"2>{1,2}",              # stderr redirect
 ]
+
+
+# Chunk files written by the MCP docs server when a payload exceeds _CHUNK_SIZE.
+# Named: solid-coder-{prefix}-{timestamp}-{n}of{total}.md
+# tempfile.gettempdir() varies by OS (/tmp on Linux, /var/folders/.../T on macOS),
+# so we match on the filename prefix only.
+_CHUNK_FILE_PREFIX = "solid-coder-"
+
+
+def _reads_chunk_file(command: str) -> bool:
+    """Return True if the command accesses an MCP chunk file via Bash."""
+    return _CHUNK_FILE_PREFIX in command
 
 
 def _targets_protected_file(command: str) -> bool:
@@ -90,6 +105,23 @@ def _deny(reason: str) -> None:
     sys.exit(0)
 
 
+def _deny_chunk_read() -> None:
+    sys.stdout.write(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": (
+                "[chunk-read-gate] MCP chunk files must be read with the Read tool, not Bash. "
+                "The MCP returned multiple chunk paths and instructed you to read each one "
+                "in order using the Read tool. Using Bash (cat, head, tail, etc.) truncates "
+                "or skips chunks. Use the Read tool on each path listed in the MCP response."
+            ),
+        }
+    }))
+    sys.stdout.flush()
+    sys.exit(0)
+
+
 def main() -> None:
     try:
         event = json.loads(sys.stdin.read())
@@ -105,6 +137,9 @@ def main() -> None:
     if not command:
         _allow()
         return
+
+    if _reads_chunk_file(command):
+        _deny_chunk_read()
 
     match = _contains_file_write(command)
     if match:

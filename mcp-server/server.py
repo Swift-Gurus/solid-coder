@@ -593,5 +593,127 @@ def prepare_review_input(candidate_tags=None):
     return {"error": result.stderr.strip()}
 
 
+# =============================================================================
+# Tool: load_fix_instructions_for_findings
+# =============================================================================
+
+@server.tool(
+    name="load_fix_instructions_for_findings",
+    description=(
+        "Load fix instructions for all unique (principle, metric_id) pairs in a findings JSON. "
+        "Returns content directly for each — no further Read needed. "
+        "Returns {loaded: [{principle, metric_id, content}], missing: [...]}."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "findings_path": {
+                "type": "string",
+                "description": "Absolute path to a JSON file with a top-level 'findings' array, each entry having 'principle' and 'metric_id' fields.",
+            },
+        },
+        "required": ["findings_path"],
+    },
+)
+def _find_fix_file_server(metric_id: str, all_p: list):
+    """Search all principle folders for fix/{metric_id}.md. Returns (entry, path) or (None, None)."""
+    for p in all_p:
+        fp = Path(p["folder"]) / "fix" / f"{metric_id}.md"
+        if fp.is_file():
+            return p, fp
+    return None, None
+
+
+def load_fix_instructions_for_findings(findings_path):
+    """Load fix instructions for all unique metric_ids in a findings JSON.
+
+    Searches all principle folders for each fix file — no principle field required.
+    Returns {"loaded": [{principle, metric_id, content}], "missing": [...]}
+    """
+    try:
+        raw = json.loads(Path(findings_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return {"error": f"Could not read findings file '{findings_path}': {e}"}
+
+    # Collect unique metric IDs from the actual by-file output structure:
+    # { "principles": [ { "findings": [ { "metric": "OCP-1" } ] } ] }
+    # Also accept flat { "findings": [ { "metric_id": "OCP-1" } ] } for testing.
+    metric_ids = []
+    seen_m = set()
+    for p in raw.get("principles", []):
+        for f in p.get("findings", []):
+            m = (f.get("metric") or f.get("metric_id") or "").strip().upper()
+            if m and m not in seen_m:
+                seen_m.add(m)
+                metric_ids.append(m)
+    for f in raw.get("findings", []):
+        m = (f.get("metric_id") or f.get("metric") or "").strip().upper()
+        if m and m not in seen_m:
+            seen_m.add(m)
+            metric_ids.append(m)
+
+    all_p_result = discover_principles.discover_and_filter(str(REFS_ROOT))
+    all_p = all_p_result.get("active_principles", []) + all_p_result.get("skipped_principles", [])
+
+    loaded, missing = [], []
+    for metric_id in metric_ids:
+        entry, fix_path = _find_fix_file_server(metric_id, all_p)
+        if not fix_path:
+            missing.append(f"no fix file for {metric_id}")
+            continue
+        loaded.append({"principle": entry["name"].upper(), "metric_id": metric_id,
+                       "content": fix_path.read_text(encoding="utf-8")})
+
+    return {"loaded": loaded, "missing": missing}
+
+
+# =============================================================================
+# Tool: load_fix_for_violation
+# =============================================================================
+
+@server.tool(
+    name="load_fix_for_violation",
+    description=(
+        "Load fix instructions for a single (principle, metric_id) pair. "
+        "Returns the fix content directly — no further Read needed. "
+        "Returns {principle, metric_id, content} or {error}."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "principle": {
+                "type": "string",
+                "description": "Principle name, e.g. 'OCP', 'SRP', 'DRY'.",
+            },
+            "metric_id": {
+                "type": "string",
+                "description": "Metric ID, e.g. 'OCP-1', 'SRP-2'. Case-insensitive.",
+            },
+        },
+        "required": ["principle", "metric_id"],
+    },
+)
+def load_fix_for_violation(metric_id):
+    """Load fix instructions for a single metric_id.
+
+    Searches all principle folders — no principle parameter required.
+    Returns {"principle": ..., "metric_id": ..., "content": ...} or {"error": ...}
+    """
+    norm = metric_id.strip().upper()
+    all_p_result = discover_principles.discover_and_filter(str(REFS_ROOT))
+    all_p = all_p_result.get("active_principles", []) + all_p_result.get("skipped_principles", [])
+    entry, fix_path = _find_fix_file_server(norm, all_p)
+    if not fix_path:
+        available = sorted(
+            f.stem
+            for p in all_p
+            for f in (Path(p["folder"]) / "fix").glob("*.md")
+            if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
+        )
+        return {"error": f"No fix file for metric '{norm}'. Available: {', '.join(available)}"}
+    return {"principle": entry["name"].upper(), "metric_id": norm,
+            "content": fix_path.read_text(encoding="utf-8")}
+
+
 if __name__ == "__main__":
     server.run()

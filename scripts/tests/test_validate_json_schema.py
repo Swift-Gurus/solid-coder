@@ -88,11 +88,12 @@ class TestKnownFiles(unittest.TestCase):
         path = tmp.parent / "arch.json"
         try:
             r = run("Write", path, json.dumps(INVALID_ARCH))
-            self.assertEqual(r.returncode, 1)
+            self.assertEqual(r.returncode, 0)  # PreToolUse hook always exits 0
             out = json.loads(r.stdout)
-            error = out["hookSpecificOutput"]["userFacingError"]
-            self.assertIn("arch.json", error)
-            self.assertIn("required", error.lower())
+            self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+            reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("arch.json", reason)
+            self.assertIn("required", reason.lower())
         finally:
             path.unlink(missing_ok=True)
 
@@ -113,20 +114,23 @@ class TestKnownFiles(unittest.TestCase):
         tmp.rename(path)
         try:
             r = run("Write", path, json.dumps(INVALID_OUTPUT))
-            self.assertEqual(r.returncode, 1)
+            self.assertEqual(r.returncode, 0)  # PreToolUse hook always exits 0
             out = json.loads(r.stdout)
-            error = out["hookSpecificOutput"]["userFacingError"]
-            self.assertIn("output.json", error)
+            self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+            reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("output.json", reason)
         finally:
             path.unlink(missing_ok=True)
 
-    def test_edit_tool_also_validated(self):
+    def test_edit_tool_not_validated(self):
+        # The hook only fires on Write (PreToolUse); Edit events pass through.
         tmp = write_tmp(INVALID_ARCH)
         tmp.rename(tmp.parent / "arch.json")
         path = tmp.parent / "arch.json"
         try:
             r = run("Edit", path, "")
-            self.assertEqual(r.returncode, 1)
+            self.assertEqual(r.returncode, 0)
+            self.assertEqual(r.stdout, "")
         finally:
             path.unlink(missing_ok=True)
 
@@ -204,8 +208,11 @@ class TestEdgeCases(unittest.TestCase):
         path.rename(arch_path)
         try:
             r = run("Write", arch_path, "{ not valid json")
-            self.assertEqual(r.returncode, 1)
-            self.assertIn("Invalid JSON", r.stdout)
+            self.assertEqual(r.returncode, 0)  # PreToolUse hook always exits 0
+            out = json.loads(r.stdout)
+            self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+            reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+            self.assertIn("invalid JSON", reason)
         finally:
             arch_path.unlink(missing_ok=True)
 

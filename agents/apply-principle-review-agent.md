@@ -2,10 +2,10 @@
 name: apply-principle-review-agent
 description: Generic Skill Wrapper, to allow skill to be run in parallel.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules
+allowed-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation
 skills:
 - apply-principle-review
-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules
+tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation
 model: sonnet
 ---
 

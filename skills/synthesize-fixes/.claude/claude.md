@@ -16,7 +16,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 |-----------|------|--------|----------|
 | Input | Per-file review outputs | JSON (principle-specific schemas) | `{OUTPUT_ROOT}/by-file/*.output.json` |
 | Input | Source files | Swift | Path from each output JSON's `file` field |
-| Input | Principle fix knowledge | Markdown | `{RULES_PATH}/{PRINCIPLE}/rule.md`, `fix/instructions.md` |
+| Input | Principle fix knowledge | Markdown | `references/{PRINCIPLE}/fix/{METRIC_ID}.md` (per-metric files) |
 | Output | Per-file fix plans | JSON (`plan.schema.json`) | `{OUTPUT_ROOT}/synthesized/{filename}.plan.json` |
 
 ## Connects To
@@ -24,8 +24,9 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 | Upstream | Relationship |
 |----------|-------------|
 | `skills/run-code-review` | Produces the `by-file/*.output.json` files this skill consumes |
-| `references/{PRINCIPLE}/` | Each principle folder provides `rule.md` (metrics), `fix/instructions.md` (fix patterns) |
-| `mcp__plugin_solid-coder_docs__load_rules` | Used in Phase 2 to load rule definitions and fix instructions |
+| `references/{PRINCIPLE}/fix/` | Per-metric fix files (`OCP-1.md`, `LSP-3.md`, etc.) — one file per metric ID |
+| `mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings` | Used in Phase 3.2 to batch-load all needed fix strategies for a file |
+| `mcp__plugin_solid-coder_docs__load_fix_for_violation` | Used in Phase 4.3 for on-demand cross-check patch loading |
 
 | Downstream | Relationship |
 |------------|-------------|
@@ -34,7 +35,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 
 ## Key Design Decisions
 
-- **Dynamic knowledge loading** — only loads fix knowledge for principles that have findings. Keeps context bounded as principles scale. Don't preload everything.
+- **Per-metric on-demand loading** — fix knowledge is loaded per `(principle, metric_id)` pair via `load_fix_instructions_for_findings` (batch, Phase 3.2) and `load_fix_for_violation` (single, Phase 4.3). Only the strategies for violated metrics are loaded — not full fix/instructions.md files. Reduces context by ~75% vs bulk loading.
 - **Principle ordering** — Phase 3 deduplicates first, then processes smallest-to-largest blast radius: DRY -> Functions -> UI -> OCP -> LSP -> ISP -> SRP. DRY runs first so all subsequent principles operate on deduplicated code.
 - **Single-principle drafting, cross-principle verification** — Phase 3 drafts focus on one principle at a time. Phase 4 cross-checks against all others. This separation prevents conflated fixes.
 - **Inline cross-check guidance** — Phases 4.2 and 4.3 include per-principle quick-reference checklists (SRP, OCP, LSP, ISP, SwiftUI) so the agent doesn't have to derive what to check from rule.md alone. These are summaries, not replacements — rule.md is still loaded and applied.
@@ -46,7 +47,7 @@ Takes ALL review findings across ALL principles for a set of files and produces 
 ## Gotchas
 
 - **Don't invent findings** — only address findings from review outputs. The synthesizer fixes, it doesn't review.
-- **Principle knowledge comes from Phase 2 lookup only** — Phases 3-6 all reuse the same loaded knowledge. No separate recipe files, no re-loading.
+- **Fix knowledge loaded in Phase 3.2, not Phase 2** — The batch tool loads all needed metric fix files for a file at once. Phase 4.3 calls `load_fix_for_violation` for cross-check failures where the failing principle's metric wasn't in the original finding set.
 - **Cross-iteration state is not passed forward** — subsequent iterations run a fresh review on modified files. `unresolved[]` from plan.json is informational within the iteration; it's not fed as input to the next one.
 - **Public API preservation** — fixes must not change the external interface of source files.
 - **OCP vs SUI-4 overlap** — both can flag a concrete ViewModel dependency. OCP flags sealed points generically; SUI-4 flags SwiftUI-specific VM injection. The synthesizer's cross-check (Phase 4) handles deduplication — don't treat this as a conflict.

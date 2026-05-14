@@ -59,11 +59,12 @@ class TestGateSkipConditions(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
-    def test_short_file_skips_health_check(self):
+    def test_new_swift_file_runs_health_check(self):
+        """Health check always runs for new .swift files regardless of size."""
         with patch("pre_write_gate._run_frontmatter", return_value=SHORT_SWIFT), \
-             patch("pre_write_gate._run_health") as hc:
+             patch("pre_write_gate._run_health", return_value=[]) as hc:
             code, out = _call_main(_event("Write", "/src/Foo.swift", SHORT_SWIFT))
-        hc.assert_not_called()
+        hc.assert_called_once()
 
     def test_test_file_runs_health_check(self):
         """Test files are no longer excluded — unit testing rules apply."""
@@ -140,12 +141,14 @@ class TestGateDecisions(unittest.TestCase):
         self.assertIn("new_string", updated)
         self.assertEqual(updated["new_string"], CORRECTED_FRONTMATTER)
 
-    def test_no_frontmatter_no_health_allows_immediately(self):
+    def test_no_frontmatter_health_clean_allows(self):
+        """No solid-description means frontmatter correction is skipped.
+        Health check still runs; if clean it allows silently."""
         with patch("pre_write_gate._run_frontmatter") as fm, \
-             patch("pre_write_gate._run_health") as hc:
+             patch("pre_write_gate._run_health", return_value=[]) as hc:
             code, out = _call_main(_event("Write", "/src/Foo.swift", SHORT_SWIFT))
-        fm.assert_not_called()
-        hc.assert_not_called()
+        hc.assert_called_once()
+        fm.assert_not_called()  # no solid-description in SHORT_SWIFT
         self.assertEqual(out, "")
 
     def test_malformed_stdin_allows(self):

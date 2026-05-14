@@ -64,16 +64,23 @@ the file does not exist yet or contains stale content. Use the path only as a \
 filter: if `search_codebase` returns a match whose path is `{file_path}`, \
 discard that match. It is a self-reference, not a reuse miss.
 
+If you find violations, load targeted fix guidance before writing your response:
+- For each unique (principle, metric_id) violation found, call \
+`mcp__docs__load_fix_for_violation` with the principle and metric_id — it returns \
+the fix instructions directly in `content`.
+- Use those instructions to make the `fix` field in your response concrete and actionable.
+
 List ALL violations (both within-file and cross-file). For each include:
 - principle: the rule name (e.g. SRP, OCP, DRY)
+- metric_id: the metric identifier (e.g. OCP-1, SRP-2)
 - issue: what is wrong
-- fix: the specific change needed
+- fix: the specific change needed (informed by the loaded fix instructions)
 
 Your entire response MUST be a single raw JSON object and nothing else. \
 No markdown fences. No explanation. No commentary. The response starts \
 with `{{` and ends with `}}` and contains only valid JSON.
 
-{{"violations": [{{"principle": "string", "issue": "string", "fix": "string"}}]}}
+{{"violations": [{{"principle": "string", "metric_id": "string", "issue": "string", "fix": "string"}}]}}
 
 Empty array if clean: {{"violations": []}}
 """
@@ -132,6 +139,13 @@ def _detect_tags(content: str, candidate_tags: list) -> list:
         patterns = TAG_PATTERNS.get(tag, [])
         if any(re.search(p, content) for p in patterns):
             matched.append(tag)
+    # UI tests and unit tests are mutually exclusive — XCUIApplication is the
+    # definitive signal. If present, drop unit-test/xctest so only UITesting
+    # rules load; without it, drop ui-test so only Unit Testing rules load.
+    if "ui-test" in matched:
+        matched = [t for t in matched if t not in ("unit-test", "xctest")]
+    else:
+        matched = [t for t in matched if t != "ui-test"]
     return matched
 
 
@@ -198,9 +212,11 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
     )
 
     pipeline_server = str(PLUGIN_ROOT / "mcp-server" / "pipeline" / "server.py")
+    docs_server = str(PLUGIN_ROOT / "mcp-server" / "server.py")
     mcp_config = json.dumps({
         "mcpServers": {
-            "pipeline": {"command": "python3", "args": [pipeline_server]}
+            "pipeline": {"command": "python3", "args": [pipeline_server]},
+            "docs": {"command": "python3", "args": [docs_server]},
         }
     })
 
@@ -211,7 +227,10 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
                 "--output-format", "json",
                 "--bare",
                 "--mcp-config", mcp_config,
-                "--allowedTools", "mcp__pipeline__search_codebase",
+                "--allowedTools", (
+                    "mcp__pipeline__search_codebase,"
+                    "mcp__docs__load_fix_for_violation"
+                ),
             ],
             stdin=subprocess.DEVNULL,
             capture_output=True,

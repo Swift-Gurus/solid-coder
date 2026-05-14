@@ -48,12 +48,17 @@ output_schema: output.schema.json
             - high — same responsibility + compatible interface
             - medium — similar responsibility, needs extension or configuration
             - low — overlapping keywords but different purpose
+        - **Determine reachability** — can the current code actually use this match without architectural changes?
+            - Same module/target → REACHABLE
+            - Different module, shared utilities package → REACHABLE WITH IMPORT (note the import required)
+            - Different module, peer feature package → NOT REACHABLE (horizontal coupling; note the nearest accessible common ancestor, or flag for a new shared module if no common ancestor exists)
+            - Different class hierarchy branch (sibling, not ancestor) → NOT REACHABLE AS-IS (note the deepest common base class that is accessible, or flag for a new shared module if none exists)
 
-      | New Code Unit | Existing Code | Confidence | Responsibility Fit | Interface Differences | Classification |
-      |---------------|--------------|------------|-------------------|----------------------|---------------|
-      |               |              |            |                   |                      |               |
+      | New Code Unit | Existing Code | Confidence | Responsibility Fit | Interface Differences | Classification | Reachability | Accessible Target |
+      |---------------|--------------|------------|-------------------|----------------------|---------------|-------------|------------------|
+      |               |              |            |                   |                      |               |             |                  |
 
-    - [ ] 1.1.6 Count EXACT (high confidence, no interface differences) and EXTENSIBLE (high/medium confidence, interface differences resolvable via extension) matches that were not reused
+    - [ ] 1.1.7 Count EXACT (high confidence, no interface differences) and EXTENSIBLE (high/medium confidence, interface differences resolvable via extension) matches that were not reused
       Reuse misses: ___
 
 - [ ] **1.2 DRY-2: Detect Inlined Duplication**

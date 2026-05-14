@@ -1,5 +1,7 @@
 """Tests for mcp-server/docs/server.py"""
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -218,6 +220,141 @@ class TestSeverityStripping(unittest.TestCase):
     def test_synth_impl_strips_severity_bands(self):
         result = mod.load_rules(mode="synth-impl", principle="OCP")
         self.assertNotIn("Severity Bands", result)
+
+
+class TestLoadFixForViolation(unittest.TestCase):
+    def test_known_metric_returns_content(self):
+        result = mod.load_fix_for_violation(metric_id="OCP-1")
+        self.assertIsInstance(result, str)
+        self.assertIn("OCP-1", result)
+        self.assertGreater(len(result), 50)
+
+    def test_metric_id_case_insensitive(self):
+        lower = mod.load_fix_for_violation("ocp-1")
+        upper = mod.load_fix_for_violation("OCP-1")
+        self.assertEqual(lower, upper)
+
+    def test_unknown_metric_returns_error_string(self):
+        result = mod.load_fix_for_violation("OCP-99")
+        self.assertIn("OCP-99", result)
+        self.assertIn("Available", result)
+
+    def test_completely_unknown_metric_returns_error(self):
+        result = mod.load_fix_for_violation("BOGUS-99")
+        self.assertIn("BOGUS-99", result)
+        self.assertIn("Available", result)
+
+    def test_no_frontmatter_in_output(self):
+        result = mod.load_fix_for_violation("LSP-1")
+        self.assertFalse(result.startswith("---"))
+
+    def test_output_contains_header(self):
+        result = mod.load_fix_for_violation("LSP-3")
+        self.assertTrue(result.startswith("# LSP"))
+
+    def test_all_core_metrics_resolve(self):
+        for metric_id in [
+            "SRP-1", "SRP-2", "SRP-3",
+            "OCP-1", "OCP-2",
+            "LSP-1", "LSP-2", "LSP-3",
+            "ISP-1", "ISP-2", "ISP-3",
+            "DRY-1", "DRY-2", "DRY-3",
+        ]:
+            with self.subTest(metric=metric_id):
+                result = mod.load_fix_for_violation(metric_id)
+                self.assertNotIn("No fix file", result, msg=f"Missing file for {metric_id}")
+                self.assertGreater(len(result), 50)
+
+
+class TestLoadFixInstructionsForFindings(unittest.TestCase):
+    def _write(self, findings):
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".output.json", delete=False
+        )
+        json.dump({"findings": findings}, f)
+        f.close()
+        return f.name
+
+    def test_single_finding_returns_content(self):
+        path = self._write([{"metric_id": "OCP-1"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIn("OCP-1", result)
+        self.assertGreater(len(result), 50)
+
+    def test_deduplicates_same_metric(self):
+        path = self._write([{"metric_id": "OCP-1"}, {"metric_id": "OCP-1"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertEqual(result.count("OCP-1 Fix Strategy"), 1)
+
+    def test_multiple_metrics_all_returned(self):
+        path = self._write([{"metric_id": "OCP-1"}, {"metric_id": "LSP-3"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIn("OCP-1", result)
+        self.assertIn("LSP-3", result)
+
+    def test_unknown_metric_noted_fail_open(self):
+        path = self._write([{"metric_id": "OCP-1"}, {"metric_id": "OCP-99"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIn("OCP-1", result)
+        self.assertIn("fail-open", result.lower())
+
+    def test_missing_file_returns_error_string(self):
+        result = mod.load_fix_instructions_for_findings(
+            findings_path="/tmp/does_not_exist_abc123.json"
+        )
+        self.assertIn("Could not read", result)
+
+    def test_empty_findings_returns_message(self):
+        path = self._write([])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIsInstance(result, str)
+        self.assertGreater(len(result), 0)
+
+    def test_accepts_metric_field_alias(self):
+        # Findings may use "metric" (review schema field) instead of "metric_id"
+        path = self._write([{"metric": "SRP-2"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIn("SRP-2", result)
+
+    def test_principle_field_in_findings_ignored_gracefully(self):
+        # Old findings format with explicit principle field still works
+        path = self._write([{"principle": "OCP", "metric_id": "OCP-1"}])
+        result = mod.load_fix_instructions_for_findings(findings_path=path)
+        self.assertIn("OCP-1", result)
+
+    def test_real_by_file_output_structure(self):
+        # The actual by-file output uses "principles[].findings[].metric", not flat findings
+        f = tempfile.NamedTemporaryFile(mode="w", suffix=".output.json", delete=False)
+        json.dump({
+            "file_path": "/path/to/Foo.swift",
+            "timestamp": "2026-01-01T00:00:00Z",
+            "principles": [
+                {
+                    "principle": "Open/Closed Principle",
+                    "agent": "ocp",
+                    "severity": "SEVERE",
+                    "findings": [
+                        {"id": "ocp-001", "metric": "OCP-1", "severity": "SEVERE",
+                         "title": "Sealed point", "issue": "..."},
+                    ],
+                    "suggestions": []
+                },
+                {
+                    "principle": "Single Responsibility Principle",
+                    "agent": "srp",
+                    "severity": "SEVERE",
+                    "findings": [
+                        {"id": "srp-001", "metric": "SRP-2", "severity": "SEVERE",
+                         "title": "Cohesion groups", "issue": "..."},
+                    ],
+                    "suggestions": []
+                },
+            ]
+        }, f)
+        f.close()
+        result = mod.load_fix_instructions_for_findings(findings_path=f.name)
+        self.assertIn("OCP-1", result)
+        self.assertIn("SRP-2", result)
 
 
 if __name__ == "__main__":

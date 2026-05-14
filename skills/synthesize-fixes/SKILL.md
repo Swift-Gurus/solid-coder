@@ -2,7 +2,7 @@
 name: synthesize-fixes
 description: Holistic fix planner — reads all findings from all principles, loads principle fix knowledge dynamically, and generates a unified, cross-checked fix plan per file.
 argument-hint: <output-root>
-allowed-tools: Read, Grep, Glob, Bash, Write
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings, mcp__plugin_solid-coder_pipeline__search_codebase
 user-invocable: false
 ---
 
@@ -21,12 +21,9 @@ Generates a unified, cross-principle-aware fix plan for each file. Unlike per-pr
 - [ ] 1.4 For each file in `files[]` that has non-COMPLIANT principles, read the source file referenced in `file_path`
 - [ ] 1.5 The `active_principles[]` list is the set of principle agent IDs for Phase 2
 
-## Phase 2: Load Principle Fix Knowledge
+## Phase 2: (removed — fix knowledge loads on demand in Phase 3)
 
-Load fix knowledge **only for principles that have findings** (keeps context bounded as rules scale).
-
-- [ ] 2.1 For EACH principle in `active_principles[]` that has findings, call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "synth-fixes"` and `principle: {PRINCIPLE_ID}`. Apply the returned rules.
-- [ ] 2.2 **Build a lookup** from the loaded results: `principle_id → loaded content`
+Fix strategies are loaded per-finding at the start of Phase 3.2. No bulk loading here.
 
 ## Phase 3: Draft Fix Actions
 
@@ -38,7 +35,15 @@ FOR each file that has non-COMPLIANT findings:
 - [ ] Collect ALL findings from ALL principles for this file into a single list
 - [ ] Group findings by unit (class/struct/enum) they affect
 
-### 3.2 Draft Per-Principle Actions
+### 3.2 Load Fix Strategies (once per file)
+
+- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings` with
+      `findings_path: {OUTPUT_ROOT}/by-file/{filename}.output.json`
+      (the validated findings file path from Phase 1 — do NOT construct the findings array manually).
+      The tool reads the file, deduplicates by `(principle, metric_id)`, and returns all needed fix
+      strategies concatenated. If the call fails, log and continue (fail-open — Phase 4 can load individually).
+
+### 3.3 Draft Fix Actions
 
 **Principle order:** Deduplicate first, then process from smallest to largest blast radius
     - The order is: Structured Concurrency → DRY → Functions → Any UI → OCP → LSP → ISP → SRP.
@@ -48,16 +53,17 @@ FOR each file that has non-COMPLIANT findings:
         - ISP splits fat protocols so extracted types get narrow interfaces,
         - SRP extracts types that already have proper injection.
 
-FOR each unit with findings, FOR each principle **in the order above** that has findings on this unit:
-- [ ] Using ONLY that principle's `fix/instructions.md` from the Phase 2 lookup
+FOR each unit with findings, FOR each finding **in the order above**:
+- [ ] Use the fix strategy returned in 3.2 for the finding's `(principle, metric_id)` pair
 - [ ] If the fix involves extracting a new type or creating a new protocol — call `mcp__plugin_solid-coder_pipeline__search_codebase` with `tags` containing the proposed type name and responsibility keywords. If a match exists, prefer adapting it over creating new. Record the reuse decision in `todo_items`.
 - [ ] Generate a draft action:
   - `suggestion_id`: e.g., `draft-srp-001`
   - `principle`: the owning principle
-  - `resolves[]`: finding IDs from THIS principle only
+  - `metric_id`: the specific metric that triggered (e.g., `SRP-2`)
+  - `resolves[]`: finding IDs for this `(principle, metric_id)` pair only
   - `suggested_fix`: full code snippets (protocols, extracted types, modified class, before/after)
   - `todo_items`: concrete implementable steps
-- [ ] Do NOT consider other principles — focus on one concern at a time
+- [ ] Do NOT consider other principles — focus on one metric at a time
 
 ### 3.3 Collect
 - [ ] Collect all draft actions for this file into a list
@@ -88,7 +94,9 @@ FOR each cross-check principle:
 
 ### 4.3 Patch Failures
 IF any cross-check fails:
-- [ ] Load the failing principle's `fix/instructions.md` from the Phase 2 lookup
+- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_for_violation` with the relevant `metric_id`
+      (e.g. `metric_id: "OCP-1"`). The principle is resolved automatically. Use context
+      from Phase 3.2 if already loaded for this run.
 - [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
   - **SRP fail** → split the extracted type further along cohesion group boundaries
   - **OCP fail** → wrap concrete dependencies behind protocols, inject via init instead of direct/singleton reference
@@ -148,7 +156,7 @@ FOR EVERY suggested_fix that was **merged in step 5.1**:
     - [ ] 6.1 Read the proposed code in the action's `suggested_fix`
     - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
     - [ ] 6.3 IF violations found:
-        - [ ] 6.3.1 Adjust `suggested_fix` using `fix/instructions.md` for each violation
+        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation` for each violation's principle and metric_id
         - [ ] 6.3.2 Adjust `todo_items` to reflect the changes
         - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles
     - [ ] 6.4 IF still fails → move affected findings to `unresolved[]` with reason explaining why the patch was insufficient
@@ -177,9 +185,9 @@ END (per fix)
 
 ## Constraints
 
-- Load principle fix knowledge DYNAMICALLY — only for principles that have findings
-- Phase 3 (Draft) is single-principle focused — do NOT cross-check during drafting
-- Phase 4 (Verify & Patch) reuses each principle's existing rule.md metrics and fix/instructions.md patterns — no separate recipe files
+- Load fix knowledge ON-DEMAND per finding — call `mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings` once per file at Phase 3.2. Do NOT bulk-load in Phase 2.
+- Phase 3 (Draft) is single-metric focused — do NOT cross-check during drafting
+- Phase 4 (Verify & Patch) uses `mcp__plugin_solid-coder_docs__load_fix_for_violation` for cross-check patch patterns — no separate recipe files
 - If a cross-check fails and patch fails, mark as `unresolved` — do NOT recursively fix fixes
 - Do NOT invent findings — only address findings from the review outputs
 - Include full code snippets in `suggested_fix` (protocols, types, modified class)
