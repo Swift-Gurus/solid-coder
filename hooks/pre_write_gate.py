@@ -18,11 +18,53 @@ Sequential ordering ensures:
 Fails open on infrastructure errors in either check.
 """
 
+import difflib
 import json
 import re
 import sys
 import time
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Low-risk edit detection — skip health check for structural-only changes
+# ---------------------------------------------------------------------------
+
+_SOLID_BLOCK_RE = re.compile(r"^\s*/\*\*\s*\n(?:[ \t]+solid-[^\n]+\n)+[ \t]*\*/\s*\Z")
+
+
+def _is_frontmatter_only(old: str, new: str) -> bool:
+    """Both old and new are purely /** solid-* */ blocks — no Swift code changed."""
+    return bool(_SOLID_BLOCK_RE.match(old.strip())) and bool(_SOLID_BLOCK_RE.match(new.strip()))
+
+
+def _is_reorder(old: str, new: str) -> bool:
+    """Same tokens in different order — argument reorder, function reorder, import sort."""
+    return sorted(re.findall(r'\w+', old)) == sorted(re.findall(r'\w+', new))
+
+
+def _is_rename(old: str, new: str) -> bool:
+    """Same non-identifier skeleton — only names changed (rename refactor)."""
+    skeleton = lambda s: re.sub(r'\b\w+\b', 'X', s)
+    return skeleton(old) == skeleton(new)
+
+
+def _is_low_risk_edit(old: str, new: str) -> bool:
+    """Return True if the edit is structural-only and cannot introduce SOLID violations.
+    Note: frontmatter-only changes skip health but NOT frontmatter correction."""
+    return _is_frontmatter_only(old, new) or _is_reorder(old, new) or _is_rename(old, new)
+
+
+def _diff_chunks(old_content: str, new_content: str) -> tuple:
+    """Return (old_changed, new_changed) — only the lines that actually changed."""
+    old_lines = old_content.splitlines()
+    new_lines = new_content.splitlines()
+    old_changed, new_changed = [], []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old_lines, new_lines).get_opcodes():
+        if tag == "equal":
+            continue
+        old_changed.extend(old_lines[i1:i2])
+        new_changed.extend(new_lines[j1:j2])
+    return "\n".join(old_changed), "\n".join(new_changed)
 
 _LOG = Path.home() / ".claude" / "solid-coder-gate.log"
 
@@ -116,24 +158,42 @@ def main() -> None:
     file_path = tool_input.get("file_path", "")
     parent_session_id = event.get("session_id", "")
 
-    if tool_name == "Write":
-        content = tool_input.get("content", "")
-    elif tool_name == "Edit":
-        content = tool_input.get("new_string", "")
-    else:
+    if not file_path.endswith(".swift"):
         _allow()
         return
 
-    if not file_path.endswith(".swift"):
+    low_risk = False
+    if tool_name == "Write":
+        content = tool_input.get("content", "")
+        try:
+            existing = Path(file_path).read_text(encoding="utf-8")
+            old_chunk, new_chunk = _diff_chunks(existing, content)
+            if old_chunk or new_chunk:
+                low_risk = _is_low_risk_edit(old_chunk, new_chunk)
+            else:
+                low_risk = True  # identical content — nothing changed
+        except OSError:
+            pass  # new file — run full health check
+    elif tool_name == "Edit":
+        old_string = tool_input.get("old_string", "")
+        new_string = tool_input.get("new_string", "")
+        replace_all = tool_input.get("replace_all", False)
+        low_risk = _is_low_risk_edit(old_string, new_string)
+        try:
+            existing = Path(file_path).read_text(encoding="utf-8")
+            content = existing.replace(old_string, new_string) if replace_all \
+                      else existing.replace(old_string, new_string, 1)
+        except OSError:
+            content = new_string  # file unreadable — fall back to snippet only
+    else:
         _allow()
         return
 
     ext = Path(file_path).suffix.lower()
     language = health.SUPPORTED_EXTENSIONS.get(ext)
     file_name = Path(file_path).name
-    long_enough = content.count("\n") >= health.MIN_LINES
 
-    run_health = language is not None and long_enough
+    run_health = language is not None and not low_risk
     run_frontmatter = "solid-description:" in content
 
     if not run_health and not run_frontmatter:
@@ -141,6 +201,7 @@ def main() -> None:
         return
 
     name = file_name
+    _log(f"INVOKE {name}: health={run_health} frontmatter={run_frontmatter}")
 
     # ── Step 1: health check ────────────────────────────────────────────────
     violations = None

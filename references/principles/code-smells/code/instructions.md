@@ -18,4 +18,5 @@ Note any static logic violations.
 <exceptions>
 - Constants — `static let` for true constants is allowed.
 - Use convenience `init` instead of static factory methods on the type.
+- Build system / DSL files — files whose entire purpose is configuring a build system or describing a package manifest using an external SDK's prescribed DSL (e.g., Tuist `ProjectDescription`, SwiftPM `Package.swift`, Fastfile). These DSLs mandate static factory methods as their API surface — using them as directed is not a CS-1 violation. Signals: file imports `ProjectDescription`, `PackageDescription`, or similar build SDK; file is named `Project.swift`, `Package.swift`, `Workspace.swift`, or lives under a `Tuist/` directory.
 </exceptions>

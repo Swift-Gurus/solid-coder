@@ -7,7 +7,7 @@ to a bare Claude session so it can Read them itself — keeping the initial prom
 small and fast. If violations are found, blocks the write with the full list so
 the agent can fix everything in one pass before retrying.
 
-Skips: unsupported extensions, test files, files under MIN_LINES lines.
+Skips: unsupported extensions, test files.
 Fails open silently — an infrastructure error never blocks the write.
 """
 
@@ -27,7 +27,6 @@ SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".swift": "Swift",
 }
 
-MIN_LINES = 30
 
 # Import patterns for tag detection, keyed by candidate tag name.
 TAG_PATTERNS: dict[str, list[str]] = {
@@ -59,7 +58,11 @@ blocks with no production types)
 
 Before listing violations, run the DRY-1 search procedure from the loaded rules: \
 call `mcp__plugin_solid-coder_pipeline__search_codebase` with synonyms for \
-each type defined in this file to detect cross-file reuse misses.
+each type defined in this file to detect cross-file reuse misses. \
+The destination path for this write is `{file_path}`. Do NOT read that path — \
+the file does not exist yet or contains stale content. Use the path only as a \
+filter: if `search_codebase` returns a match whose path is `{file_path}`, \
+discard that match. It is a self-reference, not a reuse miss.
 
 List ALL violations (both within-file and cross-file). For each include:
 - principle: the rule name (e.g. SRP, OCP, DRY)
@@ -191,6 +194,7 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
         language=language,
         rules=rules,
         content=content,
+        file_path=path,
     )
 
     pipeline_server = str(PLUGIN_ROOT / "mcp-server" / "pipeline" / "server.py")
@@ -289,10 +293,6 @@ def main() -> None:
     elif tool_name == "Edit":
         content = tool_input.get("new_string", "")
     else:
-        _allow()
-        return
-
-    if content.count("\n") < MIN_LINES:
         _allow()
         return
 

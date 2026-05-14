@@ -74,38 +74,6 @@ Apply every constraint from the Phase 2 summary to every line of code. Do NOT de
 
 - [ ] 3.3 After creating or extracting any new type, static function, helpers, use skill **solid-coder:create-type** on the file(s) to enforce naming conventions, file organization, and `/** solid-... */` frontmatter. Pass `--spec {spec_number}` if `spec_number` is present in the loaded plan.
 
-### Design Patterns
-
-Whenever you identify, apply, or reference a design pattern (facade, adapter, decorator, strategy, factory, builder, etc.) — call `mcp__plugin_solid-coder_docs__load_pattern` with the pattern name before writing code that uses it. Apply the returned contract to your implementation.
-
-### Plan extension.
-- Stick as close to the plan as possible.
-- Before creating any new type, protocol, or abstraction — call `mcp__plugin_solid-coder_pipeline__search_codebase` with `sources_dir` set to the project root and `tags` containing the type name + keywords from its responsibility. If a match is returned, read the description and the file. Reuse or adapt it instead of creating new. Only create if no relevant match exists.
-
-#### Extraction
-
-When splitting a type along responsibility boundaries:
-
-- Each responsibility becomes its own type
-- New types get protocol-typed dependencies injected via init
-- No sealed variation points in extracted types — all external dependencies protocol-typed and injected
-- The original type coordinates the extracted types (becomes a facade/coordinator if multiple remain)
-
-#### File Organization
-
-- Protocol + one implementation → same file, named after the implementation
-  - e.g. `ProductFetchService.swift` contains `protocol ProductFetching` + `final class ProductFetchService: ProductFetching`
-  - Additional conformers (decorators, adapters, alternatives) → separate file each, named after the conformer
-- Small helpers (<10 lines, or private/fileprivate) → stay in the source file
-- New files go in the same directory as the source file
-- Copy necessary `import` statements to each new file
-- Group files representing the same domain under the same directory (files that has the same prefix, represent the same domain, functionality)
-
-#### Protocol Design
-
-- Every conformer must meaningfully implement every method. If a conformer would leave methods empty or crash (fatalError), the protocol is too wide — split it.
-- Client code must not type-check against conformers (`is`, `as?`, `as!`). If it needs to, the abstraction is wrong — redesign it.
-
 ## Phase 4: Self-Check
 
 After writing all code, verify your output against every loaded rule:
@@ -150,6 +118,17 @@ Use `mcp__plugin_solid-coder_apple-build__build`, `__lint`, and `__test`. Always
 - [ ] 6.2 Brief summary of what was done and key design decisions made
 
 ## Constraints
+
+**Design patterns** — whenever you identify, apply, or reference a design pattern (facade, adapter, decorator, strategy, factory, builder, etc.) call `mcp__plugin_solid-coder_docs__load_pattern` with the pattern name before writing code that uses it. Apply the returned contract.
+
+**Search before creating** — before creating any new type, protocol, or abstraction, call `mcp__plugin_solid-coder_pipeline__search_codebase` with `sources_dir` set to the project root and `tags` containing the type name + keywords from its responsibility. If a match is returned, read the file and reuse or adapt it. Only create if no relevant match exists.
+
+**Extraction** — when splitting a type along responsibility boundaries: each responsibility becomes its own type with protocol-typed dependencies injected via init; no sealed variation points; the original type becomes a facade/coordinator.
+
+**File organization** — protocol + one implementation → same file named after the implementation; additional conformers → separate files named after the conformer; small helpers (<10 lines, or private/fileprivate) → stay inline; new files go in the same directory as the source file; group files sharing a domain prefix into a subdirectory.
+
+**Protocol design** — every conformer must meaningfully implement every method (if a conformer would leave methods empty or crash, the protocol is too wide — split it); client code must not type-check against conformers (`is`, `as?`, `as!`) — if it does the abstraction is wrong.
+
 - Follow the spec — do not invent scope beyond what was asked
 - The loaded `rule.md` and `instructions.md`  files are the source of truth for what constitutes a violation and how to write and fix code. MUST be followed. Do not invent additional rules
 - Always call `mcp__plugin_solid-coder_pipeline__search_codebase` before creating new protocols, wrappers, or abstractions — see Plan extension above

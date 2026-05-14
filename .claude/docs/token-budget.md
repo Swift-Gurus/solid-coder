@@ -11,16 +11,16 @@ YAML frontmatter is stripped before counting (matches `load-reference` behavior)
 Folder totals are the sum of their children.
 
 **Root**: `/Users/crowea/Developer/Swift-Gurus/solid-coder/references/principles`  
-**Total**: 53,995 tokens (216,065 chars)
+**Total**: 54,178 tokens (216,795 chars)
 
 | Path | Tokens | Chars |
 |---|---:|---:|
-| 📁 `principles` | 53,995 | 216,065 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `code-smells` | 236 | 948 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 165 | 663 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 165 | 663 |
+| 📁 `principles` | 54,178 | 216,795 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `code-smells` | 370 | 1,482 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 299 | 1,197 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 299 | 1,197 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 71 | 285 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `DRY` | 10,580 | 42,338 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `DRY` | 10,629 | 42,534 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 655 | 2,621 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 655 | 2,621 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 2,893 | 11,581 |
@@ -33,8 +33,8 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `fix` | 1,929 | 7,719 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,015 | 4,063 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 914 | 3,656 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `review` | 3,335 | 13,342 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,401 | 5,606 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `review` | 3,384 | 13,538 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,450 | 5,802 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 1,934 | 7,736 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,768 | 7,075 |
 | &nbsp;&nbsp;&nbsp;&nbsp;📁 `ISP` | 11,385 | 45,554 |

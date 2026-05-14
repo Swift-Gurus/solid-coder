@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "solid-coder:code-agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/check_code_agent_tested.py\""
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",

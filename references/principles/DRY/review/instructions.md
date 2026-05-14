@@ -35,7 +35,9 @@ output_schema: output.schema.json
         - Use Grep to search file contents and Glob to search filenames across the codebase
         - Merge new hits into matches (skip files already found in 1.1.3)
 
-    - [ ] 1.1.5 **Analyze matches** — for each matched file:
+    - [ ] 1.1.5 **Remove self-matches** — from the combined match list, remove any file whose absolute path matches the file currently under review. A file cannot be a reuse miss against itself.
+
+    - [ ] 1.1.6 **Analyze matches** — for each matched file:
         - Read the file's source code
         - Extract: type name, protocols, method signatures, properties, static members, extensions, view body structure
         - Compare against the code unit's responsibility and interfaces:
