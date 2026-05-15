@@ -136,6 +136,30 @@ class TestFileWriteDetection(unittest.TestCase):
         _, out = _call(cmd)
         self.assertTrue(_is_allowed(out))
 
+    def test_blocks_python3_write_binary_mode(self):
+        """open(path, 'wb') must be blocked — not just bare 'w'."""
+        cmd = "python3 -c \"open('/src/Foo.swift', 'wb').write(b'x')\""
+        _, out = _call(cmd)
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_python3_append_binary_mode(self):
+        """open(path, 'ab') must be blocked."""
+        cmd = "python3 -c \"open('/src/Foo.swift', 'ab').write(b'x')\""
+        _, out = _call(cmd)
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_python3_write_plus_mode(self):
+        """open(path, 'w+') must be blocked."""
+        cmd = "python3 -c \"open('/src/Foo.swift', 'w+').write('x')\""
+        _, out = _call(cmd)
+        self.assertTrue(_is_denied(out))
+
+    def test_allows_python3_read_binary_mode(self):
+        """open(path, 'rb') — read binary — must be allowed."""
+        cmd = "python3 -c \"open('/src/Foo.swift', 'rb').read()\""
+        _, out = _call(cmd)
+        self.assertTrue(_is_allowed(out))
+
 
 class TestChunkFileReadDetection(unittest.TestCase):
     """Bash must not be used to read MCP chunk files — use the Read tool instead."""

@@ -41,10 +41,12 @@ _WRITE_PATTERNS: list[Tuple[str, int, str]] = [
     (r"\bsed\b.*\s-[a-zA-Z]*i", 0, "sed in-place (-i)"),
     # perl -i / perl -pi — in-place file modification
     (r"\bperl\b.*\s-[a-zA-Z]*i", 0, "perl in-place (-i)"),
-    # python/python3 open(..., 'w') or open(..., 'a') — writing via Python one-liner or
-    # multi-line -c block. re.DOTALL lets .* span newlines so the python3 keyword and
-    # the open() call don't have to appear on the same line.
-    (r"\bpython3?\b.*\bopen\s*\(.*['\"][wa]['\"]", re.DOTALL, "python open write"),
+    # python/python3 open(..., 'w'/'wb'/'a'/'ab'/'w+'/'wb+'/...) — writing via Python
+    # one-liner or multi-line -c block.
+    # [wa]       = write or append base mode
+    # [bt+]{0,3} = optional binary (b), text (t), or read+write (+) modifiers
+    # re.DOTALL  = .* spans newlines so python3 and open() need not be on the same line.
+    (r"\bpython3?\b.*\bopen\s*\(.*['\"][wa][bt+]{0,3}['\"]", re.DOTALL, "python open write"),
 ]
 
 # Safe patterns — don't block even if a write pattern matched
