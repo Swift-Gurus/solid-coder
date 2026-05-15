@@ -693,7 +693,7 @@ def load_fix_instructions_for_findings(findings_path):
         "required": ["principle", "metric_id"],
     },
 )
-def load_fix_for_violation(metric_id):
+def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg from old callers
     """Load fix instructions for a single metric_id.
 
     Searches all principle folders — no principle parameter required.

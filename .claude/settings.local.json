@@ -57,7 +57,11 @@
       "Bash(rm /tmp/test_gate.swift)",
       "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/__TRACKED_VAR__ /Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/__TRACKED_VAR__)",
       "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/hooks.json /Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/hooks.json)",
-      "Bash(import os, json, time)"
+      "Bash(import os, json, time)",
+      "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/check_code_agent_tested.py /Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/check_code_agent_tested.py)",
+      "Bash(rm -f ~/.claude/hook-fired.log)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   },
   "enableAllProjectMcpServers": true,

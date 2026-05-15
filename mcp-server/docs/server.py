@@ -240,6 +240,7 @@ def get_candidate_tags():
         "Use matched_tags to skip conditional principles not relevant to the project. "
         "Use principle to load a single principle (required for review mode)."
     ),
+    meta={"anthropic/maxResultSizeChars": 200000},
     input_schema={
         "type": "object",
         "properties": {
@@ -481,7 +482,7 @@ def load_fix_instructions_for_findings(findings_path):
         "required": ["metric_id"],
     },
 )
-def load_fix_for_violation(metric_id):
+def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg from old callers
     norm = metric_id.strip().upper()
     all_p = _all_principles()
     p_entry, fix_path = _find_fix_file(norm, all_p)

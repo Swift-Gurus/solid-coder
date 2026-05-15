@@ -156,7 +156,7 @@ FOR EVERY suggested_fix that was **merged in step 5.1**:
     - [ ] 6.1 Read the proposed code in the action's `suggested_fix`
     - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
     - [ ] 6.3 IF violations found:
-        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation` for each violation's principle and metric_id
+        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation(metric_id=...)` for each violation's metric_id (no principle needed)
         - [ ] 6.3.2 Adjust `todo_items` to reflect the changes
         - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles
     - [ ] 6.4 IF still fails → move affected findings to `unresolved[]` with reason explaining why the patch was insufficient

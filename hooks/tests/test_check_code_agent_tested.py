@@ -11,7 +11,13 @@ HOOKS_DIR = str(Path(__file__).resolve().parents[1])
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
-from check_code_agent_tested import _parse_transcript, _test_was_run
+from check_code_agent_tested import (
+    _parse_transcript,
+    _unit_test_files_written,
+    _ui_test_files_written,
+    _unit_test_was_run,
+    _ui_test_was_run,
+)
 
 SCRIPT = str(Path(HOOKS_DIR) / "check_code_agent_tested.py")
 
@@ -49,97 +55,179 @@ def _event(transcript_path: str, exit_reason: str = "completed") -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# _parse_transcript
+# ---------------------------------------------------------------------------
+
 class TestParseTranscript(unittest.TestCase):
-    def test_extracts_tool_names(self):
+    def test_extracts_tool_names_and_mcp_test_calls(self):
         path = _make_transcript([
-            ("mcp__plugin_solid-coder_apple-build__build", {}),
             ("mcp__plugin_solid-coder_apple-build__test", {"skip_ui_tests": True}),
         ])
-        names, cmds = _parse_transcript(path)
-        self.assertIn("mcp__plugin_solid-coder_apple-build__test", names)
-        self.assertIn("mcp__plugin_solid-coder_apple-build__build", names)
-        self.assertEqual(cmds, [])
+        names, cmds, test_calls, written = _parse_transcript(path)
+        self.assertEqual(len(test_calls), 1)
+        self.assertEqual(test_calls[0]["skip_ui_tests"], True)
 
-    def test_extracts_bash_commands(self):
+    def test_extracts_written_paths(self):
         path = _make_transcript([
-            ("Bash", {"command": "swift test --filter MyTests"}),
+            ("Write", {"file_path": "/proj/FooTests.swift", "content": "..."}),
+            ("Edit", {"file_path": "/proj/Bar.swift", "old_string": "x", "new_string": "y"}),
         ])
-        names, cmds = _parse_transcript(path)
-        self.assertIn("Bash", names)
-        self.assertEqual(cmds, ["swift test --filter MyTests"])
+        _, _, _, written = _parse_transcript(path)
+        self.assertIn("/proj/FooTests.swift", written)
+        self.assertIn("/proj/Bar.swift", written)
 
     def test_missing_file_returns_empty(self):
-        names, cmds = _parse_transcript("/nonexistent/path.jsonl")
+        names, cmds, test_calls, written = _parse_transcript("/nonexistent/path.jsonl")
         self.assertEqual(names, set())
-        self.assertEqual(cmds, [])
+        self.assertEqual(written, [])
 
 
-class TestTestWasRun(unittest.TestCase):
-    def test_mcp_test_tool_detected(self):
-        self.assertTrue(_test_was_run({"mcp__plugin_solid-coder_apple-build__test"}, []))
+# ---------------------------------------------------------------------------
+# _unit_test_files_written
+# ---------------------------------------------------------------------------
 
-    def test_xcodebuild_in_bash_detected(self):
-        self.assertTrue(_test_was_run(set(), ["xcodebuild test -scheme MyApp"]))
+class TestUnitTestFilesWritten(unittest.TestCase):
+    def test_detects_swift_test_file(self):
+        self.assertTrue(_unit_test_files_written(["/proj/FooTests.swift"]))
 
-    def test_swift_test_in_bash_detected(self):
-        self.assertTrue(_test_was_run(set(), ["swift test"]))
+    def test_detects_spec_file(self):
+        self.assertTrue(_unit_test_files_written(["/proj/FooSpec.swift"]))
 
-    def test_pytest_in_bash_detected(self):
-        self.assertTrue(_test_was_run(set(), ["pytest tests/"]))
+    def test_detects_test_in_path(self):
+        self.assertTrue(_unit_test_files_written(["/proj/Tests/FooTest.swift"]))
 
-    def test_unittest_in_bash_detected(self):
-        self.assertTrue(_test_was_run(set(), ["python3 -m unittest discover"]))
+    def test_does_not_detect_uitest_file(self):
+        # UITest files are handled separately
+        self.assertFalse(_unit_test_files_written(["/proj/FooUITests.swift"]))
+
+    def test_does_not_detect_production_file(self):
+        self.assertFalse(_unit_test_files_written(["/proj/Foo.swift", "/proj/Bar.swift"]))
+
+    def test_empty_paths_returns_false(self):
+        self.assertFalse(_unit_test_files_written([]))
+
+
+# ---------------------------------------------------------------------------
+# _ui_test_files_written
+# ---------------------------------------------------------------------------
+
+class TestUITestFilesWritten(unittest.TestCase):
+    def test_detects_uitest_file(self):
+        self.assertTrue(_ui_test_files_written(["/proj/AppUITests.swift"]))
+
+    def test_detects_ui_underscore_test(self):
+        self.assertTrue(_ui_test_files_written(["/proj/App_UI_Test.swift"]))
+
+    def test_does_not_detect_unit_test_file(self):
+        self.assertFalse(_ui_test_files_written(["/proj/FooTests.swift"]))
+
+    def test_empty_returns_false(self):
+        self.assertFalse(_ui_test_files_written([]))
+
+
+# ---------------------------------------------------------------------------
+# _unit_test_was_run / _ui_test_was_run (unchanged logic)
+# ---------------------------------------------------------------------------
+
+class TestUnitTestWasRun(unittest.TestCase):
+    def test_mcp_test_without_skip_unit_counts(self):
+        self.assertTrue(_unit_test_was_run(set(), [], [{"skip_unit_tests": False}]))
+
+    def test_mcp_test_with_skip_unit_does_not_count(self):
+        self.assertFalse(_unit_test_was_run(set(), [], [{"skip_unit_tests": True}]))
+
+    def test_xcodebuild_test_counts(self):
+        self.assertTrue(_unit_test_was_run(set(), ["xcodebuild test -scheme MyApp"], []))
+
+    def test_xcodebuild_build_only_does_not_count(self):
+        self.assertFalse(_unit_test_was_run(set(), ["xcodebuild build -scheme MyApp"], []))
 
     def test_no_test_returns_false(self):
-        self.assertFalse(_test_was_run(
-            {"mcp__plugin_solid-coder_apple-build__build", "Read", "Write"},
-            ["ls", "git status"],
-        ))
+        self.assertFalse(_unit_test_was_run({"Read", "Write"}, ["ls"], []))
 
+
+# ---------------------------------------------------------------------------
+# Integration — main()
+# ---------------------------------------------------------------------------
 
 class TestMainHook(unittest.TestCase):
-    def test_allows_when_test_tool_was_called(self):
+    def test_no_test_files_written_passes_through(self):
+        # Agent wrote only production code — hook should NOT block
         path = _make_transcript([
+            ("Write", {"file_path": "/proj/Calculator.swift", "content": "..."}),
             ("mcp__plugin_solid-coder_apple-build__build", {}),
-            ("mcp__plugin_solid-coder_apple-build__test", {"skip_ui_tests": True}),
         ])
         r = _run(_event(path))
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout, "")
 
-    def test_blocks_when_no_test_was_run(self):
+    def test_wrote_tests_but_no_run_blocks(self):
+        # Agent wrote FooTests.swift but never ran tests — BLOCK
         path = _make_transcript([
+            ("Write", {"file_path": "/proj/FooTests.swift", "content": "..."}),
             ("mcp__plugin_solid-coder_apple-build__build", {}),
-            ("Write", {"file_path": "/foo/Bar.swift", "content": "..."}),
         ])
         r = _run(_event(path))
-        self.assertEqual(r.returncode, 0)
         payload = json.loads(r.stdout)
         self.assertEqual(payload["decision"], "block")
         self.assertIn("Phase 5", payload["reason"])
 
-    def test_allows_when_xcodebuild_test_in_bash(self):
+    def test_wrote_tests_and_ran_them_passes(self):
+        # Agent wrote tests AND ran them — allow
         path = _make_transcript([
-            ("Bash", {"command": "xcodebuild test -scheme MyApp -destination 'platform=macOS'"}),
+            ("Write", {"file_path": "/proj/FooTests.swift", "content": "..."}),
+            ("mcp__plugin_solid-coder_apple-build__test", {}),
         ])
         r = _run(_event(path))
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout, "")
 
+    def test_wrote_uitests_but_only_ran_unit_blocks(self):
+        # Wrote UITests.swift, ran unit tests only (skip_ui_tests=True) — BLOCK
+        path = _make_transcript([
+            ("Write", {"file_path": "/proj/AppUITests.swift", "content": "..."}),
+            ("mcp__plugin_solid-coder_apple-build__test", {"skip_ui_tests": True}),
+        ])
+        r = _run(_event(path))
+        payload = json.loads(r.stdout)
+        self.assertEqual(payload["decision"], "block")
+
+    def test_wrote_uitests_and_ran_uitests_passes(self):
+        # Wrote UITests, ran UI tests — allow
+        path = _make_transcript([
+            ("Write", {"file_path": "/proj/AppUITests.swift", "content": "..."}),
+            ("mcp__plugin_solid-coder_apple-build__test", {"skip_unit_tests": True}),
+        ])
+        r = _run(_event(path))
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout, "")
+
+    def test_xcodebuild_build_only_still_blocks(self):
+        # Agent wrote tests, ran xcodebuild build (not test) — BLOCK
+        path = _make_transcript([
+            ("Write", {"file_path": "/proj/FooTests.swift", "content": "..."}),
+            ("Bash", {"command": "xcodebuild build -scheme MyApp"}),
+        ])
+        r = _run(_event(path))
+        payload = json.loads(r.stdout)
+        self.assertEqual(payload["decision"], "block")
+
     def test_passes_through_on_error_exit_reason(self):
-        path = _make_transcript([("Write", {"file_path": "/foo/Bar.swift", "content": "..."})])
+        path = _make_transcript([("Write", {"file_path": "/proj/FooTests.swift", "content": "..."})])
         r = _run(_event(path, exit_reason="error"))
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout, "")
 
     def test_passes_through_on_cancelled(self):
-        path = _make_transcript([("Write", {"file_path": "/foo/Bar.swift", "content": "..."})])
+        path = _make_transcript([("Write", {"file_path": "/proj/FooTests.swift", "content": "..."})])
         r = _run(_event(path, exit_reason="cancelled"))
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout, "")
 
     def test_malformed_stdin_passes_through(self):
-        r = subprocess.run([sys.executable, SCRIPT], input="not json", capture_output=True, text=True)
+        r = subprocess.run([sys.executable, SCRIPT], input="not json",
+                           capture_output=True, text=True)
         self.assertEqual(r.returncode, 0)
 
 
