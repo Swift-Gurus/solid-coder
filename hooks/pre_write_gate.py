@@ -114,10 +114,19 @@ def _allow() -> None:
     sys.exit(0)
 
 
-def _allow_corrected(tool_name: str, tool_input: dict, corrected: str) -> None:
-    input_key = "content" if tool_name == "Write" else "new_string"
+def _allow_corrected(tool_name: str, tool_input: dict, corrected: str, existing_content: str = "") -> None:
     updated = dict(tool_input)
-    updated[input_key] = corrected
+    if tool_name == "Write":
+        updated["content"] = corrected
+    elif existing_content:
+        # content was simulated from the full existing file — replace the whole file
+        # so the Edit tool doesn't insert corrected (full file) where old_string was (small snippet).
+        updated["old_string"] = existing_content
+        updated["new_string"] = corrected
+        updated.pop("replace_all", None)
+    else:
+        # File was unreadable; content == new_string, corrected is the corrected snippet.
+        updated["new_string"] = corrected
     sys.stdout.write(json.dumps({
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -162,6 +171,7 @@ def main() -> None:
         _allow()
         return
 
+    existing = ""
     low_risk = False
     if tool_name == "Write":
         content = tool_input.get("content", "")
@@ -227,7 +237,7 @@ def main() -> None:
 
     if corrected is not None and corrected != content:
         _log(f"CORRECTED {name}: frontmatter updated")
-        _allow_corrected(tool_name, tool_input, corrected)
+        _allow_corrected(tool_name, tool_input, corrected, existing_content=existing)
     else:
         if run_health or run_frontmatter:
             _log(f"CLEAN {name}")

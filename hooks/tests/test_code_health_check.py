@@ -155,6 +155,55 @@ class TestDetectTags(unittest.TestCase):
         self.assertNotIn("ui-test", matched)
 
 
+class TestPrincipleDisplayName(unittest.TestCase):
+    def test_reads_displayName_from_rule_md(self):
+        with tempfile.TemporaryDirectory() as d:
+            principle_dir = Path(d) / "principle_dir"
+            code_dir = principle_dir / "code"
+            code_dir.mkdir(parents=True)
+            (principle_dir / "rule.md").write_text(
+                "---\nname: unit-testing\ndisplayName: Unit Testing\n---\nContent.\n"
+            )
+            instructions = code_dir / "instructions.md"
+            instructions.write_text("Instructions.")
+            self.assertEqual(hook._principle_display_name(instructions), "Unit Testing")
+
+    def test_falls_back_to_folder_name_when_no_rule_md(self):
+        with tempfile.TemporaryDirectory() as d:
+            principle_dir = Path(d) / "SRP"
+            code_dir = principle_dir / "code"
+            code_dir.mkdir(parents=True)
+            instructions = code_dir / "instructions.md"
+            instructions.write_text("Instructions.")
+            self.assertEqual(hook._principle_display_name(instructions), "SRP")
+
+    def test_falls_back_to_folder_name_when_displayName_absent(self):
+        with tempfile.TemporaryDirectory() as d:
+            principle_dir = Path(d) / "MyPrinciple"
+            code_dir = principle_dir / "code"
+            code_dir.mkdir(parents=True)
+            (principle_dir / "rule.md").write_text("---\nname: my-principle\n---\nNo displayName here.\n")
+            instructions = code_dir / "instructions.md"
+            instructions.write_text("Instructions.")
+            self.assertEqual(hook._principle_display_name(instructions), "MyPrinciple")
+
+    def test_loads_rules_uses_displayName_as_section_header(self):
+        with tempfile.TemporaryDirectory() as d:
+            principle_dir = Path(d) / "swift"
+            code_dir = principle_dir / "code"
+            code_dir.mkdir(parents=True)
+            (principle_dir / "rule.md").write_text(
+                "---\ndisplayName: Unit Testing\n---\n"
+            )
+            instructions = code_dir / "instructions.md"
+            instructions.write_text("Rule body.")
+            with patch("code_health_check.subprocess.run",
+                       return_value=_gateway_rules([str(instructions)])):
+                result = hook._load_rules([])
+        self.assertIn("## Unit Testing", result)
+        self.assertNotIn("## swift", result)
+
+
 class TestLoadRules(unittest.TestCase):
     def test_passes_matched_tags_to_gateway(self):
         captured = []

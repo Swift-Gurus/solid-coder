@@ -65,9 +65,10 @@ filter: if `search_codebase` returns a match whose path is `{file_path}`, \
 discard that match. It is a self-reference, not a reuse miss.
 
 If you find violations, load targeted fix guidance before writing your response:
-- For each unique (principle, metric_id) violation found, call \
-`mcp__docs__load_fix_for_violation` with the principle and metric_id — it returns \
-the fix instructions directly in `content`.
+- For each unique metric_id violation found, call \
+`mcp__docs__load_fix_for_violation` with only metric_id (e.g. metric_id="OCP-1") — \
+no principle needed, it is resolved automatically. The tool returns fix instructions \
+directly in `content`.
 - Use those instructions to make the `fix` field in your response concrete and actionable.
 
 List ALL violations (both within-file and cross-file). For each include:
@@ -163,6 +164,27 @@ def _get_candidate_tags() -> list:
         return []
 
 
+_DISPLAY_NAME_RE = re.compile(r"^displayName:\s*(.+)$", re.MULTILINE)
+
+
+def _principle_display_name(path: Path) -> str:
+    """Return the human-readable principle name for a rule file path.
+
+    Reads ``displayName:`` from the sibling ``rule.md`` in the principle
+    folder (``path.parent.parent``).  Falls back to the folder name so the
+    function never raises.
+    """
+    rule_md = path.parent.parent / "rule.md"
+    try:
+        text = rule_md.read_text(encoding="utf-8")
+        m = _DISPLAY_NAME_RE.search(text)
+        if m:
+            return m.group(1).strip()
+    except OSError:
+        pass
+    return path.parents[1].name
+
+
 def _load_rules(matched_tags: list) -> Optional[str]:
     """Load and return the concatenated content of all active code rule files."""
     cmd = ["python3", str(GATEWAY), "load_rules", "--mode", "code"]
@@ -182,7 +204,7 @@ def _load_rules(matched_tags: list) -> Optional[str]:
                     end = text.find("\n---", 3)
                     if end != -1:
                         text = text[end + 4:].strip()
-                principle = Path(p).parents[1].name
+                principle = _principle_display_name(Path(p))
                 parts.append(f"## {principle}\n{text}")
             except OSError:
                 continue

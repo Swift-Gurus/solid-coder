@@ -132,7 +132,9 @@ class TestGateDecisions(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
-    def test_edit_tool_uses_new_string_key(self):
+    def test_edit_unreadable_file_sets_new_string_to_corrected(self):
+        """When the file can't be read, content == new_string; corrected is the snippet-level
+        fix, so new_string gets the corrected snippet — no full-file replacement needed."""
         with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER), \
              patch("pre_write_gate._run_health", return_value=[]):
             code, out = _call_main(_event("Edit", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
@@ -140,6 +142,52 @@ class TestGateDecisions(unittest.TestCase):
         updated = payload["hookSpecificOutput"]["updatedInput"]
         self.assertIn("new_string", updated)
         self.assertEqual(updated["new_string"], CORRECTED_FRONTMATTER)
+
+    def test_edit_existing_file_replaces_whole_file_to_prevent_duplication(self):
+        """When the existing file is readable, _run_frontmatter receives the full post-edit
+        content and returns a full corrected file.  _allow_corrected must set
+        old_string=existing so the Edit replaces the whole file — not insert the
+        full corrected content in place of the small old_string (which duplicates)."""
+        import os
+        import tempfile
+
+        existing_content = (
+            "/**\n solid-name: Foo\n solid-category: service\n"
+            " solid-description: Loads via URLSession.shared.\n */\n"
+            "final class Foo {\n    func old() {}\n}\n"
+        )
+        corrected_content = (
+            "/**\n solid-name: Foo\n solid-category: service\n"
+            " solid-description: Coordinates data retrieval.\n */\n"
+            "final class Foo {\n    func updated() {}\n}\n"
+        )
+
+        with tempfile.NamedTemporaryFile(suffix=".swift", mode="w", delete=False, encoding="utf-8") as f:
+            f.write(existing_content)
+            tmp_path = f.name
+
+        try:
+            event = {
+                "tool_name": "Edit",
+                "tool_input": {
+                    "file_path": tmp_path,
+                    "old_string": "    func old() {}\n",
+                    "new_string": "    func updated() {}\n",
+                },
+                "session_id": "test",
+            }
+            with patch("pre_write_gate._run_frontmatter", return_value=corrected_content), \
+                 patch("pre_write_gate._run_health", return_value=[]):
+                code, out = _call_main(event)
+        finally:
+            os.unlink(tmp_path)
+
+        payload = json.loads(out)
+        updated = payload["hookSpecificOutput"]["updatedInput"]
+        self.assertEqual(updated["old_string"], existing_content,
+                         "old_string must be the full existing file to prevent duplication")
+        self.assertEqual(updated["new_string"], corrected_content)
+        self.assertNotIn("replace_all", updated)
 
     def test_no_frontmatter_health_clean_allows(self):
         """No solid-description means frontmatter correction is skipped.
