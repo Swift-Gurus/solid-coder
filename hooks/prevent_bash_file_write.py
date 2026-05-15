@@ -22,26 +22,29 @@ Allows:
 import json
 import re
 import sys
+from typing import Tuple
 
 # Only block writes targeting these source code extensions.
 _PROTECTED_EXTENSIONS = (".swift", ".kt", ".java")
 
 # Patterns that indicate writing to a file via Bash.
-# Each entry: (regex, human-readable name)
-_WRITE_PATTERNS = [
+# Each entry: (regex, re_flags, human-readable name)
+_WRITE_PATTERNS: list[Tuple[str, int, str]] = [
     # tee — almost always writes to a file
-    (r'\btee\b', "tee"),
+    (r'\btee\b', 0, "tee"),
     # heredoc redirect: cat << EOF > file  or  cat <<'EOF' > file
-    (r"<<\s*['\"]?[A-Z_a-z]+['\"]?\s*>", "heredoc redirect"),
+    (r"<<\s*['\"]?[A-Z_a-z]+['\"]?\s*>", 0, "heredoc redirect"),
     # stdout redirect to a file path: > file or >> file
     # exclude: >/dev/null, >&N, 2>, N>
-    (r"(?<![0-9&2])>{1,2}(?!&\d|/dev/null|\s*$)\s*\S", "output redirect (> or >>)"),
+    (r"(?<![0-9&2])>{1,2}(?!&\d|/dev/null|\s*$)\s*\S", 0, "output redirect (> or >>)"),
     # sed -i / sed -i'' / sed -i.bak — in-place file modification
-    (r"\bsed\b.*\s-[a-zA-Z]*i", "sed in-place (-i)"),
+    (r"\bsed\b.*\s-[a-zA-Z]*i", 0, "sed in-place (-i)"),
     # perl -i / perl -pi — in-place file modification
-    (r"\bperl\b.*\s-[a-zA-Z]*i", "perl in-place (-i)"),
-    # python/python3 open(..., 'w') or open(..., 'a') — writing via Python one-liner
-    (r"\bpython3?\b.*\bopen\s*\(.*['\"][wa]['\"]", "python open write"),
+    (r"\bperl\b.*\s-[a-zA-Z]*i", 0, "perl in-place (-i)"),
+    # python/python3 open(..., 'w') or open(..., 'a') — writing via Python one-liner or
+    # multi-line -c block. re.DOTALL lets .* span newlines so the python3 keyword and
+    # the open() call don't have to appear on the same line.
+    (r"\bpython3?\b.*\bopen\s*\(.*['\"][wa]['\"]", re.DOTALL, "python open write"),
 ]
 
 # Safe patterns — don't block even if a write pattern matched
@@ -79,8 +82,8 @@ def _contains_file_write(command: str):
         if re.search(safe, command):
             command = re.sub(safe, "", command)
 
-    for pattern, name in _WRITE_PATTERNS:
-        if re.search(pattern, command):
+    for pattern, flags, name in _WRITE_PATTERNS:
+        if re.search(pattern, command, flags):
             return name
     return None
 

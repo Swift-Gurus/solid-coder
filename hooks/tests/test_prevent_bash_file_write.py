@@ -109,6 +109,33 @@ class TestFileWriteDetection(unittest.TestCase):
         self.assertIn("Write tool", reason)
         self.assertIn("file-write-gate", reason)
 
+    def test_blocks_python3_multiline_write(self):
+        """python3 -c with open(..., 'w') on a different line than python3 must be blocked."""
+        cmd = (
+            "python3 -c \"\n"
+            "files = ['Foo.swift']\n"
+            "for f in files:\n"
+            "    with open(f, 'w') as fp:\n"
+            "        fp.write('content')\n"
+            "\""
+        )
+        _, out = _call(cmd)
+        self.assertTrue(_is_denied(out))
+
+    def test_allows_python3_multiline_read_only(self):
+        """python3 -c that only reads files must be allowed."""
+        cmd = (
+            "python3 -c \"\n"
+            "files = ['Foo.swift', 'Bar.swift']\n"
+            "for f in files:\n"
+            "    with open(f, 'rb') as fp:\n"
+            "        n = len(fp.read()) - len(fp.read().rstrip(b'\\n'))\n"
+            "        print(n, f)\n"
+            "\""
+        )
+        _, out = _call(cmd)
+        self.assertTrue(_is_allowed(out))
+
 
 class TestChunkFileReadDetection(unittest.TestCase):
     """Bash must not be used to read MCP chunk files — use the Read tool instead."""
