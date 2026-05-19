@@ -167,7 +167,8 @@ def main() -> None:
     file_path = tool_input.get("file_path", "")
     parent_session_id = event.get("session_id", "")
 
-    if not file_path.endswith(".swift"):
+    ext = Path(file_path).suffix.lower()
+    if ext not in health.SUPPORTED_EXTENSIONS:
         _allow()
         return
 

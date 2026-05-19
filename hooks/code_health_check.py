@@ -25,6 +25,7 @@ GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
 # Maps file extension → display name used in the prompt.
 SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".swift": "Swift",
+    ".py": "Python",
 }
 
 
