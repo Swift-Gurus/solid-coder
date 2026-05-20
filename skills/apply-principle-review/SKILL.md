@@ -2,7 +2,7 @@
 name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings
 user-invocable: false
 ---
 
@@ -18,7 +18,7 @@ user-invocable: false
 ## Phase 1
 Create Preparation task list and execute it
 - [ ] 1.1 **Create output folder** - Create folder FOLDER == `OUTPUT_PATH/NAME`
-- [ ] 1.2 **Load principle rules** — call `mcp__plugin_solid-coder_docs__load_rules` with `mode: "review"` and `principle: NAME`. Apply the returned rules throughout Phase 2.
+- [ ] 1.2 **Load principle rules** — call `mcp__plugin_solid-coder_docs__load_detection_rules` with `principle: NAME`. The tool returns structured per-metric detection instructions and definitions when the principle has XML detection blocks in rule.md. If the principle has no XML detection blocks, it falls back to returning the full rule.md content — apply whichever form is returned throughout Phase 2.
 - [ ] 1.3 **Parse input** -
   - read and parse input json
   - extract the list of files and their units (paths, line ranges, has_changes flags)
@@ -38,7 +38,7 @@ END
 ## Phase 3
 Creating output.
 - [ ] 3.1 **Load output schema** — Read `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json`
-- [ ] 3.2 **Generate output** — Produce structured output matching the output schema, write to created FOLDER `review-output.json`
+- [ ] 3.2 **Submit findings** — Construct a partial output document matching the output schema structure with `agent: NAME.lowercase()`, `principle: NAME`, `timestamp: ISO-8601 now`, `files: [...units with metrics filled]` but with scoring and findings left empty or absent. Call `mcp__plugin_solid-coder_pipeline__submit_findings` with `{partial_output: <document>, output_path: FOLDER/review-output.json}`. The MCP validates, scores, writes the completed file, and returns a compact summary (principle, total_units, severe_count, minor_count, compliant_count). Log the summary. Do NOT use the Write tool to write review-output.json directly.
 
 ## Constraints
 - Do NOT invent rules — only apply what is in the rules file

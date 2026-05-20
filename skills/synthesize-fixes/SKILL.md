@@ -2,7 +2,7 @@
 name: synthesize-fixes
 description: Holistic fix planner — reads all findings from all principles, loads principle fix knowledge dynamically, and generates a unified, cross-checked fix plan per file.
 argument-hint: <output-root>
-allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings, mcp__plugin_solid-coder_pipeline__search_codebase
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_docs__load_fix_instructions, mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings, mcp__plugin_solid-coder_pipeline__search_codebase
 user-invocable: false
 ---
 
@@ -94,7 +94,7 @@ FOR each cross-check principle:
 
 ### 4.3 Patch Failures
 IF any cross-check fails:
-- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_for_violation` with the relevant `metric_id`
+- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions` with the relevant `metric_id`
       (e.g. `metric_id: "OCP-1"`). The principle is resolved automatically. Use context
       from Phase 3.2 if already loaded for this run.
 - [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:

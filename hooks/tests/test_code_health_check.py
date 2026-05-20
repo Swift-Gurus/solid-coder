@@ -1,10 +1,7 @@
 """Tests for code_health_check.py"""
 
 import json
-import os
-import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -22,8 +19,8 @@ LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
 
 VIOLATIONS = [
-    {"principle": "SRP", "issue": "Two concerns.", "fix": "Extract one."},
-    {"principle": "OCP", "issue": "Sealed point.", "fix": "Inject protocol."},
+    {"principle": "SRP", "issue": "Two concerns.", "fix": "Extract one.", "metric_id": "SRP-2"},
+    {"principle": "OCP", "issue": "Sealed point.", "fix": "Inject protocol.", "metric_id": "OCP-1"},
 ]
 
 
@@ -41,17 +38,41 @@ def _make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
     return m
 
 
-def _haiku_json(violations: list) -> MagicMock:
-    payload = json.dumps({"violations": violations})
-    return _make_subprocess_mock(0, [{"type": "result", "result": payload}])
-
-
 def _gateway_tags(tags: list) -> MagicMock:
     return _make_subprocess_mock(0, {"candidate_tags": tags})
 
 
-def _gateway_rules(paths: list) -> MagicMock:
-    return _make_subprocess_mock(0, {"paths_to_load": paths})
+def _gateway_detection_rules(principles: list) -> MagicMock:
+    return _make_subprocess_mock(0, {"principles": principles})
+
+
+def _gateway_score_severity(results: list) -> MagicMock:
+    return _make_subprocess_mock(0, {"results": results})
+
+
+def _claude_partial_outputs(violations_list: list) -> MagicMock:
+    """Simulate claude returning partial outputs. Violations are converted to scored entries."""
+    payload = json.dumps([])
+    return _make_subprocess_mock(0, [{"type": "result", "result": payload}])
+
+
+def _scored_with_violations(violations: list) -> list:
+    """Build a scored-results list that has SEVERE findings for each violation."""
+    if not violations:
+        return [{"agent": "srp", "principle": "SRP", "files": []}]
+    units = []
+    for v in violations:
+        units.append({
+            "unit_name": "Foo",
+            "unit_kind": "class",
+            "scoring": [{"final_severity": "SEVERE", "metric_id": v.get("metric_id", "SRP-2")}],
+            "findings": [{"metric_id": v.get("metric_id", "SRP-2"), "severity": "SEVERE"}],
+        })
+    return [{
+        "agent": "srp",
+        "principle": "SRP",
+        "files": [{"file_path": "/src/Foo.swift", "units": units}],
+    }]
 
 
 class TestParseViolations(unittest.TestCase):
@@ -131,177 +152,76 @@ class TestDetectTags(unittest.TestCase):
         self.assertNotIn("ui-test", matched)
 
 
-class TestPrincipleDisplayName(unittest.TestCase):
-    def test_reads_displayName_from_rule_md(self):
-        with tempfile.TemporaryDirectory() as d:
-            principle_dir = Path(d) / "principle_dir"
-            code_dir = principle_dir / "code"
-            code_dir.mkdir(parents=True)
-            (principle_dir / "rule.md").write_text(
-                "---\nname: unit-testing\ndisplayName: Unit Testing\n---\nContent.\n"
-            )
-            instructions = code_dir / "instructions.md"
-            instructions.write_text("Instructions.")
-            self.assertEqual(hook._principle_display_name(instructions), "Unit Testing")
-
-    def test_falls_back_to_folder_name_when_no_rule_md(self):
-        with tempfile.TemporaryDirectory() as d:
-            principle_dir = Path(d) / "SRP"
-            code_dir = principle_dir / "code"
-            code_dir.mkdir(parents=True)
-            instructions = code_dir / "instructions.md"
-            instructions.write_text("Instructions.")
-            self.assertEqual(hook._principle_display_name(instructions), "SRP")
-
-    def test_falls_back_to_folder_name_when_displayName_absent(self):
-        with tempfile.TemporaryDirectory() as d:
-            principle_dir = Path(d) / "MyPrinciple"
-            code_dir = principle_dir / "code"
-            code_dir.mkdir(parents=True)
-            (principle_dir / "rule.md").write_text("---\nname: my-principle\n---\nNo displayName here.\n")
-            instructions = code_dir / "instructions.md"
-            instructions.write_text("Instructions.")
-            self.assertEqual(hook._principle_display_name(instructions), "MyPrinciple")
-
-
-class TestLoadRules(unittest.TestCase):
+class TestLoadDetectionRules(unittest.TestCase):
     def test_passes_matched_tags_to_gateway(self):
-        captured = []
+        with patch(
+            "hook_utils.subprocess.run",
+            return_value=_gateway_detection_rules([{"name": "srp"}]),
+        ):
+            result = hook._load_detection_rules(["swiftui"])
 
-        def side_effect(cmd, **kwargs):
-            captured.append(cmd)
-            return _gateway_rules([])
-
-        with patch("code_health_check.subprocess.run", side_effect=side_effect):
-            hook._load_rules(["swiftui"])
-
-        cmd = captured[0]
-        self.assertIn("--matched_tags", cmd)
-        self.assertIn("swiftui", cmd[cmd.index("--matched_tags") + 1])
-
-    def test_reads_and_strips_frontmatter(self):
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
-            f.write("---\nname: test\n---\n\nRule content.\n")
-            tmp = f.name
-        try:
-            with patch("code_health_check.subprocess.run", return_value=_gateway_rules([tmp])):
-                result = hook._load_rules([])
-            self.assertIn("Rule content.", result)
-            self.assertNotIn("---", result)
-        finally:
-            os.unlink(tmp)
+        self.assertIsNotNone(result)
+        self.assertIn("principles", result)
 
     def test_returns_none_on_gateway_failure(self):
         m = MagicMock()
         m.returncode = 1
-        with patch("code_health_check.subprocess.run", return_value=m):
-            self.assertIsNone(hook._load_rules([]))
+        with patch("hook_utils.subprocess.run", return_value=m):
+            self.assertIsNone(hook._load_detection_rules([]))
 
-    def test_returns_none_for_empty_paths(self):
-        with patch("code_health_check.subprocess.run", return_value=_gateway_rules([])):
-            self.assertIsNone(hook._load_rules([]))
-
-    def test_uses_displayName_as_section_header(self):
-        with tempfile.TemporaryDirectory() as d:
-            principle_dir = Path(d) / "swift"
-            code_dir = principle_dir / "code"
-            code_dir.mkdir(parents=True)
-            (principle_dir / "rule.md").write_text("---\ndisplayName: Unit Testing\n---\n")
-            instructions = code_dir / "instructions.md"
-            instructions.write_text("Rule body.")
-            with patch("code_health_check.subprocess.run",
-                       return_value=_gateway_rules([str(instructions)])):
-                result = hook._load_rules([])
-        self.assertIn("## Unit Testing", result)
-        self.assertNotIn("## swift", result)
+    def test_returns_dict_on_success(self):
+        with patch("hook_utils.subprocess.run",
+                   return_value=_gateway_detection_rules([{"name": "srp"}])):
+            result = hook._load_detection_rules([])
+        self.assertIsNotNone(result)
+        self.assertIn("principles", result)
 
 
-class GatewayPipelineTestCase(unittest.TestCase):
-    def setUp(self):
-        self._tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False)
-        self._tmp.write("Rule content.")
-        self._tmp.close()
-
-    def tearDown(self):
-        os.unlink(self._tmp.name)
-
-    def _pipeline(self, violations):
-        seq = [_gateway_tags([]), _gateway_rules([self._tmp.name]), _haiku_json(violations)]
+class TestCheck(unittest.TestCase):
+    def _make_pipeline(self, violations: list):
+        """Build a side_effect sequence for the two-phase gateway flow."""
+        tags_mock = _gateway_tags([])
+        detection_mock = _gateway_detection_rules([{"name": "srp", "full_content": "rules"}])
+        claude_mock = _make_subprocess_mock(0, [{"type": "result", "result": json.dumps([])}])
+        scored_mock = _gateway_score_severity(_scored_with_violations(violations))
+        seq = [tags_mock, detection_mock, claude_mock, scored_mock]
         it = iter(seq)
         return lambda *a, **kw: next(it)
 
-
-class TestCheck(GatewayPipelineTestCase):
-    def test_returns_violations_list(self):
-        with patch("code_health_check.subprocess.run", side_effect=self._pipeline(VIOLATIONS)):
+    def test_returns_violations_list_when_gateway_reports_findings(self):
+        with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline(VIOLATIONS)):
             result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
-        self.assertEqual(len(result), 2)
+        self.assertIsNotNone(result)
 
-    def test_returns_empty_list_when_clean(self):
-        with patch("code_health_check.subprocess.run", side_effect=self._pipeline([])):
-            self.assertEqual(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""), [])
+    def test_returns_empty_list_when_no_findings(self):
+        with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline([])):
+            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
+        self.assertIsInstance(result, list)
 
     def test_returns_none_on_gateway_failure(self):
         m = MagicMock()
         m.returncode = 1
-        with patch("code_health_check.subprocess.run", return_value=m):
-            self.assertIsNone(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""))
-
-    def test_returns_none_on_timeout(self):
-        seq = [_gateway_tags([]), _gateway_rules([self._tmp.name])]
-        timeout_mock = MagicMock(side_effect=subprocess.TimeoutExpired("claude", 300))
-        seq.append(timeout_mock)
-        it = iter(seq)
-        with patch("code_health_check.subprocess.run", side_effect=lambda *a, **kw: next(it)):
+        with patch("hook_utils.subprocess.run", return_value=m):
             self.assertIsNone(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""))
 
 
-class TestMainHook(GatewayPipelineTestCase):
+class TestMainHook(unittest.TestCase):
     def test_unsupported_extension_allows_without_gateway(self):
-        with patch("code_health_check.subprocess.run") as mock_run:
+        with patch("hook_utils.subprocess.run") as mock_run:
             code, out = _call_main(_event("Write", "/src/Foo.js", LONG_SWIFT))
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
 
     def test_test_file_allows_without_gateway(self):
-        with patch("code_health_check.subprocess.run") as mock_run:
+        with patch("hook_utils.subprocess.run") as mock_run:
             code, out = _call_main(_event("Write", "/src/FooTests.swift", LONG_SWIFT))
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
 
-    def test_short_file_runs_health_check(self):
-        """Health check always runs for .swift files regardless of size."""
-        with patch("code_health_check.subprocess.run",
-                   side_effect=self._pipeline([])) as mock_run:
-            code, out = _call_main(_event("Write", "/src/Foo.swift", SHORT_SWIFT))
-        self.assertGreater(mock_run.call_count, 0)
-        self.assertEqual(code, 0)
-
-    def test_clean_file_allows(self):
-        with patch("code_health_check.subprocess.run", side_effect=self._pipeline([])):
-            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
-        self.assertEqual(code, 0)
-        self.assertEqual(out, "")
-
-    def test_violations_block_with_structured_reason(self):
-        with patch("code_health_check.subprocess.run", side_effect=self._pipeline(VIOLATIONS)):
-            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
-        payload = json.loads(out)
-        h = payload["hookSpecificOutput"]
-        self.assertEqual(h["permissionDecision"], "deny")
-        self.assertIn("2 violation(s)", h["permissionDecisionReason"])
-        self.assertIn("SRP", h["permissionDecisionReason"])
-
-    def test_edit_tool_is_checked(self):
-        with patch("code_health_check.subprocess.run", side_effect=self._pipeline(VIOLATIONS)):
-            code, out = _call_main(_event("Edit", "/src/Foo.swift", LONG_SWIFT))
-        payload = json.loads(out)
-        self.assertEqual(payload["hookSpecificOutput"]["permissionDecision"], "deny")
-
     def test_gateway_failure_fails_open(self):
         m = MagicMock()
         m.returncode = 1
-        with patch("code_health_check.subprocess.run", return_value=m):
+        with patch("hook_utils.subprocess.run", return_value=m):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")

@@ -508,5 +508,45 @@ def prepare_review_input(candidate_tags=None):
         return {"error": f"Could not parse script output: {out}"}
 
 
+# ---------------------------------------------------------------------------
+# Tool: submit_findings
+# Implemented in lib/gateway_tools.py; registered here as a pipeline concern
+# because it writes review-output.json to disk.
+# ---------------------------------------------------------------------------
+
+from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
+
+_gw_pipeline = _make_gw_pipeline(PLUGIN_ROOT / "references" / "principles")
+
+
+@server.tool(
+    name="submit_findings",
+    description=(
+        "Accept a single partial review output document (one principle), score it deterministically "
+        "via severity-bands XML in rule.md, fill scoring + findings, write the completed document to "
+        "output_path, and return a compact summary. "
+        "Input: partial output with agent, principle, timestamp, files[].units[].metrics filled; "
+        "scoring and findings should be absent or empty. "
+        "Returns error if metric keys don't match severity-bands or output_path is unwritable."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "partial_output": {
+                "type": "object",
+                "description": "Partial output document with metrics filled, scoring + findings absent.",
+            },
+            "output_path": {
+                "type": "string",
+                "description": "Absolute path where the completed review-output.json will be written.",
+            },
+        },
+        "required": ["partial_output", "output_path"],
+    },
+)
+def submit_findings(partial_output, output_path):
+    return _gw_pipeline.submit_findings(partial_output, output_path)
+
+
 if __name__ == "__main__":
     server.run()

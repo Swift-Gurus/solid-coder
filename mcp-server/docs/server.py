@@ -498,5 +498,89 @@ def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg
     return f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n"
 
 
+# ---------------------------------------------------------------------------
+# Tools: load_detection_rules, score_severity, load_fix_instructions
+# Implemented in lib/gateway_tools.py; registered here for the docs server.
+# ---------------------------------------------------------------------------
+
+from lib.gateway_tools import make_gateway_handler as _make_gw
+
+_gw = _make_gw(REFS_ROOT / "principles")
+
+
+@server.tool(
+    name="load_detection_rules",
+    description=(
+        "Load per-metric detection instructions and definitions for one or more principles. "
+        "Pass principle name for a single principle, or matched_tags to get all active principles. "
+        "Returns XML-block content (detection, definition, severity_bands, exceptions) when available, "
+        "or full rule.md content as fallback for principles without XML blocks."
+    ),
+    meta={"anthropic/maxResultSizeChars": 200000},
+    input_schema={
+        "type": "object",
+        "properties": {
+            "principle": {
+                "type": "string",
+                "description": "Principle name, e.g. 'SRP'. Omit to load all active principles.",
+            },
+            "matched_tags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Tags matched from the project. Filters conditional principles.",
+            },
+        },
+    },
+)
+def load_detection_rules(principle=None, matched_tags=None):
+    return _gw.load_detection_rules(principle=principle, matched_tags=matched_tags)
+
+
+@server.tool(
+    name="score_severity",
+    description=(
+        "Score an array of partial review output documents — one per active principle. "
+        "Each document must have agent, principle, timestamp, and files[].units[].metrics filled. "
+        "The MCP applies severity bands from rule.md XML deterministically and fills scoring + findings. "
+        "No file is written. Used by the pre-write health check which activates multiple principles simultaneously."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "partial_outputs": {
+                "type": "array",
+                "description": "Array of partial output documents (one per principle) with metrics filled.",
+                "items": {"type": "object"},
+            },
+        },
+        "required": ["partial_outputs"],
+    },
+)
+def score_severity(partial_outputs):
+    return _gw.score_severity(partial_outputs)
+
+
+@server.tool(
+    name="load_fix_instructions",
+    description=(
+        "Load fix strategy text for a specific metric ID (e.g. 'SRP-1', 'OCP-2'). "
+        "Returns the fix instructions from the principle's fix/ folder with frontmatter stripped. "
+        "Returns an error message naming the unrecognised ID if not found."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "metric_id": {
+                "type": "string",
+                "description": "Metric ID, e.g. 'SRP-1', 'OCP-2', 'DRY-3'.",
+            },
+        },
+        "required": ["metric_id"],
+    },
+)
+def load_fix_instructions(metric_id):
+    return _gw.load_fix_instructions(metric_id)
+
+
 if __name__ == "__main__":
     server.run()

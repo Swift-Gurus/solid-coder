@@ -105,3 +105,56 @@ If different stakeholders could independently request changes to the same class 
 | SRP-2 | Cohesion groups | 2+ groups                        | SEVERE    |
 ---
 
+<definition id="SRP-1" name="Verb Count">
+A verb is a distinct action the class performs — what it actually *does*, not what a method is called. Count distinct verbs extracted from all non-init/deinit/factory methods. The verb count measures how many distinct responsibilities are expressed through behaviour.
+</definition>
+
+<detection id="SRP-1">
+1. Read every method (skip init/deinit/factory methods) and extract the verb — what it actually does, not the method name.
+2. List all verbs — do NOT merge or deduplicate synonyms.
+3. Count distinct verbs.
+Metric keys: verb_count (integer), cohesion_groups (integer), stakeholder_count (integer).
+</detection>
+
+<severity-bands id="SRP-1">
+<band severity="COMPLIANT"><condition>verb_count &lt;= 2 and cohesion_groups == 1</condition></band>
+<band severity="MINOR"><condition>verb_count &gt;= 3 and cohesion_groups == 1 and stakeholder_count &lt;= 1</condition></band>
+<band severity="SEVERE"><condition>verb_count &gt;= 3 and stakeholder_count &gt;= 2</condition></band>
+</severity-bands>
+
+<definition id="SRP-2" name="Cohesion Groups">
+A cohesion group is a set of methods that share the same instance variables. Disjoint variable sets indicate multiple responsibilities. Apply the Bridge Method Rule: if a single method accesses variables from two otherwise disjoint sets, it is an orchestrator — remove it from the graph, count remaining components.
+</definition>
+
+<detection id="SRP-2">
+1. Build a method-variable access matrix: for each method, record which instance variables it reads or writes.
+2. Group methods into clusters that share at least one variable.
+3. Apply Bridge Method Rule: if one method connects two otherwise-disjoint groups, remove it and count the remaining components.
+4. Count the number of resulting cohesion groups.
+Metric keys: cohesion_groups (integer).
+</detection>
+
+<severity-bands id="SRP-2">
+<band severity="COMPLIANT"><condition>cohesion_groups &lt;= 1</condition></band>
+<band severity="SEVERE"><condition>cohesion_groups &gt;= 2</condition></band>
+</severity-bands>
+
+<definition id="SRP-3" name="Stakeholder Count">
+A stakeholder is a distinct person or team who could independently request a change to this class. Different stakeholders represent different reasons to change, which is the core SRP violation signal.
+</definition>
+
+<detection id="SRP-3">
+Ask "Who would request this change?" for each group of methods. Count distinct stakeholder types (DBA, UX Designer, Business Analyst, Security Team, DevOps, Product Owner, etc.).
+Metric keys: stakeholder_count (integer).
+</detection>
+
+<severity-bands id="SRP-3">
+<band severity="COMPLIANT"><condition>stakeholder_count &lt;= 1</condition></band>
+<band severity="MINOR"><condition>stakeholder_count == 1</condition></band>
+<band severity="SEVERE"><condition>stakeholder_count &gt;= 2</condition></band>
+</severity-bands>
+
+<exceptions>
+1. Facade / Coordinator — a class whose every dependency is protocol-typed, every method is pure delegation with no business logic, and no objects are constructed internally. Its single responsibility is coordination. Final severity: COMPLIANT regardless of verb or cohesion counts.
+</exceptions>
+

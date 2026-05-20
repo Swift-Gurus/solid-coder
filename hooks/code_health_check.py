@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """PreToolUse hook — SOLID health check on source files before writing.
 
-Fires before Write or Edit on any supported source file. Uses the gateway to
-discover active principles for the file content, then passes the rule file paths
-to a bare Claude session so it can Read them itself — keeping the initial prompt
-small and fast. If violations are found, blocks the write with the full list so
-the agent can fix everything in one pass before retrying.
+Two-phase implementation:
+  Phase 1: Load structured detection instructions via load_detection_rules.
+  Phase 2: Claude measures raw metrics and returns partial outputs.
+  Phase 3: score_severity scores the metrics against severity-band XML.
+  Phase 4: Allow if clean, block if SEVERE/MINOR findings found.
 
 Skips: unsupported extensions, test files.
 Fails open silently — an infrastructure error never blocks the write.
@@ -13,23 +13,27 @@ Fails open silently — an infrastructure error never blocks the write.
 
 import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
 
+HOOKS_DIR = Path(__file__).resolve().parent
+if str(HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(HOOKS_DIR))
+
+from hook_utils import (
+    make_hook_gate, run_gateway_cmd, run_claude_bare,
+    JSON_OBJ_RE, strip_markdown_fences,
+)
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
 
-# Extend this dict as new languages gain principle coverage.
-# Maps file extension → display name used in the prompt.
 SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".swift": "Swift",
     ".py": "Python",
 }
 
-
-# Import patterns for tag detection, keyed by candidate tag name.
 TAG_PATTERNS: dict[str, list[str]] = {
     "swiftui": [r"\bimport\s+SwiftUI\b", r"\bView\b", r"\b@State\b", r"\b@Observable\b"],
     "structured-concurrency": [r"\basync\b", r"\bawait\b", r"\bTask\b", r"\bActor\b"],
@@ -38,78 +42,59 @@ TAG_PATTERNS: dict[str, list[str]] = {
     "xctest": [r"\bimport\s+XCTest\b"],
 }
 
-HEALTH_PROMPT = """\
-You are a SOLID code quality gate doing a pre-write check.
+MEASUREMENT_PROMPT = """\
+You are a SOLID code quality gate measuring raw metrics before a write.
 
 <exceptions>
-The following are exempt from all rules — do not report violations for them:
+The following are exempt from all rules:
 - `#Preview` blocks and their entire body
-- Files whose sole purpose is SwiftUI previews (filename ends with \
-"Previews.swift" or "Preview.swift", or the file contains only `#Preview` \
-blocks with no production types)
+- Files whose sole purpose is SwiftUI previews
 </exceptions>
 
-<review-rules>
-{rules}
-</review-rules>
+<detection-instructions>
+{detection_instructions}
+</detection-instructions>
 
 <code-to-review>
 {content}
 </code-to-review>
 
-Before listing violations, run the DRY-1 search procedure from the loaded rules: \
-call `mcp__plugin_solid-coder_pipeline__search_codebase` with synonyms for \
-each type defined in this file to detect cross-file reuse misses. \
-The destination path for this write is `{file_path}`. Do NOT read that path — \
-the file does not exist yet or contains stale content. Use the path only as a \
-filter: if `search_codebase` returns a match whose path is `{file_path}`, \
-discard that match. It is a self-reference, not a reuse miss.
+For EACH type/class/struct/function in the code, measure the raw metric values
+defined in the detection instructions above. Output a JSON array of partial output
+documents — one per active principle — matching this structure exactly:
 
-If you find violations, load targeted fix guidance before writing your response:
-- For each unique metric_id violation found, call \
-`mcp__docs__load_fix_for_violation` with only metric_id (e.g. metric_id="OCP-1") — \
-no principle needed, it is resolved automatically. The tool returns fix instructions \
-directly in `content`.
-- Use those instructions to make the `fix` field in your response concrete and actionable.
+[
+  {{
+    "agent": "<principle_name_lowercase>",
+    "principle": "<Principle Display Name>",
+    "timestamp": "2026-01-01T00:00:00Z",
+    "files": [
+      {{
+        "file_path": "{file_path}",
+        "units": [
+          {{
+            "unit_name": "<TypeName>",
+            "unit_kind": "class|struct|enum|protocol|extension",
+            "metrics": {{
+              "<MetricID>": {{ "<metric_key>": <value> }}
+            }}
+          }}
+        ]
+      }}
+    ]
+  }}
+]
 
-List ALL violations (both within-file and cross-file). For each include:
-- principle: the rule name (e.g. SRP, OCP, DRY)
-- metric_id: the metric identifier (e.g. OCP-1, SRP-2)
-- issue: what is wrong
-- fix: the specific change needed (informed by the loaded fix instructions)
-
-Your entire response MUST be a single raw JSON object and nothing else. \
-No markdown fences. No explanation. No commentary. The response starts \
-with `{{` and ends with `}}` and contains only valid JSON.
-
-{{"violations": [{{"principle": "string", "metric_id": "string", "issue": "string", "fix": "string"}}]}}
-
-Empty array if clean: {{"violations": []}}
+Your entire response MUST be a single raw JSON array and nothing else.
+No markdown fences. No explanation. No commentary.
+Empty files array if no measurable units: [{{"agent": "srp", "principle": "...", "timestamp": "...", "files": []}}]
 """
-
-_JSON_OBJ = re.compile(r"\{.*\}", re.DOTALL)
-_LOG = Path.home() / ".claude" / "solid-coder-gate.log"
-
-
-def _log_error(file_path: str, reason: str) -> None:
-    import time
-    name = Path(file_path).name
-    try:
-        with _LOG.open("a") as f:
-            f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} HEALTH_ERR {name}: {reason}\n")
-    except Exception:
-        pass
 
 
 def _parse_violations(raw: str) -> Optional[list]:
-    """Extract the violations array from the LLM JSON response.
-
-    Handles optional markdown code fences and surrounding text.
-    Returns None if parsing fails entirely.
-    Returns [] if the response is valid JSON with no violations.
-    """
-    text = re.sub(r"```[a-zA-Z]*\n?", "", raw).strip()
-    m = _JSON_OBJ.search(text)
+    """Extract violations array from a legacy LLM JSON response (fallback path)."""
+    text = strip_markdown_fences(raw)
+    m = JSON_OBJ_RE.search(text)
     if not m:
         return None
     try:
@@ -141,9 +126,6 @@ def _detect_tags(content: str, candidate_tags: list) -> list:
         patterns = TAG_PATTERNS.get(tag, [])
         if any(re.search(p, content) for p in patterns):
             matched.append(tag)
-    # UI tests and unit tests are mutually exclusive — XCUIApplication is the
-    # definitive signal. If present, drop unit-test/xctest so only UITesting
-    # rules load; without it, drop ui-test so only Unit Testing rules load.
     if "ui-test" in matched:
         matched = [t for t in matched if t not in ("unit-test", "xctest")]
     else:
@@ -151,85 +133,71 @@ def _detect_tags(content: str, candidate_tags: list) -> list:
     return matched
 
 
+def _gateway_call(subcommand: str, extra_args: Optional[list] = None,
+                  timeout: int = 10, result_key: Optional[str] = None,
+                  default=None):
+    """Build and run a gateway command, returning a specific key or the raw dict."""
+    cmd = ["python3", str(GATEWAY), subcommand] + (extra_args or [])
+    data = run_gateway_cmd(cmd, timeout=timeout)
+    if data is None:
+        return default
+    return data.get(result_key, default) if result_key else data
+
+
 def _get_candidate_tags() -> list:
-    try:
-        result = subprocess.run(
-            ["python3", str(GATEWAY), "get_candidate_tags"],
-            capture_output=True, text=True, timeout=10,
-        )
-        if result.returncode != 0:
-            return []
-        data = json.loads(result.stdout)
-        return data.get("candidate_tags", [])
-    except Exception:
-        return []
+    return _gateway_call("get_candidate_tags", result_key="candidate_tags", default=[])
 
 
-_DISPLAY_NAME_RE = re.compile(r"^displayName:\s*(.+)$", re.MULTILINE)
+def _load_detection_rules(matched_tags: list) -> Optional[dict]:
+    extra = ["--matched_tags", ",".join(matched_tags)] if matched_tags else []
+    return _gateway_call("load_detection_rules", extra_args=extra)
 
 
-def _principle_display_name(path: Path) -> str:
-    """Return the human-readable principle name for a rule file path.
-
-    Reads ``displayName:`` from the sibling ``rule.md`` in the principle
-    folder (``path.parent.parent``).  Falls back to the folder name so the
-    function never raises.
-    """
-    rule_md = path.parent.parent / "rule.md"
-    try:
-        text = rule_md.read_text(encoding="utf-8")
-        m = _DISPLAY_NAME_RE.search(text)
-        if m:
-            return m.group(1).strip()
-    except OSError:
-        pass
-    return path.parents[1].name
+def _score_via_gateway(partial_outputs: list) -> Optional[list]:
+    return _gateway_call(
+        "score_severity",
+        extra_args=["--partial_outputs", json.dumps(partial_outputs)],
+        timeout=30,
+        result_key="results",
+    )
 
 
-def _load_rules(matched_tags: list) -> Optional[str]:
-    """Load and return the concatenated content of all active code rule files."""
-    cmd = ["python3", str(GATEWAY), "load_rules", "--mode", "code"]
-    if matched_tags:
-        cmd += ["--matched_tags", ",".join(matched_tags)]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if result.returncode != 0:
-            return None
-        data = json.loads(result.stdout)
-        paths = data.get("paths_to_load", [])
-        parts = []
-        for p in paths:
-            try:
-                text = Path(p).read_text()
-                if text.startswith("---"):
-                    end = text.find("\n---", 3)
-                    if end != -1:
-                        text = text[end + 4:].strip()
-                principle = _principle_display_name(Path(p))
-                parts.append(f"## {principle}\n{text}")
-            except OSError:
-                continue
-        return "\n\n".join(parts) if parts else None
-    except Exception:
-        return None
+def _violations_from_scored_results(scored_results: list) -> list:
+    violations = []
+    for entry in scored_results:
+        if "error" in entry:
+            continue
+        principle = entry.get("principle", entry.get("agent", ""))
+        for file_obj in entry.get("files", []):
+            for unit in file_obj.get("units", []):
+                for finding in unit.get("findings", []):
+                    sev = finding.get("severity", "")
+                    if sev in ("SEVERE", "MINOR"):
+                        violations.append({
+                            "principle": principle,
+                            "metric_id": finding.get("metric_id", ""),
+                            "issue": f"{finding.get('metric_id', '')} {sev} in {unit.get('unit_name', '')}",
+                            "fix": f"Review {finding.get('metric_id', '')} metrics and apply fix guidance.",
+                        })
+    return violations
 
 
 def _check(content: str, path: str, language: str, parent_session_id: str) -> Optional[list]:
     """Run the health check. Returns list of violation dicts, [] if clean, None on error."""
     candidate_tags = _get_candidate_tags()
     matched_tags = _detect_tags(content, candidate_tags)
-    rules = _load_rules(matched_tags)
-    if not rules:
-        _log_error(path, "gateway_failed: could not load rules")
+
+    detection_data = _load_detection_rules(matched_tags)
+    if not detection_data:
         return None
 
-    header = ""
-    if parent_session_id:
-        header = f"# spawned-by: {parent_session_id}\n\n"
+    principles = detection_data.get("principles", [])
+    if not principles:
+        return []
 
-    prompt = header + HEALTH_PROMPT.format(
-        language=language,
-        rules=rules,
+    header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
+    prompt = header + MEASUREMENT_PROMPT.format(
+        detection_instructions=json.dumps(principles, indent=2),
         content=content,
         file_path=path,
     )
@@ -243,75 +211,32 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
         }
     })
 
+    inner_raw = run_claude_bare(prompt, mcp_config=mcp_config)
+    if not inner_raw:
+        return None
+
+    text = strip_markdown_fences(inner_raw)
     try:
-        result = subprocess.run(
-            [
-                "claude", "-p", prompt,
-                "--output-format", "json",
-                "--bare",
-                "--mcp-config", mcp_config,
-                "--allowedTools", (
-                    "mcp__pipeline__search_codebase,"
-                    "mcp__docs__load_fix_for_violation"
-                ),
-            ],
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode != 0:
-            _log_error(path, f"exit={result.returncode} stderr={result.stderr.strip()[:200]}")
-            return None
-
-        try:
-            events = json.loads(result.stdout)
-        except (json.JSONDecodeError, ValueError) as e:
-            _log_error(path, f"json_parse_error={e} stdout[:100]={result.stdout[:100]}")
-            return None
-        if not isinstance(events, list):
-            events = [events]
-
-        inner_raw = ""
-        for obj in reversed(events):
-            if isinstance(obj, dict) and obj.get("type") == "result":
-                inner_raw = obj.get("result", "")
-                break
-
-        if not inner_raw.strip():
-            return None
-
+        partial_outputs = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
         return _parse_violations(inner_raw)
-    except subprocess.TimeoutExpired:
-        _log_error(path, "timeout=300s")
-        return None
-    except Exception as e:
-        _log_error(path, f"exception={type(e).__name__}: {e}")
-        return None
 
+    if not isinstance(partial_outputs, list):
+        return _parse_violations(inner_raw)
 
-def _allow() -> None:
-    sys.exit(0)
+    scored_results = _score_via_gateway(partial_outputs)
+    if scored_results is None:
+        return _parse_violations(inner_raw)
 
-
-def _block(violations: list) -> None:
-    reason = "[health-check] " + _format_block_reason(violations)
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-    }))
-    sys.stdout.flush()
-    sys.exit(0)
+    return _violations_from_scored_results(scored_results)
 
 
 def main() -> None:
+    gate = make_hook_gate()
     try:
         event = json.loads(sys.stdin.read())
     except (json.JSONDecodeError, ValueError):
-        _allow()
+        gate.allow()
         return
 
     tool_name = event.get("tool_name", "")
@@ -322,12 +247,12 @@ def main() -> None:
     ext = Path(file_path).suffix.lower()
     language = SUPPORTED_EXTENSIONS.get(ext)
     if not language:
-        _allow()
+        gate.allow()
         return
 
     name = Path(file_path).name
     if "Tests" in name or "Spec" in name:
-        _allow()
+        gate.allow()
         return
 
     if tool_name == "Write":
@@ -335,14 +260,14 @@ def main() -> None:
     elif tool_name == "Edit":
         content = tool_input.get("new_string", "")
     else:
-        _allow()
+        gate.allow()
         return
 
     violations = _check(content, file_path, language, parent_session_id)
     if violations:
-        _block(violations)
+        gate.block("[health-check] " + _format_block_reason(violations))
     else:
-        _allow()
+        gate.allow()
 
 
 if __name__ == "__main__":
