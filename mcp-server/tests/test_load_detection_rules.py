@@ -1,8 +1,5 @@
 """
-solid-description: Unit tests for load_detection_rules tool. Tests verify that a
-principle whose rule.md has XML blocks returns structured per-metric instructions,
-a principle without XML blocks returns full_content, unknown principles return error,
-and matched_tags reduces the returned principle count.
+solid-description: Verifies that the detection rule loader returns structured principle data for valid inputs, errors for unknown principles, and respects tag-based filtering to narrow the result set.
 solid-category: unit-test
 """
 
@@ -14,29 +11,28 @@ class TestLoadDetectionRules(unittest.TestCase):
     def setUp(self):
         self.handler = make_handler()
 
+    def _load_first_principle(self, name: str) -> dict:
+        return self.handler.load_detection_rules(principle=name)["principles"][0]
+
     def test_srp_with_xml_blocks_returns_structured_detection_dict(self):
-        result = self.handler.load_detection_rules(principle="srp")
-        p = result["principles"][0]
+        p = self._load_first_principle("srp")
         self.assertIn("detection", p)
         self.assertIsInstance(p["detection"], dict)
 
     def test_srp_with_xml_blocks_returns_structured_definition_dict(self):
-        result = self.handler.load_detection_rules(principle="srp")
-        p = result["principles"][0]
+        p = self._load_first_principle("srp")
         self.assertIn("definition", p)
         self.assertIsInstance(p["definition"], dict)
 
-    def test_isp_without_xml_blocks_returns_full_content_key(self):
-        result = self.handler.load_detection_rules(principle="isp")
-        p = result["principles"][0]
-        self.assertIn("full_content", p)
+    def test_isp_with_xml_blocks_returns_detection_key(self):
+        p = self._load_first_principle("isp")
+        self.assertIn("detection", p)
+        self.assertIsInstance(p["detection"], dict)
 
-    def test_isp_without_xml_blocks_full_content_is_nonempty_string(self):
-        result = self.handler.load_detection_rules(principle="isp")
-        p = result["principles"][0]
-        full_content = p.get("full_content", "")
-        self.assertIsInstance(full_content, str)
-        self.assertGreater(len(full_content), 0)
+    def test_isp_with_xml_blocks_returns_severity_bands(self):
+        p = self._load_first_principle("isp")
+        self.assertIn("severity_bands", p)
+        self.assertGreater(len(p["severity_bands"]), 0)
 
     def test_unknown_principle_returns_error(self):
         result = self.handler.load_detection_rules(principle="nonexistent_xyz_principle")
@@ -49,10 +45,21 @@ class TestLoadDetectionRules(unittest.TestCase):
     def test_matched_tags_returns_fewer_principles_than_unfiltered(self):
         unfiltered = self.handler.load_detection_rules()
         tag_filtered = self.handler.load_detection_rules(matched_tags=["unit-test"])
-        self.assertLess(
-            len(tag_filtered.get("principles", [])),
-            len(unfiltered.get("principles", [])),
-        )
+        unfiltered_count = len(unfiltered.get("principles", []))
+        filtered_count = len(tag_filtered.get("principles", []))
+        # "unit-test" activates the Unit Testing principle + always-on principles.
+        # Conditional principles without a matching tag are excluded,
+        # so the filtered set must be smaller than the full unfiltered set.
+        self.assertGreater(filtered_count, 0, "tag filter returned no principles")
+        self.assertLess(filtered_count, unfiltered_count)
+
+
+    def test_fallback_path_returns_content_not_full_content(self):
+        # code-smells has no XML blocks — hits the fallback path.
+        # The fallback must NOT expose a full_content key; only content.
+        p = self._load_first_principle("code-smells")
+        self.assertIn("content", p)
+        self.assertNotIn("full_content", p)
 
 
 if __name__ == "__main__":

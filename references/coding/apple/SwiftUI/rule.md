@@ -27,25 +27,28 @@ State proliferation is handled by SRP (cohesion groups, verb count). Sealed depe
 
 Measure nesting depth and view expression count across `body` AND all view-returning computed properties/methods (any property or method that returns `some View`).
 
-**Definition:** Even moderately nested view hierarchies should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
+<definition id="SUI-1" name="Body Complexity">
+Even moderately nested view hierarchies should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-1" name="Body Complexity">
 1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
 2. **For each view-returning property, measure:**
    - Max nesting depth of view builder expressions (each View/container that takes a `@ViewBuilder` closure adds one level)
    - Count of distinct view expressions (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
 3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
 4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
+</detection>
 
 ### SUI-2: View Purity
 
 Detect business logic embedded in the view struct. A SwiftUI view must be dumb — it represents state, nothing more.
 
-**Definition:** A view's only job is to declare UI as a function of state. Methods that fetch data, sort/filter collections, validate input, format values, or perform computation belong in a ViewModel or domain layer. This is a role-based constraint: it's not about *how many* verbs (that's SRP), it's about whether *any* verb is something a View should never do.
+<definition id="SUI-2" name="View Purity">
+A view's only job is to declare UI as a function of state. Methods that fetch data, sort/filter collections, validate input, format values, or perform computation belong in a ViewModel or domain layer. This is a role-based constraint: it's not about *how many* verbs (that's SRP), it's about whether *any* verb is something a View should never do.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-2" name="View Purity">
 1. **List every method and computed property** in the view struct (excluding `body`)
 2. **Classify each as:**
    - PURE_VIEW — returns `some View`, configures view appearance, or toggles simple UI state (`showSheet = true`, `isExpanded.toggle()`)
@@ -56,33 +59,34 @@ Detect business logic embedded in the view struct. A SwiftUI view must be dumb �
      - VALIDATE — input validation, business rule checking
      - COMPUTE — calculations, state machine transitions, derived business state
 3. **Count IMPURE methods/properties**
+</detection>
 
 ### SUI-3: Modifier Chain Length
 
 Detect inline views nested inside `@ViewBuilder` closures that accumulate too many modifiers. Long modifier chains on nested views hurt readability — extract them into named computed properties.
 
-**Definition:** When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has 2 or more chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
+<definition id="SUI-3" name="Modifier Chain Length">
+When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has 2 or more chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
 
 **Scope:** Only counts modifiers on **nested child views** inside a closure — NOT on the top-level return value of `body` or a computed property. The top-level view's own modifiers are part of its external API and don't hurt readability.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-3" name="Modifier Chain Length">
 1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
 2. **For each child view expression** inside that closure (not the outermost container)
 3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
 4. **Flag** if modifier count >= 2
+</detection>
 
 ### SUI-4: ViewModel Injection
 
 Detect views that depend on a concrete ViewModel type for logic or data access.
 
-**Definition:** When a view delegates logic or data access to a ViewModel,                                                                                                                                                            
-that dependency must be injected via protocol interfaces — a State protocol                                                                                                                                                         
-(what the view reads) and an Actions protocol (what the view triggers).                                                                                                                                                               
-A view referencing a concrete ViewModel class is sealed to that implementation.
+<definition id="SUI-4" name="ViewModel Injection">
+When a view delegates logic or data access to a ViewModel, that dependency must be injected via protocol interfaces — a State protocol (what the view reads) and an Actions protocol (what the view triggers). A view referencing a concrete ViewModel class is sealed to that implementation.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-4" name="ViewModel Injection">
 1. **Identify the ViewModel property** — the stored property that serves as
    the view's logic/data source (typically @Observable class, ObservableObject,
    or any type providing business state + actions)
@@ -96,15 +100,17 @@ A view referencing a concrete ViewModel class is sealed to that implementation.
       property is COMPLIANT. No generic needed.
 3. **Not in scope:** plain value properties (String, Bool, structs),
    closures/actions, nested child views, style/configuration types
+</detection>
 
 ### SUI-5: Preview-Only View Containment
 
 Detect views that exist solely for Xcode Previews but are declared at file scope, causing them to ship in the production binary.
 
-**Definition:** A view whose only purpose is visual validation in Xcode Previews (design token galleries, component showcases, layout experiments) must be defined entirely inside a `#Preview` block or `PreviewProvider` struct. The compiler strips `#Preview` blocks and `PreviewProvider` types from release builds, so code inside them never ships. Views and helper types declared at file scope — even if only referenced from `#Preview` — are included in the binary as dead code.
+<definition id="SUI-5" name="Preview-Only View Containment">
+A view whose only purpose is visual validation in Xcode Previews (design token galleries, component showcases, layout experiments) must be defined entirely inside a `#Preview` block or `PreviewProvider` struct. The compiler strips `#Preview` blocks and `PreviewProvider` types from release builds, so code inside them never ships. Views and helper types declared at file scope — even if only referenced from `#Preview` — are included in the binary as dead code.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-5" name="Preview-Only View Containment">
 1. **Identify file-scope view structs** — list every `struct` conforming to `View` declared at file scope (not nested inside `#Preview`, `PreviewProvider`, or another type)
 2. **Identify file-scope helper types** — list every `struct`, `class`, or `enum` at file scope that does NOT conform to `View` but is only referenced by a preview-only view (support models, mock data, factory types)
 3. **For each file-scope view, check caller sites:**
@@ -116,15 +122,17 @@ Detect views that exist solely for Xcode Previews but are declared at file scope
 5. **Score:**
    - All file-scope views are PRODUCTION → COMPLIANT
    - Any file-scope view is PREVIEW_ONLY → SEVERE
+</detection>
 
 ### SUI-6: Preview Coverage
 
 Detect View structs that have no preview anywhere in the codebase.
 
-**Definition:** Every View struct declared at file scope must be instantiated in at least one `#Preview` block or `PreviewProvider` struct — either in the same file or in a separate preview file. Views without previews cannot be visually validated during development.
+<definition id="SUI-6" name="Preview Coverage">
+Every View struct declared at file scope must be instantiated in at least one `#Preview` block or `PreviewProvider` struct — either in the same file or in a separate preview file. Views without previews cannot be visually validated during development.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-6" name="Preview Coverage">
 1. **Identify file-scope View structs** — list every `struct` conforming to `View` declared at file scope
 2. **Search for preview instantiation** — for each View struct, search:
    - The same file for `#Preview` blocks or `PreviewProvider` structs that instantiate it
@@ -132,67 +140,67 @@ Detect View structs that have no preview anywhere in the codebase.
 3. **Score:**
    - View is instantiated in at least one preview → COMPLIANT
    - View has no preview instantiation anywhere → SEVERE
+</detection>
 
 ### SUI-7: Accessibility Identifier on Containers
 
 Detect container views (`HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, `Group`) that have `.accessibilityIdentifier(...)` without a preceding `.accessibilityElement(children: .contain)` modifier.
 
-**Definition:** Container views are not exposed in the accessibility hierarchy by default. Applying `.accessibilityIdentifier(...)` alone is invisible to the accessibility tree — XCUI tests will fail to find the element. The container must first opt into the hierarchy with `.accessibilityElement(children: .contain)` (or `.combine`/`.ignore` depending on intent) before the identifier becomes discoverable.
+<definition id="SUI-7" name="Accessibility Identifier on Containers">
+Container views are not exposed in the accessibility hierarchy by default. Applying `.accessibilityIdentifier(...)` alone is invisible to the accessibility tree — XCUI tests will fail to find the element. The container must first opt into the hierarchy with `.accessibilityElement(children: .contain)` (or `.combine`/`.ignore` depending on intent) before the identifier becomes discoverable.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-7" name="Accessibility Identifier on Containers">
 1. **Identify container views** — any `HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, or `Group` expression
 2. **For each container view with `.accessibilityIdentifier(...)`:**
    - Check if `.accessibilityElement(children:)` appears in the modifier chain **before** `.accessibilityIdentifier(...)`
    - If missing → VIOLATION
    - If present → COMPLIANT
 3. **Containers without `.accessibilityIdentifier(...)`** are not in scope — no finding
+</detection>
 
 ### SUI-8: Adaptive Sizing
 
 Detect fixed-size frames on non-leaf views and parents that use hardcoded sizes instead of proportional layout.
 
-**Definition:** SwiftUI's layout system is built on a propose-respond model — parents propose sizes, children respond. 
-Views that participate in layout should size proportionally or with constraints, not with hardcoded literal values. 
-Fixed frames prevent adaptation to different window sizes, device orientations, Dynamic Type, and localization.
+<definition id="SUI-8" name="Adaptive Sizing">
+SwiftUI's layout system is built on a propose-respond model — parents propose sizes, children respond. Views that participate in layout should size proportionally or with constraints, not with hardcoded literal values. Fixed frames prevent adaptation to different window sizes, device orientations, Dynamic Type, and localization.
 
 There are two distinct violations:
 
 1. **Child self-sizing** — a child view hardcodes its own external dimensions internally (e.g., `.frame(width: 240)` inside their logic) instead of letting its parent control the size
 2. **Parent rigid sizing** — a parent composes a child with a hardcoded size (e.g., `SomeView().frame(width: 240)`) instead of using proportional layout
+</definition>
 
-**Detection:**
-
+<detection id="SUI-8" name="Adaptive Sizing">
 1. **Find all `.frame()` calls with literal numeric width/height values** — hardcoded point values anywhere in view code
 2. **Every literal numeric frame is a violation** — regardless of where it appears:
    - A view hardcoding its own external size → should let its parent decide
    - A parent hardcoding a child's size → should use proportional sizing
    - A view hardcoding an internal element's size → remove frame, let element adapt to parent-given space or use proportional sizing
 3. **Count** fixed-frame violations
+</detection>
 
 
 ### SUI-9: Actor Isolation Granularity
 
 Detect `@MainActor` applied to entire types or protocols when only specific members need main-thread isolation.
 
-**Definition:** 
-Marking a whole class or protocol `@MainActor` forces every property and method onto the main thread. 
-For ViewModels this is especially dangerous — methods that perform network calls, parsing, 
-or heavy computation cannot run on a background thread without explicit `nonisolated` or `Task.detached` workarounds. 
-Protocols marked `@MainActor` can be problematic — they constrain **all** conformers to the main thread. However, protocol-level `@MainActor` is correct when all production conformers are legitimately `@MainActor` (facades, UI coordinators). In Swift 6 strict concurrency, removing `@MainActor` from a protocol while keeping it on the conformer causes "crosses into main actor-isolated code" errors.
+<definition id="SUI-9" name="Actor Isolation Granularity">
+Marking a whole class or protocol `@MainActor` forces every property and method onto the main thread. For ViewModels this is especially dangerous — methods that perform network calls, parsing, or heavy computation cannot run on a background thread without explicit `nonisolated` or `Task.detached` workarounds. Protocols marked `@MainActor` can be problematic — they constrain **all** conformers to the main thread. However, protocol-level `@MainActor` is correct when all production conformers are legitimately `@MainActor` (facades, UI coordinators). In Swift 6 strict concurrency, removing `@MainActor` from a protocol while keeping it on the conformer causes "crosses into main actor-isolated code" errors.
 
 The correct pattern for **types** is per-member isolation: annotate only the properties and methods that must run on main (published state, UI callbacks), leaving the rest free to run on any executor.
 
 The correct pattern for **protocols** depends on conformer analysis: check whether any production conformer needs to run requirements off main thread.
 
-**There are three distinct violations:**
+There are three distinct violations:
 
 1. **Type-level over-isolation** — `@MainActor` on a class/struct where not all members need main thread. The type should use per-member `@MainActor` annotations instead.
 2. **Protocol-level over-isolation** — `@MainActor` on a protocol where a **production conformer** needs to run some requirements off main thread. The protocol should annotate only the requirements that must be main-isolated. **Requires conformer analysis** — see detection step 4.
 3. **nonisolated escape hatch** — A type marked `@MainActor` that uses `nonisolated` on individual members to opt them out. This is a code smell indicating the type-level annotation is too broad — if members need to escape, the type shouldn't be globally isolated.
+</definition>
 
-**Detection:**
-
+<detection id="SUI-9" name="Actor Isolation Granularity">
 1. **Find all `@MainActor` annotations on type declarations** — `@MainActor class`, `@MainActor struct`, `@MainActor protocol`, `@MainActor extension`
 2. **For each annotated class/struct, analyze members:**
    - List all methods and properties
@@ -209,8 +217,9 @@ The correct pattern for **protocols** depends on conformer analysis: check wheth
 5. **Score:**
    - All type members genuinely need main thread AND no `nonisolated` present AND protocol conformers are all `@MainActor` → COMPLIANT
    - Any BACKGROUND_SAFE member on a type OR any `nonisolated` escape hatch OR protocol forcing a conformer off main → SEVERE
+</detection>
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
 2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
 3. **Inline format specifiers** — `Text(price, format: .currency(code: "USD"))` and similar SwiftUI-native format APIs used directly in `body` are idiomatic, not impurity.
@@ -224,8 +233,9 @@ The correct pattern for **protocols** depends on conformer analysis: check wheth
 11. **Explicit in instructions** - if prompt, instructions says to use explicit size.
 12. **View structs** — SwiftUI `View` structs are value types that only live during `body` evaluation. `@MainActor` on a View struct is harmless and often compiler-inferred — not a SUI-9 violation.
 13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
+</exceptions>
 
-### Severity Bands:
+<severity-bands id="SUI">
 - COMPLIANT (nesting < 2 AND expressions < 5 AND impure == 0 AND max nested modifier chain < 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames AND no over-broad @MainActor)
 - SEVERE (any of the following):
     - Nesting depth >= 2
@@ -238,6 +248,8 @@ The correct pattern for **protocols** depends on conformer analysis: check wheth
     - Container view with `.accessibilityIdentifier(...)` missing preceding `.accessibilityElement(children:)`
     - Any `.frame()` with literal numeric width/height value
     - `@MainActor` on type/protocol with background-safe members or `nonisolated` escape hatches
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

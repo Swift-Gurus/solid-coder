@@ -18,16 +18,18 @@ tags:
 
 ### SC-1: Concurrency Model Mixing
 
+<definition id="SC-1" name="Concurrency Model Mixing">
 A type MUST use one concurrency model. Mixing `async/await` with GCD (`DispatchQueue.async`, `DispatchQueue.main.async`) or completion handlers in the same type creates unpredictable execution order and makes cancellation impossible.
+</definition>
 
-**Detection:**
-
+<detection id="SC-1" name="Concurrency Model Mixing">
 1. Count `async` functions/methods in the type
 2. Count GCD calls in the same type: `DispatchQueue.main.async`, `DispatchQueue.global().async`, `.async {`, `.sync {`
 3. Count completion handler patterns in the same type: closures as last parameter with `@escaping` that are called asynchronously
 
 **Scoring:**
 - If async count > 0 AND (GCD count > 0 OR completion handler count > 0) → the type mixes models
+</detection>
 
 **Result:**
 
@@ -39,16 +41,18 @@ A type MUST use one concurrency model. Mixing `async/await` with GCD (`DispatchQ
 
 ### SC-2: Unstructured Task Lifecycle
 
+<definition id="SC-2" name="Unstructured Task Lifecycle">
 Every `Task { }` or `Task.detached { }` created outside of SwiftUI `.task` modifier must have a stored handle and a cancellation path.
+</definition>
 
-**Detection:**
-
+<detection id="SC-2" name="Unstructured Task Lifecycle">
 1. Count `Task {` and `Task.detached {` occurrences in the type
 2. For each, check:
    - Is the return value stored in a property? (e.g., `let task = Task { }`)
    - Is there a `task.cancel()` call in `deinit`, `onDisappear`, or a cleanup method?
 3. Count tasks without stored handle = orphaned tasks
 4. Count tasks with stored handle but no cancel call = leaked tasks
+</detection>
 
 **Result:**
 
@@ -58,12 +62,14 @@ Every `Task { }` or `Task.detached { }` created outside of SwiftUI `.task` modif
 
 ### SC-3: Concurrency Safety Bypasses
 
+<definition id="SC-3" name="Concurrency Safety Bypasses">
 Developer escape hatches that silence the compiler without fixing the underlying problem.
+</definition>
 
-**Detection:**
-
+<detection id="SC-3" name="Concurrency Safety Bypasses">
 1. Count `@unchecked Sendable` on any type — bypasses compiler Sendable verification entirely, regardless of whether properties are `let` or `var`
 2. Count `nonisolated(unsafe)` usages — bypasses actor isolation checking
+</detection>
 
 **Result:**
 
@@ -73,11 +79,11 @@ Developer escape hatches that silence the compiler without fixing the underlying
 
 ### SC-4: Sequential vs Concurrent Await
 
-**Detection:**
-
+<detection id="SC-4" name="Sequential vs Concurrent Await">
 1. Find sequences of `await` calls within the same scope (function body, closure)
 2. For each pair of sequential awaits: are they independent? (second doesn't use result of first)
 3. Count independent sequential awaits that could be `async let` or `TaskGroup`
+</detection>
 
 **Result:**
 
@@ -87,8 +93,7 @@ Developer escape hatches that silence the compiler without fixing the underlying
 
 ### SC-5: Sync-to-Async Bridging
 
-**Detection:**
-
+<detection id="SC-5" name="Sync-to-Async Bridging">
 1. Count synchronous functions that use blocking mechanisms to wait for async results:
    - `DispatchSemaphore` + `.wait()` around async code
    - `DispatchGroup` + `.wait()` around async code  
@@ -96,6 +101,7 @@ Developer escape hatches that silence the compiler without fixing the underlying
 2. Count `withCheckedContinuation` / `withUnsafeContinuation` usages:
    - Is there a native async API available for what's being wrapped?
    - Does every code path resume exactly once?
+</detection>
 
 **Result:**
 
@@ -105,13 +111,15 @@ Developer escape hatches that silence the compiler without fixing the underlying
 
 ### SC-6: Duration API
 
+<definition id="SC-6" name="Duration API">
 Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integers are error-prone and unreadable.
+</definition>
 
-**Detection:**
-
+<detection id="SC-6" name="Duration API">
 1. Count usages of `Task.sleep(nanoseconds:)` — should be `Task.sleep(for: .seconds(N))`
 2. Count raw integer literals used as time durations (nanoseconds, milliseconds) where `.seconds()`, `.milliseconds()`, `.minutes()` should be used
 3. Applies to: timeouts, delays, intervals, any time duration parameter
+</detection>
 
 **Result:**
 
@@ -119,12 +127,13 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
 |----------|------------------|-----------|------------|
 |          |                  |           |            |
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **Legacy bridge code** — `withCheckedContinuation` wrapping completion-handler APIs (e.g., `URLSession` delegate methods, CoreLocation callbacks, `NotificationCenter` observers) that Apple has not yet provided an `async` alternative for. If an `async` version of the API exists in the SDK, using continuation instead of the async version IS a violation.
 2. **SwiftUI `.task` modifier** — framework manages Task cancellation automatically, no need to store handle
 3. **Test code** — unit tests are exempt from lifecycle checks (Task { } in tests is acceptable)
+</exceptions>
 
-### Severity Bands:
+<severity-bands id="SC">
 - COMPLIANT (0 violations across all metrics)
 - MINOR (any of the following):
     - @MainActor slightly too broad but no data race risk
@@ -136,6 +145,8 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
     - 3+ independent sequential awaits that should be concurrent (SC-4)
     - 1+ sync-to-async blocking bridge (SC-5)
     - 1+ raw nanosecond API or integer literal for duration (SC-6)
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

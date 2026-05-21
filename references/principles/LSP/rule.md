@@ -22,11 +22,11 @@ observable from code.
 
 Count runtime type checks (`is`, `as?`, `as!`, `type(of:)`) against concrete types in client code that uses a base type or protocol.
 
-**Definition:** 
+<definition id="LSP-1" name="Type Check Count">
 - A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
-    
-**Detection:**
+</definition>
 
+<detection id="LSP-1" name="Type Check Count">
 1. **Count typechecks** — `is`, `as?`, `as!`, `type(of:)` used with concrete types, protocols, interfaces
 2. **Count out exceptions**
    - see typecast-lsp-exception.swift in Examples
@@ -35,6 +35,7 @@ Count runtime type checks (`is`, `as?`, `as!`, `type(of:)`) against concrete typ
    - if not found -> external -> exception
    - if found -> developer-owned -> violation
 3. **Total Count** = total type checks minus exceptions
+</detection>
 
 **Result:**
 
@@ -75,12 +76,13 @@ final class StorageImpl: Storage {
 
 ### LSP-2: Contract Compliance (Inheritance Only)
 
-**Definition:** When a class inherits from another class and overrides methods, the subtype must honor the base contract: same or weaker preconditions, same or stronger postconditions, preserved invariants.
+<definition id="LSP-2" name="Contract Compliance">
+When a class inherits from another class and overrides methods, the subtype must honor the base contract: same or weaker preconditions, same or stronger postconditions, preserved invariants.
 
 **Trigger:** This metric only applies when `override` methods are detected in class inheritance. For protocol conformance without class inheritance, LSP-2 does not apply.
+</definition>
 
-**Detection:**
-
+<detection id="LSP-2" name="Contract Compliance">
 1. **Detect inheritance** — does the class inherit from a concrete base class (not just protocol conformance)?
 2. **If yes** — read the base class source code
 3. **For each `override` method, compare base vs subtype:**
@@ -106,6 +108,7 @@ final class StorageImpl: Storage {
 4. **Count** = total contract violations (new guards + weakened postconditions + invariant violations)
 
 *Note*: If the base class source is not available for reading, flag as "unable to verify" rather than assuming compliant.
+</detection>
 
 **Result:**
 
@@ -146,17 +149,19 @@ class WorldWideShipping: ShippingStrategy {
 
 ### LSP-3: Empty/non-implemented methods
 
-**Definition:** 
+<definition id="LSP-3" name="Empty Methods">
 - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
 - Empty methods or vars. Meaning non implemented methods or var from the contract
 - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
   - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
+</definition>
 
-**Detection:**
+<detection id="LSP-3" name="Empty Methods">
 1. **Count total methods/vars in the interface**
 2. **Count empty methods/vars** 
 3. **Count methods with fatal-error(or any conditions that cause crash)**
 4. **Calculate percentage of empty** - empty(non-fatal methods) methods/vars / total methods/vars
+</detection>
 
 | Category                        | Value |
 |---------------------------------|-------|
@@ -202,14 +207,17 @@ final class NoOp: Logger {
 
 ```
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **NoOp objects** — objects that provide no-op default behaviour (turn-off for testing, or when not initialized)
    - consider NoOps object if the name states it and 100% of methods/var from the contract are empty, or resolved to default values
+</exceptions>
 
-### Severity Bands:
+<severity-bands id="LSP">
 - COMPLIANT (0 net type checks, 0 contract violations, 0 empty/fatal error methods)
 - MINOR (<50% empty(non-fatal error) methods)
 - SEVERE (1+ net type checks OR 1+ contract violations or 1+ fatalError methods or empty methods (non fatal methods) >= 50%)
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

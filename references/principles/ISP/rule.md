@@ -22,13 +22,15 @@ observable from code.
 
 Count the number of methods/properties declared in a protocol.
 
-**Definition:** A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
+<definition id="ISP-1" name="Protocol Width">
+A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
+</definition>
 
-**Detection:**
-
+<detection id="ISP-1" name="Protocol Width">
 1. **List every method and property** declared in the protocol (including associated types)
 2. **Count total requirements** (methods + properties + associated types)
 3. **Exclude inherited requirements** — only count what THIS protocol declares, not parent protocols
+</detection>
 
 **Result:**
 
@@ -77,10 +79,11 @@ final class ReadOnlyCache: DataManaging {
 
 For each conformer of a protocol, measure what percentage of protocol methods have meaningful (non-empty, non-stub) implementations.
 
-**Definition:** A conformer with low coverage is being forced to depend on methods it does not use. This is the direct ISP violation signal.
+<definition id="ISP-2" name="Conformer Coverage">
+A conformer with low coverage is being forced to depend on methods it does not use. This is the direct ISP violation signal.
+</definition>
 
-**Detection:**
-
+<detection id="ISP-2" name="Conformer Coverage">
 1. **Find all conformers** of the protocol in the project
 2. **For each conformer, classify each required method/property as:**
    - MEANINGFUL — contains real logic (more than a single return statement with a default value)
@@ -88,6 +91,7 @@ For each conformer of a protocol, measure what percentage of protocol methods ha
    - STUB — returns a hardcoded default, throws `fatalError`, or has a trivial passthrough that ignores the intent
    - DELEGATED — forwards to another object (still counts as meaningful)
 3. **Calculate coverage** = meaningful / total requirements
+</detection>
 
 **Result (per conformer):**
 
@@ -127,13 +131,15 @@ final class FireAndForgetWorker: Worker {
 
 ### ISP-3: Cohesion Groups Within Protocol
 
+<definition id="ISP-3" name="Protocol Cohesion Groups">
 Group protocol methods by which conformers actually use them together. Disjoint groups suggest the protocol should be split.
+</definition>
 
-**Detection:**
-
+<detection id="ISP-3" name="Protocol Cohesion Groups">
 1. **Build a usage matrix**: for each conformer, which methods are MEANINGFUL
 2. **Identify groups of methods** that are always used together across conformers
 3. **Count groups** — if methods cluster into 2+ disjoint usage groups, the protocol mixes responsibilities
+</detection>
 
 **Result:**
 
@@ -141,7 +147,7 @@ Group protocol methods by which conformers actually use them together. Disjoint 
 |-------|---------|-------------------|
 |       |         |                   |
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **Non-protocol units** — ISP applies ONLY to protocol/interface declarations. Classes, structs, enums, and extensions that do not declare a protocol are outside ISP scope — mark as COMPLIANT, do not analyze. Conformers are examined only as evidence during ISP-2 (coverage analysis) of the protocol they conform to, not as ISP review targets themselves.
 2. **Marker protocols** — protocols with zero requirements used for type discrimination (e.g., `Sendable`, `Identifiable`). Width = 0 is always COMPLIANT.
 3. **Single-conformer protocols** — if only one conformer exists in the project, coverage is trivially 100%. Not a violation, but flag as "unable to verify ISP — single conformer." The protocol may still be too wide, but there is no evidence from usage.
@@ -149,8 +155,9 @@ Group protocol methods by which conformers actually use them together. Disjoint 
 5. **@objc protocols** — Objective-C interop protocols may require specific method sets dictated by the framework. Flag as "framework-constrained" rather than violation.
 6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
 7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
+</exceptions>
 
-### Severity Bands:
+<severity-bands id="ISP">
 - COMPLIANT (protocol width <= 5 AND minimum conformer coverage >= 80%)
 - MINOR (any of the following, provided no SEVERE trigger):
     - Protocol width 6-8 AND minimum conformer coverage >= 60%
@@ -160,6 +167,8 @@ Group protocol methods by which conformers actually use them together. Disjoint 
     - Any conformer coverage < 60%
     - 2+ cohesion groups within protocol methods
     - 1+ conformers with 3+ empty/stub methods
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

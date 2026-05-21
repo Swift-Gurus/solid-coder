@@ -23,7 +23,7 @@ tags:
 An isolated test can run in any order, concurrently, and repeatedly with the same result. Shared mutable state between tests and test interdependencies break isolation.
 </definition>
 
-<detection>
+<detection id="TEST-1">
 1. **Shared mutable state** — scan test class for:
    - `static var` / `static let` that is mutated across tests
    - Class-level `var` properties not reset in `setUp`/`init`
@@ -44,7 +44,7 @@ An isolated test can run in any order, concurrently, and repeatedly with the sam
 A well-structured test follows Arrange-Act-Assert (or Given-When-Then): set up preconditions, perform one action, verify one behavior. Tests should not contain conditional logic — a test with an `if` is two tests.
 </definition>
 
-<detection>
+<detection id="TEST-2">
 1. **Logic in tests** — flag any of:
    - `if` / `else` / `switch` statements in test body
    - `for` / `while` loops (except parameterized test data setup)
@@ -118,7 +118,7 @@ A well-structured test follows Arrange-Act-Assert (or Given-When-Then): set up p
 A test name should describe the scenario and expected outcome without reading the test body. The name is documentation — it should answer: what is being tested, under what condition, and what should happen.
 </definition>
 
-<detection>
+<detection id="TEST-3">
 1. **Non-descriptive names** — flag:
    - Generic names: `test1`, `testIt`, `testFunction`, `testBasic`
    - Method-name-only: `testLogin`, `testFetch`, `testSave` (no condition or expectation)
@@ -141,7 +141,7 @@ A test name should describe the scenario and expected outcome without reading th
 Test doubles should isolate the unit under test from its dependencies. Good test doubles are minimal (only stub what's needed), verify behavior (not implementation), and don't couple tests to internal call sequences.
 </definition>
 
-<detection>
+<detection id="TEST-4">
 1. **Over-mocking** — flag:
    - Mocking value types or simple data structures (mock where a real instance works)
    - Subclassing the SUT to override some methods while testing others
@@ -179,7 +179,7 @@ Test doubles should isolate the unit under test from its dependencies. Good test
 Inline SUT construction repeated across test methods is a violation regardless of dependency count. Each test should focus on its scenario, not on assembling the SUT.
 </definition>
 
-<detection>
+<detection id="TEST-5">
 1. **Repeated inline construction** — flag any test class where:
    - SUT is constructed inline in 2+ test methods
    - Same construction pattern repeated (even with 1 dependency)
@@ -197,7 +197,7 @@ Inline SUT construction repeated across test methods is a violation regardless o
 Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`). XCTest (`import XCTest`, `XCTestCase`) is reserved for UI tests that use `XCUIApplication`. Swift Testing produces clearer failure messages, supports parameterized tests natively, and eliminates the `XCTestCase` subclass requirement.
 </definition>
 
-<detection>
+<detection id="TEST-6">
 1. **XCTest in non-UI test files** — flag any file that:
    - Contains `import XCTest` and does NOT also import or use `XCUIApplication`
    - Defines a class inheriting from `XCTestCase` for unit or integration tests
@@ -221,7 +221,7 @@ Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#
 5. **Test helpers/fixtures in shared setUp** — shared immutable fixtures reset per test are not isolation violations
 </exceptions>
 
-<severity-bands>
+<severity-bands id="TEST">
 - COMPLIANT (0 violations across all metrics)
 - MINOR (any of the following):
     - 1-2 naming violations only (no isolation/structure/double/setup issues)

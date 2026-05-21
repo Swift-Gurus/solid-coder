@@ -11,16 +11,16 @@ YAML frontmatter is stripped before counting (matches `load-reference` behavior)
 Folder totals are the sum of their children.
 
 **Root**: `/Users/crowea/Developer/Swift-Gurus/solid-coder/references/principles`  
-**Total**: 61,434 tokens (245,841 chars)
+**Total**: 62,029 tokens (248,217 chars)
 
 | Path | Tokens | Chars |
 |---|---:|---:|
-| 📁 `principles` | 61,434 | 245,841 |
+| 📁 `principles` | 62,029 | 248,217 |
 | &nbsp;&nbsp;&nbsp;&nbsp;📁 `code-smells` | 370 | 1,482 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 299 | 1,197 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 299 | 1,197 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 71 | 285 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `DRY` | 12,966 | 51,887 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `DRY` | 13,081 | 52,345 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 1,073 | 4,293 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,073 | 4,293 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 2,893 | 11,581 |
@@ -36,11 +36,11 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `DRY-3.md` | 505 | 2,023 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,015 | 4,063 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 914 | 3,656 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `review` | 3,575 | 14,302 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `review` | 3,617 | 14,471 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 1,641 | 6,566 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 1,934 | 7,736 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,768 | 7,075 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `ISP` | 12,769 | 51,098 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 1,976 | 7,905 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,841 | 7,364 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `ISP` | 12,850 | 51,419 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 524 | 2,096 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 524 | 2,096 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 1,939 | 7,765 |
@@ -58,8 +58,8 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 884 | 3,536 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 2,377 | 9,508 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `refactoring.md` | 1,858 | 7,433 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 2,113 | 8,455 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `LSP` | 14,785 | 59,159 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 2,194 | 8,776 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `LSP` | 14,856 | 59,443 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 619 | 2,477 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 619 | 2,477 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 2,145 | 8,589 |
@@ -78,8 +78,8 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 909 | 3,636 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 3,814 | 15,258 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `refactoring.md` | 1,980 | 7,922 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 2,258 | 9,032 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `OCP` | 11,148 | 44,615 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 2,329 | 9,316 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `OCP` | 11,286 | 45,166 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 524 | 2,097 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 524 | 2,097 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 955 | 3,822 |
@@ -96,8 +96,8 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 623 | 2,495 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 3,078 | 12,313 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `refactoring.md` | 1,626 | 6,506 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,560 | 6,243 |
-| &nbsp;&nbsp;&nbsp;&nbsp;📁 `SRP` | 9,396 | 37,600 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,698 | 6,794 |
+| &nbsp;&nbsp;&nbsp;&nbsp;📁 `SRP` | 9,586 | 38,362 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `code` | 459 | 1,838 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 459 | 1,838 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 `Examples` | 1,003 | 4,016 |
@@ -113,4 +113,4 @@ Folder totals are the sum of their children.
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `instructions.md` | 527 | 2,109 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `output.schema.json` | 1,895 | 7,583 |
 | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `refactoring.md` | 1,715 | 6,860 |
-| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,147 | 4,588 |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 `rule.md` | 1,337 | 5,350 |

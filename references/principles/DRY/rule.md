@@ -22,12 +22,13 @@ abstraction identification — all directly observable from code.
 
 Detect when new code was created for a responsibility that an existing type, function, view, extension, or convenience wrapper already covers.
 
-**Definition:** A "reuse miss" occurs when a developer creates a new type, function, private view, computed property, or inline expression that duplicates the purpose of an existing abstraction in the codebase. The existing code may have a different name, live in a different module, or use slightly different naming conventions — but it serves the same role. This applies at every granularity — not just top-level types but also private helpers, view builders, and convenience extensions.
+<definition id="DRY-1" name="Reuse Miss">
+A "reuse miss" occurs when a developer creates a new type, function, private view, computed property, or inline expression that duplicates the purpose of an existing abstraction in the codebase. The existing code may have a different name, live in a different module, or use slightly different naming conventions — but it serves the same role. This applies at every granularity — not just top-level types but also private helpers, view builders, and convenience extensions.
 
 **Scope:** Every piece of new or modified code triggers a reuse check — types, functions (including private/internal), views, view builders, computed properties, extensions, inline expressions. Any granularity. If the code does something, search whether something in the codebase already does it.
+</definition>
 
-**Detection:**
-
+<detection id="DRY-1" name="Reuse Miss">
 1. **Identify the responsibility** of each new or modified code unit — what does it do? What problem does it solve? This includes:
    - A new type or function (any access level)
    - A private view or view builder that composes a layout
@@ -44,15 +45,17 @@ Detect when new code was created for a responsibility that an existing type, fun
    - EXTENSIBLE — existing code covers the core need, could be extended (via protocol extension, overload, or configuration) to cover the rest
    - PARTIAL — existing code covers some overlap but serves a genuinely different purpose
 4. **Count** EXACT and EXTENSIBLE matches that were not reused = reuse misses
+</detection>
 
 ### DRY-2: Inlined Duplication
 
 Detect similar functions, algorithms, or logic sequences appearing in multiple locations that should be a single shared abstraction.
 
-**Definition:** When two or more locations contain the same logical sequence — same operations in the same order, same branching structure, same transform pipeline — the logic should be extracted into a shared function, type, or extension. The duplication may use different variable names or types but follows the same algorithm.
+<definition id="DRY-2" name="Inlined Duplication">
+When two or more locations contain the same logical sequence — same operations in the same order, same branching structure, same transform pipeline — the logic should be extracted into a shared function, type, or extension. The duplication may use different variable names or types but follows the same algorithm.
+</definition>
 
-**Detection:**
-
+<detection id="DRY-2" name="Inlined Duplication">
 1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
 2. **Search other units in the same module/target** for methods with the same logical sequence:
    - Same control flow structure (if/else, guard, switch patterns)
@@ -63,15 +66,17 @@ Detect similar functions, algorithms, or logic sequences appearing in multiple l
    - STRUCTURAL — same algorithm, different types (candidate for generics)
    - SIMILAR — overlapping logic with meaningful differences (not a violation)
 4. **Count** IDENTICAL and STRUCTURAL matches = inlined duplications
+</detection>
 
 ### DRY-3: Missing Abstraction
 
 Detect generic patterns buried inside domain-specific code instead of extracted as standalone reusable abstractions.
 
-**Definition:** When a type contains a pattern that is not specific to its domain, that pattern should be extracted as a standalone reusable type, function, or view component. The domain type should delegate to the abstraction, not implement it inline. The key signal is: could another part of the codebase need this exact same behavior, layout, or creation logic?
+<definition id="DRY-3" name="Missing Abstraction">
+When a type contains a pattern that is not specific to its domain, that pattern should be extracted as a standalone reusable type, function, or view component. The domain type should delegate to the abstraction, not implement it inline. The key signal is: could another part of the codebase need this exact same behavior, layout, or creation logic?
+</definition>
 
-**Detection:**
-
+<detection id="DRY-3" name="Missing Abstraction">
 1. **Identify the domain** of the type under review — what business concept does it represent?
 2. **Identify generic patterns** within the type — behavior, layout, or creation logic that is not specific to the domain:
    - Behavioral patterns (retry, queue, cache, observe, poll — any reusable flow)
@@ -82,18 +87,22 @@ Detect generic patterns buried inside domain-specific code instead of extracted 
    - If YES → missing abstraction
    - If NO (the pattern is inherently domain-specific) → not a violation
 4. **Count** missing abstractions
+</detection>
 
-### Exceptions (NOT violations):
+<exceptions>
 1. **Intentionally specialized** — same shape but genuinely different domain semantics (e.g., two validation functions that happen to have similar structure but validate different business rules)
 2. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
 3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
+</exceptions>
 
-### Severity Bands:
+<severity-bands id="DRY">
 - COMPLIANT (0 reuse misses AND 0 inlined duplications AND 0 missing abstractions)
 - SEVERE (any of the following):
     - 1+ reuse miss (existing type covers the need, was not used)
     - 1+ inlined duplication (same logic in 2+ locations)
     - 1+ missing abstraction (generic pattern not extracted for reuse)
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

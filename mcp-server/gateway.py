@@ -29,6 +29,9 @@ Examples:
     python3 gateway.py query_specs --action scan --args type=feature status=ready
     python3 gateway.py load_fix_for_violation --metric_id OCP-1
     python3 gateway.py load_fix_instructions_for_findings --findings_path /path/to/by-file/Foo.swift.output.json
+    python3 gateway.py load_detection_rules
+    python3 gateway.py load_detection_rules --matched_tags unit-test,swiftui
+    python3 gateway.py load_detection_rules --principle SRP
 
 Exit codes:
     0 — success (JSON on stdout)
@@ -59,6 +62,7 @@ from server import (
     prepare_review_input,
     load_fix_instructions_for_findings,
     load_fix_for_violation,
+    load_detection_rules,
 )
 
 
@@ -163,6 +167,7 @@ TOOLS = {
     "prepare_review_input": prepare_review_input,
     "load_fix_instructions_for_findings": load_fix_instructions_for_findings,
     "load_fix_for_violation": load_fix_for_violation,
+    "load_detection_rules": load_detection_rules,
 }
 
 

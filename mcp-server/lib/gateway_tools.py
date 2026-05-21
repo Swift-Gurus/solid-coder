@@ -149,8 +149,12 @@ class FindingsSubmitter:
         return None
 
 
-class ScoringHandler:
-    """Resolves principles and scores units in partial review outputs."""
+class PrincipleScorerProviding(Protocol):
+    def scorer_for(self, agent: str) -> tuple: ...
+
+
+class PrincipleScorerProvider:
+    """Resolves a principle folder and constructs a scorer for it."""
 
     def __init__(
         self,
@@ -162,7 +166,22 @@ class ScoringHandler:
         self._scorer_factory = scorer_factory or SeverityScorer.from_folder
         self._folder_resolver = folder_resolver or PrincipleFolderResolver()
 
-    def _score_files(self, scorer: UnitScoring, files: list) -> tuple[list, Optional[dict]]:
+    def scorer_for(self, agent: str) -> tuple:
+        try:
+            folder = self._folder_resolver.resolve(agent, self._refs_root)
+        except (ValueError, FileNotFoundError) as exc:
+            return None, {"error": str(exc)}, None
+        return self._scorer_factory(folder), None, folder
+
+
+class FilesScoringCapable(Protocol):
+    def score_files(self, scorer: UnitScoring, files: list) -> tuple: ...
+
+
+class FilesScoringHandler:
+    """Scores units in a list of files using a provided scorer."""
+
+    def score_files(self, scorer: UnitScoring, files: list) -> tuple:
         scored_files = []
         for file_obj in files:
             scored_units = []
@@ -194,20 +213,28 @@ class ScoringHandler:
 
         return scored_files, None
 
+
+class ScoringHandler:
+    """Facade coordinating principle resolution, unit scoring, and batch severity evaluation."""
+
+    def __init__(
+        self,
+        scorer_provider: PrincipleScorerProviding,
+        files_scorer: FilesScoringCapable,
+    ) -> None:
+        self._scorer_provider = scorer_provider
+        self._files_scorer = files_scorer
+
     def resolve_and_score(
         self, agent: str, files: list,
     ) -> tuple[list, Optional[dict], Optional[Path]]:
         if not files:
             return [], None, None
-
-        try:
-            folder = self._folder_resolver.resolve(agent, self._refs_root)
-        except (ValueError, FileNotFoundError) as exc:
-            return [], {"error": str(exc)}, None
-
-        scorer = self._scorer_factory(folder)
-        scored_files, error = self._score_files(scorer, files)
-        return scored_files, error, folder
+        scorer, error, folder = self._scorer_provider.scorer_for(agent)
+        if error:
+            return [], error, None
+        scored_files, err = self._files_scorer.score_files(scorer, files)
+        return scored_files, err, folder
 
     def score_severity(self, partial_outputs: list) -> dict[str, Any]:
         results = []
@@ -218,11 +245,9 @@ class ScoringHandler:
             if error:
                 results.append({**error, "entry_index": idx})
                 continue
-
             scored_entry = dict(entry)
             scored_entry["files"] = scored_files
             results.append(scored_entry)
-
         return {"results": results}
 
 
@@ -253,35 +278,58 @@ class SubmitOrchestrator:
         return {"principle": principle, **counts}
 
 
+class PrincipleContentBuilding(Protocol):
+    def build(self, p_entry: dict) -> dict: ...
+
+
+class PrincipleContentBuilder:
+    """Reads a principle's rule.md and assembles its detection-rules output dict."""
+
+    def build(self, p_entry: dict) -> dict:
+        raw = Path(p_entry["rule_path"]).read_text(encoding="utf-8")
+        blocks = parse_xml_blocks(raw)
+        name = p_entry["name"]
+        if not (blocks["detection"] or blocks["definition"] or blocks["severity-bands"]):
+            return {"name": name, "content": strip_frontmatter(raw)}
+        sections = [f"## {name.upper()}"]
+        for mid, text in blocks["definition"].items():
+            sections.append(f'<definition id="{mid}">\n{text}\n</definition>')
+        for mid, text in blocks["detection"].items():
+            sections.append(f'<detection id="{mid}">\n{text}\n</detection>')
+        for bid, text in blocks["severity-bands"].items():
+            sections.append(f'<severity-bands id="{bid}">\n{text}\n</severity-bands>')
+        if blocks["exceptions"]:
+            sections.append(f'<exceptions principle="{name.upper()}">\n{blocks["exceptions"]}\n</exceptions>')
+        return {
+            "name": name,
+            "content": "\n\n".join(sections),
+            "detection": blocks["detection"],
+            "definition": blocks["definition"],
+            "severity_bands": blocks["severity-bands"],
+            "exceptions": blocks["exceptions"],
+        }
+
+
 class DetectionRulesLoader:
-    """Loads per-metric detection rules from principle rule.md XML blocks."""
+    """Discovers active principles and delegates content assembly to PrincipleContentBuilding."""
 
     def __init__(
         self,
         all_principles: AllPrinciplesProviding,
+        refs_root: Path,
         discover_fn: Optional[Callable] = None,
+        content_builder: Optional[PrincipleContentBuilding] = None,
     ) -> None:
         self._all_principles = all_principles
+        self._refs_root = refs_root
         self._discover_fn = discover_fn or _dp.discover_and_filter
+        self._content_builder = content_builder or PrincipleContentBuilder()
 
     def load_detection_rules(
         self,
         principle: Optional[str] = None,
         matched_tags: Optional[list] = None,
     ) -> dict[str, Any]:
-        def _build(p_entry: dict) -> dict:
-            raw = Path(p_entry["rule_path"]).read_text(encoding="utf-8")
-            blocks = parse_xml_blocks(raw)
-            if not (blocks["detection"] or blocks["definition"] or blocks["severity-bands"]):
-                return {"name": p_entry["name"], "full_content": strip_frontmatter(raw)}
-            return {
-                "name": p_entry["name"],
-                "detection": blocks["detection"],
-                "definition": blocks["definition"],
-                "severity_bands": blocks["severity-bands"],
-                "exceptions": blocks["exceptions"],
-            }
-
         all_p = self._all_principles.all_principles()
 
         if principle:
@@ -289,12 +337,21 @@ class DetectionRulesLoader:
             if not m:
                 available = ", ".join(p["name"] for p in all_p)
                 return {"error": f"Principle '{principle}' not found. Available: {available}"}
-            return {"principles": [_build(m)]}
+            return {"principles": [self._content_builder.build(m)]}
 
-        refs_root = Path(all_p[0]["folder"]).parent if all_p else Path()
-        active = self._discover_fn(str(refs_root), matched_tags=matched_tags)["active_principles"] \
-            if matched_tags else all_p
-        return {"principles": [_build(p) for p in active]}
+        if matched_tags is None:
+            active = all_p
+        else:
+            # Normalize: empty string or empty list → [] (only always-on).
+            # Single string (e.g. "unit-test" from CLI) → single-item list.
+            if matched_tags == "" or matched_tags == []:
+                tags: list = []
+            elif isinstance(matched_tags, list):
+                tags = matched_tags
+            else:
+                tags = [matched_tags]
+            active = self._discover_fn(str(self._refs_root), matched_tags=tags)["active_principles"]
+        return {"principles": [self._content_builder.build(p) for p in active]}
 
 
 class FixInstructionsLoader:
@@ -370,7 +427,10 @@ class GatewayHandler:
 def make_gateway_handler(refs_root: Path) -> GatewayHandler:
     """Wire production defaults and return a ready-to-use GatewayHandler."""
     registry = PrincipleRegistry(refs_root)
-    scoring = ScoringHandler(refs_root)
+    scoring = ScoringHandler(
+        scorer_provider=PrincipleScorerProvider(refs_root),
+        files_scorer=FilesScoringHandler(),
+    )
     return GatewayHandler(
         scoring=scoring,
         submit_orchestrator=SubmitOrchestrator(
@@ -379,7 +439,7 @@ def make_gateway_handler(refs_root: Path) -> GatewayHandler:
             summariser=SeveritySummariser(),
         ),
         rules=RulesHandler(
-            detection=DetectionRulesLoader(registry),
+            detection=DetectionRulesLoader(registry, refs_root=refs_root),
             fix_instructions=FixInstructionsLoader(registry),
         ),
     )

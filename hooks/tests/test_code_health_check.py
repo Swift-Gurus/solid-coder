@@ -17,7 +17,7 @@ from test_utils import make_subprocess_mock
 from hc_violation_parser import ViolationParser, ScoredResultConverter
 from hc_tag_detector import TagDetector
 from hc_rule_loader import GatewayRuleLoader
-from hc_checker import PrinciplesLoader, LLMReviewer
+from hc_checker import HealthPromptBuilder, PrinciplesLoader, LLMReviewer
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
@@ -337,10 +337,34 @@ class TestLLMReviewer(unittest.TestCase):
         logger.log.assert_called_once()
 
 
+class TestHealthPromptBuilder(unittest.TestCase):
+    def setUp(self):
+        self.builder = HealthPromptBuilder()
+
+    def test_detection_instructions_appear_in_prompt(self):
+        principles = [{"name": "srp", "content": "srp detection rules"}]
+        prompt = self.builder.build(principles, "code here", "/src/Foo.swift", "")
+        self.assertIn("srp detection rules", prompt)
+
+    def test_detection_instructions_empty_when_no_content_key(self):
+        # Principles that only carry full_content (old fallback shape) are skipped.
+        principles = [{"name": "srp", "full_content": "srp detection rules"}]
+        prompt = self.builder.build(principles, "code here", "/src/Foo.swift", "")
+        self.assertNotIn("srp detection rules", prompt)
+
+    def test_session_id_header_present_when_provided(self):
+        prompt = self.builder.build([], "code", "/src/Foo.swift", "session-abc")
+        self.assertTrue(prompt.startswith("# spawned-by: session-abc\n"))
+
+    def test_session_id_header_absent_when_empty(self):
+        prompt = self.builder.build([], "code", "/src/Foo.swift", "")
+        self.assertNotIn("spawned-by", prompt)
+
+
 class TestCheck(unittest.TestCase):
     def _make_pipeline(self, violations: list):
         tags_mock = _gateway_tags([])
-        detection_mock = _gateway_detection_rules([{"name": "srp", "full_content": "rules"}])
+        detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules"}])
         violations_json = json.dumps({"violations": violations})
         claude_mock = make_subprocess_mock(0, [{"type": "result", "result": violations_json}])
         seq = [tags_mock, detection_mock, claude_mock]

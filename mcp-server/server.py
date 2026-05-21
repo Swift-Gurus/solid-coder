@@ -30,6 +30,7 @@ sys.path.insert(0, str(SKILLS_ROOT / "build-spec" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "find-spec" / "scripts"))
 
 from lib import discover_principles, parse_frontmatter
+from lib.gateway_tools import make_gateway_handler as _make_gateway_handler
 import importlib
 from lib import load_reference
 collect_principle_files = importlib.import_module("collect-principle-files")
@@ -713,6 +714,14 @@ def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg
         return {"error": f"No fix file for metric '{norm}'. Available: {', '.join(available)}"}
     return {"principle": entry["name"].upper(), "metric_id": norm,
             "content": fix_path.read_text(encoding="utf-8")}
+
+
+_gw = _make_gateway_handler(REFS_ROOT)
+
+
+def load_detection_rules(principle=None, matched_tags=None):
+    """Load per-metric detection instructions for the given principle or matched tags."""
+    return _gw.load_detection_rules(principle=principle, matched_tags=matched_tags)
 
 
 if __name__ == "__main__":

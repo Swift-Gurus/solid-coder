@@ -139,6 +139,8 @@ def run_claude_bare(
     allowed_tools: str = "",
     mcp_config: str = "",
     timeout: int = 300,
+    session_id: str = "",
+    no_session: bool = False,
 ) -> Optional[str]:
     """Run `claude -p` in bare JSON mode and return the final result string.
 
@@ -146,6 +148,10 @@ def run_claude_bare(
     result-type event, or None on any failure.
     """
     cmd = ["claude", "-p", prompt, "--output-format", "json", "--bare"]
+    if session_id:
+        cmd += ["--session-id", session_id]
+    if no_session:
+        cmd += ["--no-session-persistence"]
     if mcp_config:
         cmd += ["--mcp-config", mcp_config]
     if allowed_tools:

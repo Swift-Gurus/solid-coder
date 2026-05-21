@@ -3,7 +3,7 @@
 import io
 import json
 from contextlib import redirect_stdout
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 LONG_SWIFT = "import Foundation\n\nfinal class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
 SHORT_SWIFT = "final class Foo {\n    func bar() {}\n}\n"
@@ -30,6 +30,19 @@ def call_main(stdin_input, main_fn) -> tuple:
 def call_main_with_invalid_stdin(main_fn) -> tuple:
     """Invoke main_fn with non-JSON stdin; returns (exit_code, output)."""
     return call_main("not json", main_fn)
+
+
+def make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
+    """Build a subprocess.run MagicMock with the given returncode and JSON-encoded stdout."""
+    m = MagicMock()
+    m.returncode = returncode
+    m.stdout = json.dumps(stdout_obj)
+    return m
+
+
+def parse_hook_output(out: str) -> dict:
+    """Extract the hookSpecificOutput dict from a gate hook's JSON stdout."""
+    return json.loads(out)["hookSpecificOutput"]
 
 
 def event(tool: str, path: str, content: str) -> dict:

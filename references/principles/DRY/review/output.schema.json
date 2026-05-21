@@ -7,6 +7,7 @@
     "agent": { "const": "dry" },
     "principle": { "const": "Don't Repeat Yourself" },
     "timestamp": { "type": "string", "format": "date-time" },
+    "all_compliant": { "type": "boolean" },
     "documentation_sources": {
       "type": "array",
       "items": { "type": "string" }
@@ -35,7 +36,7 @@
                 },
                 "unit_kind": {
                   "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension"],
+                  "enum": ["class", "struct", "enum", "protocol", "extension", "function"],
                   "description": "Kind of the analyzed unit"
                 },
                 "metrics": {
@@ -129,15 +130,20 @@
                   }
                 },
                 "scoring": {
-                  "type": "object",
-                  "required": ["reuse_severity", "duplication_severity", "infrastructure_severity", "final_severity"],
-                  "properties": {
-                    "reuse_severity": { "type": "string" },
-                    "duplication_severity": { "type": "string" },
-                    "infrastructure_severity": { "type": "string" },
-                    "final_severity": {
-                      "type": "string",
-                      "enum": ["COMPLIANT", "SEVERE"]
+                  "type": "array",
+                  "description": "Per-metric scoring results",
+                  "items": {
+                    "type": "object",
+                    "required": ["metric_id", "final_severity"],
+                    "properties": {
+                      "metric_id": {
+                        "type": "string",
+                        "enum": ["reuse_misses", "inlined_duplications", "missing_abstractions"]
+                      },
+                      "final_severity": {
+                        "type": "string",
+                        "enum": ["COMPLIANT", "SEVERE"]
+                      }
                     }
                   }
                 },
