@@ -72,6 +72,7 @@ if str(HOOKS_DIR) not in sys.path:
 import code_health_check as health
 import validate_swift_frontmatter as frontmatter
 from hook_utils import make_hook_gate
+from hc_violation_parser import ViolationParser
 
 _gate = make_hook_gate()
 
@@ -127,7 +128,7 @@ def _allow_corrected(tool_name: str, tool_input: dict, corrected: str, existing_
 
 def _deny(violations: list) -> None:
     parts = [
-        health._format_block_reason(violations),
+        ViolationParser().format_block_reason(violations),
         "The file was NOT written. You MUST fix all violations above and write the corrected version before continuing.",
     ]
     reason = "[health-check] " + "\n\n".join(parts)

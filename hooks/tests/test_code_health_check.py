@@ -1,19 +1,23 @@
-"""Tests for code_health_check.py"""
+"""
+solid-description: Unit tests for health check components — ViolationParser, ScoredResultConverter, TagDetector, GatewayRuleLoader, PrinciplesLoader, LLMReviewer, and the _check composition root.
+solid-category: unit-test
+"""
 
 import json
-import sys
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-HOOKS_DIR = str(Path(__file__).resolve().parents[1])
-TESTS_DIR = str(Path(__file__).resolve().parent)
-for _d in (HOOKS_DIR, TESTS_DIR):
-    if _d not in sys.path:
-        sys.path.insert(0, _d)
+from _path_bootstrap import ensure_on_path
+ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 import code_health_check as hook
 import test_utils
+from test_utils import make_subprocess_mock
+from hc_violation_parser import ViolationParser, ScoredResultConverter
+from hc_tag_detector import TagDetector
+from hc_rule_loader import GatewayRuleLoader
+from hc_checker import PrinciplesLoader, LLMReviewer
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
@@ -24,174 +28,331 @@ VIOLATIONS = [
 ]
 
 
-def _call_main(stdin_json) -> tuple:
-    return test_utils.call_main(stdin_json, hook.main)
-
-
-_event = test_utils.event
-
-
-def _make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
-    m = MagicMock()
-    m.returncode = returncode
-    m.stdout = json.dumps(stdout_obj)
-    return m
-
-
 def _gateway_tags(tags: list) -> MagicMock:
-    return _make_subprocess_mock(0, {"candidate_tags": tags})
+    return make_subprocess_mock(0, {"candidate_tags": tags})
 
 
 def _gateway_detection_rules(principles: list) -> MagicMock:
-    return _make_subprocess_mock(0, {"principles": principles})
+    return make_subprocess_mock(0, {"principles": principles})
 
 
-def _gateway_score_severity(results: list) -> MagicMock:
-    return _make_subprocess_mock(0, {"results": results})
+def _make_runner_mock(returncode: int, stdout_obj) -> MagicMock:
+    m = MagicMock()
+    m.run_cmd.return_value = stdout_obj if returncode == 0 else None
+    return m
 
 
-def _claude_partial_outputs(violations_list: list) -> MagicMock:
-    """Simulate claude returning partial outputs. Violations are converted to scored entries."""
-    payload = json.dumps([])
-    return _make_subprocess_mock(0, [{"type": "result", "result": payload}])
+class TestViolationParser(unittest.TestCase):
+    def setUp(self):
+        self.parser = ViolationParser()
 
-
-def _scored_with_violations(violations: list) -> list:
-    """Build a scored-results list that has SEVERE findings for each violation."""
-    if not violations:
-        return [{"agent": "srp", "principle": "SRP", "files": []}]
-    units = []
-    for v in violations:
-        units.append({
-            "unit_name": "Foo",
-            "unit_kind": "class",
-            "scoring": [{"final_severity": "SEVERE", "metric_id": v.get("metric_id", "SRP-2")}],
-            "findings": [{"metric_id": v.get("metric_id", "SRP-2"), "severity": "SEVERE"}],
-        })
-    return [{
-        "agent": "srp",
-        "principle": "SRP",
-        "files": [{"file_path": "/src/Foo.swift", "units": units}],
-    }]
-
-
-class TestParseViolations(unittest.TestCase):
     def test_parses_violation_list(self):
         raw = json.dumps({"violations": VIOLATIONS})
-        result = hook._parse_violations(raw)
+        result = self.parser.parse(raw)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["principle"], "SRP")
 
     def test_returns_empty_list_when_clean(self):
-        self.assertEqual(hook._parse_violations(json.dumps({"violations": []})), [])
+        self.assertEqual(self.parser.parse(json.dumps({"violations": []})), [])
 
     def test_handles_code_fences(self):
         raw = "```json\n" + json.dumps({"violations": VIOLATIONS}) + "\n```"
-        self.assertEqual(len(hook._parse_violations(raw)), 2)
+        self.assertEqual(len(self.parser.parse(raw)), 2)
 
     def test_handles_surrounding_text(self):
         raw = "Here:\n" + json.dumps({"violations": VIOLATIONS}) + "\nDone."
-        self.assertEqual(len(hook._parse_violations(raw)), 2)
+        self.assertEqual(len(self.parser.parse(raw)), 2)
 
     def test_filters_malformed_entries(self):
         raw = json.dumps({"violations": [{"principle": "SRP"}, VIOLATIONS[0]]})
-        self.assertEqual(len(hook._parse_violations(raw)), 1)
+        self.assertEqual(len(self.parser.parse(raw)), 1)
 
     def test_returns_none_for_invalid_json(self):
-        self.assertIsNone(hook._parse_violations("not json"))
+        self.assertIsNone(self.parser.parse("not json"))
 
     def test_returns_none_when_violations_not_list(self):
-        self.assertIsNone(hook._parse_violations(json.dumps({"violations": "bad"})))
+        self.assertIsNone(self.parser.parse(json.dumps({"violations": "bad"})))
 
+    def test_format_block_reason_includes_count(self):
+        self.assertIn("2 violation(s)", self.parser.format_block_reason(VIOLATIONS))
 
-class TestFormatBlockReason(unittest.TestCase):
-    def test_includes_count(self):
-        self.assertIn("2 violation(s)", hook._format_block_reason(VIOLATIONS))
-
-    def test_includes_each_principle(self):
-        reason = hook._format_block_reason(VIOLATIONS)
+    def test_format_block_reason_includes_each_principle(self):
+        reason = self.parser.format_block_reason(VIOLATIONS)
         self.assertIn("SRP", reason)
         self.assertIn("OCP", reason)
 
-    def test_includes_issue_and_fix(self):
-        reason = hook._format_block_reason(VIOLATIONS)
+    def test_format_block_reason_includes_issue_and_fix(self):
+        reason = self.parser.format_block_reason(VIOLATIONS)
         self.assertIn("Two concerns.", reason)
         self.assertIn("Extract one.", reason)
 
 
-class TestDetectTags(unittest.TestCase):
+class TestScoredResultConverter(unittest.TestCase):
+    def setUp(self):
+        self.converter = ScoredResultConverter()
+
+    def _make_entry(self, principle, unit_name, metric_id, severity):
+        return {
+            "principle": principle,
+            "files": [{"units": [{"unit_name": unit_name, "findings": [{"metric_id": metric_id, "severity": severity}]}]}],
+        }
+
+    def test_returns_empty_list_for_empty_input(self):
+        self.assertEqual(self.converter.violations_from_scored([]), [])
+
+    def test_skips_entries_with_error_key(self):
+        result = self.converter.violations_from_scored([{"error": "timeout"}])
+        self.assertEqual(result, [])
+
+    def test_converts_severe_finding_to_violation(self):
+        entry = self._make_entry("SRP", "UserManager", "SRP-1", "SEVERE")
+        result = self.converter.violations_from_scored([entry])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["principle"], "SRP")
+        self.assertEqual(result[0]["metric_id"], "SRP-1")
+
+    def test_converts_minor_finding_to_violation(self):
+        entry = self._make_entry("OCP", "Loader", "OCP-1", "MINOR")
+        result = self.converter.violations_from_scored([entry])
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["principle"], "OCP")
+
+    def test_skips_compliant_findings(self):
+        entry = self._make_entry("SRP", "CleanType", "SRP-1", "COMPLIANT")
+        result = self.converter.violations_from_scored([entry])
+        self.assertEqual(result, [])
+
+    def test_aggregates_findings_across_multiple_entries(self):
+        entries = [
+            self._make_entry("SRP", "TypeA", "SRP-1", "SEVERE"),
+            self._make_entry("OCP", "TypeB", "OCP-1", "MINOR"),
+        ]
+        result = self.converter.violations_from_scored(entries)
+        self.assertEqual(len(result), 2)
+        principles = {v["principle"] for v in result}
+        self.assertIn("SRP", principles)
+        self.assertIn("OCP", principles)
+
+    def test_violation_issue_contains_metric_id_and_severity_and_unit(self):
+        entry = self._make_entry("LSP", "MyStore", "LSP-3", "SEVERE")
+        result = self.converter.violations_from_scored([entry])
+        self.assertIn("LSP-3", result[0]["issue"])
+        self.assertIn("SEVERE", result[0]["issue"])
+        self.assertIn("MyStore", result[0]["issue"])
+
+    def test_falls_back_to_agent_key_when_principle_missing(self):
+        entry = {
+            "agent": "DRY",
+            "files": [{"units": [{"unit_name": "X", "findings": [{"metric_id": "DRY-1", "severity": "SEVERE"}]}]}],
+        }
+        result = self.converter.violations_from_scored([entry])
+        self.assertEqual(result[0]["principle"], "DRY")
+
+
+class TestTagDetector(unittest.TestCase):
+    def setUp(self):
+        self.detector = TagDetector()
+
     def test_detects_swiftui_from_import(self):
-        self.assertIn("swiftui", hook._detect_tags("import SwiftUI", ["swiftui"]))
+        self.assertIn("swiftui", self.detector.detect("import SwiftUI", ["swiftui"]))
+
+    def test_detects_swiftui_from_view_conformance(self):
+        self.assertIn("swiftui", self.detector.detect("struct Foo: View {", ["swiftui"]))
+
+    def test_detects_swiftui_from_some_view(self):
+        self.assertIn("swiftui", self.detector.detect("var body: some View {", ["swiftui"]))
+
+    def test_does_not_false_positive_swiftui_from_uitableview(self):
+        self.assertNotIn("swiftui", self.detector.detect("let v: UITableView", ["swiftui"]))
+
+    def test_does_not_false_positive_swiftui_from_plain_view_word(self):
+        self.assertNotIn("swiftui", self.detector.detect("func reviewData() {}", ["swiftui"]))
 
     def test_detects_structured_concurrency_from_async(self):
-        self.assertIn("structured-concurrency", hook._detect_tags("async func foo()", ["structured-concurrency"]))
+        self.assertIn(
+            "structured-concurrency",
+            self.detector.detect("async func foo()", ["structured-concurrency"]),
+        )
+
+    def test_detects_structured_concurrency_from_task_literal(self):
+        self.assertIn(
+            "structured-concurrency",
+            self.detector.detect("Task { await fetch() }", ["structured-concurrency"]),
+        )
+
+    def test_does_not_false_positive_sc_from_urlsession_datatask(self):
+        content = "let task = session.dataTask(with: url) { data, _, _ in }"
+        self.assertNotIn("structured-concurrency", self.detector.detect(content, ["structured-concurrency"]))
+
+    def test_detects_structured_concurrency_from_actor_declaration(self):
+        self.assertIn(
+            "structured-concurrency",
+            self.detector.detect("actor MyService {", ["structured-concurrency"]),
+        )
 
     def test_no_match_returns_empty(self):
-        self.assertEqual(hook._detect_tags("final class Foo {}", ["swiftui"]), [])
+        self.assertEqual(self.detector.detect("final class Foo {}", ["swiftui"]), [])
 
     def test_ui_test_excludes_unit_test_and_xctest(self):
         content = "import XCTest\nlet app = XCUIApplication()"
-        tags = ["unit-test", "xctest", "ui-test"]
-        matched = hook._detect_tags(content, tags)
+        matched = self.detector.detect(content, ["unit-test", "xctest", "ui-test"])
         self.assertIn("ui-test", matched)
         self.assertNotIn("xctest", matched)
         self.assertNotIn("unit-test", matched)
 
     def test_unit_test_excludes_ui_test(self):
-        content = "import Testing\n@Test func testFoo() {}"
-        tags = ["unit-test", "xctest", "ui-test"]
-        matched = hook._detect_tags(content, tags)
+        matched = self.detector.detect(
+            "import Testing\n@Test func testFoo() {}",
+            ["unit-test", "xctest", "ui-test"],
+        )
         self.assertIn("unit-test", matched)
         self.assertNotIn("ui-test", matched)
 
     def test_xctest_without_xcuiapplication_excludes_ui_test(self):
-        content = "import XCTest\nclass FooTests: XCTestCase {}"
-        tags = ["xctest", "ui-test"]
-        matched = hook._detect_tags(content, tags)
+        matched = self.detector.detect(
+            "import XCTest\nclass FooTests: XCTestCase {}",
+            ["xctest", "ui-test"],
+        )
         self.assertIn("xctest", matched)
         self.assertNotIn("ui-test", matched)
 
 
-class TestLoadDetectionRules(unittest.TestCase):
-    def test_passes_matched_tags_to_gateway(self):
-        with patch(
-            "hook_utils.subprocess.run",
-            return_value=_gateway_detection_rules([{"name": "srp"}]),
-        ):
-            result = hook._load_detection_rules(["swiftui"])
+class TestGatewayRuleLoader(unittest.TestCase):
+    def setUp(self):
+        self._default_runner = _make_runner_mock(0, {"candidate_tags": [], "principles": []})
+        self.loader = GatewayRuleLoader(Path("/fake/gateway.py"), self._default_runner)
+
+    def _make_loader(self, runner_mock):
+        return GatewayRuleLoader(Path("/fake/gateway.py"), runner_mock)
+
+    def test_get_candidate_tags_returns_tag_list(self):
+        runner = _make_runner_mock(0, {"candidate_tags": ["swiftui"]})
+        loader = self._make_loader(runner)
+        self.assertEqual(loader.get_candidate_tags(), ["swiftui"])
+
+    def test_get_candidate_tags_returns_empty_on_runner_failure(self):
+        runner = _make_runner_mock(1, None)
+        loader = self._make_loader(runner)
+        self.assertEqual(loader.get_candidate_tags(), [])
+
+    def test_load_detection_rules_returns_principles(self):
+        runner = _make_runner_mock(0, {"principles": [{"name": "srp"}]})
+        loader = self._make_loader(runner)
+        result = loader.load_detection_rules(["swiftui"])
+        self.assertIn("principles", result)
+
+    def test_load_detection_rules_with_matched_tag_returns_filtered_principles(self):
+        swiftui_principle = {"name": "swiftui", "content": "SwiftUI rules"}
+        runner = _make_runner_mock(0, {"principles": [swiftui_principle]})
+        loader = self._make_loader(runner)
+
+        result = loader.load_detection_rules(["swiftui"])
 
         self.assertIsNotNone(result)
         self.assertIn("principles", result)
+        self.assertEqual(result["principles"], [swiftui_principle])
 
-    def test_returns_none_on_gateway_failure(self):
+    def test_load_detection_rules_returns_none_on_runner_failure(self):
+        runner = _make_runner_mock(1, None)
+        loader = self._make_loader(runner)
+        self.assertIsNone(loader.load_detection_rules([]))
+
+
+class TestPrinciplesLoader(unittest.TestCase):
+    def _make_rules_mock(self, tags=None, rules_data=None):
         m = MagicMock()
-        m.returncode = 1
-        with patch("hook_utils.subprocess.run", return_value=m):
-            self.assertIsNone(hook._load_detection_rules([]))
+        m.get_candidate_tags.return_value = tags or []
+        m.load_detection_rules.return_value = rules_data
+        return m
 
-    def test_returns_dict_on_success(self):
-        with patch("hook_utils.subprocess.run",
-                   return_value=_gateway_detection_rules([{"name": "srp"}])):
-            result = hook._load_detection_rules([])
-        self.assertIsNotNone(result)
-        self.assertIn("principles", result)
+    def _make_tags_mock(self, matched=None):
+        m = MagicMock()
+        m.detect.return_value = matched or []
+        return m
+
+    def test_returns_principles_list_when_rules_load_succeeds(self):
+        rules = self._make_rules_mock(rules_data={"principles": [{"name": "srp", "content": "..."}]})
+        tags = self._make_tags_mock()
+        loader = PrinciplesLoader(rules=rules, tags=tags)
+        result = loader.load("code", "/src/Foo.swift")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "srp")
+
+    def test_returns_none_when_rules_load_fails(self):
+        rules = self._make_rules_mock(rules_data=None)
+        tags = self._make_tags_mock()
+        loader = PrinciplesLoader(rules=rules, tags=tags)
+        self.assertIsNone(loader.load("code", "/src/Foo.swift"))
+
+    def test_returns_empty_list_when_no_principles_active(self):
+        rules = self._make_rules_mock(rules_data={"principles": []})
+        tags = self._make_tags_mock()
+        loader = PrinciplesLoader(rules=rules, tags=tags)
+        self.assertEqual(loader.load("code", "/src/Foo.swift"), [])
+
+    def test_passes_detected_tags_to_rules_loader(self):
+        rules = self._make_rules_mock(rules_data={"principles": []})
+        tags = self._make_tags_mock(matched=["swiftui"])
+        loader = PrinciplesLoader(rules=rules, tags=tags)
+        loader.load("import SwiftUI", "/src/Foo.swift")
+        rules.load_detection_rules.assert_called_once_with(["swiftui"])
+
+
+class TestLLMReviewer(unittest.TestCase):
+    def _make_reviewer(self, runner_result=None, runner_raises=None, parse_result=None):
+        runner = MagicMock()
+        if runner_raises:
+            runner.run.side_effect = runner_raises
+        else:
+            runner.run.return_value = runner_result
+        logger = MagicMock()
+        parser = MagicMock()
+        parser.parse.return_value = parse_result
+        return LLMReviewer(runner=runner, logger=logger, parser=parser), logger
+
+    def test_returns_violations_when_runner_and_parser_succeed(self):
+        reviewer, _ = self._make_reviewer(
+            runner_result='{"violations": []}',
+            parse_result=[],
+        )
+        result = reviewer.review("prompt", "/src/Foo.swift")
+        self.assertEqual(result, [])
+
+    def test_returns_none_when_runner_returns_empty(self):
+        reviewer, logger = self._make_reviewer(runner_result=None)
+        result = reviewer.review("prompt", "/src/Foo.swift")
+        self.assertIsNone(result)
+        logger.log.assert_called_once()
+
+    def test_returns_none_and_logs_when_runner_raises(self):
+        reviewer, logger = self._make_reviewer(runner_raises=RuntimeError("timeout"))
+        result = reviewer.review("prompt", "/src/Foo.swift")
+        self.assertIsNone(result)
+        logger.log.assert_called_once()
+
+    def test_returns_none_and_logs_when_parser_returns_none(self):
+        reviewer, logger = self._make_reviewer(runner_result='bad json', parse_result=None)
+        result = reviewer.review("prompt", "/src/Foo.swift")
+        self.assertIsNone(result)
+        logger.log.assert_called_once()
 
 
 class TestCheck(unittest.TestCase):
     def _make_pipeline(self, violations: list):
-        """Build a side_effect sequence for the two-phase gateway flow."""
         tags_mock = _gateway_tags([])
         detection_mock = _gateway_detection_rules([{"name": "srp", "full_content": "rules"}])
-        claude_mock = _make_subprocess_mock(0, [{"type": "result", "result": json.dumps([])}])
-        scored_mock = _gateway_score_severity(_scored_with_violations(violations))
-        seq = [tags_mock, detection_mock, claude_mock, scored_mock]
+        violations_json = json.dumps({"violations": violations})
+        claude_mock = make_subprocess_mock(0, [{"type": "result", "result": violations_json}])
+        seq = [tags_mock, detection_mock, claude_mock]
         it = iter(seq)
         return lambda *a, **kw: next(it)
 
     def test_returns_violations_list_when_gateway_reports_findings(self):
         with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline(VIOLATIONS)):
             result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
-        self.assertIsNotNone(result)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["principle"], "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
         with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline([])):
@@ -199,36 +360,8 @@ class TestCheck(unittest.TestCase):
         self.assertIsInstance(result, list)
 
     def test_returns_none_on_gateway_failure(self):
-        m = MagicMock()
-        m.returncode = 1
-        with patch("hook_utils.subprocess.run", return_value=m):
+        with patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
             self.assertIsNone(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""))
-
-
-class TestMainHook(unittest.TestCase):
-    def test_unsupported_extension_allows_without_gateway(self):
-        with patch("hook_utils.subprocess.run") as mock_run:
-            code, out = _call_main(_event("Write", "/src/Foo.js", LONG_SWIFT))
-        mock_run.assert_not_called()
-        self.assertEqual(code, 0)
-
-    def test_test_file_allows_without_gateway(self):
-        with patch("hook_utils.subprocess.run") as mock_run:
-            code, out = _call_main(_event("Write", "/src/FooTests.swift", LONG_SWIFT))
-        mock_run.assert_not_called()
-        self.assertEqual(code, 0)
-
-    def test_gateway_failure_fails_open(self):
-        m = MagicMock()
-        m.returncode = 1
-        with patch("hook_utils.subprocess.run", return_value=m):
-            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
-        self.assertEqual(code, 0)
-        self.assertEqual(out, "")
-
-    def test_malformed_stdin_allows(self):
-        code, out = test_utils.call_main_with_invalid_stdin(hook.main)
-        self.assertEqual(code, 0)
 
 
 class TestSupportedExtensions(unittest.TestCase):
