@@ -22,14 +22,22 @@ class MCPServer:
         self._handlers: Dict[str, Callable] = {}
         self._transport: str = "unknown"  # detected on first message
 
-    def tool(self, name: str, description: str, input_schema: dict):
-        """Register a tool with its handler function."""
+    def tool(self, name: str, description: str, input_schema: dict, meta: Optional[dict] = None):
+        """Register a tool with its handler function.
+
+        Pass ``meta`` to include a ``_meta`` field in the ``tools/list`` response entry.
+        Use ``{"anthropic/maxResultSizeChars": N}`` to raise the per-tool output limit
+        so large results are not silently persisted to disk.
+        """
         def decorator(fn: Callable):
-            self._tools[name] = {
+            entry: Dict[str, Any] = {
                 "name": name,
                 "description": description,
                 "inputSchema": input_schema,
             }
+            if meta is not None:
+                entry["_meta"] = meta
+            self._tools[name] = entry
             self._handlers[name] = fn
             return fn
         return decorator

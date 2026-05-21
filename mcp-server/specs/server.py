@@ -160,6 +160,7 @@ def query_specs(action, args=None):
         "if file_path is given the spec number is parsed from its frontmatter automatically. "
         "Pass blocked=true to also include blocked-by specs."
     ),
+    meta={"anthropic/maxResultSizeChars": 200000},
     input_schema={
         "type": "object",
         "properties": {

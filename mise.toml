@@ -1,0 +1,6 @@
+# mise configuration for solid-coder
+# https://mise.jdx.dev/
+
+[tools]
+ruby = "4.0.3"
+lefthook = "latest"

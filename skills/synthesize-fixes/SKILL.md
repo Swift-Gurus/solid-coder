@@ -2,7 +2,7 @@
 name: synthesize-fixes
 description: Holistic fix planner — reads all findings from all principles, loads principle fix knowledge dynamically, and generates a unified, cross-checked fix plan per file.
 argument-hint: <output-root>
-allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings, mcp__plugin_solid-coder_pipeline__search_codebase
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_docs__load_fix_instructions, mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings, mcp__plugin_solid-coder_pipeline__search_codebase
 user-invocable: false
 ---
 
@@ -94,7 +94,7 @@ FOR each cross-check principle:
 
 ### 4.3 Patch Failures
 IF any cross-check fails:
-- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_for_violation` with the relevant `metric_id`
+- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions` with the relevant `metric_id`
       (e.g. `metric_id: "OCP-1"`). The principle is resolved automatically. Use context
       from Phase 3.2 if already loaded for this run.
 - [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
@@ -156,7 +156,7 @@ FOR EVERY suggested_fix that was **merged in step 5.1**:
     - [ ] 6.1 Read the proposed code in the action's `suggested_fix`
     - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
     - [ ] 6.3 IF violations found:
-        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation` for each violation's principle and metric_id
+        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation(metric_id=...)` for each violation's metric_id (no principle needed)
         - [ ] 6.3.2 Adjust `todo_items` to reflect the changes
         - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles
     - [ ] 6.4 IF still fails → move affected findings to `unresolved[]` with reason explaining why the patch was insufficient

@@ -27,10 +27,11 @@ observable from code.
 
 Count the number of dependency/behavior points in the class that are hardcoded and NOT behind abstractions.
 
-**Definition:** A "sealed variation point" is a place where adding a new behavior or swapping an implementation requires modifying this class instead of extending it.
+<definition id="OCP-1" name="Sealed Variation Points">
+A "sealed variation point" is a place where adding a new behavior or swapping an implementation requires modifying this class instead of extending it.
+</definition>
 
-**Detection:**
-
+<detection id="OCP-1" name="Sealed Variation Points">
 1. **List every dependency** the class uses (properties, parameters, method calls to external types)
 2. **Classify each as** 
    - ABSTRACT (protocol-typed and injected) 
@@ -42,6 +43,7 @@ Count the number of dependency/behavior points in the class that are hardcoded a
 3. **Check exceptions** — exclude from count (see Exceptions section below)
 4. **Count concrete dependencies DIRECT NON-INJECTED** that are NOT exceptions = sealed points from dependencies
 5. **Sum** = total sealed variation points
+</detection>
 
 **Result:** 
 Count of DIRECT by category INJECTED, NON-INJECTED
@@ -81,14 +83,17 @@ class UserDatabaseManager {
 
 ### OCP-2: Testability
 
-**Definition:** A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+<definition id="OCP-2" name="Testability">
+A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+</definition>
 
-**Detection:**
+<detection id="OCP-2" name="Testability">
 - Use the analysis from OCP-1 to validate if CONCRETE has extension/testability points 
 - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
  - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
 
 *Note* we can subclass any class that is not final.
+</detection>
 
 **Result:** Count CONCRETE UNTESTABLE.
 
@@ -99,8 +104,8 @@ class UserDatabaseManager {
 | Observer      | INDIRECT | NO        |
 
 
-### Exceptions (0 points — NOT violations):
-1. **Factories/Builders** creating objects — that's their job
+<exceptions>
+1. **Factories/Builders** — a class whose primary responsibility is constructing or composing other objects (name ends in Factory, Builder, Assembler, or Configurator; or its primary output is a fully configured object graph). The ENTIRE class is exempt from OCP-1 and OCP-2: constructing, holding, and wiring concrete dependencies is inherently its job. Do NOT flag individual instantiations inside a Factory/Builder as sealed variation points.
 2. **Helpers** — with no dependencies — Encoders, Formatters, Locks, Queues, Multithreading.
 3. **Pure data structures** — no business logic, no dependencies, no side effects
 4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
@@ -120,12 +125,14 @@ class UserDatabaseManager {
     - API is not owned by dev (search in project/local packages/local framework files)
     - API doesn't support instantiation: enums with only static members, global constants, static global functions
     - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
-      
+</exceptions>
 
-### Severity Bands:
-- ✅ **COMPLIANT** (0 sealed points, 0 untestable dependencies)
-- ⚠️ **MINOR** (0 sealed points, 1-2 testable DIRECT dependencies)
-- 🔥 **SEVERE** (1+ sealed points or 1+ untestable DIRECT or INDIRECT dependencies)
+<severity-bands id="OCP">
+- COMPLIANT (0 sealed points, 0 untestable dependencies)
+- MINOR (0 sealed points, 1-2 testable DIRECT dependencies)
+- SEVERE (1+ sealed points or 1+ untestable DIRECT or INDIRECT dependencies)
+</severity-bands>
+
 ---
 
 ## Quantitative Metrics Summary

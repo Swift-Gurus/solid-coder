@@ -12,7 +12,7 @@ Tokens ≈ chars / 4, measured by invoking `gateway.py load_rules --mode <mode>`
 
 | Mode | Loads (from each principle folder) | Aggregation |
 |---|---|---|
-| `code` | code/instructions.md | all principles → one context |
+| `code` | code/instructions.md, required_patterns | all principles → one context |
 | `review` | rule.md, fix or review/instructions.md, Examples/, required_patterns | one principle per subagent |
 | `planner` | rule.md | all principles → one context |
 | `synth-impl` | rule.md, code/instructions.md | all principles → one context |
@@ -28,14 +28,14 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 | Don't Repeat Yourself | always | 42 | 251 | 39 | 64 | 90 |
 | Interface Segregation Principle | always | 42 | 186 | 39 | 64 | 90 |
 | Liskov Substitution Principle | always | 42 | 216 | 39 | 64 | 90 |
-| Open/Closed Principle | always | 42 | 295 | 39 | 64 | 90 |
-| Single Responsibility Principle | always | 42 | 155 | 39 | 64 | 90 |
+| Open/Closed Principle | always | 148 | 295 | 39 | 64 | 90 |
+| Single Responsibility Principle | always | 68 | 155 | 39 | 64 | 90 |
 | Structured Concurrency | conditional | 52 | 80 | 49 | 79 | 109 |
 | SwiftUI Best Practices | conditional | 45 | 516 | 41 | 68 | 95 |
 | Unit Testing | conditional | 44 | 317 | 41 | 67 | 94 |
 | UI Testing | conditional | 47 | 346 | 44 | 72 | 101 |
-| **MIN** |  | **256** | **80** | **238** | **390** | **520** |
-| **MAX** |  | **444** | **516** | **413** | **676** | **919** |
+| **MIN** |  | **388** | **80** | **238** | **390** | **520** |
+| **MAX** |  | **576** | **516** | **413** | **676** | **919** |
 
 - **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (6). For `per-principle`: smallest single principle.
 - **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (10). For `per-principle`: largest single principle.

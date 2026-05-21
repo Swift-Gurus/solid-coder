@@ -22,7 +22,6 @@ import difflib
 import json
 import re
 import sys
-import time
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -66,23 +65,20 @@ def _diff_chunks(old_content: str, new_content: str) -> tuple:
         new_changed.extend(new_lines[j1:j2])
     return "\n".join(old_changed), "\n".join(new_changed)
 
-_LOG = Path.home() / ".claude" / "solid-coder-gate.log"
-
-
-def _log(msg: str) -> None:
-    try:
-        with _LOG.open("a") as f:
-            f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {msg}\n")
-    except Exception:
-        pass
-
-
 HOOKS_DIR = Path(__file__).resolve().parent
 if str(HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(HOOKS_DIR))
 
 import code_health_check as health
 import validate_swift_frontmatter as frontmatter
+from hook_utils import make_hook_gate
+from hc_violation_parser import ViolationParser
+
+_gate = make_hook_gate()
+
+
+def _log(msg: str) -> None:
+    _gate.log(msg)
 
 _FRONTMATTER_RE = re.compile(
     r"/\*\*\s*\n((?:[ \t]+solid-[^\n]+\n)+)[ \t]*\*/",
@@ -111,39 +107,32 @@ def _run_frontmatter(content: str, parent_session_id: str, file_path: str):
 
 
 def _allow() -> None:
-    sys.exit(0)
+    _gate.allow()
 
 
-def _allow_corrected(tool_name: str, tool_input: dict, corrected: str) -> None:
-    input_key = "content" if tool_name == "Write" else "new_string"
+def _allow_corrected(tool_name: str, tool_input: dict, corrected: str, existing_content: str = "") -> None:
     updated = dict(tool_input)
-    updated[input_key] = corrected
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "updatedInput": updated,
-        }
-    }))
-    sys.stdout.flush()
-    sys.exit(0)
+    if tool_name == "Write":
+        updated["content"] = corrected
+    elif existing_content:
+        # content was simulated from the full existing file — replace the whole file
+        # so the Edit tool doesn't insert corrected (full file) where old_string was (small snippet).
+        updated["old_string"] = existing_content
+        updated["new_string"] = corrected
+        updated.pop("replace_all", None)
+    else:
+        # File was unreadable; content == new_string, corrected is the corrected snippet.
+        updated["new_string"] = corrected
+    _gate.allow_with_update(updated)
 
 
 def _deny(violations: list) -> None:
     parts = [
-        health._format_block_reason(violations),
+        ViolationParser().format_block_reason(violations),
         "The file was NOT written. You MUST fix all violations above and write the corrected version before continuing.",
     ]
     reason = "[health-check] " + "\n\n".join(parts)
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-    }))
-    sys.stdout.flush()
-    sys.exit(0)
+    _gate.block(reason)
 
 
 def main() -> None:
@@ -158,10 +147,12 @@ def main() -> None:
     file_path = tool_input.get("file_path", "")
     parent_session_id = event.get("session_id", "")
 
-    if not file_path.endswith(".swift"):
+    ext = Path(file_path).suffix.lower()
+    if ext not in health.SUPPORTED_EXTENSIONS:
         _allow()
         return
 
+    existing = ""
     low_risk = False
     if tool_name == "Write":
         content = tool_input.get("content", "")
@@ -227,7 +218,7 @@ def main() -> None:
 
     if corrected is not None and corrected != content:
         _log(f"CORRECTED {name}: frontmatter updated")
-        _allow_corrected(tool_name, tool_input, corrected)
+        _allow_corrected(tool_name, tool_input, corrected, existing_content=existing)
     else:
         if run_health or run_frontmatter:
             _log(f"CLEAN {name}")

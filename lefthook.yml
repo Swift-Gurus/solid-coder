@@ -1,0 +1,19 @@
+prepare-commit-msg:
+  parallel: false
+  jobs:
+    - group:
+        parallel: false
+        piped: true
+        jobs:
+          - name: Validate branch name
+            run: mise exec -- bundle exec conventional_commits validate_branch
+          - name: Prepare commit message
+            run: mise exec -- bundle exec conventional_commits prepare_commit_msg
+
+commit-msg:
+  jobs:
+    - group:
+        piped: true
+        jobs:
+          - name: Validate commit message
+            run: mise exec -- bundle exec conventional_commits validate_commit_msg

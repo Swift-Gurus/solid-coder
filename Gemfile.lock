@@ -1,0 +1,26 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    conventional_commits (0.2.23)
+      open3
+      thor
+      yaml
+    open3 (0.2.1)
+    thor (1.5.0)
+    yaml (0.4.0)
+
+PLATFORMS
+  arm64-darwin-25
+  ruby
+
+DEPENDENCIES
+  conventional_commits
+
+CHECKSUMS
+  conventional_commits (0.2.23) sha256=69ce75ecf193d97f042117a871b4113010f1310f578c22b7a4e397423c11e790
+  open3 (0.2.1) sha256=8e2d7d2113526351201438c1aa35c8139f0141c9e8913baa007c898973bf3952
+  thor (1.5.0) sha256=e3a9e55fe857e44859ce104a84675ab6e8cd59c650a49106a05f55f136425e73
+  yaml (0.4.0) sha256=240e69d1e6ce3584d6085978719a0faa6218ae426e034d8f9b02fb54d3471942
+
+BUNDLED WITH
+  4.0.6
