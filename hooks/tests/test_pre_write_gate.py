@@ -1,21 +1,17 @@
 """Tests for pre_write_gate.py"""
 
-import json
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-HOOKS_DIR = str(Path(__file__).resolve().parents[1])
-TESTS_DIR = str(Path(__file__).resolve().parent)
-for _d in (HOOKS_DIR, TESTS_DIR):
-    if _d not in sys.path:
-        sys.path.insert(0, _d)
+from _path_bootstrap import ensure_on_path
+ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 import pre_write_gate as gate
 import test_utils
+from test_utils import parse_hook_output
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
@@ -80,12 +76,16 @@ class TestGateDecisions(unittest.TestCase):
         self.assertEqual(out, "")
 
     def test_health_violations_blocks_without_running_frontmatter(self):
-        """Health check blocks immediately — frontmatter never runs."""
+        """Health violations deny the write — _run_frontmatter is never reached.
+
+        Uses content WITH solid-description so run_frontmatter=True; the only
+        reason fm is not called is that _deny(violations) -> sys.exit(0) exits
+        the process before Step 2 runs.
+        """
         with patch("pre_write_gate._run_frontmatter") as fm, \
              patch("pre_write_gate._run_health", return_value=VIOLATIONS):
-            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
-        payload = json.loads(out)
-        h = payload["hookSpecificOutput"]
+            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
+        h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertIn("SRP", h["permissionDecisionReason"])
         self.assertIn("The file was NOT written", h["permissionDecisionReason"])
@@ -93,19 +93,19 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_frontmatter_correction_only_runs_when_health_passes(self):
         """Frontmatter runs after health check returns clean."""
-        with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER), \
+        with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER) as fm, \
              patch("pre_write_gate._run_health", return_value=[]):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
-        payload = json.loads(out)
-        h = payload["hookSpecificOutput"]
+        h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "allow")
         self.assertEqual(h["updatedInput"]["content"], CORRECTED_FRONTMATTER)
+        fm.assert_called_once()
 
     def test_deny_has_no_frontmatter_blocks(self):
         """On deny, frontmatter is never run so no corrected blocks in reason."""
         with patch("pre_write_gate._run_health", return_value=VIOLATIONS):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
-        h = json.loads(out)["hookSpecificOutput"]
+        h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertNotIn("corrected frontmatter", h["permissionDecisionReason"])
 
@@ -129,8 +129,7 @@ class TestGateDecisions(unittest.TestCase):
         with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER), \
              patch("pre_write_gate._run_health", return_value=[]):
             code, out = _call_main(_event("Edit", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
-        payload = json.loads(out)
-        updated = payload["hookSpecificOutput"]["updatedInput"]
+        updated = parse_hook_output(out)["updatedInput"]
         self.assertIn("new_string", updated)
         self.assertEqual(updated["new_string"], CORRECTED_FRONTMATTER)
 
@@ -170,8 +169,7 @@ class TestGateDecisions(unittest.TestCase):
         finally:
             os.unlink(tmp_path)
 
-        payload = json.loads(out)
-        updated = payload["hookSpecificOutput"]["updatedInput"]
+        updated = parse_hook_output(out)["updatedInput"]
         self.assertEqual(updated["old_string"], existing_content,
                          "old_string must be the full existing file to prevent duplication")
         self.assertEqual(updated["new_string"], corrected_content)
@@ -227,8 +225,7 @@ class TestGatePythonSupport(unittest.TestCase):
         with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
              patch("pre_write_gate._run_health", return_value=VIOLATIONS):
             code, out = _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
-        payload = json.loads(out)
-        h = payload["hookSpecificOutput"]
+        h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertIn("SRP", h["permissionDecisionReason"])
 
@@ -242,8 +239,7 @@ class TestGatePythonSupport(unittest.TestCase):
         with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
              patch("pre_write_gate._run_health", return_value=_SRP_VIOLATION_WITH_METRIC):
             code, out = _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
-        payload = json.loads(out)
-        h = payload["hookSpecificOutput"]
+        h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertIn("SRP", h["permissionDecisionReason"])
         self.assertIn("Multiple responsibilities", h["permissionDecisionReason"])
