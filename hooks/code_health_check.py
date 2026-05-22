@@ -9,21 +9,16 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-HOOKS_DIR = Path(__file__).resolve().parent
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import GateLogger
+from hook_utils import GateLogger, PLUGIN_ROOT, GATEWAY
 from hc_tag_detector import TagDetector
-from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner
+from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker
 from hc_violation_parser import ViolationParser
-from hc_checker import (
-    LLMHealthChecker, ClaudeRunner, HealthPromptBuilder,
-    PrinciplesLoader, LLMReviewer,
-)
-
-PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
+from hc_checker import LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader, LLMReviewer
+from hc_runner_factory import make_llm_runner
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
@@ -40,22 +35,20 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
             "docs": {"command": "python3", "args": [docs_server]},
         }
     })
+    allowed_tools = (
+        "mcp__pipeline__search_codebase,"
+        "mcp__docs__load_fix_for_violation,"
+        "mcp__docs__score_severity"
+    )
     logger = GateLogger(PLUGIN_ROOT / ".claude" / "solid-coder-gate.log")
     checker = LLMHealthChecker(
         loader=PrinciplesLoader(
-            rules=GatewayRuleLoader(GATEWAY, GatewayCommandRunner()),
+            rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner())),
             tags=TagDetector(),
         ),
         builder=HealthPromptBuilder(),
         reviewer=LLMReviewer(
-            runner=ClaudeRunner(
-                mcp_config=mcp_config,
-                allowed_tools=(
-                    "mcp__pipeline__search_codebase,"
-                    "mcp__docs__load_fix_for_violation,"
-                    "mcp__docs__score_severity"
-                ),
-            ),
+            runner=make_llm_runner(mcp_config=mcp_config, allowed_tools=allowed_tools),
             logger=logger,
             parser=ViolationParser(),
         ),

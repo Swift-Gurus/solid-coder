@@ -1,0 +1,30 @@
+"""
+solid-description: Provides the appropriate LLM runner for the currently configured backend.
+solid-category: service
+solid-tags: [hook]
+"""
+
+import sys
+from pathlib import Path
+
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
+
+from hc_checker import ClaudeRunner, ClaudeRunning
+from hc_llama_runner import make_llama_server_runner
+from hc_config import llm_backend, llm_host, llm_model
+
+
+def make_llm_runner(mcp_config: str, allowed_tools: str) -> ClaudeRunning:
+    """Return the configured LLM runner.
+
+    Backend resolved from (in priority order):
+      1. SOLID_CODER_LLM_BACKEND env var
+      2. [llm] backend in .claude/solid-coder-local.toml
+      3. Default: "claude"
+    """
+    if llm_backend().lower() == "local":
+        return make_llama_server_runner(host=llm_host(), model=llm_model())
+
+    return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools)
