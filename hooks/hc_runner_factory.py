@@ -24,10 +24,8 @@ def make_llm_runner(
 ) -> ClaudeRunning:
     """Return the configured LLM runner.
 
-    Backend resolved from (in priority order):
-      1. SOLID_CODER_LLM_BACKEND env var
-      2. [llm] backend in .claude/solid-coder-local.toml
-      3. Default: "claude"
+    Backend read from {cwd}/.claude/solid-coder-local.toml [llm] backend.
+    Defaults to 'claude' when no project config is present.
 
     When backend=local, session_id and file_path are used to write
     per-call JSONL logs to ~/.solid-coder/llm-sessions/.

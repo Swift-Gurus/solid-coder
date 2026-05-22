@@ -29,6 +29,19 @@ def ensure_on_path(*dirs: Path) -> None:
             sys.path.insert(0, s)
 
 
+def load_toml(path: Path) -> dict:
+    """Parse a TOML file using tomllib (3.11+) or tomli backport. Returns {} on any failure."""
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+        with open(path, "rb") as f:
+            return tomllib.load(f)
+    except Exception:
+        return {}
+
+
 def strip_markdown_fences(text: str) -> str:
     """Remove markdown code-fence markers and return stripped text."""
     return re.sub(r"```[a-zA-Z]*\n?", "", text).strip()

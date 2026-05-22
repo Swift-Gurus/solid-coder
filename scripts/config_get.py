@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Retrieves a configuration value by section and key, returning a caller-supplied default when the value is absent or the configuration source is unavailable.
+solid-description: Reads a single configuration value by section and key for use in shell scripts, returning a default when the value is absent.
 solid-category: utility
 
 Usage: python3 config_get.py <section> <key> [default]
@@ -13,19 +13,13 @@ or no TOML parser is available.
 import sys
 from pathlib import Path
 
-_CONFIG = Path(__file__).resolve().parents[1] / ".claude" / "solid-coder-local.toml"
+_HOOKS_DIR = Path(__file__).resolve().parents[1] / "hooks"
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
+from hook_utils import PLUGIN_ROOT, load_toml
 
-def _load(path: Path) -> dict:
-    try:
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-        with open(path, "rb") as f:
-            return tomllib.load(f)
-    except Exception:
-        return {}
+_CONFIG = PLUGIN_ROOT / ".claude" / "solid-coder-local.toml"
 
 
 def main() -> None:
@@ -34,7 +28,7 @@ def main() -> None:
         sys.exit("usage: config_get.py <section> <key> [default]")
     section, key = args[0], args[1]
     default = args[2] if len(args) > 2 else ""
-    data = _load(_CONFIG) if _CONFIG.exists() else {}
+    data = load_toml(_CONFIG) if _CONFIG.exists() else {}
     print(data.get(section, {}).get(key, default))
 
 
