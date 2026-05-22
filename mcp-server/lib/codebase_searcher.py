@@ -7,16 +7,24 @@ solid-tags: [utility, search]
 import json
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from lib.chunker import Chunker
 
-_SKIP_DIRS = {".git", ".build", "build", "DerivedData", "Pods", "node_modules", ".solid_coder"}
+SKIP_DIRS = {".git", ".build", "build", "DerivedData", "Pods", "node_modules", ".solid_coder"}
+_SKIP_DIRS = SKIP_DIRS  # internal alias
 _SPEC_RE = re.compile(r'^SPEC-\d+$', re.IGNORECASE)
 _IMPORT_DECL = re.compile(r'^import\s+(\w+)')
 _COMMENT_STRIP = re.compile(r'^[/\*#\s]+')
 
 _chunker = Chunker()
+
+
+def iter_source_files(root: Path):
+    """Yield all non-skipped files under *root* recursively."""
+    for filepath in root.rglob("*"):
+        if filepath.is_file() and not any(part in SKIP_DIRS for part in filepath.parts):
+            yield filepath
 
 
 def extract_plan_terms(plan_path: Path) -> tuple:
@@ -87,17 +95,25 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
     return {"path": str(filepath), "description": fm["description"]} if hits >= min_matches else None
 
 
-def search(
-    sources_dir: Optional[str] = None,
-    plan_path: Optional[str] = None,
-    tags: Optional[list] = None,
-    spec_numbers: Optional[list] = None,
-    min_matches: int = 3,
-) -> str:
-    """Search a directory for files matching the given tags or spec numbers.
+def _collect_matches(sources: Path, all_tags: set, all_specs: set, min_matches: int) -> dict:
+    """Scan source files and return raw matches list plus total file count."""
+    matches = []
+    total = 0
+    for filepath in iter_source_files(sources):
+        total += 1
+        match = _match_file(filepath, all_tags, all_specs, min_matches)
+        if match:
+            matches.append(match)
+    return {"matches": matches, "total": total}
 
-    sources_dir defaults to the current working directory when omitted.
-    """
+
+def _resolve_search_params(
+    sources_dir: Optional[str],
+    plan_path: Optional[str],
+    tags: Optional[list],
+    spec_numbers: Optional[list],
+) -> Union[tuple, str]:
+    """Resolve and validate search parameters. Returns (sources, all_tags, all_specs) or error str."""
     sources = Path(sources_dir) if sources_dir else Path.cwd()
     if not sources.is_dir():
         return f"Error: sources_dir not found: {sources}"
@@ -117,29 +133,59 @@ def search(
     if not all_tags and not all_specs:
         return "Error: provide plan_path, tags, or spec_numbers to search."
 
-    matches = []
-    total = 0
-    for filepath in sources.rglob("*"):
-        if not filepath.is_file():
-            continue
-        if any(part in _SKIP_DIRS for part in filepath.parts):
-            continue
-        total += 1
-        match = _match_file(filepath, all_tags, all_specs, min_matches)
-        if match:
-            matches.append(match)
+    return sources, all_tags, all_specs
 
-    if not matches:
-        return f"No files matched in {sources} ({total} files scanned)."
+
+def search(
+    sources_dir: Optional[str] = None,
+    plan_path: Optional[str] = None,
+    tags: Optional[list] = None,
+    spec_numbers: Optional[list] = None,
+    min_matches: int = 3,
+) -> str:
+    """Search a directory for files matching the given tags or spec numbers.
+
+    Returns a human-readable string suitable for LLM consumption.
+    sources_dir defaults to the current working directory when omitted.
+    """
+    params = _resolve_search_params(sources_dir, plan_path, tags, spec_numbers)
+    if isinstance(params, str):
+        return params
+
+    sources, all_tags, all_specs = params
+    raw = _collect_matches(sources, all_tags, all_specs, min_matches)
+
+    if not raw["matches"]:
+        return f"No files matched in {sources} ({raw['total']} files scanned)."
 
     lines = [
-        f"Codebase files matching your search ({len(matches)} of {total} scanned).",
+        f"Codebase files matching your search ({len(raw['matches'])} of {raw['total']} scanned).",
         "Review descriptions to assess relevance. Use the Read tool to inspect any file in full.",
         "",
     ]
-    for m in matches:
+    for m in raw["matches"]:
         desc = m.get("description", "")
         spec_tag = f"  [{', '.join(m['matched_specs'])}]" if m.get("matched_specs") else ""
         lines.append(f"{m['path']}{spec_tag}" + (f" — {desc}" if desc else ""))
 
     return _chunker.chunk("\n".join(lines), "search-results")
+
+
+def search_raw(
+    sources_dir: Optional[str] = None,
+    plan_path: Optional[str] = None,
+    tags: Optional[list] = None,
+    spec_numbers: Optional[list] = None,
+    min_matches: int = 1,
+) -> dict:
+    """Like search() but returns a structured dict for CLI/JSON consumers."""
+    params = _resolve_search_params(sources_dir, plan_path, tags, spec_numbers)
+    if isinstance(params, str):
+        return {"error": params, "matches": []}
+
+    sources, all_tags, all_specs = params
+    raw = _collect_matches(sources, all_tags, all_specs, min_matches)
+    return {
+        "matches": raw["matches"],
+        "summary": {"total_files_scanned": raw["total"], "files_matched": len(raw["matches"])},
+    }

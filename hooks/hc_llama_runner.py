@@ -17,8 +17,13 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import GATEWAY
+from hook_utils import GATEWAY, PLUGIN_ROOT
 from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayInvoking
+from hc_violation_parser import ViolationParser, ViolationParsing
+
+_MCP_SERVER_DIR = str(PLUGIN_ROOT / "mcp-server")
+if _MCP_SERVER_DIR not in sys.path:
+    sys.path.insert(0, _MCP_SERVER_DIR)
 
 _MAX_TOOL_ROUNDS = 10
 
@@ -28,15 +33,51 @@ TOOLS: list = [
         "function": {
             "name": "mcp__pipeline__search_codebase",
             "description": (
-                "Search the codebase for existing implementations or similar types. "
-                "Call once per synonym — generate multiple synonyms and call for each."
+                "Search the codebase for existing implementations or similar types by semantic synonyms. "
+                "Call with type name, camelCase-split words, and responsibility synonyms as the query."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Type name, synonym, or keyword"},
+                    "query": {"type": "string", "description": "Space-separated synonyms (name + camelCase words + responsibility keywords)"},
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mcp__pipeline__grep_codebase",
+            "description": (
+                "Search file contents for type definitions, extensions, and declarations of a given name. "
+                "Finds: class/struct/protocol/enum/actor/extension/typealias <name>. "
+                "Use for DRY Phase B — finding existing implementations by exact identifier."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Type or function name to search for (e.g. UserManager)"},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "mcp__pipeline__glob_codebase",
+            "description": (
+                "Search filenames matching a glob pattern. "
+                "Example: '*UserManager*' finds all files whose name contains 'UserManager'. "
+                "Complements grep: grep finds definitions inside files, glob finds files by name."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Glob pattern to match against filenames (e.g. *UserManager*)"},
+                },
+                "required": ["pattern"],
             },
         },
     },
@@ -55,6 +96,15 @@ TOOLS: list = [
         },
     },
 ]
+
+
+def _parse_tool_call_args(tool_call: dict) -> dict:
+    """Extract and JSON-parse the arguments from a tool_call dict."""
+    raw = tool_call.get("function", {}).get("arguments", "{}")
+    try:
+        return json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 
 def _now() -> str:
@@ -129,6 +179,23 @@ class ToolDispatching(Protocol):
     def dispatch(self, tool_call: dict) -> str: ...
 
 
+class FileSearching(Protocol):
+    def grep_by_name(self, name: str) -> str: ...
+    def glob_by_name(self, pattern: str) -> str: ...
+
+
+class FileSearcher:
+    """Adapter wrapping lib.file_searcher functions behind the FileSearching protocol."""
+
+    def grep_by_name(self, name: str) -> str:
+        from lib.file_searcher import grep_by_name
+        return grep_by_name(name=name)
+
+    def glob_by_name(self, pattern: str) -> str:
+        from lib.file_searcher import glob_by_name
+        return glob_by_name(pattern=pattern)
+
+
 class LlamaHttpClient:
     """POSTs to llama-server's /v1/chat/completions and returns the parsed response."""
 
@@ -158,26 +225,32 @@ class LlamaHttpClient:
 
 
 class GatewayToolDispatcher:
-    """Dispatches LLM tool calls to the gateway CLI and returns JSON string results."""
+    """Dispatches LLM tool calls to the gateway CLI or injected file search."""
 
-    def __init__(self, invoker: GatewayInvoking) -> None:
+    def __init__(self, invoker: GatewayInvoking, file_searcher: FileSearching) -> None:
         self._invoker = invoker
+        self._file_searcher = file_searcher
 
     def dispatch(self, tool_call: dict) -> str:
         try:
             name = tool_call["function"]["name"]
-            raw = tool_call["function"]["arguments"]
-            args = json.loads(raw) if isinstance(raw, str) else raw
-        except (KeyError, json.JSONDecodeError, TypeError):
+        except (KeyError, TypeError):
             return "error: malformed tool call"
 
+        args = _parse_tool_call_args(tool_call)
+
         if name == "mcp__pipeline__search_codebase":
-            synonyms = args.get("query", "")
             result = self._invoker.invoke(
                 "search_codebase",
-                extra_args=["--synonyms", synonyms, "--min-matches", "1"],
+                extra_args=["--synonyms", args.get("query", ""), "--min-matches", "1"],
             )
             return json.dumps(result) if result is not None else "[]"
+
+        if name == "mcp__pipeline__grep_codebase":
+            return self._file_searcher.grep_by_name(args.get("name", ""))
+
+        if name == "mcp__pipeline__glob_codebase":
+            return self._file_searcher.glob_by_name(args.get("pattern", "*"))
 
         if name == "mcp__docs__load_fix_for_violation":
             result = self._invoker.invoke(
@@ -197,11 +270,13 @@ class LlamaServerRunner:
         dispatcher: ToolDispatching,
         max_rounds: int = _MAX_TOOL_ROUNDS,
         logger: Optional[LocalLLMLogger] = None,
+        parser: Optional[ViolationParsing] = None,
     ) -> None:
         self._client = client
         self._dispatcher = dispatcher
         self._max_rounds = max_rounds
         self._logger = logger
+        self._parser = parser
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
         if self._logger:
@@ -221,8 +296,8 @@ class LlamaServerRunner:
 
                 if choice.get("finish_reason") != "tool_calls":
                     content = message.get("content", "")
-                    if self._logger:
-                        violations = self._extract_violations(content)
+                    if self._logger and self._parser:
+                        violations = self._parser.parse(content) or []
                         self._logger.log_done(rounds, last_usage, violations)
                     return content
 
@@ -234,14 +309,13 @@ class LlamaServerRunner:
                 messages.append(message)
                 for tc in tool_calls:
                     call_id = tc.get("id", "unknown")
-                    name = tc.get("function", {}).get("name", "")
-                    raw = tc.get("function", {}).get("arguments", "{}")
-                    args = json.loads(raw) if isinstance(raw, str) else raw
+                    tc_args = _parse_tool_call_args(tc)
+                    tc_name = tc.get("function", {}).get("name", "")
                     if self._logger:
-                        self._logger.log_tool_call(call_id, name, args)
+                        self._logger.log_tool_call(call_id, tc_name, tc_args)
                     result_str = self._dispatcher.dispatch(tc)
                     if self._logger:
-                        self._logger.log_tool_result(call_id, name, result_str)
+                        self._logger.log_tool_result(call_id, tc_name, result_str)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": call_id,
@@ -251,13 +325,6 @@ class LlamaServerRunner:
             return None
 
         return None
-
-    @staticmethod
-    def _extract_violations(content: str) -> list:
-        try:
-            return json.loads(content).get("violations", [])
-        except Exception:
-            return []
 
 
 def make_llama_server_runner(
@@ -270,8 +337,10 @@ def make_llama_server_runner(
     """Wire production defaults and return a ready-to-use LlamaServerRunner."""
     invoker = GatewayInvoker(gateway, GatewayCommandRunner())
     logger = LocalLLMLogger(session_id=session_id, file_path=file_path, model=model) if session_id else None
+    parser = ViolationParser() if logger else None
     return LlamaServerRunner(
         client=LlamaHttpClient(host=host, model=model),
-        dispatcher=GatewayToolDispatcher(invoker=invoker),
+        dispatcher=GatewayToolDispatcher(invoker=invoker, file_searcher=FileSearcher()),
         logger=logger,
+        parser=parser,
     )

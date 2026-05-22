@@ -87,19 +87,22 @@ class TestGatewayToolDispatcher(unittest.TestCase):
     def _make(self, return_value=None):
         invoker = MagicMock()
         invoker.invoke.return_value = return_value
-        return GatewayToolDispatcher(invoker=invoker), invoker
+        file_searcher = MagicMock()
+        file_searcher.grep_by_name.return_value = ""
+        file_searcher.glob_by_name.return_value = ""
+        return GatewayToolDispatcher(invoker=invoker, file_searcher=file_searcher), invoker, file_searcher
 
     def _extra_args(self, invoker) -> list:
         call = invoker.invoke.call_args
         return call[1].get("extra_args") or call[0][1]
 
     def test_search_codebase_invokes_correct_subcommand(self):
-        d, invoker = self._make({"results": []})
+        d, invoker, _fs = self._make({"results": []})
         d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "UserRepository"}))
         self.assertEqual(invoker.invoke.call_args[0][0], "search_codebase")
 
     def test_search_codebase_passes_synonyms_not_query_flag(self):
-        d, invoker = self._make({"results": []})
+        d, invoker, _fs = self._make({"results": []})
         d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "UserRepository"}))
         extra = self._extra_args(invoker)
         self.assertIn("--synonyms", extra)
@@ -107,37 +110,52 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         self.assertIn("UserRepository", extra)
 
     def test_load_fix_invokes_correct_subcommand(self):
-        d, invoker = self._make({"content": "fix"})
+        d, invoker, _fs = self._make({"content": "fix"})
         d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"}))
         self.assertEqual(invoker.invoke.call_args[0][0], "load_fix_for_violation")
 
     def test_load_fix_passes_metric_id_in_extra_args(self):
-        d, invoker = self._make({"content": "fix"})
+        d, invoker, _fs = self._make({"content": "fix"})
         d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"}))
         self.assertIn("OCP-1", self._extra_args(invoker))
 
     def test_unknown_tool_returns_error_string(self):
-        d, _ = self._make()
+        d, _, _fs = self._make()
         self.assertIn("unknown tool", d.dispatch(_tc("nonexistent", {})))
 
-    def test_malformed_arguments_returns_error_string(self):
-        d, _ = self._make()
+    def test_malformed_arguments_falls_back_to_empty_args(self):
+        d, _, _fs = self._make(None)
         tc = {"id": "x", "function": {"name": "mcp__pipeline__search_codebase", "arguments": "not json"}}
-        self.assertIn("error", d.dispatch(tc))
+        result = d.dispatch(tc)
+        self.assertIsInstance(result, str)  # does not raise; falls back to empty query
 
     def test_arguments_as_dict_handled_gracefully(self):
-        d, invoker = self._make({"results": []})
+        d, invoker, _fs = self._make({"results": []})
         tc = {"id": "x", "function": {"name": "mcp__pipeline__search_codebase", "arguments": {"query": "Foo"}}}
         d.dispatch(tc)
         self.assertIn("Foo", self._extra_args(invoker))
 
     def test_search_returns_json_string_of_result(self):
-        d, _ = self._make({"results": ["Foo.swift"]})
+        d, _, _fs = self._make({"results": ["Foo.swift"]})
         self.assertIn("results", json.loads(d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "Foo"}))))
 
     def test_search_returns_empty_list_on_invoker_failure(self):
-        d, _ = self._make(None)
+        d, _, _fs = self._make(None)
         self.assertEqual(d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "Foo"})), "[]")
+
+    def test_grep_codebase_delegates_to_file_searcher(self):
+        d, _, fs = self._make()
+        fs.grep_by_name.return_value = "/src/Foo.swift:1: class Foo"
+        result = d.dispatch(_tc("mcp__pipeline__grep_codebase", {"name": "Foo"}))
+        fs.grep_by_name.assert_called_once_with("Foo")
+        self.assertEqual(result, "/src/Foo.swift:1: class Foo")
+
+    def test_glob_codebase_delegates_to_file_searcher(self):
+        d, _, fs = self._make()
+        fs.glob_by_name.return_value = "/src/FooManager.swift"
+        result = d.dispatch(_tc("mcp__pipeline__glob_codebase", {"pattern": "*Foo*"}))
+        fs.glob_by_name.assert_called_once_with("*Foo*")
+        self.assertEqual(result, "/src/FooManager.swift")
 
 
 class TestLocalLLMLogger(unittest.TestCase):

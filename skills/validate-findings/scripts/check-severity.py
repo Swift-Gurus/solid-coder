@@ -22,8 +22,38 @@ import sys
 from pathlib import Path
 
 
-
 # --- Public API ---
+
+
+def iter_principle_results(output_root: str):
+    """Yield per-principle result tuples from rules/*/review-output.json.
+
+    Each yield: (principle_name, severe_count, minor_count, minor_findings, path, error_or_None)
+    """
+    rules_dir = Path(output_root) / "rules"
+    if not rules_dir.is_dir():
+        return
+    for principle_dir in sorted(rules_dir.iterdir()):
+        review_path = principle_dir / "review-output.json"
+        if not review_path.exists():
+            continue
+        try:
+            data = json.loads(review_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            yield principle_dir.name, 0, 0, [], str(review_path), str(exc)
+            continue
+        severe = minor = 0
+        minor_findings = []
+        for file_entry in data.get("files", []):
+            for unit in file_entry.get("units", []):
+                for finding in unit.get("findings", []):
+                    sev = finding.get("severity", "COMPLIANT")
+                    if sev == "SEVERE":
+                        severe += 1
+                    elif sev == "MINOR":
+                        minor += 1
+                        minor_findings.append(finding)
+        yield principle_dir.name, severe, minor, minor_findings, str(review_path), None
 
 
 def check_severity(output_root: str) -> dict:
@@ -36,36 +66,25 @@ def check_severity(output_root: str) -> dict:
     if not rules_dir.is_dir():
         raise FileNotFoundError(f"{rules_dir} not found")
 
-    severe_count = 0
-    minor_count = 0
-    principles_count = 0
-
-    for principle_dir in sorted(rules_dir.iterdir()):
-        review_path = principle_dir / "review-output.json"
-        if not review_path.exists():
-            continue
-        principles_count += 1
-        with open(review_path) as f:
-            data = json.load(f)
-        for file_entry in data.get("files", []):
-            for unit in file_entry.get("units", []):
-                for finding in unit.get("findings", []):
-                    sev = finding.get("severity", "COMPLIANT")
-                    if sev == "SEVERE":
-                        severe_count += 1
-                    elif sev == "MINOR":
-                        minor_count += 1
+    severe_count = minor_count = principles_count = 0
+    for _name, severe, minor, _findings, _path, error in iter_principle_results(output_root):
+        if error is None:
+            principles_count += 1
+            severe_count += severe
+            minor_count += minor
 
     total = severe_count + minor_count
     verdict = "HAS_SEVERE" if severe_count > 0 else "MINOR_ONLY"
-
     return {
         "verdict": verdict,
         "severe_count": severe_count,
         "minor_count": minor_count,
         "total": total,
         "principles_count": principles_count,
-        "summary": f"{total} findings: {severe_count} severe, {minor_count} minor across {principles_count} principles",
+        "summary": (
+            f"{total} findings: {severe_count} severe, {minor_count} minor "
+            f"across {principles_count} principles"
+        ),
     }
 
 
