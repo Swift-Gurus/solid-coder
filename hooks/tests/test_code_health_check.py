@@ -218,43 +218,34 @@ class TestTagDetector(unittest.TestCase):
 
 
 class TestGatewayRuleLoader(unittest.TestCase):
-    def setUp(self):
-        self._default_runner = _make_runner_mock(0, {"candidate_tags": [], "principles": []})
-        self.loader = GatewayRuleLoader(Path("/fake/gateway.py"), self._default_runner)
-
-    def _make_loader(self, runner_mock):
-        return GatewayRuleLoader(Path("/fake/gateway.py"), runner_mock)
+    def _make_invoker(self, return_value=None):
+        m = MagicMock()
+        m.invoke.return_value = return_value
+        return m
 
     def test_get_candidate_tags_returns_tag_list(self):
-        runner = _make_runner_mock(0, {"candidate_tags": ["swiftui"]})
-        loader = self._make_loader(runner)
+        loader = GatewayRuleLoader(invoker=self._make_invoker(["swiftui"]))
         self.assertEqual(loader.get_candidate_tags(), ["swiftui"])
 
-    def test_get_candidate_tags_returns_empty_on_runner_failure(self):
-        runner = _make_runner_mock(1, None)
-        loader = self._make_loader(runner)
+    def test_get_candidate_tags_returns_empty_when_invoker_returns_empty(self):
+        # GatewayInvoker returns its default=[] on runner failure;
+        # GatewayRuleLoader just passes that through.
+        loader = GatewayRuleLoader(invoker=self._make_invoker([]))
         self.assertEqual(loader.get_candidate_tags(), [])
 
-    def test_load_detection_rules_returns_principles(self):
-        runner = _make_runner_mock(0, {"principles": [{"name": "srp"}]})
-        loader = self._make_loader(runner)
+    def test_load_detection_rules_returns_principles_dict(self):
+        data = {"principles": [{"name": "srp"}]}
+        loader = GatewayRuleLoader(invoker=self._make_invoker(data))
+        self.assertIn("principles", loader.load_detection_rules(["swiftui"]))
+
+    def test_load_detection_rules_returns_filtered_result(self):
+        data = {"principles": [{"name": "swiftui", "content": "SwiftUI rules"}]}
+        loader = GatewayRuleLoader(invoker=self._make_invoker(data))
         result = loader.load_detection_rules(["swiftui"])
-        self.assertIn("principles", result)
+        self.assertEqual(result["principles"][0]["name"], "swiftui")
 
-    def test_load_detection_rules_with_matched_tag_returns_filtered_principles(self):
-        swiftui_principle = {"name": "swiftui", "content": "SwiftUI rules"}
-        runner = _make_runner_mock(0, {"principles": [swiftui_principle]})
-        loader = self._make_loader(runner)
-
-        result = loader.load_detection_rules(["swiftui"])
-
-        self.assertIsNotNone(result)
-        self.assertIn("principles", result)
-        self.assertEqual(result["principles"], [swiftui_principle])
-
-    def test_load_detection_rules_returns_none_on_runner_failure(self):
-        runner = _make_runner_mock(1, None)
-        loader = self._make_loader(runner)
+    def test_load_detection_rules_returns_none_on_invoker_failure(self):
+        loader = GatewayRuleLoader(invoker=self._make_invoker(None))
         self.assertIsNone(loader.load_detection_rules([]))
 
 
@@ -362,6 +353,8 @@ class TestHealthPromptBuilder(unittest.TestCase):
 
 
 class TestCheck(unittest.TestCase):
+    """Tests for the full _check pipeline, always using the Claude backend."""
+
     def _make_pipeline(self, violations: list):
         tags_mock = _gateway_tags([])
         detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules"}])
@@ -371,20 +364,27 @@ class TestCheck(unittest.TestCase):
         it = iter(seq)
         return lambda *a, **kw: next(it)
 
+    def _claude_backend(self):
+        """Force the Claude backend regardless of local config file."""
+        return patch("hc_runner_factory.llm_backend", return_value="claude")
+
     def test_returns_violations_list_when_gateway_reports_findings(self):
-        with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline(VIOLATIONS)):
+        with self._claude_backend(), \
+             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline(VIOLATIONS)):
             result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["principle"], "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
-        with patch("hook_utils.subprocess.run", side_effect=self._make_pipeline([])):
+        with self._claude_backend(), \
+             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline([])):
             result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
         self.assertIsInstance(result, list)
 
     def test_returns_none_on_gateway_failure(self):
-        with patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
+        with self._claude_backend(), \
+             patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
             self.assertIsNone(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""))
 
 

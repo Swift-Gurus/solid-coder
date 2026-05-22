@@ -1,0 +1,40 @@
+# solid-coder local config — not committed to git.
+# Changes to [llm] take effect on the next write/edit (no restart needed).
+# Changes to [server] apply the next time you run scripts/run-local-llm.sh.
+
+# ── Hook backend ──────────────────────────────────────────────────────────────
+# Controls which LLM the pre-write health-check gate uses.
+[llm]
+
+# "claude" uses the Claude API (default).
+# "local"  routes through llama-server running on this machine.
+backend = "claude"
+
+# Base URL the hook connects to — must match [server] port below.
+host = "http://localhost:8080"
+
+# Model name sent in API requests. llama-server ignores it but it appears in logs.
+model = "local"
+
+
+# ── Local server ──────────────────────────────────────────────────────────────
+# Used by scripts/run-local-llm.sh to start llama-server.
+[server]
+
+# Filename of the GGUF model inside ~/.cache/huggingface (any subdirectory).
+# Swap to another model without touching the script.
+model = "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf"
+
+# Port llama-server listens on. Must match [llm] host above.
+port = 8080
+
+# Context window in tokens. 32768 covers large files + full tool-call history.
+ctx_size = 32768
+
+# Number of model layers to offload to Metal GPU.
+# 99 means "all layers" — correct for any model on Apple Silicon.
+gpu_layers = 99
+
+# Parallel request slots. 1 is optimal: the gate fires one request at a time
+# and a single slot wastes no memory on idle KV caches.
+parallel = 1

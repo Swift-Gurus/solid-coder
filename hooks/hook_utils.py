@@ -17,6 +17,17 @@ from typing import IO, Optional, Protocol
 
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
+
+
+def ensure_on_path(*dirs: Path) -> None:
+    """Add each directory to sys.path if not already present."""
+    for d in dirs:
+        s = str(d)
+        if s not in sys.path:
+            sys.path.insert(0, s)
+
 
 def strip_markdown_fences(text: str) -> str:
     """Remove markdown code-fence markers and return stripped text."""

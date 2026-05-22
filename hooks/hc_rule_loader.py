@@ -33,19 +33,25 @@ class GatewayCommandRunner(CallableAdapting):
         return self._fn(cmd, timeout)
 
 
-class RulesLoading(Protocol):
-    def get_candidate_tags(self) -> list: ...
-    def load_detection_rules(self, matched_tags: list) -> Optional[dict]: ...
+class GatewayInvoking(Protocol):
+    def invoke(
+        self,
+        subcommand: str,
+        extra_args: Optional[list],
+        timeout: int,
+        result_key: Optional[str],
+        default,
+    ): ...
 
 
-class GatewayRuleLoader:
-    """Fetches principle detection rules and candidate tags from the gateway CLI."""
+class GatewayInvoker:
+    """Builds and executes gateway CLI commands. Shared by all gateway-backed components."""
 
     def __init__(self, gateway: Path, runner: CommandRunning) -> None:
         self._gateway = gateway
         self._runner = runner
 
-    def _call(
+    def invoke(
         self,
         subcommand: str,
         extra_args: Optional[list] = None,
@@ -59,11 +65,23 @@ class GatewayRuleLoader:
             return default
         return data.get(result_key, default) if result_key else data
 
+
+class RulesLoading(Protocol):
+    def get_candidate_tags(self) -> list: ...
+    def load_detection_rules(self, matched_tags: list) -> Optional[dict]: ...
+
+
+class GatewayRuleLoader:
+    """Fetches principle detection rules and candidate tags from the gateway CLI."""
+
+    def __init__(self, invoker: GatewayInvoking) -> None:
+        self._invoker = invoker
+
     def get_candidate_tags(self) -> list:
-        return self._call("get_candidate_tags", result_key="candidate_tags", default=[])
+        return self._invoker.invoke("get_candidate_tags", result_key="candidate_tags", default=[])
 
     def load_detection_rules(self, matched_tags: list) -> Optional[dict]:
-        return self._call(
+        return self._invoker.invoke(
             "load_detection_rules",
             extra_args=["--matched_tags", ",".join(matched_tags)],
         )
