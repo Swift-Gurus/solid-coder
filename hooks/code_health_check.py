@@ -48,7 +48,10 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
         ),
         builder=HealthPromptBuilder(),
         reviewer=LLMReviewer(
-            runner=make_llm_runner(mcp_config=mcp_config, allowed_tools=allowed_tools),
+            runner=make_llm_runner(
+                mcp_config=mcp_config, allowed_tools=allowed_tools,
+                session_id=parent_session_id, file_path=path,
+            ),
             logger=logger,
             parser=ViolationParser(),
         ),

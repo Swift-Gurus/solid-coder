@@ -4,6 +4,7 @@ solid-category: unit-test
 """
 
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,7 @@ from hc_llama_runner import (
     GatewayToolDispatcher,
     LlamaHttpClient,
     LlamaServerRunner,
+    LocalLLMLogger,
     TOOLS,
 )
 
@@ -133,6 +135,84 @@ class TestGatewayToolDispatcher(unittest.TestCase):
     def test_search_returns_empty_list_on_invoker_failure(self):
         d, _ = self._make(None)
         self.assertEqual(d.dispatch(_tc("search_codebase", {"query": "Foo"})), "[]")
+
+
+class TestLocalLLMLogger(unittest.TestCase):
+    def _make_logger(self, tmp_dir: Path, session_id: str = "sess-abc") -> LocalLLMLogger:
+        with patch("hc_llama_runner.Path.cwd", return_value=Path("/fake/myproject")):
+            with patch.object(LocalLLMLogger, "ROOT", tmp_dir):
+                return LocalLLMLogger(session_id=session_id, file_path="/src/Foo.swift", model="Qwen3")
+
+    def _read_jsonl(self, path: Path) -> list:
+        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+
+    def test_creates_exchange_file_on_log_start(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d))
+            logger.log_start(prompt_len=1000)
+            files = list(Path(d).rglob("_exchange.jsonl"))
+            self.assertEqual(len(files), 1)
+            entries = self._read_jsonl(files[0])
+            self.assertEqual(entries[0]["ev"], "start")
+            self.assertEqual(entries[0]["file"], "Foo.swift")
+
+    def test_creates_call_file_on_log_tool_call(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d))
+            logger.log_tool_call("call-123", "search_codebase", {"query": "UserRepo"})
+            files = list(Path(d).rglob("call-123.jsonl"))
+            self.assertEqual(len(files), 1)
+            entries = self._read_jsonl(files[0])
+            self.assertEqual(entries[0]["ev"], "call")
+            self.assertEqual(entries[0]["name"], "search_codebase")
+
+    def test_appends_result_to_call_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d))
+            logger.log_tool_call("call-123", "search_codebase", {"query": "Foo"})
+            logger.log_tool_result("call-123", "search_codebase", json.dumps({"results": ["a", "b", "c"]}))
+            entries = self._read_jsonl(list(Path(d).rglob("call-123.jsonl"))[0])
+            self.assertEqual(len(entries), 2)
+            self.assertEqual(entries[1]["ev"], "result")
+            self.assertEqual(entries[1]["hits"], 3)
+
+    def test_log_done_appends_to_exchange_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d))
+            logger.log_start(prompt_len=500)
+            logger.log_done(rounds=1, usage={"prompt_tokens": 100, "completion_tokens": 20}, violations=[])
+            entries = self._read_jsonl(list(Path(d).rglob("_exchange.jsonl"))[0])
+            done = next(e for e in entries if e["ev"] == "done")
+            self.assertEqual(done["result"], "clean")
+            self.assertEqual(done["input_tokens"], 100)
+
+    def test_log_done_marks_blocked_when_violations_present(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d))
+            logger.log_start(1)
+            logger.log_done(1, {}, [{"principle": "SRP", "issue": "x", "fix": "y", "metric_id": "SRP-1"}])
+            entries = self._read_jsonl(list(Path(d).rglob("_exchange.jsonl"))[0])
+            done = next(e for e in entries if e["ev"] == "done")
+            self.assertEqual(done["result"], "blocked")
+            self.assertEqual(len(done["violations"]), 1)
+
+    def test_session_dir_uses_session_id(self):
+        with tempfile.TemporaryDirectory() as d:
+            logger = self._make_logger(Path(d), session_id="my-session-xyz")
+            logger.log_start(1)
+            dirs = [p.name for p in Path(d).rglob("my-session-xyz") if p.is_dir()]
+            self.assertIn("my-session-xyz", dirs)
+
+    def test_never_raises_on_write_error(self):
+        logger = LocalLLMLogger.__new__(LocalLLMLogger)
+        logger._dir = Path("/nonexistent/path/that/does/not/exist")
+        logger._file = "Foo.swift"
+        logger._model = "Qwen3"
+        logger._t0 = 0.0
+        logger.log_start(100)
+        logger.log_tool_call("x", "search_codebase", {})
+        logger.log_tool_result("x", "search_codebase", "[]")
+        logger.log_done(1, {}, [])
 
 
 class TestLlamaServerRunner(unittest.TestCase):
