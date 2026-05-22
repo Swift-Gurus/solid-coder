@@ -26,7 +26,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "search_codebase",
+            "name": "mcp__pipeline__search_codebase",
             "description": (
                 "Search the codebase for existing implementations or similar types. "
                 "Call once per synonym — generate multiple synonyms and call for each."
@@ -43,7 +43,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "load_fix_for_violation",
+            "name": "mcp__docs__load_fix_for_violation",
             "description": "Load actionable fix instructions for a specific SOLID metric violation.",
             "parameters": {
                 "type": "object",
@@ -65,9 +65,9 @@ def _summarise_result(name: str, result_str: str) -> dict:
     """Extract a compact summary from a gateway tool result string."""
     try:
         data = json.loads(result_str)
-        if name == "search_codebase" and isinstance(data, dict):
+        if name == "mcp__pipeline__search_codebase" and isinstance(data, dict):
             return {"hits": len(data.get("results", []))}
-        if name == "load_fix_for_violation":
+        if name == "mcp__docs__load_fix_for_violation":
             return {"content_len": len(result_str)}
     except Exception:
         pass
@@ -171,13 +171,15 @@ class GatewayToolDispatcher:
         except (KeyError, json.JSONDecodeError, TypeError):
             return "error: malformed tool call"
 
-        if name == "search_codebase":
+        if name == "mcp__pipeline__search_codebase":
+            synonyms = args.get("query", "")
             result = self._invoker.invoke(
-                "search_codebase", extra_args=["--query", args.get("query", "")]
+                "search_codebase",
+                extra_args=["--synonyms", synonyms, "--min-matches", "1"],
             )
             return json.dumps(result) if result is not None else "[]"
 
-        if name == "load_fix_for_violation":
+        if name == "mcp__docs__load_fix_for_violation":
             result = self._invoker.invoke(
                 "load_fix_for_violation", extra_args=["--metric_id", args.get("metric_id", "")]
             )

@@ -91,8 +91,9 @@ The following are exempt from ALL rules — do not report violations for them:
 </global-exceptions>
 
 The detection instructions below define the rules, how to detect violations, \
-and the exceptions that apply to each rule. You MUST follow the detection steps \
-exactly as written.
+and the exceptions that apply to each rule. You MUST work through every \
+detection phase for every principle before producing your response — do not \
+skip any metric or stop early because you already found some violations.
 
 Exception handling rules:
 - Each `<exceptions principle="X">` block contains exceptions that apply ONLY \
@@ -113,28 +114,40 @@ nothing more.
 {content}
 </code-to-review>
 
-Before listing violations, run the DRY-1 search procedure from the detection \
-instructions using both methods:
+<workflow>
+  <scope>
+    All steps below apply ONLY to the code inside the code-to-review block above. \
+Do not analyse, reference, or generate search terms from anything outside that block.
+  </scope>
 
-1. **Frontmatter search** — call `mcp__pipeline__search_codebase` with synonyms \
-for each type defined in this file. Finds code tagged with solid-frontmatter.
+  <step id="1" name="detection">
+    Work through every detection phase for every principle in the \
+detection-instructions block. Apply each metric to every unit in the code. \
+Do not stop early.
+  </step>
 
-2. **Name-based fallback** — always runs, catches code without solid-frontmatter. \
-For each code unit: collect search terms (type name, camelCase-split keywords, \
-synonyms). Then: use Grep to search file contents by those terms; use Glob to \
-search filenames. Also search for `extension <TypeName>` patterns on types used \
-in this file — convenience wrappers are commonly missed. Check shared/common \
-directories and design system modules for equivalent components. \
-Merge any new hits with step 1 results; skip files already found in step 1.
+  <step id="2" name="dry-search">
+    For each code unit (class, struct, enum, protocol, top-level function) \
+in the code-to-review block:
+    a) Split its name by camelCase boundaries into component words \
+(e.g. UserManager becomes User Manager).
+    b) Describe its responsibility in plain words and generate 3 domain-aware \
+synonyms per keyword.
+    c) Build a search query: name + camelCase words + responsibility keywords + \
+synonyms, all space-separated.
+    d) Call `mcp__pipeline__search_codebase` with that query.
+    e) Discard any match whose path equals `{file_path}` (self-reference).
+    f) Apply DRY-1 detection criteria to the remaining matches.
+  </step>
 
-The destination path for this write is `{file_path}`. Do NOT read that path — \
-the file does not exist yet or contains stale content. Discard any match whose \
-path is `{file_path}` — it is a self-reference.
+  <step id="3" name="fix-guidance">
+    For every SEVERE violation found, call `mcp__docs__load_fix_for_violation` \
+with its metric_id (e.g. metric_id="OCP-1"). Use the returned instructions \
+for the fix field. Do not write a fix without calling this tool first.
+  </step>
+</workflow>
 
-If you find violations, load targeted fix guidance before writing your response:
-- For each unique metric_id found, call \
-`mcp__docs__load_fix_for_violation` with only metric_id (e.g. metric_id="OCP-1"). \
-Use the returned instructions to make the `fix` field concrete and actionable.
+Only after completing all workflow steps, write your final JSON response.
 
 List only SEVERE violations. For each include:
 - principle: the rule name (e.g. SRP, OCP, DRY)

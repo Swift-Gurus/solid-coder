@@ -95,22 +95,25 @@ class TestGatewayToolDispatcher(unittest.TestCase):
 
     def test_search_codebase_invokes_correct_subcommand(self):
         d, invoker = self._make({"results": []})
-        d.dispatch(_tc("search_codebase", {"query": "UserRepository"}))
+        d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "UserRepository"}))
         self.assertEqual(invoker.invoke.call_args[0][0], "search_codebase")
 
-    def test_search_codebase_passes_query_in_extra_args(self):
+    def test_search_codebase_passes_synonyms_not_query_flag(self):
         d, invoker = self._make({"results": []})
-        d.dispatch(_tc("search_codebase", {"query": "UserRepository"}))
-        self.assertIn("UserRepository", self._extra_args(invoker))
+        d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "UserRepository"}))
+        extra = self._extra_args(invoker)
+        self.assertIn("--synonyms", extra)
+        self.assertNotIn("--query", extra)
+        self.assertIn("UserRepository", extra)
 
     def test_load_fix_invokes_correct_subcommand(self):
         d, invoker = self._make({"content": "fix"})
-        d.dispatch(_tc("load_fix_for_violation", {"metric_id": "OCP-1"}))
+        d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"}))
         self.assertEqual(invoker.invoke.call_args[0][0], "load_fix_for_violation")
 
     def test_load_fix_passes_metric_id_in_extra_args(self):
         d, invoker = self._make({"content": "fix"})
-        d.dispatch(_tc("load_fix_for_violation", {"metric_id": "OCP-1"}))
+        d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"}))
         self.assertIn("OCP-1", self._extra_args(invoker))
 
     def test_unknown_tool_returns_error_string(self):
@@ -119,22 +122,22 @@ class TestGatewayToolDispatcher(unittest.TestCase):
 
     def test_malformed_arguments_returns_error_string(self):
         d, _ = self._make()
-        tc = {"id": "x", "function": {"name": "search_codebase", "arguments": "not json"}}
+        tc = {"id": "x", "function": {"name": "mcp__pipeline__search_codebase", "arguments": "not json"}}
         self.assertIn("error", d.dispatch(tc))
 
     def test_arguments_as_dict_handled_gracefully(self):
         d, invoker = self._make({"results": []})
-        tc = {"id": "x", "function": {"name": "search_codebase", "arguments": {"query": "Foo"}}}
+        tc = {"id": "x", "function": {"name": "mcp__pipeline__search_codebase", "arguments": {"query": "Foo"}}}
         d.dispatch(tc)
         self.assertIn("Foo", self._extra_args(invoker))
 
     def test_search_returns_json_string_of_result(self):
         d, _ = self._make({"results": ["Foo.swift"]})
-        self.assertIn("results", json.loads(d.dispatch(_tc("search_codebase", {"query": "Foo"}))))
+        self.assertIn("results", json.loads(d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "Foo"}))))
 
     def test_search_returns_empty_list_on_invoker_failure(self):
         d, _ = self._make(None)
-        self.assertEqual(d.dispatch(_tc("search_codebase", {"query": "Foo"})), "[]")
+        self.assertEqual(d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "Foo"})), "[]")
 
 
 class TestLocalLLMLogger(unittest.TestCase):
@@ -159,18 +162,18 @@ class TestLocalLLMLogger(unittest.TestCase):
     def test_creates_call_file_on_log_tool_call(self):
         with tempfile.TemporaryDirectory() as d:
             logger = self._make_logger(Path(d))
-            logger.log_tool_call("call-123", "search_codebase", {"query": "UserRepo"})
+            logger.log_tool_call("call-123", "mcp__pipeline__search_codebase", {"query": "UserRepo"})
             files = list(Path(d).rglob("call-123.jsonl"))
             self.assertEqual(len(files), 1)
             entries = self._read_jsonl(files[0])
             self.assertEqual(entries[0]["ev"], "call")
-            self.assertEqual(entries[0]["name"], "search_codebase")
+            self.assertEqual(entries[0]["name"], "mcp__pipeline__search_codebase")
 
     def test_appends_result_to_call_file(self):
         with tempfile.TemporaryDirectory() as d:
             logger = self._make_logger(Path(d))
-            logger.log_tool_call("call-123", "search_codebase", {"query": "Foo"})
-            logger.log_tool_result("call-123", "search_codebase", json.dumps({"results": ["a", "b", "c"]}))
+            logger.log_tool_call("call-123", "mcp__pipeline__search_codebase", {"query": "Foo"})
+            logger.log_tool_result("call-123", "mcp__pipeline__search_codebase", json.dumps({"results": ["a", "b", "c"]}))
             entries = self._read_jsonl(list(Path(d).rglob("call-123.jsonl"))[0])
             self.assertEqual(len(entries), 2)
             self.assertEqual(entries[1]["ev"], "result")
@@ -210,8 +213,8 @@ class TestLocalLLMLogger(unittest.TestCase):
         logger._model = "Qwen3"
         logger._t0 = 0.0
         logger.log_start(100)
-        logger.log_tool_call("x", "search_codebase", {})
-        logger.log_tool_result("x", "search_codebase", "[]")
+        logger.log_tool_call("x", "mcp__pipeline__search_codebase", {})
+        logger.log_tool_result("x", "mcp__pipeline__search_codebase", "[]")
         logger.log_done(1, {}, [])
 
 
@@ -229,7 +232,7 @@ class TestLlamaServerRunner(unittest.TestCase):
 
     def test_dispatches_tool_call_and_returns_final_content(self):
         runner, _, dispatcher = self._make([
-            _tool_call_response("search_codebase", {"query": "Foo"}),
+            _tool_call_response("mcp__pipeline__search_codebase", {"query": "Foo"}),
             _no_tool_response('{"violations": []}'),
         ])
         result = runner.run("prompt", 30)
@@ -238,7 +241,7 @@ class TestLlamaServerRunner(unittest.TestCase):
 
     def test_tool_result_appended_as_tool_message(self):
         runner, client, _ = self._make(
-            [_tool_call_response("search_codebase", {"query": "Foo"}),
+            [_tool_call_response("mcp__pipeline__search_codebase", {"query": "Foo"}),
              _no_tool_response("done")],
             dispatch_result='{"matches": ["Bar.swift"]}',
         )
@@ -249,7 +252,7 @@ class TestLlamaServerRunner(unittest.TestCase):
 
     def test_tool_call_id_threaded_into_tool_message(self):
         runner, client, _ = self._make([
-            _tool_call_response("search_codebase", {"query": "X"}, call_id="abc123"),
+            _tool_call_response("mcp__pipeline__search_codebase", {"query": "X"}, call_id="abc123"),
             _no_tool_response("done"),
         ])
         runner.run("prompt", 30)
@@ -261,8 +264,8 @@ class TestLlamaServerRunner(unittest.TestCase):
         parallel = {"choices": [{"finish_reason": "tool_calls", "message": {
             "role": "assistant", "content": "",
             "tool_calls": [
-                _tc("search_codebase", {"query": "A"}, call_id="a"),
-                _tc("search_codebase", {"query": "B"}, call_id="b"),
+                _tc("mcp__pipeline__search_codebase", {"query": "A"}, call_id="a"),
+                _tc("mcp__pipeline__search_codebase", {"query": "B"}, call_id="b"),
             ],
         }}]}
         runner, _, dispatcher = self._make([parallel, _no_tool_response("ok")])
@@ -271,7 +274,7 @@ class TestLlamaServerRunner(unittest.TestCase):
 
     def test_returns_none_when_max_rounds_exceeded(self):
         runner, client, _ = self._make(
-            [_tool_call_response("search_codebase", {"query": "x"})] * 5,
+            [_tool_call_response("mcp__pipeline__search_codebase", {"query": "x"})] * 5,
             max_rounds=3,
         )
         self.assertIsNone(runner.run("prompt", 30))
