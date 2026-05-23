@@ -85,7 +85,13 @@ TOOLS: list = [
         "type": "function",
         "function": {
             "name": "mcp__docs__load_fix_for_violation",
-            "description": "Load actionable fix instructions for a specific SOLID metric violation.",
+            "description": (
+                "Load fix guidance for a single metric violation. "
+                "Call once per SEVERE violation found — pass only the metric_id (e.g. OCP-1, SRP-2). "
+                "Returns {metric_id, content} where `content` is the fix strategy guidance. "
+                "Apply that guidance to the specific code being reviewed and write a concrete, "
+                "code-specific solution into the `fix` field."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -184,16 +190,56 @@ class FileSearching(Protocol):
     def glob_by_name(self, pattern: str) -> str: ...
 
 
+class LLMSessionObserving(Protocol):
+    def on_start(self, prompt_len: int) -> None: ...
+    def on_tool_call(self, call_id: str, name: str, args: dict) -> None: ...
+    def on_tool_result(self, call_id: str, name: str, result: str) -> None: ...
+    def on_done(self, rounds: int, usage: dict, content: str) -> None: ...
+
+
+def _default_grep(name: str) -> str:
+    from lib.file_searcher import grep_by_name
+    return grep_by_name(name=name)
+
+
+def _default_glob(pattern: str) -> str:
+    from lib.file_searcher import glob_by_name
+    return glob_by_name(pattern=pattern)
+
+
 class FileSearcher:
-    """Adapter wrapping lib.file_searcher functions behind the FileSearching protocol."""
+    """Adapter wrapping file-search callables behind the FileSearching protocol."""
+
+    def __init__(self, grep_fn=_default_grep, glob_fn=_default_glob) -> None:
+        self._grep = grep_fn
+        self._glob = glob_fn
 
     def grep_by_name(self, name: str) -> str:
-        from lib.file_searcher import grep_by_name
-        return grep_by_name(name=name)
+        return self._grep(name)
 
     def glob_by_name(self, pattern: str) -> str:
-        from lib.file_searcher import glob_by_name
-        return glob_by_name(pattern=pattern)
+        return self._glob(pattern)
+
+
+class LLMSessionObserver:
+    """Wires LocalLLMLogger and ViolationParsing into the LLMSessionObserving protocol."""
+
+    def __init__(self, logger: LocalLLMLogger, parser: ViolationParsing) -> None:
+        self._logger = logger
+        self._parser = parser
+
+    def on_start(self, prompt_len: int) -> None:
+        self._logger.log_start(prompt_len)
+
+    def on_tool_call(self, call_id: str, name: str, args: dict) -> None:
+        self._logger.log_tool_call(call_id, name, args)
+
+    def on_tool_result(self, call_id: str, name: str, result: str) -> None:
+        self._logger.log_tool_result(call_id, name, result)
+
+    def on_done(self, rounds: int, usage: dict, content: str) -> None:
+        violations = self._parser.parse(content) or []
+        self._logger.log_done(rounds, usage, violations)
 
 
 class LlamaHttpClient:
@@ -256,7 +302,10 @@ class GatewayToolDispatcher:
             result = self._invoker.invoke(
                 "load_fix_for_violation", extra_args=["--metric_id", args.get("metric_id", "")]
             )
-            return json.dumps(result) if result is not None else ""
+            if result is None:
+                return ""
+            # Return content string directly — avoids double-encoding and escape noise
+            return result.get("content", "") if isinstance(result, dict) else str(result)
 
         return f"error: unknown tool '{name}'"
 
@@ -269,18 +318,16 @@ class LlamaServerRunner:
         client: LlamaHttpChatting,
         dispatcher: ToolDispatching,
         max_rounds: int = _MAX_TOOL_ROUNDS,
-        logger: Optional[LocalLLMLogger] = None,
-        parser: Optional[ViolationParsing] = None,
+        observer: Optional[LLMSessionObserving] = None,
     ) -> None:
         self._client = client
         self._dispatcher = dispatcher
         self._max_rounds = max_rounds
-        self._logger = logger
-        self._parser = parser
+        self._observer = observer
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
-        if self._logger:
-            self._logger.log_start(len(prompt))
+        if self._observer:
+            self._observer.on_start(len(prompt))
         messages: list = [{"role": "user", "content": prompt}]
         rounds = 0
         last_usage: dict = {}
@@ -296,9 +343,8 @@ class LlamaServerRunner:
 
                 if choice.get("finish_reason") != "tool_calls":
                     content = message.get("content", "")
-                    if self._logger and self._parser:
-                        violations = self._parser.parse(content) or []
-                        self._logger.log_done(rounds, last_usage, violations)
+                    if self._observer:
+                        self._observer.on_done(rounds, last_usage, content)
                     return content
 
                 tool_calls = message.get("tool_calls") or []
@@ -311,11 +357,11 @@ class LlamaServerRunner:
                     call_id = tc.get("id", "unknown")
                     tc_args = _parse_tool_call_args(tc)
                     tc_name = tc.get("function", {}).get("name", "")
-                    if self._logger:
-                        self._logger.log_tool_call(call_id, tc_name, tc_args)
+                    if self._observer:
+                        self._observer.on_tool_call(call_id, tc_name, tc_args)
                     result_str = self._dispatcher.dispatch(tc)
-                    if self._logger:
-                        self._logger.log_tool_result(call_id, tc_name, result_str)
+                    if self._observer:
+                        self._observer.on_tool_result(call_id, tc_name, result_str)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": call_id,
@@ -336,11 +382,12 @@ def make_llama_server_runner(
 ) -> LlamaServerRunner:
     """Wire production defaults and return a ready-to-use LlamaServerRunner."""
     invoker = GatewayInvoker(gateway, GatewayCommandRunner())
-    logger = LocalLLMLogger(session_id=session_id, file_path=file_path, model=model) if session_id else None
-    parser = ViolationParser() if logger else None
+    observer: Optional[LLMSessionObserving] = None
+    if session_id:
+        logger = LocalLLMLogger(session_id=session_id, file_path=file_path, model=model)
+        observer = LLMSessionObserver(logger=logger, parser=ViolationParser())
     return LlamaServerRunner(
         client=LlamaHttpClient(host=host, model=model),
         dispatcher=GatewayToolDispatcher(invoker=invoker, file_searcher=FileSearcher()),
-        logger=logger,
-        parser=parser,
+        observer=observer,
     )

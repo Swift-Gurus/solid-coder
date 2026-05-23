@@ -143,6 +143,22 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         d, _, _fs = self._make(None)
         self.assertEqual(d.dispatch(_tc("mcp__pipeline__search_codebase", {"query": "Foo"})), "[]")
 
+    def test_load_fix_returns_content_string_not_json_encoded_dict(self):
+        """LLM must receive plain content text with real newlines, not double-encoded JSON."""
+        fix_content = "<fix>\nIntroduce a protocol.\n</fix>"
+        d, invoker, _fs = self._make(
+            {"principle": "OCP", "metric_id": "OCP-1", "content": fix_content}
+        )
+        result = d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"}))
+        # Result must be the raw string — real newlines, no \\n, no \" escapes
+        self.assertEqual(result, fix_content)
+        self.assertNotIn("\\n", result)
+        self.assertNotIn('\\"', result)
+
+    def test_load_fix_returns_empty_string_on_invoker_failure(self):
+        d, _, _fs = self._make(None)
+        self.assertEqual(d.dispatch(_tc("mcp__docs__load_fix_for_violation", {"metric_id": "OCP-1"})), "")
+
     def test_grep_codebase_delegates_to_file_searcher(self):
         d, _, fs = self._make()
         fs.grep_by_name.return_value = "/src/Foo.swift:1: class Foo"

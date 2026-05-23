@@ -12,7 +12,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import Logging, run_claude_bare
+from hook_utils import Logging, PLUGIN_ROOT, run_claude_bare
 from hook_callable import CallableAdapting
 from hc_rule_loader import RulesLoading
 from hc_tag_detector import TagDetecting
@@ -81,87 +81,12 @@ class PromptBuilding(Protocol):
     ) -> str: ...
 
 
-HEALTH_PROMPT = """\
-You are a SOLID code quality gate doing a pre-write check.
+_PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts" / "health-check"
 
-<global-exceptions>
-The following are exempt from ALL rules — do not report violations for them:
-- `#Preview` blocks and their entire body
-- Files whose sole purpose is SwiftUI previews
-</global-exceptions>
 
-The detection instructions below define the rules, how to detect violations, \
-and the exceptions that apply to each rule. You MUST work through every \
-detection phase for every principle before producing your response — do not \
-skip any metric or stop early because you already found some violations.
-
-Exception handling rules:
-- Each `<exceptions principle="X">` block contains exceptions that apply ONLY \
-to principle X. Never apply exceptions from one principle to another.
-- Before reporting a finding for principle X metric M, check ONLY the \
-`<exceptions principle="X">` block. If the code matches an exception condition \
-for that metric, skip ONLY that finding — continue reviewing the same unit \
-against all other principles and metrics.
-- Do NOT use an exception as a reason to stop reviewing a unit entirely. \
-An exception exempts a unit from one specific metric of one specific principle, \
-nothing more.
-
-<detection-instructions>
-{detection_instructions}
-</detection-instructions>
-
-<code-to-review>
-{content}
-</code-to-review>
-
-<workflow>
-  <scope>
-    All steps below apply ONLY to the code inside the code-to-review block above. \
-Do not analyse, reference, or generate search terms from anything outside that block.
-  </scope>
-
-  <step id="1" name="detection">
-    Work through every detection phase for every principle in the \
-detection-instructions block. Apply each metric to every unit in the code. \
-Do not stop early.
-  </step>
-
-  <step id="2" name="dry-search">
-    For each code unit (class, struct, enum, protocol, top-level function) \
-in the code-to-review block:
-    a) Split its name by camelCase boundaries into component words \
-(e.g. UserManager becomes User Manager).
-    b) Describe its responsibility in plain words and generate 3 domain-aware \
-synonyms per keyword.
-    c) Build a search query: name + camelCase words + responsibility keywords + \
-synonyms, all space-separated.
-    d) Call `mcp__pipeline__search_codebase` with that query.
-    e) Discard any match whose path equals `{file_path}` (self-reference).
-    f) Apply DRY-1 detection criteria to the remaining matches.
-  </step>
-
-  <step id="3" name="fix-guidance">
-    For every SEVERE violation found, call `mcp__docs__load_fix_for_violation` \
-with its metric_id (e.g. metric_id="OCP-1"). Use the returned instructions \
-for the fix field. Do not write a fix without calling this tool first.
-  </step>
-</workflow>
-
-Only after completing all workflow steps, write your final JSON response.
-
-List only SEVERE violations. For each include:
-- principle: the rule name (e.g. SRP, OCP, DRY)
-- metric_id: the metric identifier (e.g. OCP-1, SRP-2)
-- issue: what is wrong
-- fix: the specific change needed
-
-Your entire response MUST be a single raw JSON object and nothing else. \
-No markdown fences. No explanation. No commentary.
-
-{{"violations": [{{"principle": "string", "metric_id": "string", "issue": "string", "fix": "string"}}]}}
-
-Empty if clean: {{"violations": []}}
-"""
+def _read_prompt(filename: str) -> str:
+    """Read a prompt fragment from the health-check prompts directory."""
+    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8").rstrip()
 
 
 class HealthPromptBuilder:
@@ -178,11 +103,20 @@ class HealthPromptBuilder:
         detection_instructions = "\n\n---\n\n".join(
             p["content"] for p in principles if p.get("content")
         )
-        return header + HEALTH_PROMPT.format(
-            detection_instructions=detection_instructions,
-            content=content,
-            file_path=path,
+        prompt = (
+            _read_prompt("preamble.md")
+            + "\n\n<detection-instructions>\n"
+            + detection_instructions
+            + "\n</detection-instructions>"
+            + "\n\n<code-to-review>\n"
+            + content
+            + "\n</code-to-review>"
+            + "\n\n"
+            + _read_prompt("workflow.md").replace("{file_path}", path)
+            + "\n\n"
+            + _read_prompt("output-format.md")
         )
+        return header + prompt
 
 
 # ── LLM review ────────────────────────────────────────────────────────────────
