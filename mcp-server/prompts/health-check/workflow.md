@@ -20,7 +20,8 @@
     c) Build a search query: name + camelCase words + responsibility keywords +
        synonyms, all space-separated.
     d) Call `mcp__pipeline__search_codebase` with that query.
-    e) Discard any match whose path equals {file_path} (self-reference).
+    e) Skip any result whose path is {file_path} — that is the file being
+       written and cannot be a reuse source for itself.
     f) Apply DRY-1 detection criteria to the remaining matches.
   </step>
 

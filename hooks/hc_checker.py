@@ -84,13 +84,25 @@ class PromptBuilding(Protocol):
 _PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts" / "health-check"
 
 
-def _read_prompt(filename: str) -> str:
-    """Read a prompt fragment from the health-check prompts directory."""
-    return (_PROMPTS_DIR / filename).read_text(encoding="utf-8").rstrip()
+class PromptReading(Protocol):
+    def read(self, filename: str) -> str: ...
+
+
+class FilePromptReader:
+    """Reads prompt fragments from a directory on disk."""
+
+    def __init__(self, prompts_dir: Path = _PROMPTS_DIR) -> None:
+        self._dir = prompts_dir
+
+    def read(self, filename: str) -> str:
+        return (self._dir / filename).read_text(encoding="utf-8").rstrip()
 
 
 class HealthPromptBuilder:
     """Assembles the LLM health-check prompt from detection rules and file content."""
+
+    def __init__(self, reader: Optional[PromptReading] = None) -> None:
+        self._reader = reader or FilePromptReader()
 
     def build(
         self,
@@ -103,8 +115,8 @@ class HealthPromptBuilder:
         detection_instructions = "\n\n---\n\n".join(
             p["content"] for p in principles if p.get("content")
         )
-        prompt = (
-            _read_prompt("preamble.md")
+        return header + (
+            self._reader.read("preamble.md")
             + "\n\n<detection-instructions>\n"
             + detection_instructions
             + "\n</detection-instructions>"
@@ -112,11 +124,10 @@ class HealthPromptBuilder:
             + content
             + "\n</code-to-review>"
             + "\n\n"
-            + _read_prompt("workflow.md").replace("{file_path}", path)
+            + self._reader.read("workflow.md").replace("{file_path}", path)
             + "\n\n"
-            + _read_prompt("output-format.md")
+            + self._reader.read("output-format.md")
         )
-        return header + prompt
 
 
 # ── LLM review ────────────────────────────────────────────────────────────────
