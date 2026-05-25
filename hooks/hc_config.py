@@ -61,6 +61,19 @@ def llm_timeout() -> int:
         return 300
 
 
+def hook_exclude_patterns(hook: str) -> list:
+    """Return the exclude glob patterns configured for a named hook.
+
+    Reads [hooks.<hook>].exclude from the project config, e.g.:
+
+        [hooks.pre_write_gate]
+        exclude = ["tests/fixtures/**"]
+
+    Returns an empty list when the section or key is absent.
+    """
+    return list(_read_section("hooks").get(hook, {}).get("exclude", []))
+
+
 def inference_params() -> dict:
     """Return [inference] section defaults for per-request generation params."""
     cfg = _read_section("inference")

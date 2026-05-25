@@ -28,6 +28,9 @@ CORRECTED_FRONTMATTER = (
 )
 VIOLATIONS = [{"principle": "SRP", "issue": "Two concerns.", "fix": "Extract."}]
 
+_HC = "pre_write_gate.health._check"
+_FM = "pre_write_gate.frontmatter.fix_with_claude"
+
 
 def _call_main(stdin_input) -> tuple:
     return test_utils.call_main(stdin_input, gate.main)
@@ -38,8 +41,7 @@ _event = test_utils.event
 
 class TestGateSkipConditions(unittest.TestCase):
     def test_non_swift_allows_without_checks(self):
-        with patch("pre_write_gate._run_frontmatter") as fm, \
-             patch("pre_write_gate._run_health") as hc:
+        with patch(_HC) as hc, patch(_FM) as fm:
             code, out = _call_main(_event("Write", "/src/Foo.kt", LONG_SWIFT))
         fm.assert_not_called()
         hc.assert_not_called()
@@ -48,20 +50,18 @@ class TestGateSkipConditions(unittest.TestCase):
 
     def test_new_swift_file_runs_health_check(self):
         """Health check always runs for new .swift files regardless of size."""
-        with patch("pre_write_gate._run_frontmatter", return_value=SHORT_SWIFT), \
-             patch("pre_write_gate._run_health", return_value=[]) as hc:
+        with patch(_FM, return_value=SHORT_SWIFT), patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Foo.swift", SHORT_SWIFT))
         hc.assert_called_once()
 
     def test_test_file_runs_health_check(self):
         """Test files are no longer excluded — unit testing rules apply."""
-        with patch("pre_write_gate._run_frontmatter", return_value=LONG_SWIFT), \
-             patch("pre_write_gate._run_health", return_value=[]) as hc:
+        with patch(_FM, return_value=LONG_SWIFT), patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/FooTests.swift", LONG_SWIFT))
         hc.assert_called_once()
 
     def test_read_tool_allows_immediately(self):
-        with patch("pre_write_gate._run_frontmatter") as fm:
+        with patch(_FM) as fm:
             code, _ = _call_main({"tool_name": "Read", "tool_input": {"file_path": "/src/Foo.swift"}, "session_id": "s"})
         fm.assert_not_called()
         self.assertEqual(code, 0)
@@ -69,21 +69,14 @@ class TestGateSkipConditions(unittest.TestCase):
 
 class TestGateDecisions(unittest.TestCase):
     def test_both_clean_allows(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=LONG_SWIFT_WITH_FRONTMATTER), \
-             patch("pre_write_gate._run_health", return_value=[]):
+        with patch(_FM, return_value=LONG_SWIFT_WITH_FRONTMATTER), patch(_HC, return_value=[]):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_health_violations_blocks_without_running_frontmatter(self):
-        """Health violations deny the write — _run_frontmatter is never reached.
-
-        Uses content WITH solid-description so run_frontmatter=True; the only
-        reason fm is not called is that _deny(violations) -> sys.exit(0) exits
-        the process before Step 2 runs.
-        """
-        with patch("pre_write_gate._run_frontmatter") as fm, \
-             patch("pre_write_gate._run_health", return_value=VIOLATIONS):
+        """Health violations deny the write — frontmatter fix is never reached."""
+        with patch(_FM) as fm, patch(_HC, return_value=VIOLATIONS):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
@@ -93,8 +86,7 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_frontmatter_correction_only_runs_when_health_passes(self):
         """Frontmatter runs after health check returns clean."""
-        with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER) as fm, \
-             patch("pre_write_gate._run_health", return_value=[]):
+        with patch(_FM, return_value=CORRECTED_FRONTMATTER) as fm, patch(_HC, return_value=[]):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "allow")
@@ -103,41 +95,34 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_deny_has_no_frontmatter_blocks(self):
         """On deny, frontmatter is never run so no corrected blocks in reason."""
-        with patch("pre_write_gate._run_health", return_value=VIOLATIONS):
+        with patch(_HC, return_value=VIOLATIONS):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertNotIn("corrected frontmatter", h["permissionDecisionReason"])
 
     def test_frontmatter_error_fails_open(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=None), \
-             patch("pre_write_gate._run_health", return_value=[]):
+        with patch(_FM, return_value=None), patch(_HC, return_value=[]):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_health_error_fails_open(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=LONG_SWIFT), \
-             patch("pre_write_gate._run_health", return_value=None):
+        with patch(_FM, return_value=LONG_SWIFT), patch(_HC, return_value=None):
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_edit_unreadable_file_sets_new_string_to_corrected(self):
-        """When the file can't be read, content == new_string; corrected is the snippet-level
-        fix, so new_string gets the corrected snippet — no full-file replacement needed."""
-        with patch("pre_write_gate._run_frontmatter", return_value=CORRECTED_FRONTMATTER), \
-             patch("pre_write_gate._run_health", return_value=[]):
+        """When the file can't be read, new_string gets the corrected snippet."""
+        with patch(_FM, return_value=CORRECTED_FRONTMATTER), patch(_HC, return_value=[]):
             code, out = _call_main(_event("Edit", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         updated = parse_hook_output(out)["updatedInput"]
         self.assertIn("new_string", updated)
         self.assertEqual(updated["new_string"], CORRECTED_FRONTMATTER)
 
     def test_edit_existing_file_replaces_whole_file_to_prevent_duplication(self):
-        """When the existing file is readable, _run_frontmatter receives the full post-edit
-        content and returns a full corrected file.  _allow_corrected must set
-        old_string=existing so the Edit replaces the whole file — not insert the
-        full corrected content in place of the small old_string (which duplicates)."""
+        """When the existing file is readable, old_string is set to the full existing content."""
         existing_content = (
             "/**\n solid-name: Foo\n solid-category: service\n"
             " solid-description: Loads via URLSession.shared.\n */\n"
@@ -148,13 +133,12 @@ class TestGateDecisions(unittest.TestCase):
             " solid-description: Coordinates data retrieval.\n */\n"
             "final class Foo {\n    func updated() {}\n}\n"
         )
-
         with tempfile.NamedTemporaryFile(suffix=".swift", mode="w", delete=False, encoding="utf-8") as f:
             f.write(existing_content)
             tmp_path = f.name
 
         try:
-            event = {
+            ev = {
                 "tool_name": "Edit",
                 "tool_input": {
                     "file_path": tmp_path,
@@ -163,23 +147,19 @@ class TestGateDecisions(unittest.TestCase):
                 },
                 "session_id": "test",
             }
-            with patch("pre_write_gate._run_frontmatter", return_value=corrected_content), \
-                 patch("pre_write_gate._run_health", return_value=[]):
-                code, out = _call_main(event)
+            with patch(_FM, return_value=corrected_content), patch(_HC, return_value=[]):
+                code, out = _call_main(ev)
         finally:
             os.unlink(tmp_path)
 
         updated = parse_hook_output(out)["updatedInput"]
-        self.assertEqual(updated["old_string"], existing_content,
-                         "old_string must be the full existing file to prevent duplication")
+        self.assertEqual(updated["old_string"], existing_content)
         self.assertEqual(updated["new_string"], corrected_content)
         self.assertNotIn("replace_all", updated)
 
     def test_no_frontmatter_health_clean_allows(self):
-        """No solid-description means frontmatter correction is skipped.
-        Health check still runs; if clean it allows silently."""
-        with patch("pre_write_gate._run_frontmatter") as fm, \
-             patch("pre_write_gate._run_health", return_value=[]) as hc:
+        """No solid-description means frontmatter correction is skipped."""
+        with patch(_FM) as fm, patch(_HC, return_value=[]) as hc:
             code, out = _call_main(_event("Write", "/src/Foo.swift", SHORT_SWIFT))
         hc.assert_called_once()
         fm.assert_not_called()
@@ -209,40 +189,60 @@ _SRP_VIOLATION_WITH_METRIC = [
 
 class TestGatePythonSupport(unittest.TestCase):
     def test_py_file_invokes_run_health(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
-             patch("pre_write_gate._run_health", return_value=[]) as hc:
+        with patch(_FM, return_value=PYTHON_CONTENT), patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
         hc.assert_called_once()
 
     def test_py_file_clean_allows(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
-             patch("pre_write_gate._run_health", return_value=[]):
+        with patch(_FM, return_value=PYTHON_CONTENT), patch(_HC, return_value=[]):
             code, out = _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_py_file_violation_denies(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
-             patch("pre_write_gate._run_health", return_value=VIOLATIONS):
+        with patch(_FM, return_value=PYTHON_CONTENT), patch(_HC, return_value=VIOLATIONS):
             code, out = _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertIn("SRP", h["permissionDecisionReason"])
 
     def test_kt_file_skips_run_health(self):
-        with patch("pre_write_gate._run_health") as hc:
+        with patch(_HC) as hc:
             code, out = _call_main(_event("Write", "/src/Foo.kt", PYTHON_CONTENT))
         hc.assert_not_called()
         self.assertEqual(code, 0)
 
     def test_py_violation_with_metric_id_denies_with_issue_in_reason(self):
-        with patch("pre_write_gate._run_frontmatter", return_value=PYTHON_CONTENT), \
-             patch("pre_write_gate._run_health", return_value=_SRP_VIOLATION_WITH_METRIC):
+        with patch(_FM, return_value=PYTHON_CONTENT), patch(_HC, return_value=_SRP_VIOLATION_WITH_METRIC):
             code, out = _call_main(_event("Write", "/src/Foo.py", PYTHON_CONTENT))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertIn("SRP", h["permissionDecisionReason"])
         self.assertIn("Multiple responsibilities", h["permissionDecisionReason"])
+
+
+class TestPreWriteGateExclusion(unittest.TestCase):
+    """Paths matching [hooks.pre_write_gate].exclude bypass all checks."""
+
+    def test_excluded_path_allows_without_health_check(self):
+        with patch("pre_write_gate.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
+             patch(_HC) as hc:
+            code, out = _call_main(_event("Write", "/project/tests/fixtures/SRP/srp2-severe.swift", LONG_SWIFT))
+        hc.assert_not_called()
+        self.assertEqual(code, 0)
+        self.assertEqual(out, "")
+
+    def test_non_excluded_path_runs_health(self):
+        with patch("pre_write_gate.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
+             patch(_HC, return_value=[]) as hc:
+            _call_main(_event("Write", "/src/Main.swift", LONG_SWIFT))
+        hc.assert_called_once()
+
+    def test_no_exclusions_runs_health_normally(self):
+        with patch("pre_write_gate.hook_exclude_patterns", return_value=[]), \
+             patch(_HC, return_value=[]) as hc:
+            _call_main(_event("Write", "/src/Main.swift", LONG_SWIFT))
+        hc.assert_called_once()
 
 
 if __name__ == "__main__":

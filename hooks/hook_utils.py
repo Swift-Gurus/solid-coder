@@ -47,6 +47,48 @@ def strip_markdown_fences(text: str) -> str:
     return re.sub(r"```[a-zA-Z]*\n?", "", text).strip()
 
 
+def parse_hook_event(raw: str) -> Optional[tuple]:
+    """Parse a hook PreToolUse event from raw JSON.
+
+    Returns (tool_name, tool_input, file_path, session_id) on success,
+    or None when the input is not valid JSON.
+    """
+    try:
+        event = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    tool_input = event.get("tool_input") or {}
+    return (
+        event.get("tool_name", ""),
+        tool_input,
+        tool_input.get("file_path", ""),
+        event.get("session_id", ""),
+    )
+
+
+def path_matches_pattern(file_path: str, pattern: str) -> bool:
+    """Return True if file_path matches the glob pattern.
+
+    Supports ** wildcard: tests/fixtures/** matches any file anywhere under
+    that directory, whether the path is relative or absolute.
+    Falls back to fnmatch for patterns without **.
+    """
+    import fnmatch as _fnmatch
+
+    normalized = file_path.replace("\\", "/")
+    pat = pattern.replace("\\", "/")
+
+    if "**" in pat:
+        prefix = pat.split("**")[0].rstrip("/")
+        needle = "/" + prefix + "/"
+        haystack = "/" + normalized.lstrip("/")
+        return needle in haystack
+
+    return _fnmatch.fnmatch(normalized, pat) or _fnmatch.fnmatch(
+        normalized.rsplit("/", 1)[-1], pat
+    )
+
+
 class Logging(Protocol):
     def log(self, msg: str) -> None: ...
 
@@ -55,6 +97,10 @@ class HookResponding(Protocol):
     def allow(self) -> None: ...
     def block(self, reason: str) -> None: ...
     def allow_with_update(self, updated_input: dict) -> None: ...
+
+
+class GateHandling(Logging, HookResponding, Protocol):
+    """Narrow gate protocol for components that need to log, allow, or block."""
 
 
 class GateLogger:
@@ -166,9 +212,9 @@ def run_claude_bare(
     session_id: str = "",
     no_session: bool = False,
 ) -> Optional[str]:
-    """Run `claude -p` in bare JSON mode and return the final result string.
+    """Run claude -p in bare JSON mode and return the final result string.
 
-    Parses the JSON event stream and returns the 'result' field from the last
+    Parses the JSON event stream and returns the result field from the last
     result-type event, or None on any failure.
     """
     cmd = ["claude", "-p", prompt, "--output-format", "json", "--bare"]

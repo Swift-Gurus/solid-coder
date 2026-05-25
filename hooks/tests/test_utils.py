@@ -40,6 +40,13 @@ def make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
     return m
 
 
+def is_denied(out: str) -> bool:
+    """Return True if the hook output represents a deny decision."""
+    if not out:
+        return False
+    return json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
 def parse_hook_output(out: str) -> dict:
     """Extract the hookSpecificOutput dict from a gate hook's JSON stdout."""
     return json.loads(out)["hookSpecificOutput"]

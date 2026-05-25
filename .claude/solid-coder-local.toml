@@ -2,6 +2,14 @@
 # Changes to [llm] take effect on the next write/edit (no restart needed).
 # Changes to [server] apply the next time you run scripts/run-local-llm.sh.
 
+# ── Hook exclusions ───────────────────────────────────────────────────────────
+# Paths matching these patterns bypass the named hook.
+# Uses ** glob: "tests/fixtures/**" matches any file under that directory.
+[hooks.pre_write_gate]
+exclude = [
+    "tests/fixtures/**",
+]
+
 # ── Hook backend ──────────────────────────────────────────────────────────────
 # Controls which LLM the pre-write health-check gate uses.
 [llm]

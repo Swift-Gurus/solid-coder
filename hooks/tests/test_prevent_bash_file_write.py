@@ -1,41 +1,32 @@
 """Tests for prevent_bash_file_write.py"""
 
-import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
-HOOKS_DIR = str(Path(__file__).resolve().parents[1])
-if HOOKS_DIR not in sys.path:
-    sys.path.insert(0, HOOKS_DIR)
+from _path_bootstrap import ensure_on_path
+ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 import prevent_bash_file_write as hook
+import test_utils
+from test_utils import is_denied as _is_denied
 
 
-def _call(command: str) -> tuple:
-    import io
-    from contextlib import redirect_stdout
-    event = {"tool_name": "Bash", "tool_input": {"command": command}}
-    buf = io.StringIO()
-    code = 0
-    with patch("sys.stdin", io.StringIO(json.dumps(event))):
-        with redirect_stdout(buf):
-            try:
-                hook.main()
-            except SystemExit as e:
-                code = e.code or 0
-    return code, buf.getvalue()
-
-
-def _is_denied(out: str) -> bool:
-    if not out:
-        return False
-    return json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "deny"
+def _call(command: str = None, *, event: dict = None) -> tuple:
+    if event is None:
+        event = {"tool_name": "Bash", "tool_input": {"command": command}}
+    return test_utils.call_main(event, hook.main)
 
 
 def _is_allowed(out: str) -> bool:
     return not out
+
+
+def _assert_deny_reason(command: str, *expected: str, tc: unittest.TestCase) -> None:
+    _, out = _call(command)
+    reason = test_utils.parse_hook_output(out)["permissionDecisionReason"]
+    for s in expected:
+        tc.assertIn(s, reason)
 
 
 class TestFileWriteDetection(unittest.TestCase):
@@ -90,24 +81,11 @@ class TestFileWriteDetection(unittest.TestCase):
         self.assertTrue(_is_allowed(out))
 
     def test_allows_non_bash_tool(self):
-        import io
-        from contextlib import redirect_stdout
-        event = {"tool_name": "Write", "tool_input": {"file_path": "/tmp/f.swift", "content": "x"}}
-        buf = io.StringIO()
-        with patch("sys.stdin", io.StringIO(json.dumps(event))):
-            with redirect_stdout(buf):
-                try:
-                    hook.main()
-                except SystemExit:
-                    pass
-        self.assertTrue(_is_allowed(buf.getvalue()))
+        _, out = _call(event={"tool_name": "Write", "tool_input": {"file_path": "/tmp/f.swift", "content": "x"}})
+        self.assertTrue(_is_allowed(out))
 
     def test_deny_message_mentions_write_tool(self):
-        _, out = _call("echo hello > file.swift")
-        payload = json.loads(out)
-        reason = payload["hookSpecificOutput"]["permissionDecisionReason"]
-        self.assertIn("Write tool", reason)
-        self.assertIn("file-write-gate", reason)
+        _assert_deny_reason("echo hello > file.swift", "Write tool", "file-write-gate", tc=self)
 
     def test_blocks_python3_multiline_write(self):
         """python3 -c with open(..., 'w') on a different line than python3 must be blocked."""
@@ -188,10 +166,11 @@ class TestChunkFileReadDetection(unittest.TestCase):
         self.assertTrue(_is_denied(out))
 
     def test_deny_message_mentions_read_tool(self):
-        _, out = _call("cat /tmp/solid-coder-rules-1234-1of1.md")
-        reason = json.loads(out)["hookSpecificOutput"]["permissionDecisionReason"]
-        self.assertIn("Read tool", reason)
-        self.assertIn("chunk-read-gate", reason)
+        _assert_deny_reason(
+            "cat /tmp/solid-coder-rules-1234-1of1.md",
+            "Read tool", "chunk-read-gate",
+            tc=self,
+        )
 
     def test_allows_unrelated_tmp_file(self):
         _, out = _call("cat /tmp/some-other-file.md")

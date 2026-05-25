@@ -16,40 +16,51 @@ Sequential ordering ensures:
   - The corrected description reflects the code that will actually be written.
 
 Fails open on infrastructure errors in either check.
+Paths matching [hooks.pre_write_gate].exclude in solid-coder-local.toml bypass all checks.
 """
 
 import difflib
-import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional, Protocol
+
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
+
+import code_health_check as health
+import validate_swift_frontmatter as frontmatter
+from hc_checker import HealthChecking
+from hc_config import hook_exclude_patterns
+from hook_callable import CallableAdapting
+from hook_utils import GateHandling, make_hook_gate, parse_hook_event, path_matches_pattern
+from hc_violation_parser import ViolationParser
+
+_gate = make_hook_gate()
 
 # ---------------------------------------------------------------------------
-# Low-risk edit detection — skip health check for structural-only changes
+# Low-risk edit detection
 # ---------------------------------------------------------------------------
 
 _SOLID_BLOCK_RE = re.compile(r"^\s*/\*\*\s*\n(?:[ \t]+solid-[^\n]+\n)+[ \t]*\*/\s*\Z")
 
 
 def _is_frontmatter_only(old: str, new: str) -> bool:
-    """Both old and new are purely /** solid-* */ blocks — no Swift code changed."""
     return bool(_SOLID_BLOCK_RE.match(old.strip())) and bool(_SOLID_BLOCK_RE.match(new.strip()))
 
 
 def _is_reorder(old: str, new: str) -> bool:
-    """Same tokens in different order — argument reorder, function reorder, import sort."""
     return sorted(re.findall(r'\w+', old)) == sorted(re.findall(r'\w+', new))
 
 
 def _is_rename(old: str, new: str) -> bool:
-    """Same non-identifier skeleton — only names changed (rename refactor)."""
     skeleton = lambda s: re.sub(r'\b\w+\b', 'X', s)
     return skeleton(old) == skeleton(new)
 
 
 def _is_low_risk_edit(old: str, new: str) -> bool:
-    """Return True if the edit is structural-only and cannot introduce SOLID violations.
-    Note: frontmatter-only changes skip health but NOT frontmatter correction."""
+    """Return True if the edit is structural-only and cannot introduce SOLID violations."""
     return _is_frontmatter_only(old, new) or _is_reorder(old, new) or _is_rename(old, new)
 
 
@@ -65,164 +76,196 @@ def _diff_chunks(old_content: str, new_content: str) -> tuple:
         new_changed.extend(new_lines[j1:j2])
     return "\n".join(old_changed), "\n".join(new_changed)
 
-HOOKS_DIR = Path(__file__).resolve().parent
-if str(HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(HOOKS_DIR))
 
-import code_health_check as health
-import validate_swift_frontmatter as frontmatter
-from hook_utils import make_hook_gate
-from hc_violation_parser import ViolationParser
+# ---------------------------------------------------------------------------
+# Protocols
+# ---------------------------------------------------------------------------
 
-_gate = make_hook_gate()
+class FrontmatterFixing(Protocol):
+    def fix(self, content: str, session_id: str, path: str) -> Optional[str]: ...
 
 
-def _log(msg: str) -> None:
-    _gate.log(msg)
-
-_FRONTMATTER_RE = re.compile(
-    r"/\*\*\s*\n((?:[ \t]+solid-[^\n]+\n)+)[ \t]*\*/",
-    re.MULTILINE,
-)
+class ViolationFormatting(Protocol):
+    def format_block_reason(self, violations: list) -> str: ...
 
 
-def _extract_frontmatter_blocks(content: str) -> list:
-    return [m.group(0) for m in _FRONTMATTER_RE.finditer(content)]
+class ContentSimulating(Protocol):
+    def simulate(self, tool_name: str, tool_input: dict) -> tuple: ...
 
 
-def _run_health(content: str, file_path: str, language: str, parent_session_id: str):
-    """Returns list of violation dicts, [] if clean, None on error."""
-    return health._check(content, file_path, language, parent_session_id)
+# ---------------------------------------------------------------------------
+# Concrete implementations
+# ---------------------------------------------------------------------------
+
+class HealthChecker(CallableAdapting):
+    """Callable adapter for code_health_check._check."""
+
+    def check(self, content: str, path: str, language: str, parent_session_id: str) -> Optional[list]:
+        return self._safe_call(content, path, language, parent_session_id)
 
 
-def _run_frontmatter(content: str, parent_session_id: str, file_path: str):
-    """Returns corrected content if changed, original content if clean, None on error."""
-    if "solid-description:" not in content:
-        return content
-    return frontmatter.fix_with_claude(
-        content,
-        parent_session_id=parent_session_id,
-        file_path=file_path,
-    )
+class FrontmatterFixer(CallableAdapting):
+    """Callable adapter for validate_swift_frontmatter.fix_with_claude."""
+
+    def fix(self, content: str, session_id: str, path: str) -> Optional[str]:
+        return self._safe_call(content, parent_session_id=session_id, file_path=path)
 
 
-def _allow() -> None:
-    _gate.allow()
+class ContentSimulator:
+    """Reads the existing file, diffs, and classifies whether the edit is low-risk."""
 
+    def simulate(self, tool_name: str, tool_input: dict) -> tuple:
+        """Return (content, existing_content, is_low_risk)."""
+        file_path = tool_input.get("file_path", "")
+        if tool_name == "Write":
+            content = tool_input.get("content", "")
+            existing, low_risk = "", False
+            try:
+                existing = Path(file_path).read_text(encoding="utf-8")
+                old_chunk, new_chunk = _diff_chunks(existing, content)
+                low_risk = _is_low_risk_edit(old_chunk, new_chunk) if (old_chunk or new_chunk) else True
+            except OSError:
+                pass
+            return content, existing, low_risk
 
-def _allow_corrected(tool_name: str, tool_input: dict, corrected: str, existing_content: str = "") -> None:
-    updated = dict(tool_input)
-    if tool_name == "Write":
-        updated["content"] = corrected
-    elif existing_content:
-        # content was simulated from the full existing file — replace the whole file
-        # so the Edit tool doesn't insert corrected (full file) where old_string was (small snippet).
-        updated["old_string"] = existing_content
-        updated["new_string"] = corrected
-        updated.pop("replace_all", None)
-    else:
-        # File was unreadable; content == new_string, corrected is the corrected snippet.
-        updated["new_string"] = corrected
-    _gate.allow_with_update(updated)
-
-
-def _deny(violations: list) -> None:
-    parts = [
-        ViolationParser().format_block_reason(violations),
-        "The file was NOT written. You MUST fix all violations above and write the corrected version before continuing.",
-    ]
-    reason = "[health-check] " + "\n\n".join(parts)
-    _gate.block(reason)
-
-
-def main() -> None:
-    try:
-        event = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, ValueError):
-        _allow()
-        return
-
-    tool_name = event.get("tool_name", "")
-    tool_input = event.get("tool_input") or {}
-    file_path = tool_input.get("file_path", "")
-    parent_session_id = event.get("session_id", "")
-
-    ext = Path(file_path).suffix.lower()
-    if ext not in health.SUPPORTED_EXTENSIONS:
-        _allow()
-        return
-
-    existing = ""
-    low_risk = False
-    if tool_name == "Write":
-        content = tool_input.get("content", "")
-        try:
-            existing = Path(file_path).read_text(encoding="utf-8")
-            old_chunk, new_chunk = _diff_chunks(existing, content)
-            if old_chunk or new_chunk:
-                low_risk = _is_low_risk_edit(old_chunk, new_chunk)
-            else:
-                low_risk = True  # identical content — nothing changed
-        except OSError:
-            pass  # new file — run full health check
-    elif tool_name == "Edit":
         old_string = tool_input.get("old_string", "")
         new_string = tool_input.get("new_string", "")
         replace_all = tool_input.get("replace_all", False)
         low_risk = _is_low_risk_edit(old_string, new_string)
+        existing = ""
         try:
             existing = Path(file_path).read_text(encoding="utf-8")
             content = existing.replace(old_string, new_string) if replace_all \
                       else existing.replace(old_string, new_string, 1)
         except OSError:
-            content = new_string  # file unreadable — fall back to snippet only
-    else:
-        _allow()
+            content = new_string
+        return content, existing, low_risk
+
+
+# ---------------------------------------------------------------------------
+# Exclusion
+# ---------------------------------------------------------------------------
+
+def _is_excluded_path(file_path: str) -> bool:
+    """Return True if file_path matches any pre_write_gate exclusion pattern."""
+    patterns = hook_exclude_patterns("pre_write_gate")
+    return any(path_matches_pattern(file_path, pat) for pat in patterns)
+
+
+# ---------------------------------------------------------------------------
+# Coordinator
+# ---------------------------------------------------------------------------
+
+class WriteGateCoordinator:
+    """Sequences health check and frontmatter correction for a single write event."""
+
+    def __init__(
+        self,
+        health_checker: HealthChecking,
+        frontmatter_fixer: FrontmatterFixing,
+        formatter: ViolationFormatting,
+        simulator: ContentSimulating,
+        gate: GateHandling,
+    ) -> None:
+        self._health = health_checker
+        self._frontmatter = frontmatter_fixer
+        self._formatter = formatter
+        self._simulator = simulator
+        self._gate = gate
+
+    def run(
+        self,
+        tool_name: str,
+        tool_input: dict,
+        file_path: str,
+        language: str,
+        session_id: str,
+    ) -> None:
+        content, existing, low_risk = self._simulator.simulate(tool_name, tool_input)
+        file_name = Path(file_path).name
+
+        run_health = not low_risk
+        run_frontmatter = "solid-description:" in content
+
+        if not run_health and not run_frontmatter:
+            self._gate.allow()
+            return
+
+        self._gate.log(f"INVOKE {file_name}: health={run_health} frontmatter={run_frontmatter}")
+
+        if run_health:
+            violations = self._health.check(content, file_path, language, session_id)
+            if violations is None:
+                self._gate.log(f"FAILOPEN {file_name}: health check returned None (subprocess error)")
+            elif violations:
+                self._gate.log(f"DENY {file_name}: {len(violations)} violation(s)")
+                parts = [
+                    self._formatter.format_block_reason(violations),
+                    "The file was NOT written. You MUST fix all violations above "
+                    "and write the corrected version before continuing.",
+                ]
+                self._gate.block("[health-check] " + "\n\n".join(parts))
+                return
+
+        corrected = None
+        if run_frontmatter:
+            corrected = self._frontmatter.fix(content, session_id, file_path)
+
+        if corrected is not None and corrected != content:
+            self._gate.log(f"CORRECTED {file_name}: frontmatter updated")
+            updated = dict(tool_input)
+            if tool_name == "Write":
+                updated["content"] = corrected
+            elif existing:
+                updated["old_string"] = existing
+                updated["new_string"] = corrected
+                updated.pop("replace_all", None)
+            else:
+                updated["new_string"] = corrected
+            self._gate.allow_with_update(updated)
+        else:
+            if run_health or run_frontmatter:
+                self._gate.log(f"CLEAN {file_name}")
+            self._gate.allow()
+
+
+def _make_coordinator(gate: GateHandling) -> WriteGateCoordinator:
+    return WriteGateCoordinator(
+        health_checker=HealthChecker(fn=health._check),
+        frontmatter_fixer=FrontmatterFixer(fn=frontmatter.fix_with_claude),
+        formatter=ViolationParser(),
+        simulator=ContentSimulator(),
+        gate=gate,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parsed = parse_hook_event(sys.stdin.read())
+    if parsed is None:
+        _gate.allow()
         return
+
+    tool_name, tool_input, file_path, session_id = parsed
 
     ext = Path(file_path).suffix.lower()
-    language = health.SUPPORTED_EXTENSIONS.get(ext)
-    file_name = Path(file_path).name
-
-    run_health = language is not None and not low_risk
-    run_frontmatter = "solid-description:" in content
-
-    if not run_health and not run_frontmatter:
-        _allow()
+    if ext not in health.SUPPORTED_EXTENSIONS:
+        _gate.allow()
         return
 
-    name = file_name
-    _log(f"INVOKE {name}: health={run_health} frontmatter={run_frontmatter}")
+    if _is_excluded_path(file_path):
+        _gate.allow()
+        return
 
-    # ── Step 1: health check ────────────────────────────────────────────────
-    violations = None
-    if run_health:
-        try:
-            violations = _run_health(content, file_path, language, parent_session_id)
-        except Exception as e:
-            _log(f"FAIL health {name}: {e}")
+    if tool_name not in ("Write", "Edit"):
+        _gate.allow()
+        return
 
-        if violations is None:
-            _log(f"FAILOPEN {name}: health check returned None (subprocess error)")
-        elif violations:
-            _log(f"DENY {name}: {len(violations)} violation(s)")
-            _deny(violations)
-
-    # ── Step 2: frontmatter correction (only reached if health passed) ──────
-    corrected = None
-    if run_frontmatter:
-        try:
-            corrected = _run_frontmatter(content, parent_session_id, file_path)
-        except Exception as e:
-            _log(f"FAIL frontmatter {name}: {e}")
-
-    if corrected is not None and corrected != content:
-        _log(f"CORRECTED {name}: frontmatter updated")
-        _allow_corrected(tool_name, tool_input, corrected, existing_content=existing)
-    else:
-        if run_health or run_frontmatter:
-            _log(f"CLEAN {name}")
-        _allow()
+    language = health.SUPPORTED_EXTENSIONS[ext]
+    _make_coordinator(gate=_gate).run(tool_name, tool_input, file_path, language, session_id)
 
 
 if __name__ == "__main__":

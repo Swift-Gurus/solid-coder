@@ -61,11 +61,8 @@
       "Bash(cp /Users/crowea/Developer/Swift-Gurus/solid-coder/hooks/check_code_agent_tested.py /Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.4.0/hooks/check_code_agent_tested.py)",
       "Bash(rm -f ~/.claude/hook-fired.log)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Skill(solid-coder:implement)"
     ]
-  },
-  "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": [
-    "solid-coder"
-  ]
+  }
 }

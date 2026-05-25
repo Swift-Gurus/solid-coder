@@ -14,3 +14,10 @@ class CallableAdapting:
 
     def __init__(self, fn) -> None:
         self._fn = fn
+
+    def _safe_call(self, *args, default=None, **kwargs):
+        """Delegate to self._fn, returning default on any exception."""
+        try:
+            return self._fn(*args, **kwargs)
+        except Exception:
+            return default
