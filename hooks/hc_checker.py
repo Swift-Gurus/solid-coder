@@ -144,14 +144,16 @@ class LLMReviewer:
         runner: ClaudeRunning,
         logger: Logging,
         parser: ViolationParsing,
+        timeout: int = 300,
     ) -> None:
         self._runner = runner
         self._logger = logger
         self._parser = parser
+        self._timeout = timeout
 
     def review(self, prompt: str, path: str) -> Optional[list]:
         try:
-            raw = self._runner.run(prompt, timeout=300)
+            raw = self._runner.run(prompt, timeout=self._timeout)
         except Exception as e:
             self._logger.log(f"HEALTH_ERR {Path(path).name}: exception={type(e).__name__}: {e}")
             return None

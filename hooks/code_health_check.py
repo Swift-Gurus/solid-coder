@@ -19,6 +19,7 @@ from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvok
 from hc_violation_parser import ViolationParser
 from hc_checker import LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader, LLMReviewer
 from hc_runner_factory import make_llm_runner
+from hc_config import llm_timeout
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
@@ -36,6 +37,7 @@ def _check(content: str, path: str, language: str, parent_session_id: str) -> Op
         }
     })
     allowed_tools = (
+        "Read,"
         "mcp__pipeline__search_codebase,"
         "mcp__docs__load_fix_for_violation,"
         "mcp__docs__score_severity"

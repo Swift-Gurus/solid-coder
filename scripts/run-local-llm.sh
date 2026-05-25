@@ -19,11 +19,16 @@ cfg() {
 
 # ── Load settings ─────────────────────────────────────────────────────────────
 
-LLAMA_MODEL=$(cfg model     "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf")
-LLAMA_PORT=$(cfg  port      "8080")
-LLAMA_CTX=$(cfg   ctx_size  "32768")
+LLAMA_MODEL=$(cfg model      "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf")
+LLAMA_PORT=$(cfg  port       "8080")
+LLAMA_CTX=$(cfg   ctx_size   "32768")
 LLAMA_GPU=$(cfg   gpu_layers "99")
-LLAMA_PAR=$(cfg   parallel  "1")
+LLAMA_PAR=$(cfg   parallel   "1")
+LLAMA_BATCH=$(cfg batch_size  "2048")
+LLAMA_UBATCH=$(cfg ubatch_size "512")
+LLAMA_MLOCK=$(cfg mlock      "false")
+LLAMA_SEED=$(cfg  seed       "-1")
+LLAMA_REASONING=$(cfg reasoning "off")
 
 # ── Locate model ──────────────────────────────────────────────────────────────
 
@@ -48,6 +53,9 @@ echo "  port        : $LLAMA_PORT"
 echo "  context     : $LLAMA_CTX tokens"
 echo "  gpu layers  : $LLAMA_GPU"
 echo "  parallel    : $LLAMA_PAR"
+echo "  batch/ubatch: $LLAMA_BATCH / $LLAMA_UBATCH"
+echo "  mlock       : $LLAMA_MLOCK"
+echo "  seed        : $LLAMA_SEED"
 echo ""
 echo "Other available models (edit [server] model in the TOML to switch):"
 find "$HOME/.cache/huggingface" -name "*.gguf" 2>/dev/null \
@@ -62,14 +70,21 @@ echo ""
 
 # ── Launch ────────────────────────────────────────────────────────────────────
 
+MLOCK_FLAG=""
+[[ "$LLAMA_MLOCK" == "true" ]] && MLOCK_FLAG="--mlock"
+
 exec llama-server \
   --model        "$MODEL_PATH" \
   --port         "$LLAMA_PORT" \
   --ctx-size     "$LLAMA_CTX" \
   --n-gpu-layers "$LLAMA_GPU" \
   --parallel     "$LLAMA_PAR" \
+  --batch-size   "$LLAMA_BATCH" \
+  --ubatch-size  "$LLAMA_UBATCH" \
+  --seed         "$LLAMA_SEED" \
   --flash-attn   on \
   --cache-type-k q8_0 \
   --cache-type-v q8_0 \
   --jinja \
-  --reasoning    off
+  --reasoning    "$LLAMA_REASONING" \
+  $MLOCK_FLAG

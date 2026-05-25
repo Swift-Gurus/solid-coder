@@ -18,6 +18,7 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hook_utils import GATEWAY, PLUGIN_ROOT
+from hc_config import inference_params as _load_inference_params
 from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayInvoking
 from hc_violation_parser import ViolationParser, ViolationParsing
 
@@ -84,6 +85,26 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
+            "name": "mcp__pipeline__read_file",
+            "description": (
+                "Read the full source code of a file by its absolute path. "
+                "Use this after mcp__pipeline__search_codebase returns matches — for each matched "
+                "file whose solid-description overlaps with the code under review, read the file "
+                "to inspect its existing types, method signatures, and logic before deciding "
+                "whether a DRY-1 reuse miss violation applies."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Absolute path of the file to read"},
+                },
+                "required": ["file_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "mcp__docs__load_fix_for_violation",
             "description": (
                 "Load fix guidance for a single metric violation. "
@@ -104,6 +125,33 @@ TOOLS: list = [
 ]
 
 
+def _strip_thinking(content: str) -> tuple:
+    """Split a response that may begin with a <think>…</think> block.
+
+    Returns (thinking, response) where thinking is the content inside the
+    tags (empty string if absent) and response is everything after the block.
+    """
+    if not content:
+        return "", content or ""
+    match = re.match(r"<think>(.*?)</think>\s*", content, re.DOTALL)
+    if match:
+        return match.group(1).strip(), content[match.end():].strip()
+    return "", content
+
+
+def _extract_thinking_and_content(message: dict) -> tuple:
+    """Extract (thinking, content) from a message dict.
+
+    Prefers reasoning_content (llama.cpp --reasoning mode) over inline
+    <think> tags so both server formats are handled transparently.
+    """
+    content = message.get("content", "") or ""
+    reasoning = message.get("reasoning_content", "") or ""
+    if reasoning:
+        return reasoning.strip(), content
+    return _strip_thinking(content)
+
+
 def _parse_tool_call_args(tool_call: dict) -> dict:
     """Extract and JSON-parse the arguments from a tool_call dict."""
     raw = tool_call.get("function", {}).get("arguments", "{}")
@@ -118,15 +166,11 @@ def _now() -> str:
 
 
 def _summarise_result(name: str, result_str: str) -> dict:
-    """Extract a compact summary from a gateway tool result string."""
-    try:
-        data = json.loads(result_str)
-        if name == "mcp__pipeline__search_codebase" and isinstance(data, dict):
-            return {"hits": len(data.get("results", []))}
-        if name == "mcp__docs__load_fix_for_violation":
-            return {"content_len": len(result_str)}
-    except Exception:
-        pass
+    """Extract a compact summary from a tool result string."""
+    if name == "mcp__pipeline__search_codebase":
+        return {"hits": result_str.count(" — ")}
+    if name == "mcp__docs__load_fix_for_violation":
+        return {"content_len": len(result_str)}
     return {"len": len(result_str)}
 
 
@@ -164,9 +208,14 @@ class LocalLLMLogger:
         summary = _summarise_result(name, result_str)
         self._write(f"{call_id}.jsonl", {"ev": "result", **summary})
 
-    def log_done(self, rounds: int, usage: dict, violations: list) -> None:
+    def log_thinking(self, round: int, content: str) -> None:
+        self._write("_thinking.jsonl", {
+            "ev": "thinking", "round": round, "file": self._file, "content": content,
+        })
+
+    def log_done(self, rounds: int, usage: dict, violations: list, thinking: str = "") -> None:
         elapsed_ms = int((time.time() - self._t0) * 1000)
-        self._write("_exchange.jsonl", {
+        entry: dict = {
             "ev": "done",
             "rounds": rounds,
             "input_tokens": usage.get("prompt_tokens", 0),
@@ -174,7 +223,11 @@ class LocalLLMLogger:
             "elapsed_ms": elapsed_ms,
             "result": "blocked" if violations else "clean",
             "violations": violations,
-        })
+        }
+        if thinking:
+            entry["thinking_len"] = len(thinking)
+            self._write("_thinking.jsonl", {"ev": "thinking", "file": self._file, "content": thinking})
+        self._write("_exchange.jsonl", entry)
 
 
 class LlamaHttpChatting(Protocol):
@@ -188,13 +241,16 @@ class ToolDispatching(Protocol):
 class FileSearching(Protocol):
     def grep_by_name(self, name: str) -> str: ...
     def glob_by_name(self, pattern: str) -> str: ...
+    def search_codebase(self, query: str) -> str: ...
+    def read_file(self, path: str) -> str: ...
 
 
 class LLMSessionObserving(Protocol):
     def on_start(self, prompt_len: int) -> None: ...
     def on_tool_call(self, call_id: str, name: str, args: dict) -> None: ...
     def on_tool_result(self, call_id: str, name: str, result: str) -> None: ...
-    def on_done(self, rounds: int, usage: dict, content: str) -> None: ...
+    def on_thinking(self, round: int, content: str) -> None: ...
+    def on_done(self, rounds: int, usage: dict, violations: list, thinking: str = "") -> None: ...
 
 
 def _default_grep(name: str) -> str:
@@ -207,12 +263,33 @@ def _default_glob(pattern: str) -> str:
     return glob_by_name(pattern=pattern)
 
 
+def _default_search(query: str) -> str:
+    from lib.codebase_searcher import search
+    tags = [t for t in query.split() if t]
+    return search(tags=tags, min_matches=1) if tags else ""
+
+
+def _default_read_file(path: str) -> str:
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except OSError as e:
+        return f"error: {e}"
+
+
 class FileSearcher:
     """Adapter wrapping file-search callables behind the FileSearching protocol."""
 
-    def __init__(self, grep_fn=_default_grep, glob_fn=_default_glob) -> None:
+    def __init__(
+        self,
+        grep_fn=_default_grep,
+        glob_fn=_default_glob,
+        search_fn=_default_search,
+        read_fn=_default_read_file,
+    ) -> None:
         self._grep = grep_fn
         self._glob = glob_fn
+        self._search = search_fn
+        self._read = read_fn
 
     def grep_by_name(self, name: str) -> str:
         return self._grep(name)
@@ -220,13 +297,18 @@ class FileSearcher:
     def glob_by_name(self, pattern: str) -> str:
         return self._glob(pattern)
 
+    def search_codebase(self, query: str) -> str:
+        return self._search(query)
+
+    def read_file(self, path: str) -> str:
+        return self._read(path)
+
 
 class LLMSessionObserver:
-    """Wires LocalLLMLogger and ViolationParsing into the LLMSessionObserving protocol."""
+    """Delegates all session events to LocalLLMLogger. Single cohesion group: logging only."""
 
-    def __init__(self, logger: LocalLLMLogger, parser: ViolationParsing) -> None:
+    def __init__(self, logger: LocalLLMLogger) -> None:
         self._logger = logger
-        self._parser = parser
 
     def on_start(self, prompt_len: int) -> None:
         self._logger.log_start(prompt_len)
@@ -237,17 +319,40 @@ class LLMSessionObserver:
     def on_tool_result(self, call_id: str, name: str, result: str) -> None:
         self._logger.log_tool_result(call_id, name, result)
 
-    def on_done(self, rounds: int, usage: dict, content: str) -> None:
-        violations = self._parser.parse(content) or []
-        self._logger.log_done(rounds, usage, violations)
+    def on_thinking(self, round: int, content: str) -> None:
+        self._logger.log_thinking(round, content)
+
+    def on_done(self, rounds: int, usage: dict, violations: list, thinking: str = "") -> None:
+        self._logger.log_done(rounds, usage, violations, thinking=thinking)
+
+
+class HttpSending(Protocol):
+    def send(self, url: str, data: bytes, headers: dict, timeout: int) -> bytes: ...
+
+
+class UrllibSender:
+    """Sends HTTP POST requests using urllib.request."""
+
+    def send(self, url: str, data: bytes, headers: dict, timeout: int) -> bytes:
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read()
 
 
 class LlamaHttpClient:
     """POSTs to llama-server's /v1/chat/completions and returns the parsed response."""
 
-    def __init__(self, host: str, model: str) -> None:
+    def __init__(
+        self,
+        host: str,
+        model: str,
+        inference_params: Optional[dict] = None,
+        transport: Optional[HttpSending] = None,
+    ) -> None:
         self._url = f"{host.rstrip('/')}/v1/chat/completions"
         self._model = model
+        self._inference_params = inference_params or {}
+        self._transport: HttpSending = transport or UrllibSender()
 
     def chat(self, messages: list, tools: list, timeout: int) -> Optional[dict]:
         payload = json.dumps({
@@ -255,17 +360,13 @@ class LlamaHttpClient:
             "messages": messages,
             "tools": tools,
             "tool_choice": "auto",
-            "temperature": 0,
+            **self._inference_params,
         }).encode()
-        req = urllib.request.Request(
-            self._url,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read())
+            raw = self._transport.send(
+                self._url, payload, {"Content-Type": "application/json"}, timeout
+            )
+            return json.loads(raw)
         except Exception:
             return None
 
@@ -286,11 +387,10 @@ class GatewayToolDispatcher:
         args = _parse_tool_call_args(tool_call)
 
         if name == "mcp__pipeline__search_codebase":
-            result = self._invoker.invoke(
-                "search_codebase",
-                extra_args=["--synonyms", args.get("query", ""), "--min-matches", "1"],
-            )
-            return json.dumps(result) if result is not None else "[]"
+            return self._file_searcher.search_codebase(args.get("query", ""))
+
+        if name == "mcp__pipeline__read_file":
+            return self._file_searcher.read_file(args.get("file_path", ""))
 
         if name == "mcp__pipeline__grep_codebase":
             return self._file_searcher.grep_by_name(args.get("name", ""))
@@ -300,56 +400,67 @@ class GatewayToolDispatcher:
 
         if name == "mcp__docs__load_fix_for_violation":
             result = self._invoker.invoke(
-                "load_fix_for_violation", extra_args=["--metric_id", args.get("metric_id", "")]
+                "load_fix_for_violation",
+                extra_args=["--metric_id", args.get("metric_id", "")],
+                result_key="content",
+                default="",
             )
-            if result is None:
-                return ""
-            # Return content string directly — avoids double-encoding and escape noise
-            return result.get("content", "") if isinstance(result, dict) else str(result)
+            return result or ""
 
         return f"error: unknown tool '{name}'"
 
 
-class LlamaServerRunner:
-    """Agentic loop: sends prompt, executes tool calls until the model returns final content."""
+class AgentLoopExecuting(Protocol):
+    def execute(
+        self,
+        messages: list,
+        timeout: int,
+        observer: Optional[LLMSessionObserving],
+    ) -> tuple: ...  # (Optional[str], dict, int, str) = (content, usage, rounds, thinking)
+
+
+class AgentLoopExecutor:
+    """Drives the agentic chat loop: sends messages, dispatches tool calls, emits mid-loop events."""
 
     def __init__(
         self,
         client: LlamaHttpChatting,
         dispatcher: ToolDispatching,
         max_rounds: int = _MAX_TOOL_ROUNDS,
-        observer: Optional[LLMSessionObserving] = None,
     ) -> None:
         self._client = client
         self._dispatcher = dispatcher
         self._max_rounds = max_rounds
-        self._observer = observer
 
-    def run(self, prompt: str, timeout: int) -> Optional[str]:
-        if self._observer:
-            self._observer.on_start(len(prompt))
-        messages: list = [{"role": "user", "content": prompt}]
+    def execute(
+        self,
+        messages: list,
+        timeout: int,
+        observer: Optional[LLMSessionObserving],
+    ) -> tuple:
         rounds = 0
         last_usage: dict = {}
         try:
             for _ in range(self._max_rounds):
                 response = self._client.chat(messages, TOOLS, timeout)
                 if response is None:
-                    return None
+                    return None, {}, rounds, ""
 
                 last_usage = response.get("usage", {})
                 choice = response.get("choices", [{}])[0]
                 message = choice.get("message", {})
 
                 if choice.get("finish_reason") != "tool_calls":
-                    content = message.get("content", "")
-                    if self._observer:
-                        self._observer.on_done(rounds, last_usage, content)
-                    return content
+                    thinking, content = _extract_thinking_and_content(message)
+                    return content, last_usage, rounds, thinking
 
                 tool_calls = message.get("tool_calls") or []
                 if not tool_calls:
-                    return message.get("content", "")
+                    return message.get("content", ""), last_usage, rounds, ""
+
+                interim_thinking, _ = _extract_thinking_and_content(message)
+                if interim_thinking and observer:
+                    observer.on_thinking(rounds + 1, interim_thinking)
 
                 rounds += 1
                 messages.append(message)
@@ -357,20 +468,44 @@ class LlamaServerRunner:
                     call_id = tc.get("id", "unknown")
                     tc_args = _parse_tool_call_args(tc)
                     tc_name = tc.get("function", {}).get("name", "")
-                    if self._observer:
-                        self._observer.on_tool_call(call_id, tc_name, tc_args)
+                    if observer:
+                        observer.on_tool_call(call_id, tc_name, tc_args)
                     result_str = self._dispatcher.dispatch(tc)
-                    if self._observer:
-                        self._observer.on_tool_result(call_id, tc_name, result_str)
+                    if observer:
+                        observer.on_tool_result(call_id, tc_name, result_str)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": call_id,
                         "content": result_str,
                     })
         except Exception:
-            return None
+            return None, {}, rounds, ""
 
-        return None
+        return None, last_usage, rounds, ""
+
+
+class LlamaServerRunner:
+    """Coordinates review lifecycle: start → loop → parse violations → done."""
+
+    def __init__(
+        self,
+        loop: AgentLoopExecuting,
+        observer: Optional[LLMSessionObserving] = None,
+        parser: Optional[ViolationParsing] = None,
+    ) -> None:
+        self._loop = loop
+        self._observer = observer
+        self._parser = parser
+
+    def run(self, prompt: str, timeout: int) -> Optional[str]:
+        if self._observer:
+            self._observer.on_start(len(prompt))
+        messages: list = [{"role": "user", "content": prompt}]
+        content, usage, rounds, thinking = self._loop.execute(messages, timeout, self._observer)
+        if self._observer:
+            violations = (self._parser.parse(content) or []) if self._parser and content else []
+            self._observer.on_done(rounds, usage, violations, thinking=thinking)
+        return content
 
 
 def make_llama_server_runner(
@@ -385,9 +520,9 @@ def make_llama_server_runner(
     observer: Optional[LLMSessionObserving] = None
     if session_id:
         logger = LocalLLMLogger(session_id=session_id, file_path=file_path, model=model)
-        observer = LLMSessionObserver(logger=logger, parser=ViolationParser())
-    return LlamaServerRunner(
-        client=LlamaHttpClient(host=host, model=model),
+        observer = LLMSessionObserver(logger=logger)
+    loop = AgentLoopExecutor(
+        client=LlamaHttpClient(host=host, model=model, inference_params=_load_inference_params()),
         dispatcher=GatewayToolDispatcher(invoker=invoker, file_searcher=FileSearcher()),
-        observer=observer,
     )
+    return LlamaServerRunner(loop=loop, observer=observer, parser=ViolationParser())
