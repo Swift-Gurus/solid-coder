@@ -2,22 +2,41 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DRY Review Output",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": [
+    "agent",
+    "principle",
+    "timestamp",
+    "files"
+  ],
   "properties": {
-    "agent": { "const": "dry" },
-    "principle": { "const": "Don't Repeat Yourself" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
+    "agent": {
+      "const": "dry"
+    },
+    "principle": {
+      "const": "Don't Repeat Yourself"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "all_compliant": {
+      "type": "boolean"
+    },
     "documentation_sources": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "files": {
       "type": "array",
       "description": "Per-file analysis results",
       "items": {
         "type": "object",
-        "required": ["file_path", "units"],
+        "required": [
+          "file_path",
+          "units"
+        ],
         "properties": {
           "file_path": {
             "type": "string",
@@ -28,122 +47,52 @@
             "description": "Per-unit analysis results within this file",
             "items": {
               "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "required": [
+                "unit_name",
+                "unit_kind",
+                "metrics",
+                "findings"
+              ],
               "properties": {
                 "unit_name": {
                   "type": "string",
-                  "description": "Name of the analyzed unit (e.g., class name, struct name)"
+                  "description": "Name of the analyzed unit"
                 },
                 "unit_kind": {
                   "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension", "function"],
+                  "enum": [
+                    "class",
+                    "struct",
+                    "enum",
+                    "protocol",
+                    "extension",
+                    "function"
+                  ],
                   "description": "Kind of the analyzed unit"
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["reuse_misses", "inlined_duplications", "missing_abstractions"],
+                  "description": "Detected duplication metrics",
                   "properties": {
-                    "reuse_misses": {
-                      "type": "object",
-                      "required": ["count", "table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["new_type", "existing_type", "confidence", "classification"],
-                            "properties": {
-                              "new_type": { "type": "string" },
-                              "existing_type": { "type": "string" },
-                              "existing_file": {
-                                "type": "string",
-                                "description": "File path where the existing type was found"
-                              },
-                              "confidence": {
-                                "type": "string",
-                                "enum": ["high", "medium", "low"],
-                                "description": "Match confidence based on responsibility and interface fit"
-                              },
-                              "responsibility_fit": {
-                                "type": "string",
-                                "description": "How the existing type's responsibility relates to the new type's"
-                              },
-                              "interface_differences": {
-                                "type": "array",
-                                "items": { "type": "string" },
-                                "description": "Specific differences: missing protocols, method signature mismatches, field differences"
-                              },
-                              "classification": {
-                                "type": "string",
-                                "enum": ["EXACT", "EXTENSIBLE", "PARTIAL"]
-                              }
-                            }
-                          }
-                        }
-                      }
+                    "duplication_type": {
+                      "type": "string",
+                      "enum": [
+                        "structural",
+                        "inlined",
+                        "missing_abstraction"
+                      ]
                     },
-                    "inlined_duplications": {
-                      "type": "object",
-                      "required": ["count", "table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["method_a", "location_a", "method_b", "location_b", "classification"],
-                            "properties": {
-                              "method_a": { "type": "string" },
-                              "location_a": { "type": "string" },
-                              "method_b": { "type": "string" },
-                              "location_b": { "type": "string" },
-                              "classification": {
-                                "type": "string",
-                                "enum": ["IDENTICAL", "STRUCTURAL", "SIMILAR"]
-                              },
-                              "reasoning": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
+                    "duplicate_sites": {
+                      "type": "integer"
                     },
-                    "missing_abstractions": {
-                      "type": "object",
-                      "required": ["count", "table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["type", "pattern", "reuse_potential"],
-                            "properties": {
-                              "type": { "type": "string" },
-                              "pattern": { "type": "string" },
-                              "reuse_potential": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                "scoring": {
-                  "type": "array",
-                  "description": "Per-metric scoring results",
-                  "items": {
-                    "type": "object",
-                    "required": ["metric_id", "final_severity"],
-                    "properties": {
-                      "metric_id": {
-                        "type": "string",
-                        "enum": ["reuse_misses", "inlined_duplications", "missing_abstractions"]
-                      },
-                      "final_severity": {
-                        "type": "string",
-                        "enum": ["COMPLIANT", "SEVERE"]
-                      }
+                    "shared_algorithm": {
+                      "type": "string"
+                    },
+                    "pattern": {
+                      "type": "string"
+                    },
+                    "reuse_potential": {
+                      "type": "string"
                     }
                   }
                 },
@@ -151,27 +100,39 @@
                   "type": "array",
                   "items": {
                     "type": "object",
-                    "required": ["id", "severity", "metric", "title", "issue"],
+                    "required": [
+                      "metric_id",
+                      "severity",
+                      "summary",
+                      "location"
+                    ],
                     "properties": {
-                      "id": {
+                      "metric_id": {
                         "type": "string",
-                        "pattern": "^dry-\\d{3}$"
+                        "enum": [
+                          "DRY-1",
+                          "DRY-2",
+                          "DRY-3"
+                        ]
                       },
                       "severity": {
                         "type": "string",
-                        "enum": ["SEVERE"]
+                        "enum": [
+                          "SEVERE"
+                        ]
                       },
-                      "metric": {
-                        "type": "string",
-                        "enum": ["DRY-1", "DRY-2", "DRY-3"],
-                        "description": "Which metric triggered this finding"
+                      "summary": {
+                        "type": "string"
                       },
-                      "line_start": { "type": "integer" },
-                      "line_end": { "type": "integer" },
-                      "title": { "type": "string" },
-                      "issue": { "type": "string" },
-                      "impact": { "type": "string" },
-                      "rule_source": { "type": "string" }
+                      "location": {
+                        "type": "string"
+                      },
+                      "duplicate_of": {
+                        "type": "string"
+                      },
+                      "reasoning": {
+                        "type": "string"
+                      }
                     }
                   }
                 }
