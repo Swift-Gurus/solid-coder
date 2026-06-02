@@ -1,0 +1,19 @@
+{
+  "findings": [
+    {
+      "unit_name": "ProductCatalog",
+      "metric_id": "SRP-1",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "ProductCatalog",
+      "metric_id": "SRP-2",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "ProductCatalog",
+      "metric_id": "SRP-3",
+      "severity": "SEVERE"
+    }
+  ]
+}

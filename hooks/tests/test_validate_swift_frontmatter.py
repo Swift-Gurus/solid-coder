@@ -1,11 +1,12 @@
 """Tests for validate_swift_frontmatter.py"""
 
 import json
-import subprocess
+import io
 import sys
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 HOOKS_DIR = str(Path(__file__).resolve().parents[1])
 if HOOKS_DIR not in sys.path:
@@ -35,23 +36,35 @@ final class DataLoader {
 }
 """
 
+BAD_PY_CONTENT = '''\
+"""
+solid-name: loader
+solid-category: service
+solid-description: Loads data using requests.Session() and calls StorageManager.save().
+"""
 
-def _llm_json(content: str) -> str:
-    """Simulate the raw LLM result field returning a JSON object."""
+def load():
+    pass
+'''
+
+CLEAN_PY_CONTENT = '''\
+"""
+solid-name: loader
+solid-category: service
+solid-description: Fetches remote data and persists results to local storage.
+"""
+
+def load():
+    pass
+'''
+
+
+def _llm_raw(content: str) -> str:
+    """Simulate the raw string returned by run_claude_bare — a JSON object."""
     return json.dumps({"corrected_content": content})
 
 
-def _mock_claude(returned_content: str) -> MagicMock:
-    response = [{"type": "result", "result": _llm_json(returned_content)}]
-    m = MagicMock()
-    m.returncode = 0
-    m.stdout = json.dumps(response)
-    return m
-
-
 def _call_main(stdin_json: dict) -> tuple:
-    import io
-    from contextlib import redirect_stdout
     stdout_buf = io.StringIO()
     exit_code = 0
     with patch("sys.stdin", io.StringIO(json.dumps(stdin_json))):
@@ -107,76 +120,56 @@ class TestParseCorreected(unittest.TestCase):
         self.assertIsNone(hook._parse_corrected(raw))
 
 
-class TestFixWithClaude(unittest.TestCase):
+class TestFix(unittest.TestCase):
     def test_returns_corrected_content_from_llm(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
-            result = hook.fix_with_claude(BAD_CONTENT)
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
+            result = hook.fix(BAD_CONTENT)
         self.assertEqual(result, CLEAN_CONTENT)
 
     def test_returns_unchanged_content_when_llm_echoes_back(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
-            result = hook.fix_with_claude(CLEAN_CONTENT)
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
+            result = hook.fix(CLEAN_CONTENT)
         self.assertEqual(result, CLEAN_CONTENT)
 
-    def test_returns_none_on_nonzero_exit(self):
-        m = MagicMock()
-        m.returncode = 1
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
-            self.assertIsNone(hook.fix_with_claude(BAD_CONTENT))
-
-    def test_returns_none_on_malformed_outer_json(self):
-        m = MagicMock()
-        m.returncode = 0
-        m.stdout = "not json"
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
-            self.assertIsNone(hook.fix_with_claude(BAD_CONTENT))
-
-    def test_returns_none_when_no_result_event(self):
-        m = MagicMock()
-        m.returncode = 0
-        m.stdout = json.dumps([{"type": "text", "text": "something"}])
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
-            self.assertIsNone(hook.fix_with_claude(BAD_CONTENT))
-
-    def test_returns_none_on_timeout(self):
-        with patch(
-            "validate_swift_frontmatter.subprocess.run",
-            side_effect=subprocess.TimeoutExpired("claude", 30),
-        ):
-            self.assertIsNone(hook.fix_with_claude(BAD_CONTENT))
+    def test_returns_none_when_run_claude_bare_returns_none(self):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=None):
+            self.assertIsNone(hook.fix(BAD_CONTENT))
 
     def test_returns_none_when_llm_returns_plain_text_instead_of_json(self):
-        # LLM ignores schema instruction and returns plain text
-        m = MagicMock()
-        m.returncode = 0
-        m.stdout = json.dumps([{"type": "result", "result": CLEAN_CONTENT}])
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
-            self.assertIsNone(hook.fix_with_claude(BAD_CONTENT))
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=CLEAN_CONTENT):
+            self.assertIsNone(hook.fix(BAD_CONTENT))
 
     def test_includes_parent_session_header_in_prompt(self):
-        captured_cmd = []
+        captured_prompts = []
 
-        def capture(cmd, **kwargs):
-            captured_cmd.extend(cmd)
-            return _mock_claude(CLEAN_CONTENT)
+        def capture(prompt, **kwargs):
+            captured_prompts.append(prompt)
+            return _llm_raw(CLEAN_CONTENT)
 
-        with patch("validate_swift_frontmatter.subprocess.run", side_effect=capture):
-            hook.fix_with_claude(BAD_CONTENT, parent_session_id="sess-123", file_path="/foo/Bar.swift")
+        with patch("validate_swift_frontmatter.run_claude_bare", side_effect=capture):
+            hook.fix(BAD_CONTENT, parent_session_id="sess-123")
 
-        prompt = captured_cmd[captured_cmd.index("-p") + 1]
-        self.assertIn("spawned-by: sess-123", prompt)
+        self.assertIn("spawned-by: sess-123", captured_prompts[0])
 
 
 class TestMainHook(unittest.TestCase):
-    def test_non_swift_file_allows_without_llm(self):
-        with patch("validate_swift_frontmatter.subprocess.run") as mock_run:
-            code, out = _call_main(_write_event("/src/Foo.py", BAD_CONTENT))
+    def test_unsupported_file_type_allows_without_llm(self):
+        with patch("validate_swift_frontmatter.run_claude_bare") as mock_run:
+            code, out = _call_main(_write_event("/src/Foo.js", BAD_CONTENT))
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
+    def test_py_file_with_solid_description_is_processed(self):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_PY_CONTENT)):
+            code, out = _call_main(_write_event("/src/loader.py", BAD_PY_CONTENT))
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        updated = payload["hookSpecificOutput"]["updatedInput"]
+        self.assertEqual(updated["content"], CLEAN_PY_CONTENT)
+
     def test_no_solid_description_allows_without_llm(self):
-        with patch("validate_swift_frontmatter.subprocess.run") as mock_run:
+        with patch("validate_swift_frontmatter.run_claude_bare") as mock_run:
             code, out = _call_main(_write_event("/src/Foo.swift", "final class Foo {}\n"))
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
@@ -184,13 +177,13 @@ class TestMainHook(unittest.TestCase):
 
     def test_unknown_tool_allows_without_llm(self):
         event = {"tool_name": "Read", "tool_input": {"file_path": "/src/Foo.swift"}, "session_id": "s"}
-        with patch("validate_swift_frontmatter.subprocess.run") as mock_run:
+        with patch("validate_swift_frontmatter.run_claude_bare") as mock_run:
             code, _ = _call_main(event)
         mock_run.assert_not_called()
         self.assertEqual(code, 0)
 
     def test_bad_frontmatter_write_returns_allow_with_corrected_content(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
             code, out = _call_main(_write_event("/src/Foo.swift", BAD_CONTENT))
         self.assertEqual(code, 0)
         payload = json.loads(out)
@@ -199,44 +192,37 @@ class TestMainHook(unittest.TestCase):
         self.assertEqual(updated["file_path"], "/src/Foo.swift")
 
     def test_already_clean_content_allows_without_updatedInput(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
             code, out = _call_main(_write_event("/src/Foo.swift", CLEAN_CONTENT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_edit_tool_uses_new_string_key(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
             code, out = _call_main(_edit_event("/src/Foo.swift", BAD_CONTENT))
         payload = json.loads(out)
         updated = payload["hookSpecificOutput"]["updatedInput"]
         self.assertEqual(updated["new_string"], CLEAN_CONTENT)
 
     def test_edit_preserves_old_string_in_updated_input(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
             code, out = _call_main(_edit_event("/src/Foo.swift", BAD_CONTENT))
         payload = json.loads(out)
         self.assertEqual(payload["hookSpecificOutput"]["updatedInput"]["old_string"], "old")
 
     def test_llm_failure_fails_open(self):
-        m = MagicMock()
-        m.returncode = 1
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=None):
             code, out = _call_main(_write_event("/src/Foo.swift", BAD_CONTENT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_llm_ignores_schema_fails_open(self):
-        # LLM returns plain text instead of JSON — fail open
-        m = MagicMock()
-        m.returncode = 0
-        m.stdout = json.dumps([{"type": "result", "result": CLEAN_CONTENT}])
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=m):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=CLEAN_CONTENT):
             code, out = _call_main(_write_event("/src/Foo.swift", BAD_CONTENT))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_malformed_stdin_allows(self):
-        import io
         with patch("sys.stdin", io.StringIO("not json")):
             try:
                 hook.main()
@@ -244,7 +230,7 @@ class TestMainHook(unittest.TestCase):
                 self.assertEqual(e.code or 0, 0)
 
     def test_permission_decision_is_allow(self):
-        with patch("validate_swift_frontmatter.subprocess.run", return_value=_mock_claude(CLEAN_CONTENT)):
+        with patch("validate_swift_frontmatter.run_claude_bare", return_value=_llm_raw(CLEAN_CONTENT)):
             code, out = _call_main(_write_event("/src/Foo.swift", BAD_CONTENT))
         payload = json.loads(out)
         self.assertEqual(payload["hookSpecificOutput"]["permissionDecision"], "allow")

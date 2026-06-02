@@ -4,6 +4,7 @@ solid-category: utility
 solid-tags: [hook]
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -34,6 +35,9 @@ def _read_section(section: str) -> dict:
 
 
 def _read_config_file() -> dict:
+    override = os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE")
+    if override:
+        return load_toml(Path(override)).get("llm", {})
     return _read_section("llm")
 
 

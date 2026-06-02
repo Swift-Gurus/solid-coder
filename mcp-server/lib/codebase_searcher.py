@@ -5,6 +5,7 @@ solid-tags: [utility, search]
 """
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Optional, Union
@@ -16,15 +17,41 @@ _SKIP_DIRS = SKIP_DIRS  # internal alias
 _SPEC_RE = re.compile(r'^SPEC-\d+$', re.IGNORECASE)
 _IMPORT_DECL = re.compile(r'^import\s+(\w+)')
 _COMMENT_STRIP = re.compile(r'^[/\*#\s]+')
+_BINARY_SNIFF_BYTES = 1024
 
 _chunker = Chunker()
 
 
 def iter_source_files(root: Path):
-    """Yield all non-skipped files under *root* recursively."""
-    for filepath in root.rglob("*"):
-        if filepath.is_file() and not any(part in SKIP_DIRS for part in filepath.parts):
-            yield filepath
+    """Yield all non-skipped files under *root* recursively.
+
+    Prunes SKIP_DIRS during the walk so the walker never descends into
+    .git/Pods/DerivedData/node_modules — on large codebases these hold the
+    overwhelming majority of files and are the dominant scan cost.
+    """
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        base = Path(dirpath)
+        for name in filenames:
+            yield base / name
+
+
+def _read_text_lines(filepath: Path) -> Optional[list]:
+    """Read a file as text lines, skipping binaries.
+
+    Returns None for unreadable files or binaries (detected by a NUL byte in
+    the first KB). Frontmatter and imports only ever live in UTF-8 text, so a
+    NUL-byte sniff is lossless here: it catches every binary regardless of
+    extension (including the extensionless compiled assets iOS projects carry),
+    while UTF-16 files such as .strings carry no frontmatter to match.
+    """
+    try:
+        data = filepath.read_bytes()
+    except OSError:
+        return None
+    if b"\x00" in data[:_BINARY_SNIFF_BYTES]:
+        return None
+    return data.decode("utf-8", errors="replace").splitlines()
 
 
 def extract_plan_terms(plan_path: Path) -> tuple:
@@ -50,29 +77,39 @@ def extract_plan_terms(plan_path: Path) -> tuple:
     return list(dict.fromkeys(t for t in terms if t)), specs
 
 
-def _frontmatter_fields(lines: list) -> dict:
-    result = {"description": "", "tags": set(), "specs": set()}
+def _scan_lines(lines: list) -> tuple:
+    """Single pass over a file's lines: extract frontmatter + import names.
+
+    Replaces the previous two full-file passes (one for frontmatter, one for
+    imports). Returns (frontmatter_dict, import_names). Import names are kept as
+    a list so callers can count per-occurrence, matching prior behaviour.
+    """
+    fm = {"description": "", "tags": set(), "specs": set()}
+    imports = []
     for line in lines:
+        m = _IMPORT_DECL.match(line.strip())
+        if m:
+            imports.append(m.group(1).lower())
+            continue
         inner = _COMMENT_STRIP.sub("", line).strip()
         low = inner.lower()
         if low.startswith("solid-description:"):
-            result["description"] = inner[len("solid-description:"):].strip()
+            fm["description"] = inner[len("solid-description:"):].strip()
         elif low.startswith("solid-tags:"):
             raw = inner[len("solid-tags:"):].strip().strip("[]")
-            result["tags"].update(t.strip().lower() for t in re.split(r"[,\s]+", raw) if t.strip())
+            fm["tags"].update(t.strip().lower() for t in re.split(r"[,\s]+", raw) if t.strip())
         elif low.startswith("solid-spec:"):
             raw = inner[len("solid-spec:"):].strip().strip("[]")
-            result["specs"].update(s.strip().upper() for s in re.split(r"[,\s]+", raw) if s.strip())
-    return result
+            fm["specs"].update(s.strip().upper() for s in re.split(r"[,\s]+", raw) if s.strip())
+    return fm, imports
 
 
 def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches: int):
-    try:
-        lines = filepath.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
+    lines = _read_text_lines(filepath)
+    if lines is None:
         return None
 
-    fm = _frontmatter_fields(lines)
+    fm, imports = _scan_lines(lines)
 
     matched_specs = sorted(fm["specs"] & spec_numbers) if spec_numbers else []
     if matched_specs:
@@ -87,10 +124,7 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
         hits += len(desc_words & tags_lower)
     if fm["tags"]:
         hits += len(fm["tags"] & tags_lower)
-    for line in lines:
-        m = _IMPORT_DECL.match(line.strip())
-        if m and m.group(1).lower() in tags_lower:
-            hits += 1
+    hits += sum(1 for imp in imports if imp in tags_lower)
 
     return {"path": str(filepath), "description": fm["description"]} if hits >= min_matches else None
 

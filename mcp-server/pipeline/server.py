@@ -39,6 +39,12 @@ server = MCPServer("solid-coder-pipeline", "1.0.0")
 _chunker = Chunker()
 
 
+def _run_skill(skill_dir: str, script_name: str, args: list):
+    """Build a SKILLS_ROOT-relative script path and invoke it. Returns (ok, stdout, stderr)."""
+    path = str(SKILLS_ROOT / skill_dir / "scripts" / script_name)
+    return run_cmd([sys.executable, path] + args)
+
+
 # ---------------------------------------------------------------------------
 # Tool: collect_review_results
 # ---------------------------------------------------------------------------
@@ -155,8 +161,8 @@ def check_severity(output_root):
     },
 )
 def validate_findings(output_root):
-    script = str(SKILLS_ROOT / "validate-findings" / "scripts" / "validate-findings.py")
-    ok, out, err = run_cmd([sys.executable, script, output_root, str(PLUGIN_ROOT)])
+    ok, out, err = _run_skill("validate-findings", "validate-findings.py",
+                              [output_root, str(PLUGIN_ROOT)])
     return {"success": ok, "output": out, "error": err if not ok else None}
 
 
@@ -200,8 +206,7 @@ def load_synthesis_context(output_root):
 )
 def generate_report(data_dir, report_dir=None):
     report_dir = report_dir or data_dir
-    script = str(SKILLS_ROOT / "generate-report" / "scripts" / "generate-report.py")
-    ok, out, err = run_cmd([sys.executable, script, data_dir, report_dir])
+    ok, out, err = _run_skill("generate-report", "generate-report.py", [data_dir, report_dir])
     return {
         "success": ok,
         "md_path": str(Path(report_dir) / "report.md") if ok else None,
@@ -226,9 +231,8 @@ def generate_report(data_dir, report_dir=None):
     },
 )
 def validate_architecture(arch_path):
-    script = str(SKILLS_ROOT / "plan" / "scripts" / "validate-arch.py")
     schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
-    ok, out, err = run_cmd([sys.executable, script, arch_path, "--schema", schema])
+    ok, out, err = _run_skill("plan", "validate-arch.py", [arch_path, "--schema", schema])
     return {"valid": ok, "output": out, "errors": err if not ok else None}
 
 
@@ -255,11 +259,10 @@ def validate_architecture(arch_path):
     },
 )
 def split_implementation_plan(plan_path, output_dir, arch_path=None):
-    script = str(SKILLS_ROOT / "synthesize-implementation" / "scripts" / "split-plan.py")
-    cmd = [sys.executable, script, plan_path, "--output-dir", output_dir]
+    args = [plan_path, "--output-dir", output_dir]
     if arch_path:
-        cmd += ["--arch", arch_path]
-    ok, out, err = run_cmd(cmd)
+        args += ["--arch", arch_path]
+    ok, out, err = _run_skill("synthesize-implementation", "split-plan.py", args)
     chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
     return {
         "success": ok,
@@ -321,8 +324,7 @@ def search_codebase(sources_dir=None, plan_path=None, tags=None, spec_numbers=No
     },
 )
 def prepare_review_input(candidate_tags=None):
-    script = str(SKILLS_ROOT / "prepare-review-input" / "scripts" / "prepare-changes.py")
-    ok, out, err = run_cmd([sys.executable, script])
+    ok, out, err = _run_skill("prepare-review-input", "prepare-changes.py", [])
     if not ok:
         return {"error": err}
     try:
@@ -339,7 +341,7 @@ def prepare_review_input(candidate_tags=None):
 
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 
-_gw_pipeline = _make_gw_pipeline(PLUGIN_ROOT / "references" / "principles")
+_gw_pipeline = _make_gw_pipeline(PLUGIN_ROOT / "references")
 
 
 @server.tool(

@@ -1,40 +1,68 @@
 #!/usr/bin/env python3
-"""PreToolUse hook — auto-corrects solid-frontmatter quality in Swift files.
+"""PreToolUse hook — auto-corrects solid-frontmatter quality in source files.
 
-Phase 1 (script): fast exits — non-Swift file, no solid-description present.
-Phase 2 (claude -p --bare): receives the entire content being written so it
-  can read the actual Swift implementation for context. The LLM returns a JSON
-  object {"corrected_content": "..."} so the result is always unambiguously
-  parseable regardless of any surrounding text.
-  Script returns allow + updatedInput so the write proceeds with clean frontmatter.
+Supported: .swift and .py files that contain a solid-description field.
+
+Phase 1 (script): fast exits — unsupported file type, no solid-description present.
+Phase 2 (claude -p --bare): receives the entire content being written, identifies
+  the language-appropriate comment boundaries, and fixes only solid-description.
+  Returns allow + updatedInput so the write proceeds with clean frontmatter.
 
 Fails open on any infrastructure problem.
 """
 
 import json
 import re
-import subprocess
 import sys
+from pathlib import Path
 from typing import Optional
 
-CORRECTION_PROMPT = """\
-You are a Swift solid-frontmatter quality checker.
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
-The content below is being written to a Swift file. Inspect every \
-`solid-description` field inside `/** ... */` blocks and fix any that violate \
-the quality rules. Use the Swift code that follows each block as context — the \
-description should capture behavior and purpose, not implementation detail.
+from hook_utils import (  # noqa: E402
+    JSON_OBJ_RE,
+    HookResponder,
+    parse_hook_event,
+    run_claude_bare,
+    strip_markdown_fences,
+)
+
+_SUPPORTED_EXTENSIONS = {".swift", ".py"}
+
+CORRECTION_PROMPT = """\
+You are a solid-frontmatter quality checker.
+
+The content below is a source code file. Locate every solid-frontmatter block \
+in the file and fix any `solid-description` field that violates the quality rules. \
+Use the code that follows each block as context — the description should capture \
+behavior and purpose, not implementation detail.
+
+Solid-frontmatter is a structured comment block embedded in the file using \
+the comment syntax of whatever language the file is written in. Different languages \
+use different boundary markers — for example, Swift uses `/** ... */` doc-comment \
+blocks placed before each type declaration, while Python uses a module-level \
+triple-quoted string at the top of the file. Identify the correct comment boundaries \
+for the language you see, then look for solid-frontmatter fields inside them.
+
+A solid-frontmatter block contains these fields:
+- solid-name        — name of the type or module  (DO NOT modify)
+- solid-category    — category/role, e.g. service, utility, abstraction, model, \
+viewmodel, screen, view-component, unit-test  (DO NOT modify)
+- solid-spec        — spec number(s), e.g. [SPEC-014]  (optional; DO NOT modify)
+- solid-stack       — frameworks/technologies, e.g. [swiftui, combine]  (optional; DO NOT modify)
+- solid-description — one-sentence capability description  (fix ONLY this field)
 
 Rules for solid-description:
-Describe the CAPABILITY — what the type does at the interface level, not how \
-it does it. Ask: "would this sentence still be true if the implementation \
-changed entirely?" If not, it's describing implementation, not capability.
+Describe the CAPABILITY — what the type or module does at the interface level, \
+not how it does it. Ask: "would this sentence still be true if the implementation \
+changed entirely?" If not, it is describing implementation, not capability.
 
 - One concise sentence at the capability/role level
-- Must NOT name any concrete thing that lives inside the implementation: \
-types, variables, APIs, values, colors, layout details, composition steps, \
-wiring to other components — anything that could change without changing \
-the public contract
+- Must NOT name any concrete thing inside the implementation: types, variables, \
+APIs, values, colors, layout details, composition steps, wiring to other \
+components — anything that could change without changing the public contract
 - Must NOT be vague: "A view", "A service", "Handles data" with no substance
 - For abstraction category: MUST start with "Contract for..." or \
 "Contract that defines..."
@@ -42,7 +70,7 @@ the public contract
 When fixing:
 - Preserve solid-name, solid-category, solid-spec, solid-stack exactly
 - Only correct solid-description — touch nothing else
-- Do not modify any Swift code
+- Do not modify any code or the comment boundary markers
 
 Your entire response MUST be a single raw JSON object and nothing else. \
 No markdown fences. No explanation. No commentary. The response starts \
@@ -54,19 +82,10 @@ File content:
 {content}
 """
 
-_JSON_OBJ = re.compile(r'\{.*\}', re.DOTALL)
-
 
 def _parse_corrected(raw: str) -> Optional[str]:
-    """Extract corrected_content from the LLM JSON response.
-
-    Handles optional markdown code fences around the JSON object.
-    Returns None if parsing fails.
-    """
-    # Strip optional ```json / ``` fences
-    text = re.sub(r'```[a-zA-Z]*\n?', '', raw).strip()
-    # Find the JSON object — could be surrounded by stray text
-    m = _JSON_OBJ.search(text)
+    text = strip_markdown_fences(raw)
+    m = JSON_OBJ_RE.search(text)
     if not m:
         return None
     try:
@@ -77,88 +96,25 @@ def _parse_corrected(raw: str) -> Optional[str]:
         return None
 
 
-def fix_with_claude(
-    content: str,
-    parent_session_id: str = "",
-    file_path: str = "",
-) -> Optional[str]:
-    """Run the content through a bare Claude session.
-
-    Returns:
-        None  — infrastructure error, caller should fail open.
-        str   — full file content (unchanged or corrected); compare with
-                original to decide whether to apply updatedInput.
-    """
-    header = ""
-    if parent_session_id:
-        header = f"# spawned-by: {parent_session_id}\n\n"
-
+def fix(content: str, parent_session_id: str = "") -> Optional[str]:
+    header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
     prompt = header + CORRECTION_PROMPT.format(content=content)
-    try:
-        result = subprocess.run(
-            ["claude", "-p", prompt, "--output-format", "json", "--bare"],
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            return None
-
-        try:
-            events = json.loads(result.stdout)
-            if not isinstance(events, list):
-                events = [events]
-        except (json.JSONDecodeError, ValueError):
-            return None
-
-        inner_raw = ""
-        for obj in reversed(events):
-            if isinstance(obj, dict) and obj.get("type") == "result":
-                inner_raw = obj.get("result", "")
-                break
-
-        if not inner_raw.strip():
-            return None
-
-        return _parse_corrected(inner_raw)
-    except Exception:
-        return None
-
-
-def _allow() -> None:
-    sys.exit(0)
-
-
-def _allow_corrected(tool_name: str, tool_input: dict, corrected: str) -> None:
-    input_key = "content" if tool_name == "Write" else "new_string"
-    updated = dict(tool_input)
-    updated[input_key] = corrected
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-            "updatedInput": updated,
-        }
-    }))
-    sys.stdout.flush()
-    sys.exit(0)
+    raw = run_claude_bare(prompt, timeout=30, no_session=True)
+    return _parse_corrected(raw) if raw else None
 
 
 def main() -> None:
-    try:
-        event = json.loads(sys.stdin.read())
-    except (json.JSONDecodeError, ValueError):
-        _allow()
+    responder = HookResponder()
+    parsed = parse_hook_event(sys.stdin.read())
+    if parsed is None:
+        responder.allow()
         return
 
-    tool_name = event.get("tool_name", "")
-    tool_input = event.get("tool_input") or {}
-    file_path = tool_input.get("file_path", "")
-    parent_session_id = event.get("session_id", "")
+    tool_name, tool_input, file_path, session_id = parsed
 
-    if not file_path.endswith(".swift"):
-        _allow()
+    ext = Path(file_path).suffix.lower()
+    if ext not in _SUPPORTED_EXTENSIONS:
+        responder.allow()
         return
 
     if tool_name == "Write":
@@ -166,24 +122,23 @@ def main() -> None:
     elif tool_name == "Edit":
         content = tool_input.get("new_string", "")
     else:
-        _allow()
+        responder.allow()
         return
 
     if "solid-description:" not in content:
-        _allow()
+        responder.allow()
         return
 
-    corrected = fix_with_claude(
-        content,
-        parent_session_id=parent_session_id,
-        file_path=file_path,
-    )
+    corrected = fix(content, parent_session_id=session_id)
 
     if corrected is None or corrected == content:
-        _allow()
+        responder.allow()
         return
 
-    _allow_corrected(tool_name, tool_input, corrected)
+    input_key = "content" if tool_name == "Write" else "new_string"
+    updated = dict(tool_input)
+    updated[input_key] = corrected
+    responder.allow_with_update(updated)
 
 
 if __name__ == "__main__":

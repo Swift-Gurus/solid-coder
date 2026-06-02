@@ -1,8 +1,10 @@
 """
-solid-description: Unit tests verifying that the LLM configuration loader resolves settings from a project-scoped config file and returns documented defaults when no config is present.
+solid-description: Unit tests verifying that the LLM configuration accessor reads available settings and returns documented defaults when no configuration is present.
 solid-category: unit-test
+solid-spec: [SPEC-014]
 """
 
+import os
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -74,31 +76,53 @@ class TestFindConfig(unittest.TestCase):
 
 class TestReadConfigFile(unittest.TestCase):
     @contextmanager
-    def _with_temp_toml(self, content: bytes):
+    def _temp_toml_path(self, content: bytes):
         with tempfile.NamedTemporaryFile(suffix=".toml", delete=False) as f:
             f.write(content)
             tmp = Path(f.name)
         try:
-            with patch("hc_config._find_config", return_value=tmp):
-                yield hc_config._read_config_file()
+            yield tmp
         finally:
             tmp.unlink()
+
+    @contextmanager
+    def _with_temp_toml(self, content: bytes):
+        with self._temp_toml_path(content) as tmp:
+            with patch("hc_config._find_config", return_value=tmp):
+                yield hc_config._read_config_file(), tmp
 
     def test_returns_empty_when_no_config_found(self):
         with patch("hc_config._find_config", return_value=None):
             self.assertEqual(hc_config._read_config_file(), {})
 
     def test_returns_empty_dict_on_invalid_toml(self):
-        with self._with_temp_toml(b"not valid toml") as result:
+        with self._with_temp_toml(b"not valid toml") as (result, _):
             self.assertIsInstance(result, dict)
 
     def test_reads_llm_section_when_tomllib_available(self):
-        with self._with_temp_toml(_VALID_TOML) as result:
+        with self._with_temp_toml(_VALID_TOML) as (result, _):
             if not result:
                 self.skipTest("No TOML parser available")
             self.assertEqual(result.get("backend"), "local")
             self.assertEqual(result.get("host"), "http://gpu:9090")
 
+    def test_reads_from_env_var_override_when_set(self):
+        toml_content = b"[llm]\nbackend = 'qwen'\n"
+        with self._temp_toml_path(toml_content) as tmp_path:
+            with patch.dict(os.environ, {"SOLID_CODER_TEST_MODEL_PROFILE": str(tmp_path)}):
+                result = hc_config._read_config_file()
+        if not result:
+            self.skipTest("No TOML parser available")
+        self.assertEqual(result.get("backend"), "qwen")
+
+    def test_original_behavior_preserved_when_env_var_unset(self):
+        env = {k: v for k, v in os.environ.items() if k != "SOLID_CODER_TEST_MODEL_PROFILE"}
+        with patch.dict(os.environ, env, clear=True):
+            with patch("hc_config._find_config", return_value=None):
+                result = hc_config._read_config_file()
+        self.assertEqual(result, {})
+
 
 if __name__ == "__main__":
     unittest.main()
+
