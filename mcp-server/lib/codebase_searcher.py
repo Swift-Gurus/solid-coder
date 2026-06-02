@@ -7,12 +7,19 @@ solid-tags: [utility, search]
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Union
 
 from lib.chunker import Chunker
 
-SKIP_DIRS = {".git", ".build", "build", "DerivedData", "Pods", "node_modules", ".solid_coder"}
+# Build output, dependency caches, and vendored checkouts — never the user's own
+# source. `.derivedData` is the same as the default `DerivedData`, just the
+# project-local path some Xcode/CI setups use; it holds SwiftPM SourcePackages
+# (dependency clones) and git objects. Skipping these is both a large speed win
+# and removes dependency-internal noise from results.
+SKIP_DIRS = {".git", ".build", "build", "DerivedData", ".derivedData",
+             "Pods", "node_modules", ".solid_coder", ".gradle"}
 _SKIP_DIRS = SKIP_DIRS  # internal alias
 _SPEC_RE = re.compile(r'^SPEC-\d+$', re.IGNORECASE)
 _IMPORT_DECL = re.compile(r'^import\s+(\w+)')
@@ -44,12 +51,20 @@ def _read_text_lines(filepath: Path) -> Optional[list]:
     NUL-byte sniff is lossless here: it catches every binary regardless of
     extension (including the extensionless compiled assets iOS projects carry),
     while UTF-16 files such as .strings carry no frontmatter to match.
+
+    The head is read first and sniffed *before* the rest of the file is read, so
+    binaries are rejected without ever loading their full payload. That bounds
+    peak memory when many workers hit large files concurrently. Text files are
+    still read in full — frontmatter blocks may appear above every type in a
+    file (per the create-type convention), so the whole file must be scanned.
     """
     try:
-        data = filepath.read_bytes()
+        with filepath.open("rb") as fh:
+            head = fh.read(_BINARY_SNIFF_BYTES)
+            if b"\x00" in head:
+                return None
+            data = head + fh.read()
     except OSError:
-        return None
-    if b"\x00" in data[:_BINARY_SNIFF_BYTES]:
         return None
     return data.decode("utf-8", errors="replace").splitlines()
 
@@ -87,9 +102,17 @@ def _scan_lines(lines: list) -> tuple:
     fm = {"description": "", "tags": set(), "specs": set()}
     imports = []
     for line in lines:
-        m = _IMPORT_DECL.match(line.strip())
-        if m:
-            imports.append(m.group(1).lower())
+        stripped = line.strip()
+        # Cheap guards before the expensive regex/sub work: the vast majority of
+        # lines in a source file are neither an import nor frontmatter. Only the
+        # `import`-prefixed lines reach the regex, and only `solid-` lines reach
+        # the comment strip. Lossless — every match shape still gets evaluated.
+        if stripped.startswith("import"):
+            m = _IMPORT_DECL.match(stripped)
+            if m:
+                imports.append(m.group(1).lower())
+            continue
+        if "solid-" not in line:
             continue
         inner = _COMMENT_STRIP.sub("", line).strip()
         low = inner.lower()
@@ -129,16 +152,28 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
     return {"path": str(filepath), "description": fm["description"]} if hits >= min_matches else None
 
 
+def _worker_count() -> int:
+    """Thread pool size for the (I/O-bound) file scan, derived from the host."""
+    return min(16, (os.cpu_count() or 1) * 2)
+
+
 def _collect_matches(sources: Path, all_tags: set, all_specs: set, min_matches: int) -> dict:
-    """Scan source files and return raw matches list plus total file count."""
-    matches = []
-    total = 0
-    for filepath in iter_source_files(sources):
-        total += 1
-        match = _match_file(filepath, all_tags, all_specs, min_matches)
-        if match:
-            matches.append(match)
-    return {"matches": matches, "total": total}
+    """Scan source files and return raw matches list plus total file count.
+
+    Per-file work (open, read, decode, scan) is I/O-bound, so it runs across a
+    thread pool. ThreadPoolExecutor.map preserves input order, keeping output
+    deterministic (walk order) regardless of which worker finishes first.
+
+    NOTE: this scan is deliberately pure Python, not a shell-out to grep/rg. A
+    plugin ships to arbitrary machines where ripgrep is often absent (bundled
+    only inside app packages) and `grep` resolves to GNU/BSD/ugrep variants with
+    divergent flags. Portability, not raw throughput, is why we own the scan.
+    """
+    files = list(iter_source_files(sources))
+    with ThreadPoolExecutor(max_workers=_worker_count()) as ex:
+        results = ex.map(lambda fp: _match_file(fp, all_tags, all_specs, min_matches), files)
+        matches = [m for m in results if m]
+    return {"matches": matches, "total": len(files)}
 
 
 def _resolve_search_params(

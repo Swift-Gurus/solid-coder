@@ -2,7 +2,7 @@
 number: SPEC-014
 feature: principle-test-harness-infrastructure
 type: subtask
-status: ready
+status: done
 parent: SPEC-013
 blocked-by: []
 blocking: []
