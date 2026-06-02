@@ -19,7 +19,6 @@ for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR)):
 
 import hook_utils  # noqa: E402
 from hc_checker import HealthChecking  # noqa: E402
-from hc_checker_factory import make_health_checker  # noqa: E402
 from hook_callable import CallableAdapting  # noqa: E402
 
 from apply_flow_invoker import ApplyFlowInvoker, ClaudeReviewSessionRunner, ReviewArtifactHandler  # noqa: E402
@@ -72,10 +71,16 @@ class RunTimestampGenerator(TimestampGenerating):
         return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def _make_health_checker(project_root: Path) -> HealthChecking:
-    mcp_config = build_mcp_config(project_root)
-    log_path = project_root / ".claude" / "solid-coder-gate.log"
-    return make_health_checker(mcp_config=mcp_config, log_path=log_path)
+class DirectHealthChecker(HealthChecking):
+    """Thin wrapper that calls code_health_check._check() on every invocation.
+
+    Unlike make_health_checker(), this builds the LLM runner fresh on each call
+    so it reads hc_config (including SOLID_CODER_TEST_MODEL_PROFILE) at runtime
+    rather than baking in the backend at construction time.
+    """
+
+    def check(self, content: str, path: str, language: str, parent_session_id: str):
+        return code_health_check._check(content, path, language, parent_session_id)
 
 
 class HarnessFactory:
@@ -88,7 +93,7 @@ class HarnessFactory:
         session_runner = ClaudeReviewSessionRunner(project_root, claude_runner, mcp_config_builder)
         apply_invoker = ApplyFlowInvoker(principle_folder, artifact_handler, session_runner)
 
-        health_checker = _make_health_checker(project_root)
+        health_checker = DirectHealthChecker()
         health_invoker = HealthFlowInvoker(
             checker=health_checker,
             language_provider=SupportedExtensionsProvider(code_health_check.SUPPORTED_EXTENSIONS),

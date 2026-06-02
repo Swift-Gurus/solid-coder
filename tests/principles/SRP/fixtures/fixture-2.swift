@@ -1,25 +1,32 @@
 import Foundation
 
-class OrderRepository {
-    private let store: UserDefaults
+protocol OrderStoring {
+    func save(_ order: Data, id: String)
+    func load(id: String) -> Data?
+    func remove(id: String)
+    func exists(id: String) -> Bool
+}
 
-    init(store: UserDefaults) {
+class OrderRepository {
+    private let store: OrderStoring
+
+    init(store: OrderStoring) {
         self.store = store
     }
 
     func save(_ order: Data, id: String) {
-        store.set(order, forKey: id)
+        store.save(order, id: id)
     }
 
     func load(id: String) -> Data? {
-        store.data(forKey: id)
+        store.load(id: id)
     }
 
     func remove(id: String) {
-        store.removeObject(forKey: id)
+        store.remove(id: id)
     }
 
     func exists(id: String) -> Bool {
-        store.data(forKey: id) != nil
+        store.exists(id: id)
     }
 }
