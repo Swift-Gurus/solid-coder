@@ -2,11 +2,7 @@
 solid-name: HealthFlowInvoker
 solid-category: service
 solid-spec: [SPEC-014]
-solid-description: Invokes the health check flow directly by calling the injected HealthChecking
-implementation. Reads fixture content, derives language from injected SupportedExtensionsProviding,
-sets SOLID_CODER_TEST_MODEL_PROFILE when a profile path is provided, and delegates result
-persistence to CheckResultWriting. Raises TimeoutError on timeout, RuntimeError on failure.
-Provides SupportedExtensionsProvider and CheckResultWriter as concrete implementations.
+solid-description: Orchestrates the health-check flow for a fixture file, enforcing a configurable timeout and persisting the resulting violations to configured output paths.
 """
 
 from __future__ import annotations
@@ -110,5 +106,6 @@ class HealthFlowInvoker(FlowInvoking):
         language: str,
         env_override: dict[str, str],
     ) -> list | None:
+        parent_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
         with _env_override_context(env_override):
-            return self._checker.check(content, path, language, "")
+            return self._checker.check(content, path, language, parent_session_id)

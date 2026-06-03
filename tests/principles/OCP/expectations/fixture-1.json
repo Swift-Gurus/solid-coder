@@ -1,0 +1,9 @@
+{
+  "findings": [
+    {
+      "unit_name": "PreferenceSynchronizer",
+      "metric_id": "OCP-1",
+      "severity": "SEVERE"
+    }
+  ]
+}

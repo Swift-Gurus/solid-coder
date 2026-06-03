@@ -7,7 +7,9 @@ solid-category: service
 solid-tags: [utility, service]
 """
 
+import html
 import json
+import re
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
@@ -178,6 +180,63 @@ class FilesScoringCapable(Protocol):
     def score_files(self, scorer: UnitScoring, files: list) -> tuple: ...
 
 
+_CONDITION_VAR_RE = re.compile(r'\b([a-z][a-z0-9_]*)\b')
+_CONDITION_EXTRACT_RE = re.compile(r'<condition>(.*?)</condition>', re.DOTALL)
+_PYTHON_KEYWORDS = frozenset({"and", "or", "not", "in", "is", "True", "False", "None"})
+
+
+def _condition_var_names(bands_xml: str) -> set[str]:
+    """Extract identifier names used in severity-band condition expressions."""
+    names: set[str] = set()
+    for cond in _CONDITION_EXTRACT_RE.findall(bands_xml):
+        for m in _CONDITION_VAR_RE.finditer(html.unescape(cond)):
+            name = m.group(1)
+            if name not in _PYTHON_KEYWORDS:
+                names.add(name)
+    return names
+
+
+def _lookup_metric_var(var_name: str, metrics: dict) -> Any:
+    """Resolve a condition variable name to a scalar value from the LLM's nested metrics dict.
+
+    Lookup order:
+      1. Exact key (e.g. cohesion_groups → metrics["cohesion_groups"]["count"])
+      2. Strip _count suffix then try base key and pluralised key
+         (e.g. verb_count → "verb" → "verbs" → metrics["verbs"]["count"])
+    """
+    def _extract(val: Any) -> Any:
+        return val["count"] if isinstance(val, dict) and "count" in val else val
+
+    if var_name in metrics:
+        return _extract(metrics[var_name])
+    if var_name.endswith("_count"):
+        stem = var_name[:-6]
+        for candidate in (stem, stem + "s"):
+            if candidate in metrics:
+                return _extract(metrics[candidate])
+    return None
+
+
+def _resolve_bands(metrics: dict, scorer: Any) -> dict[str, dict]:
+    """Build a flat variable namespace per severity-band metric_id.
+
+    The LLM fills metrics using the principle's output schema (semantic keys like
+    'verbs': {'count': 6}). Severity-band conditions reference variable names like
+    'verb_count'. This function bridges the two representations so SeverityScorer
+    receives the flat dict it expects without schema changes.
+    """
+    band_blocks = scorer._blocks.get("severity-bands", {})
+    resolved: dict[str, dict] = {}
+    for metric_id, bands_xml in band_blocks.items():
+        flat: dict[str, Any] = {}
+        for var in _condition_var_names(bands_xml):
+            val = _lookup_metric_var(var, metrics)
+            if val is not None:
+                flat[var] = val
+        resolved[metric_id] = flat
+    return resolved
+
+
 class FilesScoringHandler:
     """Scores units in a list of files using a provided scorer."""
 
@@ -190,8 +249,8 @@ class FilesScoringHandler:
                 unit_scores: list = []
                 unit_findings: list = []
 
-                for metric_id in list(metrics.keys()):
-                    r = scorer.score_unit(metrics[metric_id], metric_id)
+                for metric_id, flat_vars in _resolve_bands(metrics, scorer).items():
+                    r = scorer.score_unit(flat_vars, metric_id)
                     if "error" in r:
                         return scored_files, {"error": r["error"]}
                     unit_scores.append(r)
@@ -200,6 +259,7 @@ class FilesScoringHandler:
                             "metric_id": metric_id,
                             "severity": r["final_severity"],
                             "band_matched": r.get("band_matched"),
+                            "metrics": flat_vars,
                         })
 
                 scored_unit = dict(unit)

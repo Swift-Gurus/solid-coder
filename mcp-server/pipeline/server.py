@@ -26,10 +26,12 @@ SKILLS_ROOT = PLUGIN_ROOT / "skills"
 sys.path.insert(0, str(MCP_DIR))
 sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
+sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
 import importlib
 check_severity_mod = importlib.import_module("check-severity")
 load_context_mod = importlib.import_module("load-context")
+validate_output_mod = importlib.import_module("validate-output")
 
 from protocol import MCPServer
 from lib.subprocess_utils import run_cmd
@@ -43,6 +45,11 @@ def _run_skill(skill_dir: str, script_name: str, args: list):
     """Build a SKILLS_ROOT-relative script path and invoke it. Returns (ok, stdout, stderr)."""
     path = str(SKILLS_ROOT / skill_dir / "scripts" / script_name)
     return run_cmd([sys.executable, path] + args)
+
+
+def _skill_result(ok: bool, err: str, **fields) -> dict:
+    """Build a uniform skill-invocation result dict. Error is None when ok."""
+    return {**fields, "error": err if not ok else None}
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +170,7 @@ def check_severity(output_root):
 def validate_findings(output_root):
     ok, out, err = _run_skill("validate-findings", "validate-findings.py",
                               [output_root, str(PLUGIN_ROOT)])
-    return {"success": ok, "output": out, "error": err if not ok else None}
+    return _skill_result(ok, err, success=ok, output=out)
 
 
 # ---------------------------------------------------------------------------
@@ -207,12 +214,10 @@ def load_synthesis_context(output_root):
 def generate_report(data_dir, report_dir=None):
     report_dir = report_dir or data_dir
     ok, out, err = _run_skill("generate-report", "generate-report.py", [data_dir, report_dir])
-    return {
-        "success": ok,
-        "md_path": str(Path(report_dir) / "report.md") if ok else None,
-        "html_path": str(Path(report_dir) / "report.html") if ok else None,
-        "error": err if not ok else None,
-    }
+    return _skill_result(ok, err,
+                         success=ok,
+                         md_path=str(Path(report_dir) / "report.md") if ok else None,
+                         html_path=str(Path(report_dir) / "report.html") if ok else None)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +238,7 @@ def generate_report(data_dir, report_dir=None):
 def validate_architecture(arch_path):
     schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
     ok, out, err = _run_skill("plan", "validate-arch.py", [arch_path, "--schema", schema])
-    return {"valid": ok, "output": out, "errors": err if not ok else None}
+    return _skill_result(ok, err, valid=ok, output=out, errors=err if not ok else None)
 
 
 # ---------------------------------------------------------------------------
@@ -264,12 +269,7 @@ def split_implementation_plan(plan_path, output_dir, arch_path=None):
         args += ["--arch", arch_path]
     ok, out, err = _run_skill("synthesize-implementation", "split-plan.py", args)
     chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
-    return {
-        "success": ok,
-        "chunks": [str(c) for c in chunks],
-        "count": len(chunks),
-        "error": err if not ok else None,
-    }
+    return _skill_result(ok, err, success=ok, chunks=[str(c) for c in chunks], count=len(chunks))
 
 
 # ---------------------------------------------------------------------------
@@ -350,9 +350,12 @@ _gw_pipeline = _make_gw_pipeline(PLUGIN_ROOT / "references")
         "Accept a single partial review output document (one principle), score it deterministically "
         "via severity-bands XML in rule.md, fill scoring + findings, write the completed document to "
         "output_path, and return a compact summary. "
-        "Input: partial output with agent, principle, timestamp, files[].units[].metrics filled; "
-        "scoring and findings should be absent or empty. "
-        "Returns error if metric keys don't match severity-bands or output_path is unwritable."
+        "Input: partial output with agent, principle, timestamp, and files[].units[].metrics filled "
+        "using the principle's review output schema (semantic metric keys like 'verbs', "
+        "'cohesion_groups', 'stakeholders' with nested count/detail dicts). "
+        "Scoring and findings in the input should be absent or empty — the server fills them. "
+        "The server bridges the schema metric keys to severity-band condition variables automatically. "
+        "Returns error if output_path is unwritable."
     ),
     input_schema={
         "type": "object",
@@ -371,6 +374,26 @@ _gw_pipeline = _make_gw_pipeline(PLUGIN_ROOT / "references")
 )
 def submit_findings(partial_output, output_path):
     return _gw_pipeline.submit_findings(partial_output, output_path)
+
+
+# ---------------------------------------------------------------------------
+# Tool: validate_phase_output
+# ---------------------------------------------------------------------------
+
+@server.tool(
+    name="validate_phase_output",
+    description="Validate a JSON file against a JSON schema.",
+    input_schema={
+        "type": "object",
+        "properties": {
+            "json_path": {"type": "string", "description": "Path to the JSON file"},
+            "schema_path": {"type": "string", "description": "Path to the JSON schema file"},
+        },
+        "required": ["json_path", "schema_path"],
+    },
+)
+def validate_phase_output(json_path, schema_path):
+    return validate_output_mod.validate_json(json_path, schema_path)
 
 
 if __name__ == "__main__":

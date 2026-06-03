@@ -1,5 +1,5 @@
 """
-solid-description: Provides the appropriate LLM runner for the currently configured backend.
+solid-description: Provides the appropriate LLM runner for the active backend.
 solid-category: service
 solid-tags: [hook]
 """
@@ -36,4 +36,7 @@ def make_llm_runner(
             session_id=session_id, file_path=file_path,
         )
 
-    return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools)
+    # Pass model only when it looks like a real model id (not a placeholder).
+    _PLACEHOLDERS = {"", "claude", "local"}
+    model = llm_model() if llm_model() not in _PLACEHOLDERS else ""
+    return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools, model=model)

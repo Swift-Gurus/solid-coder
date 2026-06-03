@@ -32,7 +32,7 @@ class TestBuildMcpConfig(unittest.TestCase):
         self.assertIn("pipeline", self._parsed["mcpServers"])
 
     def test_docs_server_path_derived_from_project_root(self):
-        expected = str(self._root / "mcp-server" / "server.py")
+        expected = str(self._root / "mcp-server" / "docs" / "server.py")
         self.assertIn(expected, self._parsed["mcpServers"]["docs"]["args"])
 
     def test_pipeline_server_path_derived_from_project_root(self):

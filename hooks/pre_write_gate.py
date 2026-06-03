@@ -108,7 +108,7 @@ class FrontmatterFixer(CallableAdapting):
     """Callable adapter for validate_swift_frontmatter.fix_with_claude."""
 
     def fix(self, content: str, session_id: str, path: str) -> Optional[str]:
-        return self._safe_call(content, parent_session_id=session_id, file_path=path)
+        return self._safe_call(content, parent_session_id=session_id)
 
 
 class ContentSimulator:
@@ -232,7 +232,7 @@ class WriteGateCoordinator:
 def _make_coordinator(gate: GateHandling) -> WriteGateCoordinator:
     return WriteGateCoordinator(
         health_checker=HealthChecker(fn=health._check),
-        frontmatter_fixer=FrontmatterFixer(fn=frontmatter.fix_with_claude),
+        frontmatter_fixer=FrontmatterFixer(fn=frontmatter.fix),
         formatter=ViolationParser(),
         simulator=ContentSimulator(),
         gate=gate,

@@ -1,0 +1,19 @@
+{
+  "findings": [
+    {
+      "unit_name": "DocumentService",
+      "metric_id": "ISP-1",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "DocumentService",
+      "metric_id": "ISP-2",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "DocumentService",
+      "metric_id": "ISP-3",
+      "severity": "SEVERE"
+    }
+  ]
+}
