@@ -1,5 +1,5 @@
 """
-solid-description: Verifies that the runner factory creates the correct runner type for each configured backend and passes the appropriate settings to the constructed runner.
+solid-description: Validates correct runner instantiation based on backend and model configuration.
 solid-category: unit-test
 """
 
@@ -126,6 +126,87 @@ class TestClaudeRunnerModel(unittest.TestCase):
         self.assertEqual(kw.get("model"), "")
 
 
+class TestTomlIntegration(unittest.TestCase):
+    """Integration tests: full path from TOML file → runner configuration."""
+
+    def _write_toml(self, tmp_path: Path, content: str) -> None:
+        config_dir = tmp_path / ".claude"
+        config_dir.mkdir()
+        (config_dir / "solid-coder-local.toml").write_text(content)
+
+    def _make_runner(self, tmp_path: Path, mcp_config: str = "cfg", allowed_tools: str = "tools"):
+        import hc_config as cfg_mod
+        with patch.object(cfg_mod, "_find_config", return_value=tmp_path / ".claude" / "solid-coder-local.toml"), \
+             patch("hc_runner_factory.make_llama_server_runner") as mock_llama:
+            mock_llama.return_value = MagicMock(spec=LlamaServerRunner)
+            runner = make_llm_runner(mcp_config, allowed_tools)
+            return runner, mock_llama
+
+    def test_claude_backend_in_toml_creates_claude_runner(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\n")
+            runner, _ = self._make_runner(tmp_path)
+        self.assertIsInstance(runner, ClaudeRunner)
+
+    def test_claude_model_in_toml_forwarded_to_runner(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude-sonnet-4-5\"\n")
+            runner, _ = self._make_runner(tmp_path)
+        self.assertIsInstance(runner, ClaudeRunner)
+        self.assertEqual(runner._model, "claude-sonnet-4-5")
+
+    def test_local_backend_in_toml_creates_llama_runner(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://localhost:8080\"\nmodel = \"qwen3-35b\"\n")
+            _, mock_llama = self._make_runner(tmp_path)
+        mock_llama.assert_called_once()
+        kwargs = mock_llama.call_args[1]
+        self.assertEqual(kwargs["host"], "http://localhost:8080")
+        self.assertEqual(kwargs["model"], "qwen3-35b")
+
+    def test_local_backend_passes_all_toml_args(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://myhost:9999\"\nmodel = \"my-model\"\n")
+            _, mock_llama = self._make_runner(tmp_path)
+        kwargs = mock_llama.call_args[1]
+        self.assertEqual(kwargs["host"], "http://myhost:9999")
+        self.assertEqual(kwargs["model"], "my-model")
+
+    def test_placeholder_model_in_toml_not_forwarded(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude\"\n")
+            runner, _ = self._make_runner(tmp_path)
+        self.assertEqual(runner._model, "")
+
+
+class TestBareSessionTimeout(unittest.TestCase):
+    """Verify bare_session_timeout reads from TOML and defaults correctly."""
+
+    def test_default_is_300(self):
+        from hc_config import bare_session_timeout
+        with patch("hc_config._read_config_file", return_value={}):
+            self.assertEqual(bare_session_timeout(), 300)
+
+    def test_reads_value_from_toml(self):
+        from hc_config import bare_session_timeout
+        with patch("hc_config._read_config_file", return_value={"bare_session_timeout": 120}):
+            self.assertEqual(bare_session_timeout(), 120)
+
+    def test_falls_back_to_default_on_invalid_value(self):
+        from hc_config import bare_session_timeout
+        with patch("hc_config._read_config_file", return_value={"bare_session_timeout": "not-a-number"}):
+            self.assertEqual(bare_session_timeout(), 300)
+
+
 if __name__ == "__main__":
     unittest.main()
-

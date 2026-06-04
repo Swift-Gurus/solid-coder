@@ -1,5 +1,5 @@
 """
-solid-description: Provides the appropriate LLM runner for the active backend.
+solid-description: Resolves and returns the appropriate language model runner for the current deployment environment.
 solid-category: service
 solid-tags: [hook]
 """
@@ -22,13 +22,11 @@ def make_llm_runner(
     session_id: str = "",
     file_path: str = "",
 ) -> ClaudeRunning:
-    """Return the configured LLM runner.
+    """Return the configured LLM runner for a bare claude -p session.
 
-    Backend read from {cwd}/.claude/solid-coder-local.toml [llm] backend.
-    Defaults to 'claude' when no project config is present.
-
-    When backend=local, session_id and file_path are used to write
-    per-call JSONL logs to ~/.solid-coder/llm-sessions/.
+    Backend and model read from {cwd}/.claude/solid-coder-local.toml [llm].
+    Both health check and frontmatter use this factory — the only caller
+    difference is the mcp_config and allowed_tools they pass.
     """
     if llm_backend().lower() == "local":
         return make_llama_server_runner(
@@ -36,7 +34,7 @@ def make_llm_runner(
             session_id=session_id, file_path=file_path,
         )
 
-    # Pass model only when it looks like a real model id (not a placeholder).
+    # Use model only when explicitly set to a real model id, not a generic placeholder.
     _PLACEHOLDERS = {"", "claude", "local"}
     model = llm_model() if llm_model() not in _PLACEHOLDERS else ""
     return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools, model=model)

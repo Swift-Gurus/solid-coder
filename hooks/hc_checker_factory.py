@@ -2,9 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Shared factory for assembling an LLMHealthChecker from a given MCP config,
-session context, and log path. Used by both the pre-write gate hook and the principle test
-harness to avoid duplicating the same component wiring.
+solid-description: Factory that builds a ready-to-use health checker from connection and session parameters for evaluating source code against quality principles.
 """
 
 from __future__ import annotations
@@ -20,6 +18,7 @@ if str(_HOOKS_DIR) not in sys.path:
 from hook_utils import GateLogger, PLUGIN_ROOT, GATEWAY  # noqa: E402
 from hc_checker import HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader, LLMReviewer  # noqa: E402
 from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker  # noqa: E402
+from hc_config import bare_session_timeout  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
 from hc_violation_parser import ViolationParser  # noqa: E402

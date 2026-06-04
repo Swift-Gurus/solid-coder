@@ -19,12 +19,13 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
+from hc_config import bare_session_timeout  # noqa: E402
+from hc_runner_factory import make_llm_runner  # noqa: E402
 from hook_utils import (  # noqa: E402
     PLUGIN_ROOT,
     HookResponder,
     parse_hook_event,
     parse_json_field,
-    run_claude_bare,
 )
 from prompt_builder import BasePromptBuilder, PromptReading  # noqa: E402
 
@@ -62,7 +63,8 @@ def fix(
     builder: Optional[FrontmatterPromptBuilder] = None,
 ) -> Optional[str]:
     prompt = (builder or FrontmatterPromptBuilder()).build(content, parent_session_id)
-    raw = run_claude_bare(prompt, timeout=300)
+    runner = make_llm_runner(mcp_config="", allowed_tools="")
+    raw = runner.run(prompt, timeout=bare_session_timeout())
     if not raw:
         return None
     v = parse_json_field(raw, "corrected_content", str)
