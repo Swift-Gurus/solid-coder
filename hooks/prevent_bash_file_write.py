@@ -103,15 +103,21 @@ class BashReadGate:
         ".json", ".md", ".toml", ".yaml", ".yml", ".sh",
     )
 
-    _EXTERNAL_PREFIXES = ("/tmp/", "/var/", "/usr/", "/System/", "/Library/")
-
     def _looks_like_source_file(self, command: str) -> bool:
         if not any(ext in command for ext in self._SOURCE_EXTENSIONS):
             return False
-        # Allow reads of files in temp/system directories (not project files)
+        # Only block files that resolve to inside the current project root.
+        # Absolute paths outside the project (e.g. /tmp/, ~/Downloads/) are allowed.
+        project_root = Path.cwd().resolve()
         for token in command.split():
-            if any(token.startswith(p) for p in self._EXTERNAL_PREFIXES):
-                return False
+            if not any(token.endswith(ext) for ext in self._SOURCE_EXTENSIONS):
+                continue
+            try:
+                resolved = Path(token).resolve()
+                if not str(resolved).startswith(str(project_root)):
+                    return False  # outside the project — allow
+            except Exception:
+                pass  # malformed path → treat as project file to be safe
         return True
 
     def _is_heredoc(self, command: str) -> bool:
