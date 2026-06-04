@@ -29,7 +29,7 @@ CORRECTED_FRONTMATTER = (
 VIOLATIONS = [{"principle": "SRP", "issue": "Two concerns.", "fix": "Extract."}]
 
 _HC = "pre_write_gate.health._check"
-_FM = "pre_write_gate.frontmatter.fix_with_claude"
+_FM = "pre_write_gate.frontmatter.fix"
 
 
 def _call_main(stdin_input) -> tuple:

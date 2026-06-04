@@ -43,13 +43,24 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Import the server module (same directory)
-from server import SKILLS_ROOT
-from server import (
-    build_pattern_index,
+GATEWAY_DIR = Path(__file__).resolve().parent
+PLUGIN_ROOT = GATEWAY_DIR.parent
+SKILLS_ROOT = PLUGIN_ROOT / "skills"
+
+sys.path.insert(0, str(GATEWAY_DIR))
+
+# Documentation tools — mcp-server/docs/server.py
+from docs.server import (  # noqa: E402
     get_candidate_tags,
     discover_principles_tool,
     load_rules,
+    load_fix_instructions_for_findings,
+    load_fix_for_violation,
+    load_detection_rules,
+)
+
+# Pipeline tools — mcp-server/pipeline/server.py
+from pipeline.server import (  # noqa: E402
     check_severity,
     load_synthesis_context,
     validate_phase_output,
@@ -58,12 +69,11 @@ from server import (
     validate_architecture,
     split_implementation_plan,
     search_codebase,
-    query_specs,
     prepare_review_input,
-    load_fix_instructions_for_findings,
-    load_fix_for_violation,
-    load_detection_rules,
 )
+
+# Spec tools — mcp-server/specs/server.py
+from specs.server import query_specs  # noqa: E402
 
 
 def parse_args(argv):

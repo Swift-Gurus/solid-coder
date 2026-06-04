@@ -212,10 +212,20 @@ final class NoOp: Logger {
    - consider NoOps object if the name states it and 100% of methods/var from the contract are empty, or resolved to default values
 </exceptions>
 
-<severity-bands id="LSP">
-- COMPLIANT (0 net type checks, 0 contract violations, 0 empty/fatal error methods)
-- MINOR (<50% empty(non-fatal error) methods)
-- SEVERE (1+ net type checks OR 1+ contract violations or 1+ fatalError methods or empty methods (non fatal methods) >= 50%)
+<severity-bands id="LSP-1">
+<band severity="SEVERE"><condition>type_checks >= 1</condition></band>
+<band severity="COMPLIANT"><condition>type_checks == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="LSP-2">
+<band severity="SEVERE"><condition>contract_violations >= 1</condition></band>
+<band severity="COMPLIANT"><condition>contract_violations == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="LSP-3">
+<band severity="SEVERE"><condition>fatal_error_methods >= 1</condition></band>
+<band severity="MINOR"><condition>empty_methods >= 1 and fatal_error_methods == 0</condition></band>
+<band severity="COMPLIANT"><condition>fatal_error_methods == 0 and empty_methods == 0</condition></band>
 </severity-bands>
 
 ---

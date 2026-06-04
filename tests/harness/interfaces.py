@@ -115,15 +115,23 @@ class TestHarnessRunning(ABC):
     ) -> bool: ...
 
 
-class ReviewArtifactHandling(ABC):
+class ReviewInputBuilding(ABC):
     @abstractmethod
     def build_input(self, fixture_path: Path, log_dir: Path) -> Path: ...
 
+
+class ReasoningWriting(ABC):
     @abstractmethod
     def write_reasoning(self, path: Path, content: str) -> None: ...
 
+
+class FindingsReading(ABC):
     @abstractmethod
     def read_findings(self, path: Path) -> list[dict]: ...
+
+
+class ReviewArtifactHandling(ReviewInputBuilding, ReasoningWriting, FindingsReading, ABC):
+    """Composition protocol — kept for backward compatibility with factory and tests."""
 
 
 class ReviewSessionExecuting(ABC):

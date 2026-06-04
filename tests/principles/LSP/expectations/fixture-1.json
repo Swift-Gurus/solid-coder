@@ -1,0 +1,9 @@
+{
+  "findings": [
+    {
+      "unit_name": "LiveStreamPlayer",
+      "metric_id": "LSP-3",
+      "severity": "SEVERE"
+    }
+  ]
+}

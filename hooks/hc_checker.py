@@ -32,17 +32,20 @@ class ClaudeRunner(CallableAdapting):
         self,
         mcp_config: str,
         allowed_tools: str,
+        model: str = "",
         fn: ClaudeCallable = run_claude_bare,
     ) -> None:
         super().__init__(fn)
         self._mcp_config = mcp_config
         self._allowed_tools = allowed_tools
+        self._model = model
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
         return self._fn(
             prompt,
             mcp_config=self._mcp_config,
             allowed_tools=self._allowed_tools,
+            model=self._model,
             timeout=timeout,
         )
 

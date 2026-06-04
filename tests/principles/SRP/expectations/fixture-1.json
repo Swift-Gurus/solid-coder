@@ -8,7 +8,10 @@
     {
       "unit_name": "ProductCatalog",
       "metric_id": "SRP-2",
-      "severity": "SEVERE"
+      "severity": "SEVERE",
+      "metrics": {
+        "cohesion_groups": 2
+      }
     },
     {
       "unit_name": "ProductCatalog",

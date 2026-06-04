@@ -1,11 +1,13 @@
 """
-solid-description: Unit tests for the LLM runner factory — config-file/env routing between Claude and local backends.
+solid-description: Verifies that the runner factory creates the correct runner type for each configured backend and passes the appropriate settings to the constructed runner.
 solid-category: unit-test
 """
 
+import subprocess
+import sys
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
@@ -13,6 +15,7 @@ ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().par
 from hc_checker import ClaudeRunner
 from hc_llama_runner import LlamaServerRunner
 from hc_runner_factory import make_llm_runner
+import hook_utils
 
 
 class TestMakeLlmRunner(unittest.TestCase):
@@ -57,6 +60,72 @@ class TestMakeLlmRunner(unittest.TestCase):
         kwargs = self._kwargs_for_local_backend()
         self.assertEqual(kwargs["host"], "http://localhost:8080")
 
+    def test_claude_backend_forwards_real_model_id(self):
+        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
+             patch("hc_runner_factory.llm_model", return_value="claude-haiku-4-5"):
+            runner = make_llm_runner("config", "tools")
+        self.assertIsInstance(runner, ClaudeRunner)
+        self.assertEqual(runner._model, "claude-haiku-4-5")
+
+    def test_claude_backend_omits_model_for_placeholder_claude(self):
+        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
+             patch("hc_runner_factory.llm_model", return_value="claude"):
+            runner = make_llm_runner("config", "tools")
+        self.assertEqual(runner._model, "")
+
+    def test_claude_backend_omits_model_for_placeholder_local(self):
+        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
+             patch("hc_runner_factory.llm_model", return_value="local"):
+            runner = make_llm_runner("config", "tools")
+        self.assertEqual(runner._model, "")
+
+    def test_claude_backend_omits_model_when_empty(self):
+        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
+             patch("hc_runner_factory.llm_model", return_value=""):
+            runner = make_llm_runner("config", "tools")
+        self.assertEqual(runner._model, "")
+
+
+class TestRunClaudeBareModel(unittest.TestCase):
+    def _captured_cmd(self, **kwargs):
+        """Return the cmd list passed to subprocess when run_claude_bare is called."""
+        with patch("hook_utils._run_subprocess_to_json", return_value=[{"type": "result", "result": "ok"}]) as m:
+            hook_utils.run_claude_bare("hello", **kwargs)
+            return m.call_args[0][0]  # positional cmd arg
+
+    def test_no_model_arg_when_model_is_empty(self):
+        cmd = self._captured_cmd(model="")
+        self.assertNotIn("--model", cmd)
+
+    def test_model_arg_appended_when_set(self):
+        cmd = self._captured_cmd(model="claude-haiku-4-5")
+        self.assertIn("--model", cmd)
+        self.assertEqual(cmd[cmd.index("--model") + 1], "claude-haiku-4-5")
+
+    def test_model_appears_before_session_id(self):
+        cmd = self._captured_cmd(model="claude-haiku-4-5", session_id="s123")
+        self.assertLess(cmd.index("--model"), cmd.index("--session-id"))
+
+
+class TestClaudeRunnerModel(unittest.TestCase):
+    def _run_and_capture(self, model: str):
+        captured = {}
+        def fake_run_bare(prompt, **kwargs):
+            captured.update(kwargs)
+            return "ok"
+        runner = ClaudeRunner(mcp_config="cfg", allowed_tools="tools", model=model, fn=fake_run_bare)
+        runner.run("prompt", timeout=30)
+        return captured
+
+    def test_model_forwarded_to_run_bare(self):
+        kw = self._run_and_capture("claude-haiku-4-5")
+        self.assertEqual(kw.get("model"), "claude-haiku-4-5")
+
+    def test_empty_model_forwarded_as_empty(self):
+        kw = self._run_and_capture("")
+        self.assertEqual(kw.get("model"), "")
+
 
 if __name__ == "__main__":
     unittest.main()
+

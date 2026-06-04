@@ -211,13 +211,18 @@ def run_claude_bare(
     timeout: int = 300,
     session_id: str = "",
     no_session: bool = False,
+    model: str = "",
 ) -> Optional[str]:
     """Run claude -p in bare JSON mode and return the final result string.
 
     Parses the JSON event stream and returns the result field from the last
-    result-type event, or None on any failure.
+    result-type event, or None on any failure. When model is non-empty it is
+    forwarded as --model (e.g. "claude-haiku-4-5"); when empty the CLI default
+    model is used.
     """
     cmd = ["claude", "-p", prompt, "--output-format", "json", "--bare"]
+    if model:
+        cmd += ["--model", model]
     if session_id:
         cmd += ["--session-id", session_id]
     if no_session:

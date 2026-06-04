@@ -8,6 +8,7 @@
 [hooks.pre_write_gate]
 exclude = [
     "tests/fixtures/**",
+    "tests/harness/**",
 ]
 
 # ── Hook backend ──────────────────────────────────────────────────────────────
@@ -21,13 +22,14 @@ backend = "claude"
 # Base URL the hook connects to — must match [server] port below.
 host = "http://localhost:8080"
 
-# Model name sent in API requests. llama-server ignores it but it appears in logs.
-model = "claude"
+# Model for the claude backend. Set to a real model id to override the CLI default,
+# e.g. "claude-haiku-4-5", "claude-sonnet-4-6". Leave as "claude" to use the CLI default.
+model = "claude-haiku-4-5"
 
 # Timeout in seconds for a single health-check LLM session.
 # Local models with many tool call rounds (6+) can take 200-300s on large files.
 # Increase if the gate times out silently on complex files.
-timeout = 600
+timeout = 1000
 
 
 # ── Local server ──────────────────────────────────────────────────────────────
