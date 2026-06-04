@@ -1,5 +1,5 @@
 """
-solid-description: Validates correct runner instantiation based on backend and model configuration.
+solid-description: Validates correct language model runner creation based on backend configuration.
 solid-category: unit-test
 """
 
@@ -15,6 +15,7 @@ ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().par
 from hc_checker import ClaudeRunner
 from hc_llama_runner import LlamaServerRunner
 from hc_runner_factory import make_llm_runner
+from test_utils import write_toml
 import hook_utils
 
 
@@ -129,14 +130,8 @@ class TestClaudeRunnerModel(unittest.TestCase):
 class TestTomlIntegration(unittest.TestCase):
     """Integration tests: full path from TOML file → runner configuration."""
 
-    def _write_toml(self, tmp_path: Path, content: str) -> None:
-        config_dir = tmp_path / ".claude"
-        config_dir.mkdir()
-        (config_dir / "solid-coder-local.toml").write_text(content)
-
     def _make_runner(self, tmp_path: Path, mcp_config: str = "cfg", allowed_tools: str = "tools"):
-        import hc_config as cfg_mod
-        with patch.object(cfg_mod, "_find_config", return_value=tmp_path / ".claude" / "solid-coder-local.toml"), \
+        with patch("hc_config_core.find_config", return_value=tmp_path / ".claude" / "solid-coder-local.toml"), \
              patch("hc_runner_factory.make_llama_server_runner") as mock_llama:
             mock_llama.return_value = MagicMock(spec=LlamaServerRunner)
             runner = make_llm_runner(mcp_config, allowed_tools)
@@ -146,7 +141,7 @@ class TestTomlIntegration(unittest.TestCase):
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\n")
+            write_toml(tmp_path, "[llm]\nbackend = \"claude\"\n")
             runner, _ = self._make_runner(tmp_path)
         self.assertIsInstance(runner, ClaudeRunner)
 
@@ -154,7 +149,7 @@ class TestTomlIntegration(unittest.TestCase):
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude-sonnet-4-5\"\n")
+            write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude-sonnet-4-5\"\n")
             runner, _ = self._make_runner(tmp_path)
         self.assertIsInstance(runner, ClaudeRunner)
         self.assertEqual(runner._model, "claude-sonnet-4-5")
@@ -163,7 +158,7 @@ class TestTomlIntegration(unittest.TestCase):
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            self._write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://localhost:8080\"\nmodel = \"qwen3-35b\"\n")
+            write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://localhost:8080\"\nmodel = \"qwen3-35b\"\n")
             _, mock_llama = self._make_runner(tmp_path)
         mock_llama.assert_called_once()
         kwargs = mock_llama.call_args[1]
@@ -174,7 +169,7 @@ class TestTomlIntegration(unittest.TestCase):
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            self._write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://myhost:9999\"\nmodel = \"my-model\"\n")
+            write_toml(tmp_path, "[llm]\nbackend = \"local\"\nhost = \"http://myhost:9999\"\nmodel = \"my-model\"\n")
             _, mock_llama = self._make_runner(tmp_path)
         kwargs = mock_llama.call_args[1]
         self.assertEqual(kwargs["host"], "http://myhost:9999")
@@ -184,7 +179,7 @@ class TestTomlIntegration(unittest.TestCase):
         from tempfile import TemporaryDirectory
         with TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            self._write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude\"\n")
+            write_toml(tmp_path, "[llm]\nbackend = \"claude\"\nmodel = \"claude\"\n")
             runner, _ = self._make_runner(tmp_path)
         self.assertEqual(runner._model, "")
 
@@ -194,17 +189,17 @@ class TestBareSessionTimeout(unittest.TestCase):
 
     def test_default_is_300(self):
         from hc_config import bare_session_timeout
-        with patch("hc_config._read_config_file", return_value={}):
+        with patch("hc_config_core.read_llm_section", return_value={}):
             self.assertEqual(bare_session_timeout(), 300)
 
     def test_reads_value_from_toml(self):
         from hc_config import bare_session_timeout
-        with patch("hc_config._read_config_file", return_value={"bare_session_timeout": 120}):
+        with patch("hc_config_core.read_llm_section", return_value={"bare_session_timeout": 120}):
             self.assertEqual(bare_session_timeout(), 120)
 
     def test_falls_back_to_default_on_invalid_value(self):
         from hc_config import bare_session_timeout
-        with patch("hc_config._read_config_file", return_value={"bare_session_timeout": "not-a-number"}):
+        with patch("hc_config_core.read_llm_section", return_value={"bare_session_timeout": "not-a-number"}):
             self.assertEqual(bare_session_timeout(), 300)
 
 

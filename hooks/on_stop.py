@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-solid-description: Gate coordinator for Claude Code Stop events. Reads the
-Stop event from stdin and dispatches to all registered StopHandler
-implementations in order. New Stop behaviours are added by registering a
-handler here — no change to hooks.json is needed.
+solid-description: Coordinates handling of Claude Code Stop events.
 solid-category: hook
 """
 
 import json
 import sys
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import List, Optional, Protocol, runtime_checkable
+
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
+
+from hook_utils import ensure_on_path  # noqa: E402
 
 
 @runtime_checkable
@@ -21,21 +24,31 @@ class StopHandler(Protocol):
     def handle(self, event: dict) -> None: ...
 
 
+class EventSource(Protocol):
+    """Protocol for reading raw event text."""
+
+    def read(self) -> str: ...
+
+
 class HookEventReader:
-    """Reads and parses the Claude Code Stop event JSON from stdin."""
+    """Reads and parses a Claude Code Stop event from an injectable source."""
+
+    def __init__(self, source: Optional[EventSource] = None) -> None:
+        self._source = source  # None means use sys.stdin at call time
 
     def read(self) -> dict:
         try:
-            raw = sys.stdin.read()
+            raw = (self._source.read() if self._source is not None else sys.stdin.read())
             return json.loads(raw) if raw.strip() else {}
-        except Exception:
+        except Exception as exc:
+            sys.stderr.write(f"on_stop: failed to parse Stop event: {exc}\n")
             return {}
 
 
 class OnStopGate:
     """Dispatches a Stop event to every registered handler that opts in."""
 
-    def __init__(self, handlers: list[StopHandler]) -> None:
+    def __init__(self, handlers: List[StopHandler]) -> None:
         self._handlers = handlers
 
     def run(self, event: dict) -> None:
@@ -44,20 +57,12 @@ class OnStopGate:
                 handler.handle(event)
 
 
-def _load_handlers() -> list[StopHandler]:
-    """Resolve sibling modules from the hooks directory regardless of CWD."""
-    hooks_dir = str(Path(__file__).resolve().parent)
-    if hooks_dir not in sys.path:
-        sys.path.insert(0, hooks_dir)
-
+def main() -> None:
+    ensure_on_path(Path(__file__).resolve().parent)
     from slack_notify import SlackStopNotifier  # noqa: PLC0415
 
-    return [SlackStopNotifier()]
-
-
-def main() -> None:
     event = HookEventReader().read()
-    OnStopGate(handlers=_load_handlers()).run(event)
+    OnStopGate(handlers=[SlackStopNotifier()]).run(event)
     sys.exit(0)
 
 

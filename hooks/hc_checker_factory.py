@@ -2,7 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Factory that builds a ready-to-use health checker from connection and session parameters for evaluating source code against quality principles.
+solid-description: Creates a health checker configured to evaluate source code against quality principles.
 """
 
 from __future__ import annotations
@@ -53,5 +53,6 @@ def make_health_checker(
             ),
             logger=logger,
             parser=ViolationParser(),
+            timeout=bare_session_timeout(),
         ),
     )

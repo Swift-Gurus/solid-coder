@@ -1,5 +1,5 @@
 """
-solid-description: Unit tests verifying that the LLM configuration accessor reads available settings and returns documented defaults when no configuration is present.
+solid-description: Tests that configuration values are correctly resolved with default fallbacks.
 solid-category: unit-test
 solid-spec: [SPEC-014]
 """
@@ -15,21 +15,19 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 import hc_config
+import hc_config_core
+from test_utils import write_toml
 
 _VALID_TOML = b"[llm]\nbackend = \"local\"\nhost = \"http://gpu:9090\"\n"
 
 
 def _write_toml(directory: Path, content: bytes = _VALID_TOML) -> Path:
-    cfg_dir = directory / ".claude"
-    cfg_dir.mkdir(parents=True, exist_ok=True)
-    path = cfg_dir / "solid-coder-local.toml"
-    path.write_bytes(content)
-    return path
+    return write_toml(directory, content)
 
 
 class TestAccessors(unittest.TestCase):
     def _assert_default(self, fn, expected: str) -> None:
-        with patch("hc_config._read_config_file", return_value={}):
+        with patch("hc_config_core.read_llm_section", return_value={}):
             self.assertEqual(fn(), expected)
 
     def test_backend_defaults_to_claude(self):
@@ -42,20 +40,20 @@ class TestAccessors(unittest.TestCase):
         self._assert_default(hc_config.llm_model, "local")
 
     def test_backend_read_from_config(self):
-        with patch("hc_config._read_config_file", return_value={"backend": "local"}):
+        with patch("hc_config_core.read_llm_section", return_value={"backend": "local"}):
             self.assertEqual(hc_config.llm_backend(), "local")
 
     def test_host_read_from_config(self):
-        with patch("hc_config._read_config_file", return_value={"host": "http://myserver:9090"}):
+        with patch("hc_config_core.read_llm_section", return_value={"host": "http://myserver:9090"}):
             self.assertEqual(hc_config.llm_host(), "http://myserver:9090")
 
 
 class TestFindConfig(unittest.TestCase):
     def _find(self, project_dir: Path):
-        with patch("hc_config.Path") as mock_path:
+        with patch("hc_config_core.Path") as mock_path:
             mock_path.cwd.return_value = project_dir
             mock_path.side_effect = lambda *a, **kw: Path(*a, **kw)
-            return hc_config._find_config()
+            return hc_config_core.find_config()
 
     def test_returns_project_config_when_present(self):
         with tempfile.TemporaryDirectory() as d:
@@ -88,12 +86,12 @@ class TestReadConfigFile(unittest.TestCase):
     @contextmanager
     def _with_temp_toml(self, content: bytes):
         with self._temp_toml_path(content) as tmp:
-            with patch("hc_config._find_config", return_value=tmp):
-                yield hc_config._read_config_file(), tmp
+            with patch("hc_config_core.find_config", return_value=tmp):
+                yield hc_config_core.read_llm_section(), tmp
 
     def test_returns_empty_when_no_config_found(self):
-        with patch("hc_config._find_config", return_value=None):
-            self.assertEqual(hc_config._read_config_file(), {})
+        with patch("hc_config_core.find_config", return_value=None):
+            self.assertEqual(hc_config_core.read_llm_section(), {})
 
     def test_returns_empty_dict_on_invalid_toml(self):
         with self._with_temp_toml(b"not valid toml") as (result, _):
@@ -110,7 +108,7 @@ class TestReadConfigFile(unittest.TestCase):
         toml_content = b"[llm]\nbackend = 'qwen'\n"
         with self._temp_toml_path(toml_content) as tmp_path:
             with patch.dict(os.environ, {"SOLID_CODER_TEST_MODEL_PROFILE": str(tmp_path)}):
-                result = hc_config._read_config_file()
+                result = hc_config_core.read_llm_section()
         if not result:
             self.skipTest("No TOML parser available")
         self.assertEqual(result.get("backend"), "qwen")
@@ -118,11 +116,10 @@ class TestReadConfigFile(unittest.TestCase):
     def test_original_behavior_preserved_when_env_var_unset(self):
         env = {k: v for k, v in os.environ.items() if k != "SOLID_CODER_TEST_MODEL_PROFILE"}
         with patch.dict(os.environ, env, clear=True):
-            with patch("hc_config._find_config", return_value=None):
-                result = hc_config._read_config_file()
+            with patch("hc_config_core.find_config", return_value=None):
+                result = hc_config_core.read_llm_section()
         self.assertEqual(result, {})
 
 
 if __name__ == "__main__":
     unittest.main()
-

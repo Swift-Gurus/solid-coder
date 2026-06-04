@@ -1,0 +1,57 @@
+"""
+solid-description: Provides access to LLM configuration settings.
+solid-category: utility
+solid-tags: [hook]
+"""
+
+import sys
+from pathlib import Path
+
+_HOOKS_DIR = Path(__file__).resolve().parent
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
+
+from hc_config_core import llm_value  # noqa: E402
+
+
+def _str(key: str, default: str) -> str:
+    return llm_value(key, default, str) or default
+
+
+def _int(key: str, default: int) -> int:
+    return llm_value(key, default, int)
+
+
+def llm_backend() -> str:
+    return _str("backend", "claude")
+
+
+def llm_host() -> str:
+    return _str("host", "http://localhost:8080")
+
+
+def llm_model() -> str:
+    return _str("model", "local")
+
+
+def llm_timeout() -> int:
+    return _int("timeout", 300)
+
+
+def bare_session_timeout() -> int:
+    """Timeout for claude -p bare subprocess calls (health check + frontmatter).
+
+    Configure via [llm] bare_session_timeout in solid-coder-local.toml.
+    Default: 300 seconds (5 minutes).
+    """
+    return _int("bare_session_timeout", 300)
+
+
+def bare_session_model() -> str:
+    """Model override for claude -p bare subprocess calls.
+
+    Configure via [llm] bare_session_model in solid-coder-local.toml.
+    Empty string (default) defers to the CLI default model.
+    NOTE: no current callers — llm_model() via make_llm_runner() is the active mechanism.
+    """
+    return _str("bare_session_model", "")

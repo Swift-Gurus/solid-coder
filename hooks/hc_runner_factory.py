@@ -1,5 +1,5 @@
 """
-solid-description: Resolves and returns the appropriate language model runner for the current deployment environment.
+solid-description: Creates the appropriate language model runner based on configuration.
 solid-category: service
 solid-tags: [hook]
 """
@@ -36,5 +36,6 @@ def make_llm_runner(
 
     # Use model only when explicitly set to a real model id, not a generic placeholder.
     _PLACEHOLDERS = {"", "claude", "local"}
-    model = llm_model() if llm_model() not in _PLACEHOLDERS else ""
+    _model = llm_model()
+    model = _model if _model not in _PLACEHOLDERS else ""
     return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools, model=model)

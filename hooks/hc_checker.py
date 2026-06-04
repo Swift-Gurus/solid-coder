@@ -150,11 +150,11 @@ class LLMReviewer:
         try:
             raw = self._runner.run(prompt, timeout=self._timeout)
         except Exception as e:
-            self._logger.log(f"HEALTH_ERR {Path(path).name}: exception={type(e).__name__}: {e}")
-            return None
+            self._logger.log(f"HEALTH_ERR {Path(path).name}: {type(e).__name__}: {e}")
+            raise
         if not raw:
             self._logger.log(f"HEALTH_ERR {Path(path).name}: bare session returned no result")
-            return None
+            raise RuntimeError(f"claude -p returned no result for {Path(path).name}")
         violations = self._parser.parse(raw)
         if violations is None:
             self._logger.log(

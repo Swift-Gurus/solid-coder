@@ -65,8 +65,6 @@ def fix(
     prompt = (builder or FrontmatterPromptBuilder()).build(content, parent_session_id)
     runner = make_llm_runner(mcp_config="", allowed_tools="")
     raw = runner.run(prompt, timeout=bare_session_timeout())
-    if not raw:
-        return None
     v = parse_json_field(raw, "corrected_content", str)
     return v if isinstance(v, str) else None
 

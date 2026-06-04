@@ -115,9 +115,13 @@ class TestFix(unittest.TestCase):
             result = hook.fix(CLEAN_CONTENT)
         self.assertEqual(result, CLEAN_CONTENT)
 
-    def test_returns_none_when_runner_returns_none(self):
-        with patch("validate_swift_frontmatter.make_llm_runner", return_value=_mock_runner(None)):
-            self.assertIsNone(hook.fix(BAD_CONTENT))
+    def test_raises_when_runner_raises(self):
+        from hook_utils import SubprocessError
+        runner = MagicMock()
+        runner.run.side_effect = SubprocessError("subprocess died")
+        with patch("validate_swift_frontmatter.make_llm_runner", return_value=runner):
+            with self.assertRaises(SubprocessError):
+                hook.fix(BAD_CONTENT)
 
     def test_returns_none_when_llm_returns_plain_text_instead_of_json(self):
         with patch("validate_swift_frontmatter.make_llm_runner", return_value=_mock_runner(CLEAN_CONTENT)):
@@ -209,10 +213,13 @@ class TestMainHook(unittest.TestCase):
         payload = json.loads(out)
         self.assertEqual(payload["hookSpecificOutput"]["updatedInput"]["old_string"], "old")
 
-    def test_llm_failure_fails_open(self):
-        with self._patch_runner(None):
+    def test_llm_failure_causes_nonblocking_exit(self):
+        from hook_utils import SubprocessError
+        runner = MagicMock()
+        runner.run.side_effect = SubprocessError("subprocess died")
+        with patch("validate_swift_frontmatter.make_llm_runner", return_value=runner):
             code, out = call_main(event("Write", "/src/Foo.swift", BAD_CONTENT), hook.main)
-        self.assertEqual(code, 0)
+        self.assertNotEqual(code, 2)  # not a block — Claude Code treats as non-blocking allow
         self.assertEqual(out, "")
 
     def test_llm_ignores_schema_fails_open(self):

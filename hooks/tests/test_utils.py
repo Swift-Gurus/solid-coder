@@ -3,10 +3,24 @@
 import io
 import json
 from contextlib import redirect_stdout
+from pathlib import Path
+from typing import Union
 from unittest.mock import MagicMock, patch
 
 LONG_SWIFT = "import Foundation\n\nfinal class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
 SHORT_SWIFT = "final class Foo {\n    func bar() {}\n}\n"
+
+
+def write_toml(directory: Path, content: Union[str, bytes]) -> Path:
+    """Create .claude/solid-coder-local.toml under directory with given content."""
+    cfg_dir = directory / ".claude"
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    path = cfg_dir / "solid-coder-local.toml"
+    if isinstance(content, str):
+        path.write_text(content, encoding="utf-8")
+    else:
+        path.write_bytes(content)
+    return path
 
 
 def call_main(stdin_input, main_fn) -> tuple:
@@ -24,6 +38,8 @@ def call_main(stdin_input, main_fn) -> tuple:
                 main_fn()
             except SystemExit as e:
                 code = e.code or 0
+            except Exception:
+                code = 1  # unhandled exception → non-blocking exit (Claude Code allows)
     return code, buf.getvalue()
 
 
@@ -40,16 +56,16 @@ def make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
     return m
 
 
+def parse_hook_output(out: str) -> dict:
+    """Extract the hookSpecificOutput dict from a gate hook's JSON stdout."""
+    return json.loads(out)["hookSpecificOutput"]
+
+
 def is_denied(out: str) -> bool:
     """Return True if the hook output represents a deny decision."""
     if not out:
         return False
-    return json.loads(out)["hookSpecificOutput"]["permissionDecision"] == "deny"
-
-
-def parse_hook_output(out: str) -> dict:
-    """Extract the hookSpecificOutput dict from a gate hook's JSON stdout."""
-    return json.loads(out)["hookSpecificOutput"]
+    return parse_hook_output(out)["permissionDecision"] == "deny"
 
 
 def event(tool: str, path: str, content: str) -> dict:

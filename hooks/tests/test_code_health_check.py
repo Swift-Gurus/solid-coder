@@ -1,5 +1,5 @@
 """
-solid-description: Verifies the code health-check pipeline's violation parsing, tag detection, rule loading, LLM review, and end-to-end composition behavior.
+solid-description: Tests the code health-check system's violation detection and reporting.
 solid-category: unit-test
 """
 
@@ -309,16 +309,16 @@ class TestLLMReviewer(unittest.TestCase):
         result = reviewer.review("prompt", "/src/Foo.swift")
         self.assertEqual(result, [])
 
-    def test_returns_none_when_runner_returns_empty(self):
+    def test_raises_and_logs_when_runner_returns_empty(self):
         reviewer, logger = self._make_reviewer(runner_result=None)
-        result = reviewer.review("prompt", "/src/Foo.swift")
-        self.assertIsNone(result)
+        with self.assertRaises(RuntimeError):
+            reviewer.review("prompt", "/src/Foo.swift")
         logger.log.assert_called_once()
 
-    def test_returns_none_and_logs_when_runner_raises(self):
+    def test_raises_and_logs_when_runner_raises(self):
         reviewer, logger = self._make_reviewer(runner_raises=RuntimeError("timeout"))
-        result = reviewer.review("prompt", "/src/Foo.swift")
-        self.assertIsNone(result)
+        with self.assertRaises(RuntimeError):
+            reviewer.review("prompt", "/src/Foo.swift")
         logger.log.assert_called_once()
 
     def test_returns_none_and_logs_when_parser_returns_none(self):

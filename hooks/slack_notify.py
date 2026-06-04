@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-solid-description: Slack DM notifier — StopHandler implementation that fires
-when CLAUDE_SLACK_NOTIFY env var is set to a Slack Incoming Webhook URL.
+solid-description: Sends a Slack notification when a stop event occurs.
 solid-category: hook
 
 To enable:
-    export CLAUDE_SLACK_NOTIFY=https://hooks.slack.com/services/T.../B.../...
+    export CLAUDE_SLACK_NOTIFY=https://hooks.slack.com/services/T.../B/.../...
 
 The webhook URL is self-authenticating — no OAuth or tokens required.
 Create one at api.slack.com/apps > Incoming Webhooks, select yourself
@@ -85,7 +84,7 @@ class WebhookDispatcher:
                 headers={"Content-Type": "application/json"},
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=10):
+            with urllib.request.urlopen(req, timeout=3):
                 pass
         except urllib.error.HTTPError as exc:
             sys.stderr.write(f"slack_notify: HTTP {exc.code}\n")
