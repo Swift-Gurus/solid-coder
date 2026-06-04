@@ -21,3 +21,7 @@ class CallableAdapting:
             return self._fn(*args, **kwargs)
         except Exception:
             return default
+
+    def _strict_call(self, *args, **kwargs):
+        """Delegate to self._fn, letting all exceptions propagate to the caller."""
+        return self._fn(*args, **kwargs)

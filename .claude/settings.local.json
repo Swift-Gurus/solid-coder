@@ -62,7 +62,20 @@
       "Bash(rm -f ~/.claude/hook-fired.log)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Skill(solid-coder:implement)"
+      "Skill(solid-coder:implement)",
+      "mcp__plugin_solid-coder_pipeline__search_codebase",
+      "mcp__plugin_solid-coder_docs__load_rules",
+      "Bash(echo \"=== which pre_write_gate is active \\(plugin cache vs repo\\)? ===\")",
+      "Bash(echo \"cache exists\")",
+      "Bash(echo \"no cache copy\")",
+      "Bash(echo \"--- diff repo vs cache \\(empty = identical\\) ---\")",
+      "Bash(diff __TRACKED_VAR__/pre_write_gate.py hooks/pre_write_gate.py)",
+      "Bash(sed -n '28,55p' hooks/hc_checker.py)",
+      "Bash(sed -n '17,45p' hooks/hc_runner_factory.py)",
+      "Bash(sed -n '41,48p' hooks/hc_checker.py)",
+      "Bash(sed -n '207,214p' hooks/hook_utils.py)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(env)"
     ]
   }
 }

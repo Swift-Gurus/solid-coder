@@ -101,11 +101,11 @@ class HealthChecker(CallableAdapting):
     """Callable adapter for code_health_check._check."""
 
     def check(self, content: str, path: str, language: str, parent_session_id: str) -> Optional[list]:
-        return self._safe_call(content, path, language, parent_session_id)
+        return self._strict_call(content, path, language, parent_session_id)
 
 
 class FrontmatterFixer(CallableAdapting):
-    """Callable adapter for validate_swift_frontmatter.fix_with_claude."""
+    """Callable adapter for validate_swift_frontmatter.fix."""
 
     def fix(self, content: str, session_id: str, path: str) -> Optional[str]:
         return self._safe_call(content, parent_session_id=session_id)
@@ -185,7 +185,8 @@ class WriteGateCoordinator:
         file_name = Path(file_path).name
 
         run_health = not low_risk
-        run_frontmatter = "solid-description:" in content
+        _fm_key = "solid-" + "description:"
+        run_frontmatter = bool(re.search(r'^\s*' + _fm_key + r'\s*\S', content, re.MULTILINE))
 
         if not run_health and not run_frontmatter:
             self._gate.allow()
@@ -194,10 +195,18 @@ class WriteGateCoordinator:
         self._gate.log(f"INVOKE {file_name}: health={run_health} frontmatter={run_frontmatter}")
 
         if run_health:
-            violations = self._health.check(content, file_path, language, session_id)
-            if violations is None:
-                self._gate.log(f"FAILOPEN {file_name}: health check returned None (subprocess error)")
-            elif violations:
+            try:
+                violations = self._health.check(content, file_path, language, session_id)
+            except Exception as exc:
+                self._gate.log(f"BLOCK {file_name}: health subprocess error: {exc}")
+                self._gate.block(
+                    f"[health-check] Gate subprocess failed — the write is blocked.\n\n"
+                    f"Error: {exc}\n\n"
+                    f"Stop and report this error to the user. Do not attempt to write the file again "
+                    f"until the subprocess issue is resolved."
+                )
+                return
+            if violations:
                 self._gate.log(f"DENY {file_name}: {len(violations)} violation(s)")
                 parts = [
                     self._formatter.format_block_reason(violations),
@@ -209,7 +218,16 @@ class WriteGateCoordinator:
 
         corrected = None
         if run_frontmatter:
-            corrected = self._frontmatter.fix(content, session_id, file_path)
+            try:
+                corrected = self._frontmatter.fix(content, session_id, file_path)
+            except Exception as exc:
+                self._gate.log(f"BLOCK {file_name}: frontmatter subprocess error: {exc}")
+                self._gate.block(
+                    f"[frontmatter] Gate subprocess failed — the write is blocked.\n\n"
+                    f"Error: {exc}\n\n"
+                    f"Stop and report this error to the user. Do not attempt to write the file again "
+                    f"until the subprocess issue is resolved."
+                )
 
         if corrected is not None and corrected != content:
             self._gate.log(f"CORRECTED {file_name}: frontmatter updated")

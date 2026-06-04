@@ -1,5 +1,5 @@
 """
-solid-description: Unit tests for health check components — ViolationParser, ScoredResultConverter, TagDetector, GatewayRuleLoader, PrinciplesLoader, LLMReviewer, and the _check composition root.
+solid-description: Verifies the code health-check pipeline's violation parsing, tag detection, rule loading, LLM review, and end-to-end composition behavior.
 solid-category: unit-test
 """
 
@@ -56,7 +56,7 @@ class TestViolationParser(unittest.TestCase):
         self.assertEqual(self.parser.parse(json.dumps({"violations": []})), [])
 
     def test_handles_code_fences(self):
-        raw = "```json\n" + json.dumps({"violations": VIOLATIONS}) + "\n```"
+        raw = "\n" + json.dumps({"violations": VIOLATIONS}) + "\n"
         self.assertEqual(len(self.parser.parse(raw)), 2)
 
     def test_handles_surrounding_text(self):
@@ -382,10 +382,12 @@ class TestCheck(unittest.TestCase):
             result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
         self.assertIsInstance(result, list)
 
-    def test_returns_none_on_gateway_failure(self):
+    def test_raises_on_gateway_failure(self):
+        from hook_utils import SubprocessError
         with self._claude_backend(), \
              patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
-            self.assertIsNone(hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", ""))
+            with self.assertRaises(SubprocessError):
+                hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
 
 
 class TestSupportedExtensions(unittest.TestCase):

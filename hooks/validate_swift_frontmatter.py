@@ -11,8 +11,6 @@ Phase 2 (claude -p --bare): receives the entire content being written, identifie
 Fails open on any infrastructure problem.
 """
 
-import json
-import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -22,11 +20,10 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hook_utils import (  # noqa: E402
-    JSON_OBJ_RE,
     HookResponder,
     parse_hook_event,
+    parse_json_field,
     run_claude_bare,
-    strip_markdown_fences,
 )
 
 _SUPPORTED_EXTENSIONS = {".swift", ".py"}
@@ -83,24 +80,14 @@ File content:
 """
 
 
-def _parse_corrected(raw: str) -> Optional[str]:
-    text = strip_markdown_fences(raw)
-    m = JSON_OBJ_RE.search(text)
-    if not m:
-        return None
-    try:
-        obj = json.loads(m.group())
-        content = obj.get("corrected_content")
-        return content if isinstance(content, str) else None
-    except (json.JSONDecodeError, ValueError):
-        return None
-
-
 def fix(content: str, parent_session_id: str = "") -> Optional[str]:
     header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
     prompt = header + CORRECTION_PROMPT.format(content=content)
-    raw = run_claude_bare(prompt, timeout=30, no_session=True)
-    return _parse_corrected(raw) if raw else None
+    raw = run_claude_bare(prompt, timeout=300)
+    if not raw:
+        return None
+    v = parse_json_field(raw, "corrected_content", str)
+    return v if isinstance(v, str) else None
 
 
 def main() -> None:

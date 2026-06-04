@@ -92,32 +92,39 @@ def _edit_event(file_path: str, new_string: str) -> dict:
     }
 
 
-class TestParseCorreected(unittest.TestCase):
+class TestParseCorrectedContent(unittest.TestCase):
+    """Tests for the corrected_content extraction path, now via hook_utils.parse_json_field."""
+
+    def _parse(self, raw):
+        from hook_utils import parse_json_field
+        v = parse_json_field(raw, "corrected_content", str)
+        return v if isinstance(v, str) else None
+
     def test_extracts_corrected_content_from_plain_json(self):
         raw = json.dumps({"corrected_content": CLEAN_CONTENT})
-        self.assertEqual(hook._parse_corrected(raw), CLEAN_CONTENT)
+        self.assertEqual(self._parse(raw), CLEAN_CONTENT)
 
     def test_extracts_corrected_content_with_code_fence(self):
-        raw = "```json\n" + json.dumps({"corrected_content": CLEAN_CONTENT}) + "\n```"
-        self.assertEqual(hook._parse_corrected(raw), CLEAN_CONTENT)
+        raw = "\n" + json.dumps({"corrected_content": CLEAN_CONTENT}) + "\n"
+        self.assertEqual(self._parse(raw), CLEAN_CONTENT)
 
     def test_extracts_corrected_content_with_surrounding_text(self):
         raw = "Here is the result:\n" + json.dumps({"corrected_content": CLEAN_CONTENT}) + "\nDone."
-        self.assertEqual(hook._parse_corrected(raw), CLEAN_CONTENT)
+        self.assertEqual(self._parse(raw), CLEAN_CONTENT)
 
     def test_returns_none_for_missing_field(self):
         raw = json.dumps({"other_field": "value"})
-        self.assertIsNone(hook._parse_corrected(raw))
+        self.assertIsNone(self._parse(raw))
 
     def test_returns_none_for_invalid_json(self):
-        self.assertIsNone(hook._parse_corrected("not json at all"))
+        self.assertIsNone(self._parse("not json at all"))
 
     def test_returns_none_for_empty_string(self):
-        self.assertIsNone(hook._parse_corrected(""))
+        self.assertIsNone(self._parse(""))
 
     def test_returns_none_when_corrected_content_is_not_string(self):
         raw = json.dumps({"corrected_content": 42})
-        self.assertIsNone(hook._parse_corrected(raw))
+        self.assertIsNone(self._parse(raw))
 
 
 class TestFix(unittest.TestCase):

@@ -13,9 +13,15 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
+from typing import Callable, Protocol
+
 from hook_utils import load_toml
 
 _FILENAME = "solid-coder-local.toml"
+
+
+class TomlLoader(Protocol):
+    def __call__(self, path: Path) -> dict: ...
 
 
 def _find_config() -> Optional[Path]:
@@ -29,16 +35,16 @@ def _find_config() -> Optional[Path]:
     return path if path.exists() else None
 
 
-def _read_section(section: str) -> dict:
+def _read_section(section: str, _loader: TomlLoader = load_toml) -> dict:
     path = _find_config()
-    return load_toml(path).get(section, {}) if path else {}
+    return _loader(path).get(section, {}) if path else {}
 
 
-def _read_config_file() -> dict:
+def _read_config_file(_loader: TomlLoader = load_toml) -> dict:
     override = os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE")
     if override:
-        return load_toml(Path(override)).get("llm", {})
-    return _read_section("llm")
+        return _loader(Path(override)).get("llm", {})
+    return _read_section("llm", _loader=_loader)
 
 
 def _get(key: str, default: str) -> str:
@@ -89,3 +95,4 @@ def inference_params() -> dict:
         "repeat_penalty": float(cfg.get("repeat_penalty", 1.1)),
         "max_tokens":  int(cfg.get("max_tokens", 4096)),
     }
+

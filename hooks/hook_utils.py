@@ -47,6 +47,24 @@ def strip_markdown_fences(text: str) -> str:
     return re.sub(r"```[a-zA-Z]*\n?", "", text).strip()
 
 
+def parse_json_field(raw: str, key: str, expected_type: type) -> Optional[object]:
+    """Strip fences, locate the first JSON object, return key's value if it matches expected_type.
+
+    Returns None when the JSON is absent, malformed, the key is missing,
+    or the value is the wrong type.
+    """
+    text = strip_markdown_fences(raw)
+    m = JSON_OBJ_RE.search(text)
+    if not m:
+        return None
+    try:
+        obj = json.loads(m.group())
+        v = obj.get(key)
+        return v if isinstance(v, expected_type) else None
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 def parse_hook_event(raw: str) -> Optional[tuple]:
     """Parse a hook PreToolUse event from raw JSON.
 
@@ -186,22 +204,45 @@ def make_hook_gate(
     )
 
 
-def _run_subprocess_to_json(cmd: list, timeout: int, stdin=None) -> Optional[object]:
-    """Execute cmd, check returncode, parse stdout as JSON, return dict or None."""
+class SubprocessError(Exception):
+    """Raised when a gate subprocess fails. Carries the reason for display."""
+
+
+def _run_subprocess_to_json(cmd: list, timeout: int, stdin=None) -> object:
+    """Execute cmd, check returncode, parse stdout as JSON.
+
+    Raises SubprocessError with stderr details on any failure so callers can
+    surface the root cause rather than silently failing open.
+    """
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout, stdin=stdin,
         )
         if result.returncode != 0:
-            return None
+            stderr = (result.stderr or "").strip()
+            label = " ".join(cmd[:2])
+            raise SubprocessError(
+                f"`{label}` exited {result.returncode}"
+                + (f":\n{stderr}" if stderr else "")
+            )
         return json.loads(result.stdout)
-    except Exception:
-        return None
+    except SubprocessError:
+        raise
+    except subprocess.TimeoutExpired:
+        raise SubprocessError(f"`{cmd[0]}` timed out after {timeout}s")
+    except json.JSONDecodeError as exc:
+        raise SubprocessError(f"`{cmd[0]}` produced invalid JSON: {exc}")
+    except Exception as exc:
+        raise SubprocessError(f"`{cmd[0]}` failed: {exc}")
 
 
 def run_gateway_cmd(cmd: list, timeout: int = 10) -> Optional[dict]:
-    """Run a gateway CLI command and return parsed JSON dict or None on failure."""
-    return _run_subprocess_to_json(cmd, timeout=timeout)
+    """Run a gateway CLI command and return parsed JSON dict.
+
+    Raises SubprocessError on failure — callers that need a safe fallback
+    should catch it explicitly.
+    """
+    return _run_subprocess_to_json(cmd, timeout=timeout)  # type: ignore[return-value]
 
 
 def run_claude_bare(
@@ -232,12 +273,11 @@ def run_claude_bare(
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
     events = _run_subprocess_to_json(cmd, timeout=timeout, stdin=subprocess.DEVNULL)
-    if events is None:
-        return None
     if not isinstance(events, list):
         events = [events]
     for obj in reversed(events):
         if isinstance(obj, dict) and obj.get("type") == "result":
             inner = obj.get("result", "")
-            return inner if inner.strip() else None
-    return None
+            if inner.strip():
+                return inner
+    raise SubprocessError("claude -p returned no result event")

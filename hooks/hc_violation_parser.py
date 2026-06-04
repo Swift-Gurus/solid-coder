@@ -4,7 +4,6 @@ solid-category: service
 solid-tags: [hook, parsing]
 """
 
-import json
 import sys
 from pathlib import Path
 from typing import Optional, Protocol
@@ -13,7 +12,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import JSON_OBJ_RE, strip_markdown_fences
+from hook_utils import parse_json_field
 
 
 class ViolationParsing(Protocol):
@@ -25,24 +24,16 @@ class ViolationParser:
     """Extracts a violations list from an LLM JSON response and formats a human-readable block reason."""
 
     def parse(self, raw: str) -> Optional[list]:
-        text = strip_markdown_fences(raw)
-        m = JSON_OBJ_RE.search(text)
-        if not m:
+        violations = parse_json_field(raw, "violations", list)
+        if violations is None:
             return None
-        try:
-            obj = json.loads(m.group())
-            violations = obj.get("violations")
-            if not isinstance(violations, list):
-                return None
-            return [
-                v for v in violations
-                if isinstance(v, dict)
-                and isinstance(v.get("principle"), str)
-                and isinstance(v.get("issue"), str)
-                and isinstance(v.get("fix"), str)
-            ]
-        except (json.JSONDecodeError, ValueError):
-            return None
+        return [
+            v for v in violations
+            if isinstance(v, dict)
+            and isinstance(v.get("principle"), str)
+            and isinstance(v.get("issue"), str)
+            and isinstance(v.get("fix"), str)
+        ]
 
     def format_block_reason(self, violations: list) -> str:
         lines = [f"{len(violations)} violation(s) found:"]
