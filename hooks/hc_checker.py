@@ -1,5 +1,5 @@
 """
-solid-description: Provides principle loading, prompt building, LLM invocation, and health-check orchestration as isolated, protocol-typed components.
+solid-description: Analyzes source files against applicable coding principles and returns detected violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -13,6 +13,7 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hook_utils import Logging, PLUGIN_ROOT, run_claude_bare
+from prompt_builder import BasePromptBuilder, PromptReading
 from hook_callable import CallableAdapting
 from hc_rule_loader import RulesLoading
 from hc_tag_detector import TagDetecting
@@ -50,7 +51,7 @@ class ClaudeRunner(CallableAdapting):
         )
 
 
-# ── Principles loading ────────────────────────────────────────────────────────
+# ── Principles loading ────────────────────────────────────────────
 
 class PrinciplesLoading(Protocol):
     def load(self, content: str, path: str) -> Optional[list]: ...
@@ -72,7 +73,7 @@ class PrinciplesLoader:
         return detection_data.get("principles", [])
 
 
-# ── Prompt building ───────────────────────────────────────────────────────────
+# ── Prompt building ─────────────────────────────────────────────
 
 class PromptBuilding(Protocol):
     def build(
@@ -87,25 +88,15 @@ class PromptBuilding(Protocol):
 _PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts" / "health-check"
 
 
-class PromptReading(Protocol):
-    def read(self, filename: str) -> str: ...
-
-
-class FilePromptReader:
-    """Reads prompt fragments from a directory on disk."""
-
-    def __init__(self, prompts_dir: Path = _PROMPTS_DIR) -> None:
-        self._dir = prompts_dir
-
-    def read(self, filename: str) -> str:
-        return (self._dir / filename).read_text(encoding="utf-8").rstrip()
-
-
-class HealthPromptBuilder:
+class HealthPromptBuilder(BasePromptBuilder):
     """Assembles the LLM health-check prompt from detection rules and file content."""
 
-    def __init__(self, reader: Optional[PromptReading] = None) -> None:
-        self._reader = reader or FilePromptReader()
+    def __init__(
+        self,
+        reader: Optional[PromptReading] = None,
+        shared_reader: Optional[PromptReading] = None,
+    ) -> None:
+        super().__init__(reader=reader, shared_reader=shared_reader, prompts_dir=_PROMPTS_DIR)
 
     def build(
         self,
@@ -114,12 +105,11 @@ class HealthPromptBuilder:
         path: str,
         parent_session_id: str,
     ) -> str:
-        header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
         detection_instructions = "\n\n---\n\n".join(
             p["content"] for p in principles if p.get("content")
         )
-        return header + (
-            self._reader.read("preamble.md")
+        return self._header(parent_session_id) + (
+            self._read("preamble.md")
             + "\n\n<detection-instructions>\n"
             + detection_instructions
             + "\n</detection-instructions>"
@@ -127,13 +117,15 @@ class HealthPromptBuilder:
             + content
             + "\n</code-to-review>"
             + "\n\n"
-            + self._reader.read("workflow.md").replace("{file_path}", path)
+            + self._read("workflow.md").replace("{file_path}", path)
             + "\n\n"
-            + self._reader.read("output-format.md")
+            + self._read("output-format.md")
+            + "\n\n"
+            + self._read_shared("constraints.md")
         )
 
 
-# ── LLM review ────────────────────────────────────────────────────────────────
+# ── LLM review ─────────────────────────────────────────────────────────────────
 
 class LLMReviewing(Protocol):
     def review(self, prompt: str, path: str) -> Optional[list]: ...
@@ -171,7 +163,7 @@ class LLMReviewer:
         return violations
 
 
-# ── Health check facade ───────────────────────────────────────────────────────
+# ── Health check facade ─────────────────────────────────────────────
 
 class HealthChecking(Protocol):
     def check(
