@@ -28,7 +28,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import make_hook_gate, parse_hook_event
+from hook_utils import GateHandling, make_hook_gate, parse_hook_event
 
 _gate = make_hook_gate()
 
@@ -91,8 +91,101 @@ class BashWriteGate:
         return None
 
 
-_chunk_gate: CommandChecking = ChunkReadGate()
-_write_gate: CommandChecking = BashWriteGate()
+class BashReadGate:
+    """Detects Bash commands that read source files instead of using the Read tool.
+
+    Blocks cat/head/tail when used with a source file argument.
+    Allows: heredocs (cat <<'EOF'), pipeline targets (cmd | head), /dev/* paths.
+    """
+
+    _SOURCE_EXTENSIONS = (
+        ".py", ".swift", ".kt", ".java", ".js", ".ts",
+        ".json", ".md", ".toml", ".yaml", ".yml", ".sh",
+    )
+
+    _EXTERNAL_PREFIXES = ("/tmp/", "/var/", "/usr/", "/System/", "/Library/")
+
+    def _looks_like_source_file(self, command: str) -> bool:
+        if not any(ext in command for ext in self._SOURCE_EXTENSIONS):
+            return False
+        # Allow reads of files in temp/system directories (not project files)
+        for token in command.split():
+            if any(token.startswith(p) for p in self._EXTERNAL_PREFIXES):
+                return False
+        return True
+
+    def _is_heredoc(self, command: str) -> bool:
+        return "<<" in command
+
+    def _is_devnull_or_special(self, command: str) -> bool:
+        return "/dev/" in command
+
+    def _is_pipeline_target(self, command: str, cmd_name: str) -> bool:
+        return bool(re.search(rf"\|\s*{cmd_name}\b", command))
+
+    def check(self, command: str) -> Optional[str]:
+        """Return the read-command name if it reads a source file, else None."""
+        if not self._looks_like_source_file(command):
+            return None
+        if self._is_heredoc(command) or self._is_devnull_or_special(command):
+            return None
+        for cmd_name in ("cat", "head", "tail"):
+            if not re.search(rf"\b{cmd_name}\b", command):
+                continue
+            if self._is_pipeline_target(command, cmd_name):
+                continue
+            return cmd_name
+        return None
+
+
+class BashGateCoordinator:
+    """Runs all Bash gate checks in order and issues the appropriate decision."""
+
+    def __init__(
+        self,
+        chunk_gate: CommandChecking,
+        read_gate: CommandChecking,
+        write_gate: CommandChecking,
+        gate: GateHandling,
+    ) -> None:
+        self._chunk = chunk_gate
+        self._read = read_gate
+        self._write = write_gate
+        self._gate = gate
+
+    def run(self, tool_name: str, command: str) -> None:
+        if tool_name != "Bash" or not command:
+            self._gate.allow()
+            return
+
+        if msg := self._chunk.check(command):
+            self._gate.block(msg)
+            return
+
+        if name := self._read.check(command):
+            self._gate.block(
+                f"[file-read-gate] Bash file read blocked ({name}). "
+                "Use the Read tool instead — it provides proper content with line numbers "
+                "and ensures consistent access through the quality pipeline."
+            )
+            return
+
+        if name := self._write.check(command):
+            self._gate.block(
+                f"[file-write-gate] Bash file write blocked ({name}). "
+                "Use the Write tool to create or modify files — "
+                "this ensures the pre-write quality gate can review the content."
+            )
+        else:
+            self._gate.allow()
+
+
+_coordinator = BashGateCoordinator(
+    chunk_gate=ChunkReadGate(),
+    read_gate=BashReadGate(),
+    write_gate=BashWriteGate(),
+    gate=_gate,
+)
 
 
 def main() -> None:
@@ -100,29 +193,8 @@ def main() -> None:
     if parsed is None:
         _gate.allow()
         return
-
     tool_name, tool_input, _, _ = parsed
-    if tool_name != "Bash":
-        _gate.allow()
-        return
-
-    command = tool_input.get("command", "")
-    if not command:
-        _gate.allow()
-        return
-
-    if msg := _chunk_gate.check(command):
-        _gate.block(msg)
-        return
-
-    if name := _write_gate.check(command):
-        _gate.block(
-            f"[file-write-gate] Bash file write blocked ({name}). "
-            "Use the Write tool to create or modify files — "
-            "this ensures the pre-write quality gate can review the content."
-        )
-    else:
-        _gate.allow()
+    _coordinator.run(tool_name, tool_input.get("command", ""))
 
 
 if __name__ == "__main__":

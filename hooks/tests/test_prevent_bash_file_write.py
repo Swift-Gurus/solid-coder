@@ -181,5 +181,92 @@ class TestChunkFileReadDetection(unittest.TestCase):
         self.assertTrue(_is_allowed(out))
 
 
+class TestBashReadDetection(unittest.TestCase):
+    """cat / head / tail on source files must be blocked — use the Read tool."""
+
+    # ── cat ──────────────────────────────────────────────────────────────────
+
+    def test_blocks_cat_on_python_file(self):
+        _, out = _call("cat hooks/hc_checker.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_cat_on_swift_file(self):
+        _, out = _call("cat hooks/ModelCheck.swift")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_cat_with_flag_on_source_file(self):
+        _, out = _call("cat -n hooks/pre_write_gate.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_cat_on_json_file(self):
+        _, out = _call("cat hooks/hooks.json")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_cat_on_markdown_file(self):
+        _, out = _call("cat mcp-server/prompts/constraints.md")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_cat_on_toml_file(self):
+        _, out = _call("cat .claude/solid-coder-local.toml")
+        self.assertTrue(_is_denied(out))
+
+    def test_allows_cat_heredoc(self):
+        _, out = _call("cat <<'EOF'\nhello\nEOF")
+        self.assertTrue(_is_allowed(out))
+
+    def test_allows_cat_devnull(self):
+        _, out = _call("cat /dev/null")
+        self.assertTrue(_is_allowed(out))
+
+    def test_allows_cat_without_file(self):
+        _, out = _call("echo hello | cat")
+        self.assertTrue(_is_allowed(out))
+
+    # ── head ─────────────────────────────────────────────────────────────────
+
+    def test_blocks_head_on_python_file(self):
+        _, out = _call("head hooks/hook_utils.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_head_with_n_flag_on_source_file(self):
+        _, out = _call("head -n 20 hooks/hc_checker.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_allows_head_as_pipeline_target(self):
+        _, out = _call("git log --oneline | head -20")
+        self.assertTrue(_is_allowed(out))
+
+    def test_allows_head_without_file_argument(self):
+        _, out = _call("head -c 100")
+        self.assertTrue(_is_allowed(out))
+
+    # ── tail ─────────────────────────────────────────────────────────────────
+
+    def test_blocks_tail_on_python_file(self):
+        _, out = _call("tail hooks/validate_swift_frontmatter.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_blocks_tail_with_flag_on_source_file(self):
+        _, out = _call("tail -n 30 hooks/hc_config.py")
+        self.assertTrue(_is_denied(out))
+
+    def test_allows_tail_as_pipeline_target(self):
+        _, out = _call("python3 -m pytest | tail -20")
+        self.assertTrue(_is_allowed(out))
+
+    def test_allows_tail_on_log_file(self):
+        _, out = _call("tail -f ~/.claude/solid-coder-gate.log")
+        self.assertTrue(_is_allowed(out))
+
+    # ── deny message ─────────────────────────────────────────────────────────
+
+    def test_deny_message_mentions_read_tool(self):
+        _assert_deny_reason(
+            "cat hooks/hc_checker.py",
+            "Read tool", "file-read-gate",
+            tc=self,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
