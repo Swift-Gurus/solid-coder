@@ -108,7 +108,7 @@ class FrontmatterFixer(CallableAdapting):
     """Callable adapter for validate_swift_frontmatter.fix."""
 
     def fix(self, content: str, session_id: str, path: str) -> Optional[str]:
-        return self._safe_call(content, parent_session_id=session_id)
+        return self._strict_call(content, parent_session_id=session_id)
 
 
 class ContentSimulator:
