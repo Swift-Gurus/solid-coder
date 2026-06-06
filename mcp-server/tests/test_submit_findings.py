@@ -1,26 +1,22 @@
 """
-solid-description: Unit tests for submit_findings tool. Tests verify that a valid
-SRP partial output writes a scored file and returns a summary, an empty files array
-writes a clean-status document, and an unrecognised principle returns an error with
-no file written.
+solid-description: Verifies findings submission validates, persists, and reports on SOLID principle analysis results.
 solid-category: unit-test
 """
 
 import json
-import tempfile
 import unittest
 from pathlib import Path
-from tests.helpers import make_handler, make_srp_partial, make_partial_output, make_standard_srp_partial
+from tests.helpers import (
+    SubmitFindingsTestBase,
+    make_srp_partial,
+    make_partial_output,
+    make_standard_srp_partial,
+)
 
 
-class TestSubmitFindings(unittest.TestCase):
-    def setUp(self):
-        self.handler = make_handler()
-        self.tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.tmp.cleanup)
-
+class TestSubmitFindings(SubmitFindingsTestBase):
     def _output_path(self, filename="out.json"):
-        return str(Path(self.tmp.name) / filename)
+        return self.temp_path(filename)
 
     def _unknown_partial(self):
         return make_partial_output("nonexistent_xyz", "UNKNOWN", [

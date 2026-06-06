@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """
-solid-description: Tool implementations for score_severity, submit_findings,
-load_detection_rules, and load_fix_instructions. Uses a hierarchy of focused
-classes and protocols. Use make_gateway_handler() to wire production defaults.
+solid-description: Evaluates code units against design principles and reports violations with fix guidance.
 solid-category: service
 solid-tags: [utility, service]
 """
 
+import copy
 import html
 import json
 import re
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
+
+try:
+    import jsonschema as _jsonschema
+    _JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    _jsonschema = None  # type: ignore[assignment]
+    _JSONSCHEMA_AVAILABLE = False
 
 from lib.principal_folder_resolver import resolve as _resolve_folder_fn
 from lib.severity_scorer import SeverityScorer
@@ -19,6 +25,7 @@ from lib.xml_block_parser import parse as parse_xml_blocks
 from lib.fix_file_lookup import resolve_single_fix, list_available_fix_metric_ids
 from lib.principle_registry import PrincipleRegistry
 from lib.load_reference import strip_frontmatter
+from lib.unit_kind_filter import filter_by_unit_kind as _filter_by_kind
 from lib import discover_principles as _dp
 
 
@@ -86,21 +93,6 @@ class AllPrinciplesProviding(Protocol):
     def all_principles(self) -> list: ...
 
 
-class PrincipleFolderResolving(Protocol):
-    def resolve(self, agent: str, refs_root: Path) -> Path: ...
-
-
-class PrincipleFolderResolver:
-    def __init__(
-        self,
-        resolve_fn: Optional[Callable[[str, Path], Path]] = None,
-    ) -> None:
-        self._resolve_fn = resolve_fn or _resolve_folder_fn
-
-    def resolve(self, agent: str, refs_root: Path) -> Path:
-        return self._resolve_fn(agent, refs_root)
-
-
 class JsonFileWriter:
     def write(self, output_path: str, doc: dict) -> None:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -162,15 +154,15 @@ class PrincipleScorerProvider:
         self,
         refs_root: Path,
         scorer_factory: Optional[Callable[[Path], UnitScoring]] = None,
-        folder_resolver: Optional[PrincipleFolderResolving] = None,
+        folder_resolver: Optional[Callable[[str, Path], Path]] = None,
     ) -> None:
         self._refs_root = refs_root
         self._scorer_factory = scorer_factory or SeverityScorer.from_folder
-        self._folder_resolver = folder_resolver or PrincipleFolderResolver()
+        self._folder_resolver = folder_resolver or _resolve_folder_fn
 
     def scorer_for(self, agent: str) -> tuple:
         try:
-            folder = self._folder_resolver.resolve(agent, self._refs_root)
+            folder = self._folder_resolver(agent, self._refs_root)
         except (ValueError, FileNotFoundError) as exc:
             return None, {"error": str(exc)}, None
         return self._scorer_factory(folder), None, folder
@@ -241,6 +233,10 @@ class FilesScoringHandler:
     """Scores units in a list of files using a provided scorer."""
 
     def score_files(self, scorer: UnitScoring, files: list) -> tuple:
+        # Accept any non-string iterable; reject non-iterables and strings
+        # (strings have __iter__ but are not valid file lists)
+        if not hasattr(files, "__iter__") or hasattr(files, "lower"):
+            return [], {"error": "'files' must be a list of file objects"}
         scored_files = []
         for file_obj in files:
             scored_units = []
@@ -249,10 +245,19 @@ class FilesScoringHandler:
                 unit_scores: list = []
                 unit_findings: list = []
 
+                _file_path = file_obj.get("file_path", "?")
+                _unit_name = unit.get("unit_name", "?")
                 for metric_id, flat_vars in _resolve_bands(metrics, scorer).items():
                     r = scorer.score_unit(flat_vars, metric_id)
                     if "error" in r:
-                        return scored_files, {"error": r["error"]}
+                        return scored_files, {
+                            "error": (
+                                f"{_file_path}, unit {_unit_name}: metric variable missing "
+                                f"during {metric_id} evaluation. Ensure all required fields "
+                                f"are present per the <submission-metrics-example>. "
+                                f"({r['error']})"
+                            )
+                        }
                     unit_scores.append(r)
                     if r["final_severity"] != "COMPLIANT":
                         unit_findings.append({
@@ -311,16 +316,75 @@ class ScoringHandler:
         return {"results": results}
 
 
+class PartialOutputValidating(Protocol):
+    def validate_output(self, partial_output: dict, folder: Optional[Path]) -> Optional[dict]: ...
+
+
+class PartialOutputValidator:
+    """Validates a partial_output dict against the principle's review/output.schema.json.
+
+    Strips 'scoring' and 'findings' from the unit-level required list before validating
+    because those fields are server-filled — the LLM only provides metrics.
+    No-ops when jsonschema is unavailable or no schema file exists for the principle.
+    """
+
+    def validate_output(self, partial_output: dict, folder: Optional[Path]) -> Optional[dict]:
+        if not _JSONSCHEMA_AVAILABLE or folder is None:
+            return None
+        schema_path = folder / "review" / "output.schema.json"
+        if not schema_path.exists():
+            return None
+        principle = partial_output.get("principle", str(folder.name))
+        schema = copy.deepcopy(json.loads(schema_path.read_text(encoding="utf-8")))
+        try:
+            unit_items = (
+                schema["properties"]["files"]["items"]
+                ["properties"]["units"]["items"]
+            )
+            server_filled = {"scoring", "findings"}
+            unit_items["required"] = [
+                f for f in unit_items.get("required", []) if f not in server_filled
+            ]
+        except (KeyError, TypeError):
+            pass
+        try:
+            _jsonschema.validate(partial_output, schema)
+        except _jsonschema.ValidationError as exc:
+            # Extract file/unit location from the validation path
+            vpath = list(exc.absolute_path)
+            file_path = "?"
+            unit_name = "?"
+            if len(vpath) >= 2 and vpath[0] == "files":
+                try:
+                    fidx = vpath[1]
+                    files_list = partial_output.get("files", [])
+                    file_path = files_list[fidx].get("file_path", "?")
+                    if len(vpath) >= 4 and vpath[2] == "units":
+                        uidx = vpath[3]
+                        unit_name = files_list[fidx].get("units", [])[uidx].get("unit_name", "?")
+                except (IndexError, AttributeError):
+                    pass
+            return {
+                "error": (
+                    f"{file_path}, unit {unit_name}: {exc.message}. "
+                    f"Use the <submission-metrics-example> format from load_detection_rules output."
+                )
+            }
+        return None
+
+
 class SubmitOrchestrator:
-    """Orchestrates the score → submit → summarise flow for submit_findings."""
+    """Orchestrates the score → validate → submit → summarise flow for submit_findings."""
 
     def __init__(
         self,
         scoring: ResolveAndScoring,
+        validator: PartialOutputValidating,
         submitter: FindingsSubmitting,
         summariser: SeveritySummarising,
     ) -> None:
         self._scoring = scoring
+        self._validator = validator
         self._submitter = submitter
         self._summariser = summariser
 
@@ -328,14 +392,91 @@ class SubmitOrchestrator:
         agent = partial_output.get("agent", "")
         principle = partial_output.get("principle", "")
         timestamp = partial_output.get("timestamp", "")
-        scored_files, error, folder = self._scoring.resolve_and_score(agent, partial_output.get("files") or [])
-        if error:
-            return error
+        scored_files, scoring_error, folder = self._scoring.resolve_and_score(
+            agent, partial_output.get("files") or []
+        )
+        # Run schema validation whenever we have the folder — even when scoring already
+        # failed. Schema errors are clearer to the LLM than Python evaluation errors
+        # (NameError / TypeError from severity-band conditions), so prefer them.
+        if folder:
+            validation_error = self._validator.validate_output(partial_output, folder)
+            if validation_error:
+                return validation_error
+        if scoring_error:
+            return scoring_error
         err = self._submitter.submit(agent, principle, timestamp, scored_files, output_path, folder)
         if err:
             return err
         counts = self._summariser.summarise(scored_files)
         return {"principle": principle, **counts}
+
+
+def _minimal_value_for_schema(prop_schema: dict):
+    """Generate a minimal representative value for a JSON schema property."""
+    t = prop_schema.get("type", "string")
+    if t == "integer":
+        return 0
+    if t == "string":
+        return "example"
+    if t == "boolean":
+        return False
+    if t == "array":
+        items = prop_schema.get("items", {})
+        item_props = items.get("properties", {})
+        if item_props:
+            return [{k: _minimal_value_for_schema(v) for k, v in item_props.items()}]
+        return []
+    if t == "object":
+        props = prop_schema.get("properties", {})
+        if props:
+            return {k: _minimal_value_for_schema(v) for k, v in props.items()}
+        return {}
+    return "example"
+
+
+def _parse_principle_schema(schema_path) -> Optional[dict]:
+    """Parse a principle's review/output.schema.json.
+
+    Returns {"agent": str, "principle_name": str, "metrics_example": dict}
+    or None when schema or metrics definition is absent.
+    """
+    p = Path(str(schema_path))
+    if not p.exists():
+        return None
+    try:
+        schema = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    agent = schema.get("properties", {}).get("agent", {}).get("const", "")
+    principle_name = schema.get("properties", {}).get("principle", {}).get("const", "")
+    try:
+        metrics_schema = (
+            schema["properties"]["files"]["items"]
+            ["properties"]["units"]["items"]
+            ["properties"]["metrics"]
+        )
+    except (KeyError, TypeError):
+        return None
+    props = metrics_schema.get("properties")
+    if not props:
+        return None
+    return {
+        "agent": agent,
+        "principle_name": principle_name,
+        "metrics_example": {k: _minimal_value_for_schema(v) for k, v in props.items()},
+    }
+
+
+def _metrics_example_from_schema(schema_path) -> Optional[str]:
+    """Return a <submission-metrics-example> XML block, or None if schema absent."""
+    parsed = _parse_principle_schema(schema_path)
+    if not parsed:
+        return None
+    return (
+        "<submission-metrics-example>\n"
+        + json.dumps(parsed["metrics_example"], separators=(",", ":"))
+        + "\n</submission-metrics-example>"
+    )
 
 
 class PrincipleContentBuilding(Protocol):
@@ -356,10 +497,17 @@ class PrincipleContentBuilder:
             sections.append(f'<definition id="{mid}">\n{text}\n</definition>')
         for mid, text in blocks["detection"].items():
             sections.append(f'<detection id="{mid}">\n{text}\n</detection>')
-        for bid, text in blocks["severity-bands"].items():
-            sections.append(f'<severity-bands id="{bid}">\n{text}\n</severity-bands>')
+        # Severity bands omitted — server scores via submit_findings, LLM does not need them.
         if blocks["exceptions"]:
             sections.append(f'<exceptions principle="{name.upper()}">\n{blocks["exceptions"]}\n</exceptions>')
+        schema_path = Path(p_entry["folder"]) / "review" / "output.schema.json"
+        parsed_schema = _parse_principle_schema(schema_path)
+        if parsed_schema:
+            sections.append(
+                "<submission-metrics-example>\n"
+                + json.dumps(parsed_schema["metrics_example"], separators=(",", ":"))
+                + "\n</submission-metrics-example>"
+            )
         return {
             "name": name,
             "content": "\n\n".join(sections),
@@ -367,6 +515,8 @@ class PrincipleContentBuilder:
             "definition": blocks["definition"],
             "severity_bands": blocks["severity-bands"],
             "exceptions": blocks["exceptions"],
+            "principle_name": parsed_schema["principle_name"] if parsed_schema else name.upper(),
+            "metrics_example": parsed_schema["metrics_example"] if parsed_schema else {},
         }
 
 
@@ -452,8 +602,113 @@ class RulesHandler:
         return self._fix_instructions.load_fix_instructions(metric_id)
 
 
+# ── Fix submission ────────────────────────────────────────────────────────────
+
+def _violation_key(metric_id: str, file_path: str, unit_name: str) -> str:
+    """Stable identifier for a (metric_id, file, unit) triple used to match fixes to violations."""
+    safe_path = re.sub(r'[^\w.-]', '_', file_path)
+    safe_unit = re.sub(r'[^\w.-]', '_', unit_name)
+    return f"{metric_id}__{safe_path}__{safe_unit}"
+
+
+class ViolationReading(Protocol):
+    def read_violations(self, output_dir: str) -> list: ...
+
+
+class ViolationReader:
+    """Reads SEVERE violations from scored output files in an output directory."""
+
+    def read_violations(self, output_dir: str) -> list:
+        violations = []
+        for scored_file in sorted(Path(output_dir).glob("*/review-output.json")):
+            try:
+                doc = json.loads(scored_file.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            for file_obj in doc.get("files", []):
+                file_path = file_obj.get("file_path", "?")
+                for unit in file_obj.get("units", []):
+                    unit_name = unit.get("unit_name", "?")
+                    for finding in unit.get("findings", []):
+                        if finding.get("severity") == "SEVERE":
+                            violations.append({
+                                "metric_id": finding.get("metric_id", ""),
+                                "file_path": file_path,
+                                "unit_name": unit_name,
+                            })
+        return violations
+
+
+class FixSubmitting(Protocol):
+    def submit_fix(self, output_dir: str, fixes: list) -> dict: ...
+
+
+class FixSubmitter:
+    """Persists fix suggestions and delegates completeness validation to an injected reader.
+
+    Single responsibility: fix file persistence. Violation reading is a separate concern
+    owned by the injected ViolationReading dependency.
+    """
+
+    def __init__(self, reader: ViolationReading) -> None:
+        self._reader = reader
+
+    def submit_fix(self, output_dir: str, fixes: list) -> dict:
+        if not isinstance(fixes, list):
+            return {"error": "'fixes' must be a list of {metric_id, file_path, unit_name, suggested_fix} objects"}
+
+        fixes_dir = Path(output_dir) / "fixes"
+        fixes_dir.mkdir(parents=True, exist_ok=True)
+
+        for fix in fixes:
+            try:
+                key = _violation_key(fix["metric_id"], fix["file_path"], fix["unit_name"])
+            except KeyError as exc:
+                return {"error": f"Fix entry missing required field: {exc}. Required: metric_id, file_path, unit_name, suggested_fix"}
+            (fixes_dir / f"{key}.json").write_text(
+                json.dumps(fix), encoding="utf-8",
+            )
+
+        all_violations = self._reader.read_violations(output_dir)
+        violation_keys = {
+            _violation_key(v["metric_id"], v["file_path"], v["unit_name"])
+            for v in all_violations
+        }
+        fix_keys = {p.stem for p in fixes_dir.glob("*.json")}
+        missing_keys = violation_keys - fix_keys
+
+        if missing_keys:
+            missing_ids = [
+                v["metric_id"] for v in all_violations
+                if _violation_key(v["metric_id"], v["file_path"], v["unit_name"]) in missing_keys
+            ]
+            return {
+                "error": (
+                    f"Missing fixes for {len(missing_keys)} violation(s): {missing_ids}. "
+                    "Include an entry for every violation in the fixes array."
+                ),
+            }
+
+        fixes_by_key: dict = {}
+        for fp in fixes_dir.glob("*.json"):
+            try:
+                data = json.loads(fp.read_text(encoding="utf-8"))
+                fkey = _violation_key(data["metric_id"], data["file_path"], data["unit_name"])
+                fixes_by_key[fkey] = data
+            except (json.JSONDecodeError, OSError, KeyError):
+                pass
+
+        violations_with_fixes = [
+            {**v, "suggested_fix": fixes_by_key.get(
+                _violation_key(v["metric_id"], v["file_path"], v["unit_name"]), {}
+            ).get("suggested_fix", "")}
+            for v in all_violations
+        ]
+        return {"complete": True, "violations_with_fixes": violations_with_fixes}
+
+
 class GatewayHandler:
-    """Pure Facade delegating to ScoringSeverity, SubmitOrchestrating, and RulesLoading.
+    """Pure Facade delegating to ScoringSeverity, SubmitOrchestrating, RulesLoading, and FixSubmitting.
 
     All dependencies are protocol-typed and injected via __init__. No internal
     construction — use make_gateway_handler() for production wiring.
@@ -464,16 +719,89 @@ class GatewayHandler:
         scoring: ScoringSeverity,
         submit_orchestrator: SubmitOrchestrating,
         rules: RulesLoading,
+        fix_submitter: FixSubmitting,
     ) -> None:
         self._scoring = scoring
         self._submit_orchestrator = submit_orchestrator
         self._rules = rules
+        self._fix_submitter = fix_submitter
 
     def score_severity(self, partial_outputs: list) -> dict[str, Any]:
         return self._scoring.score_severity(partial_outputs)
 
     def submit_findings(self, partial_output: dict, output_path: str) -> dict[str, Any]:
         return self._submit_orchestrator.orchestrate(partial_output, output_path)
+
+    def submit_batch_findings(self, output_dir: str, submissions: dict) -> dict[str, Any]:
+        """Submit findings for multiple principles in one call.
+
+        Scores each principle's metrics, writes output files, and returns violations.
+        When SEVERE violations exist, the response includes instructions for the LLM
+        to call load_fix_for_violation and submit_fix for each one.
+
+        Fails fast on the first validation or scoring error.
+        """
+        for label, partial_output in submissions.items():
+            output_path = str(Path(output_dir) / label / "review-output.json")
+            result = self._submit_orchestrator.orchestrate(
+                _filter_by_kind(partial_output), output_path
+            )
+            if "error" in result:
+                return {"error": result["error"], "failed_at": label}
+        violations = self._read_severe_violations(output_dir)
+        response: dict = {"violations": violations}
+        if violations:
+            response["output_dir"] = output_dir
+            response["message"] = (
+                f"Found {len(violations)} SEVERE violation(s). Complete these steps:\n"
+                f"1. Call mcp__docs__load_fix_for_violation ONCE with metric_ids=["
+                + ", ".join(f"'{v['metric_id']}'" for v in violations)
+                + f"] to get all fix strategies in one call.\n"
+                f"2. For each violation, prepare a concrete code-specific fix using the guidance.\n"
+                f"3. Call mcp__pipeline__submit_fix ONCE with output_dir='{output_dir}' and "
+                f"fixes=[{{metric_id, file_path, unit_name, suggested_fix}}, ...] for all violations."
+            )
+        return response
+
+    def submit_fix(self, output_dir: str, fixes: list) -> dict[str, Any]:
+        return self._fix_submitter.submit_fix(output_dir, fixes)
+
+    def _read_severe_violations(self, output_dir: str) -> list:
+        """Read SEVERE violations from all scored output files in output_dir."""
+        violations = []
+        for scored_file in sorted(Path(output_dir).glob("*/review-output.json")):
+            try:
+                doc = json.loads(scored_file.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            principle = doc.get("principle", doc.get("agent", ""))
+            for file_obj in doc.get("files", []):
+                file_path = file_obj.get("file_path", "?")
+                for unit in file_obj.get("units", []):
+                    unit_name = unit.get("unit_name", "?")
+                    for finding in unit.get("findings", []):
+                        if finding.get("severity") != "SEVERE":
+                            continue
+                        mid = finding.get("metric_id", "")
+                        band = finding.get("band_matched", "")
+                        metrics = finding.get("metrics", {})
+                        if band and metrics:
+                            measured = ", ".join(f"{k}={v}" for k, v in metrics.items())
+                            desc = f"{band} (measured: {measured})"
+                        else:
+                            desc = band or "SEVERE violation detected"
+                        violations.append({
+                            "principle": principle,
+                            "metric_id": mid,
+                            "file_path": file_path,
+                            "unit_name": unit_name,
+                            "issue": f"{mid}: {file_path}, unit {unit_name} — {desc}",
+                            "fix": (
+                                f"Call mcp__docs__load_fix_for_violation({mid}) "
+                                "for specific guidance."
+                            ),
+                        })
+        return violations
 
     def load_detection_rules(
         self, principle: Optional[str] = None, matched_tags: Optional[list] = None,
@@ -495,6 +823,7 @@ def make_gateway_handler(refs_root: Path) -> GatewayHandler:
         scoring=scoring,
         submit_orchestrator=SubmitOrchestrator(
             scoring=scoring,
+            validator=PartialOutputValidator(),
             submitter=FindingsSubmitter(),
             summariser=SeveritySummariser(),
         ),
@@ -502,4 +831,5 @@ def make_gateway_handler(refs_root: Path) -> GatewayHandler:
             detection=DetectionRulesLoader(registry, refs_root=refs_root),
             fix_instructions=FixInstructionsLoader(registry),
         ),
+        fix_submitter=FixSubmitter(ViolationReader()),
     )

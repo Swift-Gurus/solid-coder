@@ -24,7 +24,12 @@ host = "http://localhost:8080"
 
 # Model for the claude backend. Set to a real model id to override the CLI default,
 # e.g. "claude-haiku-4-5", "claude-sonnet-4-6". Leave as "claude" to use the CLI default.
-model = "claude-haiku-4-5"
+model = "claude-sonnet-4-5"
+
+# Timeout for the bare claude -p health-check session (seconds).
+# The new two-phase flow (submit_batch + load_fix_batch + submit_fix_batch)
+# needs more headroom than the single-submission original.
+bare_session_timeout = 600
 
 # Timeout in seconds for a single health-check LLM session.
 # Local models with many tool call rounds (6+) can take 200-300s on large files.

@@ -16,16 +16,20 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hook_utils import GateLogger, PLUGIN_ROOT, GATEWAY  # noqa: E402
-from hc_checker import HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader, LLMReviewer  # noqa: E402
+from hc_checker import (  # noqa: E402
+    HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader,
+    LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
+)
 from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker  # noqa: E402
 from hc_config import bare_session_timeout  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
-from hc_violation_parser import ViolationParser  # noqa: E402
 
 _ALLOWED_TOOLS = (
     "Read,"
     "mcp__pipeline__search_codebase,"
+    "mcp__pipeline__submit_batch_findings,"
+    "mcp__pipeline__submit_fix,"
     "mcp__docs__load_fix_for_violation,"
     "mcp__docs__score_severity"
 )
@@ -45,14 +49,16 @@ def make_health_checker(
         ),
         builder=HealthPromptBuilder(),
         reviewer=LLMReviewer(
-            runner=make_llm_runner(
-                mcp_config=mcp_config,
-                allowed_tools=_ALLOWED_TOOLS,
-                session_id=session_id,
-                file_path=file_path,
+            executor=LLMExecutor(
+                runner=make_llm_runner(
+                    mcp_config=mcp_config,
+                    allowed_tools=_ALLOWED_TOOLS,
+                    session_id=session_id,
+                    file_path=file_path,
+                ),
+                logger=logger,
+                timeout=bare_session_timeout(),
             ),
-            logger=logger,
-            parser=ViolationParser(),
-            timeout=bare_session_timeout(),
+            output_handler=FileBasedOutputHandler(FileOutputReader()),
         ),
     )

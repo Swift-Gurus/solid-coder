@@ -2,10 +2,17 @@
 
 import io
 import json
+import sys
+import tempfile
+import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 from unittest.mock import MagicMock, patch
+
+_HOOKS_DIR = Path(__file__).resolve().parents[1]
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
 
 LONG_SWIFT = "import Foundation\n\nfinal class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
 SHORT_SWIFT = "final class Foo {\n    func bar() {}\n}\n"
@@ -54,6 +61,30 @@ def make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
     m.returncode = returncode
     m.stdout = json.dumps(stdout_obj)
     return m
+
+
+def make_test_executor(
+    runner_result=None,
+    runner_raises=None,
+) -> Tuple:
+    """Build a (LLMExecutor, logger_mock) pair for use in LLMReviewer tests."""
+    from hc_checker import LLMExecutor
+    runner = MagicMock()
+    if runner_raises:
+        runner.run.side_effect = runner_raises
+    else:
+        runner.run.return_value = runner_result
+    logger = MagicMock()
+    return LLMExecutor(runner=runner, logger=logger), logger
+
+
+class TempDirTestBase(unittest.TestCase):
+    """Base class providing an auto-cleaned temp directory for hook tests."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.output_dir = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
 
 
 def parse_hook_output(out: str) -> dict:

@@ -2,63 +2,51 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LSP Review Output",
   "type": "object",
-  "required": [
-    "agent",
-    "principle",
-    "timestamp",
-    "files"
-  ],
+  "required": ["agent", "principle", "timestamp", "files"],
   "properties": {
-    "agent": {
-      "const": "lsp"
-    },
-    "principle": {
-      "const": "Liskov Substitution Principle"
-    },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "all_compliant": {
-      "type": "boolean"
-    },
+    "agent": { "const": "lsp" },
+    "principle": { "const": "Liskov Substitution Principle" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "all_compliant": { "type": "boolean" },
     "files": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": [
-          "file_path",
-          "units"
-        ],
+        "required": ["file_path", "units"],
         "properties": {
-          "file_path": {
-            "type": "string"
-          },
+          "file_path": { "type": "string" },
           "units": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": [
-                "unit_name",
-                "unit_kind",
-                "findings"
-              ],
+              "required": ["unit_name", "unit_kind", "metrics"],
               "properties": {
-                "unit_name": {
-                  "type": "string"
-                },
-                "unit_kind": {
-                  "type": "string"
-                },
+                "unit_name": { "type": "string" },
+                "unit_kind": { "type": "string" },
                 "metrics": {
-                  "type": "object"
+                  "type": "object",
+                  "required": ["type_checks", "contract_violations", "fatal_error_methods", "empty_methods"],
+                  "properties": {
+                    "type_checks": {
+                      "type": "integer",
+                      "description": "Net count of runtime type checks (is, as?, as!, type(of:)) after removing framework-forced exceptions"
+                    },
+                    "contract_violations": {
+                      "type": "integer",
+                      "description": "Count of LSP-2 contract violations for class inheritance (strengthened preconditions, weakened postconditions, broken invariants)"
+                    },
+                    "fatal_error_methods": {
+                      "type": "integer",
+                      "description": "Count of protocol methods implemented with fatalError/crash assertions"
+                    },
+                    "empty_methods": {
+                      "type": "integer",
+                      "description": "Count of empty (non-fatal) protocol method implementations"
+                    }
+                  }
                 },
-                "findings": {
-                  "type": "array"
-                },
-                "scoring": {
-                  "type": "array"
-                }
+                "findings": { "type": "array" },
+                "scoring": { "type": "array" }
               }
             }
           }

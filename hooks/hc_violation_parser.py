@@ -36,9 +36,23 @@ class ViolationParser:
         ]
 
     def format_block_reason(self, violations: list) -> str:
-        lines = [f"{len(violations)} violation(s) found:"]
+        count = len(violations)
+        lines = [f"{count} SEVERE violation(s) found:\n"]
         for v in violations:
-            lines.append(f"  • {v['principle']} — {v['issue']} Fix: {v['fix']}")
+            principle = v.get("principle", "")
+            issue_lines = v["issue"].splitlines()
+            first = f"{principle} — {issue_lines[0]}" if principle else issue_lines[0]
+            lines.append(f"  • {first}")
+            for extra in issue_lines[1:]:
+                lines.append(f"  {extra}")
+            fix = v.get("fix", "")
+            if fix:
+                lines.append(f"    Suggested fix: {fix}")
+            lines.append("")
+        lines.append(
+            "Fix all violations before writing. "
+            "The gate will block again on any remaining SEVERE violation."
+        )
         return "\n".join(lines)
 
 

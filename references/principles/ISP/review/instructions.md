@@ -10,6 +10,8 @@ output_schema: output.schema.json
 - [ ] **1.0 Scope check** — ISP applies ONLY to protocol/interface declarations (see rule.md Exception 1). For each unit:
   - `protocol` → proceed to 1.1
   - `class`, `struct`, `enum`, `extension` (no protocol declaration) → mark COMPLIANT, skip all ISP metrics
+  - **functions, free functions, module-level functions** → mark COMPLIANT, skip all ISP metrics (ISP applies to type declarations only)
+  - **Python `Protocol` subclass with no visible explicit conformers** — Python uses structural (duck-type) subtyping; conformers do not declare conformance. If you cannot find concrete classes that explicitly inherit from this Protocol in the file scope, apply the single-conformer exception: mark ISP-2 as COMPLIANT (unable to verify). Do NOT compute min_coverage from 0 visible conformers — that produces a false SEVERE.
 
 - [ ] **1.1 ISP-1: Measure Protocol Width**
     - [ ] 1.1.1 List every method, property, and associated type declared in the protocol

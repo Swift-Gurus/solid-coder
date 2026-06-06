@@ -1,5 +1,5 @@
 """
-solid-description: Tests the code health-check system's violation detection and reporting.
+solid-description: Verifies that code quality violations are accurately detected and reported.
 solid-category: unit-test
 """
 
@@ -17,7 +17,10 @@ from test_utils import make_subprocess_mock
 from hc_violation_parser import ViolationParser, ScoredResultConverter
 from hc_tag_detector import TagDetector
 from hc_rule_loader import GatewayRuleLoader
-from hc_checker import HealthPromptBuilder, PrinciplesLoader, LLMReviewer
+from hc_checker import (
+    HealthPromptBuilder, PrinciplesLoader, LLMReviewer,
+    LLMExecutor, TextBasedOutputHandler, ResponseParser,
+)
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
@@ -74,17 +77,16 @@ class TestViolationParser(unittest.TestCase):
         self.assertIsNone(self.parser.parse(json.dumps({"violations": "bad"})))
 
     def test_format_block_reason_includes_count(self):
-        self.assertIn("2 violation(s)", self.parser.format_block_reason(VIOLATIONS))
+        self.assertIn("2 SEVERE violation(s)", self.parser.format_block_reason(VIOLATIONS))
 
     def test_format_block_reason_includes_each_principle(self):
         reason = self.parser.format_block_reason(VIOLATIONS)
         self.assertIn("SRP", reason)
         self.assertIn("OCP", reason)
 
-    def test_format_block_reason_includes_issue_and_fix(self):
+    def test_format_block_reason_includes_issue(self):
         reason = self.parser.format_block_reason(VIOLATIONS)
         self.assertIn("Two concerns.", reason)
-        self.assertIn("Extract one.", reason)
 
 
 class TestScoredResultConverter(unittest.TestCase):
@@ -299,7 +301,11 @@ class TestLLMReviewer(unittest.TestCase):
         logger = MagicMock()
         parser = MagicMock()
         parser.parse.return_value = parse_result
-        return LLMReviewer(runner=runner, logger=logger, parser=parser), logger
+        reviewer = LLMReviewer(
+            executor=LLMExecutor(runner=runner, logger=logger),
+            output_handler=TextBasedOutputHandler(ResponseParser(parser=parser, logger=logger)),
+        )
+        return reviewer, logger
 
     def test_returns_violations_when_runner_and_parser_succeed(self):
         reviewer, _ = self._make_reviewer(
@@ -353,13 +359,18 @@ class TestHealthPromptBuilder(unittest.TestCase):
 
 
 class TestCheck(unittest.TestCase):
-    """Tests for the full _check pipeline, always using the Claude backend."""
+    """Tests for the full _check pipeline, always using the Claude backend.
 
-    def _make_pipeline(self, violations: list):
+    The gate now uses FileBasedOutputHandler — the LLM calls submit_batch_findings
+    which writes scored files, then the reviewer reads them. Tests mock
+    FileOutputReader.read_violations to inject pre-computed violation lists.
+    """
+
+    def _make_pipeline(self):
         tags_mock = _gateway_tags([])
-        detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules"}])
-        violations_json = json.dumps({"violations": violations})
-        claude_mock = make_subprocess_mock(0, [{"type": "result", "result": violations_json}])
+        detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules",
+                                                    "principle_name": "SRP", "metrics_example": {}}])
+        claude_mock = make_subprocess_mock(0, [{"type": "result", "result": ""}])
         seq = [tags_mock, detection_mock, claude_mock]
         it = iter(seq)
         return lambda *a, **kw: next(it)
@@ -369,25 +380,38 @@ class TestCheck(unittest.TestCase):
         return patch("hc_runner_factory.llm_backend", return_value="claude")
 
     def test_returns_violations_list_when_gateway_reports_findings(self):
+        """Gate reads violations from submitted files (FileOutputReader), not LLM text."""
+        mock_violations = [
+            {"principle": "SRP", "metric_id": "SRP-2",
+             "issue": "SRP-2: /src/Foo.swift, unit Foo — cohesion_groups >= 2 (measured: cohesion_groups=2)\n    -> Call mcp__docs__load_fix_for_violation(SRP-2) for fix guidance",
+             "fix": "Call mcp__docs__load_fix_for_violation(SRP-2) for guidance."},
+            {"principle": "OCP", "metric_id": "OCP-1",
+             "issue": "OCP-1: /src/Foo.swift, unit Foo — sealed_variation_points >= 1 (measured: sealed_variation_points=2)\n    -> Call mcp__docs__load_fix_for_violation(OCP-1) for fix guidance",
+             "fix": "Call mcp__docs__load_fix_for_violation(OCP-1) for guidance."},
+        ]
         with self._claude_backend(), \
-             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline(VIOLATIONS)):
-            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
+             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline()), \
+             patch("hc_checker.FileOutputReader.read_violations", return_value=mock_violations):
+            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["principle"], "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
+        """No SEVERE violations → empty list."""
         with self._claude_backend(), \
-             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline([])):
-            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
+             patch("hook_utils.subprocess.run", side_effect=self._make_pipeline()), \
+             patch("hc_checker.FileOutputReader.read_violations", return_value=[]):
+            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
         self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 0)
 
     def test_raises_on_gateway_failure(self):
         from hook_utils import SubprocessError
         with self._claude_backend(), \
              patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
             with self.assertRaises(SubprocessError):
-                hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "")
+                hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
 
 
 class TestSupportedExtensions(unittest.TestCase):

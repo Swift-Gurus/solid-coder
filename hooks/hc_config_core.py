@@ -16,6 +16,8 @@ if str(_HOOKS_DIR) not in sys.path:
 from hook_utils import load_toml  # noqa: E402
 
 _FILENAME = "solid-coder-local.toml"
+# Anchor to the project root (hooks/ parent) so the config is found regardless of cwd.
+_PROJECT_ROOT = _HOOKS_DIR.parent
 T = TypeVar("T")
 
 
@@ -24,8 +26,13 @@ class TomlLoader(Protocol):
 
 
 def find_config(_cwd: Optional[Path] = None) -> Optional[Path]:
-    """Return the project-level config path, or None if it does not exist."""
-    base = _cwd if _cwd is not None else Path.cwd()
+    """Return the project-level config path, or None if it does not exist.
+
+    Searches _cwd when provided, otherwise uses _PROJECT_ROOT (the parent of the
+    hooks/ directory) so the config is always found regardless of the process's
+    working directory at hook invocation time.
+    """
+    base = _cwd if _cwd is not None else _PROJECT_ROOT
     path = base / ".claude" / _FILENAME
     return path if path.exists() else None
 

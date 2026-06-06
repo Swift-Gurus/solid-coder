@@ -27,32 +27,27 @@ SKILLS_ROOT = PLUGIN_ROOT / "skills"
 sys.path.insert(0, str(MCP_DIR))
 
 from lib import discover_principles, parse_frontmatter
+from lib.load_reference import strip_frontmatter
+from lib.chunker import Chunker
+from lib.principle_registry import PrincipleRegistry
+from lib.fix_file_lookup import find_fix_file
+from lib.rule_file_collector import collect_files
 import modes as modes_module
 from protocol import MCPServer
 
 server = MCPServer("solid-coder-docs", "1.0.0")
+_chunker = Chunker()
+_registry = PrincipleRegistry(REFS_ROOT)
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _strip_frontmatter(content: str) -> str:
-    if not content.startswith("---"):
-        return content
-    end = content.find("---", 3)
-    if end == -1:
-        return content
-    body_start = end + 3
-    if body_start < len(content) and content[body_start] == "\n":
-        body_start += 1
-    return content[body_start:]
-
-
 def _read(path) -> str:
     try:
         raw = Path(path).read_text(encoding="utf-8", errors="replace")
-        return _strip_frontmatter(raw)
+        return strip_frontmatter(raw)
     except OSError as e:
         return f"[could not read {path}: {e}]"
 
@@ -62,36 +57,6 @@ def _rel_label(path: Path) -> str:
         return str(path.relative_to(PLUGIN_ROOT))
     except ValueError:
         return path.name
-
-
-def _collect_files(folder: Path, rule_path: str, exclude: set, profile: str) -> list:
-    files = []
-    if "rule" not in exclude:
-        files.append(rule_path)
-    if "instructions" not in exclude:
-        instr_dir = "review" if profile == "review" else "fix"
-        instr = folder / instr_dir / "instructions.md"
-        if instr.is_file():
-            files.append(str(instr))
-    if "code_rules" not in exclude and profile == "code":
-        code_instr = folder / "code" / "instructions.md"
-        if code_instr.is_file():
-            files.append(str(code_instr))
-    if "examples" not in exclude:
-        ex_dir = folder / "Examples"
-        if ex_dir.is_dir():
-            for f in sorted(ex_dir.iterdir()):
-                if f.is_file():
-                    files.append(str(f))
-    if "patterns" not in exclude:
-        try:
-            fm = parse_frontmatter.parse(rule_path)
-            for pp in (fm.get("required_patterns") or []):
-                if isinstance(pp, str) and Path(pp).is_file():
-                    files.append(pp)
-        except Exception:
-            pass
-    return files
 
 
 _STRIP_HEADINGS = frozenset({"severity bands", "quantitative metrics summary"})
@@ -133,42 +98,6 @@ def _render_principle(name: str, files: list, review_mode: bool) -> str:
             content = _strip_review_only_sections(content)
         parts.append(f"## {label}\n\n{content.rstrip()}\n")
     return "\n".join(parts)
-
-
-_CHUNK_SIZE = 40_000
-
-
-def _maybe_chunk(content: str, prefix: str) -> str:
-    """Return content directly if small enough, otherwise save to chunk files.
-
-    If content exceeds _CHUNK_SIZE, writes numbered files to /tmp and returns
-    instructions for the agent to read them with the Read tool.
-    """
-    if len(content) <= _CHUNK_SIZE:
-        return content
-
-    import tempfile, time
-    ts = int(time.time())
-    chunks = [content[i:i + _CHUNK_SIZE] for i in range(0, len(content), _CHUNK_SIZE)]
-    paths = []
-    for n, chunk in enumerate(chunks, 1):
-        path = Path(tempfile.gettempdir()) / f"solid-coder-{prefix}-{ts}-{n}of{len(chunks)}.md"
-        path.write_text(chunk, encoding="utf-8")
-        paths.append(str(path))
-
-    lines = [
-        f"Content is large ({len(content):,} chars across {len(chunks)} chunks).",
-        "MANDATORY: you MUST read ALL chunk files below using the Read tool before",
-        "doing anything else. Do NOT use Bash. Do NOT proceed until every chunk is read.",
-        "The pre-tool hook will block any non-Read action until all chunks are consumed.",
-        "",
-    ] + [f"- {p}" for p in paths]
-    return "\n".join(lines)
-
-
-def _all_principles() -> list:
-    result = discover_principles.discover_and_filter(str(REFS_ROOT))
-    return result["active_principles"] + result.get("skipped_principles", [])
 
 
 # ---------------------------------------------------------------------------
@@ -284,17 +213,18 @@ def load_rules(mode, matched_tags=None, principle=None):
 
     blocks = []
     for p in active:
-        files = _collect_files(
+        files = collect_files(
             folder=Path(p["folder"]),
             rule_path=p["rule_path"],
             exclude=exclude,
             profile=profile,
+            parse_frontmatter=parse_frontmatter,
         )
         if files:
             blocks.append(_render_principle(p["name"], files, review_mode=mode == "review"))
 
     content = "\n\n---\n\n".join(blocks) if blocks else "No active principles found."
-    return _maybe_chunk(content, f"rules-{mode}")
+    return _chunker.chunk(content, f"rules-{mode}")
 
 
 # ---------------------------------------------------------------------------
@@ -319,7 +249,7 @@ def load_rules(mode, matched_tags=None, principle=None):
     },
 )
 def load_examples(principle):
-    all_p = _all_principles()
+    all_p = _registry.all_principles()
     match = next((p for p in all_p if p["name"].lower() == principle.lower()), None)
     if not match:
         available = ", ".join(p["name"] for p in all_p)
@@ -344,7 +274,7 @@ def load_examples(principle):
         content = _read(f).rstrip()
         parts.append(f"## {label}{tag}\n\n```swift\n{content}\n```\n")
 
-    return _maybe_chunk("\n".join(parts), f"examples-{principle}")
+    return _chunker.chunk("\n".join(parts), f"examples-{principle}")
 
 
 # ---------------------------------------------------------------------------
@@ -391,113 +321,6 @@ def load_pattern(name):
     return f"Pattern '{name}' not found.\n\nAvailable patterns:\n{catalog}"
 
 
-def _find_fix_file(metric_id: str, all_p: list):
-    """Search all principle folders for fix/{metric_id}.md. Returns (principle_entry, path) or (None, None)."""
-    for p in all_p:
-        fp = Path(p["folder"]) / "fix" / f"{metric_id}.md"
-        if fp.is_file():
-            return p, fp
-    return None, None
-
-
-@server.tool(
-    name="load_fix_instructions_for_findings",
-    description=(
-        "Load fix strategies for all findings in a file in one call. "
-        "Pass the absolute path to the by-file validated findings JSON "
-        "(e.g. {OUTPUT_ROOT}/by-file/SomeFile.swift.output.json). "
-        "The tool reads the file, deduplicates by metric_id, searches all principle "
-        "folders for the matching fix file, and returns all fix strategies concatenated. "
-        "Works for any principle (SRP, OCP, SUI, TEST, etc.) — no principle field needed. "
-        "Call once at the start of Phase 3. Use load_fix_for_violation for Phase 4 lookups."
-    ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "findings_path": {
-                "type": "string",
-                "description": "Absolute path to the by-file validated findings JSON.",
-            },
-        },
-        "required": ["findings_path"],
-    },
-)
-def load_fix_instructions_for_findings(findings_path):
-    import json as _json
-    try:
-        raw = _json.loads(Path(findings_path).read_text(encoding="utf-8"))
-    except (OSError, _json.JSONDecodeError) as e:
-        return f"Could not read findings file '{findings_path}': {e}"
-
-    # Collect unique metric IDs from the actual by-file output structure:
-    # { "principles": [ { "findings": [ { "metric": "OCP-1" } ] } ] }
-    # Also accept a flat { "findings": [ { "metric_id": "OCP-1" } ] } for testing.
-    metric_ids = []
-    seen = set()
-    for p in raw.get("principles", []):
-        for f in p.get("findings", []):
-            m = (f.get("metric") or f.get("metric_id") or "").strip().upper()
-            if m and m not in seen:
-                seen.add(m)
-                metric_ids.append(m)
-    for f in raw.get("findings", []):  # flat format used in tests
-        m = (f.get("metric_id") or f.get("metric") or "").strip().upper()
-        if m and m not in seen:
-            seen.add(m)
-            metric_ids.append(m)
-
-    all_p = _all_principles()
-    parts, missing = [], []
-    for metric_id in metric_ids:
-        p_entry, fix_path = _find_fix_file(metric_id, all_p)
-        if not fix_path:
-            missing.append(f"no fix file for {metric_id}")
-            continue
-        content = _read(fix_path).rstrip()
-        parts.append(f"# {p_entry['name'].upper()} — {metric_id} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n")
-
-    result = "\n\n---\n\n".join(parts) if parts else ""
-    if missing:
-        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(missing)
-    return result or "No fix strategies found in the findings file."
-
-
-@server.tool(
-    name="load_fix_for_violation",
-    description=(
-        "Load the fix strategy for a specific metric. "
-        "Searches all principle folders for the matching fix file — "
-        "works for any principle (SRP, OCP, SUI, TEST, UITEST, SC, etc.). "
-        "Use in synthesize-fixes Phase 4 when a cross-check failure requires fix patterns "
-        "for a metric not already loaded via load_fix_instructions_for_findings."
-    ),
-    input_schema={
-        "type": "object",
-        "properties": {
-            "metric_id": {
-                "type": "string",
-                "description": "Metric ID, e.g. 'OCP-1', 'DRY-2', 'SUI-3', 'TEST-2'. No principle needed.",
-            },
-        },
-        "required": ["metric_id"],
-    },
-)
-def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg from old callers
-    norm = metric_id.strip().upper()
-    all_p = _all_principles()
-    p_entry, fix_path = _find_fix_file(norm, all_p)
-    if not fix_path:
-        available = sorted(
-            f.stem
-            for p in all_p
-            for f in (Path(p["folder"]) / "fix").glob("*.md")
-            if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
-        )
-        return f"No fix file for metric '{norm}'. Available: {', '.join(available)}"
-    content = _read(fix_path).rstrip()
-    return f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n"
-
-
 # ---------------------------------------------------------------------------
 # Tools: load_detection_rules, score_severity, load_fix_instructions
 # Implemented in lib/gateway_tools.py; registered here for the docs server.
@@ -505,7 +328,7 @@ def load_fix_for_violation(metric_id, **_):  # **_ absorbs stale 'principle' arg
 
 from lib.gateway_tools import make_gateway_handler as _make_gw
 
-_gw = _make_gw(REFS_ROOT / "principles")
+_gw = _make_gw(REFS_ROOT)
 
 
 @server.tool(
@@ -580,6 +403,112 @@ def score_severity(partial_outputs):
 )
 def load_fix_instructions(metric_id):
     return _gw.load_fix_instructions(metric_id)
+
+
+@server.tool(
+    name="load_fix_instructions_for_findings",
+    description=(
+        "Load fix strategies for all findings in a file in one call. "
+        "Pass the absolute path to the by-file validated findings JSON "
+        "(e.g. {OUTPUT_ROOT}/by-file/SomeFile.swift.output.json). "
+        "The tool reads the file, deduplicates by metric_id, searches all principle "
+        "folders for the matching fix file, and returns all fix strategies concatenated. "
+        "Works for any principle (SRP, OCP, SUI, TEST, etc.) — no principle field needed. "
+        "Call once at the start of Phase 3. Use load_fix_for_violation for Phase 4 lookups."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "findings_path": {
+                "type": "string",
+                "description": "Absolute path to the by-file validated findings JSON.",
+            },
+        },
+        "required": ["findings_path"],
+    },
+)
+def load_fix_instructions_for_findings(findings_path):
+    import json as _json
+    try:
+        raw = _json.loads(Path(findings_path).read_text(encoding="utf-8"))
+    except (OSError, _json.JSONDecodeError) as e:
+        return f"Could not read findings file '{findings_path}': {e}"
+
+    metric_ids = []
+    seen = set()
+    for p in raw.get("principles", []):
+        for f in p.get("findings", []):
+            m = (f.get("metric") or f.get("metric_id") or "").strip().upper()
+            if m and m not in seen:
+                seen.add(m)
+                metric_ids.append(m)
+    for f in raw.get("findings", []):
+        m = (f.get("metric_id") or f.get("metric") or "").strip().upper()
+        if m and m not in seen:
+            seen.add(m)
+            metric_ids.append(m)
+
+    all_p = _registry.all_principles()
+    parts, missing = [], []
+    for metric_id in metric_ids:
+        p_entry, fix_path = find_fix_file(metric_id, all_p)
+        if not fix_path:
+            missing.append(f"no fix file for {metric_id}")
+            continue
+        content = _read(fix_path).rstrip()
+        parts.append(f"# {p_entry['name'].upper()} — {metric_id} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n")
+
+    result = "\n\n---\n\n".join(parts) if parts else ""
+    if missing:
+        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(missing)
+    return result or "No fix strategies found in the findings file."
+
+
+@server.tool(
+    name="load_fix_for_violation",
+    description=(
+        "Load fix strategies for one or more metric IDs in a single call. "
+        "Pass ALL violation metric_ids at once — all strategies are returned concatenated. "
+        "Searches all principle folders — works for any principle (SRP, OCP, SUI, TEST, SC, etc.). "
+        "Call ONCE with the full list to avoid per-violation round trips."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "metric_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "One or more metric IDs, e.g. ['SRP-2', 'OCP-1']. Pass all at once.",
+            },
+        },
+        "required": ["metric_ids"],
+    },
+)
+def load_fix_for_violation(metric_ids, **_):
+    if isinstance(metric_ids, str):
+        metric_ids = [metric_ids]
+    all_p = _registry.all_principles()
+    available_cache = None
+    parts = []
+    for metric_id in metric_ids:
+        norm = metric_id.strip().upper()
+        p_entry, fix_path = find_fix_file(norm, all_p)
+        if not fix_path:
+            if available_cache is None:
+                available_cache = sorted(
+                    f.stem
+                    for p in all_p
+                    for f in (Path(p["folder"]) / "fix").glob("*.md")
+                    if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
+                )
+            parts.append(f"# {norm}\n\nNo fix file found. Available: {', '.join(available_cache)}")
+        else:
+            content = _read(fix_path).rstrip()
+            parts.append(
+                f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n"
+                f"## {_rel_label(fix_path)}\n\n{content}\n"
+            )
+    return "\n\n---\n\n".join(parts) if parts else "No metric IDs provided."
 
 
 if __name__ == "__main__":

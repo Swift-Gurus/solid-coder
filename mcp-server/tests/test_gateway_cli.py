@@ -1,5 +1,5 @@
 """
-solid-description: Regression suite verifying that all MCP gateway tools are registered and reachable via the command-line interface.
+solid-description: Verifies that rule-loading and analysis operations are accessible and return correct results.
 solid-category: unit-test
 """
 
@@ -40,10 +40,63 @@ class TestGatewayCliLoadDetectionRules(unittest.TestCase):
         self.assertEqual(filtered_result.returncode, 0, filtered_result.stderr)
         all_count = len(json.loads(all_result.stdout)["principles"])
         filtered_count = len(json.loads(filtered_result.stdout)["principles"])
-        # "unit-test" activates always-on principles + Unit Testing; other
-        # conditional principles (swiftui, structured-concurrency) are excluded.
+        # "unit-test" activates always-on principles + Unit Testing (testing);
+        # conditional principles without matching tags (swiftui, structured-concurrency,
+        # uitesting) are excluded. filtered_count < all_count confirms this.
         self.assertGreater(filtered_count, 0, "tag filter returned no principles")
         self.assertLess(filtered_count, all_count)
+
+    def _names(self, result) -> list:
+        return [p["name"] for p in json.loads(result.stdout)["principles"]]
+
+    def test_structured_concurrency_activates_for_async_code(self):
+        """Code with async/await imports activates structured-concurrency + always-on."""
+        result = _run("load_detection_rules", "--matched_tags", "structured-concurrency")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        names = self._names(result)
+        self.assertIn("structured-concurrency", names)
+        self.assertIn("srp", names)
+        self.assertNotIn("swiftui", names)
+        self.assertNotIn("testing", names)
+
+    def test_swiftui_activates_for_swiftui_code(self):
+        """Code with SwiftUI imports activates swiftui + always-on."""
+        result = _run("load_detection_rules", "--matched_tags", "swiftui")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        names = self._names(result)
+        self.assertIn("swiftui", names)
+        self.assertIn("srp", names)
+        self.assertNotIn("testing", names)
+        self.assertNotIn("uitesting", names)
+
+    def test_unit_testing_activates_for_test_code(self):
+        """Code with XCTest/Testing imports activates testing + always-on."""
+        result = _run("load_detection_rules", "--matched_tags", "unit-test")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        names = self._names(result)
+        self.assertIn("testing", names)
+        self.assertIn("srp", names)
+        self.assertNotIn("swiftui", names)
+        self.assertNotIn("uitesting", names)
+
+    def test_ui_testing_activates_for_ui_test_code(self):
+        """Code with ui-test imports activates uitesting + always-on."""
+        result = _run("load_detection_rules", "--matched_tags", "ui-test")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        names = self._names(result)
+        self.assertIn("uitesting", names)
+        self.assertIn("srp", names)
+        self.assertNotIn("swiftui", names)
+        self.assertNotIn("testing", names)
+
+    def test_always_on_principles_present_for_any_tag(self):
+        """SRP, OCP, ISP, LSP, DRY, code-smells are always active regardless of tags."""
+        always_on = {"srp", "ocp", "isp", "lsp", "dry", "code-smells"}
+        for tag in ("swiftui", "unit-test", "structured-concurrency", "ui-test"):
+            result = _run("load_detection_rules", "--matched_tags", tag)
+            names = set(self._names(result))
+            for p in always_on:
+                self.assertIn(p, names, f"always-on principle '{p}' missing for tag '{tag}'")
 
     def test_principle_arg_returns_single_principle(self):
         result = _run("load_detection_rules", "--principle", "SRP")

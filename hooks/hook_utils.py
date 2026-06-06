@@ -277,7 +277,5 @@ def run_claude_bare(
         events = [events]
     for obj in reversed(events):
         if isinstance(obj, dict) and obj.get("type") == "result":
-            inner = obj.get("result", "")
-            if inner.strip():
-                return inner
+            return obj.get("result", "")
     raise SubprocessError("claude -p returned no result event")

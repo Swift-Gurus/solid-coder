@@ -1,5 +1,5 @@
 """
-solid-description: Tests that configuration values are correctly resolved with default fallbacks.
+solid-description: Tests LLM configuration retrieval and default value provision.
 solid-category: unit-test
 solid-spec: [SPEC-014]
 """
@@ -50,10 +50,7 @@ class TestAccessors(unittest.TestCase):
 
 class TestFindConfig(unittest.TestCase):
     def _find(self, project_dir: Path):
-        with patch("hc_config_core.Path") as mock_path:
-            mock_path.cwd.return_value = project_dir
-            mock_path.side_effect = lambda *a, **kw: Path(*a, **kw)
-            return hc_config_core.find_config()
+        return hc_config_core.find_config(_cwd=project_dir)
 
     def test_returns_project_config_when_present(self):
         with tempfile.TemporaryDirectory() as d:

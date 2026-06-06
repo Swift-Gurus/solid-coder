@@ -1,12 +1,10 @@
-List only SEVERE violations. For each include:
-- principle: the rule name (e.g. SRP, OCP, DRY)
-- metric_id: the metric identifier (e.g. OCP-1, SRP-2)
-- issue: what is wrong
-- fix: the specific change needed
+After completing all steps, return your final output as raw JSON with no commentary.
 
-Your entire response MUST be a single raw JSON object and nothing else.
-No markdown fences. No explanation. No commentary.
+If submit_batch_findings returned violations and you completed step 4:
+  Return the {"complete": true, "violations_with_fixes": [...]} result from the
+  final submit_fix call. Pass it through as-is.
 
-{"violations": [{"principle": "string", "metric_id": "string", "issue": "string", "fix": "string"}]}
+If there were no violations (submit_batch_findings returned {"violations": []}):
+  Return: {"violations": []}
 
-Empty if clean: {"violations": []}
+Do NOT add markdown, commentary, or extra text — return only the raw JSON.

@@ -31,7 +31,7 @@ class TagDetector:
             r"\bTask\s*[{<(.]",      # Task { }, Task<T>, Task(, Task.detached — not URLSessionTask
             r"\bactor\s+\w",         # actor keyword declaration, not Actor type
         ],
-        "unit-test": [r"\bimport\s+Testing\b", r"\bXCTestCase\b", r"\b@Test\b"],
+        "unit-test": [r"\bimport\s+Testing\b", r"\bXCTestCase\b", r"@Test\b"],
         "ui-test": [r"\bXCUIApplication\b", r"\bXCUIElement\b"],
         "xctest": [r"\bimport\s+XCTest\b"],
     }

@@ -59,18 +59,18 @@ from docs.server import (  # noqa: E402
     load_detection_rules,
 )
 
-# Pipeline tools — mcp-server/pipeline/server.py
-from pipeline.server import (  # noqa: E402
-    check_severity,
-    load_synthesis_context,
-    validate_phase_output,
-    validate_findings,
-    generate_report,
-    validate_architecture,
-    split_implementation_plan,
-    search_codebase,
-    prepare_review_input,
-)
+# Pipeline tools — constructed via factory for gateway CLI access
+from pipeline.server import get_pipeline_tools as _get_pipeline_tools  # noqa: E402
+_pt = _get_pipeline_tools()
+check_severity = _pt['check_severity']
+load_synthesis_context = _pt['load_synthesis_context']
+validate_phase_output = _pt['validate_phase_output']
+validate_findings = _pt['validate_findings']
+generate_report = _pt['generate_report']
+validate_architecture = _pt['validate_architecture']
+split_implementation_plan = _pt['split_implementation_plan']
+search_codebase = _pt['search_codebase']
+prepare_review_input = _pt['prepare_review_input']
 
 # Spec tools — mcp-server/specs/server.py
 from specs.server import query_specs  # noqa: E402
