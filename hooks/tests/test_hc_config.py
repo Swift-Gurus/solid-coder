@@ -87,7 +87,8 @@ class TestReadConfigFile(unittest.TestCase):
                 yield hc_config_core.read_llm_section(), tmp
 
     def test_returns_empty_when_no_config_found(self):
-        with patch("hc_config_core.find_config", return_value=None):
+        with patch("hc_config_core.find_config", return_value=None), \
+             patch("hc_config_core.find_repo_config", return_value=None):
             self.assertEqual(hc_config_core.read_llm_section(), {})
 
     def test_returns_empty_dict_on_invalid_toml(self):
@@ -113,7 +114,8 @@ class TestReadConfigFile(unittest.TestCase):
     def test_original_behavior_preserved_when_env_var_unset(self):
         env = {k: v for k, v in os.environ.items() if k != "SOLID_CODER_TEST_MODEL_PROFILE"}
         with patch.dict(os.environ, env, clear=True):
-            with patch("hc_config_core.find_config", return_value=None):
+            with patch("hc_config_core.find_config", return_value=None), \
+                 patch("hc_config_core.find_repo_config", return_value=None):
                 result = hc_config_core.read_llm_section()
         self.assertEqual(result, {})
 

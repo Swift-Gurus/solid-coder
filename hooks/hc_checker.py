@@ -33,8 +33,8 @@ class ClaudeRunner(CallableAdapting):
         self,
         mcp_config: str,
         allowed_tools: str,
+        fn: ClaudeCallable,
         model: str = "",
-        fn: ClaudeCallable = run_claude_bare,
     ) -> None:
         super().__init__(fn)
         self._mcp_config = mcp_config
@@ -213,10 +213,11 @@ class FileOutputReader:
     Cleans up the output directory after reading so reports do not accumulate.
     """
 
-    def __init__(self, _path_cls=None, _rmtree_fn=None) -> None:
+    def __init__(self, _path_cls=None, _rmtree_fn=None, _debug: bool = False) -> None:
         import shutil as _shutil
         self._path_cls = _path_cls if _path_cls is not None else Path
         self._rmtree_fn = _rmtree_fn if _rmtree_fn is not None else _shutil.rmtree
+        self._debug = _debug
 
     def read_violations(self, output_dir: str, path: str) -> list:
         import json
@@ -235,7 +236,8 @@ class FileOutputReader:
                     v["fix"] = fixes[key].get("suggested_fix", v["fix"])
             return violations
         finally:
-            self._rmtree_fn(output_dir, ignore_errors=True)
+            if not self._debug:
+                self._rmtree_fn(output_dir, ignore_errors=True)
 
     @staticmethod
     def _violation_key(metric_id: str, file_path: str, unit_name: str) -> str:
@@ -404,6 +406,6 @@ class LLMHealthChecker:
             return None
         if not principles:
             return []
-        output_dir = str(Path.home() / ".solid-coder" / "gate" / parent_session_id)
+        output_dir = str(PLUGIN_ROOT / ".solid_coder" / "gate" / parent_session_id)
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
         return self._reviewer.review(prompt, path, output_dir=output_dir)

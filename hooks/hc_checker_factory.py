@@ -21,7 +21,7 @@ from hc_checker import (  # noqa: E402
     LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
 )
 from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker  # noqa: E402
-from hc_config import bare_session_timeout  # noqa: E402
+from hc_config import bare_session_timeout, debug_mode  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
 
@@ -59,6 +59,6 @@ def make_health_checker(
                 logger=logger,
                 timeout=bare_session_timeout(),
             ),
-            output_handler=FileBasedOutputHandler(FileOutputReader()),
+            output_handler=FileBasedOutputHandler(FileOutputReader(_debug=debug_mode())),
         ),
     )

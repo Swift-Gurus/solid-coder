@@ -47,6 +47,18 @@ def bare_session_timeout() -> int:
     return _int("bare_session_timeout", 300)
 
 
+def debug_mode() -> bool:
+    """When True, gate output files are preserved after each run for inspection.
+
+    Scored output lands in {HOME}/.solid-coder/gate/{session_id}/{label}/review-output.json.
+    Inspect these files to see exactly what metrics the LLM submitted and how they were scored.
+
+    Configure via [llm] debug = true in solid-coder-local.toml.
+    Default: False (files are cleaned up after each run).
+    """
+    return bool(_int("debug", 0))
+
+
 def bare_session_model() -> str:
     """Model override for claude -p bare subprocess calls.
 

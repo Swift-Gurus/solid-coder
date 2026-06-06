@@ -1,0 +1,11 @@
+# solid-coder project config — committed to the repo.
+# Contains shared defaults that apply to all contributors.
+# Override anything here in solid-coder-local.toml (not committed).
+
+[llm]
+
+# Debug mode — keeps scored gate output files after each run.
+# Files land in {project}/.solid_coder/gate/{session_id}/{principle}/review-output.json.
+# Inspect them to see exactly what metrics the LLM submitted and how the server scored them.
+# Extend to any future debug behaviour that needs a flag rather than a code change.
+debug = true

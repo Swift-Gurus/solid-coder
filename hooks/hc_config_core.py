@@ -15,8 +15,9 @@ if str(_HOOKS_DIR) not in sys.path:
 
 from hook_utils import load_toml  # noqa: E402
 
-_FILENAME = "solid-coder-local.toml"
-# Anchor to the project root (hooks/ parent) so the config is found regardless of cwd.
+_FILENAME_LOCAL = "solid-coder-local.toml"   # not committed — secrets, per-user overrides
+_FILENAME_REPO  = "solid-coder.toml"          # committed — shared project defaults
+# Anchor to the project root (hooks/ parent) so configs are found regardless of cwd.
 _PROJECT_ROOT = _HOOKS_DIR.parent
 T = TypeVar("T")
 
@@ -26,14 +27,20 @@ class TomlLoader(Protocol):
 
 
 def find_config(_cwd: Optional[Path] = None) -> Optional[Path]:
-    """Return the project-level config path, or None if it does not exist.
+    """Return the local (non-committed) config path, or None if absent.
 
-    Searches _cwd when provided, otherwise uses _PROJECT_ROOT (the parent of the
-    hooks/ directory) so the config is always found regardless of the process's
-    working directory at hook invocation time.
+    Uses _PROJECT_ROOT when _cwd is not provided so the file is always located
+    regardless of the process working directory at hook invocation time.
     """
     base = _cwd if _cwd is not None else _PROJECT_ROOT
-    path = base / ".claude" / _FILENAME
+    path = base / ".claude" / _FILENAME_LOCAL
+    return path if path.exists() else None
+
+
+def find_repo_config(_cwd: Optional[Path] = None) -> Optional[Path]:
+    """Return the committed project config path, or None if absent."""
+    base = _cwd if _cwd is not None else _PROJECT_ROOT
+    path = base / ".claude" / _FILENAME_REPO
     return path if path.exists() else None
 
 
@@ -42,8 +49,12 @@ def read_section(
     _loader: TomlLoader = load_toml,
     _cwd: Optional[Path] = None,
 ) -> dict:
-    path = find_config(_cwd=_cwd)
-    return _loader(path).get(section, {}) if path else {}
+    """Read a config section, merging repo defaults under local overrides."""
+    repo_path = find_repo_config(_cwd=_cwd)
+    local_path = find_config(_cwd=_cwd)
+    base = _loader(repo_path).get(section, {}) if repo_path else {}
+    override = _loader(local_path).get(section, {}) if local_path else {}
+    return {**base, **override}
 
 
 def read_llm_section(

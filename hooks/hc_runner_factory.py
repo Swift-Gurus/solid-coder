@@ -14,6 +14,7 @@ if str(_HOOKS_DIR) not in sys.path:
 from hc_checker import ClaudeRunner, ClaudeRunning
 from hc_llama_runner import make_llama_server_runner
 from hc_config import llm_backend, llm_host, llm_model
+from hook_utils import run_claude_bare
 
 
 def make_llm_runner(
@@ -38,4 +39,4 @@ def make_llm_runner(
     _PLACEHOLDERS = {"", "claude", "local"}
     _model = llm_model()
     model = _model if _model not in _PLACEHOLDERS else ""
-    return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools, model=model)
+    return ClaudeRunner(mcp_config=mcp_config, allowed_tools=allowed_tools, fn=run_claude_bare, model=model)
