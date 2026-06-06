@@ -2,7 +2,7 @@
 name: apply-principle-review
 description: Generic code review that reads principle rules and follows review instructions. Internal skill — triggered by subagents only.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings, mcp__plugin_solid-coder_pipeline__submit_batch_findings, mcp__plugin_solid-coder_pipeline__submit_fix
 user-invocable: false
 ---
 

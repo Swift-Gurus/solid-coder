@@ -2,10 +2,10 @@
 name: apply-principle-review-agent
 description: Generic Skill Wrapper, to allow skill to be run in parallel.
 argument-hint: <principle-folder> <code-files>
-allowed-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings
+allowed-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings, mcp__plugin_solid-coder_pipeline__submit_batch_findings, mcp__plugin_solid-coder_pipeline__submit_fix
 skills:
 - apply-principle-review
-tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings
+tools: Read, Grep, Glob, Bash, Write, Skill, ToolSearch, mcp__plugin_solid-coder_docs__load_rules, mcp__plugin_solid-coder_docs__load_detection_rules, mcp__plugin_solid-coder_docs__load_fix_for_violation, mcp__plugin_solid-coder_pipeline__submit_findings, mcp__plugin_solid-coder_pipeline__submit_batch_findings, mcp__plugin_solid-coder_pipeline__submit_fix
 model: sonnet
 ---
 

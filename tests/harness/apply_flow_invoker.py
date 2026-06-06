@@ -35,6 +35,8 @@ _ALLOWED_TOOLS = (
     "mcp__docs__load_detection_rules,"
     "mcp__docs__load_fix_for_violation,"
     "mcp__pipeline__submit_findings,"
+    "mcp__pipeline__submit_batch_findings,"
+    "mcp__pipeline__submit_fix,"
     "mcp__pipeline__search_codebase"
 )
 
