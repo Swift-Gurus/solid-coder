@@ -7,10 +7,7 @@
     "agent": { "const": "structured-concurrency" },
     "principle": { "const": "Structured Concurrency" },
     "timestamp": { "type": "string", "format": "date-time" },
-    "documentation_sources": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
+    "all_compliant": { "type": "boolean" },
     "files": {
       "type": "array",
       "items": {
@@ -22,96 +19,53 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
+              "required": ["unit_name", "unit_kind", "metrics"],
               "properties": {
                 "unit_name": { "type": "string" },
                 "unit_kind": {
                   "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension", "actor"]
+                  "enum": ["class", "struct", "enum", "protocol", "extension", "actor", "function"]
                 },
                 "metrics": {
                   "type": "object",
-                  "required": ["model_mixing", "task_lifecycle", "safety_bypasses", "sequential_await", "sync_async_bridge", "duration_api"],
+                  "description": "Flat scalar metrics scored directly against severity bands. Submit 0 for each metric where no violation was found.",
+                  "required": [
+                    "model_mixing",
+                    "orphaned_tasks",
+                    "safety_bypasses",
+                    "independent_sequential_awaits",
+                    "blocking_bridges",
+                    "raw_duration_count"
+                  ],
                   "properties": {
                     "model_mixing": {
-                      "type": "object",
-                      "required": ["async_count", "gcd_count", "completion_handler_count", "mixed"],
-                      "properties": {
-                        "async_count": { "type": "integer" },
-                        "gcd_count": { "type": "integer" },
-                        "completion_handler_count": { "type": "integer" },
-                        "mixed": { "type": "boolean" }
-                      }
+                      "type": "integer",
+                      "description": "SC-1: 1 if this type mixes async/await with GCD or completion handlers, 0 if it uses a single concurrency model"
                     },
-                    "task_lifecycle": {
-                      "type": "object",
-                      "required": ["orphaned_count", "leaked_count"],
-                      "properties": {
-                        "orphaned_count": { "type": "integer" },
-                        "leaked_count": { "type": "integer" }
-                      }
+                    "orphaned_tasks": {
+                      "type": "integer",
+                      "description": "SC-2: count of Task{}/Task.detached{} calls (excluding SwiftUI .task modifier) with no stored handle or cancellation path"
                     },
                     "safety_bypasses": {
-                      "type": "object",
-                      "required": ["unchecked_sendable_count", "nonisolated_unsafe_count"],
-                      "properties": {
-                        "unchecked_sendable_count": { "type": "integer" },
-                        "nonisolated_unsafe_count": { "type": "integer" }
-                      }
+                      "type": "integer",
+                      "description": "SC-3: count of @unchecked Sendable on developer-owned types + count of nonisolated(unsafe) usages"
                     },
-                    "sequential_await": {
-                      "type": "object",
-                      "required": ["independent_sequential_count"],
-                      "properties": {
-                        "independent_sequential_count": { "type": "integer" }
-                      }
+                    "independent_sequential_awaits": {
+                      "type": "integer",
+                      "description": "SC-4: count of independent sequential await calls that could be parallelised with async let or TaskGroup"
                     },
-                    "sync_async_bridge": {
-                      "type": "object",
-                      "required": ["blocking_count", "unnecessary_continuation_count"],
-                      "properties": {
-                        "blocking_count": { "type": "integer" },
-                        "unnecessary_continuation_count": { "type": "integer" }
-                      }
+                    "blocking_bridges": {
+                      "type": "integer",
+                      "description": "SC-5: count of sync-to-async blocking patterns (DispatchSemaphore.wait, DispatchGroup.wait, or unnecessary withCheckedContinuation wrapping an available async API)"
                     },
-                    "duration_api": {
-                      "type": "object",
-                      "required": ["raw_nanosecond_count"],
-                      "properties": {
-                        "raw_nanosecond_count": { "type": "integer" }
-                      }
+                    "raw_duration_count": {
+                      "type": "integer",
+                      "description": "SC-6: count of Task.sleep(nanoseconds:) calls or raw integer literals used as time durations where Swift Duration API should be used"
                     }
                   }
                 },
-                "scoring": {
-                  "type": "object",
-                  "required": ["final_severity"],
-                  "properties": {
-                    "final_severity": {
-                      "type": "string",
-                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
-                    },
-                    "exceptions": {
-                      "type": "array",
-                      "items": { "type": "string" }
-                    }
-                  }
-                },
-                "findings": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": ["id", "metric", "severity", "description", "line_start", "line_end"],
-                    "properties": {
-                      "id": { "type": "string" },
-                      "metric": { "type": "string", "enum": ["SC-1", "SC-2", "SC-3", "SC-4", "SC-5", "SC-6"] },
-                      "severity": { "type": "string", "enum": ["MINOR", "SEVERE"] },
-                      "description": { "type": "string" },
-                      "line_start": { "type": "integer" },
-                      "line_end": { "type": "integer" }
-                    }
-                  }
-                }
+                "findings": { "type": "array" },
+                "scoring": { "type": "array" }
               }
             }
           }

@@ -235,19 +235,49 @@ There are three distinct violations:
 13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
 </exceptions>
 
-<severity-bands id="SUI">
-- COMPLIANT (nesting < 2 AND expressions < 5 AND impure == 0 AND max nested modifier chain < 2 AND VM injected via protocol AND all file-scope views have production callers AND all file-scope views have preview coverage AND all container accessibilityIdentifiers preceded by accessibilityElement AND no literal fixed frames AND no over-broad @MainActor)
-- SEVERE (any of the following):
-    - Nesting depth >= 2
-    - View expressions >= 5
-    - 1+ impure methods
-    - Any nested child view with 2+ modifiers
-    - Concrete VM injection
-    - File-scope view only referenced from #Preview/PreviewProvider (preview-only)
-    - File-scope view with no #Preview or PreviewProvider instantiation anywhere
-    - Container view with `.accessibilityIdentifier(...)` missing preceding `.accessibilityElement(children:)`
-    - Any `.frame()` with literal numeric width/height value
-    - `@MainActor` on type/protocol with background-safe members or `nonisolated` escape hatches
+<severity-bands id="SUI-1">
+<band severity="SEVERE"><condition>body_nesting_depth >= 2 or view_expression_count >= 5</condition></band>
+<band severity="COMPLIANT"><condition>body_nesting_depth < 2 and view_expression_count < 5</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-2">
+<band severity="SEVERE"><condition>impure_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>impure_count == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-3">
+<band severity="SEVERE"><condition>max_modifier_chain >= 2</condition></band>
+<band severity="COMPLIANT"><condition>max_modifier_chain < 2</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-4">
+<band severity="SEVERE"><condition>vm_injection_style == "concrete"</condition></band>
+<band severity="COMPLIANT"><condition>vm_injection_style != "concrete"</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-5">
+<band severity="SEVERE"><condition>preview_only_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>preview_only_count == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-6">
+<band severity="SEVERE"><condition>views_without_preview_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>views_without_preview_count == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-7">
+<band severity="SEVERE"><condition>bad_accessibility_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>bad_accessibility_count == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-8">
+<band severity="SEVERE"><condition>fixed_frame_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>fixed_frame_count == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SUI-9">
+<band severity="SEVERE"><condition>over_isolated_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>over_isolated_count == 0</condition></band>
 </severity-bands>
 
 ---

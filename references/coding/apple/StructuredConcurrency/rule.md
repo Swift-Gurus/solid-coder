@@ -133,18 +133,34 @@ Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integer
 3. **Test code** — unit tests are exempt from lifecycle checks (Task { } in tests is acceptable)
 </exceptions>
 
-<severity-bands id="SC">
-- COMPLIANT (0 violations across all metrics)
-- MINOR (any of the following):
-    - @MainActor slightly too broad but no data race risk
-- SEVERE (any of the following):
-    - 1+ concurrency model mixing in a type (SC-1)
-    - 1+ orphaned or leaked Task (SC-2)
-    - 1+ @unchecked Sendable on any type you own (SC-3)
-    - 1+ nonisolated(unsafe) usage (SC-3)
-    - 3+ independent sequential awaits that should be concurrent (SC-4)
-    - 1+ sync-to-async blocking bridge (SC-5)
-    - 1+ raw nanosecond API or integer literal for duration (SC-6)
+<severity-bands id="SC-1">
+<band severity="SEVERE"><condition>model_mixing >= 1</condition></band>
+<band severity="COMPLIANT"><condition>model_mixing == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SC-2">
+<band severity="SEVERE"><condition>orphaned_tasks >= 1</condition></band>
+<band severity="COMPLIANT"><condition>orphaned_tasks == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SC-3">
+<band severity="SEVERE"><condition>safety_bypasses >= 1</condition></band>
+<band severity="COMPLIANT"><condition>safety_bypasses == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SC-4">
+<band severity="SEVERE"><condition>independent_sequential_awaits >= 3</condition></band>
+<band severity="COMPLIANT"><condition>independent_sequential_awaits < 3</condition></band>
+</severity-bands>
+
+<severity-bands id="SC-5">
+<band severity="SEVERE"><condition>blocking_bridges >= 1</condition></band>
+<band severity="COMPLIANT"><condition>blocking_bridges == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="SC-6">
+<band severity="SEVERE"><condition>raw_duration_count >= 1</condition></band>
+<band severity="COMPLIANT"><condition>raw_duration_count == 0</condition></band>
 </severity-bands>
 
 ---

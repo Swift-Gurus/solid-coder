@@ -123,16 +123,30 @@ Element queries that use string literals directly couple tests to the current id
 3. **Single-method test classes** — assertion grouping only applies when 2+ methods share the same setup preamble
 </exceptions>
 
-<severity-bands id="UITEST">
-- COMPLIANT (0 violations across all metrics)
-- MINOR (any of the following):
-    - 1–2 UITEST-5 violations only (isolated raw string identifiers, no other violations)
-- SEVERE (any of the following):
-    - 1+ UITEST-1 violations (inline flows, duplicated sequences, coordinator not composing)
-    - 1+ UITEST-2 violations (no base class, lifecycle in individual suites)
-    - 1+ UITEST-3 violations (fragmented assertions across tests)
-    - 1+ UITEST-4 violations (time-based waits, no condition check in call chain)
-    - 3+ UITEST-5 violations (pervasive raw string identifiers)
+<severity-bands id="UITEST-1">
+<band severity="SEVERE"><condition>flow_violations >= 1</condition></band>
+<band severity="COMPLIANT"><condition>flow_violations == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="UITEST-2">
+<band severity="SEVERE"><condition>base_class_violations >= 1</condition></band>
+<band severity="COMPLIANT"><condition>base_class_violations == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="UITEST-3">
+<band severity="SEVERE"><condition>grouping_violations >= 1</condition></band>
+<band severity="COMPLIANT"><condition>grouping_violations == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="UITEST-4">
+<band severity="SEVERE"><condition>sync_violations >= 1</condition></band>
+<band severity="COMPLIANT"><condition>sync_violations == 0</condition></band>
+</severity-bands>
+
+<severity-bands id="UITEST-5">
+<band severity="SEVERE"><condition>identifier_violations >= 3</condition></band>
+<band severity="MINOR"><condition>identifier_violations >= 1 and identifier_violations <= 2 and flow_violations == 0 and base_class_violations == 0 and grouping_violations == 0 and sync_violations == 0</condition></band>
+<band severity="COMPLIANT"><condition>identifier_violations == 0</condition></band>
 </severity-bands>
 
 ---

@@ -8,32 +8,42 @@ solid-tags: [utility, service]
 from pathlib import Path
 
 
-def resolve(principle: str, refs_root: Path) -> Path:
+def resolve(
+    principle: str,
+    refs_root: Path,
+    _registry=None,
+) -> Path:
     """Resolve a principle name to its absolute folder path.
 
+    Uses PrincipleRegistry to search the full references tree so principles
+    outside references/principles/ (e.g. references/coding/apple/SwiftUI)
+    are found alongside core SOLID principles.
+
     Args:
-        principle: Case-insensitive principle identifier, e.g. 'srp', 'OCP', 'dry'.
-        refs_root: Root of the references directory (parent of the principles/ folder).
+        principle:  Case-insensitive principle identifier, e.g. 'srp', 'swiftui'.
+        refs_root:  Root of the references directory.
+        _registry:  Optional pre-built PrincipleRegistry (injectable for testing).
 
     Returns:
         Absolute Path to the matching principle folder.
 
     Raises:
-        ValueError: When no folder matches the given principle name.
-        FileNotFoundError: When refs_root/principles/ does not exist.
+        ValueError:        When no folder matches the given principle name.
+        FileNotFoundError: When refs_root does not exist.
     """
-    principles_dir = refs_root / "principles"
-    if not principles_dir.is_dir():
-        raise FileNotFoundError(f"Principles directory not found: {principles_dir}")
+    if not refs_root.is_dir():
+        raise FileNotFoundError(f"References directory not found: {refs_root}")
+
+    from lib.principle_registry import PrincipleRegistry
+    registry = _registry if _registry is not None else PrincipleRegistry(refs_root)
+    all_p = registry.all_principles()
 
     target = principle.strip().lower()
-    candidates = [d for d in principles_dir.iterdir() if d.is_dir()]
+    for p in all_p:
+        if p["name"].lower() == target:
+            return Path(p["folder"]).resolve()
 
-    for folder in candidates:
-        if folder.name.lower() == target:
-            return folder.resolve()
-
-    available = ", ".join(sorted(d.name for d in candidates))
+    available = ", ".join(sorted(p["name"] for p in all_p))
     raise ValueError(
         f'Unknown principle: "{principle}". Available: {available}'
     )

@@ -412,12 +412,17 @@ class SubmitOrchestrator:
 
 
 def _minimal_value_for_schema(prop_schema: dict):
-    """Generate a minimal representative value for a JSON schema property."""
+    """Generate a minimal representative value for a JSON schema property.
+
+    For string+enum properties returns the first valid enum member so generated
+    examples are always schema-valid (never the generic placeholder "example").
+    """
     t = prop_schema.get("type", "string")
     if t == "integer":
         return 0
     if t == "string":
-        return "example"
+        enum = prop_schema.get("enum")
+        return enum[0] if enum else "example"
     if t == "boolean":
         return False
     if t == "array":
@@ -437,7 +442,14 @@ def _minimal_value_for_schema(prop_schema: dict):
 def _parse_principle_schema(schema_path) -> Optional[dict]:
     """Parse a principle's review/output.schema.json.
 
-    Returns {"agent": str, "principle_name": str, "metrics_example": dict}
+    Returns:
+        {
+            "agent": str,
+            "principle_name": str,
+            "metrics_example": dict,
+            "findings_required": bool,   — True when LLM must populate findings (e.g. DRY)
+            "findings_example": dict,    — minimal example finding object, or None
+        }
     or None when schema or metrics definition is absent.
     """
     p = Path(str(schema_path))
@@ -450,20 +462,34 @@ def _parse_principle_schema(schema_path) -> Optional[dict]:
     agent = schema.get("properties", {}).get("agent", {}).get("const", "")
     principle_name = schema.get("properties", {}).get("principle", {}).get("const", "")
     try:
-        metrics_schema = (
+        unit_items = (
             schema["properties"]["files"]["items"]
             ["properties"]["units"]["items"]
-            ["properties"]["metrics"]
         )
     except (KeyError, TypeError):
         return None
-    props = metrics_schema.get("properties")
-    if not props:
+    try:
+        metrics_props = unit_items["properties"]["metrics"]["properties"]
+    except (KeyError, TypeError):
         return None
+    if not metrics_props:
+        return None
+
+    findings_required = "findings" in unit_items.get("required", [])
+    findings_example = None
+    if findings_required:
+        try:
+            finding_props = unit_items["properties"]["findings"]["items"]["properties"]
+            findings_example = {k: _minimal_value_for_schema(v) for k, v in finding_props.items()}
+        except (KeyError, TypeError):
+            pass
+
     return {
         "agent": agent,
         "principle_name": principle_name,
-        "metrics_example": {k: _minimal_value_for_schema(v) for k, v in props.items()},
+        "metrics_example": {k: _minimal_value_for_schema(v) for k, v in metrics_props.items()},
+        "findings_required": findings_required,
+        "findings_example": findings_example,
     }
 
 
