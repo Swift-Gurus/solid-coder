@@ -1,5 +1,5 @@
 """
-solid-description: Checks source files for code health violations and reports findings.
+solid-description: Analyzes source files for code health principle violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -42,7 +42,7 @@ class ClaudeRunner(CallableAdapting):
         self._model = model
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
-        return self._fn(
+        return self._strict_call(
             prompt,
             mcp_config=self._mcp_config,
             allowed_tools=self._allowed_tools,
@@ -94,12 +94,15 @@ _HC_UNIT_KINDS: dict = {
     "isp": "protocol",
 }
 
-# Override the schema-minimum (0) with a COMPLIANT representative value
-# for principles where submitting 0 would trigger a false SEVERE band.
-# ISP min_coverage: the schema expects integer percentage (0-100) but LLMs
-# sometimes submit fractions (1 = 1.0 = 100%). Show 100 to teach the scale.
+# Override the schema-minimum with COMPLIANT representative values in the new
+# {var: {value: N}} format for principles where 0 would trigger a false SEVERE band.
+# ISP min_coverage: show 100 (percent) not 0 — LLMs sometimes misread the scale.
 _HC_COMPLIANT_METRICS: dict = {
-    "isp": {"width": 1, "min_coverage": 100, "cohesion_groups": 1},
+    "isp": {
+        "width": {"value": 1},
+        "min_coverage": {"value": 100},
+        "cohesion_groups": {"value": 1},
+    },
 }
 
 
@@ -149,24 +152,27 @@ class HealthPromptBuilder(BasePromptBuilder):
         )
 
     def _make_batch_example(self, principles: list, output_dir: str) -> str:
-        """Generate a complete submit_batch_findings JSON example from active principles."""
+        """Generate a complete submit_batch_findings JSON example from active principles.
+
+        Uses the unified review-output format: no top-level agent/principle fields.
+        Metrics are keyed by principle name with each variable as {value: N}.
+        """
         import json as _json
         submissions = {}
         for p in principles:
             agent = p.get("name", "")
-            principle_name = p.get("principle_name", agent.upper())
             metrics_example = p.get("metrics_example", {})
             if not agent:
                 continue
             unit_kind = _HC_UNIT_KINDS.get(agent, "class")
             unit_name = "MyProtocol" if unit_kind == "protocol" else "ClassName"
-            metrics = _HC_COMPLIANT_METRICS.get(agent, metrics_example)
-            unit = {"unit_name": unit_name, "unit_kind": unit_kind, "metrics": metrics}
-            if p.get("findings_required") and p.get("findings_example"):
-                unit["findings"] = [p["findings_example"]]
+            principle_metrics = _HC_COMPLIANT_METRICS.get(agent, metrics_example)
+            unit = {
+                "unit_name": unit_name,
+                "unit_kind": unit_kind,
+                "metrics": {agent: principle_metrics},
+            }
             submissions[agent] = {
-                "agent": agent,
-                "principle": principle_name,
                 "timestamp": "2026-06-05T10:00:00Z",
                 "files": [{"file_path": "/path/to/ReviewedFile.swift", "units": [unit]}],
             }
@@ -201,43 +207,16 @@ class LLMExecutor:
 
 # ── Output handling ─────────────────────────────────────────────────────────────
 
-class OutputReading(Protocol):
-    def read_violations(self, output_dir: str, path: str) -> list: ...
+class ViolationExtracting(Protocol):
+    def extract(self, output_dir: str) -> list: ...
 
 
-class FileOutputReader:
-    """Reads scored JSON files written by submit_batch_findings, extracts SEVERE violations.
+class ViolationExtractor:
+    """Reads scored review-output.json files and merges any submitted fixes.
 
-    Only SEVERE findings are returned — consistent with the original gate behaviour.
-    Merges any fix suggestions submitted via submit_fix into the violations.
-    Cleans up the output directory after reading so reports do not accumulate.
+    Single responsibility: data extraction. No filesystem cleanup — that is
+    the caller's concern.
     """
-
-    def __init__(self, _path_cls=None, _rmtree_fn=None, _debug: bool = False) -> None:
-        import shutil as _shutil
-        self._path_cls = _path_cls if _path_cls is not None else Path
-        self._rmtree_fn = _rmtree_fn if _rmtree_fn is not None else _shutil.rmtree
-        self._debug = _debug
-
-    def read_violations(self, output_dir: str, path: str) -> list:
-        import json
-        dir_path = self._path_cls(output_dir)
-        try:
-            output_files = list(dir_path.glob("*/review-output.json"))
-            if not output_files:
-                raise RuntimeError(
-                    f"LLM did not call submit_batch_findings — no output files in {output_dir}"
-                )
-            violations = self._extract_severe(output_files)
-            fixes = self._read_fixes(output_dir)
-            for v in violations:
-                key = self._violation_key(v.get("metric_id", ""), v["file_path"], v["unit_name"])
-                if key in fixes:
-                    v["fix"] = fixes[key].get("suggested_fix", v["fix"])
-            return violations
-        finally:
-            if not self._debug:
-                self._rmtree_fn(output_dir, ignore_errors=True)
 
     @staticmethod
     def _violation_key(rule_id: str, file_path: str, unit_name: str) -> str:
@@ -245,6 +224,35 @@ class FileOutputReader:
         safe_path = _re.sub(r'[^\w.-]', '_', file_path)
         safe_unit = _re.sub(r'[^\w.-]', '_', unit_name)
         return f"{rule_id}__{safe_path}__{safe_unit}"
+
+    def extract(self, output_dir: str) -> list:
+        import json
+        output_files = list(Path(output_dir).glob("*/review-output.json"))
+        violations = []
+        for f in output_files:
+            doc = json.loads(f.read_text())
+            for file_obj in doc.get("files", []):
+                file_path = file_obj.get("file_path", "?")
+                for unit in file_obj.get("units", []):
+                    unit_name = unit.get("unit_name", "?")
+                    for v in unit.get("violations", []):
+                        if v.get("severity") == "SEVERE":
+                            rule_id = v.get("rule_id", "")
+                            principle = rule_id.split("-")[0] if "-" in rule_id else rule_id
+                            violations.append({
+                                "principle": principle,
+                                "metric_id": rule_id,
+                                "file_path": file_path,
+                                "unit_name": unit_name,
+                                "issue": f"{rule_id}: {file_path}, unit {unit_name} — SEVERE violation",
+                                "fix": f"Call mcp__docs__load_fix_for_violation({rule_id}) for guidance.",
+                            })
+        fixes = self._read_fixes(output_dir)
+        for v in violations:
+            key = self._violation_key(v["metric_id"], v["file_path"], v["unit_name"])
+            if key in fixes:
+                v["fix"] = fixes[key].get("suggested_fix", v["fix"])
+        return violations
 
     def _read_fixes(self, output_dir: str) -> dict:
         import json
@@ -265,28 +273,43 @@ class FileOutputReader:
                 pass
         return fixes
 
-    def _extract_severe(self, output_files: list) -> list:
-        import json
-        violations = []
-        for f in output_files:
-            doc = json.loads(f.read_text())
-            for file_obj in doc.get("files", []):
-                file_path = file_obj.get("file_path", "?")
-                for unit in file_obj.get("units", []):
-                    unit_name = unit.get("unit_name", "?")
-                    for violation in unit.get("violations", []):
-                        if violation.get("severity") == "SEVERE":
-                            rule_id = violation.get("rule_id", "")
-                            principle = rule_id.split("-")[0] if "-" in rule_id else rule_id
-                            violations.append({
-                                "principle": principle,
-                                "metric_id": rule_id,
-                                "file_path": file_path,
-                                "unit_name": unit_name,
-                                "issue": f"{rule_id}: {file_path}, unit {unit_name} — SEVERE violation",
-                                "fix": f"Call mcp__docs__load_fix_for_violation({rule_id}) for guidance.",
-                            })
-        return violations
+
+class OutputReading(Protocol):
+    def read_violations(self, output_dir: str, path: str) -> list: ...
+
+
+class FileOutputReader:
+    """Orchestrates violation reading: delegates data extraction, then cleans up.
+
+    Single responsibility: lifecycle management — find files, delegate extraction,
+    clean up. Data extraction is owned by the injected ViolationExtracting dependency.
+    """
+
+    def __init__(
+        self,
+        _path_cls=None,
+        _rmtree_fn=None,
+        _debug: bool = False,
+        _extractor: Optional[ViolationExtracting] = None,
+    ) -> None:
+        import shutil as _shutil
+        self._path_cls = _path_cls if _path_cls is not None else Path
+        self._rmtree_fn = _rmtree_fn if _rmtree_fn is not None else _shutil.rmtree
+        self._debug = _debug
+        self._extractor = _extractor if _extractor is not None else ViolationExtractor()
+
+    def read_violations(self, output_dir: str, path: str) -> list:
+        dir_path = self._path_cls(output_dir)
+        try:
+            output_files = list(dir_path.glob("*/review-output.json"))
+            if not output_files:
+                raise RuntimeError(
+                    f"LLM did not call submit_batch_findings — no output files in {output_dir}"
+                )
+            return self._extractor.extract(output_dir)
+        finally:
+            if not self._debug:
+                self._rmtree_fn(output_dir, ignore_errors=True)
 
 
 class ResponseParsing(Protocol):

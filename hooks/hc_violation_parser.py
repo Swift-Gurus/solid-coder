@@ -1,5 +1,5 @@
 """
-solid-description: Parses raw text into a validated violations list and produces human-readable violation summaries. Converts pipeline scored-result entries into violations format.
+solid-description: Standardizes and formats violation data from multiple sources for quality gate evaluation and reporting.
 solid-category: service
 solid-tags: [hook, parsing]
 """
@@ -68,16 +68,18 @@ class ScoredResultConverter:
         for entry in scored_results:
             if "error" in entry:
                 continue
-            principle = entry.get("principle", entry.get("agent", ""))
             for file_obj in entry.get("files", []):
                 for unit in file_obj.get("units", []):
-                    for finding in unit.get("findings", []):
-                        sev = finding.get("severity", "")
+                    unit_name = unit.get("unit_name", "")
+                    for violation in unit.get("violations", []):
+                        sev = violation.get("severity", "")
                         if sev in ("SEVERE", "MINOR"):
+                            rule_id = violation.get("rule_id", "")
+                            principle = rule_id.split("-")[0] if "-" in rule_id else rule_id
                             violations.append({
                                 "principle": principle,
-                                "metric_id": finding.get("metric_id", ""),
-                                "issue": f"{finding.get('metric_id', '')} {sev} in {unit.get('unit_name', '')}",
-                                "fix": f"Review {finding.get('metric_id', '')} metrics and apply fix guidance.",
+                                "metric_id": rule_id,
+                                "issue": f"{rule_id} {sev} in {unit_name}",
+                                "fix": f"Review {rule_id} metrics and apply fix guidance.",
                             })
         return violations

@@ -93,10 +93,9 @@ class TestScoredResultConverter(unittest.TestCase):
     def setUp(self):
         self.converter = ScoredResultConverter()
 
-    def _make_entry(self, principle, unit_name, metric_id, severity):
+    def _make_entry(self, principle, unit_name, rule_id, severity):
         return {
-            "principle": principle,
-            "files": [{"units": [{"unit_name": unit_name, "findings": [{"metric_id": metric_id, "severity": severity}]}]}],
+            "files": [{"units": [{"unit_name": unit_name, "violations": [{"rule_id": rule_id, "severity": severity}]}]}],
         }
 
     def test_returns_empty_list_for_empty_input(self):
@@ -142,10 +141,9 @@ class TestScoredResultConverter(unittest.TestCase):
         self.assertIn("SEVERE", result[0]["issue"])
         self.assertIn("MyStore", result[0]["issue"])
 
-    def test_falls_back_to_agent_key_when_principle_missing(self):
+    def test_principle_derived_from_rule_id_prefix(self):
         entry = {
-            "agent": "DRY",
-            "files": [{"units": [{"unit_name": "X", "findings": [{"metric_id": "DRY-1", "severity": "SEVERE"}]}]}],
+            "files": [{"units": [{"unit_name": "X", "violations": [{"rule_id": "DRY-1", "severity": "SEVERE"}]}]}],
         }
         result = self.converter.violations_from_scored([entry])
         self.assertEqual(result[0]["principle"], "DRY")

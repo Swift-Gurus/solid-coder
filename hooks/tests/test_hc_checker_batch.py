@@ -16,47 +16,29 @@ from _path_bootstrap import ensure_on_path
 _HERE = Path(__file__).resolve()
 ensure_on_path(_HERE.parents[1], _HERE.parent)
 
-# Cross-package: reuse mcp-server/tests base class and partial output builder
-_MCP_DIR = _HERE.parents[2] / "mcp-server"
-if str(_MCP_DIR) not in sys.path:
-    sys.path.insert(0, str(_MCP_DIR))
-from tests.helpers import SubmitFindingsTestBase, make_partial_output  # noqa: E402
-
 from hc_checker import (  # noqa: E402
     LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader, HealthPromptBuilder,
 )
 from test_utils import make_test_executor  # noqa: E402
 
 
-def _write_scored(output_dir: Path, label: str, doc: dict) -> None:
-    """Write a pre-built scored doc to {output_dir}/{label}/review-output.json."""
+def _write_review_output(output_dir: Path, label: str, violations: list) -> None:
+    """Write a review-output.json in the new unified format."""
     p = output_dir / label
     p.mkdir(parents=True, exist_ok=True)
-    (p / "review-output.json").write_text(json.dumps(doc))
+    (p / "review-output.json").write_text(json.dumps({
+        "timestamp": "2026-01-01T00:00:00Z",
+        "files": [{"file_path": "/tmp/Foo.swift", "units": [{
+            "unit_name": "Foo",
+            "unit_kind": "class",
+            "metrics": {},
+            "violations": violations,
+        }]}],
+    }))
 
 
-def _scored_srp(severity: str = "SEVERE") -> dict:
-    """Extend make_partial_output with scoring/findings arrays for a single SRP unit."""
-    doc = make_partial_output("srp", "Single Responsibility Principle", [
-        {
-            "file_path": "/tmp/Foo.swift",
-            "units": [
-                {
-                    "unit_name": "Foo",
-                    "unit_kind": "class",
-                    "metrics": {},
-                    "scoring": [{"metric_id": "SRP-1", "final_severity": severity}],
-                    "findings": (
-                        [{"metric_id": "SRP-1", "severity": severity,
-                          "band_matched": "test", "metrics": {}}]
-                        if severity in ("SEVERE", "MINOR") else []
-                    ),
-                }
-            ],
-        }
-    ])
-    doc["all_compliant"] = severity not in ("SEVERE", "MINOR")
-    return doc
+def _violation(rule_id: str, severity: str = "SEVERE") -> dict:
+    return {"rule_id": rule_id, "severity": severity}
 
 
 def _make_reviewer() -> LLMReviewer:
@@ -67,66 +49,58 @@ def _make_reviewer() -> LLMReviewer:
     )
 
 
-class TestLLMReviewerBatch(SubmitFindingsTestBase):
-    """Tests using SubmitFindingsTestBase for the temp directory (self.tmp)."""
+class TestLLMReviewerBatch(unittest.TestCase):
+    """Tests using a temp directory via setUp."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    @property
+    def tmp_path(self):
+        return Path(self.tmp.name)
 
     def test_reviewer_reads_violations_from_output_dir(self):
-        _write_scored(Path(self.tmp.name), "SRP", _scored_srp())
+        _write_review_output(self.tmp_path, "SRP", [_violation("SRP-1")])
         violations = _make_reviewer().review("prompt", "/tmp/Foo.swift",
                                               output_dir=self.tmp.name)
         self.assertIsNotNone(violations)
         self.assertGreater(len(violations), 0)
 
     def test_reviewer_violation_contains_principle_and_metric(self):
-        _write_scored(Path(self.tmp.name), "SRP", _scored_srp())
+        _write_review_output(self.tmp_path, "SRP", [_violation("SRP-1")])
         violations = _make_reviewer().review("prompt", "/tmp/Foo.swift",
                                               output_dir=self.tmp.name)
         v = violations[0]
-        self.assertEqual(v["principle"], "Single Responsibility Principle")
+        self.assertEqual(v["principle"], "SRP")
         self.assertIn("metric_id", v)
 
     def test_reviewer_raises_when_no_files_found(self):
         with self.assertRaises(RuntimeError):
             _make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
 
-    def test_reviewer_aggregates_findings_from_multiple_principles(self):
-        _write_scored(Path(self.tmp.name), "SRP", _scored_srp())
-        dry_doc = make_partial_output("dry", "Don't Repeat Yourself", [
-            {
-                "file_path": "/tmp/Foo.swift",
-                "units": [
-                    {
-                        "unit_name": "Foo",
-                        "unit_kind": "class",
-                        "metrics": {},
-                        "scoring": [{"metric_id": "DRY-1", "final_severity": "SEVERE"}],
-                        "findings": [{"metric_id": "DRY-1", "severity": "SEVERE",
-                                      "band_matched": "test", "metrics": {}}],
-                    }
-                ],
-            }
-        ])
-        dry_doc["all_compliant"] = False
-        _write_scored(Path(self.tmp.name), "DRY", dry_doc)
+    def test_reviewer_aggregates_violations_from_multiple_principles(self):
+        _write_review_output(self.tmp_path, "SRP", [_violation("SRP-1")])
+        _write_review_output(self.tmp_path, "DRY", [_violation("DRY-3")])
         violations = _make_reviewer().review("prompt", "/tmp/Foo.swift",
                                               output_dir=self.tmp.name)
         principles = {v["principle"] for v in violations}
-        self.assertIn("Single Responsibility Principle", principles)
-        self.assertIn("Don't Repeat Yourself", principles)
+        self.assertIn("SRP", principles)
+        self.assertIn("DRY", principles)
 
     def test_reviewer_deletes_output_dir_after_reading(self):
-        _write_scored(Path(self.tmp.name), "SRP", _scored_srp())
+        _write_review_output(self.tmp_path, "SRP", [_violation("SRP-1")])
         _make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
         self.assertFalse(Path(self.tmp.name).exists())
 
     def test_reviewer_deletes_output_dir_even_on_error(self):
-        """Cleanup happens via finally even when RuntimeError is raised (no files found)."""
         with self.assertRaises(RuntimeError):
             _make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
         self.assertFalse(Path(self.tmp.name).exists())
 
     def test_compliant_units_produce_no_violations(self):
-        _write_scored(Path(self.tmp.name), "SRP", _scored_srp(severity="COMPLIANT"))
+        _write_review_output(self.tmp_path, "SRP", [])
         violations = _make_reviewer().review("prompt", "/tmp/Foo.swift",
                                               output_dir=self.tmp.name)
         self.assertEqual(violations, [])
@@ -134,7 +108,6 @@ class TestLLMReviewerBatch(SubmitFindingsTestBase):
 
 class TestHealthPromptBuilderOutputDir(unittest.TestCase):
     def test_build_accepts_output_dir_parameter(self):
-        """build() accepts output_dir without error (infrastructure for submit_batch wiring)."""
         builder = HealthPromptBuilder()
         prompt = builder.build(
             principles=[{"content": "rule text"}],

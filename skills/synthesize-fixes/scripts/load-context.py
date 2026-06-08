@@ -2,7 +2,7 @@
 """
 Synthesize-fixes Phase 1: Load Context
 
-Globs by-file/*.output.json, parses all findings, and outputs a summary JSON
+Globs by-file/*.output.json, parses all violations, and outputs a summary JSON
 with file paths, active principle IDs, severity counts, and all-compliant flag.
 
 Usage:
@@ -17,24 +17,23 @@ Output (JSON to stdout):
             "output_json": "/path/to/by-file/Source.swift.output.json",
             "principles": [
                 {
-                    "agent": "srp",
-                    "principle": "Single Responsibility",
+                    "principle": "SRP",
                     "severity": "SEVERE",
-                    "finding_count": 2,
-                    "finding_ids": ["srp-001", "srp-002"],
+                    "violation_count": 2,
+                    "violation_ids": ["SRP-1", "SRP-2"],
                     "has_suggestions": true
                 }
             ]
         }
     ],
-    "active_principles": ["srp", "ocp", "swiftui"],
+    "active_principles": ["SRP", "OCP", "SwiftUI"],
     "summary": {
         "total_files": 3,
-        "files_with_findings": 2,
-        "total_findings": 5,
+        "files_with_violations": 2,
+        "total_violations": 5,
         "severe_count": 3,
         "minor_count": 2,
-        "principles_with_findings": 3
+        "principles_with_violations": 3
     }
 }
 """
@@ -56,20 +55,20 @@ def load_context(output_root):
             "active_principles": [],
             "summary": {
                 "total_files": 0,
-                "files_with_findings": 0,
-                "total_findings": 0,
+                "files_with_violations": 0,
+                "total_violations": 0,
                 "severe_count": 0,
                 "minor_count": 0,
-                "principles_with_findings": 0,
+                "principles_with_violations": 0,
             },
         }
 
     files = []
     active_principles = set()
-    total_findings = 0
+    total_violations = 0
     severe_count = 0
     minor_count = 0
-    files_with_findings = 0
+    files_with_violations = 0
 
     for output_file in output_files:
         try:
@@ -83,25 +82,24 @@ def load_context(output_root):
         principles_data = data.get("principles", [])
 
         file_principles = []
-        file_has_findings = False
+        file_has_violations = False
 
         for p in principles_data:
-            agent = p.get("agent", "")
             principle = p.get("principle", "")
             severity = p.get("severity", "COMPLIANT")
-            findings = p.get("findings", [])
+            violations = p.get("violations", [])
             suggestions = p.get("suggestions", [])
 
-            finding_ids = [fd.get("id", "") for fd in findings]
-            finding_count = len(findings)
+            violation_ids = [v.get("rule_id", "") for v in violations]
+            violation_count = len(violations)
 
-            if severity != "COMPLIANT" and finding_count > 0:
-                active_principles.add(agent)
-                file_has_findings = True
-                total_findings += finding_count
+            if severity != "COMPLIANT" and violation_count > 0:
+                active_principles.add(principle)
+                file_has_violations = True
+                total_violations += violation_count
 
-                for fd in findings:
-                    sev = fd.get("severity", "")
+                for v in violations:
+                    sev = v.get("severity", "")
                     if sev == "SEVERE":
                         severe_count += 1
                     elif sev == "MINOR":
@@ -109,17 +107,16 @@ def load_context(output_root):
 
             file_principles.append(
                 {
-                    "agent": agent,
                     "principle": principle,
                     "severity": severity,
-                    "finding_count": finding_count,
-                    "finding_ids": finding_ids,
+                    "violation_count": violation_count,
+                    "violation_ids": violation_ids,
                     "has_suggestions": len(suggestions) > 0,
                 }
             )
 
-        if file_has_findings:
-            files_with_findings += 1
+        if file_has_violations:
+            files_with_violations += 1
 
         files.append(
             {
@@ -137,11 +134,11 @@ def load_context(output_root):
         "active_principles": active_list,
         "summary": {
             "total_files": len(files),
-            "files_with_findings": files_with_findings,
-            "total_findings": total_findings,
+            "files_with_violations": files_with_violations,
+            "total_violations": total_violations,
             "severe_count": severe_count,
             "minor_count": minor_count,
-            "principles_with_findings": len(active_list),
+            "principles_with_violations": len(active_list),
         },
     }
 

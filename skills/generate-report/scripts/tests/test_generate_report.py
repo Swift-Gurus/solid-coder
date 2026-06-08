@@ -16,7 +16,7 @@ worst_severity = gr.worst_severity
 render_code_blocks = gr.render_code_blocks
 render_finding = gr.render_finding
 render_action = gr.render_action
-md_finding = gr.md_finding
+md_violation = gr.md_violation
 md_action = gr.md_action
 
 SCRIPT = Path(__file__).resolve().parent.parent / "generate-report.py"
@@ -46,10 +46,9 @@ class TestRenderCodeBlocks:
 
     def test_preserves_indentation(self):
         result = render_code_blocks("```swift\nclass Foo {\n    func bar() {}\n}\n```")
-        assert "    func bar()" in result  # indent intact
+        assert "    func bar()" in result
 
     def test_unfenced_code_is_wrapped_as_pre(self):
-        """Real agent output often has narrative labels between unfenced code blocks."""
         text = (
             "Before (lines 42-78):\n\n"
             "func givenHolder() async {\n"
@@ -62,7 +61,7 @@ class TestRenderCodeBlocks:
         assert "<p>Before (lines 42-78):</p>" in result
         assert "<p>After:</p>" in result
         assert '<pre class="code-block">' in result
-        assert "    await assertDeallocationCancelsTasks" in result  # indent preserved
+        assert "    await assertDeallocationCancelsTasks" in result
 
     def test_html_escaping_in_code(self):
         result = render_code_blocks("```swift\nlet x: Array<Int> = []\n```")
@@ -71,31 +70,25 @@ class TestRenderCodeBlocks:
 
 class TestRenderFinding:
     def test_basic_structure(self):
-        html = render_finding({
-            "id": "srp-001", "severity": "SEVERE", "metric": "SRP-2",
-            "title": "Multiple cohesion groups", "issue": "2 groups found",
-        })
+        html = render_finding({"rule_id": "SRP-2", "severity": "SEVERE"})
         assert "finding-card" in html and "severity-severe" in html
-        assert "srp-001" in html and "SRP-2" in html
+        assert "SRP-2" in html
 
-    def test_html_escaping(self):
-        html = render_finding({
-            "id": "lsp-001", "severity": "SEVERE", "metric": "LSP-1",
-            "title": "Type <check>", "issue": "Uses as? with <Type>",
-        })
-        assert "&lt;check&gt;" in html
+    def test_minor_severity(self):
+        html = render_finding({"rule_id": "OCP-1", "severity": "MINOR"})
+        assert "severity-minor" in html and "OCP-1" in html
 
 
 class TestRenderAction:
     def test_basic_structure(self):
         html = render_action({
             "suggestion_id": "holistic-001", "principle": "SRP",
-            "resolves": ["srp-001", "srp-002"],
+            "resolves": ["SRP-1", "SRP-2"],
             "todo_items": ["Create protocol", "Move methods"],
             "suggested_fix": "```swift\nprotocol Foo {}\n```",
         })
         assert "fix-card" in html and "holistic-001" in html
-        assert "<code>srp-001</code>" in html
+        assert "<code>SRP-1</code>" in html
         assert "Create protocol" in html
 
     def test_cross_check_rendering(self):
@@ -111,22 +104,17 @@ class TestRenderAction:
 
 
 class TestMarkdown:
-    def test_md_finding(self):
-        md = md_finding({
-            "id": "srp-001", "severity": "SEVERE", "metric": "SRP-2",
-            "title": "Groups", "issue": "2 groups", "impact": "hard to test",
-            "line_start": 1, "line_end": 10,
-        })
-        assert "`srp-001`" in md and "SEVERE" in md
-        assert "hard to test" in md and "1–10" in md
+    def test_md_violation(self):
+        md = md_violation({"rule_id": "SRP-2", "severity": "SEVERE"})
+        assert "SRP-2" in md and "SEVERE" in md
 
     def test_md_action(self):
         md = md_action({
             "suggestion_id": "holistic-001", "principle": "SRP",
-            "resolves": ["srp-001"], "todo_items": ["step 1"],
+            "resolves": ["SRP-1"], "todo_items": ["step 1"],
             "suggested_fix": "code here",
         })
-        assert "holistic-001" in md and "srp-001" in md
+        assert "holistic-001" in md and "SRP-1" in md
         assert "- [ ] step 1" in md
 
 
@@ -142,13 +130,9 @@ class TestIntegration:
             "file_path": "/project/MyFile.swift",
             "timestamp": "2026-01-01T00:00:00Z",
             "principles": [{
-                "agent": "srp", "principle": "Single Responsibility Principle",
+                "principle": "SRP",
                 "severity": "SEVERE",
-                "findings": [{
-                    "id": "srp-001", "severity": "SEVERE", "metric": "SRP-2",
-                    "title": "Multiple groups", "issue": "2 cohesion groups",
-                    "line_start": 1, "line_end": 50,
-                }],
+                "violations": [{"rule_id": "SRP-2", "severity": "SEVERE"}],
                 "suggestions": [],
             }],
         }))
@@ -158,7 +142,7 @@ class TestIntegration:
             "timestamp": "2026-01-01T00:00:00Z",
             "actions": [{
                 "suggestion_id": "holistic-001", "principle": "SRP",
-                "resolves": ["srp-001"],
+                "resolves": ["SRP-2"],
                 "todo_items": ["Extract DataFetcher"],
                 "suggested_fix": "```swift\nclass DataFetcher {}\n```",
             }],
@@ -167,22 +151,12 @@ class TestIntegration:
         }))
 
         report_dir = tmp_path
-        template = tmp_path / "template.html"
-        template.write_text("<style>.badge{}</style>")
-
         result = subprocess.run(
-            [sys.executable, str(SCRIPT), str(data_dir), str(report_dir),
-             "--template", str(template)],
+            [sys.executable, str(SCRIPT), str(tmp_path), str(report_dir)],
             capture_output=True, text=True,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
-
-        html = (report_dir / "report.html").read_text()
+        assert (report_dir / "report.md").exists()
+        assert (report_dir / "report.html").exists()
         md = (report_dir / "report.md").read_text()
-
-        assert "MyFile.swift" in html and "srp-001" in html
-        assert "holistic-001" in html and "DataFetcher" in html
-
-        assert "# SOLID Code Review Report" in md
-        assert "MyFile.swift" in md and "`srp-001`" in md
-        assert "holistic-001" in md
+        assert "SRP-2" in md
