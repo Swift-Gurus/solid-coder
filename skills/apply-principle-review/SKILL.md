@@ -37,8 +37,8 @@ END
 
 ## Phase 3
 Creating output.
-- [ ] 3.1 **Load output schema** — Read `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json`
-- [ ] 3.2 **Submit findings** — Construct a partial output document matching the output schema structure with `agent: NAME.lowercase()`, `principle: NAME`, `timestamp: ISO-8601 now`, `files: [...units with metrics filled]` but with scoring and findings left empty or absent. Call `mcp__plugin_solid-coder_pipeline__submit_findings` with `{partial_output: <document>, output_path: FOLDER/review-output.json}`. The MCP validates, scores, writes the completed file, and returns a compact summary (principle, total_units, severe_count, minor_count, compliant_count). Log the summary. Do NOT use the Write tool to write review-output.json directly.
+- [ ] 3.1 **Read both schemas** — Read `${CLAUDE_PLUGIN_ROOT}/references/review-output.schema.json` (overall payload structure) and `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json` (required metric variables for this principle). The `<submission-metrics-example>` block in the detection rules already shows the correct shape.
+- [ ] 3.2 **Submit findings** — Construct a partial output with `timestamp: ISO-8601 now` and `files: [...units with metrics: {NAME: {var: {value: N}}}]`. No `agent`, no `principle`, no `violations` in the submission — the server fills those. Call `mcp__plugin_solid-coder_pipeline__submit_findings` with `{partial_output: <document>, output_path: FOLDER/review-output.json}`. The server validates metrics against the per-principle schema, scores each metric via severity bands, writes the output file with `violations: [{rule_id, severity}]`, and returns a compact summary. Log the summary. Do NOT use the Write tool to write review-output.json directly.
 
 ## Constraints
 - Do NOT invent rules — only apply what is in the rules file

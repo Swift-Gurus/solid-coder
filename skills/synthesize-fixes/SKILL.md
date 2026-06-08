@@ -40,7 +40,7 @@ FOR each file that has non-COMPLIANT findings:
 - [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions_for_findings` with
       `findings_path: {OUTPUT_ROOT}/by-file/{filename}.output.json`
       (the validated findings file path from Phase 1 — do NOT construct the findings array manually).
-      The tool reads the file, deduplicates by `(principle, metric_id)`, and returns all needed fix
+      The tool reads the file, deduplicates by `(principle, rule_id)`, and returns all needed fix
       strategies concatenated. If the call fails, log and continue (fail-open — Phase 4 can load individually).
 
 ### 3.3 Draft Fix Actions
@@ -54,13 +54,13 @@ FOR each file that has non-COMPLIANT findings:
         - SRP extracts types that already have proper injection.
 
 FOR each unit with findings, FOR each finding **in the order above**:
-- [ ] Use the fix strategy returned in 3.2 for the finding's `(principle, metric_id)` pair
+- [ ] Use the fix strategy returned in 3.2 for the finding's `(principle, rule_id)` pair
 - [ ] If the fix involves extracting a new type or creating a new protocol — call `mcp__plugin_solid-coder_pipeline__search_codebase` with `tags` containing the proposed type name and responsibility keywords. If a match exists, prefer adapting it over creating new. Record the reuse decision in `todo_items`.
 - [ ] Generate a draft action:
   - `suggestion_id`: e.g., `draft-srp-001`
   - `principle`: the owning principle
-  - `metric_id`: the specific metric that triggered (e.g., `SRP-2`)
-  - `resolves[]`: finding IDs for this `(principle, metric_id)` pair only
+  - `rule_id`: the specific metric that triggered (e.g., `SRP-2`)
+  - `resolves[]`: finding IDs for this `(principle, rule_id)` pair only
   - `suggested_fix`: full code snippets (protocols, extracted types, modified class, before/after)
   - `todo_items`: concrete implementable steps
 - [ ] Do NOT consider other principles — focus on one metric at a time
@@ -94,8 +94,8 @@ FOR each cross-check principle:
 
 ### 4.3 Patch Failures
 IF any cross-check fails:
-- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions` with the relevant `metric_id`
-      (e.g. `metric_id: "OCP-1"`). The principle is resolved automatically. Use context
+- [ ] Call `mcp__plugin_solid-coder_docs__load_fix_instructions` with the relevant `rule_id`
+      (e.g. `rule_id: "OCP-1"`). The principle is resolved automatically. Use context
       from Phase 3.2 if already loaded for this run.
 - [ ] Apply its standard fix pattern to patch the action's `suggested_fix`:
   - **SRP fail** → split the extracted type further along cohesion group boundaries
@@ -156,7 +156,7 @@ FOR EVERY suggested_fix that was **merged in step 5.1**:
     - [ ] 6.1 Read the proposed code in the action's `suggested_fix`
     - [ ] 6.2 Apply `rule.md` of every loaded principle to the merged code
     - [ ] 6.3 IF violations found:
-        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation(metric_id=...)` for each violation's metric_id (no principle needed)
+        - [ ] 6.3.1 Adjust `suggested_fix` using fix patterns from `mcp__plugin_solid-coder_docs__load_fix_for_violation(rule_id=...)` for each violation's rule_id (no principle needed)
         - [ ] 6.3.2 Adjust `todo_items` to reflect the changes
         - [ ] 6.3.3 Re-validate the adjusted fix against all loaded principles
     - [ ] 6.4 IF still fails → move affected findings to `unresolved[]` with reason explaining why the patch was insufficient
@@ -176,7 +176,7 @@ END (per fix)
     - `depends_on[]`: action IDs that must run first
     - `cross_check_results[]`: per-principle verification results
     - `note`: explanation of design decisions, merges, or patches applied
-  - `unresolved[]`: findings no action resolves, each with `finding_id` and `reason`
+  - `unresolved[]`: violations no action resolves, each with `rule_id` and `reason`
   - `conflicts_detected[]`: cross-principle conflicts found and how resolved
 - [ ] 7.3 Print summary:
 
@@ -194,4 +194,4 @@ END (per fix)
 - `todo_items` must be concrete and implementable (not vague)
 - Preserve existing public API of the source file
 - If all findings for a file are COMPLIANT, write an empty plan (no actions) and skip
-- Every finding MUST appear in exactly one of: an action's `resolves`, or `unresolved`
+- Every violation MUST appear in exactly one of: an action's `resolves`, or `unresolved`

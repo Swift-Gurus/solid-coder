@@ -80,9 +80,8 @@ The key mechanism in Phase 2 is **dynamic task creation**: the review instructio
 
 ### Phase 3: Output
 
-1. **Load output schema** — Read `${CLAUDE_PLUGIN_ROOT}/references/principles/NAME/review/output.schema.json`.
-2. **Generate output** — Produce structured JSON matching the schema. One finding per triggered metric.
-3. **Write output** — Write to `OUTPUT_PATH/NAME/review-output.json`.
+1. **Read both schemas** — `references/review-output.schema.json` (overall payload structure) and `references/principles/NAME/review/output.schema.json` (required metric variables for this principle).
+2. **Submit to server** — Construct a partial output with `timestamp`, `files`, and per-unit `metrics: {NAME: {var: {value: N}}}`. Call `mcp__plugin_solid-coder_pipeline__submit_findings`. The server validates metrics, scores severity bands, writes the output file with `violations: [{rule_id, severity}]`, and returns a compact summary. Do NOT use the Write tool to write review-output.json directly — the server is authoritative.
 
 ## Inputs / Outputs
 
