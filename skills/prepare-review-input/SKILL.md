@@ -2,7 +2,7 @@
 name: prepare-review-input
 description: Normalize input (changes, folder, files, class, buffer) into structured review-input.json for review agents.
 argument-hint: [changes|folder|file|files|buffer] [target]
-allowed-tools: Read, Grep, Glob, Bash, Write
+allowed-tools: Read, Grep, Glob, Bash, Write, mcp__plugin_solid-coder_pipeline__get_output_path
 user-invocable: false
 ---
 
