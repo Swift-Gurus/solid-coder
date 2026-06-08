@@ -75,7 +75,15 @@
       "Bash(sed -n '41,48p' hooks/hc_checker.py)",
       "Bash(sed -n '207,214p' hooks/hook_utils.py)",
       "Bash(echo \"PID=$!\")",
-      "Bash(env)"
+      "Bash(env)",
+      "Bash(git stash *)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder diff --stat HEAD)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder status --short)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add hooks/hc_checker.py hooks/hc_checker_factory.py hooks/hc_config.py hooks/hc_config_core.py hooks/hc_config_llm.py hooks/hc_runner_factory.py hooks/tests/test_hc_config.py .claude/solid-coder.toml)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m ' *)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add mcp-server/lib/gateway_tools.py)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add agents/apply-principle-review-agent.md skills/apply-principle-review/SKILL.md tests/harness/apply_flow_invoker.py)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m \"feat: add submit_batch_findings and submit_fix to apply-principle-review agent/skill/harness\")"
     ]
   }
 }
