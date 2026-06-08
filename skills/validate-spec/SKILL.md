@@ -5,7 +5,7 @@ description: >-
   AC-architecture alignment, and what makes a spec concrete vs vague.
   TRIGGER when: checking if a spec is ready for implementation, after editing a spec's content, or when build-spec reaches its buildability gate.
 argument-hint: <spec-file-path>
-allowed-tools: Read, Grep, Glob, AskUserQuestion
+allowed-tools: Read, Grep, Glob, AskUserQuestion, mcp__plugin_solid-coder_pipeline__get_output_path
 user-invocable: true
 context: fork
 model: sonnet

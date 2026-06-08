@@ -7,7 +7,7 @@ description: >-
   does on round of refactoring for self-validation
   TRIGGER when: user says "implement spec", "implement" and passes spec file  
 argument-hint: <spec-file-path> [--verbose] [--iterations N]
-allowed-tools: Read, Glob, Bash, Write, Edit, AskUserQuestion, Skill, TaskCreate, TaskUpdate
+allowed-tools: Read, Glob, Bash, Write, Edit, AskUserQuestion, Skill, TaskCreate, TaskUpdate, mcp__plugin_solid-coder_pipeline__get_output_path
 user-invocable: true
 ---
 

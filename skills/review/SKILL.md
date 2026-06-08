@@ -2,7 +2,7 @@
 name: review
 description: Run a code review via the refactor pipeline in review-only mode, then produce MD + HTML reports from the review findings and synthesized fix plans.
 argument-hint: [changes|folder|file|files|buffer] [target] [--verbose]
-allowed-tools: Read, Glob, Bash, Write, Skill
+allowed-tools: Read, Glob, Bash, Write, Skill, mcp__plugin_solid-coder_pipeline__get_output_path
 tools: Read, Glob, Bash, Write, Skill
 user-invocable: true
 ---
