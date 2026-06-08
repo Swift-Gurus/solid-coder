@@ -1,188 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SRP Review Output",
+  "title": "SRP Metrics",
+  "description": "Schema for the 'SRP' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": ["verb_count", "cohesion_groups", "stakeholder_count"],
   "properties": {
-    "agent": { "const": "srp" },
-    "principle": { "const": "Single Responsibility Principle" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "documentation_sources": {
-      "type": "array",
-      "items": { "type": "string" }
+    "verb_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SRP-1/SRP-3: total number of distinct verbs (responsibilities) in the unit" },
+        "additional-info": { "description": "Optional verb table: [{method, verb}]" }
+      }
     },
-    "files": {
-      "type": "array",
-      "description": "Per-file analysis results",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": {
-            "type": "string",
-            "description": "Full path to the reviewed file"
-          },
-          "units": {
-            "type": "array",
-            "description": "Per-unit analysis results within this file",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics", "scoring", "findings"],
-              "properties": {
-                "unit_name": {
-                  "type": "string",
-                  "description": "Name of the analyzed unit (e.g., class name, struct name)"
-                },
-                "unit_kind": {
-                  "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension"],
-                  "description": "Kind of the analyzed unit"
-                },
-                "metrics": {
-                  "type": "object",
-                  "required": ["verbs", "cohesion_groups", "stakeholders", "cross_reference"],
-                  "properties": {
-                    "verbs": {
-                      "type": "object",
-                      "required": ["count", "table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["method", "verb"],
-                            "properties": {
-                              "method": { "type": "string" },
-                              "verb": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "cohesion_groups": {
-                      "type": "object",
-                      "required": ["count", "groups", "method_variable_table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "method_variable_table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["method", "variables"],
-                            "properties": {
-                              "method": { "type": "string" },
-                              "variables": {
-                                "type": "array",
-                                "items": { "type": "string" }
-                              }
-                            }
-                          }
-                        },
-                        "groups": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["name", "variables", "methods"],
-                            "properties": {
-                              "name": { "type": "string" },
-                              "variables": {
-                                "type": "array",
-                                "items": { "type": "string" }
-                              },
-                              "methods": {
-                                "type": "array",
-                                "items": { "type": "string" }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "stakeholders": {
-                      "type": "object",
-                      "required": ["count", "table"],
-                      "properties": {
-                        "count": { "type": "integer" },
-                        "table": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "required": ["verb", "stakeholder"],
-                            "properties": {
-                              "verb": { "type": "string" },
-                              "stakeholder": { "type": "string" }
-                            }
-                          }
-                        }
-                      }
-                    },
-                    "cross_reference": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "required": ["group", "variables", "verbs", "stakeholder"],
-                        "properties": {
-                          "group": { "type": "string" },
-                          "variables": {
-                            "type": "array",
-                            "items": { "type": "string" }
-                          },
-                          "verbs": {
-                            "type": "array",
-                            "items": { "type": "string" }
-                          },
-                          "stakeholder": { "type": "string" }
-                        }
-                      }
-                    }
-                  }
-                },
-                "scoring": {
-                  "type": "object",
-                  "required": ["cohesion_severity", "verb_severity", "stakeholder_count", "final_severity"],
-                  "properties": {
-                    "cohesion_severity": { "type": "string" },
-                    "verb_severity": { "type": "string" },
-                    "stakeholder_count": { "type": "integer" },
-                    "final_severity": {
-                      "type": "string",
-                      "enum": ["COMPLIANT", "MINOR", "SEVERE"]
-                    }
-                  }
-                },
-                "findings": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": ["id", "severity", "metric", "title", "issue"],
-                    "properties": {
-                      "id": {
-                        "type": "string",
-                        "pattern": "^srp-\\d{3}$"
-                      },
-                      "severity": {
-                        "type": "string",
-                        "enum": ["SEVERE", "MINOR"]
-                      },
-                      "metric": {
-                        "type": "string",
-                        "enum": ["SRP-1", "SRP-2", "SRP-3"],
-                        "description": "Which metric triggered this finding"
-                      },
-                      "line_start": { "type": "integer" },
-                      "line_end": { "type": "integer" },
-                      "title": { "type": "string" },
-                      "issue": { "type": "string" },
-                      "impact": { "type": "string" },
-                      "rule_source": { "type": "string" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+    "cohesion_groups": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SRP-2: number of disjoint cohesion groups (sets of methods sharing instance variables)" },
+        "additional-info": { "description": "Optional group detail: {groups: [{name, variables, methods}], method_variable_table: [{method, variables}]}" }
+      }
+    },
+    "stakeholder_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SRP-1/SRP-3: number of distinct stakeholders served by the unit" },
+        "additional-info": { "description": "Optional stakeholder table: [{verb, stakeholder}]" }
       }
     }
   }

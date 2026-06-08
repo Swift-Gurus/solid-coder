@@ -43,17 +43,17 @@ def iter_principle_results(output_root: str):
             yield principle_dir.name, 0, 0, [], str(review_path), str(exc)
             continue
         severe = minor = 0
-        minor_findings = []
+        minor_violations = []
         for file_entry in data.get("files", []):
             for unit in file_entry.get("units", []):
-                for finding in unit.get("findings", []):
-                    sev = finding.get("severity", "COMPLIANT")
+                for violation in unit.get("violations", []):
+                    sev = violation.get("severity", "COMPLIANT")
                     if sev == "SEVERE":
                         severe += 1
                     elif sev == "MINOR":
                         minor += 1
-                        minor_findings.append(finding)
-        yield principle_dir.name, severe, minor, minor_findings, str(review_path), None
+                        minor_violations.append(violation)
+        yield principle_dir.name, severe, minor, minor_violations, str(review_path), None
 
 
 def check_severity(output_root: str) -> dict:
@@ -82,7 +82,7 @@ def check_severity(output_root: str) -> dict:
         "total": total,
         "principles_count": principles_count,
         "summary": (
-            f"{total} findings: {severe_count} severe, {minor_count} minor "
+            f"{total} violations: {severe_count} severe, {minor_count} minor "
             f"across {principles_count} principles"
         ),
     }

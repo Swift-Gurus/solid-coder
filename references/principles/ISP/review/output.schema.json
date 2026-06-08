@@ -1,54 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ISP Review Output",
+  "title": "ISP Metrics",
+  "description": "Schema for the 'ISP' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": ["width", "min_coverage", "cohesion_groups"],
   "properties": {
-    "agent": { "const": "isp" },
-    "principle": { "const": "Interface Segregation Principle" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": { "type": "string" },
-                "metrics": {
-                  "type": "object",
-                  "required": ["width", "min_coverage", "cohesion_groups"],
-                  "properties": {
-                    "width": {
-                      "type": "integer",
-                      "description": "Total number of methods/properties declared in the protocol"
-                    },
-                    "min_coverage": {
-                      "type": "integer",
-                      "minimum": 0,
-                      "maximum": 100,
-                      "description": "Minimum meaningful implementation coverage across all conformers (0–100)"
-                    },
-                    "cohesion_groups": {
-                      "type": "integer",
-                      "description": "Number of disjoint method-usage groups across conformers"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "width": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "ISP-1: total number of methods/properties declared in the protocol" },
+        "additional-info": {}
+      }
+    },
+    "min_coverage": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 0, "maximum": 100, "description": "ISP-2: minimum meaningful implementation coverage across all conformers (0-100)" },
+        "additional-info": {}
+      }
+    },
+    "cohesion_groups": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "ISP-3: number of disjoint method-usage groups across conformers" },
+        "additional-info": {}
       }
     }
   }

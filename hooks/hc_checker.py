@@ -231,7 +231,7 @@ class FileOutputReader:
             violations = self._extract_severe(output_files)
             fixes = self._read_fixes(output_dir)
             for v in violations:
-                key = self._violation_key(v["metric_id"], v["file_path"], v["unit_name"])
+                key = self._violation_key(v.get("metric_id", ""), v["file_path"], v["unit_name"])
                 if key in fixes:
                     v["fix"] = fixes[key].get("suggested_fix", v["fix"])
             return violations
@@ -240,11 +240,11 @@ class FileOutputReader:
                 self._rmtree_fn(output_dir, ignore_errors=True)
 
     @staticmethod
-    def _violation_key(metric_id: str, file_path: str, unit_name: str) -> str:
+    def _violation_key(rule_id: str, file_path: str, unit_name: str) -> str:
         import re as _re
         safe_path = _re.sub(r'[^\w.-]', '_', file_path)
         safe_unit = _re.sub(r'[^\w.-]', '_', unit_name)
-        return f"{metric_id}__{safe_path}__{safe_unit}"
+        return f"{rule_id}__{safe_path}__{safe_unit}"
 
     def _read_fixes(self, output_dir: str) -> dict:
         import json
@@ -256,7 +256,9 @@ class FileOutputReader:
             try:
                 data = json.loads(fp.read_text(encoding="utf-8"))
                 key = self._violation_key(
-                    data["metric_id"], data["file_path"], data["unit_name"]
+                    data.get("rule_id", data.get("metric_id", "")),
+                    data["file_path"],
+                    data["unit_name"],
                 )
                 fixes[key] = data
             except (Exception,):
@@ -268,35 +270,23 @@ class FileOutputReader:
         violations = []
         for f in output_files:
             doc = json.loads(f.read_text())
-            principle = doc.get("principle", doc.get("agent", ""))
             for file_obj in doc.get("files", []):
                 file_path = file_obj.get("file_path", "?")
                 for unit in file_obj.get("units", []):
                     unit_name = unit.get("unit_name", "?")
-                    for finding in unit.get("findings", []):
-                        if finding.get("severity") == "SEVERE":
-                            mid = finding.get("metric_id", "")
-                            band = finding.get("band_matched", "")
-                            metrics = finding.get("metrics", {})
-                            desc = self._describe_finding(band, metrics)
+                    for violation in unit.get("violations", []):
+                        if violation.get("severity") == "SEVERE":
+                            rule_id = violation.get("rule_id", "")
+                            principle = rule_id.split("-")[0] if "-" in rule_id else rule_id
                             violations.append({
                                 "principle": principle,
-                                "metric_id": mid,
+                                "metric_id": rule_id,
                                 "file_path": file_path,
                                 "unit_name": unit_name,
-                                "issue": f"{mid}: {file_path}, unit {unit_name} — {desc}",
-                                "fix": f"Call mcp__docs__load_fix_for_violation({mid}) for guidance.",
+                                "issue": f"{rule_id}: {file_path}, unit {unit_name} — SEVERE violation",
+                                "fix": f"Call mcp__docs__load_fix_for_violation({rule_id}) for guidance.",
                             })
         return violations
-
-    def _describe_finding(self, band: str, metrics: dict) -> str:
-        """Generate a human-readable description from the band condition and actual metric values."""
-        if not band:
-            return "SEVERE violation detected"
-        if metrics:
-            measured = ", ".join(f"{k}={v}" for k, v in metrics.items())
-            return f"{band} (measured: {measured})"
-        return f"band triggered: {band}"
 
 
 class ResponseParsing(Protocol):

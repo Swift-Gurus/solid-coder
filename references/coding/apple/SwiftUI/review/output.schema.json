@@ -1,96 +1,99 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SwiftUI Review Output",
+  "title": "SwiftUI Metrics",
+  "description": "Schema for the 'SwiftUI' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": [
+    "body_nesting_depth",
+    "view_expression_count",
+    "impure_count",
+    "max_modifier_chain",
+    "vm_injection_style",
+    "preview_only_count",
+    "views_without_preview_count",
+    "bad_accessibility_count",
+    "fixed_frame_count",
+    "over_isolated_count"
+  ],
   "properties": {
-    "agent": { "const": "swiftui" },
-    "principle": { "const": "SwiftUI Best Practices" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": {
-                  "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension"]
-                },
-                "metrics": {
-                  "type": "object",
-                  "description": "Flat scalar metrics used directly by the severity-band scorer. Submit 0 for each metric where no violation was found.",
-                  "required": [
-                    "body_nesting_depth",
-                    "view_expression_count",
-                    "impure_count",
-                    "max_modifier_chain",
-                    "vm_injection_style",
-                    "preview_only_count",
-                    "views_without_preview_count",
-                    "bad_accessibility_count",
-                    "fixed_frame_count",
-                    "over_isolated_count"
-                  ],
-                  "properties": {
-                    "body_nesting_depth": {
-                      "type": "integer",
-                      "description": "SUI-1: max @ViewBuilder nesting depth in body and all view-returning computed properties"
-                    },
-                    "view_expression_count": {
-                      "type": "integer",
-                      "description": "SUI-1: count of distinct view expressions (Text, Image, HStack, ForEach, etc.) — modifiers excluded"
-                    },
-                    "impure_count": {
-                      "type": "integer",
-                      "description": "SUI-2: count of methods/computed properties classified as IMPURE (data fetch, transform, format, validate, compute)"
-                    },
-                    "max_modifier_chain": {
-                      "type": "integer",
-                      "description": "SUI-3: highest number of chained modifiers on any nested child view inside a @ViewBuilder closure"
-                    },
-                    "vm_injection_style": {
-                      "type": "string",
-                      "enum": ["protocol", "concrete", "none"],
-                      "description": "SUI-4: how the ViewModel dependency is injected — 'protocol' (compliant), 'concrete' (violation), 'none' (no VM present)"
-                    },
-                    "preview_only_count": {
-                      "type": "integer",
-                      "description": "SUI-5: count of file-scope views/types only referenced from #Preview or PreviewProvider"
-                    },
-                    "views_without_preview_count": {
-                      "type": "integer",
-                      "description": "SUI-6: count of file-scope View structs with no #Preview or PreviewProvider instantiation anywhere"
-                    },
-                    "bad_accessibility_count": {
-                      "type": "integer",
-                      "description": "SUI-7: count of container views with .accessibilityIdentifier but missing .accessibilityElement(children:)"
-                    },
-                    "fixed_frame_count": {
-                      "type": "integer",
-                      "description": "SUI-8: count of .frame() calls with literal numeric width or height values"
-                    },
-                    "over_isolated_count": {
-                      "type": "integer",
-                      "description": "SUI-9: count of types/protocols with @MainActor that have background-safe members or nonisolated escape hatches"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "body_nesting_depth": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-1: max @ViewBuilder nesting depth in body and all view-returning computed properties" },
+        "additional-info": {}
+      }
+    },
+    "view_expression_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-1: count of distinct view expressions (Text, Image, HStack, ForEach, etc.) — modifiers excluded" },
+        "additional-info": {}
+      }
+    },
+    "impure_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-2: count of methods/computed properties classified as IMPURE (data fetch, transform, format, validate, compute)" },
+        "additional-info": {}
+      }
+    },
+    "max_modifier_chain": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-3: highest number of chained modifiers on any nested child view inside a @ViewBuilder closure" },
+        "additional-info": {}
+      }
+    },
+    "vm_injection_style": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "string", "enum": ["protocol", "concrete", "none"], "description": "SUI-4: how the ViewModel dependency is injected — 'protocol' (compliant), 'concrete' (violation), 'none' (no VM present)" },
+        "additional-info": {}
+      }
+    },
+    "preview_only_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-5: count of file-scope views/types only referenced from #Preview or PreviewProvider" },
+        "additional-info": {}
+      }
+    },
+    "views_without_preview_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-6: count of file-scope View structs with no #Preview or PreviewProvider instantiation anywhere" },
+        "additional-info": {}
+      }
+    },
+    "bad_accessibility_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-7: count of container views with .accessibilityIdentifier but missing .accessibilityElement(children:)" },
+        "additional-info": {}
+      }
+    },
+    "fixed_frame_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-8: count of .frame() calls with literal numeric width or height values" },
+        "additional-info": {}
+      }
+    },
+    "over_isolated_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "SUI-9: count of types/protocols with @MainActor that have background-safe members or nonisolated escape hatches" },
+        "additional-info": {}
       }
     }
   }

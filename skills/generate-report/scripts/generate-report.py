@@ -113,13 +113,13 @@ def aggregate_data(root):
                 if existing is None:
                     principle_entries[key] = {
                         **pr,
-                        "findings": {f["id"]: f for f in pr.get("findings", []) if f.get("id")},
+                        "violations": {v["rule_id"]: v for v in pr.get("violations", []) if v.get("rule_id")},
                     }
                 else:
                     existing["severity"] = pr.get("severity", existing.get("severity"))
-                    for f in pr.get("findings", []):
-                        if f.get("id"):
-                            existing["findings"][f["id"]] = f
+                    for v in pr.get("violations", []):
+                        if v.get("rule_id"):
+                            existing["violations"][v["rule_id"]] = v
 
     # Flatten into file_data list
     file_data = []
@@ -128,7 +128,7 @@ def aggregate_data(root):
         for (fp_key, _), entry in principle_entries.items():
             if fp_key != fp:
                 continue
-            flat = {**entry, "findings": list(entry["findings"].values())}
+            flat = {**entry, "violations": list(entry["violations"].values())}
             principles.append(flat)
         file_data.append({
             "file_path": fp,
@@ -180,17 +180,10 @@ def aggregate_data(root):
 # ────────────────────────────── Markdown ──────────────────────────────
 
 
-def md_finding(f):
-    sev = f.get("severity", "")
-    lines = []
-    lines.append(f"- **`{f.get('id','')}`** · **{sev}** · _{f.get('metric','')}_ — {f.get('title','')}")
-    if f.get("issue"):
-        lines.append(f"  - Issue: {f['issue']}")
-    if f.get("impact"):
-        lines.append(f"  - Impact: {f['impact']}")
-    if f.get("line_start") and f.get("line_end"):
-        lines.append(f"  - Lines: {f['line_start']}–{f['line_end']}")
-    return "\n".join(lines)
+def md_violation(v):
+    rule_id = v.get("rule_id", "")
+    sev = v.get("severity", "")
+    return f"- **`{rule_id}`** · **{sev}**"
 
 
 def md_action(a):
@@ -230,12 +223,12 @@ def md_file_section(fd, plan):
 
     for p in principles:
         out.append(f"### {p.get('principle','')} — {p.get('severity','')}")
-        findings = p.get("findings", [])
+        findings = p.get("violations", [])
         if not findings:
             out.append("_No violations._\n")
         else:
             for f in findings:
-                out.append(md_finding(f))
+                out.append(md_violation(f))
             out.append("")
 
     if plan:
@@ -279,7 +272,7 @@ def render_markdown(file_data, plans, output_root, timestamp):
         filename = os.path.basename(file_path)
         principles = fd.get("principles", [])
         ws = worst_severity([p.get("severity", "COMPLIANT") for p in principles])
-        total_findings = sum(len(p.get("findings", [])) for p in principles)
+        total_findings = sum(len(p.get("violations", [])) for p in principles)
         plan = plans.get(plan_key(file_path))
         total_actions = len(plan.get("actions", [])) if plan else 0
         lines.append(f"| `{filename}` | **{ws}** | {total_findings} | {total_actions} |")
@@ -342,29 +335,15 @@ def render_code_blocks(text):
     return "\n".join(html)
 
 
-def render_finding(f):
-    sev = f.get("severity", "")
+def render_finding(v):
+    """Render a violation card for the HTML report."""
+    rule_id = v.get("rule_id", "")
+    sev = v.get("severity", "")
     card_class = f"severity-{sev.lower()}"
-    lines_html = ""
-    if f.get("line_start") and f.get("line_end"):
-        lines_html = (
-            f'<p><span class="label">Lines:</span> '
-            f'<span class="line-range">{f["line_start"]}&ndash;{f["line_end"]}</span></p>'
-        )
-    impact_html = ""
-    if f.get("impact"):
-        impact_html = f'<p><span class="label">Impact:</span> {escape(f["impact"])}</p>'
     return f"""<div class="finding-card {card_class}">
       <div class="finding-header">
-        <span class="finding-id">{escape(f.get("id", ""))}</span>
+        <span class="finding-id">{escape(rule_id)}</span>
         <span class="badge {badge_class(sev)}">{escape(sev)}</span>
-        <span class="metric-tag">{escape(f.get("metric", ""))}</span>
-        <span class="finding-title">{escape(f.get("title", ""))}</span>
-      </div>
-      <div class="finding-body">
-        <p><span class="label">Issue:</span> {escape(f.get("issue", ""))}</p>
-        {impact_html}
-        {lines_html}
       </div>
     </div>"""
 
@@ -412,7 +391,7 @@ def render_principle(p):
       {escape(name)}
       <span class="badge {badge_class(sev)}">{escape(sev)}</span>
     </div>"""
-    findings = p.get("findings", [])
+    findings = p.get("violations", [])
     html += '<h3 class="section-heading">Findings</h3>'
     if not findings:
         html += '<p class="no-findings">No violations found.</p>'
@@ -461,7 +440,7 @@ def render_html(file_data, plans, output_root, timestamp, css):
         filename = os.path.basename(file_path)
         principles = fd.get("principles", [])
         ws = worst_severity([p.get("severity", "COMPLIANT") for p in principles])
-        total_findings = sum(len(p.get("findings", [])) for p in principles)
+        total_findings = sum(len(p.get("violations", [])) for p in principles)
         plan = plans.get(plan_key(file_path))
         total_actions = len(plan.get("actions", [])) if plan else 0
         summary_rows.append(

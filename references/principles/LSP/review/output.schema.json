@@ -1,56 +1,40 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "LSP Review Output",
+  "title": "LSP Metrics",
+  "description": "Schema for the 'LSP' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": ["type_checks", "contract_violations", "fatal_error_methods", "empty_methods"],
   "properties": {
-    "agent": { "const": "lsp" },
-    "principle": { "const": "Liskov Substitution Principle" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": { "type": "string" },
-                "metrics": {
-                  "type": "object",
-                  "required": ["type_checks", "contract_violations", "fatal_error_methods", "empty_methods"],
-                  "properties": {
-                    "type_checks": {
-                      "type": "integer",
-                      "description": "Net count of runtime type checks (is, as?, as!, type(of:)) after removing framework-forced exceptions"
-                    },
-                    "contract_violations": {
-                      "type": "integer",
-                      "description": "Count of LSP-2 contract violations for class inheritance (strengthened preconditions, weakened postconditions, broken invariants)"
-                    },
-                    "fatal_error_methods": {
-                      "type": "integer",
-                      "description": "Count of protocol methods implemented with fatalError/crash assertions"
-                    },
-                    "empty_methods": {
-                      "type": "integer",
-                      "description": "Count of empty (non-fatal) protocol method implementations"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "type_checks": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "LSP-1: net count of runtime type checks (is, as?, as!, type(of:)) after removing framework-forced exceptions" },
+        "additional-info": {}
+      }
+    },
+    "contract_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "LSP-2: count of contract violations for class inheritance (strengthened preconditions, weakened postconditions, broken invariants)" },
+        "additional-info": {}
+      }
+    },
+    "fatal_error_methods": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "LSP-3: count of protocol methods implemented with fatalError/crash assertions" },
+        "additional-info": {}
+      }
+    },
+    "empty_methods": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "LSP-3: count of empty (non-fatal) protocol method implementations" },
+        "additional-info": {}
       }
     }
   }

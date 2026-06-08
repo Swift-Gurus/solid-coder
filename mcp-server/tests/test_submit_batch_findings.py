@@ -47,7 +47,9 @@ class TestSubmitBatchFindings(SubmitFindingsTestBase):
         expected = Path(self.temp_path("SRP", "review-output.json"))
         self.assertTrue(expected.exists())
         doc = json.loads(expected.read_text())
-        self.assertEqual(doc.get("principle"), "Single Responsibility Principle")
+        # New format: no top-level principle field; files array is present
+        self.assertIn("files", doc)
+        self.assertIn("timestamp", doc)
 
     def test_batch_fails_fast_on_invalid_schema_returns_error(self):
         result = self.handler.submit_batch_findings(

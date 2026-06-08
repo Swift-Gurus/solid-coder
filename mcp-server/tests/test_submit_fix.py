@@ -1,5 +1,4 @@
-"""
-solid-description: Tests that submit_fix batch persists fixes, enforces coverage, and aggregates results.
+"""solid-description: Tests that proposed fixes are validated for complete violation coverage and appropriate status is returned.
 solid-category: unit-test
 """
 
@@ -9,24 +8,26 @@ from pathlib import Path
 from tests.helpers import SubmitFindingsTestBase
 
 
-def _write_review_output(tmp_dir: str, label: str, findings: list) -> None:
+def _write_review_output(tmp_dir: str, label: str, violations: list) -> None:
     p = Path(tmp_dir) / label
     p.mkdir(parents=True, exist_ok=True)
     (p / "review-output.json").write_text(json.dumps({
-        "principle": "Single Responsibility Principle",
-        "agent": "srp",
+        "timestamp": "2026-01-01T00:00:00Z",
         "files": [{"file_path": "/tmp/Foo.swift", "units": [{
-            "unit_name": "Foo", "unit_kind": "class", "findings": findings,
+            "unit_name": "Foo",
+            "unit_kind": "class",
+            "metrics": {},
+            "violations": violations,
         }]}],
     }))
 
 
-def _severe(metric_id: str) -> dict:
-    return {"metric_id": metric_id, "severity": "SEVERE", "band_matched": "test", "metrics": {}}
+def _severe(rule_id: str) -> dict:
+    return {"rule_id": rule_id, "severity": "SEVERE"}
 
 
-def _fix(metric_id: str, text: str = "Fix it.") -> dict:
-    return {"metric_id": metric_id, "file_path": "/tmp/Foo.swift", "unit_name": "Foo", "suggested_fix": text}
+def _fix(rule_id: str, text: str = "Fix it.") -> dict:
+    return {"rule_id": rule_id, "file_path": "/tmp/Foo.swift", "unit_name": "Foo", "suggested_fix": text}
 
 
 class TestSubmitFix(SubmitFindingsTestBase):
@@ -60,7 +61,7 @@ class TestSubmitFix(SubmitFindingsTestBase):
         self.assertEqual(vwf[0]["suggested_fix"], "Extract DbManager.")
 
     def test_submit_fix_returns_complete_when_no_violations_exist(self):
-        result = self.handler.submit_fix(self.tmp.name, [_fix("SRP-2")])
+        result = self.handler.submit_fix(self.tmp.name, [])
         self.assertTrue(result.get("complete"))
         self.assertEqual(result.get("violations_with_fixes"), [])
 
@@ -70,7 +71,7 @@ class TestSubmitFix(SubmitFindingsTestBase):
 
     def test_submit_fix_returns_error_on_missing_required_field(self):
         _write_review_output(self.tmp.name, "SRP", [_severe("SRP-2")])
-        result = self.handler.submit_fix(self.tmp.name, [{"metric_id": "SRP-2", "file_path": "/tmp/Foo.swift"}])
+        result = self.handler.submit_fix(self.tmp.name, [{"rule_id": "SRP-2", "file_path": "/tmp/Foo.swift"}])
         self.assertIn("error", result)
 
     def test_submit_fix_empty_list_returns_error_when_violations_exist(self):

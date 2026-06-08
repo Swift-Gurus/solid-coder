@@ -1,75 +1,63 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Unit Testing Review Output",
+  "title": "Unit Testing Metrics",
+  "description": "Schema for the 'Unit Testing' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": [
+    "isolation_violations",
+    "structure_violations",
+    "naming_violations",
+    "test_double_violations",
+    "setup_violations",
+    "framework_violations"
+  ],
   "properties": {
-    "agent": { "const": "testing" },
-    "principle": { "const": "Unit Testing" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": {
-                  "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension", "function"]
-                },
-                "metrics": {
-                  "type": "object",
-                  "description": "Flat violation counts scored directly against severity bands. Submit 0 for each metric where no violation was found.",
-                  "required": [
-                    "isolation_violations",
-                    "structure_violations",
-                    "naming_violations",
-                    "test_double_violations",
-                    "setup_violations",
-                    "framework_violations"
-                  ],
-                  "properties": {
-                    "isolation_violations": {
-                      "type": "integer",
-                      "description": "TEST-1: count of shared mutable state issues and test interdependencies"
-                    },
-                    "structure_violations": {
-                      "type": "integer",
-                      "description": "TEST-2: count of logic-in-tests, missing phases, multiple behaviors, sleep-waiting, and multi-suite-per-file issues"
-                    },
-                    "naming_violations": {
-                      "type": "integer",
-                      "description": "TEST-3: count of non-descriptive test names and naming convention violations"
-                    },
-                    "test_double_violations": {
-                      "type": "integer",
-                      "description": "TEST-4: count of over-mocking, brittle verification, and testing-mock-logic issues"
-                    },
-                    "setup_violations": {
-                      "type": "integer",
-                      "description": "TEST-5: count of repeated inline SUT construction across 2+ test methods"
-                    },
-                    "framework_violations": {
-                      "type": "integer",
-                      "description": "TEST-6: count of XCTest usage in non-UI test files where Swift Testing should be used instead"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "isolation_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-1: count of shared mutable state issues and test interdependencies" },
+        "additional-info": {}
+      }
+    },
+    "structure_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-2: count of logic-in-tests, missing phases, multiple behaviors, sleep-waiting, and multi-suite-per-file issues" },
+        "additional-info": {}
+      }
+    },
+    "naming_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-3: count of non-descriptive test names and naming convention violations" },
+        "additional-info": {}
+      }
+    },
+    "test_double_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-4: count of over-mocking, brittle verification, and testing-mock-logic issues" },
+        "additional-info": {}
+      }
+    },
+    "setup_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-5: count of repeated inline SUT construction across 2+ test methods" },
+        "additional-info": {}
+      }
+    },
+    "framework_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "TEST-6: count of XCTest usage in non-UI test files where Swift Testing should be used instead" },
+        "additional-info": {}
       }
     }
   }

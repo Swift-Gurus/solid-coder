@@ -1,83 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DRY Review Output",
+  "title": "DRY Metrics",
+  "description": "Schema for the 'DRY' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": ["reuse_misses", "duplicate_sites", "missing_abstractions"],
   "properties": {
-    "agent": { "const": "dry" },
-    "principle": { "const": "Don't Repeat Yourself" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": {
-                  "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension", "function"]
-                },
-                "metrics": {
-                  "type": "object",
-                  "description": "Submit all three fields for every unit. Use 0 when no violation was found for that metric.",
-                  "required": ["reuse_misses", "duplicate_sites", "missing_abstractions"],
-                  "properties": {
-                    "reuse_misses": {
-                      "type": "integer",
-                      "description": "DRY-1: count of EXACT/EXTENSIBLE codebase matches not reused. 0 = compliant, >=1 = SEVERE."
-                    },
-                    "duplicate_sites": {
-                      "type": "integer",
-                      "description": "DRY-2: count of IDENTICAL/STRUCTURAL inlined duplications found elsewhere. 0 or 1 = compliant, >=2 = SEVERE."
-                    },
-                    "missing_abstractions": {
-                      "type": "integer",
-                      "description": "DRY-3: count of generic patterns not extracted as reusable abstractions. 0 = compliant, >=1 = SEVERE."
-                    }
-                  }
-                },
-                "findings": {
-                  "type": "array",
-                  "description": "LLM-provided descriptive findings. Include one entry per SEVERE metric violation.",
-                  "items": {
-                    "type": "object",
-                    "required": ["metric_id", "severity", "summary", "location"],
-                    "properties": {
-                      "metric_id": {
-                        "type": "string",
-                        "enum": ["DRY-1", "DRY-2", "DRY-3"]
-                      },
-                      "severity": { "type": "string", "enum": ["SEVERE"] },
-                      "summary": {
-                        "type": "string",
-                        "description": "What is duplicated and what it should be replaced with"
-                      },
-                      "location": {
-                        "type": "string",
-                        "description": "File path and approximate line number of the duplication"
-                      },
-                      "duplicate_of": {
-                        "type": "string",
-                        "description": "Path to the existing implementation that should be reused instead"
-                      },
-                      "reasoning": { "type": "string" }
-                    }
-                  }
-                },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "reuse_misses": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "DRY-1: count of EXACT/EXTENSIBLE codebase matches not reused. 0 = compliant, >=1 = SEVERE." },
+        "additional-info": {}
+      }
+    },
+    "duplicate_sites": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "DRY-2: count of IDENTICAL/STRUCTURAL inlined duplications found elsewhere. 0 or 1 = compliant, >=2 = SEVERE." },
+        "additional-info": { "description": "Optional: location of the duplicate and what it should be replaced with" }
+      }
+    },
+    "missing_abstractions": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "DRY-3: count of generic patterns not extracted as reusable abstractions. 0 = compliant, >=1 = SEVERE." },
+        "additional-info": {}
       }
     }
   }

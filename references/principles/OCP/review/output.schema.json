@@ -1,57 +1,32 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OCP Review Output",
+  "title": "OCP Metrics",
+  "description": "Schema for the 'OCP' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": ["sealed_variation_points", "untestable_dependencies", "testable_direct_count"],
   "properties": {
-    "agent": { "const": "ocp" },
-    "principle": { "const": "Open/Closed Principle" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": { "type": "string" },
-                "metrics": {
-                  "type": "object",
-                  "required": ["sealed_variation_points", "untestable_dependencies", "testable_direct_count"],
-                  "properties": {
-                    "sealed_variation_points": {
-                      "type": "integer",
-                      "description": "Count of DIRECT NON-INJECTED concrete dependencies (sealed points)"
-                    },
-                    "untestable_dependencies": {
-                      "type": "integer",
-                      "description": "Count of DIRECT/INDIRECT dependencies that cannot be substituted for testing"
-                    },
-                    "testable_direct_count": {
-                      "type": "integer",
-                      "description": "Count of DIRECT INJECTED concrete dependencies that are testable (subclassable)"
-                    },
-                    "sealed_list": {
-                      "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Names of sealed variation points"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "sealed_variation_points": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "OCP-1: count of DIRECT NON-INJECTED concrete dependencies (sealed points)" },
+        "additional-info": { "description": "Optional sealed_list: [string] — names of the sealed variation points" }
+      }
+    },
+    "untestable_dependencies": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "OCP-2: count of DIRECT/INDIRECT dependencies that cannot be substituted for testing" },
+        "additional-info": {}
+      }
+    },
+    "testable_direct_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "OCP-3: count of DIRECT INJECTED concrete dependencies that are testable (subclassable)" },
+        "additional-info": {}
       }
     }
   }

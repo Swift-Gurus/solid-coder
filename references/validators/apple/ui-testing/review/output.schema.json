@@ -1,70 +1,54 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "UI Testing Review Output",
+  "title": "UI Testing Metrics",
+  "description": "Schema for the 'UI Testing' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["agent", "principle", "timestamp", "files"],
+  "required": [
+    "flow_violations",
+    "base_class_violations",
+    "grouping_violations",
+    "sync_violations",
+    "identifier_violations"
+  ],
   "properties": {
-    "agent": { "const": "uitesting" },
-    "principle": { "const": "UI Testing" },
-    "timestamp": { "type": "string", "format": "date-time" },
-    "all_compliant": { "type": "boolean" },
-    "files": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["file_path", "units"],
-        "properties": {
-          "file_path": { "type": "string" },
-          "units": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["unit_name", "unit_kind", "metrics"],
-              "properties": {
-                "unit_name": { "type": "string" },
-                "unit_kind": {
-                  "type": "string",
-                  "enum": ["class", "struct", "enum", "protocol", "extension"]
-                },
-                "metrics": {
-                  "type": "object",
-                  "description": "Flat violation counts scored directly against severity bands. Submit 0 for each metric where no violation was found.",
-                  "required": [
-                    "flow_violations",
-                    "base_class_violations",
-                    "grouping_violations",
-                    "sync_violations",
-                    "identifier_violations"
-                  ],
-                  "properties": {
-                    "flow_violations": {
-                      "type": "integer",
-                      "description": "UITEST-1: count of inline multi-step flows and duplicated navigation sequences that should be in a coordinator"
-                    },
-                    "base_class_violations": {
-                      "type": "integer",
-                      "description": "UITEST-2: count of test suites inheriting directly from XCTestCase (missing base class) or managing app lifecycle/setup directly"
-                    },
-                    "grouping_violations": {
-                      "type": "integer",
-                      "description": "UITEST-3: count of fragmented assertion groups where related assertions could be a single test with one setup preamble"
-                    },
-                    "sync_violations": {
-                      "type": "integer",
-                      "description": "UITEST-4: count of time-based waits (sleep, fixed timeouts) and unchecked element accesses without expectation-based synchronization"
-                    },
-                    "identifier_violations": {
-                      "type": "integer",
-                      "description": "UITEST-5: count of raw string literals used to query app-owned UI elements (should use typed identifier constants)"
-                    }
-                  }
-                },
-                "findings": { "type": "array" },
-                "scoring": { "type": "array" }
-              }
-            }
-          }
-        }
+    "flow_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "UITEST-1: count of inline multi-step flows and duplicated navigation sequences that should be in a coordinator" },
+        "additional-info": {}
+      }
+    },
+    "base_class_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "UITEST-2: count of test suites inheriting directly from XCTestCase or managing app lifecycle/setup directly" },
+        "additional-info": {}
+      }
+    },
+    "grouping_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "UITEST-3: count of fragmented assertion groups where related assertions could be a single test with one setup preamble" },
+        "additional-info": {}
+      }
+    },
+    "sync_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "UITEST-4: count of time-based waits (sleep, fixed timeouts) and unchecked element accesses without expectation-based synchronization" },
+        "additional-info": {}
+      }
+    },
+    "identifier_violations": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": { "type": "integer", "description": "UITEST-5: count of raw string literals used to query app-owned UI elements (should use typed identifier constants)" },
+        "additional-info": {}
       }
     }
   }

@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Review Output",
+  "description": "Unified schema for all principle review outputs. Each principle key inside 'metrics' follows that principle's own review/output.schema.json.",
+  "type": "object",
+  "required": ["timestamp", "files"],
+  "properties": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["file_path", "units"],
+        "properties": {
+          "file_path": { "type": "string" },
+          "units": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["unit_name", "unit_kind", "metrics"],
+              "properties": {
+                "unit_name": { "type": "string" },
+                "unit_kind": {
+                  "type": "string",
+                  "enum": ["class", "struct", "enum", "protocol", "extension", "actor", "function"]
+                },
+                "line_start": {
+                  "type": "integer",
+                  "description": "Optional start line of this unit in the source file. Used for changed-range filtering."
+                },
+                "line_end": {
+                  "type": "integer",
+                  "description": "Optional end line of this unit in the source file. Used for changed-range filtering."
+                },
+                "metrics": {
+                  "type": "object",
+                  "description": "Keys are principle names (e.g. 'SRP', 'OCP'). Each value follows that principle's review/output.schema.json (metrics sub-object schema).",
+                  "additionalProperties": {
+                    "type": "object",
+                    "description": "Principle-specific metrics. Each key is a metric variable name; each value has a required 'value' field and an optional 'additional-info' field.",
+                    "additionalProperties": {
+                      "type": "object",
+                      "required": ["value"],
+                      "properties": {
+                        "value": {
+                          "description": "Measured metric value scored against severity bands.",
+                          "type": ["integer", "string", "number"]
+                        },
+                        "additional-info": {
+                          "description": "Optional opaque context (verb tables, group lists, sealed lists, etc.). Passed through to output unchanged; never read by the scorer."
+                        }
+                      }
+                    }
+                  }
+                },
+                "violations": {
+                  "type": "array",
+                  "description": "Server-generated. Do not include in submissions — the server fills this after scoring.",
+                  "items": {
+                    "type": "object",
+                    "required": ["rule_id", "severity"],
+                    "properties": {
+                      "rule_id": {
+                        "type": "string",
+                        "description": "Rule identifier that fired, e.g. 'SRP-1', 'OCP-2'. Encodes the principle by prefix."
+                      },
+                      "severity": {
+                        "type": "string",
+                        "enum": ["SEVERE", "MINOR"]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
