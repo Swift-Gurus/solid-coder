@@ -24,6 +24,18 @@ class StopHandler(Protocol):
     def handle(self, event: dict) -> None: ...
 
 
+class StopEventReading(Protocol):
+    """Narrow read protocol for the Stop event source."""
+
+    def read(self) -> dict: ...
+
+
+class StopDispatching(Protocol):
+    """Narrow dispatch protocol for a stop event gate."""
+
+    def run(self, event: dict) -> None: ...
+
+
 class EventSource(Protocol):
     """Protocol for reading raw event text."""
 
@@ -57,14 +69,19 @@ class OnStopGate:
                 handler.handle(event)
 
 
-def main() -> None:
-    ensure_on_path(Path(__file__).resolve().parent)
-    from slack_notify import SlackStopNotifier  # noqa: PLC0415
-
-    event = HookEventReader().read()
-    OnStopGate(handlers=[SlackStopNotifier()]).run(event)
+def main(reader: StopEventReading, gate: StopDispatching) -> None:
+    """Dispatch a Stop event via the injected reader and gate, then exit 0."""
+    event = reader.read()
+    gate.run(event)
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    ensure_on_path(Path(__file__).resolve().parent)
+    from cleanup_pipeline_output import PipelineOutputCleaner  # noqa: PLC0415
+    from slack_notify import SlackStopNotifier  # noqa: PLC0415
+
+    main(
+        reader=HookEventReader(),
+        gate=OnStopGate(handlers=[SlackStopNotifier(), PipelineOutputCleaner()]),
+    )

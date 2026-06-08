@@ -83,7 +83,10 @@
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m ' *)",
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add mcp-server/lib/gateway_tools.py)",
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add agents/apply-principle-review-agent.md skills/apply-principle-review/SKILL.md tests/harness/apply_flow_invoker.py)",
-      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m \"feat: add submit_batch_findings and submit_fix to apply-principle-review agent/skill/harness\")"
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m \"feat: add submit_batch_findings and submit_fix to apply-principle-review agent/skill/harness\")",
+      "Skill(deep-research)",
+      "Workflow(deep-research)",
+      "WebSearch"
     ]
   }
 }
