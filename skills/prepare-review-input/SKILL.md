@@ -12,7 +12,7 @@ user-invocable: false
 - SOURCE_TYPE: $ARGUMENTS[0] — one of: changes, folder, file, files, buffer
   - If $ARGUMENTS[0] is not a known type you must stop and show an error message. Unknown Type
   - If NO arguments provided → default to `changes` (staged + unstaged + untracked)
-- OUTPUT_ROOT: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
+- OUTPUT_ROOT: $ARGUMENTS[1] — output root; if not provided call `mcp__plugin_solid-coder_pipeline__get_output_path` with `{operation: "review"}` to get the default
 - CANDIDATE_TAGS: optional list of tags from the orchestrator (extracted from rule.md frontmatters)
 - OUTPUT_PATH: {OUTPUT_ROOT}/prepare
 - SKILL_ROOT: ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input

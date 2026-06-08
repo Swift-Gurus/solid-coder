@@ -57,7 +57,7 @@ Runs **Phase C** from the loaded `<type>/review/instructions.md`. Skip this enti
 
   If skipped, emit no Phase C findings and proceed to Phase 5.
 
-- [ ] 4.2 **Compute output directory** — set `SCOPE_OUT = <project-root>/.solid_coder/validate-spec/<feature-slug>-<YYYYMMDDhhmmss>/scope/`. Create it (and any parents) before launching subagents.
+- [ ] 4.2 **Compute output directory** — call `mcp__plugin_solid-coder_pipeline__get_output_path` with `{operation: "validate-spec"}`, then set `SCOPE_OUT = {output_root}/scope/`. Create it (and any parents) before launching subagents.
 
 - [ ] 4.3 **Launch THREE measurement Tasks in a SINGLE message (parallel):**
 

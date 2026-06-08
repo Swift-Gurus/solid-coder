@@ -17,8 +17,27 @@ from typing import IO, Optional, Protocol
 
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
+import os as _os
+
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
+
+
+def solid_coder_slug(project_root: Optional[Path] = None) -> str:
+    """Derive a Claude-style project slug from an absolute path.
+
+    Mirrors Claude Code's project directory naming convention:
+    /Users/alex/Developer/my-project → -Users-alex-Developer-my-project
+
+    Reads CLAUDE_PROJECT_DIR from the environment when project_root is omitted.
+    """
+    root = project_root or Path(_os.environ.get("CLAUDE_PROJECT_DIR", str(Path.cwd())))
+    return str(Path(root).resolve()).replace("/", "-")
+
+
+def solid_coder_project_dir(project_root: Optional[Path] = None) -> Path:
+    """Return the ~/.solid-coder/{slug}/ base directory for this project."""
+    return Path.home() / ".solid-coder" / solid_coder_slug(project_root)
 
 
 def ensure_on_path(*dirs: Path) -> None:

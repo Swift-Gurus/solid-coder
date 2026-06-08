@@ -48,7 +48,9 @@ is_spec_file = PROJECT_DIR is not None and (
     or is_relative_to_safe(target, PROJECT_DIR / "specs")
 )
 
-behavior = "allow" if (is_plugin_file or is_output_file or is_spec_file) else "ask"
+is_home_output_file = is_relative_to_safe(target, Path.home() / ".solid-coder")
+
+behavior = "allow" if (is_plugin_file or is_output_file or is_spec_file or is_home_output_file) else "ask"
 print(json.dumps({
     "hookSpecificOutput": {
         "hookEventName": "PermissionRequest",

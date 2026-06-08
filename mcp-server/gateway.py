@@ -32,16 +32,20 @@ Examples:
     python3 gateway.py load_detection_rules
     python3 gateway.py load_detection_rules --matched_tags unit-test,swiftui
     python3 gateway.py load_detection_rules --principle SRP
+    python3 gateway.py get_output_path --operation review
+    python3 gateway.py get_output_path --operation implement --spec_number SPEC-042
 
 Exit codes:
     0 — success (JSON on stdout)
     1 — error (error message on stderr)
 """
 
+import inspect
 import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Callable, Optional
 
 GATEWAY_DIR = Path(__file__).resolve().parent
 PLUGIN_ROOT = GATEWAY_DIR.parent
@@ -60,7 +64,7 @@ from docs.server import (  # noqa: E402
 )
 
 # Pipeline tools — constructed via factory for gateway CLI access
-from pipeline.server import get_pipeline_tools as _get_pipeline_tools  # noqa: E402
+from pipeline.server import get_pipeline_tools as _get_pipeline_tools, get_output_path  # noqa: E402
 _pt = _get_pipeline_tools()
 check_severity = _pt['check_severity']
 load_synthesis_context = _pt['load_synthesis_context']
@@ -76,7 +80,7 @@ prepare_review_input = _pt['prepare_review_input']
 from specs.server import query_specs  # noqa: E402
 
 
-def parse_args(argv):
+def parse_args(argv: list) -> tuple:
     """Parse CLI args into tool name + keyword arguments."""
     if len(argv) < 2:
         return None, {}
@@ -90,7 +94,6 @@ def parse_args(argv):
             key = arg[2:].replace("-", "_")
             if i + 1 < len(argv) and not argv[i + 1].startswith("--"):
                 value = argv[i + 1]
-                # Parse comma-separated lists
                 if "," in value:
                     value = [v.strip() for v in value.split(",")]
                 kwargs[key] = value
@@ -99,13 +102,12 @@ def parse_args(argv):
                 kwargs[key] = True
                 i += 1
         else:
-            # Positional args collected in 'args' list
             kwargs.setdefault("args", []).append(arg)
             i += 1
     return tool, kwargs
 
 
-def load_spec_ancestors(**kwargs):
+def load_spec_ancestors(**kwargs) -> str:
     """Load ancestor and blocked-by spec content as readable text."""
     spec_number = kwargs.get("spec")
     blocked = kwargs.get("blocked", False)
@@ -113,7 +115,6 @@ def load_spec_ancestors(**kwargs):
         print("Error: --spec is required", file=sys.stderr)
         sys.exit(1)
 
-    # Run find-spec-query.py ancestors
     script = str(SKILLS_ROOT / "find-spec" / "scripts" / "find-spec-query.py")
     cmd = [sys.executable, script, "ancestors", spec_number]
     if blocked:
@@ -128,35 +129,15 @@ def load_spec_ancestors(**kwargs):
         return "No ancestors found."
 
     sep = "=" * 72
+    lines = [sep, f"  SPEC CONTEXT: {spec_number} ({len(specs)} specs in chain)", sep]
     sub = "-" * 40
-    lines = []
-    lines.append(sep)
-    lines.append(f"  SPEC CONTEXT: {spec_number} ({len(specs)} specs in chain)")
-    lines.append(sep)
-
     for s in specs:
-        number = s.get("number", "?")
-        feature = s.get("feature", "")
-        status = s.get("status", "")
-        path = s.get("path", "")
-
-        lines.append(f"\n{sub}")
-        lines.append(f"  {number} — {feature} [{status}]")
-        lines.append(f"{sub}\n")
-
-        if path:
-            try:
-                content = Path(path).read_text(encoding="utf-8")
-                lines.append(content.strip())
-            except Exception as e:
-                lines.append(f"(Could not read: {e})")
-
-        lines.append("")
-
-    lines.append(sep)
-    lines.append(f"  END OF SPEC CONTEXT")
-    lines.append(sep)
-
+        lines.append(f"\n{s.get('number', '?')} — {s.get('feature', '?')}")
+        lines.append(f"Status: {s.get('status', '?')}")
+        if s.get("content"):
+            lines.append(sub)
+            lines.append(s["content"].strip())
+    lines.extend([sep, "  END OF SPEC CONTEXT", sep])
     return "\n".join(lines)
 
 
@@ -178,10 +159,65 @@ TOOLS = {
     "load_fix_instructions_for_findings": load_fix_instructions_for_findings,
     "load_fix_for_violation": load_fix_for_violation,
     "load_detection_rules": load_detection_rules,
+    "get_output_path": get_output_path,
 }
 
 
-def main():
+class ArgumentValidator:
+    """Validates kwargs against a callable's signature. Rejects unknown flags loudly."""
+
+    def validate(self, handler: Callable, tool_name: str, kwargs: dict) -> None:
+        """Raise SystemExit(1) if kwargs contains flags the handler does not accept."""
+        try:
+            sig = inspect.signature(handler)
+            params = sig.parameters.values()
+            if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params):
+                return  # handler accepts **kwargs — everything is valid
+            accepted = {p.name for p in params
+                        if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                                      inspect.Parameter.KEYWORD_ONLY)}
+            unknown = set(kwargs) - accepted
+            if unknown:
+                valid = ", ".join(sorted(accepted)) or "(none)"
+                bad = ", ".join(sorted(unknown))
+                print(f"Error: unknown argument(s) for '{tool_name}': {bad}", file=sys.stderr)
+                print(f"  Valid arguments: {valid}", file=sys.stderr)
+                sys.exit(1)
+        except (ValueError, TypeError):
+            pass  # signature inspection failed — fall through to runtime check
+
+
+class ToolRunner:
+    """Executes a resolved tool callable and writes structured output to stdout."""
+
+    def run(self, handler: Callable, tool_name: str, kwargs: dict) -> None:
+        try:
+            result = handler(**kwargs)
+            if isinstance(result, dict) and result.get("errors"):
+                for e in result["errors"]:
+                    print(f"Error: {e.get('error', 'unknown error')}", file=sys.stderr)
+                sys.exit(1)
+            if isinstance(result, str):
+                print(result)
+            else:
+                json.dump(result, sys.stdout, indent=2, ensure_ascii=False)
+                print()
+        except TypeError as e:
+            print(f"Error: bad arguments for '{tool_name}': {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+
+def main(
+    validator: Optional[ArgumentValidator] = None,
+    runner: Optional[ToolRunner] = None,
+) -> None:
+    """Coordination facade: parse → validate → run."""
+    validator = validator or ArgumentValidator()
+    runner = runner or ToolRunner()
+
     tool_name, kwargs = parse_args(sys.argv)
 
     if tool_name is None or tool_name in ("-h", "--help", "help"):
@@ -195,42 +231,8 @@ def main():
         print(f"Available: {', '.join(sorted(TOOLS.keys()))}", file=sys.stderr)
         sys.exit(1)
 
-    # Validate kwargs against the handler's signature — reject unknown flags loudly.
-    import inspect
-    try:
-        sig = inspect.signature(handler)
-        accepted = {p.name for p in sig.parameters.values()
-                    if p.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                                  inspect.Parameter.KEYWORD_ONLY)}
-        # Allow VAR_KEYWORD handlers to accept anything
-        if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-            unknown = set(kwargs) - accepted
-            if unknown:
-                valid = ", ".join(sorted(accepted)) or "(none)"
-                bad = ", ".join(sorted(unknown))
-                print(f"Error: unknown argument(s) for '{tool_name}': {bad}", file=sys.stderr)
-                print(f"  Valid arguments: {valid}", file=sys.stderr)
-                sys.exit(1)
-    except (ValueError, TypeError):
-        pass  # signature inspection failed — fall through to runtime check
-
-    try:
-        result = handler(**kwargs)
-        if isinstance(result, dict) and result.get("errors"):
-            for e in result["errors"]:
-                print(f"Error: {e.get('error', 'unknown error')}", file=sys.stderr)
-            sys.exit(1)
-        if isinstance(result, str):
-            print(result)
-        else:
-            json.dump(result, sys.stdout, indent=2, ensure_ascii=False)
-            print()
-    except TypeError as e:
-        print(f"Error: bad arguments for '{tool_name}': {e}", file=sys.stderr)
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+    validator.validate(handler, tool_name, kwargs)
+    runner.run(handler, tool_name, kwargs)
 
 
 if __name__ == "__main__":

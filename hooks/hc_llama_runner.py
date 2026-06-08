@@ -17,7 +17,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import GATEWAY, PLUGIN_ROOT
+from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir
 from hc_config import inference_params as _load_inference_params
 from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayInvoking
 from hc_violation_parser import ViolationParser, ViolationParsing
@@ -177,11 +177,10 @@ def _summarise_result(name: str, result_str: str) -> dict:
 class LocalLLMLogger:
     """Writes per-tool-call JSONL entries to ~/.solid-coder/llm-sessions/."""
 
-    ROOT = Path.home() / ".solid-coder" / "llm-sessions"
+    ROOT = Path.home() / ".solid-coder"
 
     def __init__(self, session_id: str, file_path: str, model: str) -> None:
-        slug = re.sub(r"[^a-zA-Z0-9-]", "_", Path.cwd().name or "unknown")
-        self._dir = self.ROOT / slug / (session_id or "no-session")
+        self._dir = solid_coder_project_dir() / "llm-sessions" / (session_id or "no-session")
         self._dir.mkdir(parents=True, exist_ok=True)
         self._file = Path(file_path).name
         self._model = model

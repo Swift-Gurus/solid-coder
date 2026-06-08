@@ -13,12 +13,11 @@ user-invocable: true
 
 ## Input
 
-- OUTPUT_ROOT: `CURRENT_PROJECT/.solid_coder/review-<YYYYMMDDhhmmss>`
+- OUTPUT_ROOT: `~/.solid-coder/{project-slug}/review-<YYYYMMDDhhmmss>` (computed via MCP tool)
 
 ## Phase 1: Stage output root
 
-- [ ] 1.1 Compute TIMESTAMP: `! date +%Y%m%d%H%M%S`
-- [ ] 1.2 Set OUTPUT_ROOT to `CURRENT_PROJECT/.solid_coder/review-{TIMESTAMP}`
+- [ ] 1.1 Call `mcp__plugin_solid-coder_pipeline__get_output_path` with `{operation: "review"}` → store result as OUTPUT_ROOT
 
 ## Phase 2: Run refactor in review-only mode
 

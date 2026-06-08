@@ -11,7 +11,7 @@ user-invocable: false
 ## Input
 - INPUT_SCHEMA: ${CLAUDE_PLUGIN_ROOT}/skills/prepare-review-input/output.schema.json
 - NAME: $ARGUMENTS[0] (e.g., SRP,OCP)
-- OUTPUT_PATH: $ARGUMENTS[1] - output root if not provided use CURRENT_PROJECT/.solid-coder-<YYYYMMDDhhmmss>
+- OUTPUT_PATH: $ARGUMENTS[1] — output root; if not provided call `mcp__plugin_solid-coder_pipeline__get_output_path` with `{operation: "review"}` to get the default
 - Code files: path to json follows INPUT_SCHEMA
 
 ## Workflow

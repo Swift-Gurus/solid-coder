@@ -3,13 +3,15 @@
 
 Architecture:
   ApplicationBootstrapper — SRP Facade, protocol-typed deps, pure delegation.
-  make_bootstrapper()     — Factory that produces the bootstrapper with production defaults.
+  make_bootstrapper()     — Composition root: wires production defaults, all deps injectable.
   main()                  — Entry point; calls the factory and runs.
 """
 
 import importlib
 import json
+import os
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Protocol
 
@@ -28,7 +30,6 @@ from lib.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillR
 from lib.tool_registry import ToolRegistering, ToolRegistry
 from pipeline.handlers import ReviewResultsCollecting, ReviewResultsCollector
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
-from lib.unit_kind_filter import filter_by_unit_kind as _filter_by_kind
 
 _LARGE_OUTPUT = {"anthropic/maxResultSizeChars": 200_000}
 
@@ -66,6 +67,107 @@ class GatewayHandling(Protocol):
 
 class MCPServerRunning(Protocol):
     def run(self) -> None: ...
+
+
+# ── Path provider ─────────────────────────────────────────────────────────────
+
+def get_output_path(operation: str, spec_number: str = "") -> dict:
+    """Compute the standardized home-dir output path for a solid-coder operation.
+
+    Reads CLAUDE_PROJECT_DIR from the environment (set by Claude Code) and
+    derives a Claude-style slug by replacing '/' with '-'. Returns the
+    absolute output_root the caller should use as OUTPUT_ROOT.
+
+    Args:
+        operation:   "review" | "refactor" | "implement" | "validate-spec"
+        spec_number: For implement only — e.g. "SPEC-042". Omit for other ops.
+    """
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    slug = str(Path(project_dir).resolve()).replace("/", "-")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    if operation == "implement" and spec_number:
+        dir_name = f"implement-{spec_number}-{ts}"
+    else:
+        dir_name = f"{operation}-{ts}"
+    return {"output_root": str(Path.home() / ".solid-coder" / slug / dir_name)}
+
+
+# ── Shared tool callables ─────────────────────────────────────────────────────
+
+def _build_tool_callables(
+    runner: SkillRunning,
+    fmt: ResultFormatting,
+    search: CodebaseSearching,
+    check_sev: CheckSeverityRunning,
+    ctx: ContextLoading,
+    validate: OutputValidating,
+    gw: GatewayHandling,
+    collector: ReviewResultsCollecting,
+) -> dict:
+    """Build the complete pipeline tool callable dict.
+
+    Single source of truth for tool implementations. Used by both
+    ApplicationBootstrapper (MCP registration) and get_pipeline_tools (CLI access).
+    """
+
+    def _prepare_input(candidate_tags=None):
+        ok, out, err = runner.execute("prepare-review-input", "prepare-changes.py", [])
+        if not ok:
+            return {"error": err}
+        try:
+            data = json.loads(out)
+            data["candidate_tags"] = candidate_tags or []
+            return data
+        except json.JSONDecodeError:
+            return {"error": f"Could not parse script output: {out}"}
+
+    def _split_plan(plan_path, output_dir, arch_path=None):
+        args = [plan_path, "--output-dir", output_dir]
+        if arch_path:
+            args += ["--arch", arch_path]
+        ok, out, err = runner.execute("synthesize-implementation", "split-plan.py", args)
+        chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
+        return fmt.format(ok, err, success=ok, chunks=[str(c) for c in chunks], count=len(chunks))
+
+    def _generate_report(data_dir, report_dir=None):
+        report_dir = report_dir or data_dir
+        ok, out, err = runner.execute("generate-report", "generate-report.py", [data_dir, report_dir])
+        md = str(Path(report_dir) / "report.md") if ok else None
+        html = str(Path(report_dir) / "report.html") if ok else None
+        return fmt.format(ok, err, success=ok, md_path=md, html_path=html)
+
+    def _validate_arch(arch_path):
+        schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
+        ok, out, err = runner.execute("plan", "validate-arch.py", [arch_path, "--schema", schema])
+        return fmt.format(ok, err, valid=ok, output=out, errors=err if not ok else None)
+
+    def _validate_findings(output_root):
+        ok, out, err = runner.execute("validate-findings", "validate-findings.py",
+                                      [output_root, str(PLUGIN_ROOT)])
+        return fmt.format(ok, err, success=ok, output=out)
+
+    def _search_fn(sources_dir=None, plan_path=None, tags=None, spec_numbers=None, min_matches=3):
+        return search.search(
+            sources_dir=sources_dir, plan_path=plan_path, tags=tags,
+            spec_numbers=spec_numbers, min_matches=min_matches,
+        )
+
+    return {
+        "collect_review_results": collector.collect,
+        "check_severity": check_sev.check_severity,
+        "validate_findings": _validate_findings,
+        "load_synthesis_context": ctx.load_context,
+        "generate_report": _generate_report,
+        "validate_architecture": _validate_arch,
+        "split_implementation_plan": _split_plan,
+        "search_codebase": _search_fn,
+        "prepare_review_input": _prepare_input,
+        "validate_phase_output": validate.validate_json,
+        "submit_findings": gw.submit_findings,
+        "submit_batch_findings": gw.submit_batch_findings,
+        "submit_fix": gw.submit_fix,
+        "get_output_path": get_output_path,
+    }
 
 
 # ── Application facade ────────────────────────────────────────────────────────
@@ -108,69 +210,31 @@ class ApplicationBootstrapper:
 
     def _register_all_tools(self) -> None:
         reg = self._registry
-        runner, fmt = self._runner, self._fmt
-
-        def _prepare_input(candidate_tags=None):
-            ok, out, err = runner.execute("prepare-review-input", "prepare-changes.py", [])
-            if not ok:
-                return {"error": err}
-            try:
-                data = json.loads(out)
-                data["candidate_tags"] = candidate_tags or []
-                return data
-            except json.JSONDecodeError:
-                return {"error": f"Could not parse script output: {out}"}
-
-        def _split_plan(plan_path, output_dir, arch_path=None):
-            args = [plan_path, "--output-dir", output_dir]
-            if arch_path:
-                args += ["--arch", arch_path]
-            ok, out, err = runner.execute("synthesize-implementation", "split-plan.py", args)
-            chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
-            return fmt.format(ok, err, success=ok, chunks=[str(c) for c in chunks], count=len(chunks))
-
-        def _generate_report(data_dir, report_dir=None):
-            report_dir = report_dir or data_dir
-            ok, out, err = runner.execute("generate-report", "generate-report.py", [data_dir, report_dir])
-            md = str(Path(report_dir) / "report.md") if ok else None
-            html = str(Path(report_dir) / "report.html") if ok else None
-            return fmt.format(ok, err, success=ok, md_path=md, html_path=html)
-
-        def _validate_arch(arch_path):
-            schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
-            ok, out, err = runner.execute("plan", "validate-arch.py", [arch_path, "--schema", schema])
-            return fmt.format(ok, err, valid=ok, output=out, errors=err if not ok else None)
-
-        def _validate_findings(output_root):
-            ok, out, err = runner.execute("validate-findings", "validate-findings.py",
-                                          [output_root, str(PLUGIN_ROOT)])
-            return fmt.format(ok, err, success=ok, output=out)
-
-        def _search(sources_dir=None, plan_path=None, tags=None, spec_numbers=None, min_matches=3):
-            return self._search.search(
-                sources_dir=sources_dir, plan_path=plan_path, tags=tags,
-                spec_numbers=spec_numbers, min_matches=min_matches,
-            )
+        tools = _build_tool_callables(
+            self._runner, self._fmt, self._search,
+            self._check_sev, self._ctx, self._validate,
+            self._gw, self._collector,
+        )
 
         reg.register("collect_review_results",
                      "Collect and summarise all review outputs. Returns verdict (ALL_COMPLIANT|MINOR_ONLY|HAS_SEVERE), summary table, and minor_findings.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     self._collector.collect, meta=_LARGE_OUTPUT)
+                     tools["collect_review_results"], meta=_LARGE_OUTPUT)
 
         reg.register("check_severity",
                      "Check review findings for SEVERE violations. Returns structured verdict.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     self._check_sev.check_severity)
+                     tools["check_severity"])
 
         reg.register("validate_findings",
                      "Filter findings to changed line ranges and reorganize by file. Writes by-file/*.output.json.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     _validate_findings)
+                     tools["validate_findings"])
 
         reg.register("load_synthesis_context",
                      "Load all validated findings for synthesis. Returns per-principle summaries and severity counts.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     self._ctx.load_context, meta=_LARGE_OUTPUT)
+                     tools["load_synthesis_context"], meta=_LARGE_OUTPUT)
 
         reg.register("generate_report",
                      "Generate MD + HTML reports from validated findings and synthesized fix plans.",
@@ -178,12 +242,12 @@ class ApplicationBootstrapper:
                          "data_dir": {"type": "string"},
                          "report_dir": {"type": "string"},
                      }, "required": ["data_dir"]},
-                     _generate_report)
+                     tools["generate_report"])
 
         reg.register("validate_architecture",
                      "Validate arch.json structure and semantic SOLID constraints.",
                      {"type": "object", "properties": {"arch_path": {"type": "string"}}, "required": ["arch_path"]},
-                     _validate_arch)
+                     tools["validate_architecture"])
 
         reg.register("split_implementation_plan",
                      "Split implementation-plan.json into semantically grouped chunks.",
@@ -192,7 +256,7 @@ class ApplicationBootstrapper:
                          "output_dir": {"type": "string"},
                          "arch_path": {"type": "string"},
                      }, "required": ["plan_path", "output_dir"]},
-                     _split_plan)
+                     tools["split_implementation_plan"])
 
         reg.register("search_codebase",
                      "Search the codebase for reusable types and existing implementations by solid-frontmatter tags.",
@@ -203,14 +267,14 @@ class ApplicationBootstrapper:
                          "spec_numbers": {"type": "array", "items": {"type": "string"}},
                          "min_matches": {"type": "integer"},
                      }, "required": []},
-                     _search, meta=_LARGE_OUTPUT)
+                     tools["search_codebase"], meta=_LARGE_OUTPUT)
 
         reg.register("prepare_review_input",
                      "Prepare git changes (staged, unstaged, untracked) into structured review-input.json.",
                      {"type": "object", "properties": {
                          "candidate_tags": {"type": "array", "items": {"type": "string"}},
                      }},
-                     _prepare_input)
+                     tools["prepare_review_input"])
 
         reg.register("submit_findings",
                      "Score a partial review output for one principle via severity-bands in rule.md and write review-output.json. LLM provides metrics; server fills scoring and findings.",
@@ -218,37 +282,29 @@ class ApplicationBootstrapper:
                          "partial_output": {"type": "object"},
                          "output_path": {"type": "string"},
                      }, "required": ["partial_output", "output_path"]},
-                     self._gw.submit_findings)
+                     tools["submit_findings"])
 
         reg.register("submit_batch_findings",
-                     "Submit health-check findings for all reviewed principles in one call. Keyed by label; output at {output_dir}/{label}/review-output.json.",
+                     "Submit findings for all reviewed principles in one unified payload. Discovers principle keys from metrics, scores each, writes output_dir/{principle}/review-output.json.",
                      {"type": "object", "properties": {
                          "output_dir": {"type": "string"},
                          "submissions": {"type": "object", "additionalProperties": {"type": "object"}},
                      }, "required": ["output_dir", "submissions"]},
-                     self._gw.submit_batch_findings)
+                     tools["submit_batch_findings"])
 
         reg.register("submit_fix",
-                     "Submit concrete fixes for ALL SEVERE violations in one call. "
-                     "Returns {complete, violations_with_fixes} on success, {error} if any fix is missing or malformed.",
+                     "Submit concrete fixes for ALL SEVERE violations in one call.",
                      {"type": "object", "properties": {
                          "output_dir": {"type": "string"},
                          "fixes": {
                              "type": "array",
-                             "description": "One entry per SEVERE violation — must cover all violations from submit_batch_findings.",
                              "items": {
                                  "type": "object",
-                                 "properties": {
-                                     "metric_id": {"type": "string"},
-                                     "file_path": {"type": "string"},
-                                     "unit_name": {"type": "string"},
-                                     "suggested_fix": {"type": "string"},
-                                 },
-                                 "required": ["metric_id", "file_path", "unit_name", "suggested_fix"],
+                                 "required": ["rule_id", "file_path", "unit_name", "suggested_fix"],
                              },
                          },
                      }, "required": ["output_dir", "fixes"]},
-                     self._gw.submit_fix)
+                     tools["submit_fix"])
 
         reg.register("validate_phase_output",
                      "Validate a JSON file against a JSON schema.",
@@ -258,97 +314,59 @@ class ApplicationBootstrapper:
                      }, "required": ["json_path", "schema_path"]},
                      self._validate.validate_json)
 
+        reg.register("get_output_path",
+                     "Compute the standardized home-dir output path for a solid-coder operation. "
+                     "Reads CLAUDE_PROJECT_DIR from env, derives Claude-style project slug, returns timestamped output_root.",
+                     {"type": "object", "properties": {
+                         "operation": {"type": "string", "enum": ["review", "refactor", "implement", "validate-spec"]},
+                         "spec_number": {"type": "string"},
+                     }, "required": ["operation"]},
+                     tools["get_output_path"])
 
-# ── Factory and entry point ───────────────────────────────────────────────────
 
-def make_bootstrapper() -> ApplicationBootstrapper:
-    """Factory: construct concrete implementations and return a ready-to-run bootstrapper."""
-    mcp = MCPServer("solid-coder-pipeline", "1.0.0")
+# ── Composition root and entry point ─────────────────────────────────────────
+
+def make_bootstrapper(
+    server: Optional[MCPServerRunning] = None,
+    registry: Optional[ToolRegistering] = None,
+    skill_runner: Optional[SkillRunning] = None,
+    result_fmt: Optional[ResultFormatting] = None,
+    collector: Optional[ReviewResultsCollecting] = None,
+    gateway: Optional[GatewayHandling] = None,
+    check_severity: Optional[CheckSeverityRunning] = None,
+    load_context: Optional[ContextLoading] = None,
+    validate_output: Optional[OutputValidating] = None,
+    search: Optional[CodebaseSearching] = None,
+    refs_root: Path = PLUGIN_ROOT / "references",
+) -> ApplicationBootstrapper:
+    """Composition root: all dependencies injectable; production defaults applied when omitted."""
+    mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(
         server=mcp,
-        registry=ToolRegistry(mcp),
-        skill_runner=SkillRunner(SKILLS_ROOT),
-        result_fmt=SkillResultFormatter(),
-        collector=ReviewResultsCollector(),
-        gateway=_make_gw_pipeline(PLUGIN_ROOT / "references"),
-        check_severity=importlib.import_module("check-severity"),
-        load_context=importlib.import_module("load-context"),
-        validate_output=importlib.import_module("validate-output"),
-        search=importlib.import_module("lib.codebase_searcher"),
+        registry=registry or ToolRegistry(mcp),
+        skill_runner=skill_runner or SkillRunner(SKILLS_ROOT),
+        result_fmt=result_fmt or SkillResultFormatter(),
+        collector=collector or ReviewResultsCollector(),
+        gateway=gateway or _make_gw_pipeline(refs_root),
+        check_severity=check_severity or importlib.import_module("check-severity"),
+        load_context=load_context or importlib.import_module("load-context"),
+        validate_output=validate_output or importlib.import_module("validate-output"),
+        search=search or importlib.import_module("lib.codebase_searcher"),
     )
 
 
-
 def get_pipeline_tools() -> dict:
-    """Factory: returns pipeline tool callables keyed by name, for CLI/script access."""
-    import importlib as _il
-    from lib.skill_runner import SkillRunner as _SR, SkillResultFormatter as _SRF
-    from pipeline.handlers import ReviewResultsCollector as _RRC
-    from lib.gateway_tools import make_gateway_handler as _mgw
+    """Return pipeline tool callables keyed by name, for CLI/script access.
 
-    runner = _SR(SKILLS_ROOT)
-    fmt = _SRF()
-    collector = _RRC()
-    gw = _mgw(PLUGIN_ROOT / 'references')
-    chk = _il.import_module('check-severity')
-    ctx = _il.import_module('load-context')
-    vo = _il.import_module('validate-output')
-    search = _il.import_module('lib.codebase_searcher')
+    Delegates to make_bootstrapper to avoid duplicating construction logic.
+    """
+    b = make_bootstrapper()
+    return _build_tool_callables(
+        b._runner, b._fmt, b._search,
+        b._check_sev, b._ctx, b._validate,
+        b._gw, b._collector,
+    )
 
-    def _validate_findings(output_root):
-        ok, out, err = runner.execute('validate-findings', 'validate-findings.py', [output_root, str(PLUGIN_ROOT)])
-        return fmt.format(ok, err, success=ok, output=out)
-
-    def _generate_report(data_dir, report_dir=None):
-        rd = report_dir or data_dir
-        ok, out, err = runner.execute('generate-report', 'generate-report.py', [data_dir, rd])
-        md = str(PLUGIN_ROOT / rd / 'report.md') if ok else None
-        html = str(PLUGIN_ROOT / rd / 'report.html') if ok else None
-        return fmt.format(ok, err, success=ok, md_path=md, html_path=html)
-
-    def _validate_arch(arch_path):
-        schema = str(SKILLS_ROOT / 'plan' / 'arch.schema.json')
-        ok, out, err = runner.execute('plan', 'validate-arch.py', [arch_path, '--schema', schema])
-        return fmt.format(ok, err, valid=ok, output=out, errors=err if not ok else None)
-
-    def _split_plan(plan_path, output_dir, arch_path=None):
-        import pathlib as _pl
-        args = [plan_path, '--output-dir', output_dir]
-        if arch_path:
-            args += ['--arch', arch_path]
-        ok, out, err = runner.execute('synthesize-implementation', 'split-plan.py', args)
-        chunks = sorted(_pl.Path(output_dir).glob('*.json')) if ok else []
-        return fmt.format(ok, err, success=ok, chunks=[str(c) for c in chunks], count=len(chunks))
-
-    def _prepare_input(candidate_tags=None):
-        import json as _json
-        ok, out, err = runner.execute('prepare-review-input', 'prepare-changes.py', [])
-        if not ok:
-            return {'error': err}
-        try:
-            data = _json.loads(out)
-            data['candidate_tags'] = candidate_tags or []
-            return data
-        except _json.JSONDecodeError:
-            return {'error': f'Could not parse script output: {out}'}
-
-    def _search(sources_dir=None, plan_path=None, tags=None, spec_numbers=None, min_matches=3):
-        return search.search(sources_dir=sources_dir, plan_path=plan_path, tags=tags, spec_numbers=spec_numbers, min_matches=min_matches)
-
-    return {
-        'check_severity': chk.check_severity,
-        'load_synthesis_context': ctx.load_context,
-        'validate_phase_output': vo.validate_json,
-        'validate_findings': _validate_findings,
-        'generate_report': _generate_report,
-        'validate_architecture': _validate_arch,
-        'split_implementation_plan': _split_plan,
-        'search_codebase': _search,
-        'prepare_review_input': _prepare_input,
-        'submit_findings': gw.submit_findings,
-        'submit_batch_findings': gw.submit_batch_findings,
-        'submit_fix': gw.submit_fix,
-    }
 
 def main() -> None:
     make_bootstrapper().run()

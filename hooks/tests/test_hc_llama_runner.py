@@ -303,9 +303,8 @@ class TestLocalLLMLogger(unittest.TestCase):
         self._tmp.cleanup()
 
     def _make_logger(self, tmp_dir: Path, session_id: str = "sess-abc") -> LocalLLMLogger:
-        with patch("hc_llama_runner.Path.cwd", return_value=Path("/fake/myproject")):
-            with patch.object(LocalLLMLogger, "ROOT", tmp_dir):
-                return LocalLLMLogger(session_id=session_id, file_path="/src/Foo.swift", model="Qwen3")
+        with patch("hc_llama_runner.solid_coder_project_dir", return_value=tmp_dir):
+            return LocalLLMLogger(session_id=session_id, file_path="/src/Foo.swift", model="Qwen3")
 
     def _read_jsonl(self, path: Path) -> list:
         return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]

@@ -11,7 +11,7 @@ user-invocable: true
 
 ## Input
 - RULES_PATH: ${CLAUDE_PLUGIN_ROOT}/references
-- OUTPUT_ROOT: CURRENT_PROJECT/.solid_coder/refactor-<YYYYMMDDhhmmss> (can be overridden via `--output-root <path>`)
+- OUTPUT_ROOT: `~/.solid-coder/{project-slug}/refactor-<YYYYMMDDhhmmss>` — call `mcp__plugin_solid-coder_pipeline__get_output_path` with `{operation: "refactor"}` unless `--output-root <path>` is provided
 - MAX_ITERATIONS: 2
 - ITERATION: 1 (counter)
 - VERBOSE: false

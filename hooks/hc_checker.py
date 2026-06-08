@@ -12,7 +12,7 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import Logging, PLUGIN_ROOT, run_claude_bare
+from hook_utils import Logging, PLUGIN_ROOT, run_claude_bare, solid_coder_project_dir
 from prompt_builder import BasePromptBuilder, PromptReading
 from hook_callable import CallableAdapting
 from hc_rule_loader import RulesLoading
@@ -419,6 +419,6 @@ class LLMHealthChecker:
             return None
         if not principles:
             return []
-        output_dir = str(PLUGIN_ROOT / ".solid_coder" / "gate" / parent_session_id)
+        output_dir = str(solid_coder_project_dir() / "gate" / parent_session_id)
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
         return self._reviewer.review(prompt, path, output_dir=output_dir)

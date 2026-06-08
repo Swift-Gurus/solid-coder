@@ -30,9 +30,11 @@ class OutputPathBuilder(OutputPathBuilding):
         fixture_stem: str,
         flow_name: str,
     ) -> OutputPaths:
+        slug = str(self._project_root.resolve()).replace("/", "-")
         log_dir = (
-            self._project_root
+            Path.home()
             / ".solid-coder"
+            / slug
             / "logs"
             / "tests"
             / run_timestamp
