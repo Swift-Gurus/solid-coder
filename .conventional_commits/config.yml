@@ -7,6 +7,7 @@ type:
   feat: [ feature, feat ]
   fix: [ bug, bugfix, fix ]
   ci: [ ci ]
+  chore: [ chore ]
   refactor: [ ref, refactor, refactoring ]
   doc: [ doc, doc, documentation ]
 release:
