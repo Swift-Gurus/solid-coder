@@ -174,18 +174,17 @@ class FindingsReader(FindingsReading):
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise RuntimeError(f"Malformed review-output.json at {path}: {exc}") from exc
-        # Top-level findings array (validate-findings format)
-        if "findings" in data:
-            return data["findings"]
-        # Nested files[].units[].findings[] (submit_findings / scored review format)
+        # Nested files[].units[].violations[] (new unified format)
         findings = []
         for file_entry in data.get("files", []):
             for unit in file_entry.get("units", []):
                 unit_name = unit.get("unit_name", "")
-                for finding in unit.get("findings", []):
-                    f = dict(finding)
-                    if "unit_name" not in f:
-                        f["unit_name"] = unit_name
+                for violation in unit.get("violations", []):
+                    f = {
+                        "metric_id": violation.get("rule_id", ""),
+                        "severity": violation.get("severity", ""),
+                        "unit_name": unit_name,
+                    }
                     findings.append(f)
         return findings
 
