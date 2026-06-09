@@ -1,8 +1,6 @@
 """Tests for cleanup_pipeline_output.py"""
 
-import json
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -11,10 +9,14 @@ if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
 from cleanup_pipeline_output import (
+    HcConfigDebugReader,
+    PathCleanupOrchestrator,
     PipelineOutputCleaner,
+    SafeRootValidator,
+    SentinelFileReader,
+    ShutilDirectoryRemover,
+    StopEventFilter,
     _extract_output_root,
-    _is_safe_path,
-    _parse_output_roots,
 )
 
 
@@ -29,22 +31,35 @@ class DebugOff:
     def is_debug(self): return False
 
 
-def _tool_result_line(output_root):
-    return json.dumps({
-        "type": "user",
-        "message": {"content": [{
-            "type": "tool_result",
-            "content": json.dumps({"output_root": output_root}),
-        }]},
-    })
+class FakeSentinel:
+    def __init__(self, roots=None):
+        self._roots = list(roots or [])
+        self.cleared = False
+
+    def get_pending_roots(self): return list(self._roots)
+    def clear(self): self.cleared = True
 
 
-def _write_transcript(lines):
-    f = tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False)
-    for line in lines:
-        f.write(line + "\n")
-    f.close()
-    return f.name
+class FakeValidator:
+    def __init__(self, safe=True): self._safe = safe
+    def is_safe(self, path): return self._safe
+
+
+class RecordingRemover:
+    def __init__(self): self.removed = []
+    def remove(self, path): self.removed.append(path)
+
+
+class AlwaysFilter:
+    def should_handle(self, event): return True
+
+class NeverFilter:
+    def should_handle(self, event): return False
+
+
+class RecordingOrchestrator:
+    def __init__(self): self.handled = []
+    def handle(self, event): self.handled.append(event)
 
 
 # ---------------------------------------------------------------------------
@@ -53,16 +68,19 @@ def _write_transcript(lines):
 
 class TestExtractOutputRoot(unittest.TestCase):
     def test_string_content(self):
+        import json
         self.assertEqual(
             _extract_output_root(json.dumps({"output_root": "/a/b"})),
             "/a/b",
         )
 
     def test_list_content(self):
+        import json
         content = [{"type": "text", "text": json.dumps({"output_root": "/x"})}]
         self.assertEqual(_extract_output_root(content), "/x")
 
     def test_missing_key_returns_empty(self):
+        import json
         self.assertEqual(_extract_output_root(json.dumps({"other": "val"})), "")
 
     def test_malformed_json_returns_empty(self):
@@ -73,107 +91,135 @@ class TestExtractOutputRoot(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# _parse_output_roots
+# SentinelFileReader
 # ---------------------------------------------------------------------------
 
-class TestParseOutputRoots(unittest.TestCase):
-    def test_single_result(self):
-        path = _write_transcript([_tool_result_line("/home/user/.solid-coder/review-123")])
-        self.assertEqual(_parse_output_roots(path), ["/home/user/.solid-coder/review-123"])
+class TestSentinelFileReader(unittest.TestCase):
+    def _make(self, content=""):
+        import tempfile
+        f = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False)
+        f.write(content)
+        f.close()
+        return SentinelFileReader(sentinel=Path(f.name))
 
-    def test_multiple_results(self):
-        path = _write_transcript([
-            _tool_result_line("/a/review-1"),
-            _tool_result_line("/a/refactor-2"),
-        ])
-        self.assertEqual(_parse_output_roots(path), ["/a/review-1", "/a/refactor-2"])
+    def test_reads_paths(self):
+        r = self._make("/a/b\n/c/d\n")
+        self.assertEqual(r.get_pending_roots(), ["/a/b", "/c/d"])
 
-    def test_deduplication(self):
-        path = _write_transcript([
-            _tool_result_line("/a/review-1"),
-            _tool_result_line("/a/review-1"),
-        ])
-        self.assertEqual(_parse_output_roots(path), ["/a/review-1"])
-
-    def test_no_tool_results_returns_empty(self):
-        path = _write_transcript([
-            json.dumps({"type": "assistant", "message": {"content": []}}),
-        ])
-        self.assertEqual(_parse_output_roots(path), [])
-
-    def test_malformed_lines_skipped(self):
-        path = _write_transcript(["not json", _tool_result_line("/a/b")])
-        self.assertEqual(_parse_output_roots(path), ["/a/b"])
+    def test_empty_file_returns_empty(self):
+        r = self._make("")
+        self.assertEqual(r.get_pending_roots(), [])
 
     def test_missing_file_returns_empty(self):
-        self.assertEqual(_parse_output_roots("/nonexistent/path.jsonl"), [])
+        r = SentinelFileReader(sentinel=Path("/nonexistent/.pending"))
+        self.assertEqual(r.get_pending_roots(), [])
+
+    def test_clear_removes_file(self):
+        r = self._make("/a")
+        r.clear()
+        self.assertFalse(Path(r._sentinel).exists())
 
 
 # ---------------------------------------------------------------------------
-# _is_safe_path
+# SafeRootValidator
 # ---------------------------------------------------------------------------
 
-class TestIsSafePath(unittest.TestCase):
-    def test_path_under_solid_coder(self):
-        safe = str(Path.home() / ".solid-coder" / "review-123")
-        self.assertTrue(_is_safe_path(safe))
+class TestSafeRootValidator(unittest.TestCase):
+    def setUp(self):
+        self.v = SafeRootValidator(safe_root=Path("/safe/root"))
 
-    def test_path_outside_solid_coder(self):
-        self.assertFalse(_is_safe_path("/tmp/some-dir"))
+    def test_path_under_root_is_safe(self):
+        self.assertTrue(self.v.is_safe("/safe/root/review-123"))
 
-    def test_home_root_itself_is_not_safe(self):
-        self.assertFalse(_is_safe_path(str(Path.home())))
+    def test_path_outside_root_is_not_safe(self):
+        self.assertFalse(self.v.is_safe("/tmp/other"))
 
-    def test_empty_string_is_not_safe(self):
-        self.assertFalse(_is_safe_path(""))
+    def test_empty_path_is_not_safe(self):
+        self.assertFalse(self.v.is_safe(""))
 
 
 # ---------------------------------------------------------------------------
-# PipelineOutputCleaner
+# PathCleanupOrchestrator
 # ---------------------------------------------------------------------------
 
-class TestPipelineOutputCleanerShouldHandle(unittest.TestCase):
-    def test_returns_true_when_transcript_path_present(self):
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
-        self.assertTrue(c.should_handle({"transcript_path": "/some/path.jsonl"}))
+class TestPathCleanupOrchestrator(unittest.TestCase):
+    def _make(self, roots, safe=True, debug=False):
+        remover = RecordingRemover()
+        sentinel = FakeSentinel(roots)
+        orch = PathCleanupOrchestrator(
+            debug_reader=DebugOn() if debug else DebugOff(),
+            sentinel_reader=sentinel,
+            validator=FakeValidator(safe=safe),
+            remover=remover,
+        )
+        return orch, remover, sentinel
 
-    def test_returns_false_when_transcript_path_absent(self):
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
-        self.assertFalse(c.should_handle({}))
+    def test_deletes_safe_roots(self):
+        orch, remover, sentinel = self._make(["/safe/a", "/safe/b"])
+        orch.handle({})
+        self.assertEqual(remover.removed, ["/safe/a", "/safe/b"])
+        self.assertTrue(sentinel.cleared)
+
+    def test_skips_unsafe_roots(self):
+        orch, remover, sentinel = self._make(["/unsafe/a"], safe=False)
+        orch.handle({})
+        self.assertEqual(remover.removed, [])
+        self.assertTrue(sentinel.cleared)
+
+    def test_debug_mode_skips_all(self):
+        orch, remover, sentinel = self._make(["/safe/a"], debug=True)
+        orch.handle({})
+        self.assertEqual(remover.removed, [])
+        self.assertFalse(sentinel.cleared)
+
+    def test_no_roots_clears_sentinel(self):
+        orch, remover, sentinel = self._make([])
+        orch.handle({})
+        self.assertEqual(remover.removed, [])
+        self.assertTrue(sentinel.cleared)
 
 
-class TestPipelineOutputCleanerHandle(unittest.TestCase):
-    def _make_safe_dir(self):
-        base = Path.home() / ".solid-coder"
-        base.mkdir(exist_ok=True)
-        d = base / "test-cleanup-review-999"
-        d.mkdir(exist_ok=True)
-        return str(d)
+# ---------------------------------------------------------------------------
+# StopEventFilter
+# ---------------------------------------------------------------------------
 
-    def test_deletes_safe_path_when_debug_off(self):
-        d = self._make_safe_dir()
-        path = _write_transcript([_tool_result_line(d)])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
-        c.handle({"transcript_path": path})
-        self.assertFalse(Path(d).exists())
+class TestStopEventFilter(unittest.TestCase):
+    def test_always_handles(self):
+        self.assertTrue(StopEventFilter().should_handle({}))
+        self.assertTrue(StopEventFilter().should_handle({"transcript_path": ""}))
 
-    def test_preserves_path_when_debug_on(self):
-        d = self._make_safe_dir()
-        path = _write_transcript([_tool_result_line(d)])
-        c = PipelineOutputCleaner(debug_reader=DebugOn())
-        c.handle({"transcript_path": path})
-        self.assertTrue(Path(d).exists())
-        Path(d).rmdir()
 
-    def test_skips_unsafe_path(self):
-        path = _write_transcript([_tool_result_line("/tmp/should-not-delete")])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
-        c.handle({"transcript_path": path})  # must not raise
+# ---------------------------------------------------------------------------
+# PipelineOutputCleaner facade
+# ---------------------------------------------------------------------------
 
-    def test_no_op_when_no_tool_results(self):
-        path = _write_transcript([json.dumps({"type": "assistant", "message": {"content": []}})])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
-        c.handle({"transcript_path": path})  # must not raise
+class TestPipelineOutputCleaner(unittest.TestCase):
+    def test_should_handle_delegates_to_filter(self):
+        c = PipelineOutputCleaner(event_filter=AlwaysFilter())
+        self.assertTrue(c.should_handle({}))
+
+        c2 = PipelineOutputCleaner(event_filter=NeverFilter())
+        self.assertFalse(c2.should_handle({}))
+
+    def test_handle_delegates_to_orchestrator(self):
+        orch = RecordingOrchestrator()
+        c = PipelineOutputCleaner(cleanup_orchestrator=orch)
+        event = {"cwd": "/p"}
+        c.handle(event)
+        self.assertEqual(orch.handled, [event])
+
+
+# ---------------------------------------------------------------------------
+# HcConfigDebugReader
+# ---------------------------------------------------------------------------
+
+class TestHcConfigDebugReader(unittest.TestCase):
+    def test_uses_injected_fn(self):
+        r = HcConfigDebugReader(debug_mode_fn=lambda: True)
+        self.assertTrue(r.is_debug())
+
+        r2 = HcConfigDebugReader(debug_mode_fn=lambda: False)
+        self.assertFalse(r2.is_debug())
 
 
 if __name__ == "__main__":
