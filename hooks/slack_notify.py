@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Sends a Slack notification when Claude stops.
+solid-description: Notifies via webhook when Claude stops or requests tool permission.
 solid-category: hook
 
 To enable:
@@ -465,4 +465,92 @@ class SlackStopNotifier:
             mode = self._classifier.classify(reader.skill_calls())
             last_message = reader.last_assistant_text()
         payload = self._builder_factory(event, mode, last_message).build()
+        self._dispatcher_factory(self._config.webhook_url()).send(payload)
+
+
+# ---------------------------------------------------------------------------
+# Permission request notification
+# ---------------------------------------------------------------------------
+
+_TOOL_ICONS: dict[str, str] = {
+    "Write": ":pencil2:",
+    "Edit": ":pencil2:",
+    "Bash": ":computer:",
+    "Read": ":open_book:",
+    "WebFetch": ":globe_with_meridians:",
+    "WebSearch": ":mag:",
+    "Glob": ":file_folder:",
+    "Grep": ":mag_right:",
+}
+
+_TOOL_ICON_DEFAULT = ":key:"
+
+
+def _summarise_tool_input(tool_name: str, tool_input: dict) -> str:
+    """Return a short human-readable summary of a tool's input."""
+    if tool_name in ("Write", "Edit", "Read"):
+        return tool_input.get("file_path", "")
+    if tool_name == "Bash":
+        cmd = tool_input.get("command", "")
+        return cmd[:120] + ("…" if len(cmd) > 120 else "")
+    if tool_name in ("WebFetch", "WebSearch"):
+        return tool_input.get("url", tool_input.get("query", ""))
+    if tool_name in ("Glob", "Grep"):
+        return tool_input.get("pattern", tool_input.get("query", ""))
+    for v in tool_input.values():
+        if isinstance(v, str) and v:
+            return v[:120]
+    return ""
+
+
+class PermissionPayloadBuilder:
+    """Builds a Slack Block Kit payload for a PermissionRequest event."""
+
+    def __init__(self, event: dict, path_namer: PathNaming | None = None) -> None:
+        self._event = event
+        self._path_namer = path_namer if path_namer is not None else PathLibNamer()
+
+    def build(self) -> dict:
+        tool_name = self._event.get("tool_name", "Unknown")
+        tool_input = self._event.get("tool_input") or {}
+        cwd = self._event.get("cwd", "")
+        project_name = self._path_namer.name(cwd)
+
+        icon = _TOOL_ICONS.get(tool_name, _TOOL_ICON_DEFAULT)
+        summary = _summarise_tool_input(tool_name, tool_input)
+        header_text = f"{icon}  Permission needed — `{tool_name}`"
+
+        blocks: list[dict] = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": header_text}},
+        ]
+
+        context_elements: list[dict] = []
+        if project_name:
+            context_elements.append({"type": "mrkdwn", "text": f"*Project:* {project_name}"})
+        if summary:
+            context_elements.append({"type": "mrkdwn", "text": f"`{summary}`"})
+        if context_elements:
+            blocks.append({"type": "context", "elements": context_elements})
+
+        return {"text": f"Permission needed — {tool_name}", "blocks": blocks}
+
+
+class SlackPermissionNotifier:
+    """Sends a Slack notification when Claude Code requests tool permission."""
+
+    def __init__(
+        self,
+        config: ConfigReading | None = None,
+        payload_builder_factory: Callable[[dict], PayloadBuilding] | None = None,
+        dispatcher_factory: Callable[[str], WebhookSending] | None = None,
+    ) -> None:
+        self._config = config if config is not None else EnvConfigReader()
+        self._builder_factory = payload_builder_factory or PermissionPayloadBuilder
+        self._dispatcher_factory = dispatcher_factory or WebhookDispatcher
+
+    def should_handle(self, event: dict) -> bool:
+        return self._config.is_enabled()
+
+    def handle(self, event: dict) -> None:
+        payload = self._builder_factory(event).build()
         self._dispatcher_factory(self._config.webhook_url()).send(payload)
