@@ -24,15 +24,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "mcp__plugin_solid-coder_pipeline__get_output_path",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/track_output_path.py\""
-          }
-        ]
-      },
-      {
         "matcher": "mcp__.*",
         "hooks": [
           {
