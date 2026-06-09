@@ -245,5 +245,30 @@ class TestPreWriteGateExclusion(unittest.TestCase):
         hc.assert_called_once()
 
 
+class TestApiKeyGuard(unittest.TestCase):
+    def test_allows_without_check_when_claude_backend_and_no_api_key(self):
+        with patch("pre_write_gate.llm_backend", return_value="claude"), \
+             patch.dict(os.environ, {}, clear=True), \
+             patch(_HC) as hc, patch(_FM) as fm:
+            code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
+        hc.assert_not_called()
+        fm.assert_not_called()
+        self.assertEqual(code, 0)
+
+    def test_proceeds_when_local_backend_and_no_api_key(self):
+        with patch("pre_write_gate.llm_backend", return_value="local"), \
+             patch.dict(os.environ, {}, clear=True), \
+             patch(_HC, return_value=[]) as hc:
+            _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
+        hc.assert_called_once()
+
+    def test_proceeds_when_claude_backend_and_api_key_set(self):
+        with patch("pre_write_gate.llm_backend", return_value="claude"), \
+             patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
+             patch(_HC, return_value=[]) as hc:
+            _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
+        hc.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
