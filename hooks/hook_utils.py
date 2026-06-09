@@ -144,10 +144,11 @@ class GateLogger:
     """Appends timestamped log entries to a file. Never raises on I/O errors."""
 
     def __init__(self, log_path: Optional[Path] = None) -> None:
-        self._log_path = log_path or Path.home() / ".claude" / "solid-coder-gate.log"
+        self._log_path = log_path or (solid_coder_project_dir() / "gate.log")
 
     def log(self, msg: str) -> None:
         try:
+            self._log_path.parent.mkdir(parents=True, exist_ok=True)
             with self._log_path.open("a") as f:
                 f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {msg}\n")
         except Exception:
