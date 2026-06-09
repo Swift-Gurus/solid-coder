@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from typing import IO, Optional, Protocol
 
+from pydantic import TypeAdapter, ValidationError
+
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 import os as _os
@@ -79,8 +81,11 @@ def parse_json_field(raw: str, key: str, expected_type: type) -> Optional[object
     try:
         obj = json.loads(m.group())
         v = obj.get(key)
-        return v if isinstance(v, expected_type) else None
-    except (json.JSONDecodeError, ValueError):
+        if v is None:
+            return None
+        TypeAdapter(expected_type).validate_python(v)
+        return v
+    except (json.JSONDecodeError, ValueError, ValidationError):
         return None
 
 
@@ -132,7 +137,7 @@ class Logging(Protocol):
 
 class HookResponding(Protocol):
     def allow(self) -> None: ...
-    def block(self, reason: str) -> None: ...
+    def block(self, reason: str, additional_context: str = "") -> None: ...
     def allow_with_update(self, updated_input: dict) -> None: ...
 
 
@@ -158,26 +163,27 @@ class GateLogger:
 class HookResponder:
     """Sends Claude PreToolUse hook protocol responses and exits."""
 
-    def __init__(self, output: Optional[IO] = None) -> None:
+    def __init__(self, output: IO = sys.stdout, exit_fn=sys.exit) -> None:
         self._output = output
+        self._exit = exit_fn
 
     def _send(self, payload: dict) -> None:
-        out = self._output if self._output is not None else sys.stdout
-        out.write(json.dumps(payload))
-        out.flush()
-        sys.exit(0)
+        self._output.write(json.dumps(payload))
+        self._output.flush()
+        self._exit(0)
 
     def allow(self) -> None:
-        sys.exit(0)
+        self._exit(0)
 
-    def block(self, reason: str) -> None:
-        self._send({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": reason,
-            }
-        })
+    def block(self, reason: str, additional_context: str = "") -> None:
+        hook_output: dict = {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+        if additional_context:
+            hook_output["additionalContext"] = additional_context
+        self._send({"hookSpecificOutput": hook_output})
 
     def allow_with_update(self, updated_input: dict) -> None:
         self._send({
@@ -193,7 +199,7 @@ class HookGate:
     """Pure Facade composing Logging and HookResponding for hook scripts.
 
     All dependencies are protocol-typed and injected via __init__. Use
-    make_hook_gate() to wire production defaults.
+    HookGateFactory to wire production defaults.
     """
 
     def __init__(self, logger: Logging, responder: HookResponding) -> None:
@@ -206,63 +212,115 @@ class HookGate:
     def allow(self) -> None:
         return self._responder.allow()
 
-    def block(self, reason: str) -> None:
-        return self._responder.block(reason)
+    def block(self, reason: str, additional_context: str = "") -> None:
+        return self._responder.block(reason, additional_context)
 
     def allow_with_update(self, updated_input: dict) -> None:
         return self._responder.allow_with_update(updated_input)
 
 
-def make_hook_gate(
-    log_path: Optional[Path] = None,
-    output: Optional[object] = None,
-) -> HookGate:
-    """Wire production defaults and return a ready-to-use HookGate."""
-    return HookGate(
-        logger=GateLogger(log_path),
-        responder=HookResponder(output),
-    )
+class HookGateFactory:
+    """Factory: constructs HookGate with production defaults.
+
+    Constructing, holding, and wiring concrete dependencies is inherently
+    this class's job (OCP factory exception).
+    """
+
+    def __init__(
+        self,
+        log_path: Optional[Path] = None,
+        output: Optional[IO] = None,
+    ) -> None:
+        self._log_path = log_path
+        self._output = output
+
+    def build(self) -> HookGate:
+        return HookGate(
+            logger=GateLogger(self._log_path),
+            responder=HookResponder(
+                output=self._output if self._output is not None else sys.stdout,
+            ),
+        )
 
 
 class SubprocessError(Exception):
     """Raised when a gate subprocess fails. Carries the reason for display."""
 
 
-def _run_subprocess_to_json(cmd: list, timeout: int, stdin=None) -> object:
-    """Execute cmd, check returncode, parse stdout as JSON.
+class SubprocessRunning(Protocol):
+    """Protocol for executing a shell command and returning captured output."""
 
-    Raises SubprocessError with stderr details on any failure so callers can
-    surface the root cause rather than silently failing open.
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> tuple: ...
+
+
+class SubprocessJsonRunning(Protocol):
+    """Protocol for executing a shell command and returning parsed JSON output."""
+
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> object: ...
+
+
+class SubprocessAdapter:
+    """Boundary adapter: wraps subprocess.run for injection.
+
+    subprocess.run is a global stdlib function (not developer-owned, cannot be
+    subclassed) — this adapter satisfies the OCP Boundary Adapter exception.
     """
-    try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout, stdin=stdin,
-        )
-        if result.returncode != 0:
-            stderr = (result.stderr or "").strip()
+
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> tuple:
+        kwargs: dict = {}
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        if stdin is not None:
+            kwargs["stdin"] = stdin
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
+            return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
+        except subprocess.TimeoutExpired:
+            raise SubprocessError(f"`{cmd[0]}` timed out after {timeout}s")
+
+
+class SubprocessJsonRunner:
+    """Runs a subprocess command and parses stdout as JSON.
+
+    Reuses SubprocessRunning for execution; adds JSON parsing and error raising.
+    """
+
+    def __init__(self, runner: SubprocessRunning) -> None:
+        self._runner = runner
+
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> object:
+        try:
+            success, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=stdin)
+        except SubprocessError:
+            raise
+        except Exception as exc:
+            raise SubprocessError(f"`{cmd[0]}` failed: {exc}")
+        if not success:
             label = " ".join(cmd[:2])
             raise SubprocessError(
-                f"`{label}` exited {result.returncode}"
-                + (f":\n{stderr}" if stderr else "")
+                f"`{label}` exited with error" + (f":\n{stderr}" if stderr else "")
             )
-        return json.loads(result.stdout)
-    except SubprocessError:
-        raise
-    except subprocess.TimeoutExpired:
-        raise SubprocessError(f"`{cmd[0]}` timed out after {timeout}s")
-    except json.JSONDecodeError as exc:
-        raise SubprocessError(f"`{cmd[0]}` produced invalid JSON: {exc}")
-    except Exception as exc:
-        raise SubprocessError(f"`{cmd[0]}` failed: {exc}")
+        try:
+            return json.loads(stdout)
+        except json.JSONDecodeError as exc:
+            raise SubprocessError(f"`{cmd[0]}` produced invalid JSON: {exc}")
 
 
-def run_gateway_cmd(cmd: list, timeout: int = 10) -> Optional[dict]:
+_default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(SubprocessAdapter())
+
+
+def run_gateway_cmd(
+    cmd: list,
+    timeout: int = 10,
+    *,
+    runner: SubprocessJsonRunning = _default_subprocess_runner,
+) -> Optional[dict]:
     """Run a gateway CLI command and return parsed JSON dict.
 
     Raises SubprocessError on failure — callers that need a safe fallback
     should catch it explicitly.
     """
-    return _run_subprocess_to_json(cmd, timeout=timeout)  # type: ignore[return-value]
+    return runner.run(cmd, timeout=timeout)  # type: ignore[return-value]
 
 
 def run_claude_bare(
@@ -273,6 +331,8 @@ def run_claude_bare(
     session_id: str = "",
     no_session: bool = False,
     model: str = "",
+    *,
+    runner: SubprocessJsonRunning = _default_subprocess_runner,
 ) -> Optional[str]:
     """Run claude -p in bare JSON mode and return the final result string.
 
@@ -292,10 +352,16 @@ def run_claude_bare(
         cmd += ["--mcp-config", mcp_config]
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
-    events = _run_subprocess_to_json(cmd, timeout=timeout, stdin=subprocess.DEVNULL)
-    if not isinstance(events, list):
-        events = [events]
-    for obj in reversed(events):
-        if isinstance(obj, dict) and obj.get("type") == "result":
-            return obj.get("result", "")
+    raw = runner.run(cmd, timeout=timeout, stdin=subprocess.DEVNULL)
+    try:
+        events: list = TypeAdapter(list).validate_python(raw)
+    except ValidationError:
+        events = [raw]
+    for event in reversed(events):
+        try:
+            event_dict: dict = TypeAdapter(dict).validate_python(event)
+        except ValidationError:
+            continue
+        if event_dict.get("type") == "result":
+            return event_dict.get("result", "")
     raise SubprocessError("claude -p returned no result event")

@@ -1,5 +1,5 @@
 """
-solid-description: Validates correct language model runner creation based on backend configuration.
+solid-description: Validates LLM backend selection and configuration parameter forwarding from settings.
 solid-category: unit-test
 """
 
@@ -87,12 +87,24 @@ class TestMakeLlmRunner(unittest.TestCase):
         self.assertEqual(runner._model, "")
 
 
+class _CaptureRunner:
+    """Test double: captures the cmd passed to SubprocessJsonRunner.run()."""
+
+    def __init__(self, return_value):
+        self.captured_cmd = None
+        self._return_value = return_value
+
+    def run(self, cmd, timeout=None, stdin=None):
+        self.captured_cmd = cmd
+        return self._return_value
+
+
 class TestRunClaudeBareModel(unittest.TestCase):
     def _captured_cmd(self, **kwargs):
         """Return the cmd list passed to subprocess when run_claude_bare is called."""
-        with patch("hook_utils._run_subprocess_to_json", return_value=[{"type": "result", "result": "ok"}]) as m:
-            hook_utils.run_claude_bare("hello", **kwargs)
-            return m.call_args[0][0]  # positional cmd arg
+        capture = _CaptureRunner([{"type": "result", "result": "ok"}])
+        hook_utils.run_claude_bare("hello", runner=capture, **kwargs)
+        return capture.captured_cmd
 
     def test_no_model_arg_when_model_is_empty(self):
         cmd = self._captured_cmd(model="")

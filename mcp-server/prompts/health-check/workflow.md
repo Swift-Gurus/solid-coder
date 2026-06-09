@@ -7,6 +7,10 @@
   <step id="1" name="detection">
     Work through every detection phase for every principle in the
     detection-instructions block. Apply each metric to every unit in the code.
+    For each principle, apply the exceptions defined in that principle's
+    detection-instructions exactly as stated. If a unit falls under an exception,
+    treat it as compliant for that principle — submit compliant metric values for
+    it in step 3, not measured violation metrics.
     Do not stop early. Do not write any output yet.
   </step>
 
@@ -46,32 +50,6 @@
     - Submit ALL principles — missing any principle causes an error.
     - Submit ALL required metrics for every unit — missing a metric causes an error.
     - For compliant units, submit the compliant metric values (e.g. 0 for counts with no violations).
-
-    EXCEPTION RULES — apply these during detection; submit compliant values when they match:
-
-    ISP SCOPE: include ONLY units with unit_kind "protocol" or "interface".
-      Omit every class, struct, enum, extension, and function from ISP entirely.
-
-    SRP FACADE EXCEPTION: if a unit has ALL of the following — all dependencies are
-      protocol-typed (no concrete types in init), all methods are pure delegation (no
-      logic or transformation, each method calls exactly one injected dep), no internal
-      construction (no `X()` calls in methods) — submit cohesion_groups=1 and
-      stakeholder_count=1. This is the Facade/Coordinator exception; it is COMPLIANT
-      regardless of the measured group count.
-
-    LSP EXCEPTION — CRITICAL: the server scores the number you SUBMIT, not your analysis.
-      If you identify LSP exceptions during detection, you MUST submit type_checks=0 — NOT
-      the raw measured count. Submitting type_checks=1 causes a SEVERE score even if you
-      note "exception applies" in the suggestion. The fix is to submit 0.
-      Submit type_checks=0 when ALL isinstance/type checks in a unit fall into exempt categories:
-      - input validation at a method boundary (isinstance(x, list/dict/str/int) to guard an arg)
-      - except ConcreteExceptionType clauses in try/except for error recovery
-      - checking types of values from external libraries or JSON (not developer-owned hierarchies)
-      Only submit type_checks > 0 for: isinstance(obj, AbstractBase) where the RESULT selects
-      different subtype-specific behavior — that is the actual LSP violation pattern.
-
-    OCP EXCEPTION — standard library types (Path, json, shutil, re, copy) used directly
-      are helpers, not sealed variation points. Do NOT flag them as sealed_variation_points.
 
 {submit_batch_example}
 

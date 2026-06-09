@@ -28,9 +28,9 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import GateHandling, make_hook_gate, parse_hook_event
+from hook_utils import GateHandling, HookGateFactory, parse_hook_event
 
-_gate = make_hook_gate()
+_gate = HookGateFactory().build()
 
 
 class CommandChecking(Protocol):
@@ -194,13 +194,16 @@ _coordinator = BashGateCoordinator(
 )
 
 
-def main() -> None:
+def main(
+    coordinator: BashGateCoordinator = _coordinator,
+    gate: GateHandling = _gate,
+) -> None:
     parsed = parse_hook_event(sys.stdin.read())
     if parsed is None:
-        _gate.allow()
+        gate.allow()
         return
     tool_name, tool_input, _, _ = parsed
-    _coordinator.run(tool_name, tool_input.get("command", ""))
+    coordinator.run(tool_name, tool_input.get("command", ""))
 
 
 if __name__ == "__main__":

@@ -37,10 +37,10 @@ import code_health_check as health
 import validate_swift_frontmatter as frontmatter
 from hc_checker import HealthChecking
 from hc_config import hook_exclude_patterns, llm_backend
-from hook_utils import GateHandling, make_hook_gate, parse_hook_event, path_matches_pattern
+from hook_utils import GateHandling, HookGateFactory, parse_hook_event, path_matches_pattern
 from hc_violation_parser import ViolationParser
 
-_gate = make_hook_gate()
+_gate = HookGateFactory().build()
 
 # ---------------------------------------------------------------------------
 # Low-risk edit detection

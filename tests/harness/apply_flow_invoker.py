@@ -179,11 +179,25 @@ class FindingsReader(FindingsReading):
         for file_entry in data.get("files", []):
             for unit in file_entry.get("units", []):
                 unit_name = unit.get("unit_name", "")
+                unit_metrics = unit.get("metrics", {})
                 for violation in unit.get("violations", []):
+                    rule_id = violation.get("rule_id", "")
+                    principle = rule_id.split("-")[0] if "-" in rule_id else ""
+                    principle_metrics = {}
+                    if principle:
+                        for mk, mv in unit_metrics.items():
+                            if mk.lower() == principle.lower() and isinstance(mv, dict):
+                                principle_metrics = {
+                                    k: v.get("value")
+                                    for k, v in mv.items()
+                                    if isinstance(v, dict) and "value" in v
+                                }
+                                break
                     f = {
-                        "metric_id": violation.get("rule_id", ""),
+                        "metric_id": rule_id,
                         "severity": violation.get("severity", ""),
                         "unit_name": unit_name,
+                        "metrics": principle_metrics,
                     }
                     findings.append(f)
         return findings

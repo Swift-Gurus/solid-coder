@@ -107,7 +107,14 @@ class TestApplyFlowInvokerInvoke(unittest.TestCase):
 
         if session_return is not None:
             # The invoker reads from {log_dir}/{fixture_stem}/{NAME}/review-output.json
-            review_output = {"findings": findings or []}
+            # Unified format: files[].units[].violations[]
+            units = []
+            for f in (findings or []):
+                units.append({
+                    "unit_name": f.get("unit_name", ""),
+                    "violations": [{"rule_id": f.get("metric_id", ""), "severity": f.get("severity", "")}],
+                })
+            review_output = {"files": [{"file_path": str(self._fixture), "units": units}]}
             fixture_stem = self._fixture.stem  # "fixture"
             actual_output = self._output_paths.log_dir / fixture_stem / "SRP" / "review-output.json"
             actual_output.parent.mkdir(parents=True, exist_ok=True)
