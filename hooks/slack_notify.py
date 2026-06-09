@@ -10,9 +10,9 @@ The webhook URL is self-authenticating — no OAuth or tokens required.
 Create one at api.slack.com/apps > Incoming Webhooks, select yourself
 as the destination to receive it as a DM.
 
-To add more channels in the future, extend CLAUDE_SLACK_NOTIFY to a
-comma-separated list of URLs or introduce a config file — this module
-is the only place that needs to change.
+Threshold:
+    Set [slack] task_length_threshold in solid-coder-local.toml to only
+    notify when the task took longer than N seconds. 0 = always notify.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ import os
 import re
 import sys
 import urllib.error
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Protocol, runtime_checkable
 
@@ -36,7 +37,7 @@ _MODE_ICONS: dict[str, str] = {
     "review": ":mag:",
     "implement": ":hammer_and_wrench:",
     "refactor": ":recycle:",
-    "vibe": "🪄",
+    "vibe": ":magic_wand:",
 }
 
 
@@ -85,6 +86,27 @@ class FileSystemLineReader:
 
 
 @runtime_checkable
+class JSONLParsing(Protocol):
+    def messages(self, path: str) -> list: ...
+
+
+class JSONLTranscriptParser:
+    """Parses a JSONL transcript into a list of message dicts, skipping malformed lines."""
+
+    def __init__(self, file_reader: FileLineReading) -> None:
+        self._reader = file_reader
+
+    def messages(self, path: str) -> list:
+        result = []
+        for line in self._reader.read_lines(path):
+            try:
+                result.append(json.loads(line.strip()))
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return result
+
+
+@runtime_checkable
 class PathNaming(Protocol):
     def name(self, path: str) -> str: ...
 
@@ -96,6 +118,18 @@ class PathLibNamer:
         return Path(path).name if path else ""
 
 
+@runtime_checkable
+class ClockReading(Protocol):
+    def now_utc(self) -> datetime: ...
+
+
+class SystemClock:
+    """Returns the real current UTC time."""
+
+    def now_utc(self) -> datetime:
+        return datetime.now(timezone.utc)
+
+
 # ---------------------------------------------------------------------------
 # Domain protocols
 # ---------------------------------------------------------------------------
@@ -104,6 +138,11 @@ class PathLibNamer:
 class ConfigReading(Protocol):
     def webhook_url(self) -> str: ...
     def is_enabled(self) -> bool: ...
+
+
+@runtime_checkable
+class ThresholdReading(Protocol):
+    def threshold_seconds(self) -> int: ...
 
 
 @runtime_checkable
@@ -120,6 +159,11 @@ class SkillCallsReading(Protocol):
 class TranscriptReading(Protocol):
     def last_assistant_text(self) -> str: ...
     def skill_calls(self) -> list: ...
+
+
+@runtime_checkable
+class ElapsedTimeReading(Protocol):
+    def elapsed_seconds(self, transcript_path: str) -> float: ...
 
 
 @runtime_checkable
@@ -156,26 +200,39 @@ class EnvConfigReader:
         return bool(self.webhook_url())
 
 
+class TomlThresholdReader:
+    """Reads task_length_threshold from the [slack] section of solid-coder-local.toml."""
+
+    def __init__(self, threshold_fn: Callable[[], int] | None = None) -> None:
+        if threshold_fn is None:
+            from hc_config_core import read_section, safe_convert  # noqa: PLC0415
+            def _default() -> int:
+                return safe_convert(
+                    read_section("slack").get("task_length_threshold"), 60, int
+                )
+            threshold_fn = _default
+        self._fn = threshold_fn
+
+    def threshold_seconds(self) -> int:
+        return self._fn()
+
+
 class AssistantTextReader:
     """Reads the last non-empty text block from the last assistant message."""
 
-    def __init__(self, transcript_path: str, file_reader: FileLineReading) -> None:
+    def __init__(self, transcript_path: str, parser: JSONLParsing) -> None:
         self._path = transcript_path
-        self._reader = file_reader
+        self._parser = parser
 
     def last_assistant_text(self) -> str:
         last_text = ""
-        for line in self._reader.read_lines(self._path):
-            try:
-                obj = json.loads(line.strip())
-                if obj.get("type") == "assistant":
-                    for block in obj.get("message", {}).get("content", []):
-                        if block.get("type") == "text":
-                            text = block.get("text", "").strip()
-                            if text:
-                                last_text = text
-            except (json.JSONDecodeError, ValueError):
-                pass
+        for obj in self._parser.messages(self._path):
+            if obj.get("type") == "assistant":
+                for block in obj.get("message", {}).get("content", []):
+                    if block.get("type") == "text":
+                        text = block.get("text", "").strip()
+                        if text:
+                            last_text = text
         return last_text
 
 
@@ -187,45 +244,37 @@ class SkillCallsReader:
     2. Fall back to scanning assistant Skill tool_use blocks (subagent format).
     """
 
-    def __init__(self, transcript_path: str, file_reader: FileLineReading) -> None:
+    def __init__(self, transcript_path: str, parser: JSONLParsing) -> None:
         self._path = transcript_path
-        self._reader = file_reader
+        self._parser = parser
 
     def skill_calls(self) -> list:
-        lines = self._reader.read_lines(self._path)
-        command = self._command_from_user_message(lines)
+        messages = self._parser.messages(self._path)
+        command = self._command_from_user_message(messages)
         if command:
             return [command]
-        return self._skills_from_tool_use(lines)
+        return self._skills_from_tool_use(messages)
 
-    def _command_from_user_message(self, lines: list) -> str:
-        for line in lines:
-            try:
-                obj = json.loads(line.strip())
-                if obj.get("type") == "user":
-                    text = _normalize_content_text(obj.get("message", {}).get("content", ""))
-                    match = _COMMAND_MESSAGE_RE.search(text)
-                    return match.group(1).strip() if match else ""
-            except (json.JSONDecodeError, ValueError):
-                pass
+    def _command_from_user_message(self, messages: list) -> str:
+        for obj in messages:
+            if obj.get("type") == "user":
+                text = _normalize_content_text(obj.get("message", {}).get("content", ""))
+                match = _COMMAND_MESSAGE_RE.search(text)
+                return match.group(1).strip() if match else ""
         return ""
 
-    def _skills_from_tool_use(self, lines: list) -> list:
+    def _skills_from_tool_use(self, messages: list) -> list:
         skills: list[str] = []
-        for line in lines:
-            try:
-                obj = json.loads(line.strip())
-                if obj.get("type") == "assistant":
-                    for block in obj.get("message", {}).get("content", []):
-                        if (
-                            block.get("type") == "tool_use"
-                            and block.get("name") == "Skill"
-                        ):
-                            skill = (block.get("input") or {}).get("skill", "")
-                            if skill:
-                                skills.append(skill)
-            except (json.JSONDecodeError, ValueError):
-                pass
+        for obj in messages:
+            if obj.get("type") == "assistant":
+                for block in obj.get("message", {}).get("content", []):
+                    if (
+                        block.get("type") == "tool_use"
+                        and block.get("name") == "Skill"
+                    ):
+                        skill = (block.get("input") or {}).get("skill", "")
+                        if skill:
+                            skills.append(skill)
         return skills
 
 
@@ -240,14 +289,48 @@ class TranscriptReader:
         skills_reader: SkillCallsReading | None = None,
     ) -> None:
         fr = file_reader if file_reader is not None else FileSystemLineReader()
-        self._text_reader = text_reader or AssistantTextReader(transcript_path, fr)
-        self._skills_reader = skills_reader or SkillCallsReader(transcript_path, fr)
+        parser = JSONLTranscriptParser(fr)
+        self._text_reader = text_reader or AssistantTextReader(transcript_path, parser)
+        self._skills_reader = skills_reader or SkillCallsReader(transcript_path, parser)
 
     def last_assistant_text(self) -> str:
         return self._text_reader.last_assistant_text()
 
     def skill_calls(self) -> list:
         return self._skills_reader.skill_calls()
+
+
+class TranscriptElapsedReader:
+    """Computes seconds elapsed since the last user message in the transcript."""
+
+    def __init__(
+        self,
+        file_reader: FileLineReading | None = None,
+        clock: ClockReading | None = None,
+    ) -> None:
+        fr = file_reader if file_reader is not None else FileSystemLineReader()
+        self._parser = JSONLTranscriptParser(fr)
+        self._clock = clock if clock is not None else SystemClock()
+
+    def elapsed_seconds(self, transcript_path: str) -> float:
+        last_ts: datetime | None = None
+        for obj in self._parser.messages(transcript_path):
+            if obj.get("type") == "user":
+                # Skip tool_result messages — they have timestamps seconds before Stop
+                # and would make elapsed appear tiny even after a long task.
+                # Only track human-typed messages (text content).
+                content = obj.get("message", {}).get("content", "")
+                if isinstance(content, list) and content and content[0].get("type") == "tool_result":
+                    continue
+                raw = obj.get("timestamp", "")
+                if raw:
+                    try:
+                        last_ts = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                    except ValueError:
+                        pass
+        if last_ts is None:
+            return float("inf")
+        return (self._clock.now_utc() - last_ts).total_seconds()
 
 
 class ModeClassifier:
@@ -285,7 +368,7 @@ class SlackPayloadBuilder:
     def build(self) -> dict:
         cwd = self._event.get("cwd", "")
         project_name = self._path_namer.name(cwd)
-        icon = _MODE_ICONS.get(self._mode, "🪄")
+        icon = _MODE_ICONS.get(self._mode, ":magic_wand:")
         first_line = self._last_message.split("\n")[0].strip() if self._last_message else ""
         header_text = f"{icon}  {first_line or 'Finished'}"
 
@@ -352,15 +435,26 @@ class SlackStopNotifier:
         mode_classifier: ModeClassifying | None = None,
         payload_builder_factory: Callable[[dict, str, str], PayloadBuilding] | None = None,
         dispatcher_factory: Callable[[str], WebhookSending] | None = None,
+        threshold_reader: ThresholdReading | None = None,
+        elapsed_reader: ElapsedTimeReading | None = None,
     ) -> None:
         self._config = config if config is not None else EnvConfigReader()
         self._reader_factory = transcript_reader_factory or TranscriptReader
         self._classifier = mode_classifier if mode_classifier is not None else ModeClassifier()
         self._builder_factory = payload_builder_factory or SlackPayloadBuilder
         self._dispatcher_factory = dispatcher_factory or WebhookDispatcher
+        self._threshold = threshold_reader if threshold_reader is not None else TomlThresholdReader()
+        self._elapsed = elapsed_reader if elapsed_reader is not None else TranscriptElapsedReader()
 
     def should_handle(self, event: dict) -> bool:
-        return self._config.is_enabled()
+        if not self._config.is_enabled():
+            return False
+        threshold = self._threshold.threshold_seconds()
+        if threshold > 0:
+            elapsed = self._elapsed.elapsed_seconds(event.get("transcript_path", ""))
+            if elapsed < threshold:
+                return False
+        return True
 
     def handle(self, event: dict) -> None:
         transcript_path = event.get("transcript_path", "")
