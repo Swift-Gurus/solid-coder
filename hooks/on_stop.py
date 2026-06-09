@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Coordinates handling of Claude Code Stop events.
+solid-description: Dispatches Claude Code Stop events to registered handlers.
 solid-category: hook
 """
 
@@ -78,10 +78,9 @@ def main(reader: StopEventReading, gate: StopDispatching) -> None:
 
 if __name__ == "__main__":
     ensure_on_path(Path(__file__).resolve().parent)
-    from cleanup_pipeline_output import PipelineOutputCleaner  # noqa: PLC0415
     from slack_notify import SlackStopNotifier  # noqa: PLC0415
 
     main(
         reader=HookEventReader(),
-        gate=OnStopGate(handlers=[SlackStopNotifier(), PipelineOutputCleaner()]),
+        gate=OnStopGate(handlers=[SlackStopNotifier()]),
     )
