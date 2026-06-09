@@ -55,7 +55,7 @@ Review instructions (`review/instructions.md`) use YAML frontmatter to declare p
 Create a tasklist and execute:
 
 1. **Create output folder** — `OUTPUT_PATH/NAME`
-2. **Load principle rules** — Call `mcp__docs__load_rules(mode: "review", principle: NAME)`. This returns rule.md, review/instructions.md, Examples/, and required design pattern files as a single content block. Hold it as active context for Phase 2.
+2. **Load principle rules** — Call `mcp__plugin_solid-coder_docs__load_rules(mode: "review", principle: NAME)`. This returns rule.md, review/instructions.md, Examples/, and required design pattern files as a single content block. Hold it as active context for Phase 2.
 3. **Parse input** — Read and parse the review-input JSON. Extract file list and unit metadata (paths, line ranges, has_changes flags). Do NOT read source code files here — they are loaded one at a time in Phase 2.
 
 ### Phase 2: Analysis (per-unit detection)
@@ -81,7 +81,7 @@ The key mechanism in Phase 2 is **dynamic task creation**: the review instructio
 ### Phase 3: Output
 
 1. **Read both schemas** — `references/review-output.schema.json` (overall payload structure) and `references/principles/NAME/review/output.schema.json` (required metric variables for this principle).
-2. **Submit to server** — Construct a partial output with `timestamp`, `files`, and per-unit `metrics: {NAME: {var: {value: N}}}`. Call `mcp__plugin_solid-coder_pipeline__submit_findings`. The server validates metrics, scores severity bands, writes the output file with `violations: [{rule_id, severity}]`, and returns a compact summary. Do NOT use the Write tool to write review-output.json directly — the server is authoritative.
+2. **Submit to server** — Construct a partial output with `timestamp`, `files`, and per-unit `metrics: {NAME: {var: {value: N}}}`. Call `mcp__plugin_solid-coder_pipeline__submit_batch_findings` with `{output_dir: OUTPUT_PATH, submissions: {NAME: partial_output}}`. The server validates metrics against the unified + per-principle schemas, scores severity bands, writes `{OUTPUT_PATH}/{NAME}/review-output.json` with `violations: [{rule_id, severity}]`, and returns a summary of SEVERE violations. Do NOT use the Write tool to write review-output.json directly — the server is authoritative.
 
 ## Inputs / Outputs
 

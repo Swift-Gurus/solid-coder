@@ -11,7 +11,7 @@
   </step>
 
   <step id="2" name="dry-search" required="true">
-    YOU MUST call mcp__pipeline__search_codebase
+    YOU MUST call mcp__plugin_solid-coder_pipeline__search_codebase
     moving to step 3. Do not skip this step — it is required even when you
     believe no DRY violation exists, because absence must be confirmed by search.
 
@@ -24,7 +24,7 @@
      - [] Build a search query: name + camelCase words + responsibility keywords +
        synonyms, all space-separated.
     
-    Run Call `mcp__pipeline__search_codebase` with  aggregated query NOW. Do not defer.
+    Run Call `mcp__plugin_solid-coder_pipeline__search_codebase` with  aggregated query NOW. Do not defer.
     
     b) Skip any result whose path is {file_path} — that is the file being
        written and cannot be a reuse source for itself.
@@ -39,7 +39,7 @@
   </step>
 
   <step id="3" name="submit" required="true">
-    Call mcp__pipeline__submit_batch_findings ONCE with ALL principles you
+    Call mcp__plugin_solid-coder_pipeline__submit_batch_findings ONCE with ALL principles you
     received detection instructions for.
 
     IMPORTANT:
@@ -82,7 +82,7 @@
   <step id="4" name="fix-submission" required="true">
     If submit_batch_findings returned violations, complete ALL of these in order:
 
-    a) Call mcp__docs__load_fix_for_violation ONCE with ALL metric_ids at once:
+    a) Call mcp__plugin_solid-coder_docs__load_fix_for_violation ONCE with ALL metric_ids at once:
          metric_ids: [every metric_id from the violations array]
        The response contains fix strategy guidance for each metric. Read it carefully.
 
@@ -94,7 +94,7 @@
        DO NOT ANALYZE OR QUESTION SERVER'S SCORING -> just provide suggestion based on fix guidelines
 
 
-    c) Call mcp__pipeline__submit_fix ONCE with output_dir and a fixes array covering
+    c) Call mcp__plugin_solid-coder_pipeline__submit_fix ONCE with output_dir and a fixes array covering
        every violation:
          output_dir: the output_dir value from the submit_batch_findings response
          fixes: [

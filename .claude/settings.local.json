@@ -86,7 +86,29 @@
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit -m \"feat: add submit_batch_findings and submit_fix to apply-principle-review agent/skill/harness\")",
       "Skill(deep-research)",
       "Workflow(deep-research)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(claude -p \"reply with only: ok\" --output-format json)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder checkout -b fix/slack-threshold-tool-results)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add hooks/slack_notify.py hooks/tests/test_slack_notify.py)",
+      "Bash(GIT_EDITOR=\"sed -i '' 's/^fix:$/fix: slack threshold ignores tool_result timestamps/'\" git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder checkout main)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder merge fix/slack-threshold-tool-results --ff-only)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder show 4b95812 -- mcp-server/prompts/health-check/workflow.md)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder show 3b8141d --stat)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline -- skills/validate-findings/)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder show 3f20409 --stat)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder show fc2ebc1 --stat)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder checkout -b feat/hooks/permission-notify)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add hooks/on_permission_request.py hooks/slack_notify.py hooks/hooks.json hooks/tests/test_permission_notify.py)",
+      "Bash(GIT_EDITOR=\"sed -i '' 's/^feat:$/feat: slack notification on permission request/'\" git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder merge feat/hooks/permission-notify --ff-only)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline -3)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder checkout -b feat/session-wrap-up)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add .claude/settings.local.json mcp-server/prompts/health-check/workflow.md skills/apply-principle-review/.claude/CLAUDE.md skills/apply-principle-review/SKILL.md .claude-plugin/plugin.json)",
+      "Bash(GIT_EDITOR=\"sed -i '' 's/^feat:$/feat: fix MCP tool names and wire apply-principle-review to submit_batch_findings/'\" git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder merge feat/session-wrap-up --ff-only)",
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline -5)"
     ]
   }
 }
