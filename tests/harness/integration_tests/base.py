@@ -65,6 +65,11 @@ class IntegrationTestBase(unittest.TestCase):
 
     def _run_principle(self, principle_folder: Path, flow: str) -> None:
         """Run one principle+flow. Fails on infrastructure errors; tolerates expectation mismatches."""
+        print(
+            f"\n  [{self.MODEL_PROFILE}] {principle_folder.name} / {flow} "
+            f"(timeout={self.TIMEOUT}s) ...",
+            flush=True,
+        )
         factory = HarnessFactory()
         runner = factory.build(
             project_root=_PROJECT_ROOT,
@@ -73,13 +78,15 @@ class IntegrationTestBase(unittest.TestCase):
         )
         # runner.run() returns False on expectation mismatches — that is OK here.
         # We only fail if an exception propagates (infra error).
-        runner.run(
+        passed = runner.run(
             principle_path=f"references/principles/{principle_folder.name}",
             flow=flow,
             fixture_filter=None,
             model_name=self.MODEL_PROFILE,
             timeout=self.TIMEOUT,
         )
+        status = "PASS" if passed else "MISMATCH (ok)"
+        print(f"  [{self.MODEL_PROFILE}] {principle_folder.name} / {flow} → {status}", flush=True)
 
     # ── Test methods ───────────────────────────────────────────────────────────
 
