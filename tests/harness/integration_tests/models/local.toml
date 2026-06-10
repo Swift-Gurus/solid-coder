@@ -1,0 +1,13 @@
+[llm]
+backend = "local"
+host = "http://localhost:8080"
+model = "local"
+timeout = 600
+
+[inference]
+temperature = 0
+top_k = 20
+top_p = 0.95
+min_p = 0.05
+repeat_penalty = 1.1
+max_tokens = 4096

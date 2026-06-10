@@ -135,6 +135,24 @@ class Logging(Protocol):
     def log(self, msg: str) -> None: ...
 
 
+class OutputWriting(Protocol):
+    """Protocol for writing a serialised hook payload to an output stream."""
+
+    def write_payload(self, payload: dict) -> None: ...
+
+
+class StdoutWriter:
+    """Adapter: serialises payload to JSON and writes to sys.stdout lazily.
+
+    Resolving sys.stdout at write time (not construction time) ensures that
+    redirect_stdout in tests is respected without eager capture.
+    """
+
+    def write_payload(self, payload: dict) -> None:
+        sys.stdout.write(json.dumps(payload))
+        sys.stdout.flush()
+
+
 class HookResponding(Protocol):
     def allow(self) -> None: ...
     def block(self, reason: str, additional_context: str = "") -> None: ...
@@ -163,13 +181,12 @@ class GateLogger:
 class HookResponder:
     """Sends Claude PreToolUse hook protocol responses and exits."""
 
-    def __init__(self, output: IO = sys.stdout, exit_fn=sys.exit) -> None:
+    def __init__(self, output: OutputWriting = StdoutWriter(), exit_fn=sys.exit) -> None:
         self._output = output
         self._exit = exit_fn
 
     def _send(self, payload: dict) -> None:
-        self._output.write(json.dumps(payload))
-        self._output.flush()
+        self._output.write_payload(payload)
         self._exit(0)
 
     def allow(self) -> None:
@@ -229,7 +246,7 @@ class HookGateFactory:
     def __init__(
         self,
         log_path: Optional[Path] = None,
-        output: Optional[IO] = None,
+        output: Optional[OutputWriting] = None,
     ) -> None:
         self._log_path = log_path
         self._output = output
@@ -238,7 +255,7 @@ class HookGateFactory:
         return HookGate(
             logger=GateLogger(self._log_path),
             responder=HookResponder(
-                output=self._output if self._output is not None else sys.stdout,
+                output=self._output if self._output is not None else StdoutWriter(),
             ),
         )
 

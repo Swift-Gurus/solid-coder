@@ -19,13 +19,19 @@ from models import ModelProfile  # noqa: E402
 
 
 class ModelProfileLoader(ModelProfileLoading):
-    def __init__(self, project_root: Path, toml_loader: TomlLoading) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        toml_loader: TomlLoading,
+        profile_dir: "Path | None" = None,
+    ) -> None:
         self._project_root = project_root
         self._toml_loader = toml_loader
+        self._profile_dir = profile_dir or (project_root / "tests" / "models")
 
     def load(self, model_name: str | None) -> ModelProfile:
         if model_name is not None:
-            profile_path = self._project_root / "tests" / "models" / (model_name + ".toml")
+            profile_path = self._profile_dir / (model_name + ".toml")
             if not profile_path.exists():
                 print(f"Model profile not found: {profile_path}", file=sys.stderr)
                 sys.exit(1)

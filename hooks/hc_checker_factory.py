@@ -2,7 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Creates a health checker configured to evaluate source code against quality principles.
+solid-description: Provides health checker instances for code quality evaluation.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def make_health_checker(
     file_path: str = "",
     log_path: Optional[Path] = None,
 ) -> HealthChecking:
-    logger = GateLogger(log_path or PLUGIN_ROOT / ".claude" / "solid-coder-gate.log")
+    logger = GateLogger(log_path)
     return LLMHealthChecker(
         loader=PrinciplesLoader(
             rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner())),

@@ -80,7 +80,12 @@ class DirectHealthChecker(HealthChecking):
 
 
 class HarnessFactory:
-    def build(self, project_root: Path, principle_folder: Path) -> TestHarnessRunner:
+    def build(
+        self,
+        project_root: Path,
+        principle_folder: Path,
+        profile_dir: "Path | None" = None,
+    ) -> TestHarnessRunner:
         toml_loader = HookUtilsTomlLoader()
         claude_runner = HookUtilsClaudeRunner()
         mcp_config_builder = McpConfigBuilder()
@@ -104,7 +109,7 @@ class HarnessFactory:
             path_resolver=PathResolver(project_root),
             fixture_discovery=FixtureDiscovery(),
             expectation_loader=ExpectationLoader(),
-            model_profile_loader=ModelProfileLoader(project_root, toml_loader),
+            model_profile_loader=ModelProfileLoader(project_root, toml_loader, profile_dir),
             output_path_builder=OutputPathBuilder(project_root),
             finding_comparer=FindingComparer(),
             finding_normalizer=FlowFindingNormalizer(),

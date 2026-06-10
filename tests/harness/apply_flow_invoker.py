@@ -193,12 +193,13 @@ class FindingsReader(FindingsReading):
                                     if isinstance(v, dict) and "value" in v
                                 }
                                 break
-                    f = {
+                    f: dict = {
                         "metric_id": rule_id,
                         "severity": violation.get("severity", ""),
                         "unit_name": unit_name,
-                        "metrics": principle_metrics,
                     }
+                    if principle_metrics:
+                        f["metrics"] = principle_metrics
                     findings.append(f)
         return findings
 
