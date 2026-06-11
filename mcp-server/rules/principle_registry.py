@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Service that provides a unified list of all available principles — both active and skipped — discovered from a given references directory.
+solid-description: Provides access to all available principles.
 solid-category: service
 solid-tags: [utility, service]
 """
@@ -8,7 +8,7 @@ solid-tags: [utility, service]
 from pathlib import Path
 from typing import Callable, Optional
 
-from lib import discover_principles
+from rules import discover_principles
 
 
 class PrincipleRegistry:

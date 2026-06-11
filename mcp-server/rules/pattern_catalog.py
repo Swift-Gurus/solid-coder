@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Renders a human-readable index of all design patterns found in a given directory.
+solid-description: Builds a formatted catalog of design patterns organized by category.
 solid-category: utility
 solid-tags: [utility, service]
 """
@@ -17,13 +17,13 @@ class PatternCatalogBuilder:
     """Renders a compact catalog of all design patterns in a directory.
 
     Instantiate with the patterns root directory. Pass a frontmatter_parser
-    for testing; omit (or pass None) to use the default lib.parse_frontmatter.
+    for testing; omit (or pass None) to use the default spec.parse_frontmatter.
     """
 
     def __init__(self, patterns_root: Path, frontmatter_parser: Optional[FrontmatterParsing] = None) -> None:
         self._patterns_root = patterns_root
         if frontmatter_parser is None:
-            from lib import parse_frontmatter
+            from spec import parse_frontmatter
             self._fm_parser: FrontmatterParsing = parse_frontmatter
         else:
             self._fm_parser = frontmatter_parser

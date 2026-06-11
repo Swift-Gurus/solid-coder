@@ -1,4 +1,4 @@
-"""Characterization tests for lib.codebase_searcher.
+"""Characterization tests for search.codebase_searcher.
 
 Proves the performance rework (dir pruning, binary sniff, single-pass scan)
 preserves matching behaviour: same files match, spec matches still bypass
@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from lib.codebase_searcher import search_raw  # noqa: E402
+from search.codebase_searcher import search_raw  # noqa: E402
 
 
 def _write(root: Path, rel: str, content: str) -> Path:

@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 from typing import Any, Protocol
 
-from lib.xml_block_parser import parse as parse_xml_blocks
+from common.xml_block_parser import parse as parse_xml_blocks
 
 _BAND_PATTERN = re.compile(
     r'<band\s+severity=[\'"]([^\'"]+)[\'"][^>]*>\s*<condition>(.*?)</condition>\s*</band>',

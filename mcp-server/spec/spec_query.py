@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Executes spec queries by routing each action to the appropriate backend script and returning parsed results.
+solid-description: Executes spec operations and returns structured results.
 solid-category: utility
 solid-tags: [utility, service]
 """
@@ -9,7 +9,7 @@ import json
 import sys
 from pathlib import Path
 
-from lib.subprocess_utils import run_cmd
+from common.subprocess_utils import run_cmd
 
 _FIND_SPEC_ACTIONS = frozenset({"scan", "children", "ancestors", "next-number"})
 

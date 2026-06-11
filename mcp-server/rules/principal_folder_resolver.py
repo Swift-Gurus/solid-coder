@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Maps a principle identifier to the absolute path of its corresponding principle folder, raising an error when the identifier is unrecognised.
+solid-description: Resolves principle identifiers to their filesystem locations.
 solid-category: utility
 solid-tags: [utility, service]
 """
@@ -34,7 +34,7 @@ def resolve(
     if not refs_root.is_dir():
         raise FileNotFoundError(f"References directory not found: {refs_root}")
 
-    from lib.principle_registry import PrincipleRegistry
+    from rules.principle_registry import PrincipleRegistry
     registry = _registry if _registry is not None else PrincipleRegistry(refs_root)
     all_p = registry.all_principles()
 

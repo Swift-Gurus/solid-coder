@@ -1,5 +1,5 @@
 """
-solid-description: Executes plugin skills as subprocesses and formats their execution results.
+solid-description: Runs plugin skill scripts and formats their execution outcomes into structured results.
 solid-category: service
 solid-tags: [utility, service]
 """
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, Tuple
 
-from lib.subprocess_utils import run_cmd as _default_run_cmd
+from common.subprocess_utils import run_cmd as _default_run_cmd
 
 CommandRunning = Callable[[list], Tuple[bool, str, str]]
 

@@ -1,5 +1,5 @@
 """
-solid-description: Locates source files by searching for named type declarations or by matching filename patterns across a codebase.
+solid-description: Locates source files by type name or filename pattern.
 solid-category: utility
 solid-tags: [utility, search]
 """
@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from lib.codebase_searcher import iter_source_files
+from search.codebase_searcher import iter_source_files
 
 _SOURCE_EXTS = {".swift", ".kt", ".java", ".py", ".ts", ".js"}
 _DECL_PATTERN = re.compile(

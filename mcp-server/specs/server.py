@@ -24,7 +24,7 @@ FIND_SPEC_SCRIPT = SKILLS_ROOT / "find-spec" / "scripts" / "find-spec-query.py"
 BUILD_SPEC_SCRIPT = SKILLS_ROOT / "build-spec" / "scripts" / "build-spec-query.py"
 
 sys.path.insert(0, str(MCP_DIR))
-from lib import parse_frontmatter
+from spec import parse_frontmatter
 from protocol import MCPServer
 
 server = MCPServer("solid-coder-specs", "1.0.0")

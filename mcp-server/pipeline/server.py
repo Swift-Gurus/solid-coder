@@ -26,8 +26,8 @@ sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
 from protocol import MCPServer
-from lib.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
-from lib.tool_registry import ToolRegistering, ToolRegistry
+from pipeline.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
+from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from pipeline.handlers import ReviewResultsCollecting, ReviewResultsCollector
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 
@@ -388,7 +388,7 @@ def make_bootstrapper(
         check_severity=check_severity or importlib.import_module("check-severity"),
         load_context=load_context or importlib.import_module("load-context"),
         validate_output=validate_output or importlib.import_module("validate-output"),
-        search=search or importlib.import_module("lib.codebase_searcher"),
+        search=search or importlib.import_module("search.codebase_searcher"),
     )
 
 

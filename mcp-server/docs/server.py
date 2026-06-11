@@ -26,12 +26,13 @@ SKILLS_ROOT = PLUGIN_ROOT / "skills"
 
 sys.path.insert(0, str(MCP_DIR))
 
-from lib import discover_principles, parse_frontmatter
-from lib.load_reference import strip_frontmatter
-from lib.chunker import Chunker
-from lib.principle_registry import PrincipleRegistry
-from lib.fix_file_lookup import find_fix_file
-from lib.rule_file_collector import collect_files
+from rules import discover_principles
+from spec import parse_frontmatter
+from rules.load_reference import strip_frontmatter
+from common.chunker import Chunker
+from rules.principle_registry import PrincipleRegistry
+from findings.fix_file_lookup import find_fix_file
+from rules.rule_file_collector import collect_files
 import modes as modes_module
 from protocol import MCPServer
 

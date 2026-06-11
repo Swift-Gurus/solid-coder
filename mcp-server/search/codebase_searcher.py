@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional, Union
 
-from lib.chunker import Chunker
+from common.chunker import Chunker
 
 # Build output, dependency caches, and vendored checkouts — never the user's own
 # source. `.derivedData` is the same as the default `DerivedData`, just the
