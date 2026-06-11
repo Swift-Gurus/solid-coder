@@ -44,13 +44,12 @@ class TestFixtureDiscovery(unittest.TestCase):
             self.assertTrue(pairs[0].fixture_path.name.startswith("fixture-1"))
             self.assertEqual(pairs[0].expectation_path.name, "fixture-1.json")
 
-    def test_exits_when_expectation_file_is_missing(self):
+    def test_raises_when_expectation_file_is_missing(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             _make_fixture_tree(root, ["fixture-2.swift"], {})
-            with self.assertRaises(SystemExit) as ctx:
+            with self.assertRaises(RuntimeError):
                 FixtureDiscovery().discover(root)
-            self.assertEqual(ctx.exception.code, 1)
 
     def test_discovers_multiple_fixtures_in_sorted_order(self):
         with tempfile.TemporaryDirectory() as d:

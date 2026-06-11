@@ -63,10 +63,12 @@ class HealthFlowInvoker(FlowInvoking):
         checker: HealthChecking,
         language_provider: SupportedExtensionsProviding,
         result_writer: CheckResultWriting,
+        principle_name: str = "",
     ) -> None:
         self._checker = checker
         self._language_provider = language_provider
         self._result_writer = result_writer
+        self._principle_name = principle_name.upper()
 
     def invoke(
         self,
@@ -95,9 +97,20 @@ class HealthFlowInvoker(FlowInvoking):
                     f"Health check failed for {fixture_path}: {exc}"
                 ) from exc
 
-        result: list[dict] = violations or []
+        all_violations: list[dict] = violations or []
+        result = self._filter_by_principle(all_violations)
         self._result_writer.write(result, output_paths)
         return result
+
+    def _filter_by_principle(self, violations: list[dict]) -> list[dict]:
+        """Keep only violations whose metric_id belongs to the principle under test.
+
+        When principle_name is empty, all violations are returned (no filter).
+        """
+        if not self._principle_name:
+            return violations
+        prefix = self._principle_name + "-"
+        return [v for v in violations if v.get("metric_id", "").upper().startswith(prefix)]
 
     def _run_check(
         self,

@@ -84,6 +84,9 @@ class TestLlmPrincipleReview(IntegrationTestBase):
     MODEL_PROFILE = "local"
     TIMEOUT = 600
 
+    def test_apply_flow(self) -> None:
+        self.skipTest("apply flow not yet wired to local LLM backend")
+
     _server_process: subprocess.Popen | None = None
 
     @classmethod

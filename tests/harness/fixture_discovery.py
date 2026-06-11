@@ -30,11 +30,7 @@ class FixtureDiscovery(FixtureDiscovering):
             stem = fixture_path.stem
             expectation_path = expectations_dir / (stem + ".json")
             if not expectation_path.exists():
-                print(
-                    f"Missing expectation file: {expectation_path}",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                raise RuntimeError(f"Missing expectation file: {expectation_path}")
             pairs.append(
                 FixturePair(
                     fixture_path=fixture_path,

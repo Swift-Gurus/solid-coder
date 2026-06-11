@@ -24,13 +24,13 @@ from models import Expectation, ExpectedFinding  # noqa: E402
 class ExpectationLoader(ExpectationLoading):
     def load(self, expectation_path: Path) -> Expectation:
         if not expectation_path.exists():
-            print(f"Expectation file not found: {expectation_path}", file=sys.stderr)
-            sys.exit(1)
+            raise RuntimeError(f"Expectation file not found: {expectation_path}")
         try:
             raw = json.loads(expectation_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            print(f"Malformed JSON in expectation file {expectation_path}: {exc}", file=sys.stderr)
-            sys.exit(1)
+            raise RuntimeError(
+                f"Malformed JSON in expectation file {expectation_path}: {exc}"
+            ) from exc
         findings = [
             ExpectedFinding(
                 unit_name=entry["unit_name"],

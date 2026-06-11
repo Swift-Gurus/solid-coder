@@ -65,20 +65,18 @@ class TestExpectationLoader(unittest.TestCase):
             expectation = ExpectationLoader().load(path)
             self.assertIsNone(expectation.findings[0].metrics)
 
-    def test_exits_when_expectation_file_does_not_exist(self):
+    def test_raises_when_expectation_file_does_not_exist(self):
         with tempfile.TemporaryDirectory() as d:
             missing = Path(d) / "missing.json"
-            with self.assertRaises(SystemExit) as ctx:
+            with self.assertRaises(RuntimeError):
                 ExpectationLoader().load(missing)
-            self.assertEqual(ctx.exception.code, 1)
 
-    def test_exits_when_expectation_file_contains_invalid_json(self):
+    def test_raises_when_expectation_file_contains_invalid_json(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "bad.json"
             path.write_text("not valid json", encoding="utf-8")
-            with self.assertRaises(SystemExit) as ctx:
+            with self.assertRaises(RuntimeError):
                 ExpectationLoader().load(path)
-            self.assertEqual(ctx.exception.code, 1)
 
 
 if __name__ == "__main__":

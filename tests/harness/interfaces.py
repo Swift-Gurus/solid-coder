@@ -39,6 +39,8 @@ class ClaudeRunning(ABC):
         mcp_config: str,
         timeout: int,
         session_id: str,
+        cwd: str,
+        model: str,
     ) -> str | None: ...
 
 

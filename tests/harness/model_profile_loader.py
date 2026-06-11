@@ -33,8 +33,7 @@ class ModelProfileLoader(ModelProfileLoading):
         if model_name is not None:
             profile_path = self._profile_dir / (model_name + ".toml")
             if not profile_path.exists():
-                print(f"Model profile not found: {profile_path}", file=sys.stderr)
-                sys.exit(1)
+                raise RuntimeError(f"Model profile not found: {profile_path}")
             data = self._toml_loader.load_toml(profile_path)
             return ModelProfile(
                 output_dir_name=model_name,

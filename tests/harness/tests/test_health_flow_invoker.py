@@ -188,5 +188,59 @@ class TestHealthFlowInvoker(unittest.TestCase):
             invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=10)
 
 
+class TestHealthFlowInvokerPrincipleFilter(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp_ctx = tempfile.TemporaryDirectory()
+        self._tmp = Path(self._tmp_ctx.name)
+        self._fixture = self._tmp / "Foo.swift"
+        self._fixture.write_text("class Foo {}", encoding="utf-8")
+        self._output_paths = _make_output_paths(self._tmp)
+
+    def tearDown(self) -> None:
+        self._tmp_ctx.cleanup()
+
+    def _make_invoker(self, principle_name: str, violations: list) -> HealthFlowInvoker:
+        checker = MagicMock()
+        checker.check.return_value = violations
+        return HealthFlowInvoker(
+            checker=checker,
+            language_provider=SupportedExtensionsProvider({".swift": "Swift"}),
+            result_writer=CheckResultWriter(),
+            principle_name=principle_name,
+        )
+
+    def _violations(self):
+        return [
+            {"metric_id": "DRY-2", "principle": "DRY"},
+            {"metric_id": "DRY-3", "principle": "DRY"},
+            {"metric_id": "SRP-1", "principle": "SRP"},
+            {"metric_id": "OCP-1", "principle": "OCP"},
+        ]
+
+    def test_filter_keeps_only_matching_principle(self):
+        result = self._make_invoker("DRY", self._violations()).invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=10
+        )
+        self.assertEqual([v["metric_id"] for v in result], ["DRY-2", "DRY-3"])
+
+    def test_filter_is_case_insensitive_on_principle_name(self):
+        result = self._make_invoker("dry", self._violations()).invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=10
+        )
+        self.assertEqual([v["metric_id"] for v in result], ["DRY-2", "DRY-3"])
+
+    def test_empty_principle_name_passes_all_violations(self):
+        result = self._make_invoker("", self._violations()).invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=10
+        )
+        self.assertEqual(len(result), 4)
+
+    def test_no_matching_violations_returns_empty(self):
+        result = self._make_invoker("ISP", self._violations()).invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=10
+        )
+        self.assertEqual(result, [])
+
+
 if __name__ == "__main__":
     unittest.main()

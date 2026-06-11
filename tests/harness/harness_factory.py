@@ -51,6 +51,8 @@ class HookUtilsClaudeRunner(ClaudeRunning):
         mcp_config: str,
         timeout: int,
         session_id: str,
+        cwd: str,
+        model: str,
     ) -> str | None:
         return hook_utils.run_claude_bare(
             prompt=prompt,
@@ -58,6 +60,8 @@ class HookUtilsClaudeRunner(ClaudeRunning):
             mcp_config=mcp_config,
             timeout=timeout,
             session_id=session_id,
+            cwd=cwd,
+            model=model,
         )
 
 
@@ -103,6 +107,7 @@ class HarnessFactory:
             checker=health_checker,
             language_provider=SupportedExtensionsProvider(code_health_check.SUPPORTED_EXTENSIONS),
             result_writer=CheckResultWriter(),
+            principle_name=principle_folder.name,
         )
 
         return TestHarnessRunner(

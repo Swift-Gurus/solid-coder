@@ -44,14 +44,13 @@ class TestModelProfileLoader(unittest.TestCase):
             self.assertEqual(profile.output_dir_name, "qwen")
             self.assertEqual(profile.llm.get("backend"), "qwen")
 
-    def test_missing_named_profile_exits_with_code_1(self):
+    def test_missing_named_profile_raises(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             (root / "tests" / "models").mkdir(parents=True)
             loader = FakeTomlLoader()
-            with self.assertRaises(SystemExit) as ctx:
+            with self.assertRaises(RuntimeError):
                 ModelProfileLoader(root, loader).load("unknown")
-            self.assertEqual(ctx.exception.code, 1)
 
     def test_no_model_name_uses_project_toml_backend_as_output_dir(self):
         with tempfile.TemporaryDirectory() as d:

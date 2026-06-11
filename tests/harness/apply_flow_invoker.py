@@ -244,6 +244,7 @@ class ClaudeReviewSessionRunner(ReviewSessionExecuting):
         review_input_path: Path,
         output_dir: Path,
         timeout: int,
+        model: str = "",
     ) -> str | None:
         parent_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
         prompt = _build_skill_prompt(
@@ -259,6 +260,8 @@ class ClaudeReviewSessionRunner(ReviewSessionExecuting):
             mcp_config=self._mcp_config_builder.build(self._project_root),
             timeout=timeout,
             session_id="",
+            cwd=str(self._project_root),
+            model=model,
         )
 
 
@@ -287,9 +290,19 @@ class ApplyFlowInvoker(FlowInvoking):
         fixture_output_dir.mkdir(parents=True, exist_ok=True)
         review_input_path = self._artifact_handler.build_input(fixture_path, output_paths.log_dir)
         # Skill writes to {fixture_output_dir}/{NAME}/review-output.json
-        result = self._session_runner.execute(
-            self._principle_folder, review_input_path, fixture_output_dir, timeout
-        )
+        # Strip placeholder model names that are meaningful to other backends (e.g. "local"
+        # for llama) but not valid Claude model IDs. Apply flow always uses claude -p so
+        # only real Claude model IDs should be forwarded.
+        _raw_model = model_profile.llm.get("model", "")
+        model = _raw_model if _raw_model not in {"", "local", "claude"} else ""
+        try:
+            result = self._session_runner.execute(
+                self._principle_folder, review_input_path, fixture_output_dir, timeout, model=model
+            )
+        except TimeoutError:
+            raise
+        except Exception as exc:
+            raise RuntimeError(f"Claude session failed: {exc}") from exc
         if result is not None:
             self._artifact_handler.write_reasoning(output_paths.reasoning_path, result)
         # The skill may write review-output.json at {fixture_output_dir}/{NAME}/review-output.json
