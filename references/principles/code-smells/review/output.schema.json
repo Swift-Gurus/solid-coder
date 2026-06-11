@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Code Smells Metrics",
+  "description": "Schema for the 'code-smells' key inside the unified review-output metrics object.",
+  "type": "object",
+  "required": ["static_logic_count", "class_struct_count"],
+  "properties": {
+    "static_logic_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "CS-1: count of static methods, class methods, or module-level functions containing business logic"
+        },
+        "additional-info": {
+          "description": "Optional list of flagged static members: [{name, reason}]"
+        }
+      }
+    },
+    "class_struct_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "CS-2: count of top-level class or struct definitions in the file (excluding private extensions of the primary type)"
+        },
+        "additional-info": {
+          "description": "Optional list of type names found: [string]"
+        }
+      }
+    }
+  }
+}
