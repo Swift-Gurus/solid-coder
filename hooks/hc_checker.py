@@ -211,12 +211,44 @@ class ViolationExtracting(Protocol):
     def extract(self, output_dir: str) -> list: ...
 
 
+class FileSystemReading(Protocol):
+    """Protocol for filesystem access — lets ViolationExtractor be tested without real disk I/O."""
+
+    def glob(self, directory: str, pattern: str) -> list: ...
+    def read_text(self, path: object, encoding: str = "utf-8") -> str: ...
+    def is_dir(self, path: str) -> bool: ...
+    def subpath(self, directory: str, name: str) -> str: ...
+
+
+class PathFileSystemReader:
+    """Boundary adapter: wraps Path filesystem operations for injection.
+
+    Path is a stdlib class (not developer-owned) — this satisfies the
+    OCP Boundary Adapter exception.
+    """
+
+    def glob(self, directory: str, pattern: str) -> list:
+        return list(Path(directory).glob(pattern))
+
+    def read_text(self, path: object, encoding: str = "utf-8") -> str:
+        return Path(str(path)).read_text(encoding=encoding)
+
+    def is_dir(self, path: str) -> bool:
+        return Path(path).is_dir()
+
+    def subpath(self, directory: str, name: str) -> str:
+        return str(Path(directory) / name)
+
+
 class ViolationExtractor:
     """Reads scored review-output.json files and merges any submitted fixes.
 
     Single responsibility: data extraction. No filesystem cleanup — that is
     the caller's concern.
     """
+
+    def __init__(self, fs: Optional[FileSystemReading] = None) -> None:
+        self._fs: FileSystemReading = fs or PathFileSystemReader()
 
     @staticmethod
     def _violation_key(rule_id: str, file_path: str, unit_name: str) -> str:
@@ -227,10 +259,10 @@ class ViolationExtractor:
 
     def extract(self, output_dir: str) -> list:
         import json
-        output_files = list(Path(output_dir).glob("*/review-output.json"))
+        output_files = self._fs.glob(output_dir, "*/review-output.json")
         violations = []
         for f in output_files:
-            doc = json.loads(f.read_text())
+            doc = json.loads(self._fs.read_text(f))
             for file_obj in doc.get("files", []):
                 file_path = file_obj.get("file_path", "?")
                 for unit in file_obj.get("units", []):
@@ -257,12 +289,12 @@ class ViolationExtractor:
     def _read_fixes(self, output_dir: str) -> dict:
         import json
         fixes: dict = {}
-        fixes_dir = Path(output_dir) / "fixes"
-        if not fixes_dir.is_dir():
+        fixes_dir = self._fs.subpath(output_dir, "fixes")
+        if not self._fs.is_dir(fixes_dir):
             return fixes
-        for fp in fixes_dir.glob("*.json"):
+        for fp in self._fs.glob(fixes_dir, "*.json"):
             try:
-                data = json.loads(fp.read_text(encoding="utf-8"))
+                data = json.loads(self._fs.read_text(fp))
                 key = self._violation_key(
                     data.get("rule_id", data.get("metric_id", "")),
                     data["file_path"],

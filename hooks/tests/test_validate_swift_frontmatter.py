@@ -75,9 +75,9 @@ class TestParseCorrectedContent(unittest.TestCase):
     """Tests for the corrected_content extraction path via hook_utils.parse_json_field."""
 
     def _parse(self, raw):
-        from hook_utils import parse_json_field
-        v = parse_json_field(raw, "corrected_content", str)
-        return v if isinstance(v, str) else None
+        from hook_utils import parse_json_field, StrValidator
+        v = parse_json_field(raw, "corrected_content", StrValidator())
+        return v if v is not None else None
 
     def test_extracts_corrected_content_from_plain_json(self):
         raw = json.dumps({"corrected_content": CLEAN_CONTENT})

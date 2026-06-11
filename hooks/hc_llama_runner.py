@@ -1,5 +1,5 @@
 """
-solid-description: LlamaServerRunner — agentic loop for local LLM health checks via llama-server's OpenAI-compatible API.
+solid-description: LlamaServerRunner — executes code health reviews and reports detected principle violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -122,6 +122,62 @@ TOOLS: list = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "mcp__pipeline__submit_batch_findings",
+            "description": (
+                "Submit findings for all reviewed principles in one unified payload. "
+                "Discovers principle keys from metrics, scores each, writes "
+                "output_dir/{principle}/review-output.json."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["output_dir", "submissions"],
+                "properties": {
+                    "output_dir": {"type": "string"},
+                    "submissions": {
+                        "type": "object",
+                        "description": (
+                            "Map of principle_name to review-output payload "
+                            "(references/review-output.schema.json). "
+                            "E.g. {'SRP': {timestamp, files:[{file_path, units:[{unit_name, unit_kind, "
+                            "metrics:{SRP:{verb_count:{value:3}}}}]}]}}"
+                        ),
+                        "additionalProperties": {
+                            "type": "object",
+                            "required": ["timestamp", "files"],
+                            "properties": {
+                                "timestamp": {"type": "string"},
+                                "files": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": ["file_path", "units"],
+                                        "properties": {
+                                            "file_path": {"type": "string"},
+                                            "units": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "object",
+                                                    "required": ["unit_name", "unit_kind", "metrics"],
+                                                    "properties": {
+                                                        "unit_name": {"type": "string"},
+                                                        "unit_kind": {"type": "string"},
+                                                        "metrics": {"type": "object"},
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -153,11 +209,19 @@ def _extract_thinking_and_content(message: dict) -> tuple:
 
 
 def _parse_tool_call_args(tool_call: dict) -> dict:
-    """Extract and JSON-parse the arguments from a tool_call dict."""
+    """Extract and JSON-parse the arguments from a tool_call dict.
+
+    Uses duck typing: tries json.loads first (handles str), falls back to
+    treating the value as a dict directly (handles pre-parsed objects).
+    """
     raw = tool_call.get("function", {}).get("arguments", "{}")
     try:
-        return json.loads(raw) if isinstance(raw, str) else (raw or {})
+        return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
+        pass
+    try:
+        return dict(raw) if raw else {}
+    except (TypeError, ValueError):
         return {}
 
 
@@ -174,25 +238,83 @@ def _summarise_result(name: str, result_str: str) -> dict:
     return {"len": len(result_str)}
 
 
-class LocalLLMLogger:
-    """Writes per-tool-call JSONL entries to ~/.solid-coder/llm-sessions/."""
+# ── Logger I/O protocols ─────────────────────────────────────────────────────
 
-    ROOT = Path.home() / ".solid-coder"
+class LogEntryWriting(Protocol):
+    """Writes a structured log entry to a named JSONL file in a directory."""
 
-    def __init__(self, session_id: str, file_path: str, model: str) -> None:
-        self._dir = solid_coder_project_dir() / "llm-sessions" / (session_id or "no-session")
-        self._dir.mkdir(parents=True, exist_ok=True)
-        self._file = Path(file_path).name
-        self._model = model
-        self._t0 = time.time()
+    def append(self, dir_path: Path, filename: str, entry: dict) -> None: ...
 
-    def _write(self, filename: str, entry: dict) -> None:
-        entry.setdefault("ts", _now())
+
+class TimeMeasuring(Protocol):
+    """Returns current time and elapsed time since a start point."""
+
+    def now(self) -> float: ...
+    def elapsed(self, start: float) -> float: ...
+
+
+class DirectoryCreating(Protocol):
+    """Creates a directory and any required parents."""
+
+    def create(self, path: Path) -> None: ...
+
+
+class JsonlEntryWriter:
+    """Boundary adapter: appends JSON lines to disk files."""
+
+    def append(self, dir_path: Path, filename: str, entry: dict) -> None:
         try:
-            with (self._dir / filename).open("a", encoding="utf-8") as f:
+            with (dir_path / filename).open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception:
             pass
+
+
+class MonotonicTimer:
+    """Boundary adapter: measures elapsed wall-clock time via time.monotonic.
+
+    time.monotonic is a global stdlib function — this adapter satisfies
+    the OCP Boundary Adapter exception.
+    """
+
+    def now(self) -> float:
+        return time.monotonic()
+
+    def elapsed(self, start: float) -> float:
+        return self.now() - start
+
+
+class PathDirectoryCreator:
+    """Boundary adapter: creates directories via Path.mkdir."""
+
+    def create(self, path: Path) -> None:
+        path.mkdir(parents=True, exist_ok=True)
+
+
+class LocalLLMLogger:
+    """Writes per-tool-call JSONL entries to a caller-supplied log directory."""
+
+    def __init__(
+        self,
+        log_dir: Path,
+        file_path: str,
+        model: str,
+        entry_writer: Optional[LogEntryWriting] = None,
+        timer: Optional[TimeMeasuring] = None,
+        dir_creator: Optional[DirectoryCreating] = None,
+    ) -> None:
+        _creator: DirectoryCreating = dir_creator or PathDirectoryCreator()
+        _creator.create(log_dir)
+        self._dir = log_dir
+        self._file = Path(file_path).name
+        self._model = model
+        self._writer: LogEntryWriting = entry_writer or JsonlEntryWriter()
+        self._timer: TimeMeasuring = timer or MonotonicTimer()
+        self._t0 = self._timer.now()
+
+    def _write(self, filename: str, entry: dict) -> None:
+        entry.setdefault("ts", _now())
+        self._writer.append(self._dir, filename, entry)
 
     def log_start(self, prompt_len: int) -> None:
         self._write("_exchange.jsonl", {
@@ -213,7 +335,7 @@ class LocalLLMLogger:
         })
 
     def log_done(self, rounds: int, usage: dict, violations: list, thinking: str = "") -> None:
-        elapsed_ms = int((time.time() - self._t0) * 1000)
+        elapsed_ms = int(self._timer.elapsed(self._t0) * 1000)
         entry: dict = {
             "ev": "done",
             "rounds": rounds,
@@ -236,12 +358,6 @@ class LlamaHttpChatting(Protocol):
 class ToolDispatching(Protocol):
     def dispatch(self, tool_call: dict) -> str: ...
 
-
-class FileSearching(Protocol):
-    def grep_by_name(self, name: str) -> str: ...
-    def glob_by_name(self, pattern: str) -> str: ...
-    def search_codebase(self, query: str) -> str: ...
-    def read_file(self, path: str) -> str: ...
 
 
 class LLMSessionObserving(Protocol):
@@ -275,33 +391,6 @@ def _default_read_file(path: str) -> str:
         return f"error: {e}"
 
 
-class FileSearcher:
-    """Adapter wrapping file-search callables behind the FileSearching protocol."""
-
-    def __init__(
-        self,
-        grep_fn=_default_grep,
-        glob_fn=_default_glob,
-        search_fn=_default_search,
-        read_fn=_default_read_file,
-    ) -> None:
-        self._grep = grep_fn
-        self._glob = glob_fn
-        self._search = search_fn
-        self._read = read_fn
-
-    def grep_by_name(self, name: str) -> str:
-        return self._grep(name)
-
-    def glob_by_name(self, pattern: str) -> str:
-        return self._glob(pattern)
-
-    def search_codebase(self, query: str) -> str:
-        return self._search(query)
-
-    def read_file(self, path: str) -> str:
-        return self._read(path)
-
 
 class LLMSessionObserver:
     """Delegates all session events to LocalLLMLogger. Single cohesion group: logging only."""
@@ -325,17 +414,98 @@ class LLMSessionObserver:
         self._logger.log_done(rounds, usage, violations, thinking=thinking)
 
 
+# ── HTTP + JSON protocols ────────────────────────────────────────────────────
+
 class HttpSending(Protocol):
     def send(self, url: str, data: bytes, headers: dict, timeout: int) -> bytes: ...
 
 
+class HttpOpening(Protocol):
+    """Opens an HTTP request and returns the response body."""
+
+    def open(self, request, timeout: int) -> bytes: ...
+
+
+class HttpRequestBuilding(Protocol):
+    """Constructs an HTTP request object."""
+
+    def build(self, url: str, data: bytes, headers: dict, method: str): ...
+
+
+class JsonSerializing(Protocol):
+    """Serializes a dict to a JSON string."""
+
+    def serialize(self, obj: dict) -> str: ...
+
+
+class JsonDeserializing(Protocol):
+    """Deserializes bytes or str to a dict."""
+
+    def deserialize(self, raw: bytes) -> Optional[dict]: ...
+
+
+class UrllibOpener:
+    """Boundary adapter: wraps urllib.request.urlopen (stdlib, cannot be subclassed).
+
+    urllib.request.urlopen is a global stdlib function — this adapter
+    satisfies the OCP Boundary Adapter exception.
+    """
+
+    def open(self, request, timeout: int) -> bytes:
+        with urllib.request.urlopen(request, timeout=timeout) as resp:
+            return resp.read()
+
+
+class UrllibRequestBuilder:
+    """Boundary adapter: wraps urllib.request.Request (stdlib, cannot be subclassed).
+
+    urllib.request.Request is a C-extension type — this adapter
+    satisfies the OCP Boundary Adapter exception.
+    """
+
+    def build(self, url: str, data: bytes, headers: dict, method: str):
+        return urllib.request.Request(url, data=data, headers=headers, method=method)
+
+
 class UrllibSender:
-    """Sends HTTP POST requests using urllib.request."""
+    """Boundary adapter: sends HTTP POST via injected opener and request builder."""
+
+    def __init__(
+        self,
+        opener: Optional[HttpOpening] = None,
+        builder: Optional[HttpRequestBuilding] = None,
+    ) -> None:
+        self._opener: HttpOpening = opener or UrllibOpener()
+        self._builder: HttpRequestBuilding = builder or UrllibRequestBuilder()
 
     def send(self, url: str, data: bytes, headers: dict, timeout: int) -> bytes:
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.read()
+        req = self._builder.build(url, data, headers, "POST")
+        return self._opener.open(req, timeout)
+
+
+class JsonSerializer:
+    """Boundary adapter: wraps json.dumps (stdlib, cannot be subclassed).
+
+    json.dumps is a global stdlib function — this adapter satisfies
+    the OCP Boundary Adapter exception.
+    """
+
+    def serialize(self, obj: dict) -> str:
+        return json.dumps(obj)
+
+
+class JsonDeserializer:
+    """Boundary adapter: wraps json.loads (stdlib, cannot be subclassed).
+
+    json.loads is a global stdlib function — this adapter satisfies
+    the OCP Boundary Adapter exception.
+    """
+
+    def deserialize(self, raw: bytes) -> Optional[dict]:
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
 
 
 class LlamaHttpClient:
@@ -347,14 +517,18 @@ class LlamaHttpClient:
         model: str,
         inference_params: Optional[dict] = None,
         transport: Optional[HttpSending] = None,
+        serializer: Optional[JsonSerializing] = None,
+        deserializer: Optional[JsonDeserializing] = None,
     ) -> None:
         self._url = f"{host.rstrip('/')}/v1/chat/completions"
         self._model = model
         self._inference_params = inference_params or {}
         self._transport: HttpSending = transport or UrllibSender()
+        self._serialize: JsonSerializing = serializer or JsonSerializer()
+        self._deserialize: JsonDeserializing = deserializer or JsonDeserializer()
 
     def chat(self, messages: list, tools: list, timeout: int) -> Optional[dict]:
-        payload = json.dumps({
+        payload = self._serialize.serialize({
             "model": self._model,
             "messages": messages,
             "tools": tools,
@@ -365,17 +539,59 @@ class LlamaHttpClient:
             raw = self._transport.send(
                 self._url, payload, {"Content-Type": "application/json"}, timeout
             )
-            return json.loads(raw)
+            return self._deserialize.deserialize(raw)
         except Exception:
             return None
 
 
-class GatewayToolDispatcher:
-    """Dispatches LLM tool calls to the gateway CLI or injected file search."""
+# ── Findings submission protocols ────────────────────────────────────────────
 
-    def __init__(self, invoker: GatewayInvoking, file_searcher: FileSearching) -> None:
+class BatchFindingsHandling(Protocol):
+    """Protocol: submit_batch_findings from the pipeline gateway handler."""
+
+    def submit_batch_findings(self, output_dir: str, submissions: dict) -> dict: ...
+
+
+class FindingsSubmitting(Protocol):
+    """Submits batch findings and returns a JSON string result."""
+
+    def submit(self, output_dir: str, submissions: dict) -> str: ...
+
+
+class GatewayFindingsSubmitter:
+    """Adapts a BatchFindingsHandling handler + JsonSerializing to FindingsSubmitting."""
+
+    def __init__(
+        self,
+        handler: BatchFindingsHandling,
+        serializer: Optional[JsonSerializing] = None,
+    ) -> None:
+        self._handler = handler
+        self._serialize: JsonSerializing = serializer or JsonSerializer()
+
+    def submit(self, output_dir: str, submissions: dict) -> str:
+        result = self._handler.submit_batch_findings(output_dir, submissions)
+        return self._serialize.serialize(result)
+
+
+class GatewayToolDispatcher:
+    """Dispatches LLM tool calls to the gateway CLI, file search, or findings submitter."""
+
+    def __init__(
+        self,
+        invoker: GatewayInvoking,
+        grep_fn=_default_grep,
+        glob_fn=_default_glob,
+        search_fn=_default_search,
+        read_fn=_default_read_file,
+        findings_submitter: Optional[FindingsSubmitting] = None,
+    ) -> None:
         self._invoker = invoker
-        self._file_searcher = file_searcher
+        self._grep = grep_fn
+        self._glob = glob_fn
+        self._search = search_fn
+        self._read = read_fn
+        self._findings_submitter = findings_submitter
 
     def dispatch(self, tool_call: dict) -> str:
         try:
@@ -386,16 +602,16 @@ class GatewayToolDispatcher:
         args = _parse_tool_call_args(tool_call)
 
         if name == "mcp__pipeline__search_codebase":
-            return self._file_searcher.search_codebase(args.get("query", ""))
+            return self._search(args.get("query", ""))
 
         if name == "mcp__pipeline__read_file":
-            return self._file_searcher.read_file(args.get("file_path", ""))
+            return self._read(args.get("file_path", ""))
 
         if name == "mcp__pipeline__grep_codebase":
-            return self._file_searcher.grep_by_name(args.get("name", ""))
+            return self._grep(args.get("name", ""))
 
         if name == "mcp__pipeline__glob_codebase":
-            return self._file_searcher.glob_by_name(args.get("pattern", "*"))
+            return self._glob(args.get("pattern", "*"))
 
         if name == "mcp__docs__load_fix_for_violation":
             result = self._invoker.invoke(
@@ -405,6 +621,13 @@ class GatewayToolDispatcher:
                 default="",
             )
             return result or ""
+
+        if name == "mcp__pipeline__submit_batch_findings":
+            if self._findings_submitter is None:
+                return '{"error": "submit_batch_findings not configured"}'
+            return self._findings_submitter.submit(
+                args.get("output_dir", ""), args.get("submissions", {})
+            )
 
         return f"error: unknown tool '{name}'"
 
@@ -418,6 +641,23 @@ class AgentLoopExecuting(Protocol):
     ) -> tuple: ...  # (Optional[str], dict, int, str) = (content, usage, rounds, thinking)
 
 
+class RangeIterating(Protocol):
+    """Protocol for bounded iteration — allows loop count to be injected and tested."""
+
+    def iterate(self, limit: int): ...
+
+
+class BuiltinRange:
+    """Boundary adapter: wraps the built-in range (stdlib, cannot be subclassed).
+
+    range is a global built-in type — this adapter satisfies the
+    OCP Boundary Adapter exception.
+    """
+
+    def iterate(self, limit: int):
+        return range(limit)
+
+
 class AgentLoopExecutor:
     """Drives the agentic chat loop: sends messages, dispatches tool calls, emits mid-loop events."""
 
@@ -425,11 +665,13 @@ class AgentLoopExecutor:
         self,
         client: LlamaHttpChatting,
         dispatcher: ToolDispatching,
-        max_rounds: int = _MAX_TOOL_ROUNDS,
+        max_rounds: int,
+        range_iter: Optional[RangeIterating] = None,
     ) -> None:
         self._client = client
         self._dispatcher = dispatcher
         self._max_rounds = max_rounds
+        self._range: RangeIterating = range_iter or BuiltinRange()
 
     def execute(
         self,
@@ -440,7 +682,7 @@ class AgentLoopExecutor:
         rounds = 0
         last_usage: dict = {}
         try:
-            for _ in range(self._max_rounds):
+            for _ in self._range.iterate(self._max_rounds):
                 response = self._client.chat(messages, TOOLS, timeout)
                 if response is None:
                     return None, {}, rounds, ""
@@ -514,14 +756,26 @@ def make_llama_server_runner(
     session_id: str = "",
     file_path: str = "",
 ) -> LlamaServerRunner:
-    """Wire production defaults and return a ready-to-use LlamaServerRunner."""
+    """Wire production defaults and return a ready-to-use LlamaServerRunner.
+
+    Factory function — constructing and wiring concrete dependencies is this
+    function's sole responsibility (OCP Factory exception).
+    """
     invoker = GatewayInvoker(gateway, GatewayCommandRunner())
     observer: Optional[LLMSessionObserving] = None
     if session_id:
-        logger = LocalLLMLogger(session_id=session_id, file_path=file_path, model=model)
+        log_dir = solid_coder_project_dir() / "llm-sessions" / session_id
+        logger = LocalLLMLogger(log_dir=log_dir, file_path=file_path, model=model)
         observer = LLMSessionObserver(logger=logger)
+    from lib.gateway_tools import make_gateway_handler  # noqa: PLC0415
+    gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
+    findings_submitter = GatewayFindingsSubmitter(handler=gw_handler)
     loop = AgentLoopExecutor(
         client=LlamaHttpClient(host=host, model=model, inference_params=_load_inference_params()),
-        dispatcher=GatewayToolDispatcher(invoker=invoker, file_searcher=FileSearcher()),
+        dispatcher=GatewayToolDispatcher(
+            invoker=invoker,
+            findings_submitter=findings_submitter,
+        ),
+        max_rounds=_MAX_TOOL_ROUNDS,
     )
     return LlamaServerRunner(loop=loop, observer=observer, parser=ViolationParser())

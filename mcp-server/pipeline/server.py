@@ -284,11 +284,48 @@ class ApplicationBootstrapper:
                      }, "required": ["partial_output", "output_path"]},
                      tools["submit_findings"])
 
+        _unit_schema = {
+            "type": "object",
+            "required": ["unit_name", "unit_kind", "metrics"],
+            "properties": {
+                "unit_name": {"type": "string"},
+                "unit_kind": {"type": "string", "enum": ["class", "struct", "enum", "protocol", "extension", "actor", "function"]},
+                "line_start": {"type": "integer"},
+                "line_end": {"type": "integer"},
+                "metrics": {
+                    "type": "object",
+                    "description": "Keys are principle names (e.g. 'SRP'). Each value is an object of metric_var: {value: N}.",
+                    "additionalProperties": {"type": "object"},
+                },
+            },
+        }
+        _submission_schema = {
+            "type": "object",
+            "required": ["timestamp", "files"],
+            "properties": {
+                "timestamp": {"type": "string", "format": "date-time"},
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["file_path", "units"],
+                        "properties": {
+                            "file_path": {"type": "string"},
+                            "units": {"type": "array", "items": _unit_schema},
+                        },
+                    },
+                },
+            },
+        }
         reg.register("submit_batch_findings",
                      "Submit findings for all reviewed principles in one unified payload. Discovers principle keys from metrics, scores each, writes output_dir/{principle}/review-output.json.",
                      {"type": "object", "properties": {
                          "output_dir": {"type": "string"},
-                         "submissions": {"type": "object", "additionalProperties": {"type": "object"}},
+                         "submissions": {
+                             "type": "object",
+                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). E.g. {'SRP': {timestamp, files:[{file_path, units:[{unit_name, unit_kind, metrics:{SRP:{verb_count:{value:3}}}}]}]}}",
+                             "additionalProperties": _submission_schema,
+                         },
                      }, "required": ["output_dir", "submissions"]},
                      tools["submit_batch_findings"])
 

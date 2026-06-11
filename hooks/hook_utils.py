@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Reusable utilities for hook scripts. Provides gate logging,
-hook protocol responses, gateway subprocess helper, Claude bare runner, and
-shared regex/text-processing utilities. Shared by code_health_check.py and
-pre_write_gate.py.
+solid-description: Provides infrastructure for hook scripts to handle protocol interactions, logging, command execution, and structured data parsing.
 solid-category: utility
 """
 
@@ -13,7 +10,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import IO, Optional, Protocol
+from typing import IO, Callable, Optional, Protocol
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -25,21 +22,27 @@ PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 GATEWAY = PLUGIN_ROOT / "mcp-server" / "gateway.py"
 
 
-def solid_coder_slug(project_root: Optional[Path] = None) -> str:
+def solid_coder_slug(project_root: Path) -> str:
     """Derive a Claude-style project slug from an absolute path.
 
     Mirrors Claude Code's project directory naming convention:
     /Users/alex/Developer/my-project → -Users-alex-Developer-my-project
-
-    Reads CLAUDE_PROJECT_DIR from the environment when project_root is omitted.
     """
-    root = project_root or Path(_os.environ.get("CLAUDE_PROJECT_DIR", str(Path.cwd())))
-    return str(Path(root).resolve()).replace("/", "-")
+    return str(project_root.resolve()).replace("/", "-")
+
+
+def _resolve_project_root(
+    env: dict = _os.environ,
+    cwd_factory: Callable[[], Path] = Path.cwd,
+) -> Path:
+    """Boundary: read CLAUDE_PROJECT_DIR from env, fall back to cwd."""
+    raw = env.get("CLAUDE_PROJECT_DIR", "")
+    return Path(raw) if raw else cwd_factory()
 
 
 def solid_coder_project_dir(project_root: Optional[Path] = None) -> Path:
     """Return the ~/.solid-coder/{slug}/ base directory for this project."""
-    return Path.home() / ".solid-coder" / solid_coder_slug(project_root)
+    return Path.home() / ".solid-coder" / solid_coder_slug(project_root or _resolve_project_root())
 
 
 def ensure_on_path(*dirs: Path) -> None:
@@ -68,11 +71,21 @@ def strip_markdown_fences(text: str) -> str:
     return re.sub(r"```[a-zA-Z]*\n?", "", text).strip()
 
 
-def parse_json_field(raw: str, key: str, expected_type: type) -> Optional[object]:
-    """Strip fences, locate the first JSON object, return key's value if it matches expected_type.
+class TypeChecking(Protocol):
+    """Protocol for a value type validator used by parse_json_field.
+
+    validate() returns the accepted value, or None if the value does not
+    conform to the expected structural shape.
+    """
+
+    def validate(self, value: object) -> Optional[object]: ...
+
+
+def parse_json_field(raw: str, key: str, validator: TypeChecking) -> Optional[object]:
+    """Strip fences, locate the first JSON object, return validator.validate(value).
 
     Returns None when the JSON is absent, malformed, the key is missing,
-    or the value is the wrong type.
+    or validator.validate(value) returns None.
     """
     text = strip_markdown_fences(raw)
     m = JSON_OBJ_RE.search(text)
@@ -83,10 +96,48 @@ def parse_json_field(raw: str, key: str, expected_type: type) -> Optional[object
         v = obj.get(key)
         if v is None:
             return None
-        TypeAdapter(expected_type).validate_python(v)
-        return v
-    except (json.JSONDecodeError, ValueError, ValidationError):
+        return validator.validate(v)
+    except (json.JSONDecodeError, ValueError):
         return None
+
+
+class StrValidator:
+    """TypeChecking: accepts values that support string concatenation (duck-typed str)."""
+
+    def validate(self, value: object) -> Optional[object]:
+        try:
+            _ = value + ""  # type: ignore[operator]
+            return value
+        except TypeError:
+            return None
+
+
+class ListValidator:
+    """TypeChecking: accepts values that support mutable sequence append (duck-typed list)."""
+
+    def validate(self, value: object) -> Optional[object]:
+        try:
+            _ = value.append  # type: ignore[union-attr]
+            return value
+        except AttributeError:
+            return None
+
+
+class ViolationDictValidator:
+    """TypeChecking: accepts objects that have string principle, issue, and fix fields.
+
+    Uses duck typing — no isinstance checks. Validates structural shape of LLM
+    violation dicts from external JSON output.
+    """
+
+    def validate(self, value: object) -> Optional[object]:
+        try:
+            _ = value["principle"] + ""  # type: ignore[index,operator]
+            _ = value["issue"] + ""      # type: ignore[index,operator]
+            _ = value["fix"] + ""        # type: ignore[index,operator]
+            return value
+        except (KeyError, TypeError):
+            return None
 
 
 def parse_hook_event(raw: str) -> Optional[tuple]:
@@ -142,15 +193,19 @@ class OutputWriting(Protocol):
 
 
 class StdoutWriter:
-    """Adapter: serialises payload to JSON and writes to sys.stdout lazily.
+    """Adapter: serialises payload to JSON and writes to an injectable stream.
 
-    Resolving sys.stdout at write time (not construction time) ensures that
-    redirect_stdout in tests is respected without eager capture.
+    The stream_factory is resolved lazily at write time so that redirect_stdout
+    in tests is respected without eager capture.
     """
 
+    def __init__(self, stream_factory: Callable[[], IO] = lambda: sys.stdout) -> None:
+        self._stream_factory = stream_factory
+
     def write_payload(self, payload: dict) -> None:
-        sys.stdout.write(json.dumps(payload))
-        sys.stdout.flush()
+        stream = self._stream_factory()
+        stream.write(json.dumps(payload))
+        stream.flush()
 
 
 class HookResponding(Protocol):
@@ -267,13 +322,13 @@ class SubprocessError(Exception):
 class SubprocessRunning(Protocol):
     """Protocol for executing a shell command and returning captured output."""
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> tuple: ...
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> tuple: ...
 
 
 class SubprocessJsonRunning(Protocol):
     """Protocol for executing a shell command and returning parsed JSON output."""
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> object: ...
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object: ...
 
 
 class SubprocessAdapter:
@@ -283,12 +338,14 @@ class SubprocessAdapter:
     subclassed) — this adapter satisfies the OCP Boundary Adapter exception.
     """
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> tuple:
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> tuple:
         kwargs: dict = {}
         if timeout is not None:
             kwargs["timeout"] = timeout
         if stdin is not None:
             kwargs["stdin"] = stdin
+        if cwd is not None:
+            kwargs["cwd"] = cwd
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
             return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
@@ -305,9 +362,12 @@ class SubprocessJsonRunner:
     def __init__(self, runner: SubprocessRunning) -> None:
         self._runner = runner
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None) -> object:
+    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object:
+        runner_kwargs: dict = {"timeout": timeout, "stdin": stdin}
+        if cwd is not None:
+            runner_kwargs["cwd"] = cwd
         try:
-            success, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=stdin)
+            success, stdout, stderr = self._runner.run(cmd, **runner_kwargs)
         except SubprocessError:
             raise
         except Exception as exc:
@@ -340,44 +400,69 @@ def run_gateway_cmd(
     return runner.run(cmd, timeout=timeout)  # type: ignore[return-value]
 
 
+class EventParsing(Protocol):
+    """Protocol for parsing the JSON event stream from claude -p --bare output."""
+
+    def parse_events(self, raw: object) -> list: ...
+    def parse_event_dict(self, event: object) -> Optional[dict]: ...
+
+
+class PydanticEventParser:
+    """Boundary adapter: uses pydantic TypeAdapter to coerce raw output into typed events."""
+
+    def parse_events(self, raw: object) -> list:
+        try:
+            return TypeAdapter(list).validate_python(raw)
+        except ValidationError:
+            return [raw]
+
+    def parse_event_dict(self, event: object) -> Optional[dict]:
+        try:
+            return TypeAdapter(dict).validate_python(event)
+        except ValidationError:
+            return None
+
+
+_default_event_parser: EventParsing = PydanticEventParser()
+
+
 def run_claude_bare(
     prompt: str,
     allowed_tools: str = "",
     mcp_config: str = "",
     timeout: int = 300,
     session_id: str = "",
-    no_session: bool = False,
     model: str = "",
+    cwd: str = "",
     *,
     runner: SubprocessJsonRunning = _default_subprocess_runner,
+    event_parser: EventParsing = _default_event_parser,
 ) -> Optional[str]:
     """Run claude -p in bare JSON mode and return the final result string.
 
     Parses the JSON event stream and returns the result field from the last
     result-type event, or None on any failure. When model is non-empty it is
     forwarded as --model (e.g. "claude-haiku-4-5"); when empty the CLI default
-    model is used.
+    model is used. When cwd is non-empty the subprocess runs in that directory
+    so its session transcript lands in the correct project folder.
     """
     cmd = ["claude", "-p", prompt, "--output-format", "json", "--bare"]
     if model:
         cmd += ["--model", model]
     if session_id:
         cmd += ["--session-id", session_id]
-    if no_session:
-        cmd += ["--no-session-persistence"]
     if mcp_config:
         cmd += ["--mcp-config", mcp_config]
     if allowed_tools:
         cmd += ["--allowedTools", allowed_tools]
-    raw = runner.run(cmd, timeout=timeout, stdin=subprocess.DEVNULL)
-    try:
-        events: list = TypeAdapter(list).validate_python(raw)
-    except ValidationError:
-        events = [raw]
+    run_kwargs: dict = {"timeout": timeout, "stdin": subprocess.DEVNULL}
+    if cwd:
+        run_kwargs["cwd"] = cwd
+    raw = runner.run(cmd, **run_kwargs)
+    events = event_parser.parse_events(raw)
     for event in reversed(events):
-        try:
-            event_dict: dict = TypeAdapter(dict).validate_python(event)
-        except ValidationError:
+        event_dict = event_parser.parse_event_dict(event)
+        if event_dict is None:
             continue
         if event_dict.get("type") == "result":
             return event_dict.get("result", "")
