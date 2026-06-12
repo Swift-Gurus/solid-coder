@@ -19,6 +19,7 @@ ensure_on_path(_HERE.parents[1], _HERE.parent)
 from hc_checker import (  # noqa: E402
     LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader, HealthPromptBuilder,
 )
+from violation_extractor import ViolationExtractor  # noqa: E402
 from test_utils import make_test_executor  # noqa: E402
 
 
@@ -45,7 +46,7 @@ def _make_reviewer() -> LLMReviewer:
     executor, _ = make_test_executor()
     return LLMReviewer(
         executor=executor,
-        output_handler=FileBasedOutputHandler(FileOutputReader()),
+        output_handler=FileBasedOutputHandler(FileOutputReader(extractor=ViolationExtractor())),
     )
 
 

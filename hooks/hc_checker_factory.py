@@ -15,11 +15,13 @@ _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import GateLogger, PLUGIN_ROOT, GATEWAY  # noqa: E402
+from hook_utils import GateLogger, GATEWAY  # noqa: E402
 from hc_checker import (  # noqa: E402
     HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader,
     LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
 )
+from output_path_resolver import OutputPathResolving, SessionOutputPathResolver  # noqa: E402
+from violation_extractor import ViolationExtractor  # noqa: E402
 from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker  # noqa: E402
 from hc_config import bare_session_timeout, debug_mode  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
@@ -35,6 +37,23 @@ _ALLOWED_TOOLS = (
 )
 
 
+class GatewayOutputPathResolver:
+    """Resolves a unique timestamped output dir per gate invocation via the gateway CLI."""
+
+    def __init__(self, invoker: GatewayInvoker) -> None:
+        self._invoker = invoker
+
+    def resolve(self, session_id: str) -> str:
+        result = self._invoker.invoke(
+            "get_output_path",
+            extra_args=["--operation", "health"],
+            result_key="output_root",
+        )
+        if not result:
+            return SessionOutputPathResolver().resolve(session_id)
+        return result
+
+
 def make_health_checker(
     mcp_config: str,
     session_id: str = "",
@@ -42,9 +61,10 @@ def make_health_checker(
     log_path: Optional[Path] = None,
 ) -> HealthChecking:
     logger = GateLogger(log_path)
+    invoker = GatewayInvoker(GATEWAY, GatewayCommandRunner())
     return LLMHealthChecker(
         loader=PrinciplesLoader(
-            rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner())),
+            rules=GatewayRuleLoader(invoker=invoker),
             tags=TagDetector(),
         ),
         builder=HealthPromptBuilder(),
@@ -59,6 +79,12 @@ def make_health_checker(
                 logger=logger,
                 timeout=bare_session_timeout(),
             ),
-            output_handler=FileBasedOutputHandler(FileOutputReader(_debug=debug_mode())),
+            output_handler=FileBasedOutputHandler(
+                FileOutputReader(
+                    extractor=ViolationExtractor(),
+                    debug=debug_mode(),
+                )
+            ),
         ),
+        path_resolver=GatewayOutputPathResolver(invoker=invoker),
     )

@@ -79,7 +79,7 @@ def get_output_path(operation: str, spec_number: str = "") -> dict:
     absolute output_root the caller should use as OUTPUT_ROOT.
 
     Args:
-        operation:   "review" | "refactor" | "implement" | "validate-spec"
+        operation:   "review" | "refactor" | "implement" | "validate-spec" | "health"
         spec_number: For implement only — e.g. "SPEC-042". Omit for other ops.
     """
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())

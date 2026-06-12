@@ -84,8 +84,9 @@ def _make_check_pipeline():
     tags_mock = _gateway_tags([])
     detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules",
                                                 "principle_name": "SRP", "metrics_example": {}}])
+    output_path_mock = make_subprocess_mock(0, {"output_root": "/tmp/gate/test-session"})
     claude_mock = make_subprocess_mock(0, [{"type": "result", "result": ""}])
-    seq = [tags_mock, detection_mock, claude_mock]
+    seq = [tags_mock, detection_mock, output_path_mock, claude_mock]
     it = iter(seq)
     return lambda *a, **kw: next(it)
 
