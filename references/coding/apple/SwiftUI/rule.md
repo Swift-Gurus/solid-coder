@@ -7,6 +7,46 @@ tags:
   - swiftui
 examples:
   - Examples/
+bands:
+  SUI-1:
+    body_nesting_depth:
+      severe:
+        greater_than_or_equal: 2
+    view_expression_count:
+      severe:
+        greater_than_or_equal: 5
+  SUI-2:
+    impure_count:
+      severe:
+        greater_than_or_equal: 1
+  SUI-3:
+    max_modifier_chain:
+      severe:
+        greater_than_or_equal: 2
+  SUI-4:
+    vm_injection_style:
+      severe:
+        equal: concrete
+  SUI-5:
+    preview_only_count:
+      severe:
+        greater_than_or_equal: 1
+  SUI-6:
+    views_without_preview_count:
+      severe:
+        greater_than_or_equal: 1
+  SUI-7:
+    bad_accessibility_count:
+      severe:
+        greater_than_or_equal: 1
+  SUI-8:
+    fixed_frame_count:
+      severe:
+        greater_than_or_equal: 1
+  SUI-9:
+    over_isolated_count:
+      severe:
+        greater_than_or_equal: 1
 ---
 
 # SwiftUI Best Practices

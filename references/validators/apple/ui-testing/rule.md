@@ -5,6 +5,29 @@ category: practice
 description: UI test structure, flow encapsulation, assertion efficiency, synchronization, and identifier quality with direct severity scoring
 tags:
   - ui-test
+bands:
+  UITEST-1:
+    flow_violations:
+      severe:
+        greater_than_or_equal: 1
+  UITEST-2:
+    base_class_violations:
+      severe:
+        greater_than_or_equal: 1
+  UITEST-3:
+    grouping_violations:
+      severe:
+        greater_than_or_equal: 1
+  UITEST-4:
+    sync_violations:
+      severe:
+        greater_than_or_equal: 1
+  UITEST-5:
+    identifier_violations:
+      minor:
+        greater_than_or_equal: 1
+      severe:
+        greater_than_or_equal: 3
 ---
 
 # UI Testing

@@ -5,6 +5,31 @@ category: practice
 description: Actor isolation, Task lifecycle, Sendable conformance, and async/await correctness analysis
 tags:
   - structured-concurrency
+bands:
+  SC-1:
+    model_mixing:
+      severe:
+        greater_than_or_equal: 1
+  SC-2:
+    orphaned_tasks:
+      severe:
+        greater_than_or_equal: 1
+  SC-3:
+    safety_bypasses:
+      severe:
+        greater_than_or_equal: 1
+  SC-4:
+    independent_sequential_awaits:
+      severe:
+        greater_than_or_equal: 3
+  SC-5:
+    blocking_bridges:
+      severe:
+        greater_than_or_equal: 1
+  SC-6:
+    raw_duration_count:
+      severe:
+        greater_than_or_equal: 1
 ---
 
 # Structured Concurrency

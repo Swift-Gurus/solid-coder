@@ -1,127 +1,133 @@
 #!/usr/bin/env python3
 """
-solid-description: Evaluates unit metric values against severity-band conditions
-defined in a principle's rule.md XML blocks. Accepts parsed rule content and
-uses XmlBlockParser to extract machine-readable severity-bands. Exposes score_unit
-to score one unit's metrics for a given metric_id. Returns COMPLIANT when no band
-matches (safe default). Returns an error entry when metric keys are unexpected.
-Use from_folder() factory to construct from a principle directory path.
+solid-description: Scores unit metric values against severity band thresholds defined in rule.md YAML frontmatter, with optional per-file config overrides via .solid-coder.yml.
 solid-category: service
 solid-tags: [utility, service]
 """
 
-import html
-import re
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Optional
 
-from common.xml_block_parser import parse as parse_xml_blocks
-
-_BAND_PATTERN = re.compile(
-    r'<band\s+severity=[\'"]([^\'"]+)[\'"][^>]*>\s*<condition>(.*?)</condition>\s*</band>',
-    re.DOTALL,
-)
-_METRIC_KEYS_PATTERN = re.compile(r"Metric keys:\s*(.+)")
-
-
-class RuleBlockParsing(Protocol):
-    def __call__(self, content: str) -> dict[str, Any]: ...
+from scoring.band_evaluator import BandEvaluating, BandEvaluator
+from scoring.frontmatter_bands_provider import BandsProviding, FrontmatterBandsProvider
 
 
 class SeverityScorer:
-    """Scores unit metrics against the severity-bands XML extracted from rule.md content.
+    """Scores unit metrics against YAML severity bands from rule.md frontmatter.
 
-    Pure computation — no file I/O. Accepts pre-read rule.md content as a string.
-    Use the from_folder() factory when construction from a directory path is needed.
-    Stateless across score_unit calls.
+    Inject a BandsProviding to supply per-metric band thresholds (with optional
+    config override). Inject a BandEvaluating to perform the comparison logic.
+    Use from_folder() to construct with production defaults.
     """
 
     def __init__(
         self,
-        rule_content: str,
-        parser: RuleBlockParsing = parse_xml_blocks,
+        bands_provider: BandsProviding,
+        evaluator: BandEvaluating,
+        metric_ids: list,
     ) -> None:
-        self._blocks = parser(rule_content)
+        self._bands = bands_provider
+        self._evaluator = evaluator
+        self._metric_ids = metric_ids
+
+    @property
+    def known_metric_ids(self) -> list:
+        """Metric IDs defined in this principle's frontmatter bands."""
+        return list(self._metric_ids)
 
     @classmethod
-    def from_folder(cls, principle_folder: Path) -> "SeverityScorer":
-        """Convenience factory that reads rule.md from a principle directory."""
-        content = (principle_folder / "rule.md").read_text(encoding="utf-8")
-        return cls(content)
+    def from_folder(
+        cls,
+        principle_folder: Path,
+        project_root: Optional[str] = None,
+    ) -> "SeverityScorer":
+        """Factory: wire YAML-based scoring from a principle directory.
 
-    def score_unit(self, unit_metrics: dict[str, Any], metric_id: str) -> dict[str, Any]:
-        """Evaluate unit_metrics against severity bands for metric_id.
+        Factory function — constructing and wiring concrete dependencies is this
+        function's sole responsibility (OCP Factory exception).
+        """
+        from scoring.bands_provider import make_config_bands_provider
+
+        rule_path = principle_folder / "rule.md"
+        rule_path_fn = lambda _p: rule_path  # noqa: E731
+
+        bands_provider = make_config_bands_provider(
+            rule_path_fn=rule_path_fn,
+            project_root=project_root,
+        )
+
+        fm_provider = FrontmatterBandsProvider(rule_path_fn=rule_path_fn)
+        # Discover which metric_ids are defined in this principle's bands
+        fm_provider.metric_variables("_probe", "")  # warm cache for this principle
+        principle_bands = fm_provider._cache.get("_probe", {})  # type: ignore[attr-defined]
+
+        # Proper cache warm: read frontmatter bands keys directly
+        metric_ids = cls._read_metric_ids(rule_path)
+
+        return cls(
+            bands_provider=bands_provider,
+            evaluator=BandEvaluator(),
+            metric_ids=metric_ids,
+        )
+
+    @staticmethod
+    def _read_metric_ids(rule_path: Path) -> list:
+        """Extract metric_id keys from rule.md frontmatter bands section."""
+        try:
+            import yaml as _yaml
+            from spec.parse_frontmatter import extract_frontmatter
+            text = rule_path.read_text(encoding="utf-8")
+            fm_text = extract_frontmatter(text)
+            if not fm_text:
+                return []
+            fm = _yaml.safe_load(fm_text)
+            if not isinstance(fm, dict):
+                return []
+            return list(fm.get("bands", {}).keys())
+        except Exception:
+            return []
+
+    def score_unit(
+        self,
+        unit_metrics: dict[str, Any],
+        metric_id: str,
+        file_path: str = "",
+    ) -> dict[str, Any]:
+        """Score unit_metrics for the given metric_id.
 
         Args:
-            unit_metrics: Dict of metric key -> value, e.g. {"verb_count": 3, "cohesion_groups": 1}.
-            metric_id: The metric to evaluate, e.g. "SRP-1".
+            unit_metrics: {variable_name: value} e.g. {"verb_count": 3}.
+            metric_id:    e.g. "SRP-1".
+            file_path:    absolute path to the source file being scored — used to
+                          find the nearest .solid-coder.yml override chain.
 
         Returns:
-            Dict with keys:
-              "metric_id"      -> str
-              "final_severity" -> "COMPLIANT" | "MINOR" | "SEVERE"
-              "band_matched"   -> str condition that matched, or None
-              "error"          -> str error message if metric keys mismatch, else absent
+            {"metric_id": str, "final_severity": str, "band_matched": None}
+            or with "error" key when a metric variable is missing.
         """
-        bands_xml = self._blocks["severity-bands"].get(metric_id)
-        if not bands_xml:
+        var_bands = self._bands.metric_variables(metric_id, file_path)
+        if not var_bands:
             return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
 
-        bands = self._extract_bands(bands_xml)
-        if not bands:
-            return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
-
-        expected_keys = self._expected_keys_for(metric_id)
-        if expected_keys:
-            unexpected = set(unit_metrics) - expected_keys
-            if unexpected:
+        worst = "COMPLIANT"
+        for var_name, bands in var_bands.items():
+            value = unit_metrics.get(var_name)
+            if value is None:
                 return {
                     "metric_id": metric_id,
                     "final_severity": "COMPLIANT",
                     "band_matched": None,
                     "error": (
-                        f"Unexpected metric keys for {metric_id}: "
-                        f"{sorted(unexpected)}. Expected: {sorted(expected_keys)}"
+                        f"metric variable '{var_name}' missing for {metric_id}. "
+                        f"Ensure all required fields are present per the "
+                        f"<submission-metrics-example>."
                     ),
                 }
+            sev = self._evaluator.evaluate(value, bands)
+            if sev == "SEVERE":
+                worst = "SEVERE"
+                break
+            if sev == "MINOR":
+                worst = "MINOR"
 
-        for band in bands:
-            condition_raw = html.unescape(band["condition"])
-            try:
-                matched = bool(eval(condition_raw, {"__builtins__": {}}, dict(unit_metrics)))  # noqa: S307
-            except Exception as exc:
-                return {
-                    "metric_id": metric_id,
-                    "final_severity": "COMPLIANT",
-                    "band_matched": None,
-                    "error": f"Could not evaluate condition '{condition_raw}': {exc}",
-                }
-            if matched:
-                return {
-                    "metric_id": metric_id,
-                    "final_severity": band["severity"],
-                    "band_matched": condition_raw,
-                }
-
-        return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
-
-    def _extract_bands(self, bands_xml: str) -> list[dict[str, str]]:
-        """Extract severity bands from the inner content of a <severity-bands> block."""
-        return [
-            {"severity": m.group(1).strip(), "condition": m.group(2).strip()}
-            for m in _BAND_PATTERN.finditer(bands_xml)
-        ]
-
-    def _expected_keys_for(self, metric_id: str) -> set[str]:
-        """Extract metric key names from the detection block's 'Metric keys:' line.
-
-        Returns empty set when no detection block or no 'Metric keys:' line exists,
-        meaning no key restriction is applied for that metric.
-        """
-        detection_text = self._blocks["detection"].get(metric_id, "")
-        match = _METRIC_KEYS_PATTERN.search(detection_text)
-        if not match:
-            return set()
-        raw = match.group(1).strip().rstrip(".")
-        keys = {k.strip().split("(")[0].strip() for k in raw.split(",")}
-        return {k for k in keys if k}
+        return {"metric_id": metric_id, "final_severity": worst, "band_matched": None}

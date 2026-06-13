@@ -1,0 +1,28 @@
+# solid-coder severity configuration
+# Overrides rule.md frontmatter band defaults for this project.
+# Nested configs: place a .solid-coder.yml in any subdirectory to override
+# thresholds for files within that directory (child wins key-by-key).
+#
+# Per-metric format:
+#   PRINCIPLE:
+#     METRIC-ID:
+#       VARIABLE:
+#         severe:
+#           greater_than_or_equal: N   # >= N → SEVERE
+#           greater_than: N            # > N → SEVERE
+#           less_than: N               # < N → SEVERE (inverted metrics)
+#           less_than_or_equal: N      # <= N → SEVERE
+#         minor:
+#           greater_than_or_equal: N   # >= N → MINOR (if not already SEVERE)
+#
+#   Disable a metric:      VARIABLE: { disabled: true }
+#   Disable a principle:   PRINCIPLE: { disabled: true }
+#
+# Example — raise SRP verb ceiling for this project:
+# SRP:
+#   SRP-1:
+#     verb_count:
+#       severe:
+#         greater_than: 8
+
+# No overrides — using rule.md defaults for all principles.

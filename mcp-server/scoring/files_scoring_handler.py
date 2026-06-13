@@ -61,9 +61,8 @@ class FilesScoringHandler:
                         if isinstance(entry, dict) and "value" in entry
                     }
 
-                    band_blocks = scorer._blocks.get("severity-bands", {})
-                    for metric_id in band_blocks:
-                        r = scorer.score_unit(flat, metric_id)
+                    for metric_id in scorer.known_metric_ids:
+                        r = scorer.score_unit(flat, metric_id, _file_path)
                         if "error" in r:
                             return scored_files, {
                                 "error": (

@@ -7,6 +7,33 @@ tags:
   - unit-test
   - xctest
   - testing
+bands:
+  TEST-1:
+    isolation_violations:
+      severe:
+        greater_than_or_equal: 1
+  TEST-2:
+    structure_violations:
+      severe:
+        greater_than_or_equal: 1
+  TEST-3:
+    naming_violations:
+      minor:
+        greater_than_or_equal: 1
+      severe:
+        greater_than_or_equal: 3
+  TEST-4:
+    test_double_violations:
+      severe:
+        greater_than_or_equal: 1
+  TEST-5:
+    setup_violations:
+      severe:
+        greater_than_or_equal: 1
+  TEST-6:
+    framework_violations:
+      severe:
+        greater_than_or_equal: 1
 ---
 
 # Unit Testing

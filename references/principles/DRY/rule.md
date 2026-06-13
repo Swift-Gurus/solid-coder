@@ -3,6 +3,19 @@ name: dry
 displayName: Don't Repeat Yourself
 category: practice
 description: Reuse miss detection, inlined duplication analysis, and missing abstractions identification with direct severity scoring
+bands:
+  DRY-1:
+    reuse_misses:
+      severe:
+        greater_than_or_equal: 1
+  DRY-2:
+    duplicate_sites:
+      severe:
+        greater_than_or_equal: 2
+  DRY-3:
+    missing_abstractions:
+      severe:
+        greater_than_or_equal: 1
 ---
 
 # Don't Repeat Yourself (DRY)

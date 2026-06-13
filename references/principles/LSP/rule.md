@@ -3,6 +3,22 @@ name: lsp
 displayName: Liskov Substitution Principle
 category: solid
 description: Type check counting and contract compliance analysis with direct severity scoring
+bands:
+  LSP-1:
+    type_checks:
+      severe:
+        greater_than_or_equal: 1
+  LSP-2:
+    contract_violations:
+      severe:
+        greater_than_or_equal: 1
+  LSP-3:
+    fatal_error_methods:
+      severe:
+        greater_than_or_equal: 1
+    empty_methods:
+      minor:
+        greater_than_or_equal: 1
 ---
 
 # Liskov Substitution Principle (LSP)

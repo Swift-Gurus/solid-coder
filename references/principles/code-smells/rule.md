@@ -5,6 +5,19 @@ category: practice
 profile:
   - code
 description: Write-time constraints against structural anti-patterns. Language-agnostic.
+bands:
+  CS-1:
+    static_logic_count:
+      severe:
+        greater_than_or_equal: 1
+  CS-2:
+    class_struct_count:
+      severe:
+        greater_than_or_equal: 2
+  CS-3:
+    inline_type_count:
+      severe:
+        greater_than_or_equal: 1
 ---
 
 # Code Smells

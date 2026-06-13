@@ -3,6 +3,23 @@ name: isp
 displayName: Interface Segregation Principle
 category: solid
 description: Protocol width analysis and conformer coverage scoring with direct severity scoring
+bands:
+  ISP-1:
+    width:
+      minor:
+        greater_than_or_equal: 6
+      severe:
+        greater_than_or_equal: 9
+  ISP-2:
+    min_coverage:
+      severe:
+        less_than: 60
+      minor:
+        less_than: 80
+  ISP-3:
+    cohesion_groups:
+      severe:
+        greater_than_or_equal: 2
 ---
 
 # Interface Segregation Principle (ISP)

@@ -5,6 +5,21 @@ category: solid
 description: Verb counting and cohesion group analysis with direct severity scoring
 required_patterns:
   - structural/facade
+bands:
+  SRP-1:
+    verb_count:
+      minor:
+        greater_than_or_equal: 3
+      severe:
+        greater_than: 5
+  SRP-2:
+    cohesion_groups:
+      severe:
+        greater_than_or_equal: 2
+  SRP-3:
+    stakeholder_count:
+      severe:
+        greater_than_or_equal: 2
 ---
 
 # Single Responsibility Principle (SRP)

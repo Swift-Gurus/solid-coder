@@ -8,6 +8,18 @@ required_patterns:
   - creational/factory
   - creational/factory-method
   - creational/builder
+bands:
+  OCP-1:
+    sealed_variation_points:
+      severe:
+        greater_than_or_equal: 1
+  OCP-2:
+    untestable_dependencies:
+      severe:
+        greater_than_or_equal: 1
+    testable_direct_count:
+      minor:
+        greater_than_or_equal: 1
 ---
 
 # Open/Closed Principle (OCP)
