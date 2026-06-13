@@ -24,7 +24,7 @@ host = "http://localhost:8080"
 
 # Model for the claude backend. Set to a real model id to override the CLI default,
 # e.g. "claude-haiku-4-5", "claude-sonnet-4-6". Leave as "claude" to use the CLI default.
-model = "claude-sonnet-4-5"
+model = "claude-haiku-4-5"
 
 # Timeout for the bare claude -p health-check session (seconds).
 # The new two-phase flow (submit_batch + load_fix_batch + submit_fix_batch)
