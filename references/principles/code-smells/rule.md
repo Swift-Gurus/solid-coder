@@ -54,6 +54,24 @@ scoped to the file's primary type do not count as separate types.
 
 ---
 
+### CS-3: Inline type definitions inside function/method scopes
+
+<definition id="CS-3" name="Inline Type Definition">
+Count of class, struct, interface, or enum definitions declared inside a function or method body rather than at module/file scope.
+</definition>
+
+<detection id="CS-3" name="Inline Type Definition">
+Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
+Count each such declaration. Anonymous functions/lambdas do not count.
+</detection>
+
+<severity-bands id="CS-3">
+  <band severity="COMPLIANT"><condition>inline_type_count == 0</condition></band>
+  <band severity="SEVERE"><condition>inline_type_count >= 1</condition></band>
+</severity-bands>
+
+---
+
 ## Quantitative Metrics Summary
 
 | ID   | Metric                  | Threshold          | Severity  |
@@ -62,3 +80,5 @@ scoped to the file's primary type do not count as separate types.
 | CS-1 | Static logic count      | >= 1               | SEVERE    |
 | CS-2 | Class/struct count      | <= 1               | COMPLIANT |
 | CS-2 | Class/struct count      | >= 2               | SEVERE    |
+| CS-3 | Inline type count       | 0                  | COMPLIANT |
+| CS-3 | Inline type count       | >= 1               | SEVERE    |

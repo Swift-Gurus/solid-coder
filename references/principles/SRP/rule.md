@@ -97,7 +97,8 @@ If different stakeholders could independently request changes to the same class 
 
 <severity-bands id="SRP-1">
 <band severity="COMPLIANT"><condition>verb_count &lt;= 2 and cohesion_groups == 1</condition></band>
-<band severity="MINOR"><condition>verb_count &gt;= 3 and cohesion_groups == 1 and stakeholder_count &lt;= 1</condition></band>
+<band severity="MINOR"><condition>verb_count &gt;= 3 and verb_count &lt;= 5 and cohesion_groups == 1 and stakeholder_count &lt;= 1</condition></band>
+<band severity="SEVERE"><condition>verb_count &gt; 5 and cohesion_groups == 1</condition></band>
 <band severity="SEVERE"><condition>verb_count &gt;= 3 and stakeholder_count &gt;= 2</condition></band>
 </severity-bands>
 
@@ -118,7 +119,8 @@ If different stakeholders could independently request changes to the same class 
 |-------|-----------------|----------------------------------|-----------|
 | SRP-0 | Exception       | falls into exception category    | COMPLIANT |
 | SRP-1 | Verbs           | 1-2 verbs, 1 group               | COMPLIANT |
-| SRP-1 | Verbs           | 3+ verbs, 1 group, 1 stakeholder | MINOR     |
+| SRP-1 | Verbs           | 3-5 verbs, 1 group, 1 stakeholder | MINOR    |
+| SRP-1 | Verbs           | 6+ verbs, 1 group                | SEVERE    |
 | SRP-1 | Verbs           | 3+ verbs, 2+ stakeholders        | SEVERE    |
 | SRP-2 | Cohesion groups | 2+ groups                        | SEVERE    |
 ---

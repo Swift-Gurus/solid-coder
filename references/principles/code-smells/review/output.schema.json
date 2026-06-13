@@ -3,7 +3,7 @@
   "title": "Code Smells Metrics",
   "description": "Schema for the 'code-smells' key inside the unified review-output metrics object.",
   "type": "object",
-  "required": ["static_logic_count", "class_struct_count"],
+  "required": ["static_logic_count", "class_struct_count", "inline_type_count"],
   "properties": {
     "static_logic_count": {
       "type": "object",
@@ -28,6 +28,19 @@
         },
         "additional-info": {
           "description": "Optional list of type names found: [string]"
+        }
+      }
+    },
+    "inline_type_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "CS-3: count of class, struct, enum, interface, or protocol definitions inside a function or method body"
+        },
+        "additional-info": {
+          "description": "Optional list of inline type names and their containing function: [{type_name, function_name}]"
         }
       }
     }
