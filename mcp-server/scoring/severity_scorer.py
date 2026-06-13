@@ -112,10 +112,19 @@ class SeverityScorer:
         worst = "COMPLIANT"
         for var_name, bands in var_bands.items():
             if bands.get("disabled"):
-                continue
+                continue  # explicitly disabled — skip without error
             value = unit_metrics.get(var_name)
             if value is None:
-                continue  # variable not submitted — not applicable for this unit
+                return {
+                    "metric_id": metric_id,
+                    "final_severity": "COMPLIANT",
+                    "band_matched": None,
+                    "error": (
+                        f"metric variable '{var_name}' missing for {metric_id}. "
+                        "Ensure all required fields are present per the "
+                        "<submission-metrics-example>."
+                    ),
+                }
             sev = self._evaluator.evaluate(value, bands)
             if sev == "SEVERE":
                 worst = "SEVERE"
