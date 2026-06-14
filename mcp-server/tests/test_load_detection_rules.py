@@ -29,10 +29,12 @@ class TestLoadDetectionRules(unittest.TestCase):
         self.assertIn("detection", p)
         self.assertIsInstance(p["detection"], dict)
 
-    def test_isp_with_xml_blocks_returns_severity_bands(self):
+    def test_isp_with_xml_blocks_returns_severity_bands_field(self):
+        """severity_bands field is present but empty — bands are now in YAML frontmatter."""
         p = self._load_first_principle("isp")
         self.assertIn("severity_bands", p)
-        self.assertGreater(len(p["severity_bands"]), 0)
+        self.assertEqual(p["severity_bands"], {},
+                         "severity_bands XML blocks removed — scoring uses YAML frontmatter bands")
 
     def test_unknown_principle_returns_error(self):
         result = self.handler.load_detection_rules(principle="nonexistent_xyz_principle")

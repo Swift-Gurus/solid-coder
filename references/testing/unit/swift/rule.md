@@ -248,37 +248,6 @@ Unit and integration tests must use Swift Testing (`import Testing`, `@Test`, `#
 5. **Test helpers/fixtures in shared setUp** — shared immutable fixtures reset per test are not isolation violations
 </exceptions>
 
-<severity-bands id="TEST-1">
-<band severity="SEVERE"><condition>isolation_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>isolation_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="TEST-2">
-<band severity="SEVERE"><condition>structure_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>structure_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="TEST-3">
-<band severity="SEVERE"><condition>naming_violations >= 3</condition></band>
-<band severity="MINOR"><condition>naming_violations >= 1 and naming_violations <= 2 and isolation_violations == 0 and structure_violations == 0 and test_double_violations == 0 and setup_violations == 0 and framework_violations == 0</condition></band>
-<band severity="COMPLIANT"><condition>naming_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="TEST-4">
-<band severity="SEVERE"><condition>test_double_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>test_double_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="TEST-5">
-<band severity="SEVERE"><condition>setup_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>setup_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="TEST-6">
-<band severity="SEVERE"><condition>framework_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>framework_violations == 0</condition></band>
-</severity-bands>
-
 ---
 
 ## Summary

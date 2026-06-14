@@ -174,23 +174,6 @@ Group protocol methods by which conformers actually use them together. Disjoint 
 7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
 </exceptions>
 
-<severity-bands id="ISP-1">
-<band severity="SEVERE"><condition>width > 8</condition></band>
-<band severity="MINOR"><condition>width >= 6 and width <= 8</condition></band>
-<band severity="COMPLIANT"><condition>width <= 5</condition></band>
-</severity-bands>
-
-<severity-bands id="ISP-2">
-<band severity="SEVERE"><condition>min_coverage < 60</condition></band>
-<band severity="MINOR"><condition>min_coverage >= 60 and min_coverage < 80</condition></band>
-<band severity="COMPLIANT"><condition>min_coverage >= 80</condition></band>
-</severity-bands>
-
-<severity-bands id="ISP-3">
-<band severity="SEVERE"><condition>cohesion_groups >= 2</condition></band>
-<band severity="COMPLIANT"><condition>cohesion_groups <= 1</condition></band>
-</severity-bands>
-
 ---
 
 ## Quantitative Metrics Summary

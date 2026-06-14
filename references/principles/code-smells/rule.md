@@ -41,11 +41,6 @@ Count static or class methods that contain business logic (branching, constructi
 transformation). Exclude pure constants and build-system DSL files.
 </detection>
 
-<severity-bands id="CS-1">
-  <band severity="COMPLIANT"><condition>static_logic_count == 0</condition></band>
-  <band severity="SEVERE"><condition>static_logic_count >= 1</condition></band>
-</severity-bands>
-
 ---
 
 ### CS-2: Multiple class or struct definitions in one file
@@ -60,11 +55,6 @@ Count top-level class and struct declarations in the file. Private extensions
 scoped to the file's primary type do not count as separate types.
 </detection>
 
-<severity-bands id="CS-2">
-  <band severity="COMPLIANT"><condition>class_struct_count <= 1</condition></band>
-  <band severity="SEVERE"><condition>class_struct_count >= 2</condition></band>
-</severity-bands>
-
 ---
 
 ### CS-3: Inline type definitions inside function/method scopes
@@ -77,11 +67,6 @@ Count of class, struct, interface, or enum definitions declared inside a functio
 Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
 Count each such declaration. Anonymous functions/lambdas do not count.
 </detection>
-
-<severity-bands id="CS-3">
-  <band severity="COMPLIANT"><condition>inline_type_count == 0</condition></band>
-  <band severity="SEVERE"><condition>inline_type_count >= 1</condition></band>
-</severity-bands>
 
 ---
 

@@ -146,32 +146,6 @@ Element queries that use string literals directly couple tests to the current id
 3. **Single-method test classes** — assertion grouping only applies when 2+ methods share the same setup preamble
 </exceptions>
 
-<severity-bands id="UITEST-1">
-<band severity="SEVERE"><condition>flow_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>flow_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="UITEST-2">
-<band severity="SEVERE"><condition>base_class_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>base_class_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="UITEST-3">
-<band severity="SEVERE"><condition>grouping_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>grouping_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="UITEST-4">
-<band severity="SEVERE"><condition>sync_violations >= 1</condition></band>
-<band severity="COMPLIANT"><condition>sync_violations == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="UITEST-5">
-<band severity="SEVERE"><condition>identifier_violations >= 3</condition></band>
-<band severity="MINOR"><condition>identifier_violations >= 1 and identifier_violations <= 2 and flow_violations == 0 and base_class_violations == 0 and grouping_violations == 0 and sync_violations == 0</condition></band>
-<band severity="COMPLIANT"><condition>identifier_violations == 0</condition></band>
-</severity-bands>
-
 ---
 
 ## Quantitative Metrics Summary

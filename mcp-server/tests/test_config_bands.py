@@ -90,6 +90,27 @@ class TestConfigBands(unittest.TestCase):
 
     # ── Coverage ───────────────────────────────────────────────────────────────
 
+    def test_frontmatter_bands_covers_all_rule_metrics(self):
+        """Every metric_id in <definition> or <detection> blocks must exist in bands: frontmatter.
+
+        Fails with an explicit message if a metric is documented in rule.md but
+        missing from the frontmatter bands — meaning it would be silently unscored.
+        """
+        gaps = []
+        for rule_path in self._discoverer.all_rule_paths():
+            xml_ids = self._discoverer.xml_metric_ids(rule_path)
+            fm_ids = self._discoverer.frontmatter_metric_ids(rule_path)
+            missing = xml_ids - fm_ids
+            if missing:
+                gaps.append(f"{rule_path.relative_to(REFS_ROOT.parent)}: "
+                            f"metrics in definition/detection but not in bands frontmatter: "
+                            f"{sorted(missing)}")
+        if gaps:
+            self.fail(
+                "Add missing metrics to the 'bands:' frontmatter section in each rule.md:\n\n"
+                + "\n".join(gaps)
+            )
+
     def test_coverage_is_complete(self):
         """Fails explicitly if frontmatter adds a metric not in COVERED_METRICS."""
         discovered = set(self._all.keys())

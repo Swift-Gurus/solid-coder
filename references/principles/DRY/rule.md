@@ -108,21 +108,6 @@ When a type contains a pattern that is not specific to its domain, that pattern 
 3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
 </exceptions>
 
-<severity-bands id="DRY-1">
-<band severity="SEVERE"><condition>reuse_misses >= 1</condition></band>
-<band severity="COMPLIANT"><condition>reuse_misses == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="DRY-2">
-<band severity="SEVERE"><condition>duplicate_sites >= 2</condition></band>
-<band severity="COMPLIANT"><condition>duplicate_sites == 0 or duplicate_sites == 1</condition></band>
-</severity-bands>
-
-<severity-bands id="DRY-3">
-<band severity="SEVERE"><condition>missing_abstractions >= 1</condition></band>
-<band severity="COMPLIANT"><condition>missing_abstractions == 0</condition></band>
-</severity-bands>
-
 ---
 
 ## Quantitative Metrics Summary

@@ -139,17 +139,6 @@ A class is OCP-compliant when it can be tested without modifying its source. Tes
     - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
 </exceptions>
 
-<severity-bands id="OCP-1">
-<band severity="SEVERE"><condition>sealed_variation_points >= 1</condition></band>
-<band severity="COMPLIANT"><condition>sealed_variation_points == 0</condition></band>
-</severity-bands>
-
-<severity-bands id="OCP-2">
-<band severity="SEVERE"><condition>untestable_dependencies >= 1</condition></band>
-<band severity="MINOR"><condition>testable_direct_count >= 1 and testable_direct_count <= 2 and untestable_dependencies == 0</condition></band>
-<band severity="COMPLIANT"><condition>untestable_dependencies == 0</condition></band>
-</severity-bands>
-
 ---
 
 ## Quantitative Metrics Summary
