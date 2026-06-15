@@ -15,7 +15,7 @@
   </step>
 
   <step id="2" name="dry-search" required="true">
-    YOU MUST call mcp__plugin_solid-coder_pipeline__search_codebase
+    YOU MUST call mcp__plugin_solid-coder_pipeline__search_codebase BEFORE
     moving to step 3. Do not skip this step — it is required even when you
     believe no DRY violation exists, because absence must be confirmed by search.
 
@@ -43,6 +43,10 @@
   </step>
 
   <step id="3" name="submit" required="true">
+    YOU MUST call mcp__plugin_solid-coder_pipeline__submit_batch_findings IMMEDIATELY
+    after completing step 2. Do NOT write your findings, analysis, or metric values
+    as text or prose — the ONLY valid way to complete this workflow is via this tool call.
+
     Call mcp__plugin_solid-coder_pipeline__submit_batch_findings ONCE with ALL principles you
     received detection instructions for.
 
@@ -57,7 +61,7 @@
 
   </step>
 
-  <step id="4" name="fix-submission" required="true">
+  <step id="4" name="fix-guidance" required="true">
     If submit_batch_findings returned violations, complete ALL of these in order:
 
     a) Call mcp__plugin_solid-coder_docs__load_fix_for_violation ONCE with ALL metric_ids at once:
@@ -71,16 +75,5 @@
        The main agent will decide how to implement it.
        DO NOT ANALYZE OR QUESTION SERVER'S SCORING -> just provide suggestion based on fix guidelines
 
-
-    c) Call mcp__plugin_solid-coder_pipeline__submit_fix ONCE with output_dir and a fixes array covering
-       every violation:
-         output_dir: the output_dir value from the submit_batch_findings response
-         fixes: [
-           { "metric_id": "...", "file_path": "...", "unit_name": "...", "suggested_fix": "..." },
-           ... one entry per violation ...
-         ]
-
-       If submit_fix returns {"error": ...}, fix the named field and retry.
-       submit_fix returns {"complete": true, "violations_with_fixes": [...]} on success.
   </step>
 </workflow>
