@@ -2,7 +2,5 @@
 __pycache__/
 .DS_Store
 .idea/
-.solid-coder/
-
 # solid-coder pipeline run artifacts
 .solid_coder/

@@ -1,5 +1,5 @@
-"""
-solid-description: Provides the public interface for the findings gateway subsystem.
+""" 
+solid-description: Exports findings gateway interfaces and provides a factory for constructing initialized gateway handlers.
 solid-category: service
 solid-tags: [utility, service]
 """
@@ -25,36 +25,43 @@ from rules.detection_rules_loader import DetectionRulesLoading, DetectionRulesLo
 from rules.principle_content_builder import PrincipleContentBuilding, PrincipleContentBuilder  # noqa: F401
 
 
-def make_gateway_handler(refs_root: Path) -> GatewayHandler:
-    """Wire production defaults and return a ready-to-use GatewayHandler.
+class GatewayHandlerFactory:
+    """Wires production defaults and creates a ready-to-use GatewayHandler.
 
-    Factory function — constructing and wiring concrete dependencies is this
-    function's sole responsibility (OCP Factory exception).
+    Factory class — constructing and wiring concrete dependencies is this
+    class's sole responsibility (OCP Factory exception).
     """
-    from rules.principle_registry import PrincipleRegistry
-    registry = PrincipleRegistry(refs_root)
-    scoring = ScoringHandler(
-        scorer_provider=PrincipleScorerProvider(refs_root),  # reads CLAUDE_PROJECT_DIR internally
-        files_scorer=FilesScoringHandler(),
-    )
-    return GatewayHandler(
-        scoring=scoring,
-        submit_orchestrator=SubmitOrchestrator(
+
+    def make(self, refs_root: Path) -> GatewayHandler:
+        from rules.principle_registry import PrincipleRegistry
+        registry = PrincipleRegistry(refs_root)
+        scoring = ScoringHandler(
+            scorer_provider=PrincipleScorerProvider(refs_root),
+            files_scorer=FilesScoringHandler(),
+        )
+        return GatewayHandler(
             scoring=scoring,
-            validator=PartialOutputValidator(refs_root),
-            submitter=FindingsSubmitter(JsonFileWriter()),
-            summariser=SeveritySummariser(),
-        ),
-        rules=RulesHandler(
-            detection=DetectionRulesLoader(
-                all_principles=registry,
-                refs_root=refs_root,
-                content_builder=PrincipleContentBuilder(),
+            submit_orchestrator=SubmitOrchestrator(
+                scoring=scoring,
+                validator=PartialOutputValidator(refs_root),
+                submitter=FindingsSubmitter(JsonFileWriter()),
+                summariser=SeveritySummariser(),
             ),
-            fix_instructions=FixInstructionsLoader(registry),
-        ),
-        fix_submitter=FixSubmitter(
-            persister=FixPersister(),
-            completeness=FixCompletenessValidator(ViolationReader()),
-        ),
-    )
+            rules=RulesHandler(
+                detection=DetectionRulesLoader(
+                    all_principles=registry,
+                    refs_root=refs_root,
+                    content_builder=PrincipleContentBuilder(),
+                ),
+                fix_instructions=FixInstructionsLoader(registry),
+            ),
+            fix_submitter=FixSubmitter(
+                persister=FixPersister(),
+                completeness=FixCompletenessValidator(ViolationReader()),
+            ),
+        )
+
+
+def make_gateway_handler(refs_root: Path) -> GatewayHandler:
+    """Backward-compatible shim — delegates to GatewayHandlerFactory."""
+    return GatewayHandlerFactory().make(refs_root)
