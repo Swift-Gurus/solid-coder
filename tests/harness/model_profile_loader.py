@@ -11,11 +11,14 @@ import sys
 from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parent
-if str(_HARNESS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HARNESS_DIR))
+_HOOKS_DIR = Path(__file__).resolve().parents[2] / "hooks"
+for _p in (_HARNESS_DIR, _HOOKS_DIR):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from interfaces import ModelProfileLoading, TomlLoading  # noqa: E402
 from models import ModelProfile  # noqa: E402
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
 
 
 class ModelProfileLoader(ModelProfileLoading):
@@ -41,7 +44,7 @@ class ModelProfileLoader(ModelProfileLoading):
                 llm=data.get("llm", {}),
                 inference=data.get("inference", {}),
             )
-        project_toml = self._project_root / ".claude" / "solid-coder-local.toml"
+        project_toml = self._project_root / CONFIG_DIR / CONFIG_LOCAL_TOML
         data = self._toml_loader.load_toml(project_toml)
         llm = data.get("llm", {})
         backend = llm.get("backend", "claude")

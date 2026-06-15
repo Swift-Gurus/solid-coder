@@ -143,7 +143,8 @@ class TestTomlIntegration(unittest.TestCase):
     """Integration tests: full path from TOML file → runner configuration."""
 
     def _make_runner(self, tmp_path: Path, mcp_config: str = "cfg", allowed_tools: str = "tools"):
-        with patch("hc_config_core.find_config", return_value=tmp_path / ".claude" / "solid-coder-local.toml"), \
+        from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
+        with patch("hc_config_core.find_config", return_value=tmp_path / CONFIG_DIR / CONFIG_LOCAL_TOML), \
              patch("hc_runner_factory.make_llama_server_runner") as mock_llama:
             mock_llama.return_value = MagicMock(spec=LlamaServerRunner)
             runner = make_llm_runner(mcp_config, allowed_tools)

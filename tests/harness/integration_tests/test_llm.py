@@ -32,7 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from integration_tests.base import IntegrationTestBase  # noqa: E402
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_LOCAL_TOML = _PROJECT_ROOT / ".claude" / "solid-coder-local.toml"
+_HOOKS_DIR = _PROJECT_ROOT / "hooks"
+if str(_HOOKS_DIR) not in sys.path:
+    sys.path.insert(0, str(_HOOKS_DIR))
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
+_LOCAL_TOML = _PROJECT_ROOT / CONFIG_DIR / CONFIG_LOCAL_TOML
 _LAUNCH_SCRIPT = _PROJECT_ROOT / "scripts" / "run-local-llm.sh"
 
 _STARTUP_TIMEOUT_S = 120

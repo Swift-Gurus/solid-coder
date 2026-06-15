@@ -17,10 +17,12 @@ _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parents[2]
 _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
-ensure_on_path(_HARNESS_DIR, _HERE)
+_HOOKS_DIR = _PROJECT_ROOT / "hooks"
+ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
 
-from interfaces import TomlLoading
-from model_profile_loader import ModelProfileLoader
+from interfaces import TomlLoading  # noqa: E402
+from model_profile_loader import ModelProfileLoader  # noqa: E402
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
 
 
 class FakeTomlLoader(TomlLoading):
@@ -55,9 +57,9 @@ class TestModelProfileLoader(unittest.TestCase):
     def test_no_model_name_uses_project_toml_backend_as_output_dir(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            claude_dir = root / ".claude"
+            claude_dir = root / CONFIG_DIR
             claude_dir.mkdir()
-            project_toml = claude_dir / "solid-coder-local.toml"
+            project_toml = claude_dir / CONFIG_LOCAL_TOML
             project_toml.touch()
             loader = FakeTomlLoader({
                 str(project_toml): {"llm": {"backend": "claude"}, "inference": {}}

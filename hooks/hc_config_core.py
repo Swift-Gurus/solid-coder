@@ -14,9 +14,8 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hook_utils import load_toml  # noqa: E402
+from solid_coder_paths import CONFIG_DIR, CONFIG_TOML, CONFIG_LOCAL_TOML  # noqa: E402
 
-_FILENAME_LOCAL = "solid-coder-local.toml"   # not committed — secrets, per-user overrides
-_FILENAME_REPO  = "solid-coder.toml"          # committed — shared project defaults
 # Anchor to the project root (hooks/ parent) so configs are found regardless of cwd.
 _PROJECT_ROOT = _HOOKS_DIR.parent
 T = TypeVar("T")
@@ -27,20 +26,16 @@ class TomlLoader(Protocol):
 
 
 def find_config(_cwd: Optional[Path] = None) -> Optional[Path]:
-    """Return the local (non-committed) config path, or None if absent.
-
-    Uses _PROJECT_ROOT when _cwd is not provided so the file is always located
-    regardless of the process working directory at hook invocation time.
-    """
+    """Return the local (non-committed) config path, or None if absent."""
     base = _cwd if _cwd is not None else _PROJECT_ROOT
-    path = base / ".claude" / _FILENAME_LOCAL
+    path = base / CONFIG_DIR / CONFIG_LOCAL_TOML
     return path if path.exists() else None
 
 
 def find_repo_config(_cwd: Optional[Path] = None) -> Optional[Path]:
     """Return the committed project config path, or None if absent."""
     base = _cwd if _cwd is not None else _PROJECT_ROOT
-    path = base / ".claude" / _FILENAME_REPO
+    path = base / CONFIG_DIR / CONFIG_TOML
     return path if path.exists() else None
 
 

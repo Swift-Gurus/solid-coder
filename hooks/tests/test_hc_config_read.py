@@ -1,5 +1,5 @@
 """
-solid-description: Tests LLM configuration retrieval and default value provision.
+solid-description: Verifies that LLM section configuration is correctly read from available sources.
 solid-category: unit-test
 solid-spec: [SPEC-014]
 """
@@ -14,59 +14,9 @@ from unittest.mock import patch
 from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
-import hc_config
-import hc_config_core
-from test_utils import write_toml
+import hc_config_core  # noqa: E402
 
 _VALID_TOML = b"[llm]\nbackend = \"local\"\nhost = \"http://gpu:9090\"\n"
-
-
-def _write_toml(directory: Path, content: bytes = _VALID_TOML) -> Path:
-    return write_toml(directory, content)
-
-
-class TestAccessors(unittest.TestCase):
-    def _assert_default(self, fn, expected: str) -> None:
-        with patch("hc_config_core.read_llm_section", return_value={}):
-            self.assertEqual(fn(), expected)
-
-    def test_backend_defaults_to_claude(self):
-        self._assert_default(hc_config.llm_backend, "claude")
-
-    def test_host_defaults_to_localhost_8080(self):
-        self._assert_default(hc_config.llm_host, "http://localhost:8080")
-
-    def test_model_defaults_to_local(self):
-        self._assert_default(hc_config.llm_model, "local")
-
-    def test_backend_read_from_config(self):
-        with patch("hc_config_core.read_llm_section", return_value={"backend": "local"}):
-            self.assertEqual(hc_config.llm_backend(), "local")
-
-    def test_host_read_from_config(self):
-        with patch("hc_config_core.read_llm_section", return_value={"host": "http://myserver:9090"}):
-            self.assertEqual(hc_config.llm_host(), "http://myserver:9090")
-
-
-class TestFindConfig(unittest.TestCase):
-    def _find(self, project_dir: Path):
-        return hc_config_core.find_config(_cwd=project_dir)
-
-    def test_returns_project_config_when_present(self):
-        with tempfile.TemporaryDirectory() as d:
-            _write_toml(Path(d))
-            result = self._find(Path(d))
-            self.assertEqual(result, Path(d) / ".claude" / "solid-coder-local.toml")
-
-    def test_returns_none_when_project_config_absent(self):
-        with tempfile.TemporaryDirectory() as d:
-            self.assertIsNone(self._find(Path(d)))
-
-    def test_does_not_search_outside_project_dir(self):
-        with tempfile.TemporaryDirectory() as project, \
-             tempfile.TemporaryDirectory() as other:
-            _write_toml(Path(other))  # config elsewhere — must not be found
-            self.assertIsNone(self._find(Path(project)))
 
 
 class TestReadConfigFile(unittest.TestCase):

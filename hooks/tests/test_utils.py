@@ -19,10 +19,11 @@ SHORT_SWIFT = "final class Foo {\n    func bar() {}\n}\n"
 
 
 def write_toml(directory: Path, content: Union[str, bytes]) -> Path:
-    """Create .claude/solid-coder-local.toml under directory with given content."""
-    cfg_dir = directory / ".claude"
+    """Create .solid-coder/config.local.toml under directory with given content."""
+    from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
+    cfg_dir = directory / CONFIG_DIR
     cfg_dir.mkdir(parents=True, exist_ok=True)
-    path = cfg_dir / "solid-coder-local.toml"
+    path = cfg_dir / CONFIG_LOCAL_TOML
     if isinstance(content, str):
         path.write_text(content, encoding="utf-8")
     else:

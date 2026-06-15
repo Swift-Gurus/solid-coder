@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Reads a single configuration value by section and key for use in shell scripts, returning a default when the value is absent.
+solid-description: Retrieves configuration values by section and key with safe default fallbacks.
 solid-category: utility
 
 Usage: python3 config_get.py <section> <key> [default]
@@ -12,14 +12,23 @@ or no TOML parser is available.
 
 import sys
 from pathlib import Path
+from typing import Callable
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1] / "hooks"
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
-from hook_utils import PLUGIN_ROOT, load_toml
+from hc_config_core import read_section  # noqa: E402
 
-_CONFIG = PLUGIN_ROOT / ".claude" / "solid-coder-local.toml"
+
+class ConfigReader:
+    """Looks up a single key from a merged config section with a safe default."""
+
+    def __init__(self, section_reader: Callable[[str], dict]) -> None:
+        self._read = section_reader
+
+    def get(self, section: str, key: str, default: str = "") -> str:
+        return str(self._read(section).get(key, default))
 
 
 def main() -> None:
@@ -28,8 +37,7 @@ def main() -> None:
         sys.exit("usage: config_get.py <section> <key> [default]")
     section, key = args[0], args[1]
     default = args[2] if len(args) > 2 else ""
-    data = load_toml(_CONFIG) if _CONFIG.exists() else {}
-    print(data.get(section, {}).get(key, default))
+    print(ConfigReader(read_section).get(section, key, default))
 
 
 if __name__ == "__main__":

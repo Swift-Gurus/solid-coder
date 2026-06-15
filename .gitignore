@@ -4,3 +4,4 @@ __pycache__/
 .idea/
 # solid-coder pipeline run artifacts
 .solid_coder/
+.solid-coder/config.local.toml
