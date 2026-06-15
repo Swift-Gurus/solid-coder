@@ -34,7 +34,7 @@ def make_gateway_handler(refs_root: Path) -> GatewayHandler:
     from rules.principle_registry import PrincipleRegistry
     registry = PrincipleRegistry(refs_root)
     scoring = ScoringHandler(
-        scorer_provider=PrincipleScorerProvider(refs_root),
+        scorer_provider=PrincipleScorerProvider(refs_root),  # reads CLAUDE_PROJECT_DIR internally
         files_scorer=FilesScoringHandler(),
     )
     return GatewayHandler(

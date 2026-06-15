@@ -1,9 +1,10 @@
 """
-solid-description: Provides scorers for given principle identifiers.
+solid-description: Provides scorers for given principle identifiers, with optional project root for config discovery.
 solid-category: service
 solid-tags: [utility, service]
 """
 
+import os
 from pathlib import Path
 from typing import Callable, Optional, Protocol
 
@@ -20,17 +21,26 @@ class PrincipleScorerProviding(Protocol):
 
 
 class PrincipleScorerProvider:
-    """Resolves a principle folder and constructs a scorer for it."""
+    """Resolves a principle folder and constructs a scorer for it.
+
+    project_root is passed to SeverityScorer so ConfigBandsProvider can walk
+    from the scored file up to the project root, discovering .solid-coder.yml
+    overrides along the way. Defaults to CLAUDE_PROJECT_DIR env var when unset.
+    """
 
     def __init__(
         self,
         refs_root: Path,
         scorer_factory: Optional[Callable[[Path], UnitScoring]] = None,
         folder_resolver: Optional[Callable[[str, Path], Path]] = None,
+        project_root: Optional[str] = None,
     ) -> None:
         self._refs_root = refs_root
-        self._scorer_factory = scorer_factory or SeverityScorer.from_folder
         self._folder_resolver = folder_resolver or _resolve_folder_fn
+        resolved_root = project_root or os.environ.get("CLAUDE_PROJECT_DIR", "")
+        self._scorer_factory = scorer_factory or (
+            lambda folder: SeverityScorer.from_folder(folder, project_root=resolved_root or None)
+        )
 
     def scorer_for(self, principle: str) -> tuple:
         try:

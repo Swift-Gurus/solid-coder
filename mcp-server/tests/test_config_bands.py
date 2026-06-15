@@ -244,5 +244,51 @@ class TestConfigBands(unittest.TestCase):
             self.assertEqual(r2["final_severity"], "MINOR", "Sibling unaffected → MINOR")
 
 
+    # ── Project root wiring ────────────────────────────────────────────────────
+
+    def _make_deep_project(self, tmp: str, config: dict) -> Path:
+        """Create a project with config at root and a source file nested two levels deep."""
+        root = Path(tmp)
+        src_file = root / "src" / "deep" / "Foo.swift"
+        src_file.parent.mkdir(parents=True)
+        self._writer.write(root, config)
+        return src_file
+
+    def test_config_at_project_root_not_found_without_project_root_wiring(self):
+        """Proves the gap: .solid-coder.yml at project root is ignored when project_root=None.
+
+        ConfigPathCollector walks only the file's immediate directory when project_root
+        is not set — never reaching the project root config. This test documents the
+        current bug and must pass until CLAUDE_PROJECT_DIR is wired through the scorer.
+        """
+        bands, rule_path = self._all[("SRP", "SRP-1", "verb_count")]
+        severe_val = self._extractor.severe_value(bands)
+        config = {"SRP": {"SRP-1": {"verb_count": {"disabled": True}}}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src_file = self._make_deep_project(tmp, config)
+            scorer = self._scorer(rule_path, "")  # no project_root — simulates broken state
+            result = scorer.score_unit({"verb_count": severe_val}, "SRP-1", str(src_file))
+            self.assertEqual(
+                result["final_severity"], "SEVERE",
+                "BUG: without project_root wiring, root .solid-coder.yml is invisible to scorer"
+            )
+
+    def test_config_at_project_root_found_when_project_root_passed(self):
+        """Proves the fix: passing project_root makes root .solid-coder.yml discoverable."""
+        bands, rule_path = self._all[("SRP", "SRP-1", "verb_count")]
+        severe_val = self._extractor.severe_value(bands)
+        config = {"SRP": {"SRP-1": {"verb_count": {"disabled": True}}}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src_file = self._make_deep_project(tmp, config)
+            scorer = self._scorer(rule_path, tmp)  # project_root provided
+            result = scorer.score_unit({"verb_count": severe_val}, "SRP-1", str(src_file))
+            self.assertEqual(
+                result["final_severity"], "COMPLIANT",
+                "FIX: with project_root set, root .solid-coder.yml is found → COMPLIANT"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
