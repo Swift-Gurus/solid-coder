@@ -1,5 +1,5 @@
 """
-solid-description: Dispatches LLM tool calls to their corresponding handlers.
+solid-description: Dispatches LLM tool calls to their corresponding functions.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -121,8 +121,9 @@ TOOLS: list = [
                         "type": "object",
                         "description": (
                             "Map of principle_name to review-output payload. "
-                            "E.g. {'SRP': {timestamp, files:[{file_path, units:[{unit_name, unit_kind, "
+                            "E.g. {'SRP': {timestamp, files:[{units:[{unit_name, unit_kind, "
                             "metrics:{SRP:{verb_count:{value:3}}}}]}]}}"
+                            " Do NOT include file_path — the server injects it from hook context."
                         ),
                         "additionalProperties": {
                             "type": "object",
@@ -133,9 +134,8 @@ TOOLS: list = [
                                     "type": "array",
                                     "items": {
                                         "type": "object",
-                                        "required": ["file_path", "units"],
+                                        "required": ["units"],
                                         "properties": {
-                                            "file_path": {"type": "string"},
                                             "units": {
                                                 "type": "array",
                                                 "items": {

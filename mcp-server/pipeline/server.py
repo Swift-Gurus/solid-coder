@@ -311,9 +311,8 @@ class ApplicationBootstrapper:
                     "type": "array",
                     "items": {
                         "type": "object",
-                        "required": ["file_path", "units"],
+                        "required": ["units"],
                         "properties": {
-                            "file_path": {"type": "string"},
                             "units": {"type": "array", "items": _unit_schema},
                         },
                     },
@@ -326,7 +325,7 @@ class ApplicationBootstrapper:
                          "output_dir": {"type": "string"},
                          "submissions": {
                              "type": "object",
-                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). E.g. {'SRP': {timestamp, files:[{file_path, units:[{unit_name, unit_kind, metrics:{SRP:{verb_count:{value:3}}}}]}]}}",
+                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). E.g. {'SRP': {timestamp, files:[{units:[{unit_name, unit_kind, metrics:{SRP:{verb_count:{value:3}}}}]}]}}",
                              "additionalProperties": _submission_schema,
                          },
                      }, "required": ["output_dir", "submissions"]},
