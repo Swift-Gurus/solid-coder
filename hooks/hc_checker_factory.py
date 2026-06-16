@@ -26,6 +26,7 @@ from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvok
 from hc_config import bare_session_timeout, debug_mode  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
+from health_check_context_writer import HealthCheckContextWriter  # noqa: E402
 
 _ALLOWED_TOOLS = (
     "Read,"
@@ -38,10 +39,11 @@ _ALLOWED_TOOLS = (
 
 
 class GatewayOutputPathResolver:
-    """Resolves a unique timestamped output dir per gate invocation via the gateway CLI."""
+    """Resolves a unique UUID-based output dir per gate invocation via the gateway CLI."""
 
-    def __init__(self, invoker: GatewayInvoker) -> None:
+    def __init__(self, invoker: GatewayInvoker, fallback: OutputPathResolving) -> None:
         self._invoker = invoker
+        self._fallback = fallback
 
     def resolve(self, session_id: str) -> str:
         result = self._invoker.invoke(
@@ -49,9 +51,7 @@ class GatewayOutputPathResolver:
             extra_args=["--operation", "health"],
             result_key="output_root",
         )
-        if not result:
-            return SessionOutputPathResolver().resolve(session_id)
-        return result
+        return result if result else self._fallback.resolve(session_id)
 
 
 def make_health_checker(
@@ -86,5 +86,9 @@ def make_health_checker(
                 )
             ),
         ),
-        path_resolver=GatewayOutputPathResolver(invoker=invoker),
+        path_resolver=GatewayOutputPathResolver(
+            invoker=invoker,
+            fallback=SessionOutputPathResolver(),
+        ),
+        context_writer=HealthCheckContextWriter(),
     )

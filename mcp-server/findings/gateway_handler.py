@@ -5,12 +5,37 @@ solid-tags: [utility, service]
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Optional, Protocol
 
 from findings.fix_submitter import FixSubmitting
 from findings.submit_orchestrator import ResolveAndScoring, SubmitOrchestrating
 from rules.rules_handler import RulesLoading
+
+
+def _load_hook_context() -> Optional[dict]:
+    """Read the hook-input.json written by the health checker before the LLM ran.
+
+    Returns the dict with file_path, language, output_dir — or None when not in a
+    health-check flow (e.g. /review or /refactor runs that don't write hook-input.json).
+    """
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if not project_dir:
+        return None
+    slug = str(Path(project_dir).resolve()).replace("/", "-")
+    solid_coder_dir = Path.home() / ".solid-coder" / slug
+    pointer = solid_coder_dir / "active-health-check"
+    if not pointer.exists():
+        return None
+    health_id = pointer.read_text(encoding="utf-8").strip()
+    hook_input_path = solid_coder_dir / health_id / "hook-input.json"
+    if not hook_input_path.exists():
+        return None
+    try:
+        return json.loads(hook_input_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
 
 
 class ScoringSeverity(Protocol):
@@ -43,6 +68,22 @@ class GatewayHandler:
         return self._submit_orchestrator.orchestrate(partial_output, output_path)
 
     def submit_batch_findings(self, output_dir: str, submissions: dict) -> dict[str, Any]:
+        ctx = _load_hook_context()
+        if ctx:
+            output_dir = ctx.get("output_dir", output_dir)
+            auth_path = ctx.get("file_path", "")
+            if auth_path:
+                submissions = {
+                    label: {
+                        **po,
+                        "files": [
+                            {**f, "file_path": auth_path}
+                            for f in po.get("files", [])
+                        ],
+                    }
+                    for label, po in submissions.items()
+                }
+
         for label, partial_output in submissions.items():
             output_path = str(Path(output_dir) / label / "review-output.json")
             result = self._submit_orchestrator.orchestrate(partial_output, output_path)

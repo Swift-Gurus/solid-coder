@@ -82,10 +82,13 @@ def get_output_path(operation: str, spec_number: str = "") -> dict:
         operation:   "review" | "refactor" | "implement" | "validate-spec" | "health"
         spec_number: For implement only — e.g. "SPEC-042". Omit for other ops.
     """
+    import uuid as _uuid
     project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
     slug = str(Path(project_dir).resolve()).replace("/", "-")
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    if operation == "implement" and spec_number:
+    if operation == "health":
+        dir_name = f"health-{_uuid.uuid4()}"
+    elif operation == "implement" and spec_number:
         dir_name = f"implement-{spec_number}-{ts}"
     else:
         dir_name = f"{operation}-{ts}"

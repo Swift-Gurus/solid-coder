@@ -25,6 +25,7 @@ from file_based_output_handler import OutputHandling, FileBasedOutputHandler  # 
 from text_based_output_handler import TextBasedOutputHandler  # noqa: F401
 from llm_reviewer import LLMReviewing, LLMReviewer  # noqa: F401
 from output_path_resolver import OutputPathResolving, SessionOutputPathResolver  # noqa: F401
+from health_check_context_writing import HealthCheckContextWriting  # noqa: F401
 
 
 class HealthChecking(Protocol):
@@ -46,11 +47,13 @@ class LLMHealthChecker:
         builder: PromptBuilding,
         reviewer: LLMReviewing,
         path_resolver: OutputPathResolving,
+        context_writer: Optional[HealthCheckContextWriting] = None,
     ) -> None:
         self._loader = loader
         self._builder = builder
         self._reviewer = reviewer
         self._path_resolver = path_resolver
+        self._context_writer = context_writer
 
     def check(
         self,
@@ -65,5 +68,7 @@ class LLMHealthChecker:
         if not principles:
             return []
         output_dir = self._path_resolver.resolve(parent_session_id)
+        if self._context_writer is not None:
+            self._context_writer.write(output_dir, path, language)
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
         return self._reviewer.review(prompt, path, output_dir=output_dir)
