@@ -12,7 +12,7 @@ if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
 
 from hc_checker import ClaudeRunner, ClaudeRunning
-from hc_llama_runner import make_llama_server_runner
+from hc_llama_runner import make_llama_server_runner  # noqa: F401 — must be module-level for test patching
 from hc_config import llm_backend, llm_host, llm_model
 from hook_utils import run_claude_bare
 
@@ -30,6 +30,8 @@ def make_llm_runner(
     difference is the mcp_config and allowed_tools they pass.
     """
     if llm_backend().lower() == "local":
+        from hc_llama_runner import make_llama_server_runner
+
         return make_llama_server_runner(
             host=llm_host(), model=llm_model(),
             session_id=session_id, file_path=file_path,

@@ -1,5 +1,5 @@
 """
-solid-description: Executes code review using a local language model and parses violations.
+solid-description: Orchestrates LLM-powered analysis and returns analysis results.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -11,6 +11,11 @@ from typing import Optional
 _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
+
+from hook_utils import PLUGIN_ROOT as _PR  # resolve PLUGIN_ROOT early for path setup  # noqa: E402
+_MCP_SERVER_DIR = str(_PR / "mcp-server")
+if _MCP_SERVER_DIR not in sys.path:
+    sys.path.insert(0, _MCP_SERVER_DIR)
 
 from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E402
 from hc_config import inference_params as _load_inference_params  # noqa: E402
@@ -89,8 +94,8 @@ def make_llama_server_runner(
         observer = LLMSessionObserver(logger=logger)
 
     from lib.gateway_tools import make_gateway_handler  # noqa: PLC0415
-    from lib.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
-    from lib.codebase_searcher import search as _codebase_search  # noqa: PLC0415
+    from search.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
+    from search.codebase_searcher import search as _codebase_search  # noqa: PLC0415
 
     gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
     findings_submitter = GatewayFindingsSubmitter(handler=gw_handler)
