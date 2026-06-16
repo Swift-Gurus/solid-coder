@@ -1,0 +1,35 @@
+{
+  "name": "solid-coder",
+  "version": "1.4.4",
+  "description": "SOLID review and refactor workflows for Swift projects.",
+  "author": {
+    "name": "Alex Crowe"
+  },
+  "license": "Proprietary",
+  "keywords": [
+    "solid",
+    "swift",
+    "review",
+    "refactor",
+    "architecture"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Solid Coder",
+    "shortDescription": "SOLID review and refactor workflows",
+    "longDescription": "Run SOLID principle reviews, synthesize cross-principle fixes, implement refactors, and generate reports using the solid-coder rules and pipeline.",
+    "developerName": "Alex Crowe",
+    "category": "Engineering",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use codex-review on this Swift file",
+      "Use codex-refactor on this module"
+    ],
+    "brandColor": "#2563EB",
+    "screenshots": []
+  }
+}

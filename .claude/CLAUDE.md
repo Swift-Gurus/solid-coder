@@ -121,9 +121,9 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 
 Rule docs are injected into the context window on every pipeline run. Budget accordingly against the 200k context ceiling.
 
-* **Per-principle × mode table** (how many tokens each principle costs in each mode): see @docs/token-cost-by-mode.md
+* **Per-principle × mode table** (how many tokens each principle costs in each mode): see docs/token-cost-by-mode.md
 
-* **Per-folder / per-file breakdown** (drill down into which files drive cost): see @docs/token-budget.md
+* **Per-folder / per-file breakdown** (drill down into which files drive cost): see docs/token-budget.md
 
   * Regenerate with: `python3 scripts/token-budget.py --out .claude/docs/token-budget.md`
 
@@ -157,15 +157,15 @@ Code-smells has no `review/` subfolder, so it is not active in review mode.
 
 | File                            | What's in it                                                                                                                |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| @docs/overview\.md              | High-level plugin overview                                                                                                  |
-| @docs/architecture.md           | System architecture and data flow                                                                                           |
-| @docs/flows.md                  | Detailed pipeline execution flows                                                                                           |
-| @docs/decision-making.md        | Design decisions and rationale                                                                                              |
-| @docs/improvements-open.md      | Unimplemented improvement suggestions — small/medium items                                                                  |
-| @docs/improvements-open-arch.md | Unimplemented improvement suggestions — large architectural items (S-26, S-32, S-33, S-42, S-43, S-44)                      |
-| @docs/improvements-partial.md   | Partially implemented improvements (12 items)                                                                               |
-| @docs/improvements-archive.md   | Completed/resolved improvements (12 items)                                                                                  |
-| @docs/create-type-notes.md      | **Read before modifying** **`create-type`** — hardcoded dependencies on its vocabulary (e.g. `VALID_STACKS`)                |
-| @docs/token-cost-by-mode.md     | Per-principle × pipeline-mode token cost table                                                                              |
-| @docs/token-budget.md           | Auto-generated per-folder / per-file token breakdown of `references/principles/` (run `scripts/token-budget.py` to refresh) |
+| docs/overview\.md              | High-level plugin overview                                                                                                  |
+| docs/architecture.md           | System architecture and data flow                                                                                           |
+| docs/flows.md                  | Detailed pipeline execution flows                                                                                           |
+| docs/decision-making.md        | Design decisions and rationale                                                                                              |
+| docs/improvements-open.md      | Unimplemented improvement suggestions — small/medium items                                                                  |
+| docs/improvements-open-arch.md | Unimplemented improvement suggestions — large architectural items (S-26, S-32, S-33, S-42, S-43, S-44)                      |
+| docs/improvements-partial.md   | Partially implemented improvements (12 items)                                                                               |
+| docs/improvements-archive.md   | Completed/resolved improvements (12 items)                                                                                  |
+| docs/create-type-notes.md      | **Read before modifying** **`create-type`** — hardcoded dependencies on its vocabulary (e.g. `VALID_STACKS`)                |
+| docs/token-cost-by-mode.md     | Per-principle × pipeline-mode token cost table                                                                              |
+| docs/token-budget.md           | Auto-generated per-folder / per-file token breakdown of `references/principles/` (run `scripts/token-budget.py` to refresh) |
 

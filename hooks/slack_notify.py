@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Protocol, runtime_checkable
 
-from hc_llama_runner import HttpSending, UrllibSender
+from llama.urllib_sender import HttpSending, UrllibSender
 
 _MAX_LAST_MESSAGE_LEN = 500
 _SLACK_HEADERS = {"Content-Type": "application/json"}
