@@ -1,5 +1,5 @@
 """
-solid-description: Provides configuration access with type-safe conversion.
+solid-description: Loads project configuration from TOML with type-safe value access and local override support.
 solid-category: utility
 solid-tags: [hook]
 """
@@ -61,7 +61,12 @@ def read_llm_section(
     override = env.get("SOLID_CODER_TEST_MODEL_PROFILE")
     if override:
         return _loader(Path(override)).get("llm", {})
-    return read_section("llm", _loader=_loader, _cwd=_cwd)
+    effective_cwd = _cwd
+    if effective_cwd is None:
+        project_dir = env.get("CLAUDE_PROJECT_DIR", "")
+        if project_dir:
+            effective_cwd = Path(project_dir)
+    return read_section("llm", _loader=_loader, _cwd=effective_cwd)
 
 
 def safe_convert(value: Any, default: T, converter: Callable[[Any], T]) -> T:
