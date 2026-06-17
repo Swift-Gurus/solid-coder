@@ -1,5 +1,5 @@
 """
-solid-description: Loads project configuration from TOML with type-safe value access and local override support.
+solid-description: Provides access to project configuration with support for local overrides.
 solid-category: utility
 solid-tags: [hook]
 """
@@ -63,9 +63,9 @@ def read_llm_section(
         return _loader(Path(override)).get("llm", {})
     effective_cwd = _cwd
     if effective_cwd is None:
+        # Claude Code sets CLAUDE_PROJECT_DIR; Codex hook processes run in cwd
         project_dir = env.get("CLAUDE_PROJECT_DIR", "")
-        if project_dir:
-            effective_cwd = Path(project_dir)
+        effective_cwd = Path(project_dir) if project_dir else Path.cwd()
     return read_section("llm", _loader=_loader, _cwd=effective_cwd)
 
 
