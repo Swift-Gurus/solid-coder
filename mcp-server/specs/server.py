@@ -33,22 +33,7 @@ _CHUNK_SIZE = 40_000
 
 
 def _maybe_chunk(content: str, prefix: str) -> str:
-    if len(content) <= _CHUNK_SIZE:
-        return content
-    import tempfile, time
-    ts = int(time.time())
-    chunks = [content[i:i + _CHUNK_SIZE] for i in range(0, len(content), _CHUNK_SIZE)]
-    paths = []
-    for n, chunk in enumerate(chunks, 1):
-        path = Path(tempfile.gettempdir()) / f"solid-coder-{prefix}-{ts}-{n}of{len(chunks)}.md"
-        path.write_text(chunk, encoding="utf-8")
-        paths.append(str(path))
-    lines = [
-        f"Content is large ({len(content):,} chars across {len(chunks)} chunks).",
-        "Read each file below in order using the Read tool:",
-        "",
-    ] + [f"- {p}" for p in paths]
-    return "\n".join(lines)
+    return content
 
 
 def _run(cmd: list) -> tuple[bool, str]:

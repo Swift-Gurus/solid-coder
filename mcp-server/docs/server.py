@@ -225,7 +225,7 @@ def load_rules(mode, matched_tags=None, principle=None):
             blocks.append(_render_principle(p["name"], files, review_mode=mode == "review"))
 
     content = "\n\n---\n\n".join(blocks) if blocks else "No active principles found."
-    return _chunker.chunk(content, f"rules-{mode}")
+    return content
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +275,7 @@ def load_examples(principle):
         content = _read(f).rstrip()
         parts.append(f"## {label}{tag}\n\n```swift\n{content}\n```\n")
 
-    return _chunker.chunk("\n".join(parts), f"examples-{principle}")
+    return "\n".join(parts)
 
 
 # ---------------------------------------------------------------------------
