@@ -1,5 +1,16 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/hooks/on_agent_start.py\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",
@@ -7,6 +18,15 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/hooks/on_stop.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/hooks/on_agent_stop.py\""
           }
         ]
       }

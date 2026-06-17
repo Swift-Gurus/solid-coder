@@ -59,6 +59,18 @@ def debug_mode() -> bool:
     return bool(_int("debug", 0))
 
 
+def codex_home() -> str:
+    """Path to use as CODEX_HOME for the codex backend.
+
+    Relative paths are resolved against the project root at call time.
+    Empty string (default) lets the runner derive it from PLUGIN_ROOT.
+
+    Configure via [llm] codex_home in solid-coder-local.toml.
+    Default: "" (runner uses .solid-coder/codex/ under PLUGIN_ROOT).
+    """
+    return _str("codex_home", "")
+
+
 def bare_session_model() -> str:
     """Model override for claude -p bare subprocess calls.
 

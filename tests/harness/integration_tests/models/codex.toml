@@ -1,0 +1,5 @@
+[llm]
+backend = "codex"
+# model: omit to use Codex's default. Set to a specific id for API-key users
+# e.g. model = "gpt-4o" or model = "o3"
+timeout = 300

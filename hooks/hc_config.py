@@ -7,6 +7,7 @@ solid-tags: [hook]
 from hc_config_llm import (  # noqa: F401
     bare_session_model,
     bare_session_timeout,
+    codex_home,
     debug_mode,
     llm_backend,
     llm_host,
