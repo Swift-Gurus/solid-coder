@@ -5,9 +5,10 @@ solid-category: hook
 """
 
 import json
+import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import Callable, List, Optional, Protocol, runtime_checkable
 
 _HOOKS_DIR = Path(__file__).resolve().parent
 if str(_HOOKS_DIR) not in sys.path:
@@ -69,6 +70,23 @@ class OnStopGate:
                 handler.handle(event)
 
 
+class ManagedSessionGuard:
+    """Wraps a stop gate and no-ops when SOLID_CODER_SESSION_TYPE is set.
+
+    Health check and review sessions set this env var so user-facing
+    notifications (e.g. Slack) are not triggered for internal pipeline runs.
+    """
+
+    def __init__(self, gate: StopDispatching, session_type_fn: Callable[[], str]) -> None:
+        self._gate = gate
+        self._session_type_fn = session_type_fn
+
+    def run(self, event: dict) -> None:
+        if self._session_type_fn():
+            return
+        self._gate.run(event)
+
+
 def main(reader: StopEventReading, gate: StopDispatching) -> None:
     """Dispatch a Stop event via the injected reader and gate, then exit 0."""
     event = reader.read()
@@ -82,5 +100,8 @@ if __name__ == "__main__":
 
     main(
         reader=HookEventReader(),
-        gate=OnStopGate(handlers=[SlackStopNotifier()]),
+        gate=ManagedSessionGuard(
+            gate=OnStopGate(handlers=[SlackStopNotifier()]),
+            session_type_fn=lambda: os.environ.get("SOLID_CODER_SESSION_TYPE", ""),
+        ),
     )
