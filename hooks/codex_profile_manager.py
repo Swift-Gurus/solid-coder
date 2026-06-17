@@ -1,5 +1,5 @@
 """
-solid-description: Initializes a profile configuration in the designated directory.
+solid-description: Manages the Codex profile configuration for solid-coder health-check.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -23,19 +23,26 @@ args = ["{pipeline_server}"]
 command = "python3"
 args = ["{docs_server}"]
 
+[[hooks.PreToolUse]]
+matcher = "apply_patch"
+
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "python3 \\" + "{pre_write_gate}\\" + ""
+
 [[hooks.SessionStart]]
 matcher = ""
 
 [[hooks.SessionStart.hooks]]
 type = "command"
-command = "python3 \\\"{on_agent_start}\\\""
+command = "python3 \\" + "{on_agent_start}\\" + ""
 
 [[hooks.Stop]]
 matcher = ""
 
 [[hooks.Stop.hooks]]
 type = "command"
-command = "python3 \\\"{on_agent_stop}\\\""
+command = "python3 \\" + "{on_agent_stop}\\" + ""
 """
 
 
@@ -60,6 +67,7 @@ class CodexProfileManager:
             _PROFILE_TEMPLATE.format(
                 pipeline_server=str(self._plugin_root / "mcp-server" / "pipeline" / "server.py"),
                 docs_server=str(self._plugin_root / "mcp-server" / "docs" / "server.py"),
+                pre_write_gate=str(hooks_dir / "pre_write_gate.py"),
                 on_agent_start=str(hooks_dir / "on_agent_start.py"),
                 on_agent_stop=str(hooks_dir / "on_agent_stop.py"),
             ),
