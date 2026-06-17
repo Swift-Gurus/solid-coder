@@ -1,5 +1,5 @@
 """
-solid-description: Searches a codebase for reusable types by solid-frontmatter fields, tags, and imports.
+solid-description: Identifies source files in a codebase matching specified search criteria.
 solid-category: utility
 solid-tags: [utility, search]
 """
@@ -9,9 +9,7 @@ import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Optional, Union
-
-from common.chunker import Chunker
+from typing import Optional
 
 # Build output, dependency caches, and vendored checkouts — never the user's own
 # source. `.derivedData` is the same as the default `DerivedData`, just the
@@ -26,16 +24,9 @@ _IMPORT_DECL = re.compile(r'^import\s+(\w+)')
 _COMMENT_STRIP = re.compile(r'^[/\*#\s]+')
 _BINARY_SNIFF_BYTES = 1024
 
-_chunker = Chunker()
-
 
 def iter_source_files(root: Path):
-    """Yield all non-skipped files under *root* recursively.
-
-    Prunes SKIP_DIRS during the walk so the walker never descends into
-    .git/Pods/DerivedData/node_modules — on large codebases these hold the
-    overwhelming majority of files and are the dominant scan cost.
-    """
+    """Yield all non-skipped files under *root* recursively."""
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         base = Path(dirpath)
@@ -43,29 +34,16 @@ def iter_source_files(root: Path):
             yield base / name
 
 
-def _read_text_lines(filepath: Path) -> Optional[list]:
-    """Read a file as text lines, skipping binaries.
-
-    Returns None for unreadable files or binaries (detected by a NUL byte in
-    the first KB). Frontmatter and imports only ever live in UTF-8 text, so a
-    NUL-byte sniff is lossless here: it catches every binary regardless of
-    extension (including the extensionless compiled assets iOS projects carry),
-    while UTF-16 files such as .strings carry no frontmatter to match.
-
-    The head is read first and sniffed *before* the rest of the file is read, so
-    binaries are rejected without ever loading their full payload. That bounds
-    peak memory when many workers hit large files concurrently. Text files are
-    still read in full — frontmatter blocks may appear above every type in a
-    file (per the create-type convention), so the whole file must be scanned.
-    """
+def _read_text_lines(filepath: Path) -> list:
+    """Read a file as text lines. Returns empty list for unreadable files or binaries."""
     try:
         with filepath.open("rb") as fh:
             head = fh.read(_BINARY_SNIFF_BYTES)
             if b"\x00" in head:
-                return None
+                return []
             data = head + fh.read()
     except OSError:
-        return None
+        return []
     return data.decode("utf-8", errors="replace").splitlines()
 
 
@@ -93,20 +71,11 @@ def extract_plan_terms(plan_path: Path) -> tuple:
 
 
 def _scan_lines(lines: list) -> tuple:
-    """Single pass over a file's lines: extract frontmatter + import names.
-
-    Replaces the previous two full-file passes (one for frontmatter, one for
-    imports). Returns (frontmatter_dict, import_names). Import names are kept as
-    a list so callers can count per-occurrence, matching prior behaviour.
-    """
+    """Single pass over a file's lines: extract frontmatter + import names."""
     fm = {"description": "", "tags": set(), "specs": set()}
     imports = []
     for line in lines:
         stripped = line.strip()
-        # Cheap guards before the expensive regex/sub work: the vast majority of
-        # lines in a source file are neither an import nor frontmatter. Only the
-        # `import`-prefixed lines reach the regex, and only `solid-` lines reach
-        # the comment strip. Lossless — every match shape still gets evaluated.
         if stripped.startswith("import"):
             m = _IMPORT_DECL.match(stripped)
             if m:
@@ -129,7 +98,7 @@ def _scan_lines(lines: list) -> tuple:
 
 def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches: int):
     lines = _read_text_lines(filepath)
-    if lines is None:
+    if not lines:
         return None
 
     fm, imports = _scan_lines(lines)
@@ -153,22 +122,10 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
 
 
 def _worker_count() -> int:
-    """Thread pool size for the (I/O-bound) file scan, derived from the host."""
     return min(16, (os.cpu_count() or 1) * 2)
 
 
 def _collect_matches(sources: Path, all_tags: set, all_specs: set, min_matches: int) -> dict:
-    """Scan source files and return raw matches list plus total file count.
-
-    Per-file work (open, read, decode, scan) is I/O-bound, so it runs across a
-    thread pool. ThreadPoolExecutor.map preserves input order, keeping output
-    deterministic (walk order) regardless of which worker finishes first.
-
-    NOTE: this scan is deliberately pure Python, not a shell-out to grep/rg. A
-    plugin ships to arbitrary machines where ripgrep is often absent (bundled
-    only inside app packages) and `grep` resolves to GNU/BSD/ugrep variants with
-    divergent flags. Portability, not raw throughput, is why we own the scan.
-    """
     files = list(iter_source_files(sources))
     with ThreadPoolExecutor(max_workers=_worker_count()) as ex:
         results = ex.map(lambda fp: _match_file(fp, all_tags, all_specs, min_matches), files)
@@ -181,11 +138,11 @@ def _resolve_search_params(
     plan_path: Optional[str],
     tags: Optional[list],
     spec_numbers: Optional[list],
-) -> Union[tuple, str]:
-    """Resolve and validate search parameters. Returns (sources, all_tags, all_specs) or error str."""
+) -> tuple:
+    """Resolve and validate search parameters. Raises ValueError on invalid input."""
     sources = Path(sources_dir) if sources_dir else Path.cwd()
     if not sources.is_dir():
-        return f"Error: sources_dir not found: {sources}"
+        raise ValueError(f"sources_dir not found: {sources}")
 
     auto_terms, auto_specs = (extract_plan_terms(Path(plan_path)) if plan_path else ([], []))
 
@@ -200,7 +157,7 @@ def _resolve_search_params(
             all_tags.add(t.lower())
 
     if not all_tags and not all_specs:
-        return "Error: provide plan_path, tags, or spec_numbers to search."
+        raise ValueError("provide plan_path, tags, or spec_numbers to search.")
 
     return sources, all_tags, all_specs
 
@@ -214,14 +171,17 @@ def search(
 ) -> str:
     """Search a directory for files matching the given tags or spec numbers.
 
-    Returns a human-readable string suitable for LLM consumption.
-    sources_dir defaults to the current working directory when omitted.
+    Returns a human-readable string suitable for LLM consumption. Result is
+    returned directly without chunking — callers should use a large maxResultSizeChars
+    MCP meta to accommodate large codebases.
     """
-    params = _resolve_search_params(sources_dir, plan_path, tags, spec_numbers)
-    if isinstance(params, str):
-        return params
+    try:
+        sources, all_tags, all_specs = _resolve_search_params(
+            sources_dir, plan_path, tags, spec_numbers
+        )
+    except ValueError as exc:
+        return f"Error: {exc}"
 
-    sources, all_tags, all_specs = params
     raw = _collect_matches(sources, all_tags, all_specs, min_matches)
 
     if not raw["matches"]:
@@ -237,7 +197,7 @@ def search(
         spec_tag = f"  [{', '.join(m['matched_specs'])}]" if m.get("matched_specs") else ""
         lines.append(f"{m['path']}{spec_tag}" + (f" — {desc}" if desc else ""))
 
-    return _chunker.chunk("\n".join(lines), "search-results")
+    return "\n".join(lines)
 
 
 def search_raw(
@@ -248,11 +208,13 @@ def search_raw(
     min_matches: int = 1,
 ) -> dict:
     """Like search() but returns a structured dict for CLI/JSON consumers."""
-    params = _resolve_search_params(sources_dir, plan_path, tags, spec_numbers)
-    if isinstance(params, str):
-        return {"error": params, "matches": []}
+    try:
+        sources, all_tags, all_specs = _resolve_search_params(
+            sources_dir, plan_path, tags, spec_numbers
+        )
+    except ValueError as exc:
+        return {"error": str(exc), "matches": []}
 
-    sources, all_tags, all_specs = params
     raw = _collect_matches(sources, all_tags, all_specs, min_matches)
     return {
         "matches": raw["matches"],

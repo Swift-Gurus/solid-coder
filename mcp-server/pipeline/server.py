@@ -32,6 +32,7 @@ from pipeline.handlers import ReviewResultsCollecting, ReviewResultsCollector
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 
 _LARGE_OUTPUT = {"anthropic/maxResultSizeChars": 200_000}
+_UNLIMITED_OUTPUT = {"anthropic/maxResultSizeChars": 1_000_000}
 
 
 # ── Service protocols ─────────────────────────────────────────────────────────
@@ -270,7 +271,7 @@ class ApplicationBootstrapper:
                          "spec_numbers": {"type": "array", "items": {"type": "string"}},
                          "min_matches": {"type": "integer"},
                      }, "required": []},
-                     tools["search_codebase"], meta=_LARGE_OUTPUT)
+                     tools["search_codebase"], meta=_UNLIMITED_OUTPUT)
 
         reg.register("prepare_review_input",
                      "Prepare git changes (staged, unstaged, untracked) into structured review-input.json.",

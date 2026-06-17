@@ -170,7 +170,7 @@ def get_candidate_tags():
         "Use matched_tags to skip conditional principles not relevant to the project. "
         "Use principle to load a single principle (required for review mode)."
     ),
-    meta={"anthropic/maxResultSizeChars": 200000},
+    meta={"anthropic/maxResultSizeChars": 1000000},
     input_schema={
         "type": "object",
         "properties": {
@@ -340,7 +340,7 @@ _gw = _make_gw(REFS_ROOT)
         "Returns XML-block content (detection, definition, severity_bands, exceptions) when available, "
         "or full rule.md content as fallback for principles without XML blocks."
     ),
-    meta={"anthropic/maxResultSizeChars": 200000},
+    meta={"anthropic/maxResultSizeChars": 1000000},
     input_schema={
         "type": "object",
         "properties": {
