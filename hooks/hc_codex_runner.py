@@ -1,5 +1,5 @@
 """
-solid-description: Executes Codex with a given prompt.
+solid-description: Runs LLM inference with prompts and returns results.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -51,7 +51,8 @@ class CodexRunner:
             with self._temp_files.prompt_stdin(prompt_path) as pf:
                 ok, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=pf)
             if not ok:
-                raise SubprocessError(f"`codex exec` exited with error: {stderr[:300]}")
+                detail = stderr[:300] or stdout[:300]
+                raise SubprocessError(f"`codex exec` exited with error: {detail}")
             return self._temp_files.read_result(result_path)
         finally:
             self._temp_files.cleanup(result_path, prompt_path)

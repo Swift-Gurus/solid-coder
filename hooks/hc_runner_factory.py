@@ -45,6 +45,12 @@ def make_llm_runner(
     if backend == "codex":
         from hc_codex_runner import make_codex_runner
 
+        if raw_model.startswith("claude-"):
+            raise ValueError(
+                f"Model '{raw_model}' is a Claude model and cannot be used with backend='codex'. "
+                f"Set an OpenAI-compatible model (e.g. 'gpt-4o', 'o3') or leave model unset "
+                f"to use Codex's default."
+            )
         return make_codex_runner(
             model=model,
             timeout=bare_session_timeout(),
