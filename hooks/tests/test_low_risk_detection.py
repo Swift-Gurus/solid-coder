@@ -9,7 +9,11 @@ HOOKS_DIR = str(Path(__file__).resolve().parents[1])
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
-from pre_write_gate import EditClassifier, _diff_chunks
+from edit_classifier import EditClassifier
+from diff_chunker import DiffChunker as _DiffChunker
+
+def _diff_chunks(old, new):
+    return _DiffChunker().chunk(old, new)
 
 
 class TestIsFrontmatterOnly(unittest.TestCase):

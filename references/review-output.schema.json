@@ -10,7 +10,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["file_path", "units"],
+        "required": ["units"],
         "properties": {
           "file_path": { "type": "string" },
           "units": {

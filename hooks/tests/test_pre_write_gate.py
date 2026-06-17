@@ -28,8 +28,8 @@ CORRECTED_FRONTMATTER = (
 )
 VIOLATIONS = [{"principle": "SRP", "issue": "Two concerns.", "fix": "Extract."}]
 
-_HC = "pre_write_gate.health._check"
-_FM = "pre_write_gate.frontmatter.fix"
+_HC = "code_health_check._check"
+_FM = "validate_swift_frontmatter.fix"
 
 
 def _call_main(stdin_input) -> tuple:
@@ -225,7 +225,7 @@ class TestPreWriteGateExclusion(unittest.TestCase):
     """Paths matching [hooks.pre_write_gate].exclude bypass all checks."""
 
     def test_excluded_path_allows_without_health_check(self):
-        with patch("pre_write_gate.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
+        with patch("hc_config.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
              patch(_HC) as hc:
             code, out = _call_main(_event("Write", "/project/tests/fixtures/SRP/srp2-severe.swift", LONG_SWIFT))
         hc.assert_not_called()
@@ -233,13 +233,13 @@ class TestPreWriteGateExclusion(unittest.TestCase):
         self.assertEqual(out, "")
 
     def test_non_excluded_path_runs_health(self):
-        with patch("pre_write_gate.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
+        with patch("hc_config.hook_exclude_patterns", return_value=["tests/fixtures/**"]), \
              patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
 
     def test_no_exclusions_runs_health_normally(self):
-        with patch("pre_write_gate.hook_exclude_patterns", return_value=[]), \
+        with patch("hc_config.hook_exclude_patterns", return_value=[]), \
              patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
@@ -247,7 +247,7 @@ class TestPreWriteGateExclusion(unittest.TestCase):
 
 class TestApiKeyGuard(unittest.TestCase):
     def test_allows_without_check_when_claude_backend_and_no_api_key(self):
-        with patch("pre_write_gate.llm_backend", return_value="claude"), \
+        with patch("hc_config.llm_backend", return_value="claude"), \
              patch.dict(os.environ, {}, clear=True), \
              patch(_HC) as hc, patch(_FM) as fm:
             code, out = _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
@@ -256,14 +256,14 @@ class TestApiKeyGuard(unittest.TestCase):
         self.assertEqual(code, 0)
 
     def test_proceeds_when_local_backend_and_no_api_key(self):
-        with patch("pre_write_gate.llm_backend", return_value="local"), \
+        with patch("hc_config.llm_backend", return_value="local"), \
              patch.dict(os.environ, {}, clear=True), \
              patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_called_once()
 
     def test_proceeds_when_claude_backend_and_api_key_set(self):
-        with patch("pre_write_gate.llm_backend", return_value="claude"), \
+        with patch("hc_config.llm_backend", return_value="claude"), \
              patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
              patch(_HC, return_value=[]) as hc:
             _call_main(_event("Write", "/src/Foo.swift", LONG_SWIFT))
