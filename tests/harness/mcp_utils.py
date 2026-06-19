@@ -14,8 +14,10 @@ import sys
 from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parent
-_HOOKS_DIR = _HARNESS_DIR.parents[1] / "hooks"
-for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR)):
+_PROJECT_ROOT = _HARNESS_DIR.parents[1]
+_HOOKS_DIR = _PROJECT_ROOT / "hooks"
+_MCP_HEALTH_CONFIG = _PROJECT_ROOT / "mcp-server" / "health" / "config"
+for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR), str(_MCP_HEALTH_CONFIG)):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 

@@ -9,8 +9,9 @@ import sys
 from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+for _d in (_HOOKS_DIR, _HOOKS_DIR / "gate", _HOOKS_DIR / "patch"):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
 
 from default_coordinator_factory import DefaultCoordinatorFactory
 from hook_utils import HookGateFactory

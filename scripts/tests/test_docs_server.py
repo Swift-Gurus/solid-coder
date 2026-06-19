@@ -172,11 +172,11 @@ class TestSeverityStripping(unittest.TestCase):
 
     def test_non_review_keeps_exceptions_section(self):
         result = self._planner_srp()
-        self.assertIn("Exceptions", result)
+        self.assertIn("<exceptions>", result)
 
     def test_review_mode_keeps_severity_bands(self):
         result = self._review_srp()
-        self.assertIn("Severity Bands", result)
+        self.assertIn("<severity-bands", result)
 
     def test_review_mode_keeps_quantitative_summary(self):
         result = self._review_srp()
@@ -224,7 +224,7 @@ class TestSeverityStripping(unittest.TestCase):
 
 class TestLoadFixForViolation(unittest.TestCase):
     def test_known_metric_returns_content(self):
-        result = mod.load_fix_for_violation(metric_id="OCP-1")
+        result = mod.load_fix_for_violation("OCP-1")
         self.assertIsInstance(result, str)
         self.assertIn("OCP-1", result)
         self.assertGreater(len(result), 50)

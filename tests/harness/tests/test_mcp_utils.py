@@ -18,7 +18,7 @@ _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parents[2]
 _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
-ensure_on_path(_HARNESS_DIR, _HERE, _PROJECT_ROOT / "hooks")
+ensure_on_path(_HARNESS_DIR, _HERE, _PROJECT_ROOT / "hooks", _PROJECT_ROOT / "mcp-server" / "health" / "config")
 
 from mcp_config_builder import build_mcp_config
 from mcp_utils import McpConfigBuilder

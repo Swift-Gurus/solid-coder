@@ -18,9 +18,9 @@ def _now() -> str:
 
 
 def _summarise_result(name: str, result_str: str) -> dict:
-    if name == "mcp__plugin_solid-coder_pipeline__search_codebase":
+    if name == "mcp__pipeline__search_codebase":
         return {"hits": result_str.count(" — ")}
-    if name == "mcp__plugin_solid-coder_docs__load_fix_for_violation":
+    if name == "mcp__docs__load_fix_for_violation":
         return {"content_len": len(result_str)}
     return {"len": len(result_str)}
 

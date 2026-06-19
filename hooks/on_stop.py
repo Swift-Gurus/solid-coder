@@ -11,8 +11,10 @@ from pathlib import Path
 from typing import Callable, List, Optional, Protocol, runtime_checkable
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+_MCP_HEALTH_CONFIG = _HOOKS_DIR.parent / "mcp-server" / "health" / "config"
+for _d in (_HOOKS_DIR, _MCP_HEALTH_CONFIG):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
 
 from hook_utils import ensure_on_path  # noqa: E402
 

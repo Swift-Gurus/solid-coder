@@ -20,9 +20,9 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "search"))
 
-from lib.codebase_searcher import search_raw  # noqa: E402
+from codebase_searcher import search_raw  # noqa: E402
 
 
 def _parse_args():

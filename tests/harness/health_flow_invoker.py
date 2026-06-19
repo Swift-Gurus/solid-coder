@@ -16,8 +16,10 @@ from pathlib import Path
 from typing import Iterator
 
 _HARNESS_DIR = Path(__file__).resolve().parent
-_HOOKS_DIR = _HARNESS_DIR.parents[1] / "hooks"
-for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR)):
+_PROJECT_ROOT = _HARNESS_DIR.parents[1]
+_HOOKS_DIR = _PROJECT_ROOT / "hooks"
+_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
+for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR), str(_MCP_HEALTH)):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 

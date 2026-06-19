@@ -1,5 +1,5 @@
 """
-solid-description: Registers session information at startup for session state management.
+solid-description: Registers session identity, type, and working directory from provided input.
 solid-category: service
 solid-tags: [hook]
 """
@@ -10,8 +10,9 @@ import sys
 from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+for _d in (_HOOKS_DIR, _HOOKS_DIR / "session"):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
 
 from session_registry import register_session  # noqa: E402
 

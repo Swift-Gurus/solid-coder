@@ -26,34 +26,28 @@ def _write_findings(findings):
 
 class TestLoadFixForViolationGateway(unittest.TestCase):
     def _run(self, metric_id):
-        return _run_gateway("load_fix_for_violation", "--metric_id", metric_id)
+        return _run_gateway("load_fix_for_violation", "--metric_ids", metric_id)
 
     def test_ocp_1_returns_content(self):
         r = self._run("OCP-1")
         self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
-        self.assertEqual(data["principle"], "OCP")
-        self.assertEqual(data["metric_id"], "OCP-1")
-        self.assertIn("content", data)
-        self.assertGreater(len(data["content"]), 0)
+        self.assertIn("OCP-1", r.stdout)
+        self.assertGreater(len(r.stdout.strip()), 0)
 
-    def test_unknown_metric_returns_error_key(self):
+    def test_unknown_metric_returns_no_fix_message(self):
         r = self._run("OCP-99")
         self.assertEqual(r.returncode, 0)  # fail-open: no exit 1
-        data = json.loads(r.stdout)
-        self.assertIn("error", data)
+        self.assertIn("No fix file found", r.stdout)
 
-    def test_completely_unknown_metric_returns_error(self):
+    def test_completely_unknown_metric_returns_no_fix_message(self):
         r = self._run("BOGUS-99")
         self.assertEqual(r.returncode, 0)
-        data = json.loads(r.stdout)
-        self.assertIn("error", data)
+        self.assertIn("No fix file found", r.stdout)
 
     def test_metric_id_normalised(self):
         r = self._run("ocp-1")
         self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
-        self.assertEqual(data["metric_id"], "OCP-1")
+        self.assertIn("OCP-1", r.stdout)
 
     def test_all_core_metrics_have_files(self):
         cases = [
@@ -67,10 +61,8 @@ class TestLoadFixForViolationGateway(unittest.TestCase):
             with self.subTest(metric=metric_id):
                 r = self._run(metric_id)
                 self.assertEqual(r.returncode, 0, r.stderr)
-                data = json.loads(r.stdout)
-                self.assertNotIn("error", data, msg=f"Error for {metric_id}: {data}")
-                self.assertIn("content", data)
-                self.assertGreater(len(data["content"]), 0)
+                self.assertNotIn("No fix file found", r.stdout, msg=f"Missing fix for {metric_id}")
+                self.assertGreater(len(r.stdout.strip()), 0)
 
 
 class TestLoadFixInstructionsForFindingsGateway(unittest.TestCase):
@@ -82,52 +74,46 @@ class TestLoadFixInstructionsForFindingsGateway(unittest.TestCase):
         path = _write_findings([{"metric_id": "OCP-1"}])
         r = self._run(path)
         self.assertEqual(r.returncode, 0, r.stderr)
-        data = json.loads(r.stdout)
-        self.assertIn("loaded", data)
-        self.assertEqual(len(data["loaded"]), 1)
-        self.assertIn("content", data["loaded"][0])
-        self.assertGreater(len(data["loaded"][0]["content"]), 0)
+        self.assertIn("OCP-1", r.stdout)
+        self.assertGreater(len(r.stdout.strip()), 50)
 
     def test_deduplicates_same_metric(self):
         path = _write_findings([{"metric_id": "OCP-1"}, {"metric_id": "OCP-1"}])
         r = self._run(path)
-        data = json.loads(r.stdout)
-        self.assertEqual(len(data["loaded"]), 1)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.count("OCP-1 Fix Strategy"), 1)
 
     def test_mixed_metrics_all_resolved(self):
         path = _write_findings([{"metric_id": "OCP-1"}, {"metric_id": "LSP-3"}])
         r = self._run(path)
-        data = json.loads(r.stdout)
-        self.assertEqual(len(data["loaded"]), 2)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("OCP-1", r.stdout)
+        self.assertIn("LSP-3", r.stdout)
 
     def test_bad_metric_appears_in_missing(self):
         path = _write_findings([{"metric_id": "OCP-99"}])
         r = self._run(path)
         self.assertEqual(r.returncode, 0)  # fail-open
-        data = json.loads(r.stdout)
-        self.assertIn("missing", data)
-        self.assertGreater(len(data["missing"]), 0)
+        self.assertIn("OCP-99", r.stdout)
 
     def test_missing_file_returns_error(self):
         r = self._run("/tmp/does_not_exist_abc123.json")
         self.assertEqual(r.returncode, 0)
-        data = json.loads(r.stdout)
-        self.assertIn("error", data)
+        self.assertIn("Could not read", r.stdout)
 
     def test_accepts_metric_field_alias(self):
         # Review findings use "metric" not "metric_id"
         path = _write_findings([{"metric": "SRP-2"}])
         r = self._run(path)
-        data = json.loads(r.stdout)
-        self.assertEqual(len(data["loaded"]), 1)
-        self.assertEqual(data["loaded"][0]["metric_id"], "SRP-2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("SRP-2", r.stdout)
 
     def test_old_findings_format_with_principle_still_works(self):
         # Findings that include explicit principle field are still handled
         path = _write_findings([{"principle": "OCP", "metric_id": "OCP-1"}])
         r = self._run(path)
-        data = json.loads(r.stdout)
-        self.assertEqual(len(data["loaded"]), 1)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("OCP-1", r.stdout)
 
 
 if __name__ == "__main__":

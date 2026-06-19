@@ -66,11 +66,15 @@ _STRIP_HEADINGS = frozenset({"severity bands", "quantitative metrics summary"})
 def _strip_review_only_sections(content: str) -> str:
     """Remove sections only relevant to review agents (severity thresholds).
 
-    Strips any heading whose normalised text is in _STRIP_HEADINGS plus all
-    content until the next `---` horizontal rule (which acts as the section
-    terminator in rule.md files).  Non-review modes need the violation
-    definitions and exceptions — not the COMPLIANT/MINOR/SEVERE thresholds.
+    Strips:
+    - Markdown headings in _STRIP_HEADINGS (and content until next `---`)
+    - XML <severity-bands> blocks (open tag to closing </severity-bands>)
+    Non-review modes need violation definitions and exceptions, not thresholds.
     """
+    import re as _re
+    # Strip XML severity-bands blocks first
+    content = _re.sub(r"<severity-bands[^>]*>.*?</severity-bands>", "", content,
+                      flags=_re.DOTALL)
     lines = content.splitlines(keepends=True)
     result = []
     skipping = False

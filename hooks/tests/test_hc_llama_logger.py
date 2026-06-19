@@ -13,7 +13,7 @@ ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().par
 
 from hc_llama_runner import LocalLLMLogger, JsonlEntryWriter, MonotonicTimer  # noqa: E402
 
-_SEARCH = "mcp__plugin_solid-coder_pipeline__search_codebase"
+_SEARCH = "mcp__pipeline__search_codebase"
 
 
 class TestLocalLLMLogger(unittest.TestCase):

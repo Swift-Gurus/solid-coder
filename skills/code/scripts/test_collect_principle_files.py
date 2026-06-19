@@ -10,7 +10,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SCRIPT = SCRIPT_DIR / "collect-principle-files.py"
 DISCOVER_SCRIPT = (
-    SCRIPT_DIR.parent.parent / "discover-principles" / "scripts" / "discover-principles.py"
+    SCRIPT_DIR.parents[2] / "mcp-server" / "rules" / "discover_principles.py"
 )
 REFS_ROOT = SCRIPT_DIR.parent.parent.parent / "references"
 

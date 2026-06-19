@@ -73,7 +73,7 @@ validate_findings = _pt['validate_findings']
 generate_report = _pt['generate_report']
 validate_architecture = _pt['validate_architecture']
 split_implementation_plan = _pt['split_implementation_plan']
-search_codebase = _pt['search_codebase']
+from search.codebase_searcher import search_raw as search_codebase  # noqa: E402 — raw JSON for CLI
 prepare_review_input = _pt['prepare_review_input']
 
 # Spec tools — mcp-server/specs/server.py
@@ -197,6 +197,9 @@ class ToolRunner:
                 for e in result["errors"]:
                     print(f"Error: {e.get('error', 'unknown error')}", file=sys.stderr)
                 sys.exit(1)
+            if isinstance(result, str) and result.startswith("Error:"):
+                print(result, file=sys.stderr)
+                sys.exit(1)
             if isinstance(result, str):
                 print(result)
             else:
@@ -219,6 +222,23 @@ def main(
     runner = runner or ToolRunner()
 
     tool_name, kwargs = parse_args(sys.argv)
+
+    # Alias: --synonyms is an accepted alias for --tags on search_codebase
+    if tool_name == "search_codebase" and "synonyms" in kwargs:
+        kwargs.setdefault("tags", kwargs.pop("synonyms"))
+    # Normalize args for search_codebase
+    if tool_name == "search_codebase":
+        for key in ("tags", "spec_numbers"):
+            if key in kwargs and isinstance(kwargs[key], str):
+                kwargs[key] = [kwargs[key]]
+        if "min_matches" in kwargs:
+            try:
+                kwargs["min_matches"] = int(kwargs["min_matches"])
+            except (ValueError, TypeError):
+                pass
+        if "sources_dir" not in kwargs:
+            print("Error: --sources-dir is required for search_codebase", file=sys.stderr)
+            sys.exit(1)
 
     if tool_name is None or tool_name in ("-h", "--help", "help"):
         print("Usage: python3 gateway.py <tool-name> [--arg value ...]", file=sys.stderr)

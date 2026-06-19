@@ -14,7 +14,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_pipeline__search_codebase",
+            "name": "mcp__pipeline__search_codebase",
             "description": (
                 "Search the codebase for existing implementations or similar types by semantic synonyms. "
                 "Call with type name, camelCase-split words, and responsibility synonyms as the query."
@@ -31,7 +31,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_pipeline__grep_codebase",
+            "name": "mcp__pipeline__grep_codebase",
             "description": (
                 "Search file contents for type definitions, extensions, and declarations of a given name. "
                 "Finds: class/struct/protocol/enum/actor/extension/typealias <name>. "
@@ -49,7 +49,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_pipeline__glob_codebase",
+            "name": "mcp__pipeline__glob_codebase",
             "description": (
                 "Search filenames matching a glob pattern. "
                 "Example: '*UserManager*' finds all files whose name contains 'UserManager'. "
@@ -67,10 +67,10 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_pipeline__read_file",
+            "name": "mcp__pipeline__read_file",
             "description": (
                 "Read the full source code of a file by its absolute path. "
-                "Use this after mcp__plugin_solid-coder_pipeline__search_codebase returns matches — for each matched "
+                "Use this after mcp__pipeline__search_codebase returns matches — for each matched "
                 "file whose solid-description overlaps with the code under review, read the file "
                 "to inspect its existing types, method signatures, and logic before deciding "
                 "whether a DRY-1 reuse miss violation applies."
@@ -87,7 +87,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_docs__load_fix_for_violation",
+            "name": "mcp__docs__load_fix_for_violation",
             "description": (
                 "Load fix guidance for a single metric violation. "
                 "Call once per SEVERE violation found — pass only the metric_id (e.g. OCP-1, SRP-2). "
@@ -105,7 +105,7 @@ TOOLS: list = [
     {
         "type": "function",
         "function": {
-            "name": "mcp__plugin_solid-coder_pipeline__submit_batch_findings",
+            "name": "mcp__pipeline__submit_batch_findings",
             "description": (
                 "Submit findings for all reviewed principles in one unified payload. "
                 "Discovers principle keys from metrics, scores each, writes "
@@ -158,6 +158,38 @@ TOOLS: list = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "mcp__pipeline__submit_fix",
+            "description": (
+                "Submit fix suggestions for SEVERE violations after loading fix guidance. "
+                "Call AFTER mcp__docs__load_fix_for_violation — one entry per violation. "
+                "Each entry must have rule_id, file_path, unit_name, and suggested_fix (1-3 sentences, no code)."
+            ),
+            "parameters": {
+                "type": "object",
+                "required": ["output_dir", "fixes"],
+                "properties": {
+                    "output_dir": {"type": "string"},
+                    "fixes": {
+                        "type": "array",
+                        "description": "One fix object per SEVERE violation.",
+                        "items": {
+                            "type": "object",
+                            "required": ["rule_id", "file_path", "unit_name", "suggested_fix"],
+                            "properties": {
+                                "rule_id": {"type": "string", "description": "e.g. SRP-1"},
+                                "file_path": {"type": "string"},
+                                "unit_name": {"type": "string"},
+                                "suggested_fix": {"type": "string", "description": "1-3 sentence structural suggestion, no code"},
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -194,32 +226,42 @@ class GatewayToolDispatcher:
 
         args = self._parser.parse(tool_call)
 
-        if name == "mcp__plugin_solid-coder_pipeline__search_codebase":
+        if name == "mcp__pipeline__search_codebase":
             return self._search(args.get("query", ""))
 
-        if name == "mcp__plugin_solid-coder_pipeline__read_file":
+        if name == "mcp__pipeline__read_file":
             return self._read(args.get("file_path", ""))
 
-        if name == "mcp__plugin_solid-coder_pipeline__grep_codebase":
+        if name == "mcp__pipeline__grep_codebase":
             return self._grep(args.get("name", ""))
 
-        if name == "mcp__plugin_solid-coder_pipeline__glob_codebase":
+        if name == "mcp__pipeline__glob_codebase":
             return self._glob(args.get("pattern", "*"))
 
-        if name == "mcp__plugin_solid-coder_docs__load_fix_for_violation":
+        if name == "mcp__docs__load_fix_for_violation":
             result = self._invoker.invoke(
                 "load_fix_for_violation",
-                extra_args=["--metric_id", args.get("metric_id", "")],
+                extra_args=["--metric_ids", args.get("metric_id", "")],
                 result_key="content",
                 default="",
             )
             return result or ""
 
-        if name == "mcp__plugin_solid-coder_pipeline__submit_batch_findings":
+        if name == "mcp__pipeline__submit_batch_findings":
             if self._findings_submitter is None:
                 return '{"error": "submit_batch_findings not configured"}'
             return self._findings_submitter.submit(
                 args.get("output_dir", ""), args.get("submissions", {})
             )
+
+        if name == "mcp__pipeline__submit_fix":
+            result = self._invoker.invoke(
+                "submit_fix",
+                extra_args=["--output_dir", args.get("output_dir", ""),
+                            "--fixes", __import__("json").dumps(args.get("fixes", []))],
+                result_key=None,
+                default="{}",
+            )
+            return result or "{}"
 
         return f"error: unknown tool '{name}'"

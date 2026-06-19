@@ -71,9 +71,13 @@ def extract_plan_terms(plan_path: Path) -> tuple:
 
 
 def _scan_lines(lines: list) -> tuple:
-    """Single pass over a file's lines: extract frontmatter + import names."""
+    """Single pass over a file's lines: extract frontmatter + import names.
+
+    Accumulates across multiple frontmatter blocks (e.g. a file defining multiple types).
+    """
     fm = {"description": "", "tags": set(), "specs": set()}
     imports = []
+    descriptions: list[str] = []
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("import"):
@@ -86,13 +90,18 @@ def _scan_lines(lines: list) -> tuple:
         inner = _COMMENT_STRIP.sub("", line).strip()
         low = inner.lower()
         if low.startswith("solid-description:"):
-            fm["description"] = inner[len("solid-description:"):].strip()
+            descriptions.append(inner[len("solid-description:"):].strip())
+        elif low.startswith("solid-category:"):
+            cat = inner[len("solid-category:"):].strip().lower()
+            if cat:
+                fm["tags"].add(cat)
         elif low.startswith("solid-tags:"):
             raw = inner[len("solid-tags:"):].strip().strip("[]")
             fm["tags"].update(t.strip().lower() for t in re.split(r"[,\s]+", raw) if t.strip())
         elif low.startswith("solid-spec:"):
             raw = inner[len("solid-spec:"):].strip().strip("[]")
             fm["specs"].update(s.strip().upper() for s in re.split(r"[,\s]+", raw) if s.strip())
+    fm["description"] = " ".join(descriptions)
     return fm, imports
 
 
@@ -105,20 +114,26 @@ def _match_file(filepath: Path, tags_lower: set, spec_numbers: set, min_matches:
 
     matched_specs = sorted(fm["specs"] & spec_numbers) if spec_numbers else []
     if matched_specs:
-        return {"path": str(filepath), "description": fm["description"], "matched_specs": matched_specs}
+        return {"path": str(filepath), "description": fm["description"],
+                "matched_specs": matched_specs, "matched_terms": []}
 
     if not tags_lower:
         return None
 
-    hits = 0
+    has_frontmatter = bool(fm["description"] or fm["tags"] or fm["specs"])
+    matched_terms: list[str] = []
     if fm["description"]:
         desc_words = {w.lower() for w in re.split(r"\W+", fm["description"]) if w}
-        hits += len(desc_words & tags_lower)
+        matched_terms.extend(sorted(desc_words & tags_lower))
     if fm["tags"]:
-        hits += len(fm["tags"] & tags_lower)
-    hits += sum(1 for imp in imports if imp in tags_lower)
+        matched_terms.extend(sorted(fm["tags"] & tags_lower))
+    if has_frontmatter:
+        matched_terms.extend(imp for imp in imports if imp in tags_lower)
 
-    return {"path": str(filepath), "description": fm["description"]} if hits >= min_matches else None
+    if len(matched_terms) < min_matches:
+        return None
+    return {"path": str(filepath), "description": fm["description"],
+            "matched_terms": list(dict.fromkeys(matched_terms))}
 
 
 def _worker_count() -> int:
@@ -128,9 +143,10 @@ def _worker_count() -> int:
 def _collect_matches(sources: Path, all_tags: set, all_specs: set, min_matches: int) -> dict:
     files = list(iter_source_files(sources))
     with ThreadPoolExecutor(max_workers=_worker_count()) as ex:
-        results = ex.map(lambda fp: _match_file(fp, all_tags, all_specs, min_matches), files)
-        matches = [m for m in results if m]
-    return {"matches": matches, "total": len(files)}
+        raw = list(ex.map(lambda fp: _match_file(fp, all_tags, all_specs, min_matches), files))
+    matches = [m for m in raw if m]
+    has_fm = sum(1 for fp in files if _scan_lines(_read_text_lines(fp))[0]["description"])
+    return {"matches": matches, "total": len(files), "files_with_frontmatter": has_fm}
 
 
 def _resolve_search_params(
@@ -147,6 +163,8 @@ def _resolve_search_params(
     auto_terms, auto_specs = (extract_plan_terms(Path(plan_path)) if plan_path else ([], []))
 
     all_tags: set = set()
+    if isinstance(spec_numbers, str):
+        spec_numbers = [spec_numbers]
     all_specs: set = set(s.upper() for s in ((spec_numbers or []) + auto_specs) if s)
     for t in (tags or []) + auto_terms:
         if not t:
@@ -218,5 +236,9 @@ def search_raw(
     raw = _collect_matches(sources, all_tags, all_specs, min_matches)
     return {
         "matches": raw["matches"],
-        "summary": {"total_files_scanned": raw["total"], "files_matched": len(raw["matches"])},
+        "summary": {
+            "total_files_scanned": raw["total"],
+            "files_with_frontmatter": raw["files_with_frontmatter"],
+            "files_matched": len(raw["matches"]),
+        },
     }

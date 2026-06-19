@@ -18,7 +18,7 @@ _PROJECT_ROOT = _HERE.parents[2]
 _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 _HOOKS_DIR = _PROJECT_ROOT / "hooks"
-ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
+ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config")
 
 from interfaces import TomlLoading  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402

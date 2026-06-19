@@ -12,7 +12,8 @@ from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 _HOOKS_DIR = Path(__file__).resolve().parents[2] / "hooks"
-for _p in (_HARNESS_DIR, _HOOKS_DIR):
+_MCP_HEALTH_CONFIG = Path(__file__).resolve().parents[2] / "mcp-server" / "health" / "config"
+for _p in (_HARNESS_DIR, _HOOKS_DIR, _MCP_HEALTH_CONFIG):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 

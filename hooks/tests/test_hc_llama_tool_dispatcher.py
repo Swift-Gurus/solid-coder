@@ -14,12 +14,13 @@ ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().par
 from hc_llama_runner import GatewayToolDispatcher  # noqa: E402
 from llama.tool_call_parser import ToolCallParser  # noqa: E402
 
-_SEARCH = "mcp__plugin_solid-coder_pipeline__search_codebase"
-_READ   = "mcp__plugin_solid-coder_pipeline__read_file"
-_GREP   = "mcp__plugin_solid-coder_pipeline__grep_codebase"
-_GLOB   = "mcp__plugin_solid-coder_pipeline__glob_codebase"
-_FIX    = "mcp__plugin_solid-coder_docs__load_fix_for_violation"
-_SUBMIT = "mcp__plugin_solid-coder_pipeline__submit_batch_findings"
+_SEARCH      = "mcp__pipeline__search_codebase"
+_READ        = "mcp__pipeline__read_file"
+_GREP        = "mcp__pipeline__grep_codebase"
+_GLOB        = "mcp__pipeline__glob_codebase"
+_FIX         = "mcp__docs__load_fix_for_violation"
+_SUBMIT      = "mcp__pipeline__submit_batch_findings"
+_SUBMIT_FIX  = "mcp__pipeline__submit_fix"
 
 
 def _tc(name: str, args: dict, call_id: str = "c1") -> dict:
@@ -77,6 +78,11 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         d.dispatch(_tc(_FIX, {"metric_id": "OCP-1"}))
         self.assertIn("OCP-1", self._extra_args(invoker))
 
+    def test_load_fix_uses_metric_ids_plural_flag(self):
+        d, invoker, _ = self._make({"content": "fix"})
+        d.dispatch(_tc(_FIX, {"metric_id": "OCP-1"}))
+        self.assertIn("--metric_ids", self._extra_args(invoker))
+
     def test_unknown_tool_returns_error_string(self):
         d, _, _ = self._make()
         self.assertIn("unknown tool", d.dispatch(_tc("nonexistent", {})))
@@ -127,6 +133,24 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         result = d.dispatch(_tc(_GLOB, {"pattern": "*Foo*"}))
         fns["glob_fn"].assert_called_once_with("*Foo*")
         self.assertEqual(result, "/src/FooManager.swift")
+
+    def test_submit_fix_invokes_correct_subcommand(self):
+        fixes = [{"rule_id": "SRP-1", "file_path": "/p.swift", "unit_name": "Foo", "suggested_fix": "Extract."}]
+        d, invoker, _ = self._make("{}")
+        d.dispatch(_tc(_SUBMIT_FIX, {"output_dir": "/out", "fixes": fixes}))
+        self.assertEqual(invoker.invoke.call_args[0][0], "submit_fix")
+
+    def test_submit_fix_passes_output_dir(self):
+        fixes = [{"rule_id": "SRP-1", "file_path": "/p.swift", "unit_name": "Foo", "suggested_fix": "Extract."}]
+        d, invoker, _ = self._make("{}")
+        d.dispatch(_tc(_SUBMIT_FIX, {"output_dir": "/my/out", "fixes": fixes}))
+        self.assertIn("--output_dir", self._extra_args(invoker))
+        self.assertIn("/my/out", self._extra_args(invoker))
+
+    def test_submit_fix_is_in_tools_list(self):
+        from llama.tool_dispatcher import TOOLS
+        names = [t["function"]["name"] for t in TOOLS]
+        self.assertIn("mcp__pipeline__submit_fix", names)
 
 
 if __name__ == "__main__":

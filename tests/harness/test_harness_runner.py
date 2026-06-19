@@ -97,9 +97,6 @@ class TestHarnessRunner(TestHarnessRunning):
                 actual_findings = self._invoke_flow(
                     flow_name, pair, output_paths, model_profile, timeout
                 )
-                if actual_findings is None:
-                    all_passed = False
-                    continue
                 expected_norm, actual_norm = self._finding_normalizer.normalize(
                     flow_name, expectation.findings, actual_findings
                 )
@@ -122,21 +119,6 @@ class TestHarnessRunner(TestHarnessRunning):
         output_paths: OutputPaths,
         model_profile: ModelProfile,
         timeout: int,
-    ) -> list[dict] | None:
+    ) -> list[dict]:
         invoker = self._apply_invoker if flow_name == "apply" else self._health_invoker
-        try:
-            return invoker.invoke(pair.fixture_path, output_paths, model_profile, timeout)
-        except TimeoutError:
-            print(self._result_formatter.format_status(
-                False, model_profile.output_dir_name, "", pair.stem, flow_name
-            ))
-            print(f"TIMEOUT: {pair.fixture_path} after {timeout}s — {output_paths.reasoning_path}")
-            return None
-        except RuntimeError as exc:
-            print(
-                self._result_formatter.format_status(
-                    False, model_profile.output_dir_name, "", pair.stem, flow_name
-                )
-            )
-            print(f"ERROR: {exc} — {output_paths.reasoning_path}")
-            return None
+        return invoker.invoke(pair.fixture_path, output_paths, model_profile, timeout)

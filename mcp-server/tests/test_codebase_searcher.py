@@ -115,13 +115,16 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertEqual(res["summary"]["total_files_scanned"], 1)
 
     def test_import_hits_count_per_occurrence(self):
+        # Import hits only count for files that have solid- frontmatter.
+        # Use frontmatter so the file is eligible; alpha imports add to hit count.
         with TemporaryDirectory() as d:
             root = Path(d)
             _write(root, "Multi.swift",
+                   "// solid-description: Alpha consumer\n"
                    "import Alpha\nimport Alpha\nimport Alpha\nstruct X {}\n")
             res = search_raw(sources_dir=str(root), tags=["alpha"], min_matches=3)
             self.assertIn("Multi.swift", self._paths(res))
-            res2 = search_raw(sources_dir=str(root), tags=["alpha"], min_matches=4)
+            res2 = search_raw(sources_dir=str(root), tags=["alpha"], min_matches=5)
             self.assertNotIn("Multi.swift", self._paths(res2))
 
     def test_multiple_frontmatter_blocks_aggregate(self):

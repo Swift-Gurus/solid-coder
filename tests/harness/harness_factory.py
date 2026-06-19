@@ -12,8 +12,22 @@ from datetime import datetime
 from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parent
-_HOOKS_DIR = _HARNESS_DIR.parents[1] / "hooks"
-for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR)):
+_PROJECT_ROOT = _HARNESS_DIR.parents[1]
+_HOOKS_DIR = _PROJECT_ROOT / "hooks"
+_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
+for _d in (
+    str(_HARNESS_DIR),
+    str(_HOOKS_DIR),
+    str(_HOOKS_DIR / "utils"),
+    str(_HOOKS_DIR / "output"),
+    str(_HOOKS_DIR / "gate"),
+    str(_HOOKS_DIR / "patch"),
+    str(_HOOKS_DIR / "session"),
+    str(_MCP_HEALTH),
+    str(_MCP_HEALTH / "config"),
+    str(_MCP_HEALTH / "llm"),
+    str(_MCP_HEALTH / "codex"),
+):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 

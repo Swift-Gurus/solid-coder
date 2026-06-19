@@ -77,7 +77,7 @@ class IntegrationTestBase(unittest.TestCase):
             profile_dir=self._models_dir(),
         )
         # runner.run() returns False on expectation mismatches — that is OK here.
-        # We only fail if an exception propagates (infra error).
+        # Infrastructure failures raise RuntimeError and propagate as a test failure.
         passed = runner.run(
             principle_path=f"references/principles/{principle_folder.name}",
             flow=flow,

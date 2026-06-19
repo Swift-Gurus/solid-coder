@@ -17,7 +17,22 @@ from pathlib import Path
 _TESTS_DIR = Path(__file__).resolve().parent
 _HARNESS_DIR = _TESTS_DIR / "harness"
 _PROJECT_ROOT = _TESTS_DIR.parent
-for _d in (str(_HARNESS_DIR), str(_TESTS_DIR)):
+_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
+_HOOKS = _PROJECT_ROOT / "hooks"
+for _d in (
+    str(_HARNESS_DIR),
+    str(_TESTS_DIR),
+    str(_HOOKS),
+    str(_HOOKS / "utils"),
+    str(_HOOKS / "output"),
+    str(_HOOKS / "gate"),
+    str(_HOOKS / "patch"),
+    str(_HOOKS / "session"),
+    str(_MCP_HEALTH),
+    str(_MCP_HEALTH / "config"),
+    str(_MCP_HEALTH / "llm"),
+    str(_MCP_HEALTH / "codex"),
+):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 

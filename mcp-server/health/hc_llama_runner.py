@@ -1,0 +1,122 @@
+"""
+solid-description: Orchestrates LLM-powered analysis and returns analysis results.
+solid-category: service
+solid-tags: [hook, llm]
+"""
+
+import sys
+from pathlib import Path
+from typing import Optional
+
+_HEALTH_DIR = Path(__file__).resolve().parent
+_HOOKS_DIR = _HEALTH_DIR.parents[1] / 'hooks'
+for _d in (_HOOKS_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
+
+from hook_utils import PLUGIN_ROOT as _PR  # resolve PLUGIN_ROOT early for path setup  # noqa: E402
+_MCP_SERVER_DIR = str(_PR / "mcp-server")
+if _MCP_SERVER_DIR not in sys.path:
+    sys.path.insert(0, _MCP_SERVER_DIR)
+
+from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E402
+from hc_config import inference_params as _load_inference_params  # noqa: E402
+from hc_rule_loader import GatewayCommandRunner, GatewayInvoker  # noqa: E402
+from hc_violation_parser import ViolationParser, ViolationParsing  # noqa: E402
+
+from llama.urllib_opener import HttpOpening, UrllibOpener  # noqa: E402, F401
+from llama.urllib_request_builder import HttpRequestBuilding, UrllibRequestBuilder  # noqa: E402, F401
+from llama.urllib_sender import HttpSending, UrllibSender  # noqa: E402, F401
+from llama.json_serializer import JsonSerializing, JsonSerializer  # noqa: E402, F401
+from llama.json_deserializer import JsonDeserializing, JsonDeserializer  # noqa: E402, F401
+from llama.http_client import LlamaHttpChatting, LlamaHttpClient  # noqa: E402, F401
+from llama.log_entry_writer import LogEntryWriting, JsonlEntryWriter  # noqa: E402, F401
+from llama.timer import TimeMeasuring, MonotonicTimer  # noqa: E402, F401
+from llama.directory_creator import DirectoryCreating, PathDirectoryCreator  # noqa: E402, F401
+from llama.logger import LocalLLMLogger  # noqa: E402, F401
+from llama.session_observer import LLMSessionObserving, LLMSessionObserver  # noqa: E402, F401
+from llama.findings_submitter import BatchFindingsHandling, FindingsSubmitting, GatewayFindingsSubmitter  # noqa: E402, F401
+from llama.tool_call_parser import ToolCallArgsParsing, ToolCallParser  # noqa: E402, F401
+from llama.tool_dispatcher import ToolDispatching, GatewayToolDispatcher, TOOLS  # noqa: E402, F401
+from llama.builtin_range import RangeIterating, BuiltinRange  # noqa: E402, F401
+from llama.thinking_extractor import ThinkingExtracting, ThinkingExtractor  # noqa: E402, F401
+from llama.tool_call_orchestrating import ToolCallOrchestrating  # noqa: E402, F401
+from llama.tool_call_orchestrator import ToolCallOrchestrator  # noqa: E402, F401
+from llama.agent_loop import AgentLoopExecuting, AgentLoopExecutor  # noqa: E402, F401
+
+# Backward-compatible aliases for test imports
+_te = ThinkingExtractor()
+_strip_thinking = _te.strip
+_extract_thinking_and_content = _te.extract
+
+_MAX_TOOL_ROUNDS = 10
+
+
+class LlamaServerRunner:
+    """Coordinates review lifecycle: start → loop → parse violations → done."""
+
+    def __init__(
+        self,
+        loop: AgentLoopExecuting,
+        observer: Optional[LLMSessionObserving] = None,
+        parser: Optional[ViolationParsing] = None,
+    ) -> None:
+        self._loop = loop
+        self._observer = observer
+        self._parser = parser
+
+    def run(self, prompt: str, timeout: int) -> Optional[str]:
+        if self._observer:
+            self._observer.on_start(len(prompt))
+        messages: list = [{"role": "user", "content": prompt}]
+        content, usage, rounds, thinking = self._loop.execute(messages, timeout, self._observer)
+        if self._observer:
+            violations = (self._parser.parse(content) or []) if self._parser and content else []
+            self._observer.on_done(rounds, usage, violations, thinking=thinking)
+        return content
+
+
+def make_llama_server_runner(
+    host: str,
+    model: str,
+    gateway: Path = GATEWAY,
+    session_id: str = "",
+    file_path: str = "",
+) -> LlamaServerRunner:
+    """Wire production defaults and return a ready-to-use LlamaServerRunner.
+
+    Factory function — constructing and wiring concrete dependencies is this
+    function's sole responsibility (OCP Factory exception).
+    """
+    invoker = GatewayInvoker(gateway, GatewayCommandRunner())
+    observer: Optional[LLMSessionObserving] = None
+    if session_id:
+        log_dir = solid_coder_project_dir() / "llm-sessions" / session_id
+        logger = LocalLLMLogger(log_dir=log_dir, file_path=file_path, model=model)
+        observer = LLMSessionObserver(logger=logger)
+
+    from lib.gateway_tools import make_gateway_handler  # noqa: PLC0415
+    from search.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
+    from search.codebase_searcher import search as _codebase_search  # noqa: PLC0415
+
+    gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
+    findings_submitter = GatewayFindingsSubmitter(handler=gw_handler)
+    arg_parser = ToolCallParser()
+    dispatcher = GatewayToolDispatcher(
+        invoker=invoker,
+        grep_fn=grep_by_name,
+        glob_fn=glob_by_name,
+        search_fn=lambda q: _codebase_search(tags=[t for t in q.split() if t], min_matches=1) if q.split() else "",
+        read_fn=lambda p: Path(p).read_text(encoding="utf-8"),
+        parser=arg_parser,
+        findings_submitter=findings_submitter,
+    )
+    orchestrator = ToolCallOrchestrator(dispatcher=dispatcher, arg_parser=arg_parser)
+    thinker = ThinkingExtractor()
+    loop = AgentLoopExecutor(
+        client=LlamaHttpClient(host=host, model=model, inference_params=_load_inference_params()),
+        orchestrator=orchestrator,
+        thinker=thinker,
+        max_rounds=_MAX_TOOL_ROUNDS,
+    )
+    return LlamaServerRunner(loop=loop, observer=observer, parser=ViolationParser())

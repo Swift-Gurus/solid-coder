@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = str(
-    Path(__file__).resolve().parents[2] / "mcp-server" / "lib" / "discover_principles.py"
+    Path(__file__).resolve().parents[2] / "mcp-server" / "rules" / "discover_principles.py"
 )
 
 

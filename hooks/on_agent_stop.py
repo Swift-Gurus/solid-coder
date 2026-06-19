@@ -1,5 +1,5 @@
 """
-solid-description: Service that validates session termination prerequisites and blocks exit if validation fails.
+solid-description: Validates session termination prerequisites and exits with error if validation fails.
 solid-category: service
 solid-tags: [hook]
 """
@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Callable, Optional
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+for _d in (_HOOKS_DIR, _HOOKS_DIR / "session"):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
 
 from session_registry import validate_session_stop  # noqa: E402
 

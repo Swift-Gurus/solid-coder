@@ -24,18 +24,18 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 
 | Principle | Activation | code | review | planner | synth-impl | synth-fixes |
 |---|---|---:|---:|---:|---:|---:|
-| Code Smells | always | 318 | 38 | 86 | 401 | 401 |
-| Don't Repeat Yourself | always | 1,088 | 6,582 | 1,706 | 2,792 | 3,821 |
-| Interface Segregation Principle | always | 538 | 5,178 | 2,019 | 2,556 | 3,343 |
-| Liskov Substitution Principle | always | 634 | 5,607 | 2,218 | 2,851 | 3,542 |
-| Open/Closed Principle | always | 3,647 | 6,569 | 1,633 | 2,170 | 2,994 |
-| Single Responsibility Principle | always | 817 | 3,276 | 1,208 | 1,681 | 2,241 |
-| Structured Concurrency | conditional | 925 | 3,098 | 1,517 | 2,435 | 3,574 |
-| SwiftUI Best Practices | conditional | 1,436 | 118 | 4,568 | 6,002 | 8,153 |
-| Unit Testing | conditional | 1,026 | 9,508 | 3,306 | 4,329 | 6,674 |
-| UI Testing | conditional | 1,054 | 9,456 | 2,262 | 3,313 | 5,451 |
-| **MIN** |  | **7,042** | **38** | **8,870** | **12,451** | **16,342** |
-| **MAX** |  | **11,483** | **9,508** | **20,523** | **28,530** | **40,194** |
+| Code Smells | always | 411 | 38 | 431 | 838 | 838 |
+| Don't Repeat Yourself | always | 1,088 | 6,425 | 1,549 | 2,635 | 3,664 |
+| Interface Segregation Principle | always | 538 | 5,154 | 1,855 | 2,392 | 3,179 |
+| Liskov Substitution Principle | always | 634 | 5,424 | 2,035 | 2,668 | 3,359 |
+| Open/Closed Principle | always | 3,647 | 6,425 | 1,489 | 2,026 | 2,850 |
+| Single Responsibility Principle | always | 817 | 3,325 | 1,011 | 1,484 | 2,044 |
+| Structured Concurrency | conditional | 925 | 2,951 | 1,370 | 2,289 | 3,427 |
+| SwiftUI Best Practices | conditional | 1,436 | 14,734 | 4,314 | 5,748 | 7,899 |
+| Unit Testing | conditional | 1,026 | 9,335 | 3,133 | 4,156 | 6,501 |
+| UI Testing | conditional | 1,054 | 9,298 | 2,104 | 3,155 | 5,293 |
+| **MIN** |  | **7,135** | **38** | **8,370** | **12,043** | **15,934** |
+| **MAX** |  | **11,576** | **14,734** | **19,291** | **27,391** | **39,054** |
 
 - **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (6). For `per-principle`: smallest single principle.
 - **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (10). For `per-principle`: largest single principle.

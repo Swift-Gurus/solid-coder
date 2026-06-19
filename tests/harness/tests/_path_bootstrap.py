@@ -21,3 +21,10 @@ _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 
 ensure_on_path = _mod.ensure_on_path
+
+# Also add harness dir and all module subdirs (mirrors hooks/tests/_path_bootstrap)
+_HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
+_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
+for _d in (_HARNESS_DIR, _MCP_HEALTH, _MCP_HEALTH / "config", _MCP_HEALTH / "llm", _MCP_HEALTH / "codex"):
+    if str(_d) not in sys.path:
+        sys.path.insert(0, str(_d))
