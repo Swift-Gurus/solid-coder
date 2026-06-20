@@ -9,7 +9,19 @@ import sys
 from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parent
-for _d in (_HOOKS_DIR, _HOOKS_DIR / "gate", _HOOKS_DIR / "patch"):
+_MCP_HEALTH = _HOOKS_DIR.parent / "mcp-server" / "health"
+for _d in (
+    _HOOKS_DIR,
+    _HOOKS_DIR / "gate",
+    _HOOKS_DIR / "patch",
+    _HOOKS_DIR / "output",
+    _HOOKS_DIR / "utils",
+    _HOOKS_DIR / "session",
+    _MCP_HEALTH,
+    _MCP_HEALTH / "config",
+    _MCP_HEALTH / "llm",
+    _MCP_HEALTH / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
