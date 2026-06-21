@@ -1,6 +1,6 @@
 {
   "name": "solid-coder",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Plugin with skills/workflows using solid principles",
   "author": {
     "name": "Alex Crowe"
@@ -8,19 +8,27 @@
   "mcpServers": {
     "apple-build": {
       "command": "python3",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/build/apple/server.py"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/build/apple/server.py"
+      ]
     },
     "docs": {
       "command": "python3",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/docs/server.py"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/docs/server.py"
+      ]
     },
     "specs": {
       "command": "python3",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/specs/server.py"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/specs/server.py"
+      ]
     },
     "pipeline": {
       "command": "python3",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/pipeline/server.py"]
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/mcp-server/pipeline/server.py"
+      ]
     }
   }
 }
