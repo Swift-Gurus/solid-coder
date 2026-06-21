@@ -1,5 +1,5 @@
-""" 
-solid-description: Exports findings gateway interfaces and provides a factory for constructing initialized gateway handlers.
+"""
+solid-description: Provides gateway handlers for submitting code findings with validation and scoring.
 solid-category: service
 solid-tags: [utility, service]
 """
@@ -16,6 +16,9 @@ from findings.findings_submitter import FindingsSubmitting, FindingsSubmitter  #
 from findings.severity_summariser import SeveritySummarising, SeveritySummariser  # noqa: F401
 from findings.json_file_writer import JsonFileWriting, JsonFileWriter  # noqa: F401
 from findings.violation_reader import ViolationReading, ViolationReader  # noqa: F401
+from findings.batch_submission_handler import BatchSubmissionHandler, ViolationResponseFormatter  # noqa: F401
+from findings.hook_context_loader import FileSystemHookContextLoader  # noqa: F401
+from findings.unit_coverage_validator import UnitCoverageValidator  # noqa: F401
 from scoring.scoring_handler import ScoringHandling, ScoringHandler  # noqa: F401
 from scoring.files_scoring_handler import FilesScoringCapable, FilesScoringHandler  # noqa: F401
 from scoring.principle_scorer import PrincipleScorerProviding, PrincipleScorerProvider, UnitScoring  # noqa: F401
@@ -25,28 +28,53 @@ from rules.detection_rules_loader import DetectionRulesLoading, DetectionRulesLo
 from rules.principle_content_builder import PrincipleContentBuilding, PrincipleContentBuilder  # noqa: F401
 
 
+class ValidatedGatewayHandler(GatewayHandler):
+    """GatewayHandler subclass that routes submit_batch_findings through BatchSubmissionHandler.
+
+    Adds unit-coverage validation and injectable hook-context loading without modifying
+    the base class. Factory exception — wiring concrete collaborators is this class's
+    sole responsibility.
+    """
+
+    def __init__(self, *args, batch_handler: BatchSubmissionHandler, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._batch_handler = batch_handler
+
+    def submit_batch_findings(self, output_dir: str, submissions: dict) -> dict:
+        return self._batch_handler.submit_batch(output_dir, submissions)
+
+
 class GatewayHandlerFactory:
-    """Wires production defaults and creates a ready-to-use GatewayHandler.
+    """Wires production defaults and creates a ready-to-use ValidatedGatewayHandler.
 
     Factory class — constructing and wiring concrete dependencies is this
     class's sole responsibility (OCP Factory exception).
     """
 
-    def make(self, refs_root: Path) -> GatewayHandler:
+    def make(self, refs_root: Path) -> ValidatedGatewayHandler:
         from rules.principle_registry import PrincipleRegistry
         registry = PrincipleRegistry(refs_root)
         scoring = ScoringHandler(
             scorer_provider=PrincipleScorerProvider(refs_root),
             files_scorer=FilesScoringHandler(),
         )
-        return GatewayHandler(
+        submit_orchestrator = SubmitOrchestrator(
             scoring=scoring,
-            submit_orchestrator=SubmitOrchestrator(
-                scoring=scoring,
-                validator=PartialOutputValidator(refs_root),
-                submitter=FindingsSubmitter(JsonFileWriter()),
-                summariser=SeveritySummariser(),
-            ),
+            validator=PartialOutputValidator(refs_root),
+            submitter=FindingsSubmitter(JsonFileWriter()),
+            summariser=SeveritySummariser(),
+        )
+        context_loader = FileSystemHookContextLoader()
+        batch_handler = BatchSubmissionHandler(
+            submit_orchestrator=submit_orchestrator,
+            context_loader=context_loader,
+            violation_reader=ViolationReader(),
+            response_formatter=ViolationResponseFormatter(),
+            coverage_validator=UnitCoverageValidator(context_loader=context_loader),
+        )
+        return ValidatedGatewayHandler(
+            scoring=scoring,
+            submit_orchestrator=submit_orchestrator,
             rules=RulesHandler(
                 detection=DetectionRulesLoader(
                     all_principles=registry,
@@ -59,9 +87,10 @@ class GatewayHandlerFactory:
                 persister=FixPersister(),
                 completeness=FixCompletenessValidator(ViolationReader()),
             ),
+            batch_handler=batch_handler,
         )
 
 
-def make_gateway_handler(refs_root: Path) -> GatewayHandler:
+def make_gateway_handler(refs_root: Path) -> ValidatedGatewayHandler:
     """Backward-compatible shim — delegates to GatewayHandlerFactory."""
     return GatewayHandlerFactory().make(refs_root)
