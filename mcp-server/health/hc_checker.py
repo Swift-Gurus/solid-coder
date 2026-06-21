@@ -1,5 +1,5 @@
 """
-solid-description: Analyzes source files for code health principle violations.
+solid-description: Analyzes source code for code health violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -71,6 +71,6 @@ class LLMHealthChecker:
             return []
         output_dir = self._path_resolver.resolve(parent_session_id)
         if self._context_writer is not None:
-            self._context_writer.write(output_dir, path, language)
+            self._context_writer.write(output_dir, path, language, content)
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
         return self._reviewer.review(prompt, path, output_dir=output_dir)

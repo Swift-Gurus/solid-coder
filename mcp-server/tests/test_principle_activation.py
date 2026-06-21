@@ -17,6 +17,10 @@ _MCP_DIR = Path(__file__).resolve().parents[1]
 _HOOKS_DIR = _MCP_DIR.parent / "hooks"
 sys.path.insert(0, str(_MCP_DIR))
 sys.path.insert(0, str(_HOOKS_DIR))
+import sys as _sys
+from pathlib import Path as _Path
+_PROJECT_ROOT = _Path(__file__).resolve().parents[2]
+_sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server/health"))
 
 from tests.helpers import SubmitFindingsTestBase
 

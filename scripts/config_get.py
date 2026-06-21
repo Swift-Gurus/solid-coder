@@ -17,6 +17,10 @@ from typing import Callable
 _HOOKS_DIR = Path(__file__).resolve().parents[1] / "hooks"
 if str(_HOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(_HOOKS_DIR))
+import sys as _sys
+from pathlib import Path as _Path
+_PROJECT_ROOT = _Path(__file__).resolve().parents[1]
+_sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server/health/config"))
 
 from hc_config_core import read_section  # noqa: E402
 
