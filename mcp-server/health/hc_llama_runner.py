@@ -1,5 +1,5 @@
 """
-solid-description: Orchestrates LLM-powered analysis and returns analysis results.
+solid-description: Executes code analysis and detects violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Optional
 
 _HEALTH_DIR = Path(__file__).resolve().parent
-_HOOKS_DIR = _HEALTH_DIR.parents[1] / 'hooks'
-for _d in (_HOOKS_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+_MCP_DIR = _HEALTH_DIR.parent
+for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
@@ -21,7 +21,7 @@ if _MCP_SERVER_DIR not in sys.path:
 
 from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E402
 from hc_config import inference_params as _load_inference_params  # noqa: E402
-from hc_rule_loader import GatewayCommandRunner, GatewayInvoker  # noqa: E402
+from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayFixInvoker  # noqa: E402
 from hc_violation_parser import ViolationParser, ViolationParsing  # noqa: E402
 
 from llama.urllib_opener import HttpOpening, UrllibOpener  # noqa: E402, F401
@@ -37,6 +37,7 @@ from llama.logger import LocalLLMLogger  # noqa: E402, F401
 from llama.session_observer import LLMSessionObserving, LLMSessionObserver  # noqa: E402, F401
 from llama.findings_submitter import BatchFindingsHandling, FindingsSubmitting, GatewayFindingsSubmitter  # noqa: E402, F401
 from llama.tool_call_parser import ToolCallArgsParsing, ToolCallParser  # noqa: E402, F401
+from llama.codebase_searcher import CodebaseSearcher  # noqa: E402, F401
 from llama.tool_dispatcher import ToolDispatching, GatewayToolDispatcher, TOOLS  # noqa: E402, F401
 from llama.builtin_range import RangeIterating, BuiltinRange  # noqa: E402, F401
 from llama.thinking_extractor import ThinkingExtracting, ThinkingExtractor  # noqa: E402, F401
@@ -102,12 +103,15 @@ def make_llama_server_runner(
     gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
     findings_submitter = GatewayFindingsSubmitter(handler=gw_handler)
     arg_parser = ToolCallParser()
-    dispatcher = GatewayToolDispatcher(
-        invoker=invoker,
+    searcher = CodebaseSearcher(
+        search_fn=lambda q: _codebase_search(tags=[t for t in q.split() if t], min_matches=1) if q.split() else "",
         grep_fn=grep_by_name,
         glob_fn=glob_by_name,
-        search_fn=lambda q: _codebase_search(tags=[t for t in q.split() if t], min_matches=1) if q.split() else "",
         read_fn=lambda p: Path(p).read_text(encoding="utf-8"),
+    )
+    dispatcher = GatewayToolDispatcher(
+        codebase_search=searcher,
+        fix_invoker=GatewayFixInvoker(invoker=invoker),
         parser=arg_parser,
         findings_submitter=findings_submitter,
     )

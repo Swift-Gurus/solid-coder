@@ -1,5 +1,5 @@
 """
-solid-description: Provides principle detection rules and candidate tags for automated code health analysis.
+solid-description: Orchestrates gateway CLI operations for code health analysis.
 solid-category: service
 solid-tags: [hook, gateway]
 """
@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Callable, Optional, Protocol
 
 _HEALTH_DIR = Path(__file__).resolve().parent
-_HOOKS_DIR = _HEALTH_DIR.parents[1] / 'hooks'
-for _d in (_HOOKS_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+_MCP_DIR = _HEALTH_DIR.parent
+for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
@@ -87,3 +87,35 @@ class GatewayRuleLoader:
             "load_detection_rules",
             extra_args=["--matched_tags", ",".join(matched_tags)],
         )
+
+
+class FixInvoking(Protocol):
+    def load_fix(self, metric_ids: list) -> str: ...
+    def submit_fix(self, output_dir: str, fixes: list) -> str: ...
+
+
+class GatewayFixInvoker:
+    """Invokes load_fix_for_violation and submit_fix via the gateway CLI."""
+
+    def __init__(self, invoker: GatewayInvoking) -> None:
+        self._invoker = invoker
+
+    def load_fix(self, metric_ids: list) -> str:
+        import json as _json  # noqa: PLC0415
+        result = self._invoker.invoke(
+            "load_fix_for_violation",
+            extra_args=["--metric_ids"] + [str(m) for m in metric_ids],
+            result_key="content",
+            default="",
+        )
+        return result or ""
+
+    def submit_fix(self, output_dir: str, fixes: list) -> str:
+        import json as _json  # noqa: PLC0415
+        result = self._invoker.invoke(
+            "submit_fix",
+            extra_args=["--output_dir", output_dir, "--fixes", _json.dumps(fixes)],
+            result_key=None,
+            default="{}",
+        )
+        return result or "{}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Retrieves configuration values by section and key with safe default fallbacks.
+solid-description: Retrieves configuration values with guaranteed fallback defaults.
 solid-category: utility
 
 Usage: python3 config_get.py <section> <key> [default]
@@ -14,9 +14,9 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-_HOOKS_DIR = Path(__file__).resolve().parents[1] / "hooks"
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+_MCP_DIR = Path(__file__).resolve().parents[1] / "mcp-server"
+if str(_MCP_DIR) not in sys.path:
+    sys.path.insert(0, str(_MCP_DIR))
 import sys as _sys
 from pathlib import Path as _Path
 _PROJECT_ROOT = _Path(__file__).resolve().parents[1]

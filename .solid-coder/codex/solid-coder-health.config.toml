@@ -1,0 +1,9 @@
+# solid-coder health-check MCP profile — auto-generated, do not edit.
+
+[mcp_servers.pipeline]
+command = "python3"
+args = ["/Users/crowea/Developer/Swift-Gurus/solid-coder/mcp-server/pipeline/server.py"]
+
+[mcp_servers.docs]
+command = "python3"
+args = ["/Users/crowea/Developer/Swift-Gurus/solid-coder/mcp-server/docs/server.py"]

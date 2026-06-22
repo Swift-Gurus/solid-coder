@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-HOOK = PROJECT_ROOT / "hooks" / "split_plan_on_write.py"
+HOOK = PROJECT_ROOT / "mcp-server" / "hooks" / "split_plan_on_write.py"
 
 
 def run_hook(tool_name, file_path, env_root=None):

@@ -1,4 +1,4 @@
-{
+what{
   "permissions": {
     "allow": [
       "Bash(head -15 /Users/crowea/Developer/Swift-Gurus/solid-coder/skills/*/SKILL.md)",
@@ -108,7 +108,37 @@
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder add .claude/settings.local.json mcp-server/prompts/health-check/workflow.md skills/apply-principle-review/.claude/CLAUDE.md skills/apply-principle-review/SKILL.md .claude-plugin/plugin.json)",
       "Bash(GIT_EDITOR=\"sed -i '' 's/^feat:$/feat: fix MCP tool names and wire apply-principle-review to submit_batch_findings/'\" git -C /Users/crowea/Developer/Swift-Gurus/solid-coder commit)",
       "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder merge feat/session-wrap-up --ff-only)",
-      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline -5)"
+      "Bash(git -C /Users/crowea/Developer/Swift-Gurus/solid-coder log --oneline -5)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Read(//Users/crowea/.solid-coder/-Users-crowea-Developer-Swift-Gurus-solid-coder/gate/**)",
+      "Read(//Users/crowea/.solid-coder/-Users-crowea-Developer-Swift-Gurus-solid-coder/**)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(echo \"os_exit:$?\")",
+      "Bash(GIT_EDITOR=true git commit)",
+      "Bash(git branch *)",
+      "Bash(mv /Users/crowea/Developer/Swift-Gurus/solid-coder/.claude/solid-coder.toml /Users/crowea/Developer/Swift-Gurus/solid-coder/.solid-coder/config.toml)",
+      "Bash(mv /Users/crowea/Developer/Swift-Gurus/solid-coder/.claude/solid-coder-local.toml /Users/crowea/Developer/Swift-Gurus/solid-coder/.solid-coder/config.local.toml)",
+      "Bash(git rm *)",
+      "Bash(sort -t_ -k1)",
+      "Bash(xargs cat)",
+      "mcp__plugin_solid-coder_docs__load_detection_rules",
+      "mcp__plugin_solid-coder_docs__load_fix_for_violation",
+      "Bash(xargs -I{} python3 -c \"import json,sys; d=json.load\\(open\\('{}'\\)\\);  print\\('{}'\\); print\\(json.dumps\\(d.get\\('definitions',d\\), indent=2\\)[:500]\\)\")",
+      "Skill(solid-coder:plan)",
+      "Bash(xargs -I{} basename {})",
+      "Bash(sed -i '' 's|\"mcp-server\" / \"lib\" / \"discover_principles.py\"|\"mcp-server\" / \"rules\" / \"discover_principles.py\"|' /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/tests/test_discover_principles.py)",
+      "Bash(sed -i '' 's|\"mcp-server\" / \"lib\" / \"load_reference.py\"|\"mcp-server\" / \"rules\" / \"load_reference.py\"|' /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/tests/test_load_reference.py)",
+      "Bash(sed -i '' 's|\"mcp-server\" / \"lib\" / \"parse_frontmatter.py\"|\"mcp-server\" / \"spec\" / \"parse_frontmatter.py\"|' /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/tests/test_parse_frontmatter.py)",
+      "Bash(curl -s http://localhost:8080/health)",
+      "Bash(bash /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/run-local-llm.sh)",
+      "Bash(echo \"PID: $!\")"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "solid-coder-apple-build",
+    "solid-coder-docs",
+    "solid-coder-specs",
+    "solid-coder-pipeline"
+  ]
 }

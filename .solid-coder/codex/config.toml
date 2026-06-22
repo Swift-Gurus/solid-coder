@@ -1,0 +1,15 @@
+
+[mcp_servers.pipeline]
+command = "python3"
+args = ["/Users/crowea/Developer/Swift-Gurus/solid-coder/mcp-server/pipeline/server.py"]
+required = true
+enabled = true
+
+[mcp_servers.docs]
+command = "python3"
+args = ["/Users/crowea/Developer/Swift-Gurus/solid-coder/mcp-server/docs/server.py"]
+required = true
+enabled = true
+
+[projects."/Users/crowea/Developer/Swift-Gurus/solid-coder"]
+trust_level = "trusted"

@@ -1,0 +1,3 @@
+2026-06-09T14:33:42Z HEALTH_ERR test_hc_runner_factory.py: NameError: name 'os' is not defined
+2026-06-09T14:33:52Z HEALTH_ERR test_hc_runner_factory.py: NameError: name 'os' is not defined
+2026-06-09T14:34:15Z HEALTH_ERR hook_utils.py: NameError: name 'os' is not defined

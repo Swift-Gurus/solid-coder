@@ -1,7 +1,7 @@
 """
 solid-name: FileSystemHookContextLoader
 solid-category: service
-solid-description: Loads submission context from the file system.
+solid-description: Loads hook context from the file system.
 """
 
 from __future__ import annotations
@@ -11,9 +11,9 @@ import sys
 from pathlib import Path
 from typing import Callable, Optional
 
-_HOOKS_DIR = Path(__file__).resolve().parents[2] / "hooks"
-if str(_HOOKS_DIR) not in sys.path:
-    sys.path.insert(0, str(_HOOKS_DIR))
+_MCP_DIR = Path(__file__).resolve().parents[1]
+if str(_MCP_DIR) not in sys.path:
+    sys.path.insert(0, str(_MCP_DIR))
 
 from hook_utils import solid_coder_project_dir  # noqa: E402
 from findings.unit_coverage_validator import HookContextLoading  # noqa: E402

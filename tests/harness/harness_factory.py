@@ -13,16 +13,16 @@ from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HARNESS_DIR.parents[1]
-_HOOKS_DIR = _PROJECT_ROOT / "hooks"
-_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
+_MCP_SERVER = _PROJECT_ROOT / "mcp-server"
+_MCP_HEALTH = _MCP_SERVER / "health"
 for _d in (
     str(_HARNESS_DIR),
-    str(_HOOKS_DIR),
-    str(_HOOKS_DIR / "utils"),
-    str(_HOOKS_DIR / "output"),
-    str(_HOOKS_DIR / "gate"),
-    str(_HOOKS_DIR / "patch"),
-    str(_HOOKS_DIR / "session"),
+    str(_MCP_SERVER),
+    str(_MCP_SERVER / "utils"),
+    str(_MCP_SERVER / "output"),
+    str(_MCP_SERVER / "gate"),
+    str(_MCP_SERVER / "patch"),
+    str(_MCP_SERVER / "session"),
     str(_MCP_HEALTH),
     str(_MCP_HEALTH / "config"),
     str(_MCP_HEALTH / "llm"),

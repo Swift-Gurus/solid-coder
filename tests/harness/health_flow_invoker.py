@@ -17,9 +17,9 @@ from typing import Iterator
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HARNESS_DIR.parents[1]
-_HOOKS_DIR = _PROJECT_ROOT / "hooks"
-_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
-for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR), str(_MCP_HEALTH)):
+_MCP_SERVER = _PROJECT_ROOT / "mcp-server"
+_MCP_HEALTH = _MCP_SERVER / "health"
+for _d in (str(_HARNESS_DIR), str(_MCP_SERVER), str(_MCP_HEALTH)):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
@@ -102,7 +102,15 @@ class HealthFlowInvoker(FlowInvoking):
         all_violations: list[dict] = violations or []
         result = self._filter_by_principle(all_violations)
         self._result_writer.write(result, output_paths)
+        self._write_full_output(all_violations, output_paths)
         return result
+
+    def _write_full_output(self, all_violations: list[dict], output_paths: OutputPaths) -> None:
+        if not all_violations:
+            return
+        output_paths.log_dir.mkdir(parents=True, exist_ok=True)
+        full_path = output_paths.log_dir / (output_paths.reasoning_path.stem + "-full.json")
+        full_path.write_text(json.dumps(all_violations, indent=2), encoding="utf-8")
 
     def _filter_by_principle(self, violations: list[dict]) -> list[dict]:
         """Keep only violations whose metric_id belongs to the principle under test.

@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-HOOK = PROJECT_ROOT / "hooks" / "validate_json_schema.py"
+HOOK = PROJECT_ROOT / "mcp-server" / "hooks" / "validate_json_schema.py"
 FAKE_PROJECT = "/tmp/test-project"
 
 VALID_ARCH = {

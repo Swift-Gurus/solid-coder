@@ -1,19 +1,16 @@
 """
 solid-name: TestCodeUnitExtractorSwift
 solid-category: unit-test
-solid-description: Validates CodeUnitExtractor correctly extracts Swift code unit names from all top-level declaration types.
+solid-description: Verifies extraction of Swift code unit names.
 """
 
 import unittest
-from health.code_unit_extractor import CodeUnitExtractor
+
+from _code_unit_extractor_base import CodeUnitExtractorTestBase
 
 
-class TestCodeUnitExtractorSwift(unittest.TestCase):
-    def setUp(self):
-        self._e = CodeUnitExtractor()
-
-    def _x(self, code: str) -> list:
-        return self._e.extract(code, "Swift")
+class TestCodeUnitExtractorSwift(CodeUnitExtractorTestBase, unittest.TestCase):
+    language = "Swift"
 
     def test_class_detected(self):
         self.assertIn("Foo", self._x("class Foo {}"))
@@ -45,9 +42,6 @@ class TestCodeUnitExtractorSwift(unittest.TestCase):
         self.assertIn("Foo", units)
         self.assertIn("Bar", units)
         self.assertIn("Baz", units)
-
-    def test_empty_file_returns_empty(self):
-        self.assertEqual([], self._x(""))
 
     def test_deduplicated_when_name_repeated(self):
         code = "class Foo {}\nextension Foo {}"

@@ -2,10 +2,7 @@
 solid-name: RunPrincipleTestsCLI
 solid-category: utility
 solid-spec: [SPEC-014]
-solid-description: CLI entry point for the principle test harness. Accepts --principle, --flow,
---fixture, --model, --mode, and --timeout flags. Runs fixture discovery, flow invocation, and
-result comparison via HarnessFactory. Exits 0 on all-pass, 1 on any failure. --mode e2e exits
-immediately with a deferral message.
+solid-description: CLI entry point for running principle integration tests.
 """
 
 from __future__ import annotations
@@ -17,17 +14,17 @@ from pathlib import Path
 _TESTS_DIR = Path(__file__).resolve().parent
 _HARNESS_DIR = _TESTS_DIR / "harness"
 _PROJECT_ROOT = _TESTS_DIR.parent
-_MCP_HEALTH = _PROJECT_ROOT / "mcp-server" / "health"
-_HOOKS = _PROJECT_ROOT / "hooks"
+_MCP_SERVER = _PROJECT_ROOT / "mcp-server"
+_MCP_HEALTH = _MCP_SERVER / "health"
 for _d in (
     str(_HARNESS_DIR),
     str(_TESTS_DIR),
-    str(_HOOKS),
-    str(_HOOKS / "utils"),
-    str(_HOOKS / "output"),
-    str(_HOOKS / "gate"),
-    str(_HOOKS / "patch"),
-    str(_HOOKS / "session"),
+    str(_MCP_SERVER),
+    str(_MCP_SERVER / "utils"),
+    str(_MCP_SERVER / "output"),
+    str(_MCP_SERVER / "gate"),
+    str(_MCP_SERVER / "patch"),
+    str(_MCP_SERVER / "session"),
     str(_MCP_HEALTH),
     str(_MCP_HEALTH / "config"),
     str(_MCP_HEALTH / "llm"),

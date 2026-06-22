@@ -5,9 +5,9 @@ solid-tags: [hook, llm]
 """
 import sys
 from pathlib import Path
-_HOOKS_DIR = Path(__file__).resolve().parents[3] / 'hooks'
+_MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
-for _d in (_HOOKS_DIR, _MODULE_DIR):
+for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 

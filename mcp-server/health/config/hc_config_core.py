@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol, TypeVar
 
-_HOOKS_DIR = Path(__file__).resolve().parents[3] / 'hooks'
+_MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
-for _d in (_HOOKS_DIR, _MODULE_DIR):
+for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
@@ -19,7 +19,7 @@ from hook_utils import load_toml  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_TOML, CONFIG_LOCAL_TOML  # noqa: E402
 
 # Anchor to the project root (hooks/ parent) so configs are found regardless of cwd.
-_PROJECT_ROOT = _HOOKS_DIR.parent
+_PROJECT_ROOT = _MCP_DIR.parent
 T = TypeVar("T")
 
 

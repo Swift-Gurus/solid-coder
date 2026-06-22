@@ -5,26 +5,23 @@ solid-description: Validates code unit extraction for Python source.
 """
 
 import unittest
-from health.code_unit_extractor import CodeUnitExtractor
+
+from _code_unit_extractor_base import CodeUnitExtractorTestBase
 
 
-class TestCodeUnitExtractorPython(unittest.TestCase):
-    def setUp(self):
-        self._e = CodeUnitExtractor()
+class TestCodeUnitExtractorPython(CodeUnitExtractorTestBase, unittest.TestCase):
+    language = "Python"
 
     def test_class_detected(self):
-        self.assertIn("MyClass", self._e.extract("class MyClass:\n    pass", "Python"))
+        self.assertIn("MyClass", self._x("class MyClass:\n    pass"))
 
     def test_function_detected(self):
-        self.assertIn("my_func", self._e.extract("def my_func():\n    pass", "Python"))
+        self.assertIn("my_func", self._x("def my_func():\n    pass"))
 
     def test_multiple_units(self):
-        units = self._e.extract("class A:\n    pass\ndef b():\n    pass", "Python")
+        units = self._x("class A:\n    pass\ndef b():\n    pass")
         self.assertIn("A", units)
         self.assertIn("b", units)
-
-    def test_empty_file_returns_empty(self):
-        self.assertEqual([], self._e.extract("", "Python"))
 
 
 if __name__ == "__main__":

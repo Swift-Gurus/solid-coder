@@ -16,7 +16,7 @@ import unittest
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-HOOK = PROJECT_ROOT / "hooks" / "allow_plugin_file_access.py"
+HOOK = PROJECT_ROOT / "mcp-server" / "hooks" / "allow_plugin_file_access.py"
 FAKE_PROJECT = "/Users/alex/MyApp"
 
 
