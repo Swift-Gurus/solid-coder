@@ -5,3 +5,5 @@ __pycache__/
 # solid-coder pipeline run artifacts
 .solid_coder/
 .solid-coder/config.local.toml
+.solid-coder/codex/
+GATE-OUTPUT-PATH-HANDOFF.md
