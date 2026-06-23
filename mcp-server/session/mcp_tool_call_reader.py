@@ -8,16 +8,17 @@ import sys
 from pathlib import Path
 from typing import Protocol
 
-_HOOKS_DIR = Path(__file__).resolve().parents[1]
+_MCP_DIR = Path(__file__).resolve().parents[1]
 _SESSION_DIR = Path(__file__).resolve().parent
-for _d in (_HOOKS_DIR, _SESSION_DIR):
+_MCP_HEALTH = _MCP_DIR / "health"
+for _d in (_MCP_DIR, _SESSION_DIR, _MCP_HEALTH):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
 from slack_notify import JSONLTranscriptParser, JSONLParsing, FileSystemLineReader  # noqa: E402
 from hook_utils import ensure_on_path  # noqa: E402 -- re-export for callers
 
-ensure_on_path(_HOOKS_DIR)
+ensure_on_path(_MCP_DIR)
 
 
 class McpToolCallReading(Protocol):

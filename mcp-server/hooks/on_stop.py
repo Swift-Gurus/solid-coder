@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Callable, List, Optional, Protocol, runtime_checkable
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
-_MCP_HEALTH_CONFIG = _MCP_DIR / "health" / "config"
-for _d in (_MCP_DIR, _MCP_HEALTH_CONFIG):
+_MCP_HEALTH = _MCP_DIR / "health"
+for _d in (_MCP_DIR, _MCP_HEALTH, _MCP_HEALTH / "config"):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
