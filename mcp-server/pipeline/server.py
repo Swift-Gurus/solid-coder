@@ -28,7 +28,8 @@ sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 from protocol import MCPServer
 from pipeline.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
 from pipeline.tool_registry import ToolRegistering, ToolRegistry
-from pipeline.handlers import ReviewResultsCollecting, ReviewResultsCollector
+from pipeline.handlers import ReviewResultsCollector, make_review_results_collector
+from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 
 _LARGE_OUTPUT = {"anthropic/maxResultSizeChars": 200_000}
@@ -386,7 +387,7 @@ def make_bootstrapper(
         registry=registry or ToolRegistry(mcp),
         skill_runner=skill_runner or SkillRunner(SKILLS_ROOT),
         result_fmt=result_fmt or SkillResultFormatter(),
-        collector=collector or ReviewResultsCollector(),
+        collector=collector or make_review_results_collector(),
         gateway=gateway or _make_gw_pipeline(refs_root),
         check_severity=check_severity or importlib.import_module("check-severity"),
         load_context=load_context or importlib.import_module("load-context"),
