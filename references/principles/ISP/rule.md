@@ -3,6 +3,8 @@ name: isp
 displayName: Interface Segregation Principle
 category: solid
 description: Protocol width analysis and conformer coverage scoring with direct severity scoring
+applies_to:
+  - protocol
 bands:
   ISP-1:
     width:

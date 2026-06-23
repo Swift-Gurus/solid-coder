@@ -18,7 +18,7 @@ from findings.json_file_writer import JsonFileWriting, JsonFileWriter  # noqa: F
 from findings.violation_reader import ViolationReading, ViolationReader  # noqa: F401
 from findings.batch_submission_handler import BatchSubmissionHandler, ViolationResponseFormatter  # noqa: F401
 from findings.hook_context_loader import FileSystemHookContextLoader  # noqa: F401
-from findings.unit_coverage_validator import UnitCoverageValidator  # noqa: F401
+from findings.unit_coverage_validator import UnitCoverageValidator, load_applies_to  # noqa: F401
 from scoring.scoring_handler import ScoringHandling, ScoringHandler  # noqa: F401
 from scoring.files_scoring_handler import FilesScoringCapable, FilesScoringHandler  # noqa: F401
 from scoring.principle_scorer import PrincipleScorerProviding, PrincipleScorerProvider, UnitScoring  # noqa: F401
@@ -70,7 +70,10 @@ class GatewayHandlerFactory:
             context_loader=context_loader,
             violation_reader=ViolationReader(),
             response_formatter=ViolationResponseFormatter(),
-            coverage_validator=UnitCoverageValidator(context_loader=context_loader),
+            coverage_validator=UnitCoverageValidator(
+                context_loader=context_loader,
+                applies_to=load_applies_to(refs_root),
+            ),
         )
         return ValidatedGatewayHandler(
             scoring=scoring,
