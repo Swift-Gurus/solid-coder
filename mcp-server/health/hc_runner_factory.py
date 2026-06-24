@@ -1,5 +1,5 @@
 """
-solid-description: Provides LLM backends for health-check sessions.
+solid-description: Provides LLM runner instances adapted to the configured backend.
 solid-category: service
 solid-tags: [hook]
 """
@@ -19,6 +19,7 @@ from hc_checker import ClaudeRunner, ClaudeRunning
 from hc_llama_runner import make_llama_server_runner  # noqa: F401 — must be module-level for test patching
 from hc_config import llm_backend, llm_host, llm_model, bare_session_timeout, codex_home
 from hook_utils import run_claude_bare
+from utils.debug_logger import Observing
 
 _MODEL_PLACEHOLDERS = {"", "claude", "local", "codex"}
 
@@ -140,6 +141,7 @@ def select_strategy() -> RunnerStrategyBase:
     return ClaudeRunnerStrategy(model=model)
 
 
+@Observing("runner.make_llm_runner")
 def make_llm_runner(
     mcp_config: str,
     allowed_tools: str,

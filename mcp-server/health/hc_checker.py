@@ -1,5 +1,5 @@
 """
-solid-description: Analyzes source code for code health violations.
+solid-description: Checks source code against principles to identify violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -16,6 +16,7 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / "config", _HEALTH_DIR / "llm", _
 
 # Re-exports for backwards compatibility
 from claude_runner import ClaudeRunning, ClaudeRunner, ClaudeCallable  # noqa: F401
+from utils.debug_logger import Observing
 from principles_loader import PrinciplesLoading, PrinciplesLoader  # noqa: F401
 from health_prompt_builder import PromptBuilding, HealthPromptBuilder  # noqa: F401
 from llm_executor import LLMExecuting, LLMExecutor  # noqa: F401
@@ -57,6 +58,7 @@ class LLMHealthChecker:
         self._path_resolver = path_resolver
         self._context_writer = context_writer
 
+    @Observing("gate.llm_checker.check")
     def check(
         self,
         content: str,

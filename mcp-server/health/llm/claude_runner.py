@@ -1,5 +1,5 @@
 """
-solid-description: Adapts a Claude callable to the ClaudeRunning protocol with MCP config and tool list.
+solid-description: Adapts a Claude callable to the ClaudeRunning protocol, managing MCP configuration and tool restrictions.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -15,6 +15,7 @@ for _d in (_MCP_DIR, _MODULE_DIR):
 from typing import Callable, Optional, Protocol
 
 from hook_callable import CallableAdapting
+from utils.debug_logger import Observing
 
 ClaudeCallable = Callable[..., Optional[str]]
 
@@ -38,6 +39,7 @@ class ClaudeRunner(CallableAdapting):
         self._allowed_tools = allowed_tools
         self._model = model
 
+    @Observing("runner.claude_runner.run")
     def run(self, prompt: str, timeout: int) -> Optional[str]:
         return self._strict_call(
             prompt,

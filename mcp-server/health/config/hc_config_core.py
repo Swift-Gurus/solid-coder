@@ -1,5 +1,5 @@
 """
-solid-description: Provides access to project configuration with support for local overrides.
+solid-description: Provides configuration loading with support for local overrides of project defaults.
 solid-category: utility
 solid-tags: [hook]
 """
@@ -17,6 +17,7 @@ for _d in (_MCP_DIR, _MODULE_DIR):
 
 from hook_utils import load_toml  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_TOML, CONFIG_LOCAL_TOML  # noqa: E402
+from utils.debug_logger import Observing  # noqa: E402
 
 # Anchor to the project root (hooks/ parent) so configs are found regardless of cwd.
 _PROJECT_ROOT = _MCP_DIR.parent
@@ -54,6 +55,7 @@ def read_section(
     return {**base, **override}
 
 
+@Observing("config.read_llm_section")
 def read_llm_section(
     _loader: TomlLoader = load_toml,
     _env: Optional[dict] = None,
@@ -79,6 +81,7 @@ def safe_convert(value: Any, default: T, converter: Callable[[Any], T]) -> T:
         return default
 
 
+@Observing("config.llm_value")
 def llm_value(
     key: str,
     default: T,

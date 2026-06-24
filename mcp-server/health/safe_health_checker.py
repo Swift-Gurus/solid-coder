@@ -1,5 +1,5 @@
 """
-solid-description: Safely invokes the health checker and translates subprocess errors into gate block decisions.
+solid-description: Safely invokes the health checker and translates errors and violations into gate block decisions.
 solid-category: service
 solid-tags: [hook]
 """
@@ -13,6 +13,7 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
         sys.path.insert(0, str(_d))
 
 from gate_protocols import GateHandling, HealthChecking, ViolationFormatting
+from utils.debug_logger import Observing
 
 
 class SafeHealthChecker:

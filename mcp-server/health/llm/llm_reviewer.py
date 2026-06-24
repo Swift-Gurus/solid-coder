@@ -1,5 +1,5 @@
 """
-solid-description: Coordinates LLM execution and output handling to produce a violations list.
+solid-description: Reviews code based on a prompt and returns violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -16,6 +16,7 @@ from typing import Optional, Protocol
 
 from llm_executor import LLMExecuting
 from file_based_output_handler import OutputHandling
+from utils.debug_logger import Observing
 
 
 class LLMReviewing(Protocol):

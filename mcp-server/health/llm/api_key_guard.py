@@ -1,5 +1,5 @@
 """
-solid-description: Checks whether the configured LLM backend has the credentials to run.
+solid-description: Determines whether the configured LLM backend can authenticate.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -13,6 +13,7 @@ for _d in (_MCP_DIR, _MODULE_DIR):
         sys.path.insert(0, str(_d))
 
 from typing import Callable
+from utils.debug_logger import Observing
 
 
 class ApiKeyGuard:
@@ -26,6 +27,7 @@ class ApiKeyGuard:
         self._backend = backend_fn
         self._api_key = api_key_fn
 
+    @Observing("gate.api_key_guard.is_available")
     def is_available(self) -> bool:
         if self._backend().lower() != "claude":
             return True
