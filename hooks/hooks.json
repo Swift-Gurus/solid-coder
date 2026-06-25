@@ -53,15 +53,6 @@
         ]
       },
       {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/chunk_tracker.py\""
-          }
-        ]
-      },
-      {
         "matcher": "Write|Edit|apply_patch",
         "hooks": [
           {
@@ -72,15 +63,6 @@
       }
     ],
     "PreToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/enforce_chunk_reads.py\""
-          }
-        ]
-      },
       {
         "matcher": "Write|Edit|apply_patch",
         "hooks": [
@@ -96,15 +78,6 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/prevent_bash_file_write.py\""
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/enforce_full_reference_read.py\""
           }
         ]
       },

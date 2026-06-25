@@ -5,6 +5,8 @@ solid-tags: [utility, service]
 
 from typing import Any, Callable, Optional, Protocol
 
+from common.mcp_meta import LARGE_OUTPUT
+
 
 class MCPServerRegistering(Protocol):
     def tool(self, name: str, description: str, input_schema: dict,
@@ -41,6 +43,6 @@ class ToolRegistry:
         meta: Optional[dict] = None,
     ) -> None:
         @self._server.tool(name=name, description=description,
-                           input_schema=input_schema, meta=meta)
+                           input_schema=input_schema, meta=meta or LARGE_OUTPUT)
         def _wrapper(*args: Any, **kwargs: Any) -> Any:
             return handler(*args, **kwargs)

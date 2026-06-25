@@ -31,9 +31,7 @@ from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from pipeline.handlers import ReviewResultsCollector, make_review_results_collector
 from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
-
-_LARGE_OUTPUT = {"anthropic/maxResultSizeChars": 200_000}
-_UNLIMITED_OUTPUT = {"anthropic/maxResultSizeChars": 1_000_000}
+from common.mcp_meta import LARGE_OUTPUT
 
 
 # ── Service protocols ─────────────────────────────────────────────────────────
@@ -224,7 +222,7 @@ class ApplicationBootstrapper:
         reg.register("collect_review_results",
                      "Collect and summarise all review outputs. Returns verdict (ALL_COMPLIANT|MINOR_ONLY|HAS_SEVERE), summary table, and minor_findings.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["collect_review_results"], meta=_LARGE_OUTPUT)
+                     tools["collect_review_results"], meta=LARGE_OUTPUT)
 
         reg.register("check_severity",
                      "Check review findings for SEVERE violations. Returns structured verdict.",
@@ -239,7 +237,7 @@ class ApplicationBootstrapper:
         reg.register("load_synthesis_context",
                      "Load all validated findings for synthesis. Returns per-principle summaries and severity counts.",
                      {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["load_synthesis_context"], meta=_LARGE_OUTPUT)
+                     tools["load_synthesis_context"], meta=LARGE_OUTPUT)
 
         reg.register("generate_report",
                      "Generate MD + HTML reports from validated findings and synthesized fix plans.",
@@ -272,7 +270,7 @@ class ApplicationBootstrapper:
                          "spec_numbers": {"type": "array", "items": {"type": "string"}},
                          "min_matches": {"type": "integer"},
                      }, "required": []},
-                     tools["search_codebase"], meta=_UNLIMITED_OUTPUT)
+                     tools["search_codebase"], meta=LARGE_OUTPUT)
 
         reg.register("prepare_review_input",
                      "Prepare git changes (staged, unstaged, untracked) into structured review-input.json.",
