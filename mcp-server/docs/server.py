@@ -35,6 +35,7 @@ from findings.fix_file_lookup import find_fix_file
 from rules.rule_file_collector import collect_files
 import modes as modes_module
 from protocol import MCPServer
+from common.mcp_meta import LARGE_OUTPUT
 
 server = MCPServer("solid-coder-docs", "1.0.0")
 _chunker = Chunker()
@@ -111,6 +112,7 @@ def _render_principle(name: str, files: list, review_mode: bool) -> str:
 
 @server.tool(
     name="discover_principles",
+    meta=LARGE_OUTPUT,
     description=(
         "Discover active principles. Pass matched_tags to filter conditional principles "
         "to those relevant for the project's tech stack. Pass profile to restrict to "
@@ -149,6 +151,7 @@ def discover_principles_tool(matched_tags=None, profile=None):
 
 @server.tool(
     name="get_candidate_tags",
+    meta=LARGE_OUTPUT,
     description=(
         "Return all activation tags from all principles. "
         "Match these against the project's imports/patterns to decide which "
@@ -174,7 +177,7 @@ def get_candidate_tags():
         "Use matched_tags to skip conditional principles not relevant to the project. "
         "Use principle to load a single principle (required for review mode)."
     ),
-    meta={"anthropic/maxResultSizeChars": 1000000},
+    meta=LARGE_OUTPUT,
     input_schema={
         "type": "object",
         "properties": {
@@ -238,6 +241,7 @@ def load_rules(mode, matched_tags=None, principle=None):
 
 @server.tool(
     name="load_examples",
+    meta=LARGE_OUTPUT,
     description=(
         "Load all example files (compliant + violation Swift files) for a specific principle. "
         "Use during review to see concrete before/after patterns."
@@ -288,6 +292,7 @@ def load_examples(principle):
 
 @server.tool(
     name="load_pattern",
+    meta=LARGE_OUTPUT,
     description=(
         "Load a design pattern reference by name. Returns full content with frontmatter stripped. "
         "If the name is not found, returns a catalog of all available patterns."
@@ -344,7 +349,7 @@ _gw = _make_gw(REFS_ROOT)
         "Returns XML-block content (detection, definition, severity_bands, exceptions) when available, "
         "or full rule.md content as fallback for principles without XML blocks."
     ),
-    meta={"anthropic/maxResultSizeChars": 1000000},
+    meta=LARGE_OUTPUT,
     input_schema={
         "type": "object",
         "properties": {
@@ -366,6 +371,7 @@ def load_detection_rules(principle=None, matched_tags=None):
 
 @server.tool(
     name="score_severity",
+    meta=LARGE_OUTPUT,
     description=(
         "Score an array of partial review output documents — one per active principle. "
         "Each document must have agent, principle, timestamp, and files[].units[].metrics filled. "
@@ -390,6 +396,7 @@ def score_severity(partial_outputs):
 
 @server.tool(
     name="load_fix_instructions",
+    meta=LARGE_OUTPUT,
     description=(
         "Load fix strategy text for a specific metric ID (e.g. 'SRP-1', 'OCP-2'). "
         "Returns the fix instructions from the principle's fix/ folder with frontmatter stripped. "
@@ -410,6 +417,23 @@ def load_fix_instructions(metric_id):
     return _gw.load_fix_instructions(metric_id)
 
 
+def _load_and_format_fixes(metric_ids: list, all_p: list) -> tuple:
+    """Load fix content for each metric ID. Returns (found_parts, missing_norms)."""
+    parts, missing = [], []
+    for metric_id in metric_ids:
+        norm = metric_id.strip().upper()
+        p_entry, fix_path = find_fix_file(norm, all_p)
+        if not fix_path:
+            missing.append(norm)
+        else:
+            content = _read(fix_path).rstrip()
+            parts.append(
+                f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n"
+                f"## {_rel_label(fix_path)}\n\n{content}\n"
+            )
+    return parts, missing
+
+
 @server.tool(
     name="load_fix_instructions_for_findings",
     description=(
@@ -421,6 +445,7 @@ def load_fix_instructions(metric_id):
         "Works for any principle (SRP, OCP, SUI, TEST, etc.) — no principle field needed. "
         "Call once at the start of Phase 3. Use load_fix_for_violation for Phase 4 lookups."
     ),
+    meta=LARGE_OUTPUT,
     input_schema={
         "type": "object",
         "properties": {
@@ -439,8 +464,8 @@ def load_fix_instructions_for_findings(findings_path):
     except (OSError, _json.JSONDecodeError) as e:
         return f"Could not read findings file '{findings_path}': {e}"
 
-    metric_ids = []
-    seen = set()
+    seen: set = set()
+    metric_ids: list = []
     for p in raw.get("principles", []):
         for f in p.get("findings", []):
             m = (f.get("metric") or f.get("metric_id") or "").strip().upper()
@@ -453,19 +478,10 @@ def load_fix_instructions_for_findings(findings_path):
             seen.add(m)
             metric_ids.append(m)
 
-    all_p = _registry.all_principles()
-    parts, missing = [], []
-    for metric_id in metric_ids:
-        p_entry, fix_path = find_fix_file(metric_id, all_p)
-        if not fix_path:
-            missing.append(f"no fix file for {metric_id}")
-            continue
-        content = _read(fix_path).rstrip()
-        parts.append(f"# {p_entry['name'].upper()} — {metric_id} Fix Strategy\n\n## {_rel_label(fix_path)}\n\n{content}\n")
-
+    parts, missing = _load_and_format_fixes(metric_ids, _registry.all_principles())
     result = "\n\n---\n\n".join(parts) if parts else ""
     if missing:
-        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(missing)
+        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(f"no fix file for {m}" for m in missing)
     return result or "No fix strategies found in the findings file."
 
 
@@ -477,6 +493,7 @@ def load_fix_instructions_for_findings(findings_path):
         "Searches all principle folders — works for any principle (SRP, OCP, SUI, TEST, SC, etc.). "
         "Call ONCE with the full list to avoid per-violation round trips."
     ),
+    meta=LARGE_OUTPUT,
     input_schema={
         "type": "object",
         "properties": {
@@ -493,26 +510,16 @@ def load_fix_for_violation(metric_ids, **_):
     if isinstance(metric_ids, str):
         metric_ids = [metric_ids]
     all_p = _registry.all_principles()
-    available_cache = None
-    parts = []
-    for metric_id in metric_ids:
-        norm = metric_id.strip().upper()
-        p_entry, fix_path = find_fix_file(norm, all_p)
-        if not fix_path:
-            if available_cache is None:
-                available_cache = sorted(
-                    f.stem
-                    for p in all_p
-                    for f in (Path(p["folder"]) / "fix").glob("*.md")
-                    if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
-                )
-            parts.append(f"# {norm}\n\nNo fix file found. Available: {', '.join(available_cache)}")
-        else:
-            content = _read(fix_path).rstrip()
-            parts.append(
-                f"# {p_entry['name'].upper()} — {norm} Fix Strategy\n\n"
-                f"## {_rel_label(fix_path)}\n\n{content}\n"
-            )
+    parts, missing = _load_and_format_fixes(metric_ids, all_p)
+    if missing:
+        available = sorted(
+            f.stem
+            for p in all_p
+            for f in (Path(p["folder"]) / "fix").glob("*.md")
+            if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
+        )
+        for norm in missing:
+            parts.append(f"# {norm}\n\nNo fix file found. Available: {', '.join(available)}")
     return "\n\n---\n\n".join(parts) if parts else "No metric IDs provided."
 
 
