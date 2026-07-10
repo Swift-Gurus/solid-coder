@@ -17,7 +17,7 @@ from hc_runner_factory import make_llm_runner  # noqa: E402
 
 class TestMakeLlmRunner(unittest.TestCase):
     def _kwargs_for_local_backend(self, backend="local", host=None, model=None) -> dict:
-        with patch("hc_runner_factory.make_llama_server_runner") as mock_make, \
+        with patch("local_runner_strategy.make_llama_server_runner") as mock_make, \
              patch("hc_runner_factory.llm_backend", return_value=backend), \
              patch("hc_runner_factory.llm_host", return_value=host or "http://localhost:8080"), \
              patch("hc_runner_factory.llm_model", return_value=model or "local"):

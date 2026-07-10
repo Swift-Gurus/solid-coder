@@ -1,5 +1,5 @@
 """
-solid-description: Validates that all runner strategies properly initialize session context before execution.
+solid-description: Verifies that all runner strategies properly initialize the execution environment.
 solid-category: unit-test
 """
 
@@ -115,7 +115,7 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
              patch("hc_runner_factory.llm_host", return_value="http://localhost:8080"), \
              patch("hc_runner_factory.bare_session_timeout", return_value=300), \
              patch("hc_runner_factory.codex_home", return_value=""), \
-             patch("hc_runner_factory.make_llama_server_runner", return_value=MagicMock()), \
+             patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \
              patch("hc_codex_runner.make_codex_runner", return_value=codex_runner_mock), \
              patch("code_health_check.make_health_checker", return_value=checker_mock), \
              patch("code_health_check.build_mcp_config", return_value=""):

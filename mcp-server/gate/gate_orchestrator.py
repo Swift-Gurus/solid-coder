@@ -1,34 +1,19 @@
 """
-solid-description: Sequences the full gate flow — key guard, event parsing, path resolution, extension and exclusion filtering, and coordination — for every PreToolUse write event.
+solid-description: Coordinates authorization decisions by delegating to protocol-typed subsystems.
 solid-category: service
 solid-tags: [hook]
 """
 
 from pathlib import Path
-from typing import Callable, Optional, Protocol
+from typing import Callable, Optional
 
-
-class GuardChecking(Protocol):
-    def is_available(self) -> bool: ...
-
-
-class ExclusionChecking(Protocol):
-    def is_excluded(self, file_path: str) -> bool: ...
-
-
-class GateHandling(Protocol):
-    def allow(self) -> None: ...
-    def block(self, reason: str) -> None: ...
-    def log(self, msg: str) -> None: ...
-    def allow_with_update(self, updated_input: dict) -> None: ...
-
-
-class CoordinatorRunning(Protocol):
-    def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str) -> None: ...
-
-
-class CoordinatorMaking(Protocol):
-    def make_coordinator(self, gate: GateHandling) -> CoordinatorRunning: ...
+from gate_protocols import (
+    CoordinatorMaking,
+    ExclusionChecking,
+    ExtensionLookup,
+    GateHandling,
+    GuardChecking,
+)
 
 
 class GateOrchestrator:
@@ -39,7 +24,7 @@ class GateOrchestrator:
         gate: GateHandling,
         guard: GuardChecking,
         parse_fn: Callable[[str], Optional[tuple]],
-        supported_extensions: dict,
+        extension_lookup: ExtensionLookup,
         exclusion_checker: ExclusionChecking,
         patch_path_fn: Callable[[str], str],
         coordinator_maker: CoordinatorMaking,
@@ -47,7 +32,7 @@ class GateOrchestrator:
         self._gate = gate
         self._guard = guard
         self._parse = parse_fn
-        self._extensions = supported_extensions
+        self._extension_lookup = extension_lookup
         self._exclusion = exclusion_checker
         self._patch_path = patch_path_fn
         self._coordinator_maker = coordinator_maker
@@ -60,15 +45,15 @@ class GateOrchestrator:
         if parsed is None:
             self._gate.allow()
             return
-        tool_name, tool_input, file_path, session_id = parsed
+        tool_name, tool_input, file_path, session_id, cwd = parsed
         if tool_name == "apply_patch":
             file_path = self._patch_path(tool_input.get("command", ""))
         ext = Path(file_path).suffix.lower()
-        if ext not in self._extensions:
+        language = self._extension_lookup.language_for(ext)
+        if language is None:
             self._gate.allow()
             return
         if self._exclusion.is_excluded(file_path):
             self._gate.allow()
             return
-        language = self._extensions[ext]
-        self._coordinator_maker.make_coordinator(self._gate).run(tool_name, tool_input, file_path, language, session_id)
+        self._coordinator_maker.make_coordinator(self._gate).run(tool_name, tool_input, file_path, language, session_id, cwd)

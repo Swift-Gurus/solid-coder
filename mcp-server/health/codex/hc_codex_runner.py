@@ -1,5 +1,5 @@
 """
-solid-description: Runs LLM inference with prompts and returns results.
+solid-description: Manages execution of external commands with file-based input and result handling.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -40,10 +40,12 @@ class CodexRunner:
         cmd_builder: CommandBuilding,
         temp_files: TempFileManaging,
         subprocess_runner: SubprocessRunning,
+        cwd: str = "",
     ) -> None:
         self._cmd_builder = cmd_builder
         self._temp_files = temp_files
         self._runner = subprocess_runner
+        self._cwd = cwd
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
         result_path = self._temp_files.result_path()
@@ -51,7 +53,7 @@ class CodexRunner:
         try:
             cmd = self._cmd_builder.build(result_path)
             with self._temp_files.prompt_stdin(prompt_path) as pf:
-                ok, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=pf)
+                ok, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=pf, cwd=self._cwd or None)
             if not ok:
                 detail = stderr[:300] or stdout[:300]
                 raise SubprocessError(f"`codex exec` exited with error: {detail}")
@@ -64,6 +66,7 @@ def make_codex_runner(
     model: str = "",
     timeout: int = 300,
     codex_home: str = "",
+    cwd: str = "",
 ) -> CodexRunner:
     """Return a CodexRunner with the health-check profile written to the user's CODEX_HOME."""
     profile_name = CodexProfileManager(codex_home=codex_home).ensure_profile()
@@ -71,4 +74,5 @@ def make_codex_runner(
         cmd_builder=CodexCommandBuilder(model=model, profile_name=profile_name),
         temp_files=CodexTempFileManager(),
         subprocess_runner=SubprocessAdapter(),
+        cwd=cwd,
     )

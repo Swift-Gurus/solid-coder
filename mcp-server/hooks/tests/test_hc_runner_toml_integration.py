@@ -1,5 +1,5 @@
 """
-solid-description: Validates the runner factory's backend selection and configuration handling.
+solid-description: Validates TOML configuration for LLM backend selection and initialization.
 solid-category: unit-test
 """
 
@@ -23,7 +23,7 @@ class TestTomlIntegration(unittest.TestCase):
     def _make_runner(self, tmp_path: Path, mcp_config: str = "cfg", allowed_tools: str = "tools"):
         from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
         with patch("hc_config_core.find_config", return_value=tmp_path / CONFIG_DIR / CONFIG_LOCAL_TOML), \
-             patch("hc_runner_factory.make_llama_server_runner") as mock_llama:
+             patch("local_runner_strategy.make_llama_server_runner") as mock_llama:
             mock_llama.return_value = MagicMock(spec=LlamaServerRunner)
             runner = make_llm_runner(mcp_config, allowed_tools)
             return runner, mock_llama

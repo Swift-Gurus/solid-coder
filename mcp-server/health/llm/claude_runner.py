@@ -1,5 +1,5 @@
 """
-solid-description: Adapts a Claude callable to the ClaudeRunning protocol, managing MCP configuration and tool restrictions.
+solid-description: Executes prompts using preset execution configuration.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -33,11 +33,13 @@ class ClaudeRunner(CallableAdapting):
         allowed_tools: str,
         fn: ClaudeCallable,
         model: str = "",
+        cwd: str = "",
     ) -> None:
         super().__init__(fn)
         self._mcp_config = mcp_config
         self._allowed_tools = allowed_tools
         self._model = model
+        self._cwd = cwd
 
     @Observing("runner.claude_runner.run")
     def run(self, prompt: str, timeout: int) -> Optional[str]:
@@ -47,4 +49,5 @@ class ClaudeRunner(CallableAdapting):
             allowed_tools=self._allowed_tools,
             model=self._model,
             timeout=timeout,
+            cwd=self._cwd,
         )

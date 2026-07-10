@@ -1,5 +1,5 @@
 """
-solid-description: Writes health-check context and registration for the MCP scoring system.
+solid-description: Prepares health check configuration and maintains tracking of the active health check.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -8,12 +8,9 @@ import sys
 from pathlib import Path
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-_MCP_DIR = _HEALTH_DIR.parent
 for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
-if str(_MCP_DIR) not in sys.path:
-    sys.path.insert(0, str(_MCP_DIR))
 
 from typing import Callable, Optional
 
@@ -21,10 +18,16 @@ from hook_utils import solid_coder_project_dir
 from health_check_context_writing import HealthCheckContextWriting
 from code_unit_extractor import CodeUnitExtractor, CodeUnitExtracting
 from findings.json_file_writer import JsonFileWriter, JsonFileWriting
+from json_serializer import JsonSerializer
+from llama.directory_creator import PathDirectoryCreator, DirectoryCreating
+from health_check_input_writing import HealthCheckInputWriting
+from health_check_input_writer import HealthCheckInputWriter
+from active_health_check_pointer_storing import ActiveHealthCheckPointerStoring
+from active_health_check_pointer_store import ActiveHealthCheckPointerStore
 
 
 class HealthCheckContextWriter(HealthCheckContextWriting):
-    """Writes hook-input.json and the active-health-check pointer before the LLM runs.
+    """Facade: coordinates hook-input.json writing and active-health-check pointer lifecycle.
 
     hook-input.json  — authoritative file_path, language, output_dir, and expected_units
                        for the MCP scorer. expected_units are extracted from the file
@@ -37,25 +40,20 @@ class HealthCheckContextWriter(HealthCheckContextWriting):
     def __init__(
         self,
         project_dir_fn: Optional[Callable] = None,
-        extractor: Optional[CodeUnitExtracting] = None,
-        writer: Optional[JsonFileWriting] = None,
+        input_writer: Optional[HealthCheckInputWriting] = None,
+        pointer_store: Optional[ActiveHealthCheckPointerStoring] = None,
     ) -> None:
         self._project_dir_fn: Callable = project_dir_fn or solid_coder_project_dir
-        self._extractor: CodeUnitExtracting = extractor or CodeUnitExtractor()
-        self._writer: JsonFileWriting = writer or JsonFileWriter()
+        self._input_writer: HealthCheckInputWriting = input_writer or HealthCheckInputWriter(
+            extractor=CodeUnitExtractor(),
+            writer=JsonFileWriter(JsonSerializer()),
+            dir_creator=PathDirectoryCreator(),
+        )
+        self._pointer_store: ActiveHealthCheckPointerStoring = pointer_store or ActiveHealthCheckPointerStore()
 
     def write(self, output_dir: str, file_path: str, language: str, content: str = "") -> None:
-        health_dir = Path(output_dir)
-        health_dir.mkdir(parents=True, exist_ok=True)
-        hook_input = {
-            "file_path": file_path,
-            "language": language,
-            "output_dir": output_dir,
-            "expected_units": self._extractor.extract(content, language) if content else [],
-        }
-        self._writer.write(str(health_dir / "hook-input.json"), hook_input)
-        project_dir = self._project_dir_fn()
-        project_dir.mkdir(parents=True, exist_ok=True)
-        (project_dir / "active-health-check").write_text(
-            health_dir.name, encoding="utf-8"
-        )
+        self._input_writer.write(output_dir, file_path, language, content)
+        self._pointer_store.write(self._project_dir_fn(), Path(output_dir).name)
+
+    def clear(self) -> None:
+        self._pointer_store.clear(self._project_dir_fn())

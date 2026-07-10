@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Provides infrastructure for hook scripts to handle protocol interactions, logging, command execution, and structured data parsing.
+solid-description: Manages project context and orchestrates external tool execution.
 solid-category: utility
 """
 
@@ -8,11 +8,18 @@ import json
 import re
 import subprocess
 import sys
-import time
 from pathlib import Path
-from typing import IO, Callable, Optional, Protocol
+from typing import Callable, Optional
 
-from pydantic import TypeAdapter, ValidationError
+from type_checking import TypeChecking  # noqa: F401 — re-exported for consumers
+from logging_protocol import Logging  # noqa: F401 — re-exported for consumers
+from output_writing import OutputWriting  # noqa: F401 — re-exported for consumers
+from hook_responding import HookResponding  # noqa: F401 — re-exported for consumers
+from gate_handling import GateHandling  # noqa: F401 — re-exported for consumers
+from subprocess_error import SubprocessError  # noqa: F401 — re-exported for consumers
+from subprocess_running import SubprocessRunning  # noqa: F401 — re-exported for consumers
+from subprocess_json_running import SubprocessJsonRunning  # noqa: F401 — re-exported for consumers
+from event_parsing import ClaudeBareEventParsing as EventParsing  # noqa: F401 — re-exported for consumers
 
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -68,17 +75,7 @@ def load_toml(path: Path) -> dict:
 
 def strip_markdown_fences(text: str) -> str:
     """Remove markdown code-fence markers and return stripped text."""
-    return re.sub(r"```[a-zA-Z]*\n?", "", text).strip()
-
-
-class TypeChecking(Protocol):
-    """Protocol for a value type validator used by parse_json_field.
-
-    validate() returns the accepted value, or None if the value does not
-    conform to the expected structural shape.
-    """
-
-    def validate(self, value: object) -> Optional[object]: ...
+    return re.sub(r"`" * 3 + r"[a-zA-Z]*\n?", "", text).strip()
 
 
 def parse_json_field(raw: str, key: str, validator: TypeChecking) -> Optional[object]:
@@ -101,50 +98,19 @@ def parse_json_field(raw: str, key: str, validator: TypeChecking) -> Optional[ob
         return None
 
 
-class StrValidator:
-    """TypeChecking: accepts values that support string concatenation (duck-typed str)."""
-
-    def validate(self, value: object) -> Optional[object]:
-        try:
-            _ = value + ""  # type: ignore[operator]
-            return value
-        except TypeError:
-            return None
-
-
-class ListValidator:
-    """TypeChecking: accepts values that support mutable sequence append (duck-typed list)."""
-
-    def validate(self, value: object) -> Optional[object]:
-        try:
-            _ = value.append  # type: ignore[union-attr]
-            return value
-        except AttributeError:
-            return None
-
-
-class ViolationDictValidator:
-    """TypeChecking: accepts objects that have string principle, issue, and fix fields.
-
-    Uses duck typing — no isinstance checks. Validates structural shape of LLM
-    violation dicts from external JSON output.
-    """
-
-    def validate(self, value: object) -> Optional[object]:
-        try:
-            _ = value["principle"] + ""  # type: ignore[index,operator]
-            _ = value["issue"] + ""      # type: ignore[index,operator]
-            _ = value["fix"] + ""        # type: ignore[index,operator]
-            return value
-        except (KeyError, TypeError):
-            return None
+from str_validator import StrValidator  # noqa: E402, F401 — re-exported for consumers
+from list_validator import ListValidator  # noqa: E402, F401 — re-exported for consumers
+from violation_dict_validator import ViolationDictValidator  # noqa: E402, F401 — re-exported for consumers
 
 
 def parse_hook_event(raw: str) -> Optional[tuple]:
     """Parse a hook PreToolUse event from raw JSON.
 
-    Returns (tool_name, tool_input, file_path, session_id) on success,
-    or None when the input is not valid JSON.
+    Returns (tool_name, tool_input, file_path, session_id, cwd) on success,
+    or None when the input is not valid JSON. `cwd` is the session's true
+    working directory as reported by Claude Code — subprocesses spawned from
+    this event should be pinned to it rather than inheriting the hook
+    process's own ambient cwd.
     """
     try:
         event = json.loads(raw)
@@ -156,6 +122,7 @@ def parse_hook_event(raw: str) -> Optional[tuple]:
         tool_input,
         tool_input.get("file_path", ""),
         event.get("session_id", ""),
+        event.get("cwd", ""),
     )
 
 
@@ -182,206 +149,12 @@ def path_matches_pattern(file_path: str, pattern: str) -> bool:
     )
 
 
-class Logging(Protocol):
-    def log(self, msg: str) -> None: ...
-
-
-class OutputWriting(Protocol):
-    """Protocol for writing a serialised hook payload to an output stream."""
-
-    def write_payload(self, payload: dict) -> None: ...
-
-
-class StdoutWriter:
-    """Adapter: serialises payload to JSON and writes to an injectable stream.
-
-    The stream_factory is resolved lazily at write time so that redirect_stdout
-    in tests is respected without eager capture.
-    """
-
-    def __init__(self, stream_factory: Callable[[], IO] = lambda: sys.stdout) -> None:
-        self._stream_factory = stream_factory
-
-    def write_payload(self, payload: dict) -> None:
-        stream = self._stream_factory()
-        stream.write(json.dumps(payload))
-        stream.flush()
-
-
-class HookResponding(Protocol):
-    def allow(self) -> None: ...
-    def block(self, reason: str, additional_context: str = "") -> None: ...
-    def allow_with_update(self, updated_input: dict) -> None: ...
-
-
-class GateHandling(Logging, HookResponding, Protocol):
-    """Narrow gate protocol for components that need to log, allow, or block."""
-
-
-class GateLogger:
-    """Appends timestamped log entries to a file. Never raises on I/O errors."""
-
-    def __init__(self, log_path: Optional[Path] = None) -> None:
-        self._log_path = log_path or (solid_coder_project_dir() / "gate.log")
-
-    def log(self, msg: str) -> None:
-        try:
-            self._log_path.parent.mkdir(parents=True, exist_ok=True)
-            with self._log_path.open("a") as f:
-                f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {msg}\n")
-        except Exception:
-            pass
-
-
-class HookResponder:
-    """Sends Claude PreToolUse hook protocol responses and exits."""
-
-    def __init__(self, output: OutputWriting = StdoutWriter(), exit_fn=sys.exit) -> None:
-        self._output = output
-        self._exit = exit_fn
-
-    def _send(self, payload: dict) -> None:
-        self._output.write_payload(payload)
-        self._exit(0)
-
-    def allow(self) -> None:
-        self._exit(0)
-
-    def block(self, reason: str, additional_context: str = "") -> None:
-        hook_output: dict = {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-        if additional_context:
-            hook_output["additionalContext"] = additional_context
-        self._send({"hookSpecificOutput": hook_output})
-
-    def allow_with_update(self, updated_input: dict) -> None:
-        self._send({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "updatedInput": updated_input,
-            }
-        })
-
-
-class HookGate:
-    """Pure Facade composing Logging and HookResponding for hook scripts.
-
-    All dependencies are protocol-typed and injected via __init__. Use
-    HookGateFactory to wire production defaults.
-    """
-
-    def __init__(self, logger: Logging, responder: HookResponding) -> None:
-        self._logger = logger
-        self._responder = responder
-
-    def log(self, msg: str) -> None:
-        return self._logger.log(msg)
-
-    def allow(self) -> None:
-        return self._responder.allow()
-
-    def block(self, reason: str, additional_context: str = "") -> None:
-        return self._responder.block(reason, additional_context)
-
-    def allow_with_update(self, updated_input: dict) -> None:
-        return self._responder.allow_with_update(updated_input)
-
-
-class HookGateFactory:
-    """Factory: constructs HookGate with production defaults.
-
-    Constructing, holding, and wiring concrete dependencies is inherently
-    this class's job (OCP factory exception).
-    """
-
-    def __init__(
-        self,
-        log_path: Optional[Path] = None,
-        output: Optional[OutputWriting] = None,
-    ) -> None:
-        self._log_path = log_path
-        self._output = output
-
-    def build(self) -> HookGate:
-        return HookGate(
-            logger=GateLogger(self._log_path),
-            responder=HookResponder(
-                output=self._output if self._output is not None else StdoutWriter(),
-            ),
-        )
-
-
-class SubprocessError(Exception):
-    """Raised when a gate subprocess fails. Carries the reason for display."""
-
-
-class SubprocessRunning(Protocol):
-    """Protocol for executing a shell command and returning captured output."""
-
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> tuple: ...
-
-
-class SubprocessJsonRunning(Protocol):
-    """Protocol for executing a shell command and returning parsed JSON output."""
-
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object: ...
-
-
-class SubprocessAdapter:
-    """Boundary adapter: wraps subprocess.run for injection.
-
-    subprocess.run is a global stdlib function (not developer-owned, cannot be
-    subclassed) — this adapter satisfies the OCP Boundary Adapter exception.
-    """
-
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> tuple:
-        kwargs: dict = {}
-        if timeout is not None:
-            kwargs["timeout"] = timeout
-        if stdin is not None:
-            kwargs["stdin"] = stdin
-        if cwd is not None:
-            kwargs["cwd"] = cwd
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, **kwargs)
-            return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
-        except subprocess.TimeoutExpired:
-            raise SubprocessError(f"`{cmd[0]}` timed out after {timeout}s")
-
-
-class SubprocessJsonRunner:
-    """Runs a subprocess command and parses stdout as JSON.
-
-    Reuses SubprocessRunning for execution; adds JSON parsing and error raising.
-    """
-
-    def __init__(self, runner: SubprocessRunning) -> None:
-        self._runner = runner
-
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object:
-        runner_kwargs: dict = {"timeout": timeout, "stdin": stdin}
-        if cwd is not None:
-            runner_kwargs["cwd"] = cwd
-        try:
-            success, stdout, stderr = self._runner.run(cmd, **runner_kwargs)
-        except SubprocessError:
-            raise
-        except Exception as exc:
-            raise SubprocessError(f"`{cmd[0]}` failed: {exc}")
-        if not success:
-            label = " ".join(cmd[:2])
-            raise SubprocessError(
-                f"`{label}` exited with error" + (f":\n{stderr}" if stderr else "")
-            )
-        try:
-            return json.loads(stdout)
-        except json.JSONDecodeError as exc:
-            raise SubprocessError(f"`{cmd[0]}` produced invalid JSON: {exc}")
-
+from stdout_writer import StdoutWriter  # noqa: E402, F401 — re-exported for consumers
+from gate_logger import GateLogger  # noqa: E402, F401 — re-exported for consumers
+from hook_responder import HookResponder  # noqa: E402, F401 — re-exported for consumers
+from hook_gate import HookGate  # noqa: E402, F401 — re-exported for consumers
+from hook_gate_factory import HookGateFactory  # noqa: E402, F401 — re-exported for consumers
+from subprocess_adapter import SubprocessAdapter, SubprocessJsonRunner  # noqa: E402, F401 — re-exported for consumers
 
 _default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(SubprocessAdapter())
 
@@ -400,28 +173,7 @@ def run_gateway_cmd(
     return runner.run(cmd, timeout=timeout)  # type: ignore[return-value]
 
 
-class EventParsing(Protocol):
-    """Protocol for parsing the JSON event stream from claude -p --bare output."""
-
-    def parse_events(self, raw: object) -> list: ...
-    def parse_event_dict(self, event: object) -> Optional[dict]: ...
-
-
-class PydanticEventParser:
-    """Boundary adapter: uses pydantic TypeAdapter to coerce raw output into typed events."""
-
-    def parse_events(self, raw: object) -> list:
-        try:
-            return TypeAdapter(list).validate_python(raw)
-        except ValidationError:
-            return [raw]
-
-    def parse_event_dict(self, event: object) -> Optional[dict]:
-        try:
-            return TypeAdapter(dict).validate_python(event)
-        except ValidationError:
-            return None
-
+from event_parser import PydanticEventParser  # noqa: E402, F401 — re-exported for consumers
 
 _default_event_parser: EventParsing = PydanticEventParser()
 

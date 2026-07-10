@@ -1,5 +1,5 @@
 """
-solid-description: Boundary adapter wrapping code_health_check._check to the HealthChecking protocol.
+solid-description: Enables code health checking on provided content.
 solid-category: service
 solid-tags: [hook]
 """
@@ -21,5 +21,5 @@ class CodeHealthCheckAdapter:
     def __init__(self, check_fn: Callable) -> None:
         self._check = check_fn
 
-    def check(self, content: str, path: str, language: str, parent_session_id: str) -> Optional[list]:
-        return self._check(content, path, language, parent_session_id)
+    def check(self, content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> Optional[list]:
+        return self._check(content, path, language, parent_session_id, cwd)

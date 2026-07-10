@@ -1,5 +1,5 @@
 """
-solid-description: Canonical protocol definitions shared across the pre_write_gate pipeline.
+solid-description: Canonical protocol definitions for gate operations.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -7,14 +7,13 @@ solid-tags: [hook, utility]
 from typing import Optional, Protocol
 
 from hook_utils import GateHandling  # noqa: F401 — re-exported for consumers
-
-
-class HealthChecking(Protocol):
-    def check(self, content: str, path: str, language: str, parent_session_id: str) -> Optional[list]: ...
-
-
-class ViolationFormatting(Protocol):
-    def format_block_reason(self, violations: list) -> str: ...
+from guard_checking import GuardChecking  # noqa: F401 — re-exported for consumers
+from exclusion_checking import ExclusionChecking  # noqa: F401 — re-exported for consumers
+from extension_lookup import ExtensionLookup  # noqa: F401 — re-exported for consumers
+from coordinator_running import CoordinatorRunning  # noqa: F401 — re-exported for consumers
+from coordinator_making import CoordinatorMaking  # noqa: F401 — re-exported for consumers
+from health.hc_checker import HealthChecking  # noqa: F401 — re-exported for consumers; canonical definition
+from health.hc_violation_parser import BlockReasonFormatting as ViolationFormatting  # noqa: F401 — re-exported; canonical definition
 
 
 class ContentSimulating(Protocol):
@@ -26,7 +25,7 @@ class FrontmatterFixing(Protocol):
 
 
 class HealthGateChecking(Protocol):
-    def check(self, content: str, path: str, language: str, session_id: str, gate: GateHandling, file_name: str) -> bool: ...
+    def check(self, content: str, path: str, language: str, session_id: str, gate: GateHandling, file_name: str, cwd: str = "") -> bool: ...
 
 
 class FrontmatterGateApplying(Protocol):

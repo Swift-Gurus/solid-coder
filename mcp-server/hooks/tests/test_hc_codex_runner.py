@@ -1,5 +1,5 @@
 """
-solid-description: Verifies profile configuration, command generation, subprocess execution, and error handling for the LLM runner.
+solid-description: Validates CodexRunner executes LLM prompts correctly and handles errors.
 solid-category: unit-test
 """
 
@@ -132,6 +132,34 @@ class TestCodexRunnerRun(_CodexRunnerTestBase):
         runner = self._runner(subprocess_runner=mock)
         with self.assertRaises(SubprocessError):
             runner.run("prompt", timeout=30)
+
+
+class TestCodexRunnerCwd(_CodexRunnerTestBase):
+    """CodexRunner forwards its configured cwd to the subprocess runner."""
+
+    def _runner_with_cwd(self, cwd: str):
+        mock = _make_subprocess_mock("ok")
+        cmd_builder = _make_cmd_builder()
+        runner = CodexRunner(
+            cmd_builder=cmd_builder,
+            temp_files=CodexTempFileManager(),
+            subprocess_runner=mock,
+            cwd=cwd,
+        )
+        return runner, mock
+
+    def test_cwd_forwarded_when_set(self):
+        runner, mock = self._runner_with_cwd("/Users/alex/Developer/build-mobile")
+        runner.run("prompt", timeout=30)
+        _, kwargs = mock.run.call_args
+        self.assertEqual(kwargs.get("cwd"), "/Users/alex/Developer/build-mobile")
+
+    def test_cwd_passed_as_none_when_empty(self):
+        """Empty cwd must become None — SubprocessAdapter.run(cwd="") raises FileNotFoundError."""
+        runner, mock = self._runner_with_cwd("")
+        runner.run("prompt", timeout=30)
+        _, kwargs = mock.run.call_args
+        self.assertIsNone(kwargs.get("cwd"))
 
 
 class TestMakeCodexRunner(_CodexRunnerTestBase):

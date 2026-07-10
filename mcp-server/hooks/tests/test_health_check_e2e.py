@@ -1,5 +1,5 @@
 """
-solid-description: Verifies health-check pipeline violation detection, context management, and invocation isolation.
+solid-description: Verifies violation detection, context management, and invocation isolation in health checks.
 solid-category: unit-test
 """
 
@@ -187,14 +187,7 @@ class TestViolationFlow(_E2EBase):
 # ---------------------------------------------------------------------------
 
 class TestContextWriter(_E2EBase):
-    """HealthCheckContextWriter writes the pointer and hook-input.json correctly."""
-
-    def test_active_health_check_points_to_health_dir(self):
-        h = self._health_dir("health-run-0")
-        self._run_checks([{"srp": [_SRP_CLEAN]}], health_dirs=[h])
-        pointer = self.solid_dir / "active-health-check"
-        self.assertTrue(pointer.exists(), "active-health-check not written")
-        self.assertEqual(pointer.read_text(encoding="utf-8").strip(), h.name)
+    """HealthCheckContextWriter writes hook-input.json and clears the pointer after check."""
 
     def test_hook_input_json_contains_file_path_language_and_output_dir(self):
         h = self._health_dir("health-run-0")
@@ -205,7 +198,13 @@ class TestContextWriter(_E2EBase):
         self.assertEqual(hook_input["language"], "Swift")
         self.assertEqual(hook_input["output_dir"], str(h))
 
-    def test_pointer_updated_to_latest_dir_after_two_runs(self):
+    def test_pointer_cleared_after_check_completes(self):
+        h = self._health_dir("health-run-0")
+        self._run_checks([{"srp": [_SRP_CLEAN]}], health_dirs=[h])
+        pointer = self.solid_dir / "active-health-check"
+        self.assertFalse(pointer.exists(), "active-health-check must be deleted after check() returns")
+
+    def test_pointer_cleared_after_each_of_two_runs(self):
         h1 = self._health_dir("health-run-0")
         h2 = self._health_dir("health-run-1")
         self._run_checks(
@@ -213,7 +212,7 @@ class TestContextWriter(_E2EBase):
             health_dirs=[h1, h2],
         )
         pointer = self.solid_dir / "active-health-check"
-        self.assertEqual(pointer.read_text(encoding="utf-8").strip(), h2.name)
+        self.assertFalse(pointer.exists(), "active-health-check must be absent after last check() returns")
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Provides a health checking service for code quality evaluation.
+solid-description: Provides a configured health checker service instance.
 """
 
 from __future__ import annotations
@@ -17,7 +17,8 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_utils import GateLogger, GATEWAY  # noqa: E402
+from hook_utils import GateLogger, GATEWAY, solid_coder_project_dir  # noqa: E402
+from utils.debug_logger import DebugLogger  # noqa: E402
 from hc_checker import (  # noqa: E402
     HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader,
     LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
@@ -61,8 +62,10 @@ def make_health_checker(
     session_id: str = "",
     file_path: str = "",
     log_path: Optional[Path] = None,
+    cwd: str = "",
 ) -> HealthChecking:
-    logger = GateLogger(log_path)
+    path = log_path or (solid_coder_project_dir() / "gate.log")
+    logger = GateLogger(DebugLogger(project_dir_fn=lambda: path.parent, filename=path.name))
     invoker = GatewayInvoker(GATEWAY, GatewayCommandRunner())
     return LLMHealthChecker(
         loader=PrinciplesLoader(
@@ -77,6 +80,7 @@ def make_health_checker(
                     allowed_tools=_ALLOWED_TOOLS,
                     session_id=session_id,
                     file_path=file_path,
+                    cwd=cwd,
                 ),
                 logger=logger,
                 timeout=bare_session_timeout(),

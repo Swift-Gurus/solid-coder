@@ -1,5 +1,5 @@
 """
-solid-description: Contract for output writing operations.
+solid-description: Contract for persisting and clearing health check output.
 solid-category: utility
 solid-tags: [hook, utility]
 """
@@ -17,3 +17,4 @@ from typing import Protocol
 
 class HealthCheckContextWriting(Protocol):
     def write(self, output_dir: str, file_path: str, language: str, content: str = "") -> None: ...
+    def clear(self) -> None: ...

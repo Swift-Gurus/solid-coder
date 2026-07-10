@@ -7,6 +7,7 @@ Architecture:
   main()                  — Entry point; calls the factory and runs.
 """
 
+import dataclasses
 import importlib
 import json
 import os
@@ -32,6 +33,7 @@ from pipeline.handlers import ReviewResultsCollector, make_review_results_collec
 from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 from common.mcp_meta import LARGE_OUTPUT
+from harness.flow_run_orchestrating import FlowRunOrchestrating
 
 
 # ── Service protocols ─────────────────────────────────────────────────────────
@@ -71,6 +73,23 @@ class MCPServerRunning(Protocol):
 
 # ── Path provider ─────────────────────────────────────────────────────────────
 
+class OutputPathFactory:
+    """Computes the standardized home-dir output path for a solid-coder operation."""
+
+    def compute(self, operation: str, spec_number: str = "") -> dict:
+        import uuid as _uuid
+        project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+        slug = str(Path(project_dir).resolve()).replace("/", "-")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        if operation == "health":
+            dir_name = f"health-{_uuid.uuid4()}"
+        elif operation == "implement" and spec_number:
+            dir_name = f"implement-{spec_number}-{ts}"
+        else:
+            dir_name = f"{operation}-{ts}"
+        return {"output_root": str(Path.home() / ".solid-coder" / slug / dir_name)}
+
+
 def get_output_path(operation: str, spec_number: str = "") -> dict:
     """Compute the standardized home-dir output path for a solid-coder operation.
 
@@ -82,17 +101,7 @@ def get_output_path(operation: str, spec_number: str = "") -> dict:
         operation:   "review" | "refactor" | "implement" | "validate-spec" | "health"
         spec_number: For implement only — e.g. "SPEC-042". Omit for other ops.
     """
-    import uuid as _uuid
-    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
-    slug = str(Path(project_dir).resolve()).replace("/", "-")
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    if operation == "health":
-        dir_name = f"health-{_uuid.uuid4()}"
-    elif operation == "implement" and spec_number:
-        dir_name = f"implement-{spec_number}-{ts}"
-    else:
-        dir_name = f"{operation}-{ts}"
-    return {"output_root": str(Path.home() / ".solid-coder" / slug / dir_name)}
+    return OutputPathFactory().compute(operation, spec_number)
 
 
 # ── Shared tool callables ─────────────────────────────────────────────────────
@@ -173,6 +182,25 @@ def _build_tool_callables(
     }
 
 
+def _build_flow_callables(flow_run: FlowRunOrchestrating) -> dict:
+    """Build flow tool callables that delegate to FlowRunOrchestrating."""
+
+    def _flow_start(flow: str, params: Optional[dict] = None) -> dict:
+        return dataclasses.asdict(flow_run.flow_start(flow, params))
+
+    def _flow_next(outputs: Optional[dict] = None) -> dict:
+        return dataclasses.asdict(flow_run.flow_next(outputs))
+
+    def _flow_status() -> dict:
+        return dataclasses.asdict(flow_run.flow_status())
+
+    return {
+        "flow_start": _flow_start,
+        "flow_next": _flow_next,
+        "flow_status": _flow_status,
+    }
+
+
 # ── Application facade ────────────────────────────────────────────────────────
 
 class ApplicationBootstrapper:
@@ -195,6 +223,7 @@ class ApplicationBootstrapper:
         load_context: ContextLoading,
         validate_output: OutputValidating,
         search: CodebaseSearching,
+        flow_run: Optional[FlowRunOrchestrating] = None,
     ) -> None:
         self._server = server
         self._registry = registry
@@ -206,6 +235,7 @@ class ApplicationBootstrapper:
         self._ctx = load_context
         self._validate = validate_output
         self._search = search
+        self._flow_run = flow_run
 
     def run(self) -> None:
         self._register_all_tools()
@@ -362,6 +392,49 @@ class ApplicationBootstrapper:
                      }, "required": ["operation"]},
                      tools["get_output_path"])
 
+        if self._flow_run is not None:
+            self._register_flow_tools(self._flow_run)
+
+    def _register_flow_tools(self, flow_run: FlowRunOrchestrating) -> None:
+        flow_tools = _build_flow_callables(flow_run)
+        reg = self._registry
+
+        reg.register(
+            "flow_start",
+            "Start a new flow run. Resolves flow YAML, creates run directory, writes active.json, returns first ready steps.",
+            {
+                "type": "object",
+                "properties": {
+                    "flow": {"type": "string"},
+                    "params": {"type": "object"},
+                },
+                "required": ["flow"],
+            },
+            flow_tools["flow_start"],
+        )
+
+        reg.register(
+            "flow_next",
+            "Submit step outputs and get next ready steps. Validates outputs, appends events, returns next steps or terminal status.",
+            {
+                "type": "object",
+                "properties": {
+                    "outputs": {"type": "object"},
+                },
+            },
+            flow_tools["flow_next"],
+        )
+
+        reg.register(
+            "flow_status",
+            "Read current flow run state without side effects. Returns status, step lists, and turn counts.",
+            {
+                "type": "object",
+                "properties": {},
+            },
+            flow_tools["flow_status"],
+        )
+
 
 # ── Composition root and entry point ─────────────────────────────────────────
 
@@ -377,8 +450,43 @@ def make_bootstrapper(
     validate_output: Optional[OutputValidating] = None,
     search: Optional[CodebaseSearching] = None,
     refs_root: Path = PLUGIN_ROOT / "references",
+    flow_run: Optional[FlowRunOrchestrating] = None,
 ) -> ApplicationBootstrapper:
     """Composition root: all dependencies injectable; production defaults applied when omitted."""
+    if flow_run is None:
+        from harness.flow_engine_assembly import build_default_assembly
+        from harness.active_run_pointer_store import ActiveRunPointerStore
+        from harness.run_directory_scaffolder import RunDirectoryScaffolder
+        from harness.run_metadata_store import RunMetadataStore
+        from harness.execution_intent_resolver import ExecutionIntentResolver
+        from harness.claude_agent_type_env_detector import ClaudeAgentTypeEnvDetector
+        from harness.flow_search_path_resolver import FlowSearchPathResolver
+        from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
+        from harness.step_output_validator import StepOutputValidator
+        from harness.step_result_builder import StepResultBuilder
+        from harness.run_context_builder import RunContextBuilder
+        from harness.runs_base_dir_resolver import RunsBaseDirResolver
+        from harness.flow_run_orchestrator import FlowRunOrchestrator
+
+        assembly = build_default_assembly()
+        intent_resolver = ExecutionIntentResolver()
+        flow_run = FlowRunOrchestrator(
+            flow_loader=assembly.flow_loader,
+            active_run=ActiveRunPointerStore(),
+            scaffolder=RunDirectoryScaffolder(),
+            event_log=assembly.event_replayer,
+            event_appender=assembly.event_appender,
+            dag_runner=assembly.dag_runner,
+            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
+            step_result_builder=StepResultBuilder(intent_resolver=intent_resolver),
+            session_reader=McpRequestContextSessionReader(),
+            search_paths=FlowSearchPathResolver(),
+            metadata_store=RunMetadataStore(),
+            env_detector=ClaudeAgentTypeEnvDetector(),
+            context_builder=RunContextBuilder(),
+            base_dir_resolver=RunsBaseDirResolver(),
+        )
+
     mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(
         server=mcp,
@@ -391,6 +499,7 @@ def make_bootstrapper(
         load_context=load_context or importlib.import_module("load-context"),
         validate_output=validate_output or importlib.import_module("validate-output"),
         search=search or importlib.import_module("search.codebase_searcher"),
+        flow_run=flow_run,
     )
 
 

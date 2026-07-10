@@ -1,5 +1,5 @@
 """
-solid-description: Composition root that wires all WriteGateCoordinator dependencies with production defaults.
+solid-description: Provides factory methods to create production-configured gate components.
 solid-category: service
 solid-tags: [hook]
 """
@@ -64,13 +64,14 @@ class DefaultCoordinatorFactory:
 
     def make_orchestrator(self, gate) -> "GateOrchestrator":
         from gate_orchestrator import GateOrchestrator
+        from dict_extension_lookup import DictExtensionLookup
         import code_health_check as health
         patch_sim = self.make_patch_simulator()
         return GateOrchestrator(
             gate=gate,
             guard=self.make_guard(),
             parse_fn=__import__('hook_utils').parse_hook_event,
-            supported_extensions=health.SUPPORTED_EXTENSIONS,
+            extension_lookup=DictExtensionLookup(health.SUPPORTED_EXTENSIONS),
             exclusion_checker=self.make_exclusion_checker(),
             patch_path_fn=patch_sim.first_file_path,
             coordinator_maker=self,

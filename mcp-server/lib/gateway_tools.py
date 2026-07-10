@@ -1,5 +1,4 @@
-"""
-solid-description: Provides gateway handlers for submitting code findings with validation and scoring.
+"""solid-description: Provides a factory function for creating fully-configured gateway handlers.
 solid-category: service
 solid-tags: [utility, service]
 """
@@ -15,6 +14,7 @@ from findings.partial_output_validator import PartialOutputValidating, PartialOu
 from findings.findings_submitter import FindingsSubmitting, FindingsSubmitter  # noqa: F401
 from findings.severity_summariser import SeveritySummarising, SeveritySummariser  # noqa: F401
 from findings.json_file_writer import JsonFileWriting, JsonFileWriter  # noqa: F401
+from json_serializer import JsonSerializer  # noqa: F401
 from findings.violation_reader import ViolationReading, ViolationReader  # noqa: F401
 from findings.batch_submission_handler import BatchSubmissionHandler, ViolationResponseFormatter  # noqa: F401
 from findings.hook_context_loader import FileSystemHookContextLoader  # noqa: F401
@@ -61,7 +61,7 @@ class GatewayHandlerFactory:
         submit_orchestrator = SubmitOrchestrator(
             scoring=scoring,
             validator=PartialOutputValidator(refs_root),
-            submitter=FindingsSubmitter(JsonFileWriter()),
+            submitter=FindingsSubmitter(JsonFileWriter(JsonSerializer())),
             summariser=SeveritySummariser(),
         )
         context_loader = FileSystemHookContextLoader()

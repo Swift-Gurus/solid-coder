@@ -1,5 +1,5 @@
 """
-solid-description: Checks source code against principles to identify violations.
+solid-description: Checks source code against loaded principles to identify violations.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -38,6 +38,7 @@ class HealthChecking(Protocol):
         path: str,
         language: str,
         parent_session_id: str,
+        cwd: str = "",
     ) -> Optional[list]: ...
 
 
@@ -75,4 +76,8 @@ class LLMHealthChecker:
         if self._context_writer is not None:
             self._context_writer.write(output_dir, path, language, content)
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
-        return self._reviewer.review(prompt, path, output_dir=output_dir)
+        try:
+            return self._reviewer.review(prompt, path, output_dir=output_dir)
+        finally:
+            if self._context_writer is not None:
+                self._context_writer.clear()

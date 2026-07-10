@@ -1,5 +1,5 @@
 """
-solid-description: Safely invokes the health checker and translates errors and violations into gate block decisions.
+solid-description: Safely validates content and indicates whether validation succeeded.
 solid-category: service
 solid-tags: [hook]
 """
@@ -23,9 +23,9 @@ class SafeHealthChecker:
         self._checker = checker
         self._formatter = formatter
 
-    def check(self, content: str, path: str, language: str, session_id: str, gate: GateHandling, file_name: str) -> bool:
+    def check(self, content: str, path: str, language: str, session_id: str, gate: GateHandling, file_name: str, cwd: str = "") -> bool:
         try:
-            violations = self._checker.check(content, path, language, session_id)
+            violations = self._checker.check(content, path, language, session_id, cwd)
         except Exception as exc:
             gate.log(f"BLOCK {file_name}: health subprocess error: {exc}")
             gate.block(

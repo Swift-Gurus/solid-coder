@@ -1,4 +1,4 @@
-what{
+{
   "permissions": {
     "allow": [
       "Bash(head -15 /Users/crowea/Developer/Swift-Gurus/solid-coder/skills/*/SKILL.md)",
@@ -132,7 +132,15 @@ what{
       "Bash(sed -i '' 's|\"mcp-server\" / \"lib\" / \"parse_frontmatter.py\"|\"mcp-server\" / \"spec\" / \"parse_frontmatter.py\"|' /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/tests/test_parse_frontmatter.py)",
       "Bash(curl -s http://localhost:8080/health)",
       "Bash(bash /Users/crowea/Developer/Swift-Gurus/solid-coder/scripts/run-local-llm.sh)",
-      "Bash(echo \"PID: $!\")"
+      "Bash(echo \"PID: $!\")",
+      "Read(//Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.7.1/**)",
+      "Read(//Users/crowea/.claude/plugins/cache/local-marketplace/solid-coder/1.7.1/.claude-plugin/**)",
+      "Bash(git *)",
+      "Bash(claude -p \"respond with only: ok\" --output-format json --bare)",
+      "Bash(claude -p \"respond with only: ok\" --output-format json --bare --no-session-persistence)",
+      "Bash(time claude -p 'respond with only: ok' --output-format json --bare --session-id 786a6779-2aa7-4345-8984-b1ce21071e89)",
+      "Bash(claude -p \"what is 2+2\" --output-format json --bare --no-session-persistence)",
+      "mcp__plugin_solid-coder_pipeline__get_output_path"
     ]
   },
   "enabledMcpjsonServers": [

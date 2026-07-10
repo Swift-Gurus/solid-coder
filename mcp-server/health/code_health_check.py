@@ -1,5 +1,5 @@
 """
-solid-description: Validates source code against language-specific health check rules.
+solid-description: Validates source code in a language-specific manner.
 solid-category: service
 solid-tags: [hook]
 """
@@ -25,9 +25,9 @@ SUPPORTED_EXTENSIONS: dict = {
 }
 
 
-def _check(content: str, path: str, language: str, parent_session_id: str) -> Optional[list]:
+def _check(content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> Optional[list]:
     strategy = select_strategy()
     strategy.apply_env()
     mcp_config = build_mcp_config(PLUGIN_ROOT)
-    checker = make_health_checker(mcp_config=mcp_config, session_id=parent_session_id, file_path=path)
+    checker = make_health_checker(mcp_config=mcp_config, session_id=parent_session_id, file_path=path, cwd=cwd)
     return checker.check(content, path, language, parent_session_id)

@@ -1,5 +1,5 @@
 """
-solid-description: Facade that sequences health checking and frontmatter correction for a single write event.
+solid-description: Validates and corrects content before allowing write operations.
 solid-category: service
 solid-tags: [hook]
 """
@@ -28,7 +28,7 @@ class WriteGateCoordinator:
         self._simulator = simulator
         self._gate = gate
 
-    def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str) -> None:
+    def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str, cwd: str = "") -> None:
         content, existing, low_risk = self._simulator.simulate(tool_name, tool_input)
         file_name = Path(file_path).name
         run_health = not low_risk
@@ -37,7 +37,7 @@ class WriteGateCoordinator:
             self._gate.allow()
             return
         self._gate.log(f"INVOKE {file_name}: health={run_health} frontmatter={run_frontmatter}")
-        if run_health and not self._health_gate.check(content, file_path, language, session_id, self._gate, file_name):
+        if run_health and not self._health_gate.check(content, file_path, language, session_id, self._gate, file_name, cwd):
             return
         if run_frontmatter:
             corrected = self._frontmatter_gate.apply(content, session_id, file_path, self._gate, file_name)

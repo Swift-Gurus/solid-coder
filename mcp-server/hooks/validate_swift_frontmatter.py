@@ -70,9 +70,10 @@ def fix(
     content: str,
     parent_session_id: str = "",
     builder: Optional[FrontmatterPromptBuilder] = None,
+    cwd: str = "",
 ) -> Optional[str]:
     prompt = (builder or FrontmatterPromptBuilder()).build(content, parent_session_id)
-    runner = make_llm_runner(mcp_config="", allowed_tools="")
+    runner = make_llm_runner(mcp_config="", allowed_tools="", cwd=cwd)
     raw = runner.run(prompt, timeout=bare_session_timeout())
     from hook_utils import StrValidator
     v = parse_json_field(raw, "corrected_content", StrValidator())
@@ -86,7 +87,7 @@ def main() -> None:
         responder.allow()
         return
 
-    tool_name, tool_input, file_path, session_id = parsed
+    tool_name, tool_input, file_path, session_id, cwd = parsed
 
     ext = Path(file_path).suffix.lower()
     if ext not in _SUPPORTED_EXTENSIONS:
@@ -105,7 +106,7 @@ def main() -> None:
         responder.allow()
         return
 
-    corrected = fix(content, parent_session_id=session_id)
+    corrected = fix(content, parent_session_id=session_id, cwd=cwd)
 
     if corrected is None or corrected == content:
         responder.allow()
