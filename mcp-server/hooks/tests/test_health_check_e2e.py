@@ -147,15 +147,18 @@ class _E2EBase(unittest.TestCase):
 
         side_effect = _make_subprocess_side_effect(self.solid_dir, health_dirs, findings_sequence)
 
+        from llm_config import LlmConfig
+        from solid_coder_config import SolidCoderConfig
+        stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude", debug=True))
+
         results = []
         with (
-            patch("hc_runner_factory.llm_backend", return_value="claude"),
+            patch("hc_config.load_config", return_value=stub_config),
             patch("hook_utils.subprocess.run", side_effect=side_effect),
             patch(
                 "health_check_context_writer.solid_coder_project_dir",
                 return_value=self.solid_dir,
             ),
-            patch("hc_checker_factory.debug_mode", return_value=True),
         ):
             checker = make_health_checker(mcp_config=_MCP_CONFIG)
             for _ in findings_sequence:

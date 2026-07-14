@@ -1,5 +1,5 @@
 """
-solid-description: Validates CodexRunner executes LLM prompts correctly and handles errors.
+solid-description: Validates CodexRunner, command building, profile management, and factory creation for Codex-based LLM execution and error handling.
 solid-category: unit-test
 """
 
@@ -174,19 +174,14 @@ class TestMakeCodexRunner(_CodexRunnerTestBase):
 
     def test_factory_returns_codex_runner_for_codex_backend(self):
         from hc_runner_factory import make_llm_runner
-        with (
-            patch("hc_runner_factory.llm_backend", return_value="codex"),
-            patch("hc_runner_factory.llm_model", return_value="o4-mini"),
-            patch("hc_runner_factory.bare_session_timeout", return_value=300),
-            patch("hc_runner_factory.codex_home", return_value=str(self.output_dir)),
-        ):
+        from llm_config import LlmConfig
+        from solid_coder_config import SolidCoderConfig
+        stub_config = SolidCoderConfig(llm=LlmConfig(
+            backend="codex", model="o4-mini", bare_session_timeout=300, codex_home=str(self.output_dir),
+        ))
+        with patch("hc_config.load_config", return_value=stub_config):
             runner = make_llm_runner(mcp_config="", allowed_tools="")
         self.assertIsInstance(runner, CodexRunner)
-
-    def test_codex_home_accessor_reads_from_config(self):
-        from hc_config_llm import codex_home
-        with patch("hc_config_llm.llm_value", return_value="/tmp/my-codex"):
-            self.assertEqual(codex_home(), "/tmp/my-codex")
 
 
 if __name__ == "__main__":

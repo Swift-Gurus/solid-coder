@@ -1,5 +1,5 @@
 """
-solid-description: Provides factory methods to create production-configured gate components.
+solid-description: Assembles a fully-configured write gate coordinator for pre-write validation.
 solid-category: service
 solid-tags: [hook]
 """
@@ -42,7 +42,7 @@ class DefaultCoordinatorFactory:
     def make_guard(self) -> ApiKeyGuard:
         import hc_config as _hc
         return ApiKeyGuard(
-            backend_fn=lambda: _hc.llm_backend(),
+            backend_fn=lambda: _hc.load_config().llm.backend,
             api_key_fn=lambda: os.environ.get("ANTHROPIC_API_KEY", ""),
         )
 
@@ -50,7 +50,7 @@ class DefaultCoordinatorFactory:
         import hc_config as _hc
         from hook_utils import path_matches_pattern
         return GateExclusionChecker(
-            exclude_patterns_fn=lambda: _hc.hook_exclude_patterns("pre_write_gate"),
+            exclude_patterns_fn=lambda: _hc.load_config().hook_exclude("pre_write_gate"),
             path_matcher_fn=path_matches_pattern,
         )
 

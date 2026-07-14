@@ -1,5 +1,5 @@
 """
-solid-description: Executes code analysis and detects violations.
+solid-description: Provides code analysis and violation detection.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -20,7 +20,7 @@ if _MCP_SERVER_DIR not in sys.path:
     sys.path.insert(0, _MCP_SERVER_DIR)
 
 from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E402
-from hc_config import inference_params as _load_inference_params  # noqa: E402
+import hc_config  # noqa: E402
 from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayFixInvoker  # noqa: E402
 from hc_violation_parser import ViolationParser, ViolationParsing  # noqa: E402
 
@@ -118,7 +118,7 @@ def make_llama_server_runner(
     orchestrator = ToolCallOrchestrator(dispatcher=dispatcher, arg_parser=arg_parser)
     thinker = ThinkingExtractor()
     loop = AgentLoopExecutor(
-        client=LlamaHttpClient(host=host, model=model, inference_params=_load_inference_params()),
+        client=LlamaHttpClient(host=host, model=model, inference_params=hc_config.load_config().inference.model_dump()),
         orchestrator=orchestrator,
         thinker=thinker,
         max_rounds=_MAX_TOOL_ROUNDS,

@@ -92,7 +92,9 @@ def _make_check_pipeline():
 
 
 def _claude_backend_patch():
-    return patch("hc_runner_factory.llm_backend", return_value="claude")
+    from llm_config import LlmConfig
+    from solid_coder_config import SolidCoderConfig
+    return patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(backend="claude")))
 
 
 class TestViolationParser(unittest.TestCase):

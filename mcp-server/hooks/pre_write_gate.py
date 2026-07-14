@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: PreToolUse gate entry point — routes Write, Edit, and apply_patch events through the health check and frontmatter pipeline.
+solid-description: Service that validates solid-coder configuration and gates tool operations.
 solid-category: service
 solid-tags: [hook]
 """
@@ -27,13 +27,20 @@ for _d in (
 
 from default_coordinator_factory import DefaultCoordinatorFactory
 from hook_utils import HookGateFactory
+from solid_coder_config_error import SolidCoderConfigError
 
 _GATE = HookGateFactory().build()
 _ORCHESTRATOR = DefaultCoordinatorFactory().make_orchestrator(_GATE)
 
 
 def main() -> None:
-    _ORCHESTRATOR.run(sys.stdin.read())
+    try:
+        _ORCHESTRATOR.run(sys.stdin.read())
+    except SolidCoderConfigError as exc:
+        _GATE.block(
+            "solid-coder config invalid — fix .solid-coder/config.toml or config.local.toml",
+            additional_context=str(exc),
+        )
 
 
 if __name__ == "__main__":

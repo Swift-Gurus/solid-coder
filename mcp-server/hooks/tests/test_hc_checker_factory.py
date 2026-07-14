@@ -14,11 +14,13 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 from hc_checker_factory import make_health_checker
+from llm_config import LlmConfig
+from solid_coder_config import SolidCoderConfig
 
 
 class TestMakeHealthChecker(unittest.TestCase):
     def _make_checker(self, log_path: Path | None = None):
-        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
+        with patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(backend="claude"))), \
              patch("hook_utils.subprocess.run") as sub:
             sub.return_value = MagicMock(returncode=0, stdout='{"candidate_tags": []}')
             return make_health_checker(mcp_config='{"mcpServers": {}}', log_path=log_path)

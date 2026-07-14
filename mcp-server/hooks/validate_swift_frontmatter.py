@@ -28,17 +28,24 @@ for _d in (
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hc_config import bare_session_timeout  # noqa: E402
+import hc_config  # noqa: E402
+from default_hook_event_parser import DefaultHookEventParser  # noqa: E402
+from frontmatter_correction_orchestrator import FrontmatterCorrectionOrchestrator  # noqa: E402
+from frontmatter_file_filter import FrontmatterFileFilter  # noqa: E402
+from frontmatter_file_policy import FrontmatterFilePolicy  # noqa: E402
+from hc_config_timeout_provider import HcConfigTimeoutProvider  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hook_utils import (  # noqa: E402
     PLUGIN_ROOT,
     HookResponder,
     parse_hook_event,
-    parse_json_field,
 )
+from llm_prompt_correction_service import LlmPromptCorrectionService  # noqa: E402
+from llm_session_runner import LlmSessionRunner  # noqa: E402
+from pathlib_extractor import PathlibExtractor  # noqa: E402
 from prompt_builder import BasePromptBuilder, PromptReading  # noqa: E402
+from tool_content_extractor import ToolContentExtractor  # noqa: E402
 
-_SUPPORTED_EXTENSIONS = {".swift", ".py"}
 _FRONTMATTER_PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts" / "frontmatter"
 
 
@@ -66,56 +73,58 @@ class FrontmatterPromptBuilder(BasePromptBuilder):
         )
 
 
+def _default_correction_service(builder: Optional[FrontmatterPromptBuilder] = None) -> LlmPromptCorrectionService:
+    """Composition root: wires the production PromptCorrecting implementation (OCP factory exception)."""
+    session_runner = LlmSessionRunner(
+        runner_factory=make_llm_runner,
+        config_provider=HcConfigTimeoutProvider(hc_config.load_config),
+    )
+    return LlmPromptCorrectionService(builder=builder or FrontmatterPromptBuilder(), session_runner=session_runner)
+
+
 def fix(
     content: str,
     parent_session_id: str = "",
     builder: Optional[FrontmatterPromptBuilder] = None,
     cwd: str = "",
 ) -> Optional[str]:
-    prompt = (builder or FrontmatterPromptBuilder()).build(content, parent_session_id)
-    runner = make_llm_runner(mcp_config="", allowed_tools="", cwd=cwd)
-    raw = runner.run(prompt, timeout=bare_session_timeout())
-    from hook_utils import StrValidator
-    v = parse_json_field(raw, "corrected_content", StrValidator())
-    return v if v is not None else None
+    """Backward-compatible entry point — delegates to the production PromptCorrecting service."""
+    return _default_correction_service(builder=builder).correct(content, parent_session_id=parent_session_id, cwd=cwd)
 
 
-def main() -> None:
-    responder = HookResponder()
-    parsed = parse_hook_event(sys.stdin.read())
+def _default_file_policy() -> FrontmatterFilePolicy:
+    """Composition root: wires the production FileTypePolicy implementation (OCP factory exception)."""
+    path_extractor = PathlibExtractor(lambda p: Path(p).suffix.lower())
+    return FrontmatterFilePolicy(
+        content_extractor=ToolContentExtractor(),
+        file_filter=FrontmatterFileFilter(path_extractor=path_extractor),
+    )
+
+
+def main(
+    responder: Optional[HookResponder] = None,
+    event_parser: Optional[DefaultHookEventParser] = None,
+    file_policy: Optional[FrontmatterFilePolicy] = None,
+    orchestrator: Optional[FrontmatterCorrectionOrchestrator] = None,
+) -> None:
+    responder = responder or HookResponder()
+    event_parser = event_parser or DefaultHookEventParser(parse_hook_event)
+    file_policy = file_policy or _default_file_policy()
+    orchestrator = orchestrator or FrontmatterCorrectionOrchestrator(_default_correction_service(), ToolContentExtractor())
+
+    parsed = event_parser.parse(sys.stdin.read())
     if parsed is None:
         responder.allow()
         return
 
     tool_name, tool_input, file_path, session_id, cwd = parsed
 
-    ext = Path(file_path).suffix.lower()
-    if ext not in _SUPPORTED_EXTENSIONS:
+    content = file_policy.content_for(tool_name, tool_input)
+    if content is None or not file_policy.should_process(file_path, content):
         responder.allow()
         return
 
-    if tool_name == "Write":
-        content = tool_input.get("content", "")
-    elif tool_name == "Edit":
-        content = tool_input.get("new_string", "")
-    else:
-        responder.allow()
-        return
-
-    if "solid-description:" not in content:
-        responder.allow()
-        return
-
-    corrected = fix(content, parent_session_id=session_id, cwd=cwd)
-
-    if corrected is None or corrected == content:
-        responder.allow()
-        return
-
-    input_key = "content" if tool_name == "Write" else "new_string"
-    updated = dict(tool_input)
-    updated[input_key] = corrected
-    responder.allow_with_update(updated)
+    orchestrator.correct(tool_name, tool_input, content, session_id, cwd, responder)
 
 
 if __name__ == "__main__":

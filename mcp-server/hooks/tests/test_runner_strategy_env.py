@@ -1,5 +1,5 @@
 """
-solid-description: Verifies that all runner strategies properly initialize the execution environment.
+solid-description: Verifies that runners are correctly selected and the execution environment is properly initialized.
 solid-category: unit-test
 """
 
@@ -17,9 +17,18 @@ from hc_runner_factory import (  # noqa: E402
     LocalRunnerStrategy,
     select_strategy,
 )
+from llm_config import LlmConfig  # noqa: E402
+from solid_coder_config import SolidCoderConfig  # noqa: E402
 
 _ENV_KEY = "SOLID_CODER_SESSION_TYPE"
 _EXPECTED = "health_check"
+
+
+def _config(backend="claude", model="", host="http://localhost:8080", bare_session_timeout=300, codex_home=""):
+    return SolidCoderConfig(llm=LlmConfig(
+        backend=backend, model=model, host=host,
+        bare_session_timeout=bare_session_timeout, codex_home=codex_home,
+    ))
 
 
 def _clear_env():
@@ -58,41 +67,29 @@ class TestSelectStrategy(unittest.TestCase):
         _clear_env()
 
     def test_claude_backend_returns_claude_strategy(self):
-        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
-             patch("hc_runner_factory.llm_model", return_value=""):
+        with patch("hc_config.load_config", return_value=_config(backend="claude")):
             self.assertIsInstance(select_strategy(), ClaudeRunnerStrategy)
 
     def test_local_backend_returns_local_strategy(self):
-        with patch("hc_runner_factory.llm_backend", return_value="local"), \
-             patch("hc_runner_factory.llm_model", return_value="local"), \
-             patch("hc_runner_factory.llm_host", return_value="http://localhost:8080"):
+        with patch("hc_config.load_config", return_value=_config(backend="local", model="local")):
             self.assertIsInstance(select_strategy(), LocalRunnerStrategy)
 
     def test_codex_backend_returns_codex_strategy(self):
-        with patch("hc_runner_factory.llm_backend", return_value="codex"), \
-             patch("hc_runner_factory.llm_model", return_value=""), \
-             patch("hc_runner_factory.bare_session_timeout", return_value=300), \
-             patch("hc_runner_factory.codex_home", return_value=""):
+        with patch("hc_config.load_config", return_value=_config(backend="codex")):
             self.assertIsInstance(select_strategy(), CodexRunnerStrategy)
 
     def test_select_strategy_apply_env_sets_health_check_for_claude(self):
-        with patch("hc_runner_factory.llm_backend", return_value="claude"), \
-             patch("hc_runner_factory.llm_model", return_value=""):
+        with patch("hc_config.load_config", return_value=_config(backend="claude")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
     def test_select_strategy_apply_env_sets_health_check_for_local(self):
-        with patch("hc_runner_factory.llm_backend", return_value="local"), \
-             patch("hc_runner_factory.llm_model", return_value="local"), \
-             patch("hc_runner_factory.llm_host", return_value="http://localhost:8080"):
+        with patch("hc_config.load_config", return_value=_config(backend="local", model="local")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
     def test_select_strategy_apply_env_sets_health_check_for_codex(self):
-        with patch("hc_runner_factory.llm_backend", return_value="codex"), \
-             patch("hc_runner_factory.llm_model", return_value=""), \
-             patch("hc_runner_factory.bare_session_timeout", return_value=300), \
-             patch("hc_runner_factory.codex_home", return_value=""):
+        with patch("hc_config.load_config", return_value=_config(backend="codex")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
@@ -110,11 +107,7 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
         checker_mock = MagicMock()
         checker_mock.check.return_value = []
         codex_runner_mock = MagicMock()
-        with patch("hc_runner_factory.llm_backend", return_value=backend), \
-             patch("hc_runner_factory.llm_model", return_value=""), \
-             patch("hc_runner_factory.llm_host", return_value="http://localhost:8080"), \
-             patch("hc_runner_factory.bare_session_timeout", return_value=300), \
-             patch("hc_runner_factory.codex_home", return_value=""), \
+        with patch("hc_config.load_config", return_value=_config(backend=backend)), \
              patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \
              patch("hc_codex_runner.make_codex_runner", return_value=codex_runner_mock), \
              patch("code_health_check.make_health_checker", return_value=checker_mock), \

@@ -2,8 +2,7 @@
 solid-name: _path_bootstrap
 solid-category: unit-test
 solid-spec: [SPEC-014]
-solid-description: Ensures harness and hooks directories are available on sys.path for test imports.
-Re-exports ensure_on_path from the canonical hooks/tests/_path_bootstrap to avoid duplication.
+solid-description: Configures the test execution environment to enable proper test imports.
 """
 
 import importlib.util
@@ -12,7 +11,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parents[2]
-_HOOKS_TESTS = _PROJECT_ROOT / "hooks" / "tests"
+_HOOKS_TESTS = _PROJECT_ROOT / "mcp-server" / "hooks" / "tests"
 
 _spec = importlib.util.spec_from_file_location(
     "_hooks_path_bootstrap", _HOOKS_TESTS / "_path_bootstrap.py"

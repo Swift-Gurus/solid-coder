@@ -2,7 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Provides a configured health checker service instance.
+solid-description: Creates health checkers that validate code quality.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from hc_checker import (  # noqa: E402
 from output_path_resolver import OutputPathResolving, SessionOutputPathResolver  # noqa: E402
 from violation_extractor import ViolationExtractor  # noqa: E402
 from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker  # noqa: E402
-from hc_config import bare_session_timeout, debug_mode  # noqa: E402
+import hc_config  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
 from health_check_context_writer import HealthCheckContextWriter  # noqa: E402
@@ -67,6 +67,7 @@ def make_health_checker(
     path = log_path or (solid_coder_project_dir() / "gate.log")
     logger = GateLogger(DebugLogger(project_dir_fn=lambda: path.parent, filename=path.name))
     invoker = GatewayInvoker(GATEWAY, GatewayCommandRunner())
+    llm = hc_config.load_config().llm
     return LLMHealthChecker(
         loader=PrinciplesLoader(
             rules=GatewayRuleLoader(invoker=invoker),
@@ -83,12 +84,12 @@ def make_health_checker(
                     cwd=cwd,
                 ),
                 logger=logger,
-                timeout=bare_session_timeout(),
+                timeout=llm.bare_session_timeout,
             ),
             output_handler=FileBasedOutputHandler(
                 FileOutputReader(
                     extractor=ViolationExtractor(),
-                    debug=debug_mode(),
+                    debug=llm.debug,
                 )
             ),
         ),

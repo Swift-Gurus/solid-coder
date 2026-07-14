@@ -25,11 +25,11 @@ class DebugModeReading(Protocol):
 
 
 class HcConfigDebugReader:
-    """Reads debug mode from hc_config_llm.debug_mode()."""
+    """Reads debug mode from hc_config.load_config().llm.debug."""
 
     def is_debug(self) -> bool:
-        from hc_config_llm import debug_mode  # noqa: PLC0415
-        return debug_mode()
+        import hc_config  # noqa: PLC0415
+        return hc_config.load_config().llm.debug
 
 
 def _extract_output_root(content) -> str:
