@@ -8,10 +8,16 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[1], Path(__file__).resolve().parent)
 
 from _gate_fixtures import FM, HC, PYTHON_CONTENT, SRP_VIOLATION_WITH_METRIC, VIOLATIONS, call_main, event
+from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
 
 
 class TestGatePythonFileHandling(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("hc_config.load_config", return_value=SolidCoderConfig(code_review_on_write_enabled=True))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_py_file_invokes_run_health(self):
         with patch(FM, return_value=PYTHON_CONTENT), patch(HC, return_value=[]) as hc:
             call_main(event("Write", "/src/Foo.py", PYTHON_CONTENT))

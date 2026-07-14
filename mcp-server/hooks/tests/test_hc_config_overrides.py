@@ -38,6 +38,16 @@ class TestConfigOverrides(unittest.TestCase):
         self.assertEqual(cfg.inference.temperature, 0.7)
         self.assertEqual(cfg.inference.max_tokens, 2048)
 
+    def test_code_review_on_write_enabled_defaults_false(self):
+        with ConfigSectionStub():
+            cfg = load_config()
+        self.assertFalse(cfg.code_review_on_write_enabled)
+
+    def test_code_review_on_write_enabled_override_applies(self):
+        with ConfigSectionStub(root={"code_review_on_write_enabled": True}):
+            cfg = load_config()
+        self.assertTrue(cfg.code_review_on_write_enabled)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -21,10 +21,16 @@ from _gate_fixtures import (
     call_main,
     event,
 )
+from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
 
 
 class TestGateDecisions(unittest.TestCase):
+    def setUp(self):
+        patcher = patch("hc_config.load_config", return_value=SolidCoderConfig(code_review_on_write_enabled=True))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_both_clean_allows(self):
         with patch(FM, return_value=LONG_SWIFT_WITH_FRONTMATTER), patch(HC, return_value=[]):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))

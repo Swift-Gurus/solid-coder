@@ -1,5 +1,5 @@
 """
-solid-description: Assembles a fully-configured write gate coordinator for pre-write validation.
+solid-description: Assembles fully-configured service components.
 solid-category: service
 solid-tags: [hook]
 """
@@ -18,6 +18,8 @@ from api_key_guard import ApiKeyGuard
 from apply_patch_content_simulator import ApplyPatchContentSimulator
 from apply_patch_parser import ApplyPatchParser
 from code_health_check_adapter import CodeHealthCheckAdapter
+from composite_guard import CompositeGuard
+from config_feature_toggle import ConfigFeatureToggle
 from content_simulator import ContentSimulator
 from diff_chunker import DiffChunker
 from edit_classifier import EditClassifier
@@ -46,6 +48,10 @@ class DefaultCoordinatorFactory:
             api_key_fn=lambda: os.environ.get("ANTHROPIC_API_KEY", ""),
         )
 
+    def make_toggle(self) -> ConfigFeatureToggle:
+        import hc_config as _hc
+        return ConfigFeatureToggle(enabled_fn=lambda: _hc.load_config().code_review_on_write_enabled)
+
     def make_exclusion_checker(self) -> GateExclusionChecker:
         import hc_config as _hc
         from hook_utils import path_matches_pattern
@@ -69,7 +75,7 @@ class DefaultCoordinatorFactory:
         patch_sim = self.make_patch_simulator()
         return GateOrchestrator(
             gate=gate,
-            guard=self.make_guard(),
+            guard=CompositeGuard([self.make_toggle(), self.make_guard()]),
             parse_fn=__import__('hook_utils').parse_hook_event,
             extension_lookup=DictExtensionLookup(health.SUPPORTED_EXTENSIONS),
             exclusion_checker=self.make_exclusion_checker(),

@@ -1,5 +1,5 @@
 """
-solid-description: Loads, merges, and validates configuration from multiple sources.
+solid-description: Loads and validates application configuration with detailed error reporting.
 solid-category: service
 solid-tags: [hook, config]
 """
@@ -16,7 +16,7 @@ for _d in (_MCP_DIR, _MODULE_DIR):
 
 from pydantic import ValidationError
 
-from hc_config_core import read_llm_section, read_section
+from hc_config_core import read_llm_section, read_root_section, read_section
 from solid_coder_config import SolidCoderConfig
 from solid_coder_config_error import SolidCoderConfigError
 
@@ -29,6 +29,7 @@ def load_config(cwd: Optional[Path] = None) -> SolidCoderConfig:
     falling back to a default.
     """
     raw = {
+        **read_root_section(_cwd=cwd),
         "llm": read_llm_section(_cwd=cwd),
         "hooks": read_section("hooks", _cwd=cwd),
         "inference": read_section("inference", _cwd=cwd),

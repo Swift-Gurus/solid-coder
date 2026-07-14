@@ -42,17 +42,38 @@ def find_repo_config(_cwd: Optional[Path] = None) -> Optional[Path]:
     return path if path.exists() else None
 
 
+def _read_with_overrides(
+    extract: Callable[[dict], dict],
+    _loader: TomlLoader = load_toml,
+    _cwd: Optional[Path] = None,
+) -> dict:
+    """Fetch repo + local config, merging extracted local overrides on top of repo defaults."""
+    repo_path = find_repo_config(_cwd=_cwd)
+    local_path = find_config(_cwd=_cwd)
+    base = extract(_loader(repo_path)) if repo_path else {}
+    override = extract(_loader(local_path)) if local_path else {}
+    return {**base, **override}
+
+
 def read_section(
     section: str,
     _loader: TomlLoader = load_toml,
     _cwd: Optional[Path] = None,
 ) -> dict:
     """Read a config section, merging repo defaults under local overrides."""
-    repo_path = find_repo_config(_cwd=_cwd)
-    local_path = find_config(_cwd=_cwd)
-    base = _loader(repo_path).get(section, {}) if repo_path else {}
-    override = _loader(local_path).get(section, {}) if local_path else {}
-    return {**base, **override}
+    return _read_with_overrides(lambda data: data.get(section, {}), _loader=_loader, _cwd=_cwd)
+
+
+def read_root_section(
+    _loader: TomlLoader = load_toml,
+    _cwd: Optional[Path] = None,
+) -> dict:
+    """Read top-level scalar keys (not [table] sections), merging repo defaults under local overrides."""
+    return _read_with_overrides(
+        lambda data: {k: v for k, v in data.items() if not isinstance(v, dict)},
+        _loader=_loader,
+        _cwd=_cwd,
+    )
 
 
 @Observing("config.read_llm_section")

@@ -14,7 +14,10 @@ from solid_coder_config import SolidCoderConfig
 
 class TestGateExclusion(unittest.TestCase):
     def test_excluded_path_allows_without_health_check(self):
-        stub_config = SolidCoderConfig(hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])})
+        stub_config = SolidCoderConfig(
+            hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])},
+            code_review_on_write_enabled=True,
+        )
         with patch("hc_config.load_config", return_value=stub_config), patch(HC) as hc:
             code, out = call_main(event("Write", "/project/tests/fixtures/SRP/srp2-severe.swift", LONG_SWIFT))
         hc.assert_not_called()
@@ -22,13 +25,17 @@ class TestGateExclusion(unittest.TestCase):
         self.assertEqual(out, "")
 
     def test_non_excluded_path_runs_health(self):
-        stub_config = SolidCoderConfig(hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])})
+        stub_config = SolidCoderConfig(
+            hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])},
+            code_review_on_write_enabled=True,
+        )
         with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=[]) as hc:
             call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
 
     def test_no_exclusions_runs_health_normally(self):
-        with patch("hc_config.load_config", return_value=SolidCoderConfig()), patch(HC, return_value=[]) as hc:
+        stub_config = SolidCoderConfig(code_review_on_write_enabled=True)
+        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=[]) as hc:
             call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
 

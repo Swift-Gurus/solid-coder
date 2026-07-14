@@ -1,5 +1,5 @@
 """
-solid-description: Provides validated configuration for all solid-coder subsystems.
+solid-description: Provides unified configuration for all system subsystems.
 solid-category: model
 """
 
@@ -27,6 +27,7 @@ class SolidCoderConfig(BaseModel):
     hooks: dict[str, HookConfig] = Field(default_factory=dict)
     inference: InferenceConfig = Field(default_factory=InferenceConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
+    code_review_on_write_enabled: bool = Field(default=False)
 
     def hook_exclude(self, hook: str) -> list:
         """Return the exclude glob patterns configured for a named hook."""
