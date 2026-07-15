@@ -28,18 +28,30 @@ class TomlLoader(Protocol):
     def __call__(self, path: Path) -> dict: ...
 
 
+def _find_config_file(filename: str, _cwd: Optional[Path] = None) -> Optional[Path]:
+    base = _cwd if _cwd is not None else _PROJECT_ROOT
+    path = base / CONFIG_DIR / filename
+    return path if path.exists() else None
+
+
 def find_config(_cwd: Optional[Path] = None) -> Optional[Path]:
     """Return the local (non-committed) config path, or None if absent."""
-    base = _cwd if _cwd is not None else _PROJECT_ROOT
-    path = base / CONFIG_DIR / CONFIG_LOCAL_TOML
-    return path if path.exists() else None
+    return _find_config_file(CONFIG_LOCAL_TOML, _cwd=_cwd)
 
 
 def find_repo_config(_cwd: Optional[Path] = None) -> Optional[Path]:
     """Return the committed project config path, or None if absent."""
-    base = _cwd if _cwd is not None else _PROJECT_ROOT
-    path = base / CONFIG_DIR / CONFIG_TOML
-    return path if path.exists() else None
+    return _find_config_file(CONFIG_TOML, _cwd=_cwd)
+
+
+def _resolve_project_cwd(_env: Optional[dict] = None, _cwd: Optional[Path] = None) -> Path:
+    """Resolve the effective project directory: explicit cwd, else CLAUDE_PROJECT_DIR, else process cwd."""
+    if _cwd is not None:
+        return _cwd
+    env = _env if _env is not None else os.environ
+    # Claude Code sets CLAUDE_PROJECT_DIR; Codex hook processes run in cwd
+    project_dir = env.get("CLAUDE_PROJECT_DIR", "")
+    return Path(project_dir) if project_dir else Path.cwd()
 
 
 def _read_with_overrides(
@@ -48,8 +60,9 @@ def _read_with_overrides(
     _cwd: Optional[Path] = None,
 ) -> dict:
     """Fetch repo + local config, merging extracted local overrides on top of repo defaults."""
-    repo_path = find_repo_config(_cwd=_cwd)
-    local_path = find_config(_cwd=_cwd)
+    effective_cwd = _resolve_project_cwd(_cwd=_cwd)
+    repo_path = find_repo_config(_cwd=effective_cwd)
+    local_path = find_config(_cwd=effective_cwd)
     base = extract(_loader(repo_path)) if repo_path else {}
     override = extract(_loader(local_path)) if local_path else {}
     return {**base, **override}
@@ -86,12 +99,7 @@ def read_llm_section(
     override = env.get("SOLID_CODER_TEST_MODEL_PROFILE")
     if override:
         return _loader(Path(override)).get("llm", {})
-    effective_cwd = _cwd
-    if effective_cwd is None:
-        # Claude Code sets CLAUDE_PROJECT_DIR; Codex hook processes run in cwd
-        project_dir = env.get("CLAUDE_PROJECT_DIR", "")
-        effective_cwd = Path(project_dir) if project_dir else Path.cwd()
-    return read_section("llm", _loader=_loader, _cwd=effective_cwd)
+    return read_section("llm", _loader=_loader, _cwd=_resolve_project_cwd(_env=env, _cwd=_cwd))
 
 
 def safe_convert(value: Any, default: T, converter: Callable[[Any], T]) -> T:
