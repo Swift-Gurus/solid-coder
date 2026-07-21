@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from typing import List, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.dag_runner import DAGRunner
 from harness.expression_resolver import ExpressionResolver

@@ -34,6 +34,7 @@ from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 from common.mcp_meta import LARGE_OUTPUT
 from harness.flow_run_orchestrating import FlowRunOrchestrating
+from pipeline.output_path_factory import OutputPathFactory
 
 
 # ── Service protocols ─────────────────────────────────────────────────────────
@@ -72,23 +73,6 @@ class MCPServerRunning(Protocol):
 
 
 # ── Path provider ─────────────────────────────────────────────────────────────
-
-class OutputPathFactory:
-    """Computes the standardized home-dir output path for a solid-coder operation."""
-
-    def compute(self, operation: str, spec_number: str = "") -> dict:
-        import uuid as _uuid
-        project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
-        slug = str(Path(project_dir).resolve()).replace("/", "-")
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-        if operation == "health":
-            dir_name = f"health-{_uuid.uuid4()}"
-        elif operation == "implement" and spec_number:
-            dir_name = f"implement-{spec_number}-{ts}"
-        else:
-            dir_name = f"{operation}-{ts}"
-        return {"output_root": str(Path.home() / ".solid-coder" / slug / dir_name)}
-
 
 def get_output_path(operation: str, spec_number: str = "") -> dict:
     """Compute the standardized home-dir output path for a solid-coder operation.
@@ -401,12 +385,27 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_start",
-            "Start a new flow run. Resolves flow YAML, creates run directory, writes active.json, returns first ready steps.",
+            "Start the DAG state machine for a flow: creates a new run, writes active.json, and returns the "
+            "first ready step(s) with their prompts. Call flow_next after each step to advance the machine "
+            "through its states until status is 'done' or 'timed_out'. Only one run can be active at a time.",
             {
                 "type": "object",
                 "properties": {
-                    "flow": {"type": "string"},
-                    "params": {"type": "object"},
+                    "flow": {
+                        "type": "string",
+                        "description": (
+                            "Flow name — matches the YAML file's name, e.g. 'code_review' means "
+                            "'code_review.yaml'. Resolved against '<project>/.solid-coder/harness/flows/"
+                            "<name>.yaml' first, then the plugin's bundled harness/flows/<name>.yaml. "
+                            "A direct path to a flow YAML file also works if no name match is found."
+                        ),
+                    },
+                    "params": {
+                        "type": "object",
+                        "description": (
+                            "Optional key/value inputs for this run, available to step prompts via '{{params.<key>}}'."
+                        ),
+                    },
                 },
                 "required": ["flow"],
             },
@@ -415,11 +414,23 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_next",
-            "Submit step outputs and get next ready steps. Validates outputs, appends events, returns next steps or terminal status.",
+            "Submit the outputs for the step(s) you were just given and get the next ready step(s). The steps "
+            "are deterministic — fixed by the flow's YAML file, not decided by you — so always follow the "
+            "returned prompt(s) exactly rather than improvising or skipping ahead. Operates on the single "
+            "active run (no run id needed) — call this in a loop, once per completed step, until status is "
+            "'done' or 'timed_out'.",
             {
                 "type": "object",
                 "properties": {
-                    "outputs": {"type": "object"},
+                    "outputs": {
+                        "type": "object",
+                        "description": (
+                            "Map of instance_id (from the 'steps[].instance_id' you were given by flow_start/"
+                            "flow_next) to that step's output values, keyed by output name as declared in the "
+                            "step's 'outputs:' spec in the flow YAML. Omit a step's key, or pass '{}', if it "
+                            "declares no outputs."
+                        ),
+                    },
                 },
             },
             flow_tools["flow_next"],
@@ -427,7 +438,9 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_status",
-            "Read current flow run state without side effects. Returns status, step lists, and turn counts.",
+            "Read the state of the currently active flow run without side effects — no arguments. Returns the flow "
+            "name, run id, status ('in_progress'/'done'/'timed_out'/'no_active_run'), completed/running/pending "
+            "step ids, and turn counts.",
             {
                 "type": "object",
                 "properties": {},
@@ -455,37 +468,83 @@ def make_bootstrapper(
     """Composition root: all dependencies injectable; production defaults applied when omitted."""
     if flow_run is None:
         from harness.flow_engine_assembly import build_default_assembly
+        from harness.active_run_locator import ActiveRunLocator
         from harness.active_run_pointer_store import ActiveRunPointerStore
-        from harness.run_directory_scaffolder import RunDirectoryScaffolder
-        from harness.run_metadata_store import RunMetadataStore
-        from harness.execution_intent_resolver import ExecutionIntentResolver
         from harness.claude_agent_type_env_detector import ClaudeAgentTypeEnvDetector
+        from harness.execution_intent_resolver import ExecutionIntentResolver
+        from harness.flow_file_resolver import FlowFileResolver
+        from harness.flow_run_orchestrator import FlowRunOrchestrator
         from harness.flow_search_path_resolver import FlowSearchPathResolver
+        from harness.flow_starter import FlowStarter
+        from harness.flow_status_reader import FlowStatusReader
+        from harness.flow_stepper import FlowStepper
         from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
+        from harness.name_resolving_flow_loader import NameResolvingFlowLoader
+        from harness.output_recorder import OutputRecorder
+        from harness.path_checking import PathChecker
+        from harness.run_completion_checker import RunCompletionChecker
+        from harness.run_context_builder import RunContextBuilder
+        from harness.run_directory_scaffolder import RunDirectoryScaffolder
+        from harness.run_initializer import RunInitializer
+        from harness.run_metadata_store import RunMetadataStore
+        from harness.run_provisioner import RunProvisioner
+        from harness.run_snapshot_resolver import RunSnapshotResolver
+        from harness.runs_base_dir_resolver import RunsBaseDirResolver
+        from harness.startup_context_resolver import StartupContextResolver
         from harness.step_output_validator import StepOutputValidator
         from harness.step_result_builder import StepResultBuilder
-        from harness.run_context_builder import RunContextBuilder
-        from harness.runs_base_dir_resolver import RunsBaseDirResolver
-        from harness.flow_run_orchestrator import FlowRunOrchestrator
+        from harness.turn_advancer import TurnAdvancer
 
         assembly = build_default_assembly()
-        intent_resolver = ExecutionIntentResolver()
-        flow_run = FlowRunOrchestrator(
-            flow_loader=assembly.flow_loader,
-            active_run=ActiveRunPointerStore(),
-            scaffolder=RunDirectoryScaffolder(),
-            event_log=assembly.event_replayer,
-            event_appender=assembly.event_appender,
-            dag_runner=assembly.dag_runner,
-            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
-            step_result_builder=StepResultBuilder(intent_resolver=intent_resolver),
-            session_reader=McpRequestContextSessionReader(),
-            search_paths=FlowSearchPathResolver(),
-            metadata_store=RunMetadataStore(),
-            env_detector=ClaudeAgentTypeEnvDetector(),
-            context_builder=RunContextBuilder(),
-            base_dir_resolver=RunsBaseDirResolver(),
+        active_run = ActiveRunPointerStore()
+        base_dir_resolver = RunsBaseDirResolver()
+        metadata_store = RunMetadataStore()
+        step_result_builder = StepResultBuilder(intent_resolver=ExecutionIntentResolver())
+        run_locator = ActiveRunLocator(base_dir_resolver=base_dir_resolver, active_run=active_run)
+        resolving_flow_loader = NameResolvingFlowLoader(
+            file_resolver=FlowFileResolver(path_checker=PathChecker()),
+            inner_loader=assembly.flow_loader,
         )
+        run_snapshot_resolver = RunSnapshotResolver(
+            event_replayer=assembly.event_replayer,
+            context_builder=RunContextBuilder(),
+            dag_runner=assembly.dag_runner,
+        )
+
+        starter = FlowStarter(
+            startup_context=StartupContextResolver(
+                env_detector=ClaudeAgentTypeEnvDetector(),
+                base_dir_resolver=base_dir_resolver,
+                search_paths=FlowSearchPathResolver(),
+            ),
+            flow_loader=resolving_flow_loader,
+            run_provisioner=RunProvisioner(
+                run_initializer=RunInitializer(active_run=active_run, scaffolder=RunDirectoryScaffolder()),
+                metadata_store=metadata_store,
+            ),
+            event_appender=assembly.event_appender,
+            run_snapshot_resolver=run_snapshot_resolver,
+            step_result_builder=step_result_builder,
+        )
+        stepper = FlowStepper(
+            run_locator=run_locator,
+            metadata_store=metadata_store,
+            flow_loader=resolving_flow_loader,
+            run_snapshot_resolver=run_snapshot_resolver,
+            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
+            session_reader=McpRequestContextSessionReader(),
+            output_recorder=OutputRecorder(event_appender=assembly.event_appender),
+            turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
+            completion_checker=RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run),
+            step_result_builder=step_result_builder,
+        )
+        status_reader = FlowStatusReader(
+            run_locator=run_locator,
+            flow_loader=resolving_flow_loader,
+            run_snapshot_resolver=run_snapshot_resolver,
+        )
+
+        flow_run = FlowRunOrchestrator(starter=starter, stepper=stepper, status_reader=status_reader)
 
     mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(

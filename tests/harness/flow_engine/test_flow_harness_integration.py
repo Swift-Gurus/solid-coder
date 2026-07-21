@@ -12,22 +12,35 @@ import textwrap
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_pointer_store import ActiveRunPointerStore
 from harness.claude_agent_type_env_detector import ClaudeAgentTypeEnvDetector
 from harness.execution_intent_resolver import ExecutionIntentResolver
 from harness.flow_engine_assembly import build_default_assembly
-from harness.flow_next_result import FlowNextResult
+from harness.flow_file_resolver import FlowFileResolver
 from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_search_path_resolver import FlowSearchPathResolver
+from harness.flow_starter import FlowStarter
+from harness.flow_status_reader import FlowStatusReader
+from harness.flow_stepper import FlowStepper
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
+from harness.name_resolving_flow_loader import NameResolvingFlowLoader
+from harness.output_recorder import OutputRecorder
+from harness.path_checking import PathChecker
+from harness.run_completion_checker import RunCompletionChecker
 from harness.run_context_builder import RunContextBuilder
 from harness.run_directory_scaffolder import RunDirectoryScaffolder
+from harness.run_initializer import RunInitializer
 from harness.run_metadata_store import RunMetadataStore
+from harness.run_provisioner import RunProvisioner
+from harness.run_snapshot_resolver import RunSnapshotResolver
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.startup_context_resolver import StartupContextResolver
 from harness.step_output_validator import StepOutputValidator
 from harness.step_result_builder import StepResultBuilder
+from harness.turn_advancer import TurnAdvancer
 
 
 _LINEAR_FLOW_YAML = textwrap.dedent("""    name: linear_3_step
@@ -55,24 +68,55 @@ class TestFlowHarnessIntegration(unittest.TestCase):
         self._flow_file.write_text(_LINEAR_FLOW_YAML)
 
         assembly = build_default_assembly()
-        intent_resolver = ExecutionIntentResolver()
-
-        self.sut = FlowRunOrchestrator(
-            flow_loader=assembly.flow_loader,
-            active_run=ActiveRunPointerStore(),
-            scaffolder=RunDirectoryScaffolder(),
-            event_log=assembly.event_replayer,
-            event_appender=assembly.event_appender,
-            dag_runner=assembly.dag_runner,
-            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
-            step_result_builder=StepResultBuilder(intent_resolver=intent_resolver),
-            session_reader=McpRequestContextSessionReader(),
-            search_paths=FlowSearchPathResolver(),
-            metadata_store=RunMetadataStore(),
-            env_detector=ClaudeAgentTypeEnvDetector(),
-            context_builder=RunContextBuilder(),
-            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: Path(self._tmpdir)),
+        active_run = ActiveRunPointerStore()
+        base_dir_resolver = RunsBaseDirResolver(project_dir_fn=lambda: Path(self._tmpdir))
+        metadata_store = RunMetadataStore()
+        step_result_builder = StepResultBuilder(intent_resolver=ExecutionIntentResolver())
+        run_locator = ActiveRunLocator(base_dir_resolver=base_dir_resolver, active_run=active_run)
+        resolving_flow_loader = NameResolvingFlowLoader(
+            file_resolver=FlowFileResolver(path_checker=PathChecker()),
+            inner_loader=assembly.flow_loader,
         )
+        run_snapshot_resolver = RunSnapshotResolver(
+            event_replayer=assembly.event_replayer,
+            context_builder=RunContextBuilder(),
+            dag_runner=assembly.dag_runner,
+        )
+
+        starter = FlowStarter(
+            startup_context=StartupContextResolver(
+                env_detector=ClaudeAgentTypeEnvDetector(),
+                base_dir_resolver=base_dir_resolver,
+                search_paths=FlowSearchPathResolver(),
+            ),
+            flow_loader=resolving_flow_loader,
+            run_provisioner=RunProvisioner(
+                run_initializer=RunInitializer(active_run=active_run, scaffolder=RunDirectoryScaffolder()),
+                metadata_store=metadata_store,
+            ),
+            event_appender=assembly.event_appender,
+            run_snapshot_resolver=run_snapshot_resolver,
+            step_result_builder=step_result_builder,
+        )
+        stepper = FlowStepper(
+            run_locator=run_locator,
+            metadata_store=metadata_store,
+            flow_loader=resolving_flow_loader,
+            run_snapshot_resolver=run_snapshot_resolver,
+            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
+            session_reader=McpRequestContextSessionReader(),
+            output_recorder=OutputRecorder(event_appender=assembly.event_appender),
+            turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
+            completion_checker=RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run),
+            step_result_builder=step_result_builder,
+        )
+        status_reader = FlowStatusReader(
+            run_locator=run_locator,
+            flow_loader=resolving_flow_loader,
+            run_snapshot_resolver=run_snapshot_resolver,
+        )
+
+        self.sut = FlowRunOrchestrator(starter=starter, stepper=stepper, status_reader=status_reader)
 
     def test_flow_start_to_done_completes_three_step_linear_flow(self):
         start_result = self.sut.flow_start(str(self._flow_file))
