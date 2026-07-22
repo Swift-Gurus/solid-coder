@@ -11,6 +11,7 @@ from harness.active_run_locating import ActiveRunLocating
 from harness.flow_loading import FlowLoading
 from harness.flow_status_reading import FlowStatusReading
 from harness.flow_status_result import FlowStatusResult
+from harness.interpolation_error import InterpolationError
 from harness.run_snapshot_resolving import RunSnapshotResolving
 
 
@@ -37,7 +38,15 @@ class FlowStatusReader(FlowStatusReading):
             )
 
         flow_def = self._flow_loader.load(location.workflow_path, [])
-        snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, {})
+
+        try:
+            snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, {})
+        except InterpolationError as exc:
+            return FlowStatusResult(
+                flow=flow_def.name, run_id=location.run_id, status="error",
+                turn_count=0, max_turns=flow_def.max_turns,
+                completed=[], running=[], pending=[], error=str(exc),
+            )
 
         return FlowStatusResult(
             flow=flow_def.name,

@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.active_run_location import ActiveRunLocation
 from harness.flow_status_reader import FlowStatusReader
+from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
 from harness.run_snapshot import RunSnapshot
 
@@ -41,10 +42,13 @@ class StubFlowLoader:
 
 
 class StubRunSnapshotResolver:
-    def __init__(self, snapshot: RunSnapshot) -> None:
+    def __init__(self, snapshot: RunSnapshot | None = None, error: InterpolationError | None = None) -> None:
         self._snapshot = snapshot
+        self._error = error
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
+        if self._error is not None:
+            raise self._error
         return self._snapshot
 
 
@@ -88,6 +92,25 @@ class TestFlowStatusReader(unittest.TestCase):
         self.assertEqual(result.completed, ["step-a"])
         self.assertEqual(result.running, ["step-b"])
         self.assertEqual(result.pending, ["step-b"])
+
+    def test_returns_clean_error_status_when_interpolation_fails(self):
+        location = ActiveRunLocation(
+            run_id="run-1", base_dir=Path("/runs"), run_dir=Path("/runs/run-1"),
+            events_path="/runs/run-1/events.jsonl", workflow_path="/runs/run-1/workflow.yaml",
+        )
+        flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
+        sut = FlowStatusReader(
+            run_locator=StubRunLocator(location),
+            flow_loader=StubFlowLoader(flow_def),
+            run_snapshot_resolver=StubRunSnapshotResolver(error=InterpolationError("bad reference")),
+        )
+
+        result = sut.flow_status()
+
+        self.assertEqual(result.status, "error")
+        self.assertEqual(result.error, "bad reference")
+        self.assertEqual(result.flow, "code_review")
+        self.assertEqual(result.run_id, "run-1")
 
 
 if __name__ == "__main__":

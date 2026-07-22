@@ -2,7 +2,7 @@
 solid-name: FlowStepper
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Validates step outputs and advances the flow to the next step.
+solid-description: Progresses a flow execution to the next step.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from harness.active_run_locating import ActiveRunLocating
 from harness.flow_loading import FlowLoading
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepping import FlowStepping
+from harness.interpolation_error import InterpolationError
 from harness.output_recording import OutputRecording
 from harness.run_completion_checking import RunCompletionChecking
 from harness.run_metadata_persisting import RunMetadataPersisting
@@ -51,7 +52,11 @@ class FlowStepper(FlowStepping):
         location = self._run_locator.locate()
         metadata = self._metadata_store.read(location.run_dir)
         flow_def = self._flow_loader.load(location.workflow_path, [])
-        snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
+
+        try:
+            snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
+        except InterpolationError as exc:
+            return FlowNextResult(status="ready", error=str(exc))
 
         step_outputs = outputs or {}
         errors = self._output_validator.validate(snapshot.ready, step_outputs, flow_def)
@@ -69,6 +74,9 @@ class FlowStepper(FlowStepping):
         if terminal is not None:
             return terminal
 
-        next_snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
-        steps = self._step_result_builder.build(next_snapshot.ready, flow_def, metadata.detected_env)
+        try:
+            next_snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
+            steps = self._step_result_builder.build(next_snapshot.ready, flow_def, metadata.detected_env)
+        except InterpolationError as exc:
+            return FlowNextResult(status="ready", error=str(exc))
         return FlowNextResult(status="ready", steps=steps)

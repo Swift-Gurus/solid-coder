@@ -2,7 +2,7 @@
 solid-name: FlowStartResult
 solid-category: model
 solid-spec: [SPEC-013]
-solid-description: Container for the execution identifier and initial steps of a flow.
+solid-description: Represents the result of starting a flow execution, providing execution reference and step information.
 """
 
 from __future__ import annotations
@@ -16,3 +16,4 @@ from harness.step_result import StepResult
 class FlowStartResult:
     run_id: str
     steps: list[StepResult]
+    error: str | None = None

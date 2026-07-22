@@ -20,3 +20,4 @@ class FlowStatusResult:
     completed: list[str]
     running: list[str]
     pending: list[str]
+    error: str | None = None

@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_starter import FlowStarter
+from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
 from harness.run_init import RunInit
 from harness.run_snapshot import RunSnapshot
@@ -58,12 +59,15 @@ class SpyEventAppender:
 
 
 class StubRunSnapshotResolver:
-    def __init__(self, snapshot: RunSnapshot) -> None:
+    def __init__(self, snapshot: RunSnapshot | None = None, error: InterpolationError | None = None) -> None:
         self._snapshot = snapshot
+        self._error = error
         self.calls: list[tuple] = []
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
         self.calls.append((events_path, flow_def, params))
+        if self._error is not None:
+            raise self._error
         return self._snapshot
 
 
@@ -138,6 +142,27 @@ class TestFlowStarter(unittest.TestCase):
         sut.flow_start("code_review")
 
         self.assertEqual(provisioner.calls[0][2], {})
+
+    def test_returns_clean_error_when_prompt_interpolation_fails(self):
+        flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
+        run_init = RunInit(run_id="run-1", run_dir=Path("/runs/run-1"))
+
+        sut = FlowStarter(
+            startup_context=StubStartupContext(StartupContext(
+                detected_env="", base_dir=Path("/runs"), search_paths=[],
+            )),
+            flow_loader=StubFlowLoader(flow_def),
+            run_provisioner=StubRunProvisioner(run_init),
+            event_appender=SpyEventAppender(),
+            run_snapshot_resolver=StubRunSnapshotResolver(error=InterpolationError("bad reference")),
+            step_result_builder=StubStepResultBuilder([]),
+        )
+
+        result = sut.flow_start("code_review")
+
+        self.assertEqual(result.run_id, "run-1")
+        self.assertEqual(result.steps, [])
+        self.assertEqual(result.error, "bad reference")
 
 
 if __name__ == "__main__":

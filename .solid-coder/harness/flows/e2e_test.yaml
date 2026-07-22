@@ -1,0 +1,30 @@
+name: e2e_test
+max_turns: 10
+steps:
+  - id: greet
+    prompt: >
+      Produce a short, friendly one-sentence greeting. Submit it as the
+      "greeting" output field of this step.
+    outputs:
+      - name: greeting
+        type: data
+        schema:
+          type: string
+
+  - id: count_words
+    prompt: >
+      Count the number of words in this greeting: "{{steps.greet.outputs.greeting}}".
+      Submit the count as the "word_count" output field of this step.
+    depends_on: [greet]
+    outputs:
+      - name: word_count
+        type: data
+        schema:
+          type: integer
+
+  - id: summarize
+    prompt: >
+      Write one sentence noting that the greeting was "{{steps.greet.outputs.greeting}}"
+      and it contained {{steps.count_words.outputs.word_count}} words. This step has no
+      declared outputs — just say the sentence back in your final reply.
+    depends_on: [count_words]

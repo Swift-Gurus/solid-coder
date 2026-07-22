@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.active_run_location import ActiveRunLocation
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepper import FlowStepper
+from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
 from harness.run_metadata import RunMetadata
 from harness.run_snapshot import RunSnapshot
@@ -57,14 +58,16 @@ class StubFlowLoader:
 
 
 class StubRunSnapshotResolver:
-    def __init__(self, snapshots: list[RunSnapshot]) -> None:
+    def __init__(self, snapshots: list) -> None:
         self._snapshots = list(snapshots)
         self.call_count = 0
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
-        snapshot = self._snapshots[self.call_count]
+        outcome = self._snapshots[self.call_count]
         self.call_count += 1
-        return snapshot
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
 
 
 class StubOutputValidator:
@@ -213,6 +216,29 @@ class TestFlowStepper(unittest.TestCase):
         self.assertEqual(recorder.calls, [
             ("/runs/run-1/events.jsonl", [instance], {"step-a-1": {"result": "ok"}}, "session-42"),
         ])
+
+    def test_returns_clean_error_when_initial_snapshot_interpolation_fails(self):
+        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
+        sut = _make_stepper(flow_def, snapshots=[InterpolationError("bad reference")])
+
+        result = sut.flow_next()
+
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.error, "bad reference")
+
+    def test_returns_clean_error_when_next_snapshot_interpolation_fails(self):
+        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
+        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        sut = _make_stepper(
+            flow_def,
+            snapshots=[RunSnapshot(run_state=run_state, ready=[]), InterpolationError("bad reference")],
+            completion_result=None,
+        )
+
+        result = sut.flow_next()
+
+        self.assertEqual(result.status, "ready")
+        self.assertEqual(result.error, "bad reference")
 
 
 if __name__ == "__main__":
