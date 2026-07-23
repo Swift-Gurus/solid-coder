@@ -1,5 +1,5 @@
 """
-solid-description: Loads and validates application configuration with detailed error reporting.
+solid-description: Loads and validates application configuration.
 solid-category: service
 solid-tags: [hook, config]
 """
@@ -35,6 +35,7 @@ def load_config(cwd: Optional[Path] = None) -> SolidCoderConfig:
         "inference": read_section("inference", _cwd=cwd),
         "server": read_section("server", _cwd=cwd),
         "flow_engine": read_section("flow_engine", _cwd=cwd),
+        "feature_flags": read_section("feature_flags", _cwd=cwd),
     }
     try:
         return SolidCoderConfig.model_validate(raw)

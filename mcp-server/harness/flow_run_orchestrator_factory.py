@@ -2,7 +2,7 @@
 solid-name: FlowRunOrchestratorFactory
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Factory for creating fully-configured flow orchestrator instances.
+solid-description: Assembles a fully-configured orchestrator for flow execution.
 """
 
 from __future__ import annotations

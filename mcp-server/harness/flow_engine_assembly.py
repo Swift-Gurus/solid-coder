@@ -1,5 +1,5 @@
 """
-solid-description: Constructs a complete flow engine with production defaults.
+solid-description: Assembles flow engine services with production defaults.
 solid-category: service
 """
 
@@ -35,6 +35,8 @@ from harness.interpolator import Interpolator, TemplateRendering
 from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
+from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
+from harness.output_schema_resolver import OutputSchemaResolver
 from harness.output_validating import OutputValidating
 from harness.path_checking import PathChecker
 from harness.prompt_content_resolver import PromptContentResolver
@@ -51,7 +53,7 @@ from utils.prompt_builder import PlainTextFileReader
 @dataclass(frozen=True)
 class FlowEngineAssembly:
     """
-    solid-description: Provides unified access to the core flow engine services.
+    solid-description: Aggregates the services required to execute flows.
     solid-category: service
     """
 
@@ -91,6 +93,8 @@ def build_default_assembly(
         include_resolver=IncludeResolver(file_loader=yaml_file_loader),
         step_shape_validator=StepShapeValidator(),
         prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
+        output_schema_resolver=OutputSchemaResolver(file_loader=json_file_loader),
+        output_schema_prompt_annotator=OutputSchemaPromptAnnotator(),
         command_allowlist_resolver=command_allowlist_resolver,
         command_allowlist_validator=CommandAllowlistValidator(),
         group_dependency_expander=GroupDependencyExpander(),
@@ -106,7 +110,7 @@ def build_default_assembly(
     validators: dict[str, OutputValidating] = {
         "file": FileOutputValidator(path_checker=PathChecker()),
         "data": DataOutputValidator(
-            schema_resolver=SchemaResolver(file_loader=json_file_loader),
+            schema_resolver=SchemaResolver(),
             json_schema=JsonSchemaValidator(),
         ),
     }

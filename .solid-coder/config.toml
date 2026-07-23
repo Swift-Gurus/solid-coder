@@ -19,6 +19,19 @@ exclude = [
 [flow_engine]
 permitted_executables = ["python3", "bash", "sh"]
 
+# ── Feature flags ────────────────────────────────────────────────────────────
+# Opt-in experimental behaviors. Toggle to compare token cost / quality.
+[feature_flags]
+
+# true  — flow_start/flow_next return plain text: "id: <instance_id>" + the
+#         step's prompt (schema already folded in), rejection reasons and
+#         retry counts as prose, terminal states as short messages. Fewer
+#         tokens, nothing for the agent to JSON-parse.
+# false — flow_start/flow_next return the full FlowStartResult/FlowNextResult
+#         as JSON (status, steps[], execution, attempts_remaining,
+#         rejection_reason, error). More tokens, full structured detail.
+flow_plain_text_response = true
+
 # ── Hook backend ──────────────────────────────────────────────────────────────
 # Controls which LLM the pre-write health-check gate uses.
 [llm]

@@ -1,5 +1,5 @@
 """
-solid-description: Loads a fully-validated and expanded flow definition from a file path.
+solid-description: Produces fully validated and resolved flow definitions.
 solid-category: service
 """
 
@@ -14,6 +14,8 @@ from harness.flow_loading import FlowLoading
 from harness.group_dependency_expanding import GroupDependencyExpanding
 from harness.include_resolving import IncludeResolving
 from harness.models import FlowDef, FlowValidationError
+from harness.output_schema_prompt_annotating import OutputSchemaPromptAnnotating
+from harness.output_schema_resolving import OutputSchemaResolving
 from harness.prompt_content_resolving import PromptContentResolving
 from harness.uses_resolver import UsesResolving
 from harness.flow_graph_validator import FlowGraphValidating
@@ -24,7 +26,7 @@ from harness.flow_config_extractor import FlowConfigExtracting
 
 class FlowLoader(FlowLoading):
     """
-    solid-description: Loads a fully-validated and expanded flow definition from a file path.
+    solid-description: Produces fully validated and resolved flow definitions.
     solid-category: service
     """
 
@@ -38,6 +40,8 @@ class FlowLoader(FlowLoading):
         include_resolver: IncludeResolving,
         step_shape_validator: StepShapeValidating,
         prompt_content_resolver: PromptContentResolving,
+        output_schema_resolver: OutputSchemaResolving,
+        output_schema_prompt_annotator: OutputSchemaPromptAnnotating,
         command_allowlist_resolver: CommandAllowlistResolving,
         command_allowlist_validator: CommandAllowlistValidating,
         group_dependency_expander: GroupDependencyExpanding,
@@ -50,6 +54,8 @@ class FlowLoader(FlowLoading):
         self._include_resolver = include_resolver
         self._step_shape_validator = step_shape_validator
         self._prompt_content_resolver = prompt_content_resolver
+        self._output_schema_resolver = output_schema_resolver
+        self._output_schema_prompt_annotator = output_schema_prompt_annotator
         self._command_allowlist_resolver = command_allowlist_resolver
         self._command_allowlist_validator = command_allowlist_validator
         self._group_dependency_expander = group_dependency_expander
@@ -76,16 +82,24 @@ class FlowLoader(FlowLoading):
             self._prompt_content_resolver.resolve(step, path)
             for step in inclusion.steps
         ]
+        steps_with_schemas = [
+            self._output_schema_resolver.resolve(step, path)
+            for step in steps_with_prompts
+        ]
+        steps_with_annotated_prompts = [
+            self._output_schema_prompt_annotator.annotate(step)
+            for step in steps_with_schemas
+        ]
 
         allowlist = self._command_allowlist_resolver.resolve()
-        self._command_allowlist_validator.validate(steps_with_prompts, allowlist)
+        self._command_allowlist_validator.validate(steps_with_annotated_prompts, allowlist)
 
-        self._graph_validator.validate_raw(steps_with_prompts, inclusion.alias_groups)
+        self._graph_validator.validate_raw(steps_with_annotated_prompts, inclusion.alias_groups)
         self._graph_validator.validate_includes(
-            steps_with_prompts, inclusion.alias_groups, top_level_step_ids, inclusion.include_chain
+            steps_with_annotated_prompts, inclusion.alias_groups, top_level_step_ids, inclusion.include_chain
         )
 
-        fully_expanded_steps = self._group_dependency_expander.expand(steps_with_prompts, inclusion.alias_groups)
+        fully_expanded_steps = self._group_dependency_expander.expand(steps_with_annotated_prompts, inclusion.alias_groups)
 
         steps = [self._step_builder.build(s) for s in fully_expanded_steps]
         self._graph_validator.validate_for_each_references(steps)

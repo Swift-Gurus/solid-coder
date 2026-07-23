@@ -49,6 +49,21 @@ class TestValidationCatchesMistakes(unittest.TestCase):
             with self.assertRaises(SolidCoderConfigError):
                 load_config()
 
+    def test_feature_flags_flow_plain_text_response_loads(self):
+        with ConfigSectionStub(feature_flags={"flow_plain_text_response": False}):
+            config = load_config()
+        self.assertEqual(config.feature_flags.flow_plain_text_response, False)
+
+    def test_feature_flags_flow_plain_text_response_defaults_to_true(self):
+        with ConfigSectionStub():
+            config = load_config()
+        self.assertEqual(config.feature_flags.flow_plain_text_response, True)
+
+    def test_unknown_key_in_feature_flags_section_raises(self):
+        with ConfigSectionStub(feature_flags={"flow_plain_text_respons": True}):
+            with self.assertRaises(SolidCoderConfigError):
+                load_config()
+
 
 if __name__ == "__main__":
     unittest.main()

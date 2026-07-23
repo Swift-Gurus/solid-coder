@@ -22,8 +22,11 @@ from harness.for_each_reference_validator import ForEachReferenceValidator
 from harness.group_dependency_expander import GroupDependencyExpander
 from harness.include_resolver import IncludeResolver
 from harness.include_structure_validator import IncludeStructureValidator
+from harness.json_loading import JsonLoader
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.models import FlowValidationError
+from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
+from harness.output_schema_resolver import OutputSchemaResolver
 from harness.prompt_content_resolver import PromptContentResolver
 from harness.step_builder import StepBuilder
 from harness.step_graph_validator import StepGraphValidator
@@ -45,6 +48,7 @@ def _make_graph_validator() -> FlowGraphValidator:
 
 def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
     yaml_file_loader = YamlConfigFileLoader(loader=PyYamlLoader())
+    json_file_loader = YamlConfigFileLoader(loader=JsonLoader())
     return FlowLoader(
         file_loader=yaml_file_loader,
         config_extractor=FlowConfigExtractor(),
@@ -54,6 +58,8 @@ def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
         include_resolver=IncludeResolver(file_loader=yaml_file_loader),
         step_shape_validator=StepShapeValidator(),
         prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
+        output_schema_resolver=OutputSchemaResolver(file_loader=json_file_loader),
+        output_schema_prompt_annotator=OutputSchemaPromptAnnotator(),
         command_allowlist_resolver=CommandAllowlistResolver(section_reader=lambda name: {"permitted_executables": allowlist}),
         command_allowlist_validator=CommandAllowlistValidator(),
         group_dependency_expander=GroupDependencyExpander(),
@@ -163,6 +169,82 @@ class TestFlowLoader(unittest.TestCase):
         flow = self.loader.load(path, [])
 
         self.assertEqual(flow.steps[0].prompt, "Rendered prompt text")
+
+    def test_resolves_schema_file_for_output_spec(self):
+        self._write("greeting_schema.json", '{"type": "string"}')
+        path = self._write("schema_file_flow.yaml", """
+            name: with_schema_file
+            steps:
+              - id: a
+                prompt: p
+                outputs:
+                  - name: greeting
+                    type: data
+                    schema_file: greeting_schema.json
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(flow.steps[0].outputs[0].schema, {"type": "string"})
+
+    def test_folds_output_schema_into_the_step_prompt(self):
+        path = self._write("schema_prompt_flow.yaml", """
+            name: with_schema_in_prompt
+            steps:
+              - id: a
+                prompt: Produce a short greeting.
+                outputs:
+                  - name: greeting
+                    type: data
+                    schema:
+                      type: string
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(
+            flow.steps[0].prompt,
+            "Produce a short greeting.\n\n"
+            "Submit output 'greeting' matching this schema: {\"type\": \"string\"}",
+        )
+
+    def test_loading_an_already_resolved_workflow_snapshot_does_not_double_the_folded_schema(self):
+        # Mirrors YamlWorkflowPersister: the run engine persists the fully-resolved FlowDef (prompt
+        # already schema-annotated, schema still present) to workflow.yaml, then reloads it on every
+        # subsequent flow_next() call through this same loader — that reload must be a no-op.
+        path = self._write("already_resolved_flow.yaml", """
+            name: already_resolved
+            steps:
+              - id: a
+                prompt: |-
+                  Produce a short greeting.
+
+                  Submit output 'greeting' matching this schema: {"type": "string"}
+                outputs:
+                  - name: greeting
+                    type: data
+                    schema:
+                      type: string
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(
+            flow.steps[0].prompt,
+            "Produce a short greeting.\n\n"
+            "Submit output 'greeting' matching this schema: {\"type\": \"string\"}",
+        )
+
+    def test_raises_when_schema_file_missing(self):
+        path = self._write("missing_schema_flow.yaml", """
+            name: with_missing_schema_file
+            steps:
+              - id: a
+                prompt: p
+                outputs:
+                  - name: greeting
+                    type: data
+                    schema_file: missing.json
+        """)
+        with self.assertRaises(FlowValidationError):
+            self.loader.load(path, [])
 
     def test_loads_a_flow_with_an_aliased_include(self):
         self._write("sub.yaml", """

@@ -12,6 +12,7 @@ if str(_MODULE_DIR) not in sys.path:
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from feature_flags_config import FeatureFlagsConfig
 from flow_engine_config import FlowEngineConfig
 from hook_config import HookConfig
 from inference_config import InferenceConfig
@@ -29,6 +30,7 @@ class SolidCoderConfig(BaseModel):
     inference: InferenceConfig = Field(default_factory=InferenceConfig)
     server: ServerConfig = Field(default_factory=ServerConfig)
     flow_engine: FlowEngineConfig = Field(default_factory=FlowEngineConfig)
+    feature_flags: FeatureFlagsConfig = Field(default_factory=FeatureFlagsConfig)
     code_review_on_write_enabled: bool = Field(default=False)
 
     def hook_exclude(self, hook: str) -> list:

@@ -2,7 +2,7 @@
 solid-name: FlowNextResult
 solid-category: model
 solid-spec: [SPEC-013]
-solid-description: Represents the result of a flow operation, conveying whether it succeeded and any errors encountered.
+solid-description: Represents the result of a flow operation, conveying execution status, step results, and errors.
 """
 
 from __future__ import annotations
@@ -17,4 +17,3 @@ class FlowNextResult:
     status: str
     steps: list[StepResult] = field(default_factory=list)
     error: str | None = None
-    validation_errors: list[str] = field(default_factory=list)

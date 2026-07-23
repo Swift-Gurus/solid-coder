@@ -20,8 +20,10 @@ SERVER_DIR = Path(__file__).resolve().parent
 MCP_DIR = SERVER_DIR.parent
 PLUGIN_ROOT = MCP_DIR.parent
 SKILLS_ROOT = PLUGIN_ROOT / "skills"
+HEALTH_CONFIG_DIR = MCP_DIR / "health" / "config"
 
 sys.path.insert(0, str(MCP_DIR))
+sys.path.insert(0, str(HEALTH_CONFIG_DIR))
 sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
@@ -33,6 +35,10 @@ from pipeline.handlers import ReviewResultsCollector, make_review_results_collec
 from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
 from common.mcp_meta import LARGE_OUTPUT
+from harness.flow_result_json_renderer import FlowResultJsonRenderer
+from harness.flow_result_rendering import FlowResultRendering
+from harness.flow_result_renderer import FlowResultRenderer
+from harness.flow_result_renderer_selector import FlowResultRendererSelector
 from harness.flow_run_orchestrating import FlowRunOrchestrating
 from pipeline.output_path_factory import OutputPathFactory
 
@@ -182,14 +188,18 @@ def _build_tool_callables(
     }
 
 
-def _build_flow_callables(flow_run: FlowRunOrchestrating) -> dict:
+def _build_flow_callables(
+    flow_run: FlowRunOrchestrating,
+    result_renderer: Optional[FlowResultRendering] = None,
+) -> dict:
     """Build flow tool callables that delegate to FlowRunOrchestrating."""
+    renderer = result_renderer or FlowResultRenderer()
 
-    def _flow_start(flow: str, params: Optional[dict] = None) -> dict:
-        return dataclasses.asdict(flow_run.flow_start(flow, params))
+    def _flow_start(flow: str, params: Optional[dict] = None) -> str:
+        return renderer.render_start(flow_run.flow_start(flow, params))
 
-    def _flow_next(outputs: Optional[dict] = None) -> dict:
-        return dataclasses.asdict(flow_run.flow_next(outputs))
+    def _flow_next(outputs: Optional[dict] = None) -> str:
+        return renderer.render_next(flow_run.flow_next(outputs))
 
     def _flow_status() -> dict:
         return dataclasses.asdict(flow_run.flow_status())
@@ -224,6 +234,7 @@ class ApplicationBootstrapper:
         validate_output: OutputValidating,
         search: CodebaseSearching,
         flow_run: Optional[FlowRunOrchestrating] = None,
+        flow_result_renderer: Optional[FlowResultRendering] = None,
     ) -> None:
         self._server = server
         self._registry = registry
@@ -236,6 +247,7 @@ class ApplicationBootstrapper:
         self._validate = validate_output
         self._search = search
         self._flow_run = flow_run
+        self._flow_result_renderer = flow_result_renderer
 
     def run(self) -> None:
         self._register_all_tools()
@@ -396,14 +408,21 @@ class ApplicationBootstrapper:
             self._register_flow_tools(self._flow_run)
 
     def _register_flow_tools(self, flow_run: FlowRunOrchestrating) -> None:
-        flow_tools = _build_flow_callables(flow_run)
+        flow_tools = _build_flow_callables(flow_run, self._flow_result_renderer)
         reg = self._registry
 
         reg.register(
             "flow_start",
-            "Start the DAG state machine for a flow: creates a new run, writes active.json, and returns the "
-            "first ready step(s) with their prompts. Call flow_next after each step to advance the machine "
-            "through its states until status is 'done' or 'timed_out'. Only one run can be active at a time.",
+            "TRIGGER when the user asks to run, start, or execute a workflow or flow by name (e.g. 'run "
+            "workflow <name>', 'execute the <name> flow', 'start flow <name>') — this is how such requests are "
+            "fulfilled, not by improvising the steps yourself. Start the DAG state machine for a flow: creates "
+            "a new run and returns the first ready step(s) as "
+            "plain text. Each returned block starts with 'id: <instance_id>' followed by the step's prompt; if "
+            "the step declares outputs, the exact JSON Schema each submitted value must match is stated in that "
+            "prompt — follow it precisely, since a wrong-shaped submission is rejected and costs a retry "
+            "attempt. A block starting with 'Launch a subagent with the following prompt:' means spawn a "
+            "subagent to handle it rather than doing it yourself. Call flow_next after each step to advance "
+            "until you see 'Flow complete.' Only one run can be active at a time.",
             {
                 "type": "object",
                 "properties": {
@@ -430,21 +449,24 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_next",
-            "Submit the outputs for the step(s) you were just given and get the next ready step(s). The steps "
-            "are deterministic — fixed by the flow's YAML file, not decided by you — so always follow the "
-            "returned prompt(s) exactly rather than improvising or skipping ahead. Operates on the single "
-            "active run (no run id needed) — call this in a loop, once per completed step, until status is "
-            "'done' or 'timed_out'.",
+            "Submit your output values for the step(s) you were just instructed to complete, keyed by the "
+            "'id: <instance_id>' each one gave you — each value must match the schema stated in that step's "
+            "prompt exactly, or the submission is rejected. Get it right the first time; a rejected submission "
+            "wastes a turn. The response is plain text: either the next step(s) to work on, a block starting "
+            "with 'Rejected:' explaining exactly what was wrong and how many attempts remain to retry the same "
+            "step, or 'Flow complete.'/'Flow timed out...'/'Flow failed...' meaning you've reached the end of "
+            "the flow. Operates on the single active run (no run id needed) — call this in a loop, once per "
+            "completed step.",
             {
                 "type": "object",
                 "properties": {
                     "outputs": {
                         "type": "object",
                         "description": (
-                            "Map of instance_id (from the 'steps[].instance_id' you were given by flow_start/"
-                            "flow_next) to that step's output values, keyed by output name as declared in the "
-                            "step's 'outputs:' spec in the flow YAML. Omit a step's key, or pass '{}', if it "
-                            "declares no outputs."
+                            "Map of instance_id (the value after 'id: ' on each block you were given by "
+                            "flow_start/flow_next) to that step's output values, keyed by output name as stated "
+                            "in that step's prompt. Omit a step's key, or pass '{}', if its prompt declares no "
+                            "outputs."
                         ),
                     },
                 },
@@ -480,6 +502,7 @@ def make_bootstrapper(
     search: Optional[CodebaseSearching] = None,
     refs_root: Path = PLUGIN_ROOT / "references",
     flow_run: Optional[FlowRunOrchestrating] = None,
+    flow_result_renderer: Optional[FlowResultRendering] = None,
 ) -> ApplicationBootstrapper:
     """Composition root: all dependencies injectable; production defaults applied when omitted."""
     if flow_run is None:
@@ -487,6 +510,15 @@ def make_bootstrapper(
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
         flow_run = FlowRunOrchestratorFactory(base_dir_resolver=RunsBaseDirResolver()).build()
+
+    if flow_result_renderer is None:
+        from hc_config_schema import load_config
+
+        selector = FlowResultRendererSelector(
+            plain_text_renderer=FlowResultRenderer(),
+            json_renderer=FlowResultJsonRenderer(),
+        )
+        flow_result_renderer = selector.select(load_config().feature_flags.flow_plain_text_response)
 
     mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(
@@ -501,6 +533,7 @@ def make_bootstrapper(
         validate_output=validate_output or importlib.import_module("validate-output"),
         search=search or importlib.import_module("search.codebase_searcher"),
         flow_run=flow_run,
+        flow_result_renderer=flow_result_renderer,
     )
 
 

@@ -2,7 +2,7 @@
 solid-name: StepResultBuilder
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Resolves execution intent and populates step records with retry and rejection information.
+solid-description: Constructs step result objects from step instances and flow definitions.
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 solid-name: StepResult
 solid-category: model
 solid-spec: [SPEC-013]
-solid-description: Encapsulates the execution outcome and retry state of a step.
+solid-description: Represents the execution outcome and retry state of a step.
 """
 
 from __future__ import annotations
