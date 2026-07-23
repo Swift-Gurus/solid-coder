@@ -1,8 +1,8 @@
 """
 solid-name: test_flow_stepper
 solid-category: unit-test
-solid-spec: [SPEC-013]
-solid-description: Tests coordinating output validation, recording, turn advancement, and completion for one flow_next call.
+solid-spec: [SPEC-013, SPEC-027]
+solid-description: Tests coordinating output submission, script step auto-execution, completion checking, and readiness resolution for one flow_next call.
 """
 
 from __future__ import annotations
@@ -17,10 +17,11 @@ from harness.active_run_location import ActiveRunLocation
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepper import FlowStepper
 from harness.interpolation_error import InterpolationError
-from harness.models import FlowDef, RunState, StepInstance
+from harness.models import FlowDef, RunState
 from harness.run_metadata import RunMetadata
 from harness.run_snapshot import RunSnapshot
 from harness.step_result import StepResult
+from harness.submission_outcome import SubmissionOutcome
 
 
 def _location() -> ActiveRunLocation:
@@ -70,35 +71,14 @@ class StubRunSnapshotResolver:
         return outcome
 
 
-class StubOutputValidator:
-    def __init__(self, errors: list[str]) -> None:
-        self._errors = errors
-
-    def validate(self, ready: list, outputs: dict, flow_def: FlowDef) -> list[str]:
-        return self._errors
-
-
-class StubSessionReader:
-    def read_session_id(self) -> str:
-        return "session-42"
-
-
-class SpyOutputRecorder:
-    def __init__(self) -> None:
+class StubSubmissionAdvancer:
+    def __init__(self, outcome: SubmissionOutcome) -> None:
+        self._outcome = outcome
         self.calls: list[tuple] = []
 
-    def record(self, events_path: str, ready: list, step_outputs: dict, session_id: str) -> None:
-        self.calls.append((events_path, ready, step_outputs, session_id))
-
-
-class StubTurnAdvancer:
-    def __init__(self, run_state: RunState) -> None:
-        self._run_state = run_state
-        self.calls: list[str] = []
-
-    def advance(self, events_path: str) -> RunState:
-        self.calls.append(events_path)
-        return self._run_state
+    def submit(self, events_path, base_dir, run_id, ready, step_outputs, flow_def) -> SubmissionOutcome:
+        self.calls.append((events_path, base_dir, run_id, ready, step_outputs, flow_def))
+        return self._outcome
 
 
 class StubCompletionChecker:
@@ -111,129 +91,193 @@ class StubCompletionChecker:
         return self._result
 
 
-class StubStepResultBuilder:
-    def __init__(self, steps: list[StepResult]) -> None:
-        self._steps = steps
+class StubStepExecutionCoordinator:
+    def __init__(self, result=None) -> None:
+        self._result = result
+        self.calls: list[tuple] = []
 
-    def build(self, instances, flow_def, detected_env) -> list[StepResult]:
+    def run_ready(self, base_dir, run_id, events_path, flow_def, params):
+        self.calls.append((base_dir, run_id, events_path, flow_def, params))
+        return self._result
+
+
+class StubReadyStepsResolver:
+    def __init__(self, steps=None, error: InterpolationError | None = None) -> None:
+        self._steps = steps or []
+        self._error = error
+        self.calls: list[tuple] = []
+
+    def resolve(self, events_path, flow_def, params, detected_env) -> list[StepResult]:
+        self.calls.append((events_path, flow_def, params, detected_env))
+        if self._error is not None:
+            raise self._error
         return self._steps
 
 
-def _make_stepper(
-    flow_def, snapshots, validation_errors=None, run_state_after_advance=None,
-    completion_result=None, next_steps=None, metadata=None,
-):
-    return FlowStepper(
-        run_locator=StubRunLocator(_location()),
-        metadata_store=StubMetadataStore(metadata or RunMetadata(params={}, detected_env="")),
-        flow_loader=StubFlowLoader(flow_def),
-        run_snapshot_resolver=StubRunSnapshotResolver(snapshots),
-        output_validator=StubOutputValidator(validation_errors or []),
-        session_reader=StubSessionReader(),
-        output_recorder=SpyOutputRecorder(),
-        turn_advancer=StubTurnAdvancer(run_state_after_advance or RunState(completed={}, running=[], turn_count=1, status="in_progress")),
-        completion_checker=StubCompletionChecker(completion_result),
-        step_result_builder=StubStepResultBuilder(next_steps or []),
-    )
+class FlowStepperFactory:
+    """Builds a FlowStepper with sensible stub/spy defaults; tests override only what they vary."""
+
+    def __init__(self) -> None:
+        self.run_locator = StubRunLocator(_location())
+        self.metadata_store = StubMetadataStore(RunMetadata(params={}, detected_env=""))
+        self.flow_loader = StubFlowLoader(FlowDef(name="test_flow", max_turns=10, steps=[]))
+        default_run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        self.run_snapshot_resolver = StubRunSnapshotResolver([RunSnapshot(run_state=default_run_state, ready=[])])
+        self.submission_advancer = StubSubmissionAdvancer(SubmissionOutcome())
+        self.completion_checker = StubCompletionChecker(None)
+        self.step_execution_coordinator = StubStepExecutionCoordinator(None)
+        self.ready_steps_resolver = StubReadyStepsResolver([])
+
+    def with_flow_def(self, flow_def) -> "FlowStepperFactory":
+        self.flow_loader = StubFlowLoader(flow_def)
+        return self
+
+    def with_run_snapshot_resolver(self, resolver) -> "FlowStepperFactory":
+        self.run_snapshot_resolver = resolver
+        return self
+
+    def with_submission_advancer(self, advancer) -> "FlowStepperFactory":
+        self.submission_advancer = advancer
+        return self
+
+    def with_completion_checker(self, checker) -> "FlowStepperFactory":
+        self.completion_checker = checker
+        return self
+
+    def with_step_execution_coordinator(self, coordinator) -> "FlowStepperFactory":
+        self.step_execution_coordinator = coordinator
+        return self
+
+    def with_ready_steps_resolver(self, resolver) -> "FlowStepperFactory":
+        self.ready_steps_resolver = resolver
+        return self
+
+    def make_sut(self) -> FlowStepper:
+        return FlowStepper(
+            run_locator=self.run_locator,
+            metadata_store=self.metadata_store,
+            flow_loader=self.flow_loader,
+            run_snapshot_resolver=self.run_snapshot_resolver,
+            submission_advancer=self.submission_advancer,
+            completion_checker=self.completion_checker,
+            step_execution_coordinator=self.step_execution_coordinator,
+            ready_steps_resolver=self.ready_steps_resolver,
+        )
 
 
 class TestFlowStepper(unittest.TestCase):
 
-    def test_returns_validation_error_without_recording_or_advancing(self):
-        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
+    def test_returns_terminal_result_when_submission_outcome_reports_one(self):
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
-        sut = _make_stepper(flow_def, snapshots=[RunSnapshot(run_state=run_state, ready=[])],
-                             validation_errors=["output.name is required"])
+        terminal = FlowNextResult(status="failed")
+        sut = FlowStepperFactory().with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(terminal=terminal))
+        ).make_sut()
 
-        result = sut.flow_next({"step-a-1": {"bad": "value"}})
+        result = sut.flow_next({"a-1": {"bad": "value"}})
 
-        self.assertEqual(result.status, "ready")
-        self.assertEqual(result.error, "Output validation failed")
-        self.assertEqual(result.validation_errors, ["output.name is required"])
+        self.assertIs(result, terminal)
 
     def test_returns_done_when_completion_checker_reports_done(self):
-        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
-        sut = _make_stepper(
-            flow_def, snapshots=[RunSnapshot(run_state=run_state, ready=[])],
-            completion_result=FlowNextResult(status="done"),
-        )
+        sut = FlowStepperFactory().with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
+        ).with_completion_checker(
+            StubCompletionChecker(FlowNextResult(status="done"))
+        ).make_sut()
 
         result = sut.flow_next()
 
         self.assertEqual(result.status, "done")
 
     def test_returns_timed_out_when_completion_checker_reports_timed_out(self):
-        flow_def = FlowDef(name="test_flow", max_turns=1, steps=[])
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
-        sut = _make_stepper(
-            flow_def, snapshots=[RunSnapshot(run_state=run_state, ready=[])],
-            completion_result=FlowNextResult(status="timed_out"),
-        )
+        sut = FlowStepperFactory().with_flow_def(
+            FlowDef(name="test_flow", max_turns=1, steps=[])
+        ).with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
+        ).with_completion_checker(
+            StubCompletionChecker(FlowNextResult(status="timed_out"))
+        ).make_sut()
 
         result = sut.flow_next()
 
         self.assertEqual(result.status, "timed_out")
 
+    def test_skips_completion_check_when_nothing_was_recorded(self):
+        checker_calls = StubCompletionChecker(None)
+        factory = FlowStepperFactory().with_completion_checker(checker_calls)
+
+        factory.make_sut().flow_next()
+
+        self.assertEqual(checker_calls.calls, [])
+
+    def test_returns_terminal_result_from_step_execution_coordinator(self):
+        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        terminal = FlowNextResult(status="failed")
+        sut = FlowStepperFactory().with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
+        ).with_step_execution_coordinator(
+            StubStepExecutionCoordinator(terminal)
+        ).make_sut()
+
+        result = sut.flow_next()
+
+        self.assertIs(result, terminal)
+
     def test_returns_next_ready_steps_when_run_continues(self):
-        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
         step_result = StepResult(step_id="step-b", instance_id="step-b-1", prompt="Do step-b", execution={"mode": "inline"})
-        sut = _make_stepper(
-            flow_def,
-            snapshots=[RunSnapshot(run_state=run_state, ready=[]), RunSnapshot(run_state=run_state, ready=[])],
-            completion_result=None,
-            next_steps=[step_result],
-        )
+        sut = FlowStepperFactory().with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
+        ).with_ready_steps_resolver(
+            StubReadyStepsResolver([step_result])
+        ).make_sut()
 
         result = sut.flow_next({"step-a-1": {}})
 
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.steps, [step_result])
 
-    def test_records_outputs_for_ready_instances_before_advancing(self):
+    def test_submits_the_resolved_ready_snapshot_and_outputs(self):
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
-        instance = StepInstance(step_id="step-a", instance_id="step-a-1", item=None, prompt="Do step-a")
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
-        stepper = FlowStepper(
-            run_locator=StubRunLocator(_location()),
-            metadata_store=StubMetadataStore(RunMetadata(params={}, detected_env="")),
-            flow_loader=StubFlowLoader(flow_def),
-            run_snapshot_resolver=StubRunSnapshotResolver([
-                RunSnapshot(run_state=run_state, ready=[instance]),
-                RunSnapshot(run_state=run_state, ready=[]),
-            ]),
-            output_validator=StubOutputValidator([]),
-            session_reader=StubSessionReader(),
-            output_recorder=(recorder := SpyOutputRecorder()),
-            turn_advancer=StubTurnAdvancer(run_state),
-            completion_checker=StubCompletionChecker(None),
-            step_result_builder=StubStepResultBuilder([]),
-        )
+        snapshot = RunSnapshot(run_state=run_state, ready=[])
+        advancer = StubSubmissionAdvancer(SubmissionOutcome())
+        sut = FlowStepperFactory().with_flow_def(flow_def).with_run_snapshot_resolver(
+            StubRunSnapshotResolver([snapshot])
+        ).with_submission_advancer(advancer).make_sut()
 
-        stepper.flow_next({"step-a-1": {"result": "ok"}})
+        sut.flow_next({"step-a-1": {"result": "ok"}})
 
-        self.assertEqual(recorder.calls, [
-            ("/runs/run-1/events.jsonl", [instance], {"step-a-1": {"result": "ok"}}, "session-42"),
+        self.assertEqual(advancer.calls, [
+            ("/runs/run-1/events.jsonl", Path("/runs"), "run-1", [], {"step-a-1": {"result": "ok"}}, flow_def),
         ])
 
     def test_returns_clean_error_when_initial_snapshot_interpolation_fails(self):
-        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
-        sut = _make_stepper(flow_def, snapshots=[InterpolationError("bad reference")])
+        sut = FlowStepperFactory().with_run_snapshot_resolver(
+            StubRunSnapshotResolver([InterpolationError("bad reference")])
+        ).make_sut()
 
         result = sut.flow_next()
 
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.error, "bad reference")
 
-    def test_returns_clean_error_when_next_snapshot_interpolation_fails(self):
-        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
-        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
-        sut = _make_stepper(
-            flow_def,
-            snapshots=[RunSnapshot(run_state=run_state, ready=[]), InterpolationError("bad reference")],
-            completion_result=None,
-        )
+    def test_returns_clean_error_when_ready_steps_resolution_fails(self):
+        sut = FlowStepperFactory().with_ready_steps_resolver(
+            StubReadyStepsResolver(error=InterpolationError("bad reference"))
+        ).make_sut()
 
         result = sut.flow_next()
 

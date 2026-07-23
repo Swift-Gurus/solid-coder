@@ -11,9 +11,14 @@ import hc_config_schema
 class ConfigSectionStub:
     """Context manager: patches read_llm_section/read_section to return fixed dicts."""
 
-    def __init__(self, llm=None, hooks=None, inference=None, server=None, root=None):
+    def __init__(self, llm=None, hooks=None, inference=None, server=None, flow_engine=None, root=None):
         self._llm = llm or {}
-        self._sections = {"hooks": hooks or {}, "inference": inference or {}, "server": server or {}}
+        self._sections = {
+            "hooks": hooks or {},
+            "inference": inference or {},
+            "server": server or {},
+            "flow_engine": flow_engine or {},
+        }
         self._root = root or {}
         self._patcher = None
 

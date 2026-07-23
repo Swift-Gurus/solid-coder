@@ -1,5 +1,5 @@
 """
-solid-description: Defines data model types representing flow specifications and execution state.
+solid-description: Provides data models for specifying flows and tracking their execution.
 solid-category: model
 """
 
@@ -33,7 +33,7 @@ class ExecutionSpec:
 @dataclass(frozen=True)
 class StepDef:
     """
-    solid-description: Represents a step definition with configuration, dependencies, and outputs.
+    solid-description: Defines a step in a flow with its configuration, dependencies, and outputs.
     solid-category: model
     """
     id: str
@@ -42,12 +42,17 @@ class StepDef:
     outputs: list[OutputSpec] = field(default_factory=list)
     execution: ExecutionSpec | None = None
     for_each: str | None = None
+    type: str = "agent"
+    prompt_file: str | None = None
+    command: list[str] | None = None
+    timeout_seconds: int | None = None
+    max_attempts: int = 3
 
 
 @dataclass(frozen=True)
 class FlowDef:
     """
-    solid-description: Represents a flow definition with its steps and configuration.
+    solid-description: Defines a flow including its steps and execution constraints.
     solid-category: model
     """
     name: str
@@ -58,7 +63,7 @@ class FlowDef:
 @dataclass(frozen=True)
 class StepOutputs:
     """
-    solid-description: Represents named outputs produced by a step.
+    solid-description: Provides access to named output values.
     solid-category: model
     """
     values: dict[str, Any] = field(default_factory=dict)
@@ -77,19 +82,21 @@ class StepOutputs:
 @dataclass(frozen=True)
 class RunState:
     """
-    solid-description: Represents the current state of an executing flow.
+    solid-description: Tracks the execution state and progress of a running flow.
     solid-category: model
     """
     completed: dict[str, StepOutputs]
     running: list[str]
     turn_count: int
     status: str
+    attempts_used: dict[str, int] = field(default_factory=dict)
+    rejection_reasons: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class StepInstance:
     """
-    solid-description: Represents an instance of a step execution with iteration context.
+    solid-description: Provides the execution context of a step instance within an iteration.
     solid-category: model
     """
     step_id: str
@@ -101,7 +108,7 @@ class StepInstance:
 @dataclass(frozen=True)
 class ValidationResult:
     """
-    solid-description: Represents the result of a validation check.
+    solid-description: Communicates whether a validation check passed and any errors.
     solid-category: model
     """
     ok: bool
@@ -110,7 +117,7 @@ class ValidationResult:
 
 class FlowValidationError(Exception):
     """
-    solid-description: Raised when structural validation of a flow fails.
+    solid-description: Indicates a flow structure validation failure.
     solid-category: service
     """
 

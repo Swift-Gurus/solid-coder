@@ -34,6 +34,7 @@ def load_config(cwd: Optional[Path] = None) -> SolidCoderConfig:
         "hooks": read_section("hooks", _cwd=cwd),
         "inference": read_section("inference", _cwd=cwd),
         "server": read_section("server", _cwd=cwd),
+        "flow_engine": read_section("flow_engine", _cwd=cwd),
     }
     try:
         return SolidCoderConfig.model_validate(raw)

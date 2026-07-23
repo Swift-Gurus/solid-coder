@@ -154,7 +154,8 @@ from gate_logger import GateLogger  # noqa: E402, F401 — re-exported for consu
 from hook_responder import HookResponder  # noqa: E402, F401 — re-exported for consumers
 from hook_gate import HookGate  # noqa: E402, F401 — re-exported for consumers
 from hook_gate_factory import HookGateFactory  # noqa: E402, F401 — re-exported for consumers
-from subprocess_adapter import SubprocessAdapter, SubprocessJsonRunner  # noqa: E402, F401 — re-exported for consumers
+from subprocess_adapter import SubprocessAdapter  # noqa: E402, F401 — re-exported for consumers
+from subprocess_json_runner import SubprocessJsonRunner  # noqa: E402, F401 — re-exported for consumers
 
 _default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(SubprocessAdapter())
 

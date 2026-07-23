@@ -12,17 +12,19 @@ from harness.flow_loading import FlowLoading
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepping import FlowStepping
 from harness.interpolation_error import InterpolationError
-from harness.output_recording import OutputRecording
+from harness.output_submission_advancing import OutputSubmissionAdvancing
+from harness.ready_steps_resolving import ReadyStepsResolving
 from harness.run_completion_checking import RunCompletionChecking
 from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
-from harness.session_id_reading import SessionIdReading
-from harness.step_output_validating import StepOutputValidating
-from harness.step_result_building import StepResultBuilding
-from harness.turn_advancing import TurnAdvancing
+from harness.step_execution_coordinating import StepExecutionCoordinating
 
 
 class FlowStepper(FlowStepping):
+    """
+    solid-description: Progresses a flow execution to the next step.
+    solid-category: service
+    """
 
     def __init__(
         self,
@@ -30,23 +32,19 @@ class FlowStepper(FlowStepping):
         metadata_store: RunMetadataPersisting,
         flow_loader: FlowLoading,
         run_snapshot_resolver: RunSnapshotResolving,
-        output_validator: StepOutputValidating,
-        session_reader: SessionIdReading,
-        output_recorder: OutputRecording,
-        turn_advancer: TurnAdvancing,
+        submission_advancer: OutputSubmissionAdvancing,
         completion_checker: RunCompletionChecking,
-        step_result_builder: StepResultBuilding,
+        step_execution_coordinator: StepExecutionCoordinating,
+        ready_steps_resolver: ReadyStepsResolving,
     ) -> None:
         self._run_locator = run_locator
         self._metadata_store = metadata_store
         self._flow_loader = flow_loader
         self._run_snapshot_resolver = run_snapshot_resolver
-        self._output_validator = output_validator
-        self._session_reader = session_reader
-        self._output_recorder = output_recorder
-        self._turn_advancer = turn_advancer
+        self._submission_advancer = submission_advancer
         self._completion_checker = completion_checker
-        self._step_result_builder = step_result_builder
+        self._step_execution_coordinator = step_execution_coordinator
+        self._ready_steps_resolver = ready_steps_resolver
 
     def flow_next(self, outputs: dict | None = None) -> FlowNextResult:
         location = self._run_locator.locate()
@@ -58,25 +56,29 @@ class FlowStepper(FlowStepping):
         except InterpolationError as exc:
             return FlowNextResult(status="ready", error=str(exc))
 
-        step_outputs = outputs or {}
-        errors = self._output_validator.validate(snapshot.ready, step_outputs, flow_def)
-        if errors:
-            return FlowNextResult(status="ready", error="Output validation failed", validation_errors=errors)
-
-        session_id = self._session_reader.read_session_id()
-        self._output_recorder.record(location.events_path, snapshot.ready, step_outputs, session_id)
-
-        run_state = self._turn_advancer.advance(location.events_path)
-
-        terminal = self._completion_checker.check(
-            location.base_dir, location.run_id, location.events_path, flow_def, run_state
+        outcome = self._submission_advancer.submit(
+            location.events_path, location.base_dir, location.run_id, snapshot.ready, outputs or {}, flow_def
         )
-        if terminal is not None:
-            return terminal
+        if outcome.terminal is not None:
+            return outcome.terminal
+
+        if outcome.run_state is not None:
+            terminal = self._completion_checker.check(
+                location.base_dir, location.run_id, location.events_path, flow_def, outcome.run_state
+            )
+            if terminal is not None:
+                return terminal
+
+        step_terminal = self._step_execution_coordinator.run_ready(
+            location.base_dir, location.run_id, location.events_path, flow_def, metadata.params
+        )
+        if step_terminal is not None:
+            return step_terminal
 
         try:
-            next_snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
-            steps = self._step_result_builder.build(next_snapshot.ready, flow_def, metadata.detected_env)
+            steps = self._ready_steps_resolver.resolve(
+                location.events_path, flow_def, metadata.params, metadata.detected_env
+            )
         except InterpolationError as exc:
             return FlowNextResult(status="ready", error=str(exc))
         return FlowNextResult(status="ready", steps=steps)

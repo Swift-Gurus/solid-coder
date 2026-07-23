@@ -1,5 +1,5 @@
 """
-solid-description: Shared prompt-building infrastructure — file-based reader and base builder used by health check and frontmatter correction.
+solid-description: Utilities for reading text files and building structured prompts.
 solid-category: utility
 solid-tags: [hook]
 """
@@ -13,6 +13,32 @@ SHARED_PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts"
 
 class PromptReading(Protocol):
     def read(self, filename: str) -> str: ...
+
+
+class TextFileReading(Protocol):
+    """
+    solid-name: TextFileReading
+    solid-category: abstraction
+    solid-spec: [SPEC-027]
+    solid-description: Contract for reading a plain text file's full contents from an arbitrary path, without raising on a missing file.
+    """
+
+    def read(self, path: Path) -> Optional[str]: ...
+
+
+class PlainTextFileReader:
+    """
+    solid-name: PlainTextFileReader
+    solid-category: service
+    solid-spec: [SPEC-027]
+    solid-description: Reads a plain text file's contents from a path, returning None if reading fails.
+    """
+
+    def read(self, path: Path) -> Optional[str]:
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError:
+            return None
 
 
 class FilePromptReader:

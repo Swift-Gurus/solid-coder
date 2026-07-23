@@ -1,0 +1,22 @@
+steps:
+  - id: draft_review
+    prompt: >
+      Write one short, friendly sentence reviewing the greeting exchange so far.
+      Submit it as the "review_text" output field of this step.
+    depends_on: [count_words, check_environment]
+    outputs:
+      - name: review_text
+        type: data
+        schema:
+          type: string
+
+  - id: approve_review
+    prompt: >
+      Reply with the single word "approved" as the "verdict" output field of
+      this step, confirming the review above is complete.
+    depends_on: [draft_review]
+    outputs:
+      - name: verdict
+        type: data
+        schema:
+          type: string

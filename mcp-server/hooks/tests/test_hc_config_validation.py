@@ -39,6 +39,16 @@ class TestValidationCatchesMistakes(unittest.TestCase):
         with self.assertRaises(Exception):
             SolidCoderConfig.model_validate({"llms": {"backend": "claude"}})
 
+    def test_flow_engine_permitted_executables_loads(self):
+        with ConfigSectionStub(flow_engine={"permitted_executables": ["python3"]}):
+            config = load_config()
+        self.assertEqual(config.flow_engine.permitted_executables, ["python3"])
+
+    def test_unknown_key_in_flow_engine_section_raises(self):
+        with ConfigSectionStub(flow_engine={"permited_executables": ["python3"]}):
+            with self.assertRaises(SolidCoderConfigError):
+                load_config()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,15 +1,19 @@
 """
-solid-description: Provides a flow engine assembly for executing flows.
+solid-description: Constructs a complete flow engine with production defaults.
 solid-category: service
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 from scoring.yaml_config_file_loader import YamlConfigFileLoader
 from scoring.yaml_loader import PyYamlLoader
 
+from harness.command_allowlist_resolver import CommandAllowlistResolver
+from harness.command_allowlist_resolving import CommandAllowlistResolving
+from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.dag_runner import DAGRunner
 from harness.dag_running import DAGRunning
 from harness.data_output_validator import DataOutputValidator
@@ -23,21 +27,31 @@ from harness.flow_loading import FlowLoading
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.expression_resolver import ExpressionResolver
 from harness.filter_resolver import FilterResolver
+from harness.for_each_reference_validator import ForEachReferenceValidator
+from harness.group_dependency_expander import GroupDependencyExpander
+from harness.include_resolver import IncludeResolver
+from harness.include_structure_validator import IncludeStructureValidator
 from harness.interpolator import Interpolator, TemplateRendering
 from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
+from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.output_validating import OutputValidating
 from harness.path_checking import PathChecker
+from harness.prompt_content_resolver import PromptContentResolver
+from harness.run_state_reconstructor import RunStateReconstructor
 from harness.schema_resolving import SchemaResolver
 from harness.schema_validator import SchemaValidator
 from harness.step_builder import StepBuilder
+from harness.step_graph_validator import StepGraphValidator
+from harness.step_shape_validator import StepShapeValidator
 from harness.uses_resolver import UsesResolver
+from utils.prompt_builder import PlainTextFileReader
 
 
 @dataclass(frozen=True)
 class FlowEngineAssembly:
     """
-    solid-description: Provides the configured components required to execute a flow.
+    solid-description: Provides unified access to the core flow engine services.
     solid-category: service
     """
 
@@ -49,8 +63,11 @@ class FlowEngineAssembly:
     schema_validator: SchemaValidator
 
 
-def build_default_assembly() -> FlowEngineAssembly:
+def build_default_assembly(
+    command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
+) -> FlowEngineAssembly:
     """Construct and wire all flow engine components with production defaults."""
+    command_allowlist_resolver = command_allowlist_resolver or CommandAllowlistResolver()
     yaml_loader = PyYamlLoader()
     yaml_file_loader = YamlConfigFileLoader(loader=yaml_loader)
     json_file_loader = YamlConfigFileLoader(loader=JsonLoader())
@@ -58,19 +75,32 @@ def build_default_assembly() -> FlowEngineAssembly:
     resolver: ExpressionEvaluating = ExpressionResolver(filter_resolver=FilterResolver())
     interpolator = Interpolator(evaluator=resolver)
 
+    cycle_detector = KahnCycleDetector()
+    graph_validator = FlowGraphValidator(
+        step_graph_validator=StepGraphValidator(cycle_detector=cycle_detector),
+        include_structure_validator=IncludeStructureValidator(cycle_detector=cycle_detector),
+        for_each_validator=ForEachReferenceValidator(),
+    )
+
     flow_loader = FlowLoader(
         file_loader=yaml_file_loader,
         config_extractor=FlowConfigExtractor(),
         uses_resolver=UsesResolver(file_loader=yaml_file_loader),
-        graph_validator=FlowGraphValidator(),
+        graph_validator=graph_validator,
         step_builder=StepBuilder(),
+        include_resolver=IncludeResolver(file_loader=yaml_file_loader),
+        step_shape_validator=StepShapeValidator(),
+        prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
+        command_allowlist_resolver=command_allowlist_resolver,
+        command_allowlist_validator=CommandAllowlistValidator(),
+        group_dependency_expander=GroupDependencyExpander(),
     )
 
     event_appender = EventAppender(
         serializer=EventSerializer(),
         file_appender=POSIXFileAppender(),
     )
-    event_replayer = EventReplayer(parser=EventParser())
+    event_replayer = EventReplayer(parser=EventParser(), reconstructor=RunStateReconstructor())
     dag_runner = DAGRunner(renderer=interpolator, evaluator=resolver)
 
     validators: dict[str, OutputValidating] = {

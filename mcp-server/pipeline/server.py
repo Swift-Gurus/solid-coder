@@ -117,30 +117,46 @@ def _build_tool_callables(
         except json.JSONDecodeError:
             return {"error": f"Could not parse script output: {out}"}
 
+    def _run_and_format(skill: str, script: str, args: list, build_extra) -> dict:
+        """Runs a skill script and formats the result, delegating tool-specific
+        extra fields to build_extra(ok, out, err)."""
+        ok, out, err = runner.execute(skill, script, args)
+        extra = build_extra(ok, out, err)
+        return fmt.format(ok, err, **extra)
+
     def _split_plan(plan_path, output_dir, arch_path=None):
         args = [plan_path, "--output-dir", output_dir]
         if arch_path:
             args += ["--arch", arch_path]
-        ok, out, err = runner.execute("synthesize-implementation", "split-plan.py", args)
-        chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
-        return fmt.format(ok, err, success=ok, chunks=[str(c) for c in chunks], count=len(chunks))
+
+        def _extra(ok, out, err):
+            chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
+            return {"success": ok, "chunks": [str(c) for c in chunks], "count": len(chunks)}
+
+        return _run_and_format("synthesize-implementation", "split-plan.py", args, _extra)
 
     def _generate_report(data_dir, report_dir=None):
         report_dir = report_dir or data_dir
-        ok, out, err = runner.execute("generate-report", "generate-report.py", [data_dir, report_dir])
-        md = str(Path(report_dir) / "report.md") if ok else None
-        html = str(Path(report_dir) / "report.html") if ok else None
-        return fmt.format(ok, err, success=ok, md_path=md, html_path=html)
+
+        def _extra(ok, out, err):
+            md = str(Path(report_dir) / "report.md") if ok else None
+            html = str(Path(report_dir) / "report.html") if ok else None
+            return {"success": ok, "md_path": md, "html_path": html}
+
+        return _run_and_format("generate-report", "generate-report.py", [data_dir, report_dir], _extra)
 
     def _validate_arch(arch_path):
         schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
-        ok, out, err = runner.execute("plan", "validate-arch.py", [arch_path, "--schema", schema])
-        return fmt.format(ok, err, valid=ok, output=out, errors=err if not ok else None)
+        return _run_and_format(
+            "plan", "validate-arch.py", [arch_path, "--schema", schema],
+            lambda ok, out, err: {"valid": ok, "output": out, "errors": err if not ok else None},
+        )
 
     def _validate_findings(output_root):
-        ok, out, err = runner.execute("validate-findings", "validate-findings.py",
-                                      [output_root, str(PLUGIN_ROOT)])
-        return fmt.format(ok, err, success=ok, output=out)
+        return _run_and_format(
+            "validate-findings", "validate-findings.py", [output_root, str(PLUGIN_ROOT)],
+            lambda ok, out, err: {"success": ok, "output": out},
+        )
 
     def _search_fn(sources_dir=None, plan_path=None, tags=None, spec_numbers=None, min_matches=3):
         return search.search(
@@ -467,84 +483,10 @@ def make_bootstrapper(
 ) -> ApplicationBootstrapper:
     """Composition root: all dependencies injectable; production defaults applied when omitted."""
     if flow_run is None:
-        from harness.flow_engine_assembly import build_default_assembly
-        from harness.active_run_locator import ActiveRunLocator
-        from harness.active_run_pointer_store import ActiveRunPointerStore
-        from harness.claude_agent_type_env_detector import ClaudeAgentTypeEnvDetector
-        from harness.execution_intent_resolver import ExecutionIntentResolver
-        from harness.flow_file_resolver import FlowFileResolver
-        from harness.flow_run_orchestrator import FlowRunOrchestrator
-        from harness.flow_search_path_resolver import FlowSearchPathResolver
-        from harness.flow_starter import FlowStarter
-        from harness.flow_status_reader import FlowStatusReader
-        from harness.flow_stepper import FlowStepper
-        from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
-        from harness.name_resolving_flow_loader import NameResolvingFlowLoader
-        from harness.output_recorder import OutputRecorder
-        from harness.path_checking import PathChecker
-        from harness.run_completion_checker import RunCompletionChecker
-        from harness.run_context_builder import RunContextBuilder
-        from harness.run_directory_scaffolder import RunDirectoryScaffolder
-        from harness.run_initializer import RunInitializer
-        from harness.run_metadata_store import RunMetadataStore
-        from harness.run_provisioner import RunProvisioner
-        from harness.run_snapshot_resolver import RunSnapshotResolver
+        from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
-        from harness.startup_context_resolver import StartupContextResolver
-        from harness.step_output_validator import StepOutputValidator
-        from harness.step_result_builder import StepResultBuilder
-        from harness.turn_advancer import TurnAdvancer
 
-        assembly = build_default_assembly()
-        active_run = ActiveRunPointerStore()
-        base_dir_resolver = RunsBaseDirResolver()
-        metadata_store = RunMetadataStore()
-        step_result_builder = StepResultBuilder(intent_resolver=ExecutionIntentResolver())
-        run_locator = ActiveRunLocator(base_dir_resolver=base_dir_resolver, active_run=active_run)
-        resolving_flow_loader = NameResolvingFlowLoader(
-            file_resolver=FlowFileResolver(path_checker=PathChecker()),
-            inner_loader=assembly.flow_loader,
-        )
-        run_snapshot_resolver = RunSnapshotResolver(
-            event_replayer=assembly.event_replayer,
-            context_builder=RunContextBuilder(),
-            dag_runner=assembly.dag_runner,
-        )
-
-        starter = FlowStarter(
-            startup_context=StartupContextResolver(
-                env_detector=ClaudeAgentTypeEnvDetector(),
-                base_dir_resolver=base_dir_resolver,
-                search_paths=FlowSearchPathResolver(),
-            ),
-            flow_loader=resolving_flow_loader,
-            run_provisioner=RunProvisioner(
-                run_initializer=RunInitializer(active_run=active_run, scaffolder=RunDirectoryScaffolder()),
-                metadata_store=metadata_store,
-            ),
-            event_appender=assembly.event_appender,
-            run_snapshot_resolver=run_snapshot_resolver,
-            step_result_builder=step_result_builder,
-        )
-        stepper = FlowStepper(
-            run_locator=run_locator,
-            metadata_store=metadata_store,
-            flow_loader=resolving_flow_loader,
-            run_snapshot_resolver=run_snapshot_resolver,
-            output_validator=StepOutputValidator(schema_validator=assembly.schema_validator),
-            session_reader=McpRequestContextSessionReader(),
-            output_recorder=OutputRecorder(event_appender=assembly.event_appender),
-            turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
-            completion_checker=RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run),
-            step_result_builder=step_result_builder,
-        )
-        status_reader = FlowStatusReader(
-            run_locator=run_locator,
-            flow_loader=resolving_flow_loader,
-            run_snapshot_resolver=run_snapshot_resolver,
-        )
-
-        flow_run = FlowRunOrchestrator(starter=starter, stepper=stepper, status_reader=status_reader)
+        flow_run = FlowRunOrchestratorFactory(base_dir_resolver=RunsBaseDirResolver()).build()
 
     mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(

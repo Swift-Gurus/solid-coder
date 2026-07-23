@@ -14,6 +14,11 @@ exclude = [
     "hooks/tests/**",
 ]
 
+# ── Flow engine ─────────────────────────────────────────────────────────────
+# Executables the flow engine may run for `type: script` steps.
+[flow_engine]
+permitted_executables = ["python3", "bash", "sh"]
+
 # ── Hook backend ──────────────────────────────────────────────────────────────
 # Controls which LLM the pre-write health-check gate uses.
 [llm]
@@ -34,12 +39,12 @@ model = "claude-haiku-4-5"
 # Timeout for the bare claude -p health-check session (seconds).
 # The new two-phase flow (submit_batch + load_fix_batch + submit_fix_batch)
 # needs more headroom than the single-submission original.
-bare_session_timeout = 600
+bare_session_timeout = 1000
 
 # Timeout in seconds for a single health-check LLM session.
 # Local models with many tool call rounds (6+) can take 200-300s on large files.
 # Increase if the gate times out silently on complex files.
-timeout = 1000
+timeout = 2000
 
 
 # ── Local server ──────────────────────────────────────────────────────────────

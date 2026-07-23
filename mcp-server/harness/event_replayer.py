@@ -1,5 +1,5 @@
 """
-solid-description: Parses event logs and reconstructs execution state.
+solid-description: Reconstructs execution state from event logs.
 solid-category: service
 """
 
@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 from typing import Protocol
 
-from harness.models import RunState, StepOutputs
+from harness.models import RunState
+from harness.run_state_reconstructing import RunStateReconstructing
 
 
 class EventParsing(Protocol):
@@ -24,7 +25,7 @@ class EventParsing(Protocol):
 
 class EventParser:
     """
-    solid-description: Parses raw event input, skipping invalid records.
+    solid-description: Parses event input with automatic error recovery.
     solid-category: service
     """
 
@@ -47,38 +48,13 @@ class EventReplayer:
     solid-category: service
     """
 
-    def __init__(self, parser: EventParsing) -> None:
+    def __init__(self, parser: EventParsing, reconstructor: RunStateReconstructing) -> None:
         self._parser = parser
+        self._reconstructor = reconstructor
 
     def replay(self, path: str) -> RunState:
         p = Path(path)
         if not p.exists():
             return RunState(completed={}, running=[], turn_count=0, status="not_started")
         events = self._parser.parse(p.read_text().splitlines())
-        return self._reconstruct(events)
-
-    def _reconstruct(self, events: list[dict]) -> RunState:
-        completed: dict[str, StepOutputs] = {}
-        running: list[str] = []
-        turn_count = 0
-        status = "in_progress"
-
-        for event in events:
-            kind = event.get("event")
-            if kind == "step_started":
-                step_id = event.get("step_id", event.get("instance_id", ""))
-                if step_id and step_id not in running:
-                    running.append(step_id)
-            elif kind == "step_completed":
-                step_id = event.get("step_id", event.get("instance_id", ""))
-                completed[step_id] = StepOutputs.from_dict(event.get("outputs") or {})
-                if step_id in running:
-                    running.remove(step_id)
-            elif kind == "turn_counted":
-                turn_count = event.get("total", turn_count + 1)
-            elif kind == "run_completed":
-                status = "done"
-            elif kind == "run_timed_out":
-                status = "timed_out"
-
-        return RunState(completed=completed, running=running, turn_count=turn_count, status=status)
+        return self._reconstructor.reconstruct(events)

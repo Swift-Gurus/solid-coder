@@ -2,13 +2,13 @@
 solid-name: StepResultBuilder
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Converts step instances to step results with resolved execution intent.
+solid-description: Resolves execution intent and populates step records with retry and rejection information.
 """
 
 from __future__ import annotations
 
 from harness.execution_intent_resolving import ExecutionIntentResolving
-from harness.models import FlowDef, StepInstance
+from harness.models import FlowDef, RunState, StepInstance
 from harness.step_result import StepResult
 from harness.step_result_building import StepResultBuilding
 
@@ -18,16 +18,29 @@ class StepResultBuilder:
     def __init__(self, intent_resolver: ExecutionIntentResolving) -> None:
         self._intent_resolver = intent_resolver
 
-    def build(self, instances: list[StepInstance], flow_def: FlowDef, detected_env: str) -> list[StepResult]:
+    def build(
+        self,
+        instances: list[StepInstance],
+        flow_def: FlowDef,
+        detected_env: str,
+        run_state: RunState | None = None,
+    ) -> list[StepResult]:
         step_map = {s.id: s for s in flow_def.steps}
         results = []
         for instance in instances:
             step_def = step_map.get(instance.step_id)
             intent = step_def.execution.intent if (step_def and step_def.execution) else "inline"
+            attempts_remaining = None
+            rejection_reason = None
+            if step_def is not None and run_state is not None:
+                attempts_remaining = step_def.max_attempts - run_state.attempts_used.get(instance.step_id, 0)
+                rejection_reason = run_state.rejection_reasons.get(instance.step_id)
             results.append(StepResult(
                 step_id=instance.step_id,
                 instance_id=instance.instance_id,
                 prompt=instance.prompt,
                 execution=self._intent_resolver.resolve(intent, detected_env),
+                attempts_remaining=attempts_remaining,
+                rejection_reason=rejection_reason,
             ))
         return results

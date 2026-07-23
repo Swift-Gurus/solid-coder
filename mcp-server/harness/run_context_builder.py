@@ -2,7 +2,7 @@
 solid-name: RunContextBuilder
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Builds the template interpolation context from run params and completed step outputs.
+solid-description: Assembles run parameters and run state data into a context dictionary.
 """
 
 from __future__ import annotations
@@ -20,4 +20,9 @@ class RunContextBuilder:
             step_id: step_outputs
             for step_id, step_outputs in run_state.completed.items()
         }
-        return {"params": params, "steps": steps_context}
+        return {
+            "params": params,
+            "steps": steps_context,
+            "rejection_reasons": dict(run_state.rejection_reasons),
+            "attempts_used": dict(run_state.attempts_used),
+        }

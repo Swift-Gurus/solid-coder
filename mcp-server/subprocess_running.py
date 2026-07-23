@@ -1,5 +1,5 @@
 """
-solid-description: Contract for executing a shell command and returning captured output.
+solid-description: Contract for executing a shell command with configurable timeout and I/O, returning captured output.
 solid-category: abstraction
 """
 

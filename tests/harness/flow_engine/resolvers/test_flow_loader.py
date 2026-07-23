@@ -12,8 +12,52 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.command_allowlist_resolver import CommandAllowlistResolver
+from harness.command_allowlist_validator import CommandAllowlistValidator
+from harness.flow_config_extractor import FlowConfigExtractor
 from harness.flow_engine_assembly import build_default_assembly
+from harness.flow_graph_validator import FlowGraphValidator
+from harness.flow_loader import FlowLoader
+from harness.for_each_reference_validator import ForEachReferenceValidator
+from harness.group_dependency_expander import GroupDependencyExpander
+from harness.include_resolver import IncludeResolver
+from harness.include_structure_validator import IncludeStructureValidator
+from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.models import FlowValidationError
+from harness.prompt_content_resolver import PromptContentResolver
+from harness.step_builder import StepBuilder
+from harness.step_graph_validator import StepGraphValidator
+from harness.step_shape_validator import StepShapeValidator
+from harness.uses_resolver import UsesResolver
+from scoring.yaml_config_file_loader import YamlConfigFileLoader
+from scoring.yaml_loader import PyYamlLoader
+from utils.prompt_builder import PlainTextFileReader
+
+
+def _make_graph_validator() -> FlowGraphValidator:
+    cycle_detector = KahnCycleDetector()
+    return FlowGraphValidator(
+        step_graph_validator=StepGraphValidator(cycle_detector=cycle_detector),
+        include_structure_validator=IncludeStructureValidator(cycle_detector=cycle_detector),
+        for_each_validator=ForEachReferenceValidator(),
+    )
+
+
+def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
+    yaml_file_loader = YamlConfigFileLoader(loader=PyYamlLoader())
+    return FlowLoader(
+        file_loader=yaml_file_loader,
+        config_extractor=FlowConfigExtractor(),
+        uses_resolver=UsesResolver(file_loader=yaml_file_loader),
+        graph_validator=_make_graph_validator(),
+        step_builder=StepBuilder(),
+        include_resolver=IncludeResolver(file_loader=yaml_file_loader),
+        step_shape_validator=StepShapeValidator(),
+        prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
+        command_allowlist_resolver=CommandAllowlistResolver(section_reader=lambda name: {"permitted_executables": allowlist}),
+        command_allowlist_validator=CommandAllowlistValidator(),
+        group_dependency_expander=GroupDependencyExpander(),
+    )
 
 
 class TestFlowLoader(unittest.TestCase):
@@ -79,6 +123,117 @@ class TestFlowLoader(unittest.TestCase):
               - id: b
                 prompt: p
                 depends_on: [a]
+        """)
+        with self.assertRaises(FlowValidationError):
+            self.loader.load(path, [])
+
+    def test_loads_a_script_step_with_permitted_command(self):
+        path = self._write("script_flow.yaml", """
+            name: with_script
+            steps:
+              - id: gate
+                type: script
+                command: [python3, run.py]
+                timeout_seconds: 30
+        """)
+        flow = _loader_with_allowlist(["python3"]).load(path, [])
+
+        self.assertEqual(flow.steps[0].type, "script")
+        self.assertEqual(flow.steps[0].command, ["python3", "run.py"])
+
+    def test_raises_when_script_command_not_on_allowlist(self):
+        path = self._write("script_flow.yaml", """
+            name: with_script
+            steps:
+              - id: gate
+                type: script
+                command: [curl, evil.example]
+        """)
+        with self.assertRaises(FlowValidationError):
+            _loader_with_allowlist(["python3"]).load(path, [])
+
+    def test_resolves_prompt_file_for_agent_step(self):
+        self._write("prompt.md", "Rendered prompt text")
+        path = self._write("prompt_file_flow.yaml", """
+            name: with_prompt_file
+            steps:
+              - id: a
+                prompt_file: prompt.md
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(flow.steps[0].prompt, "Rendered prompt text")
+
+    def test_loads_a_flow_with_an_aliased_include(self):
+        self._write("sub.yaml", """
+            steps:
+              - id: step_a
+                prompt: Do sub step
+        """)
+        path = self._write("parent.yaml", """
+            name: parent
+            steps:
+              - include: sub.yaml
+                as: sub
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual([s.id for s in flow.steps], ["sub.step_a"])
+
+    def test_raises_when_include_alias_collides_with_existing_step_id(self):
+        self._write("sub.yaml", """
+            steps:
+              - id: step_a
+                prompt: p
+        """)
+        path = self._write("parent.yaml", """
+            name: parent
+            steps:
+              - id: sub
+                prompt: p
+              - include: sub.yaml
+                as: sub
+        """)
+        with self.assertRaises(FlowValidationError):
+            self.loader.load(path, [])
+
+    def test_loads_a_flow_with_an_inline_group_alongside_top_level_steps(self):
+        path = self._write("inline_group.yaml", """
+            name: inline_group
+            steps:
+              - id: setup
+                prompt: p
+              - group: review
+                steps:
+                  - id: draft
+                    prompt: p
+                    depends_on: [setup]
+                  - id: approve
+                    prompt: p
+                    depends_on: [draft]
+              - id: finish
+                prompt: p
+                depends_on: [review]
+        """)
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(flow.steps[0].id, "setup")
+        self.assertEqual(flow.steps[-1].id, "finish")
+        self.assertEqual(
+            sorted(s.id for s in flow.steps), ["finish", "review.approve", "review.draft", "setup"]
+        )
+        self.assertEqual(sorted(flow.steps[-1].depends_on), ["review.approve", "review.draft"])
+
+    def test_raises_when_inline_group_alias_collides_with_existing_step_id(self):
+        path = self._write("inline_collision.yaml", """
+            name: inline_collision
+            steps:
+              - id: review
+                prompt: p
+              - group: review
+                steps:
+                  - id: draft
+                    prompt: p
         """)
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])

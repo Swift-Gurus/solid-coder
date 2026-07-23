@@ -2,7 +2,7 @@
 number: SPEC-012
 feature: Core Flow Engine (Abstraction)
 type: subtask
-status: draft
+status: done
 parent: SPEC-010
 blocked-by: []
 blocking: [SPEC-013, SPEC-014, SPEC-015]

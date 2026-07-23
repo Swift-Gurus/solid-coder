@@ -1,5 +1,5 @@
 name: e2e_test
-max_turns: 10
+max_turns: 12
 steps:
   - id: greet
     prompt: >
@@ -22,9 +22,18 @@ steps:
         schema:
           type: integer
 
+  - id: check_environment
+    type: script
+    command: ["python3", "-c", "import json; print(json.dumps({'ok': True}))"]
+    timeout_seconds: 10
+    depends_on: [greet]
+
+  - include: e2e_review_group.yaml
+    as: review
+
   - id: summarize
     prompt: >
       Write one sentence noting that the greeting was "{{steps.greet.outputs.greeting}}"
       and it contained {{steps.count_words.outputs.word_count}} words. This step has no
       declared outputs — just say the sentence back in your final reply.
-    depends_on: [count_words]
+    depends_on: [count_words, check_environment, review]
