@@ -31,9 +31,25 @@ steps:
   - include: e2e_review_group.yaml
     as: review
 
+  - id: delegate
+    type: delegate
+    mode: subagent
+    prompt: >
+      Call flow_start with flow="e2e_subagent_child". If your own prompt included a
+      "# spawned-by: <id>" header, pass that same header along at the top of the prompt
+      you give to whatever you launch for this. Once the subagent reports the child
+      flow is done, relay the "value" output it produced for child_step_two as this
+      step's own "child_value" output.
+    outputs:
+      - name: child_value
+        type: data
+        schema:
+          type: integer
+    depends_on: [review]
+
   - id: summarize
     prompt: >
       Write one sentence noting that the greeting was "{{steps.greet.outputs.greeting}}"
       and it contained {{steps.count_words.outputs.word_count}} words. This step has no
       declared outputs — just say the sentence back in your final reply.
-    depends_on: [count_words, check_environment, review]
+    depends_on: [count_words, check_environment, review, delegate]

@@ -2,7 +2,7 @@
 solid-name: FlowStatusReader
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Reads the current status of the active flow run.
+solid-description: Reads the current status of a flow run.
 """
 
 from __future__ import annotations
@@ -27,9 +27,9 @@ class FlowStatusReader(FlowStatusReading):
         self._flow_loader = flow_loader
         self._run_snapshot_resolver = run_snapshot_resolver
 
-    def flow_status(self) -> FlowStatusResult:
+    def flow_status(self, run_id: str | None = None) -> FlowStatusResult:
         try:
-            location = self._run_locator.locate()
+            location = self._run_locator.locate(run_id)
         except (FileNotFoundError, KeyError):
             return FlowStatusResult(
                 flow="", run_id="", status="no_active_run",

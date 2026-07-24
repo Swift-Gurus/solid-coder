@@ -2,7 +2,7 @@
 solid-name: RunProvisioning
 solid-category: abstraction
 solid-spec: [SPEC-013]
-solid-description: Contract for allocating a run's identity, directory, and starting metadata.
+solid-description: Contract for provisioning a run from a flow definition and configuration parameters.
 """
 
 from __future__ import annotations
@@ -16,4 +16,4 @@ from harness.run_init import RunInit
 
 class RunProvisioning(Protocol):
 
-    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, detected_env: str) -> RunInit: ...
+    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, self_contained: bool = False) -> RunInit: ...

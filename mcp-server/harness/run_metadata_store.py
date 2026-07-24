@@ -14,13 +14,11 @@ from harness.run_metadata import RunMetadata
 from harness.run_metadata_persisting import RunMetadataPersisting
 
 
-class RunMetadataStore:
+class RunMetadataStore(RunMetadataPersisting):
 
     def write(self, run_dir: Path, metadata: RunMetadata) -> None:
-        (run_dir / "run-metadata.json").write_text(
-            json.dumps({"params": metadata.params, "detected_env": metadata.detected_env})
-        )
+        (run_dir / "run-metadata.json").write_text(json.dumps({"params": metadata.params}))
 
     def read(self, run_dir: Path) -> RunMetadata:
         data = json.loads((run_dir / "run-metadata.json").read_text())
-        return RunMetadata(params=data["params"], detected_env=data["detected_env"])
+        return RunMetadata(params=data["params"])

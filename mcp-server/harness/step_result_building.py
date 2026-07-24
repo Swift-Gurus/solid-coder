@@ -19,6 +19,5 @@ class StepResultBuilding(Protocol):
         self,
         instances: list[StepInstance],
         flow_def: FlowDef,
-        detected_env: str,
         run_state: RunState | None = None,
     ) -> list[StepResult]: ...

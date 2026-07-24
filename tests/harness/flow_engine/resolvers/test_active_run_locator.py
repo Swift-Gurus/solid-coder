@@ -8,6 +8,7 @@ solid-description: Tests deriving the active run's directory and file paths from
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -54,6 +55,36 @@ class TestActiveRunLocator(unittest.TestCase):
         self.assertEqual(location.run_dir, base_dir / "run-123")
         self.assertEqual(location.events_path, str(base_dir / "run-123" / "events.jsonl"))
         self.assertEqual(location.workflow_path, str(base_dir / "run-123" / "workflow.yaml"))
+
+    def test_locates_an_isolated_run_self_contained_by_run_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            isolated_dir = base_dir / "subagents" / "run-abc"
+            isolated_dir.mkdir(parents=True)
+            (isolated_dir / "active.json").write_text('{"run_id": "run-abc"}')
+            sut = ActiveRunLocator(
+                base_dir_resolver=StubBaseDirResolver(base_dir),
+                active_run=StubActiveRunPointer("main-run"),
+            )
+
+            location = sut.locate("run-abc")
+
+            self.assertEqual(location.run_id, "run-abc")
+            self.assertEqual(location.base_dir, isolated_dir)
+            self.assertEqual(location.run_dir, isolated_dir)
+            self.assertEqual(location.events_path, str(isolated_dir / "events.jsonl"))
+            self.assertEqual(location.workflow_path, str(isolated_dir / "workflow.yaml"))
+
+    def test_raises_file_not_found_when_isolated_run_does_not_exist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            sut = ActiveRunLocator(
+                base_dir_resolver=StubBaseDirResolver(base_dir),
+                active_run=StubActiveRunPointer("main-run"),
+            )
+
+            with self.assertRaises(FileNotFoundError):
+                sut.locate("missing-run")
 
 
 if __name__ == "__main__":

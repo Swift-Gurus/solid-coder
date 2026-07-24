@@ -1,5 +1,5 @@
 """
-solid-description: Produces fully validated and resolved flow definitions.
+solid-description: Loads and fully validates flow definitions from files.
 solid-category: service
 """
 
@@ -19,14 +19,14 @@ from harness.output_schema_resolving import OutputSchemaResolving
 from harness.prompt_content_resolving import PromptContentResolving
 from harness.uses_resolver import UsesResolving
 from harness.flow_graph_validator import FlowGraphValidating
-from harness.step_builder import StepBuilding
+from harness.step_building import StepBuilding
 from harness.step_shape_validating import StepShapeValidating
 from harness.flow_config_extractor import FlowConfigExtracting
 
 
 class FlowLoader(FlowLoading):
     """
-    solid-description: Produces fully validated and resolved flow definitions.
+    solid-description: Loads and fully validates flow definitions from files.
     solid-category: service
     """
 

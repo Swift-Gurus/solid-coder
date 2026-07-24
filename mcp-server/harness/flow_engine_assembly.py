@@ -1,5 +1,5 @@
 """
-solid-description: Assembles flow engine services with production defaults.
+solid-description: Assembles a fully-configured flow execution engine.
 solid-category: service
 """
 
@@ -11,12 +11,14 @@ from typing import Optional
 from scoring.yaml_config_file_loader import YamlConfigFileLoader
 from scoring.yaml_loader import PyYamlLoader
 
+from harness.agent_step_shape_validator import AgentStepShapeValidator
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.dag_runner import DAGRunner
 from harness.dag_running import DAGRunning
 from harness.data_output_validator import DataOutputValidator
+from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.event_appender import EventAppender, EventAppending, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.file_output_validator import FileOutputValidator
@@ -43,6 +45,7 @@ from harness.prompt_content_resolver import PromptContentResolver
 from harness.run_state_reconstructor import RunStateReconstructor
 from harness.schema_resolving import SchemaResolver
 from harness.schema_validator import SchemaValidator
+from harness.script_step_shape_validator import ScriptStepShapeValidator
 from harness.step_builder import StepBuilder
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_shape_validator import StepShapeValidator
@@ -53,7 +56,7 @@ from utils.prompt_builder import PlainTextFileReader
 @dataclass(frozen=True)
 class FlowEngineAssembly:
     """
-    solid-description: Aggregates the services required to execute flows.
+    solid-description: Provides flow loading, execution, and event management services.
     solid-category: service
     """
 
@@ -91,7 +94,14 @@ def build_default_assembly(
         graph_validator=graph_validator,
         step_builder=StepBuilder(),
         include_resolver=IncludeResolver(file_loader=yaml_file_loader),
-        step_shape_validator=StepShapeValidator(),
+        step_shape_validator=StepShapeValidator(
+            validators={
+                "agent": AgentStepShapeValidator(),
+                "script": ScriptStepShapeValidator(),
+                "delegate": DelegateStepShapeValidator(),
+            },
+            default=AgentStepShapeValidator(),
+        ),
         prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
         output_schema_resolver=OutputSchemaResolver(file_loader=json_file_loader),
         output_schema_prompt_annotator=OutputSchemaPromptAnnotator(),

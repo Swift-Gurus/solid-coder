@@ -1,5 +1,5 @@
 """
-solid-description: Provides data models for specifying flows and tracking their execution.
+solid-description: Specifies flows and tracks their execution.
 solid-category: model
 """
 
@@ -22,15 +22,6 @@ class OutputSpec:
 
 
 @dataclass(frozen=True)
-class ExecutionSpec:
-    """
-    solid-description: Specifies the execution intent for a step.
-    solid-category: model
-    """
-    intent: str
-
-
-@dataclass(frozen=True)
 class StepDef:
     """
     solid-description: Defines a step in a flow with its configuration, dependencies, and outputs.
@@ -40,9 +31,9 @@ class StepDef:
     prompt: str
     depends_on: list[str] = field(default_factory=list)
     outputs: list[OutputSpec] = field(default_factory=list)
-    execution: ExecutionSpec | None = None
     for_each: str | None = None
     type: str = "agent"
+    mode: str | None = None
     prompt_file: str | None = None
     command: list[str] | None = None
     timeout_seconds: int | None = None

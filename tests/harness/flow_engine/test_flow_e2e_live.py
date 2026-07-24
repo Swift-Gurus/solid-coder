@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -24,22 +25,41 @@ for _d in (_MCP_SERVER, _MCP_HEALTH_CONFIG):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_utils import run_claude_bare, solid_coder_project_dir  # noqa: E402
+from hook_utils import solid_coder_project_dir  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
 
+
+def _run_claude_non_bare(prompt: str, allowed_tools: str, mcp_config: str, timeout: int, cwd: str) -> None:
+    """Test-local: same invocation shape as hook_utils.run_claude_bare, minus --bare.
+
+    Not touching run_claude_bare itself — it's shared production code used by the
+    health-check gate too. This test only inspects the run's events.jsonl afterward,
+    so the subprocess's own stdout doesn't need to be parsed.
+    """
+    cmd = [
+        "claude", "-p", prompt, "--output-format", "json",
+        "--mcp-config", mcp_config,
+        "--allowedTools", allowed_tools,
+    ]
+    subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=cwd, stdin=subprocess.DEVNULL)
+
 _PROJECT_ROOT = _MCP_SERVER.parent
-_ALLOWED_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status"
+_ALLOWED_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,Task"
 
 # Forced by the flow's DAG (see e2e_test.yaml / e2e_review_group.yaml): check_environment auto-runs
 # the instant greet completes, before the agent is ever offered count_words; draft_review gates on
-# both count_words and check_environment; approve_review gates on draft_review; summarize gates on
-# all three branches. So completion order is fully determined, not just membership.
+# both count_words and check_environment; approve_review gates on draft_review; delegate (mode:
+# subagent) depends only on review, so it becomes ready alone — not simultaneously with any other
+# step — forcing the agent to address it (spawn a Task subagent, then submit its completion) before
+# summarize (which depends on delegate too) can ever become ready. So completion order stays fully
+# determined, not just membership.
 _EXPECTED_STEP_SEQUENCE = [
     "greet",
     "check_environment",
     "count_words",
     "review.draft_review",
     "review.approve_review",
+    "delegate",
     "summarize",
 ]
 
@@ -54,14 +74,14 @@ def _build_prompt(flow_name: str, parent_session_id: str) -> str:
 
 class TestFlowE2ELive(unittest.TestCase):
 
-    TIMEOUT = 300
+    TIMEOUT = 450
 
     def test_e2e_test_flow_reaches_done_with_expected_transitions(self):
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
         before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
 
         parent_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
-        run_claude_bare(
+        _run_claude_non_bare(
             prompt=_build_prompt("e2e_test", parent_session_id),
             allowed_tools=_ALLOWED_TOOLS,
             mcp_config=build_mcp_config(_PROJECT_ROOT),
@@ -87,8 +107,8 @@ class TestFlowE2ELive(unittest.TestCase):
         ]
 
         self.assertEqual(event_types[0], "run_started", f"first event was not run_started: {event_types}")
-        self.assertEqual(event_types[-1], "run_completed", f"run did not complete cleanly: {event_types}")
-        self.assertEqual(_EXPECTED_STEP_SEQUENCE, completed_sequence)
+        self.assertEqual(completed_sequence, _EXPECTED_STEP_SEQUENCE, f"full event log: {event_types}")
+        self.assertEqual(event_types[-1], "run_completed", f"full event log: {event_types}")
 
 
 if __name__ == "__main__":

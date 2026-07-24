@@ -46,8 +46,8 @@ class FlowStepper(FlowStepping):
         self._step_execution_coordinator = step_execution_coordinator
         self._ready_steps_resolver = ready_steps_resolver
 
-    def flow_next(self, outputs: dict | None = None) -> FlowNextResult:
-        location = self._run_locator.locate()
+    def flow_next(self, outputs: dict | None = None, run_id: str | None = None) -> FlowNextResult:
+        location = self._run_locator.locate(run_id)
         metadata = self._metadata_store.read(location.run_dir)
         flow_def = self._flow_loader.load(location.workflow_path, [])
 
@@ -76,9 +76,7 @@ class FlowStepper(FlowStepping):
             return step_terminal
 
         try:
-            steps = self._ready_steps_resolver.resolve(
-                location.events_path, flow_def, metadata.params, metadata.detected_env
-            )
+            steps = self._ready_steps_resolver.resolve(location.events_path, flow_def, metadata.params)
         except InterpolationError as exc:
             return FlowNextResult(status="ready", error=str(exc))
         return FlowNextResult(status="ready", steps=steps)

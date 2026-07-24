@@ -2,7 +2,7 @@
 solid-name: test_step_shape_validator
 solid-category: unit-test
 solid-spec: [SPEC-027]
-solid-description: Tests validating each step's field set against its declared type before content resolution or graph validation.
+solid-description: Tests routing each step to the field-set validator registered for its declared type.
 """
 
 import sys
@@ -11,50 +11,52 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.models import FlowValidationError
 from harness.step_shape_validator import StepShapeValidator
+
+
+class _RecordingValidator:
+    def __init__(self):
+        self.seen = []
+
+    def validate(self, step):
+        self.seen.append(step)
 
 
 class TestStepShapeValidator(unittest.TestCase):
 
     def setUp(self):
-        self.sut = StepShapeValidator()
+        self.agent_validator = _RecordingValidator()
+        self.script_validator = _RecordingValidator()
+        self.default_validator = _RecordingValidator()
+        self.sut = StepShapeValidator(
+            validators={"agent": self.agent_validator, "script": self.script_validator},
+            default=self.default_validator,
+        )
 
-    def test_accepts_agent_step_with_only_prompt(self):
-        self.sut.validate([{"id": "a", "type": "agent", "prompt": "p"}])
-
-    def test_accepts_agent_step_with_only_prompt_file(self):
-        self.sut.validate([{"id": "a", "type": "agent", "prompt_file": "p.md"}])
+    def test_routes_step_to_validator_registered_for_its_type(self):
+        step = {"id": "a", "type": "script", "command": ["ls"]}
+        self.sut.validate([step])
+        self.assertEqual(self.script_validator.seen, [step])
+        self.assertEqual(self.agent_validator.seen, [])
 
     def test_defaults_missing_type_to_agent(self):
-        self.sut.validate([{"id": "a", "prompt": "p"}])
+        step = {"id": "a", "prompt": "p"}
+        self.sut.validate([step])
+        self.assertEqual(self.agent_validator.seen, [step])
 
-    def test_raises_when_agent_step_declares_both_prompt_and_prompt_file(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "agent", "prompt": "p", "prompt_file": "p.md"}])
+    def test_routes_unregistered_type_to_default_validator(self):
+        step = {"id": "a", "type": "mystery"}
+        self.sut.validate([step])
+        self.assertEqual(self.default_validator.seen, [step])
 
-    def test_raises_when_agent_step_declares_neither_prompt_nor_prompt_file(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "agent"}])
-
-    def test_raises_when_agent_step_declares_command(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "agent", "prompt": "p", "command": ["ls"]}])
-
-    def test_accepts_script_step_with_only_command(self):
-        self.sut.validate([{"id": "a", "type": "script", "command": ["ls", "-la"]}])
-
-    def test_raises_when_script_step_missing_command(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "script"}])
-
-    def test_raises_when_script_step_declares_prompt(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "script", "command": ["ls"], "prompt": "p"}])
-
-    def test_raises_when_script_step_declares_prompt_file(self):
-        with self.assertRaises(FlowValidationError):
-            self.sut.validate([{"id": "a", "type": "script", "command": ["ls"], "prompt_file": "p.md"}])
+    def test_routes_each_step_independently(self):
+        steps = [
+            {"id": "a", "type": "agent", "prompt": "p"},
+            {"id": "b", "type": "script", "command": ["ls"]},
+        ]
+        self.sut.validate(steps)
+        self.assertEqual(self.agent_validator.seen, [steps[0]])
+        self.assertEqual(self.script_validator.seen, [steps[1]])
 
 
 if __name__ == "__main__":

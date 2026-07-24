@@ -24,8 +24,8 @@ class StubStepResultBuilder:
         self._steps = steps
         self.calls: list[tuple] = []
 
-    def build(self, instances, flow_def, detected_env, run_state) -> list[StepResult]:
-        self.calls.append((instances, flow_def, detected_env, run_state))
+    def build(self, instances, flow_def, run_state) -> list[StepResult]:
+        self.calls.append((instances, flow_def, run_state))
         return self._steps
 
 
@@ -41,11 +41,11 @@ class TestReadyStepsResolver(unittest.TestCase):
         builder = StubStepResultBuilder([step_result])
         sut = ReadyStepsResolver(run_snapshot_resolver=snapshot_resolver, step_result_builder=builder)
 
-        steps = sut.resolve("events.jsonl", flow_def, {"k": "v"}, "claude_code")
+        steps = sut.resolve("events.jsonl", flow_def, {"k": "v"})
 
         self.assertEqual(steps, [step_result])
         self.assertEqual(snapshot_resolver.calls, [("events.jsonl", flow_def, {"k": "v"})])
-        self.assertEqual(builder.calls, [([instance], flow_def, "claude_code", run_state)])
+        self.assertEqual(builder.calls, [([instance], flow_def, run_state)])
 
 
 if __name__ == "__main__":

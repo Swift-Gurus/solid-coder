@@ -50,6 +50,7 @@ class FlowHarnessTestBuild(unittest.TestCase):
         base_dir_resolver = RunsBaseDirResolver(project_dir_fn=lambda: Path(tmpdir))
         return FlowRunOrchestratorFactory(
             base_dir_resolver=base_dir_resolver,
+            plugin_root=Path(tmpdir),
             command_allowlist_resolver=command_allowlist_resolver,
         ).build()
 

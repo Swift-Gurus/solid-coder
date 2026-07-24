@@ -195,14 +195,14 @@ def _build_flow_callables(
     """Build flow tool callables that delegate to FlowRunOrchestrating."""
     renderer = result_renderer or FlowResultRenderer()
 
-    def _flow_start(flow: str, params: Optional[dict] = None) -> str:
-        return renderer.render_start(flow_run.flow_start(flow, params))
+    def _flow_start(flow: str, params: Optional[dict] = None, isolated: bool = False) -> str:
+        return renderer.render_start(flow_run.flow_start(flow, params, isolated))
 
-    def _flow_next(outputs: Optional[dict] = None) -> str:
-        return renderer.render_next(flow_run.flow_next(outputs))
+    def _flow_next(outputs: Optional[dict] = None, run_id: Optional[str] = None) -> str:
+        return renderer.render_next(flow_run.flow_next(outputs, run_id))
 
-    def _flow_status() -> dict:
-        return dataclasses.asdict(flow_run.flow_status())
+    def _flow_status(run_id: Optional[str] = None) -> dict:
+        return dataclasses.asdict(flow_run.flow_status(run_id))
 
     return {
         "flow_start": _flow_start,
@@ -421,8 +421,10 @@ class ApplicationBootstrapper:
             "the step declares outputs, the exact JSON Schema each submitted value must match is stated in that "
             "prompt — follow it precisely, since a wrong-shaped submission is rejected and costs a retry "
             "attempt. A block starting with 'Launch a subagent with the following prompt:' means spawn a "
-            "subagent to handle it rather than doing it yourself. Call flow_next after each step to advance "
-            "until you see 'Flow complete.' Only one run can be active at a time.",
+            "subagent to handle it rather than doing it yourself; that prompt will tell you to pass "
+            "isolated=true — do so exactly as instructed. Call flow_next after each step to advance until you "
+            "see 'Flow complete.' Only one main run can be active at a time; pass isolated=true only when a "
+            "step's rendered instruction told you to.",
             {
                 "type": "object",
                 "properties": {
@@ -441,6 +443,15 @@ class ApplicationBootstrapper:
                             "Optional key/value inputs for this run, available to step prompts via '{{params.<key>}}'."
                         ),
                     },
+                    "isolated": {
+                        "type": "boolean",
+                        "description": (
+                            "Only pass true when a step's rendered instruction explicitly told you to. Starts "
+                            "this run in its own isolated slot instead of the single main-session run, so it "
+                            "doesn't collide with a run already in progress. The response will disclose a "
+                            "run_id — pass that same run_id to every later flow_next/flow_status call for this run."
+                        ),
+                    },
                 },
                 "required": ["flow"],
             },
@@ -455,8 +466,8 @@ class ApplicationBootstrapper:
             "wastes a turn. The response is plain text: either the next step(s) to work on, a block starting "
             "with 'Rejected:' explaining exactly what was wrong and how many attempts remain to retry the same "
             "step, or 'Flow complete.'/'Flow timed out...'/'Flow failed...' meaning you've reached the end of "
-            "the flow. Operates on the single active run (no run id needed) — call this in a loop, once per "
-            "completed step.",
+            "the flow. Operates on the single main run unless you were given a run_id (see flow_start's "
+            "isolated=true response) — call this in a loop, once per completed step.",
             {
                 "type": "object",
                 "properties": {
@@ -469,6 +480,13 @@ class ApplicationBootstrapper:
                             "outputs."
                         ),
                     },
+                    "run_id": {
+                        "type": "string",
+                        "description": (
+                            "Only needed if flow_start disclosed a run_id (isolated=true was used to start this "
+                            "run). Omit entirely for the single main-session run."
+                        ),
+                    },
                 },
             },
             flow_tools["flow_next"],
@@ -476,12 +494,20 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_status",
-            "Read the state of the currently active flow run without side effects — no arguments. Returns the flow "
-            "name, run id, status ('in_progress'/'done'/'timed_out'/'no_active_run'), completed/running/pending "
-            "step ids, and turn counts.",
+            "Read the state of a flow run without side effects. Returns the flow name, run id, status "
+            "('in_progress'/'done'/'timed_out'/'no_active_run'), completed/running/pending step ids, and turn "
+            "counts.",
             {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "description": (
+                            "Only needed if flow_start disclosed a run_id (isolated=true was used to start this "
+                            "run). Omit entirely to read the single main-session run."
+                        ),
+                    },
+                },
             },
             flow_tools["flow_status"],
         )
@@ -509,7 +535,7 @@ def make_bootstrapper(
         from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-        flow_run = FlowRunOrchestratorFactory(base_dir_resolver=RunsBaseDirResolver()).build()
+        flow_run = FlowRunOrchestratorFactory(base_dir_resolver=RunsBaseDirResolver(), plugin_root=PLUGIN_ROOT).build()
 
     if flow_result_renderer is None:
         from hc_config_schema import load_config

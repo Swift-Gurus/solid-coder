@@ -2,11 +2,12 @@
 solid-name: FlowResultRenderer
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Renders flow execution results as plain text for agent consumption.
+solid-description: Renders flow execution results for agent consumption.
 """
 
 from __future__ import annotations
 
+from harness.delegate_instruction_building import build_delegate_instruction
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_rendering import FlowResultRendering
 from harness.flow_start_result import FlowStartResult
@@ -26,7 +27,11 @@ class FlowResultRenderer(FlowResultRendering):
     def render_start(self, result: FlowStartResult) -> str:
         if result.error:
             return result.error
-        return self._render_steps(result.steps)
+        body = self._render_steps(result.steps)
+        if result.isolated:
+            header = f'run_id: {result.run_id}\n\nPass run_id="{result.run_id}" on every flow_next/flow_status call for this run.'
+            return f"{header}\n\n{body}"
+        return body
 
     def render_next(self, result: FlowNextResult) -> str:
         if result.error:
@@ -42,7 +47,7 @@ class FlowResultRenderer(FlowResultRendering):
     def _render_step(self, step: StepResult) -> str:
         body = step.prompt
         if step.execution.get("mode") == _SUBAGENT_MODE:
-            body = f"Launch a subagent with the following prompt:\n\n{body}"
+            body = f"Launch a subagent with the following prompt:\n\n{build_delegate_instruction(body)}"
 
         header = f"id: {step.instance_id}"
         if step.rejection_reason is not None:

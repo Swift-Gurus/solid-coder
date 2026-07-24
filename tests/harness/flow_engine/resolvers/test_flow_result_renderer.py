@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.delegate_instruction_building import build_delegate_instruction
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_renderer import FlowResultRenderer
 from harness.flow_start_result import FlowStartResult
@@ -23,6 +24,27 @@ class TestFlowResultRenderer(unittest.TestCase):
         self.sut = FlowResultRenderer()
 
     def test_render_start_renders_a_single_ready_step(self):
+        result = FlowStartResult(
+            run_id="r1",
+            steps=[StepResult(step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "inline"})],
+        )
+
+        self.assertEqual(self.sut.render_start(result), "id: a-1\n\nDo the thing.")
+
+    def test_render_start_discloses_run_id_when_isolated(self):
+        result = FlowStartResult(
+            run_id="r1",
+            steps=[StepResult(step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "inline"})],
+            isolated=True,
+        )
+
+        self.assertEqual(
+            self.sut.render_start(result),
+            'run_id: r1\n\nPass run_id="r1" on every flow_next/flow_status call for this run.'
+            "\n\nid: a-1\n\nDo the thing.",
+        )
+
+    def test_render_start_does_not_disclose_run_id_when_not_isolated(self):
         result = FlowStartResult(
             run_id="r1",
             steps=[StepResult(step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "inline"})],
@@ -57,7 +79,7 @@ class TestFlowResultRenderer(unittest.TestCase):
 
         self.assertEqual(
             self.sut.render_next(result),
-            "id: a-1\n\nLaunch a subagent with the following prompt:\n\nDo the thing.",
+            f"id: a-1\n\nLaunch a subagent with the following prompt:\n\n{build_delegate_instruction('Do the thing.')}",
         )
 
     def test_render_next_includes_rejection_reason_and_attempts_remaining(self):

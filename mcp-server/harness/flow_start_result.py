@@ -2,7 +2,7 @@
 solid-name: FlowStartResult
 solid-category: model
 solid-spec: [SPEC-013]
-solid-description: Represents the result of starting a flow execution, providing execution reference and step information.
+solid-description: Represents the result of starting a flow execution.
 """
 
 from __future__ import annotations
@@ -17,3 +17,4 @@ class FlowStartResult:
     run_id: str
     steps: list[StepResult]
     error: str | None = None
+    isolated: bool = False

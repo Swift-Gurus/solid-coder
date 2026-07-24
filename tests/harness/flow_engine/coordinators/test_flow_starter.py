@@ -46,8 +46,8 @@ class StubRunProvisioner:
         self._run_init = run_init
         self.calls: list[tuple] = []
 
-    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, detected_env: str) -> RunInit:
-        self.calls.append((base_dir, flow_def, params, detected_env))
+    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, self_contained: bool = False) -> RunInit:
+        self.calls.append((base_dir, flow_def, params, self_contained))
         return self._run_init
 
 
@@ -77,8 +77,8 @@ class StubStepResultBuilder:
         self._steps = steps
         self.calls: list[tuple] = []
 
-    def build(self, instances, flow_def, detected_env, run_state) -> list[StepResult]:
-        self.calls.append((instances, flow_def, detected_env, run_state))
+    def build(self, instances, flow_def, run_state) -> list[StepResult]:
+        self.calls.append((instances, flow_def, run_state))
         return self._steps
 
 
@@ -97,7 +97,7 @@ class FlowStarterFactory:
 
     def __init__(self) -> None:
         self.startup_context = StubStartupContext(StartupContext(
-            detected_env="claude_code", base_dir=Path("/runs"), search_paths=["/flows"],
+            base_dir=Path("/runs"), search_paths=["/flows"],
         ))
         self.flow_loader = StubFlowLoader(FlowDef(name="code_review", max_turns=10, steps=[]))
         self.run_provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/run-1")))
@@ -167,7 +167,7 @@ class TestFlowStarter(unittest.TestCase):
 
         factory.make_sut().flow_start("code_review", {"key": "value"})
 
-        self.assertEqual(provisioner.calls, [(Path("/runs"), flow_def, {"key": "value"}, "claude_code")])
+        self.assertEqual(provisioner.calls, [(Path("/runs"), flow_def, {"key": "value"}, False)])
 
     def test_flow_start_appends_a_run_started_event(self):
         factory = FlowStarterFactory()
@@ -227,6 +227,43 @@ class TestFlowStarter(unittest.TestCase):
         self.assertEqual(result.run_id, "run-1")
         self.assertEqual(result.steps, [])
         self.assertIsNotNone(result.error)
+
+    def test_isolated_start_provisions_under_the_subagents_subdirectory_self_contained(self):
+        flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
+        provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/subagents/run-1")))
+        factory = FlowStarterFactory().with_flow_loader(StubFlowLoader(flow_def)).with_run_provisioner(provisioner)
+
+        factory.make_sut().flow_start("code_review", {"key": "value"}, isolated=True)
+
+        self.assertEqual(provisioner.calls, [(Path("/runs/subagents"), flow_def, {"key": "value"}, True)])
+
+    def test_isolated_start_uses_the_run_dir_as_base_dir_for_step_execution(self):
+        flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
+        run_init = RunInit(run_id="run-1", run_dir=Path("/runs/subagents/run-1"))
+        factory = FlowStarterFactory().with_flow_loader(StubFlowLoader(flow_def)).with_run_provisioner(
+            StubRunProvisioner(run_init)
+        )
+
+        factory.make_sut().flow_start("code_review", {"key": "value"}, isolated=True)
+
+        self.assertEqual(factory.step_execution_coordinator.calls, [
+            (Path("/runs/subagents/run-1"), "run-1", str(Path("/runs/subagents/run-1/events.jsonl")),
+             flow_def, {"key": "value"}),
+        ])
+
+    def test_isolated_start_marks_the_result_isolated(self):
+        sut = FlowStarterFactory().make_sut()
+
+        result = sut.flow_start("code_review", isolated=True)
+
+        self.assertTrue(result.isolated)
+
+    def test_non_isolated_start_does_not_mark_the_result_isolated(self):
+        sut = FlowStarterFactory().make_sut()
+
+        result = sut.flow_start("code_review")
+
+        self.assertFalse(result.isolated)
 
 
 if __name__ == "__main__":

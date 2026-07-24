@@ -24,28 +24,28 @@ class StubStarter:
         self._result = result
         self.calls: list[tuple] = []
 
-    def flow_start(self, flow: str, params: dict | None = None) -> FlowStartResult:
-        self.calls.append((flow, params))
+    def flow_start(self, flow: str, params: dict | None = None, isolated: bool = False) -> FlowStartResult:
+        self.calls.append((flow, params, isolated))
         return self._result
 
 
 class StubStepper:
     def __init__(self, result: FlowNextResult) -> None:
         self._result = result
-        self.calls: list[dict | None] = []
+        self.calls: list[tuple] = []
 
-    def flow_next(self, outputs: dict | None = None) -> FlowNextResult:
-        self.calls.append(outputs)
+    def flow_next(self, outputs: dict | None = None, run_id: str | None = None) -> FlowNextResult:
+        self.calls.append((outputs, run_id))
         return self._result
 
 
 class StubStatusReader:
     def __init__(self, result: FlowStatusResult) -> None:
         self._result = result
-        self.calls = 0
+        self.calls: list[str | None] = []
 
-    def flow_status(self) -> FlowStatusResult:
-        self.calls += 1
+    def flow_status(self, run_id: str | None = None) -> FlowStatusResult:
+        self.calls.append(run_id)
         return self._result
 
 
@@ -69,7 +69,19 @@ class TestFlowRunOrchestrator(unittest.TestCase):
         result = sut.flow_start("code_review", {"key": "value"})
 
         self.assertEqual(result.run_id, "run-1")
-        self.assertEqual(starter.calls, [("code_review", {"key": "value"})])
+        self.assertEqual(starter.calls, [("code_review", {"key": "value"}, False)])
+
+    def test_flow_start_passes_isolated_through_to_starter(self):
+        starter = StubStarter(FlowStartResult(run_id="run-1", steps=[], isolated=True))
+        sut = FlowRunOrchestrator(
+            starter=starter,
+            stepper=StubStepper(FlowNextResult(status="ready")),
+            status_reader=StubStatusReader(_no_active_run_status()),
+        )
+
+        sut.flow_start("code_review", isolated=True)
+
+        self.assertEqual(starter.calls, [("code_review", None, True)])
 
     def test_flow_next_delegates_to_stepper(self):
         stepper = StubStepper(FlowNextResult(status="done"))
@@ -82,7 +94,19 @@ class TestFlowRunOrchestrator(unittest.TestCase):
         result = sut.flow_next({"step-a-1": {}})
 
         self.assertEqual(result.status, "done")
-        self.assertEqual(stepper.calls, [{"step-a-1": {}}])
+        self.assertEqual(stepper.calls, [({"step-a-1": {}}, None)])
+
+    def test_flow_next_passes_run_id_through_to_stepper(self):
+        stepper = StubStepper(FlowNextResult(status="ready"))
+        sut = FlowRunOrchestrator(
+            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
+            stepper=stepper,
+            status_reader=StubStatusReader(_no_active_run_status()),
+        )
+
+        sut.flow_next({"a-1": {}}, run_id="isolated-run")
+
+        self.assertEqual(stepper.calls, [({"a-1": {}}, "isolated-run")])
 
     def test_flow_status_delegates_to_status_reader(self):
         status_reader = StubStatusReader(FlowStatusResult(
@@ -98,7 +122,19 @@ class TestFlowRunOrchestrator(unittest.TestCase):
         result = sut.flow_status()
 
         self.assertEqual(result.run_id, "run-1")
-        self.assertEqual(status_reader.calls, 1)
+        self.assertEqual(status_reader.calls, [None])
+
+    def test_flow_status_passes_run_id_through_to_status_reader(self):
+        status_reader = StubStatusReader(_no_active_run_status())
+        sut = FlowRunOrchestrator(
+            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
+            stepper=StubStepper(FlowNextResult(status="ready")),
+            status_reader=status_reader,
+        )
+
+        sut.flow_status(run_id="isolated-run")
+
+        self.assertEqual(status_reader.calls, ["isolated-run"])
 
 
 if __name__ == "__main__":

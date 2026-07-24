@@ -35,7 +35,7 @@ class StubRunLocator:
     def __init__(self, location: ActiveRunLocation) -> None:
         self._location = location
 
-    def locate(self) -> ActiveRunLocation:
+    def locate(self, run_id=None) -> ActiveRunLocation:
         return self._location
 
 
@@ -107,8 +107,8 @@ class StubReadyStepsResolver:
         self._error = error
         self.calls: list[tuple] = []
 
-    def resolve(self, events_path, flow_def, params, detected_env) -> list[StepResult]:
-        self.calls.append((events_path, flow_def, params, detected_env))
+    def resolve(self, events_path, flow_def, params) -> list[StepResult]:
+        self.calls.append((events_path, flow_def, params))
         if self._error is not None:
             raise self._error
         return self._steps
@@ -119,7 +119,7 @@ class FlowStepperFactory:
 
     def __init__(self) -> None:
         self.run_locator = StubRunLocator(_location())
-        self.metadata_store = StubMetadataStore(RunMetadata(params={}, detected_env=""))
+        self.metadata_store = StubMetadataStore(RunMetadata(params={}))
         self.flow_loader = StubFlowLoader(FlowDef(name="test_flow", max_turns=10, steps=[]))
         default_run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
         self.run_snapshot_resolver = StubRunSnapshotResolver([RunSnapshot(run_state=default_run_state, ready=[])])

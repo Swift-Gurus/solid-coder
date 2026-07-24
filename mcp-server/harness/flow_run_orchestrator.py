@@ -2,7 +2,7 @@
 solid-name: FlowRunOrchestrator
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Orchestrates flow runs by exposing operations for starting, stepping, and status monitoring.
+solid-description: Orchestrates flow runs with operations for starting, stepping, and status monitoring.
 """
 
 from __future__ import annotations
@@ -27,11 +27,11 @@ class FlowRunOrchestrator:
         self._stepper = stepper
         self._status_reader = status_reader
 
-    def flow_start(self, flow: str, params: dict | None = None) -> FlowStartResult:
-        return self._starter.flow_start(flow, params)
+    def flow_start(self, flow: str, params: dict | None = None, isolated: bool = False) -> FlowStartResult:
+        return self._starter.flow_start(flow, params, isolated)
 
-    def flow_next(self, outputs: dict | None = None) -> FlowNextResult:
-        return self._stepper.flow_next(outputs)
+    def flow_next(self, outputs: dict | None = None, run_id: str | None = None) -> FlowNextResult:
+        return self._stepper.flow_next(outputs, run_id)
 
-    def flow_status(self) -> FlowStatusResult:
-        return self._status_reader.flow_status()
+    def flow_status(self, run_id: str | None = None) -> FlowStatusResult:
+        return self._status_reader.flow_status(run_id)

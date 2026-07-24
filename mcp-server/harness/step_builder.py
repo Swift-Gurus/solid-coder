@@ -1,22 +1,11 @@
 """
-solid-description: Contract for converting input data into step specifications.
-solid-category: abstraction
+solid-description: Transforms input data into executable step specifications.
+solid-category: service
 """
 
 from __future__ import annotations
 
-from typing import Protocol
-
-from harness.models import ExecutionSpec, OutputSpec, StepDef
-
-
-class StepBuilding(Protocol):
-    """
-    solid-description: Contract for converting input data into step specifications.
-    solid-category: abstraction
-    """
-
-    def build(self, raw: dict) -> StepDef: ...
+from harness.models import OutputSpec, StepDef
 
 
 class StepBuilder:
@@ -37,17 +26,14 @@ class StepBuilder:
             for o in raw_outputs
         ]
 
-        raw_exec = raw.get("execution")
-        execution = ExecutionSpec(intent=raw_exec["intent"]) if raw_exec else None
-
         return StepDef(
             id=raw["id"],
             prompt=raw.get("prompt") or "",
             depends_on=raw.get("depends_on") or [],
             outputs=outputs,
-            execution=execution,
             for_each=raw.get("for_each"),
             type=raw.get("type", "agent"),
+            mode=raw.get("mode"),
             prompt_file=raw.get("prompt_file"),
             command=raw.get("command"),
             timeout_seconds=raw.get("timeout_seconds"),

@@ -2,7 +2,7 @@
 solid-name: FlowStatusReading
 solid-category: abstraction
 solid-spec: [SPEC-013]
-solid-description: Contract for reading current flow run state without side effects.
+solid-description: Contract for reading flow run status without side effects.
 """
 
 from __future__ import annotations
@@ -14,4 +14,4 @@ from harness.flow_status_result import FlowStatusResult
 
 class FlowStatusReading(Protocol):
 
-    def flow_status(self) -> FlowStatusResult: ...
+    def flow_status(self, run_id: str | None = None) -> FlowStatusResult: ...

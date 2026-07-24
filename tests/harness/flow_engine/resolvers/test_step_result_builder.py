@@ -2,7 +2,7 @@
 solid-name: test_step_result_builder
 solid-category: unit-test
 solid-spec: [SPEC-013, SPEC-027]
-solid-description: Tests converting step instances to step results with resolved execution intent, attempts-remaining, and rejection reason.
+solid-description: Tests converting step instances to step results with resolved execution mode, attempts-remaining, and rejection reason.
 """
 
 import sys
@@ -15,22 +15,17 @@ from harness.models import FlowDef, RunState, StepDef, StepInstance
 from harness.step_result_builder import StepResultBuilder
 
 
-class StubIntentResolver:
-    def resolve(self, intent: str, detected_env: str) -> dict:
-        return {"mode": intent}
-
-
 class TestStepResultBuilder(unittest.TestCase):
 
     def setUp(self):
-        self.sut = StepResultBuilder(intent_resolver=StubIntentResolver())
+        self.sut = StepResultBuilder()
 
     def test_computes_attempts_remaining_from_max_attempts_and_attempts_used(self):
         flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="a", prompt="p", max_attempts=3)])
         instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress", attempts_used={"a": 1})
 
-        results = self.sut.build([instance], flow_def, "claude_code", run_state)
+        results = self.sut.build([instance], flow_def, run_state)
 
         self.assertEqual(results[0].attempts_remaining, 2)
 
@@ -42,7 +37,7 @@ class TestStepResultBuilder(unittest.TestCase):
             rejection_reasons={"a": "bad shape"},
         )
 
-        results = self.sut.build([instance], flow_def, "claude_code", run_state)
+        results = self.sut.build([instance], flow_def, run_state)
 
         self.assertEqual(results[0].rejection_reason, "bad shape")
 
@@ -51,10 +46,48 @@ class TestStepResultBuilder(unittest.TestCase):
         instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
 
-        results = self.sut.build([instance], flow_def, "claude_code", run_state)
+        results = self.sut.build([instance], flow_def, run_state)
 
         self.assertEqual(results[0].attempts_remaining, 3)
         self.assertIsNone(results[0].rejection_reason)
+
+    def test_agent_step_resolves_to_inline_execution_mode(self):
+        flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="a", prompt="p", type="agent")])
+        instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
+
+        results = self.sut.build([instance], flow_def)
+
+        self.assertEqual(results[0].execution, {"mode": "inline"})
+
+    def test_script_step_resolves_to_inline_execution_mode(self):
+        flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="a", prompt="", type="script", command=["ls"])])
+        instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="")
+
+        results = self.sut.build([instance], flow_def)
+
+        self.assertEqual(results[0].execution, {"mode": "inline"})
+
+    def test_delegate_step_resolves_execution_mode_from_its_declared_mode(self):
+        flow_def = FlowDef(
+            name="f", max_turns=10,
+            steps=[StepDef(id="a", prompt="p", type="delegate", mode="subagent")],
+        )
+        instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
+
+        results = self.sut.build([instance], flow_def)
+
+        self.assertEqual(results[0].execution, {"mode": "subagent"})
+
+    def test_delegate_step_with_session_mode_resolves_accordingly(self):
+        flow_def = FlowDef(
+            name="f", max_turns=10,
+            steps=[StepDef(id="a", prompt="p", type="delegate", mode="session")],
+        )
+        instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
+
+        results = self.sut.build([instance], flow_def)
+
+        self.assertEqual(results[0].execution, {"mode": "session"})
 
 
 if __name__ == "__main__":

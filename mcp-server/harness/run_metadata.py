@@ -2,7 +2,7 @@
 solid-name: RunMetadata
 solid-category: model
 solid-spec: [SPEC-013]
-solid-description: Contains the parameters and detected environment for a run.
+solid-description: Represents metadata for a run execution.
 """
 
 from __future__ import annotations
@@ -13,4 +13,3 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class RunMetadata:
     params: dict
-    detected_env: str

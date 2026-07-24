@@ -26,8 +26,8 @@ class RunProvisioner:
         self._run_initializer = run_initializer
         self._metadata_store = metadata_store
 
-    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, detected_env: str) -> RunInit:
-        run_init = self._run_initializer.initialize(base_dir, flow_def)
-        metadata = RunMetadata(params=params, detected_env=detected_env)
+    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, self_contained: bool = False) -> RunInit:
+        run_init = self._run_initializer.initialize(base_dir, flow_def, self_contained=self_contained)
+        metadata = RunMetadata(params=params)
         self._metadata_store.write(run_init.run_dir, metadata)
         return run_init

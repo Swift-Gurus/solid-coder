@@ -12,8 +12,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.agent_step_shape_validator import AgentStepShapeValidator
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.command_allowlist_validator import CommandAllowlistValidator
+from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.flow_config_extractor import FlowConfigExtractor
 from harness.flow_engine_assembly import build_default_assembly
 from harness.flow_graph_validator import FlowGraphValidator
@@ -28,6 +30,7 @@ from harness.models import FlowValidationError
 from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
 from harness.output_schema_resolver import OutputSchemaResolver
 from harness.prompt_content_resolver import PromptContentResolver
+from harness.script_step_shape_validator import ScriptStepShapeValidator
 from harness.step_builder import StepBuilder
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_shape_validator import StepShapeValidator
@@ -56,7 +59,14 @@ def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
         graph_validator=_make_graph_validator(),
         step_builder=StepBuilder(),
         include_resolver=IncludeResolver(file_loader=yaml_file_loader),
-        step_shape_validator=StepShapeValidator(),
+        step_shape_validator=StepShapeValidator(
+            validators={
+                "agent": AgentStepShapeValidator(),
+                "script": ScriptStepShapeValidator(),
+                "delegate": DelegateStepShapeValidator(),
+            },
+            default=AgentStepShapeValidator(),
+        ),
         prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
         output_schema_resolver=OutputSchemaResolver(file_loader=json_file_loader),
         output_schema_prompt_annotator=OutputSchemaPromptAnnotator(),

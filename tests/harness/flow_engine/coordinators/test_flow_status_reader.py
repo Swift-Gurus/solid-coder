@@ -21,7 +21,7 @@ from harness.run_snapshot import RunSnapshot
 
 
 class RaisingRunLocator:
-    def locate(self) -> ActiveRunLocation:
+    def locate(self, run_id=None) -> ActiveRunLocation:
         raise FileNotFoundError("No active run")
 
 
@@ -29,7 +29,7 @@ class StubRunLocator:
     def __init__(self, location: ActiveRunLocation) -> None:
         self._location = location
 
-    def locate(self) -> ActiveRunLocation:
+    def locate(self, run_id=None) -> ActiveRunLocation:
         return self._location
 
 

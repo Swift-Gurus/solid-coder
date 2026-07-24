@@ -1,0 +1,19 @@
+name: e2e_subagent_child
+max_turns: 6
+steps:
+  - id: child_step_one
+    prompt: Reply with the word "ready" as the "status" output field.
+    outputs:
+      - name: status
+        type: data
+        schema:
+          type: string
+
+  - id: child_step_two
+    prompt: Reply with the number 42 as the "value" output field.
+    depends_on: [child_step_one]
+    outputs:
+      - name: value
+        type: data
+        schema:
+          type: integer

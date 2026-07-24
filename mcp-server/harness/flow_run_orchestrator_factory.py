@@ -2,20 +2,20 @@
 solid-name: FlowRunOrchestratorFactory
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Assembles a fully-configured orchestrator for flow execution.
+solid-description: Creates a flow run orchestrator with all dependencies initialized.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_pointer_store import ActiveRunPointerStore
 from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_failure_handler import AttemptFailureHandler
-from harness.claude_agent_type_env_detector import ClaudeAgentTypeEnvDetector
 from harness.command_allowlist_resolving import CommandAllowlistResolving
-from harness.execution_intent_resolver import ExecutionIntentResolver
+from harness.delegate_step_handler import DelegateStepHandler
 from harness.flow_engine_assembly import build_default_assembly
 from harness.flow_file_resolver import FlowFileResolver
 from harness.flow_run_orchestrator import FlowRunOrchestrator
@@ -40,6 +40,7 @@ from harness.runs_base_dir_resolver import RunsBaseDirResolving
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
 from harness.script_step_handler import ScriptStepHandler
+from harness.session_delegate_runner import SessionDelegateRunner
 from harness.startup_context_resolver import StartupContextResolver
 from harness.step_execution_coordinator import StepExecutionCoordinator
 from harness.step_handler_resolver import StepHandlerResolver
@@ -48,22 +49,26 @@ from harness.step_result_builder import StepResultBuilder
 from harness.turn_advancer import TurnAdvancer
 from subprocess_script_runner import SubprocessScriptRunner
 
+_DELEGATE_SESSION_TIMEOUT_SECONDS = 300
+
 
 class FlowRunOrchestratorFactory:
 
     def __init__(
         self,
         base_dir_resolver: RunsBaseDirResolving,
+        plugin_root: Path,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
+        self._plugin_root = plugin_root
         self._command_allowlist_resolver = command_allowlist_resolver
 
     def build(self) -> FlowRunOrchestrator:
         assembly = build_default_assembly(command_allowlist_resolver=self._command_allowlist_resolver)
         active_run = ActiveRunPointerStore()
         metadata_store = RunMetadataStore()
-        step_result_builder = StepResultBuilder(intent_resolver=ExecutionIntentResolver())
+        step_result_builder = StepResultBuilder()
         run_locator = ActiveRunLocator(base_dir_resolver=self._base_dir_resolver, active_run=active_run)
         resolving_flow_loader = NameResolvingFlowLoader(
             file_resolver=FlowFileResolver(path_checker=PathChecker()),
@@ -85,11 +90,19 @@ class FlowRunOrchestratorFactory:
             event_replayer=assembly.event_replayer,
             completion_checker=completion_checker,
         )
+        agent_handler = AgentStepHandler(output_validator=StepOutputValidator(schema_validator=assembly.schema_validator))
         step_handler_resolver = StepHandlerResolver(handlers={
-            "agent": AgentStepHandler(output_validator=StepOutputValidator(schema_validator=assembly.schema_validator)),
+            "agent": agent_handler,
             "script": ScriptStepHandler(
                 runner=SubprocessScriptRunner(),
                 evaluator=ScriptOutcomeEvaluator(schema_validator=assembly.schema_validator),
+            ),
+            "delegate": DelegateStepHandler(
+                agent_handler=agent_handler,
+                session_runner=SessionDelegateRunner(
+                    plugin_root=self._plugin_root,
+                    timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
+                ),
             ),
         })
         step_execution_coordinator = StepExecutionCoordinator(
@@ -101,7 +114,6 @@ class FlowRunOrchestratorFactory:
         )
         starter = FlowStarter(
             startup_context=StartupContextResolver(
-                env_detector=ClaudeAgentTypeEnvDetector(),
                 base_dir_resolver=self._base_dir_resolver,
                 search_paths=FlowSearchPathResolver(),
             ),

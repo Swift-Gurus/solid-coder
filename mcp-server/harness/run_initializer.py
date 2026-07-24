@@ -2,7 +2,7 @@
 solid-name: RunInitializer
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Initializes a new run with a unique identifier and directory location.
+solid-description: Prepares and registers a new run for execution.
 """
 
 from __future__ import annotations
@@ -26,8 +26,12 @@ class RunInitializer:
         self._active_run = active_run
         self._scaffolder = scaffolder
 
-    def initialize(self, base_dir: Path, flow_def: FlowDef) -> RunInit:
+    def initialize(self, base_dir: Path, flow_def: FlowDef, self_contained: bool = False) -> RunInit:
         run_id = uuid.uuid4().hex
-        self._active_run.write(base_dir, run_id)
-        run_dir = self._scaffolder.scaffold(base_dir, run_id, flow_def)
+        if self_contained:
+            run_dir = self._scaffolder.scaffold(base_dir, run_id, flow_def)
+            self._active_run.write(run_dir, run_id)
+        else:
+            self._active_run.write(base_dir, run_id)
+            run_dir = self._scaffolder.scaffold(base_dir, run_id, flow_def)
         return RunInit(run_id=run_id, run_dir=run_dir)
