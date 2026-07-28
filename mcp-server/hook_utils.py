@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Manages project context and orchestrates external tool execution.
+solid-description: Provides utilities for configuration management, file parsing, event handling, and subprocess execution.
 solid-category: utility
 """
 
@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -103,6 +104,14 @@ from list_validator import ListValidator  # noqa: E402, F401 — re-exported for
 from violation_dict_validator import ViolationDictValidator  # noqa: E402, F401 — re-exported for consumers
 
 
+def parse_json_safely(raw: str) -> Optional[dict]:
+    """Parse raw JSON into a dict, or None on any parse failure."""
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 def parse_hook_event(raw: str) -> Optional[tuple]:
     """Parse a hook PreToolUse event from raw JSON.
 
@@ -112,9 +121,8 @@ def parse_hook_event(raw: str) -> Optional[tuple]:
     this event should be pinned to it rather than inheriting the hook
     process's own ambient cwd.
     """
-    try:
-        event = json.loads(raw)
-    except (json.JSONDecodeError, ValueError):
+    event = parse_json_safely(raw)
+    if event is None:
         return None
     tool_input = event.get("tool_input") or {}
     return (
@@ -123,6 +131,29 @@ def parse_hook_event(raw: str) -> Optional[tuple]:
         tool_input.get("file_path", ""),
         event.get("session_id", ""),
         event.get("cwd", ""),
+    )
+
+
+@dataclass(frozen=True)
+class StopHookEvent:
+    stop_hook_active: bool = False
+    session_id: str = ""
+    transcript_path: str = ""
+    cwd: str = ""
+    last_assistant_message: str = ""
+
+
+def parse_stop_hook_event(raw: str) -> Optional[StopHookEvent]:
+    """Parse a Stop/SubagentStop hook payload from raw JSON, or None on any parse failure."""
+    data = parse_json_safely(raw)
+    if data is None:
+        return None
+    return StopHookEvent(
+        stop_hook_active=bool(data.get("stop_hook_active", False)),
+        session_id=data.get("session_id", ""),
+        transcript_path=data.get("transcript_path", ""),
+        cwd=data.get("cwd", ""),
+        last_assistant_message=data.get("last_assistant_message", ""),
     )
 
 
@@ -162,7 +193,7 @@ _default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(Subproc
 
 def run_gateway_cmd(
     cmd: list,
-    timeout: int = 10,
+    timeout: int,
     *,
     runner: SubprocessJsonRunning = _default_subprocess_runner,
 ) -> Optional[dict]:
@@ -220,3 +251,26 @@ def run_claude_bare(
         if event_dict.get("type") == "result":
             return event_dict.get("result", "")
     raise SubprocessError("claude -p returned no result event")
+
+
+def run_stop_hook_gate(
+    raw: str,
+    evaluate: Callable[[StopHookEvent], dict],
+    responder,
+    default_reason: str = "Blocked.",
+) -> None:
+    """Shared Stop-hook shell: parse stdin JSON, skip while stop_hook_active, evaluate, dump via responder.
+
+    `evaluate` receives the parsed StopHookEvent and returns {"allow": bool, "reason": str}.
+    `responder` (a SimpleHookResponding) owns the actual wire format — callers never
+    write stdout/stderr or call sys.exit themselves.
+    """
+    event = parse_stop_hook_event(raw)
+    if event is None or event.stop_hook_active:
+        responder.allow()
+        return
+    result = evaluate(event)
+    if not result.get("allow", True):
+        responder.block(result.get("reason") or default_reason)
+        return
+    responder.allow()

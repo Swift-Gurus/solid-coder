@@ -2,7 +2,7 @@
 solid-name: FlowStarter
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Initializes a flow execution and returns the initial ready steps.
+solid-description: Initializes a flow execution and determines which steps are ready to run.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from harness.step_result_building import StepResultBuilding
 
 class FlowStarter(FlowStarting):
     """
-    solid-description: Initializes a flow execution and returns the initial ready steps.
+    solid-description: Initializes a flow execution and determines which steps are ready to run.
     solid-category: service
     """
 
@@ -56,9 +56,12 @@ class FlowStarter(FlowStarting):
         events_path = str(run_init.run_dir / "events.jsonl")
         self._event_appender.append(events_path, "run_started", {"run_id": run_init.run_id, "flow": flow_def.name})
 
-        terminal = self._step_execution_coordinator.run_ready(
-            effective_base_dir, run_init.run_id, events_path, flow_def, params
-        )
+        try:
+            terminal = self._step_execution_coordinator.run_ready(
+                effective_base_dir, run_init.run_id, events_path, flow_def, params
+            )
+        except InterpolationError as exc:
+            return FlowStartResult(run_id=run_init.run_id, steps=[], error=str(exc))
         if terminal is not None:
             return FlowStartResult(run_id=run_init.run_id, steps=[], error="Run failed before any step could start")
 

@@ -50,7 +50,7 @@ class TestFix(unittest.TestCase):
         runner = MagicMock()
         runner.run.return_value = llm_raw(CLEAN_CONTENT)
         with patch("validate_swift_frontmatter.make_llm_runner", return_value=runner), \
-             patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(bare_session_timeout=42))):
+             patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(timeout=42))):
             hook.fix(BAD_CONTENT)
         _, kwargs = runner.run.call_args
         self.assertEqual(kwargs.get("timeout"), 42)

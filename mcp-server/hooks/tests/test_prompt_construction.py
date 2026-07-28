@@ -25,7 +25,7 @@ _CONDITIONAL_NAMES = frozenset({"swiftui", "structured-concurrency", "testing", 
 
 def _make_loader() -> PrinciplesLoader:
     return PrinciplesLoader(
-        rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner())),
+        rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner(), timeout=300)),
         tags=TagDetector(),
     )
 

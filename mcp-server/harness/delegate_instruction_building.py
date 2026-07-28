@@ -1,17 +1,15 @@
 """
-solid-name: delegate_instruction_building
-solid-category: service
+solid-name: DelegateInstructionBuilding
+solid-category: abstraction
 solid-spec: [SPEC-027]
-solid-description: Enriches a prompt with execution instructions for a delegate step.
+solid-description: Contract for augmenting text with additional content.
 """
 
 from __future__ import annotations
 
-_ISOLATION_HINT = (
-    "When calling flow_start for this, pass isolated=true. After starting, keep calling "
-    "flow_next until the flow reports done, failed, or timed out."
-)
+from typing import Protocol
 
 
-def build_delegate_instruction(prompt: str) -> str:
-    return f"{prompt}\n\n{_ISOLATION_HINT}"
+class DelegateInstructionBuilding(Protocol):
+
+    def build(self, prompt: str) -> str: ...

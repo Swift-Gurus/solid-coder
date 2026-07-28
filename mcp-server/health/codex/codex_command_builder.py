@@ -1,5 +1,5 @@
 """
-solid-description: Builds a codex execution command with configured model and profile.
+solid-description: Builds customizable codex execution commands.
 solid-category: service
 solid-tags: [hook, utility]
 """

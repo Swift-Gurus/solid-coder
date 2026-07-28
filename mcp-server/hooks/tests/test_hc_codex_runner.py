@@ -177,7 +177,7 @@ class TestMakeCodexRunner(_CodexRunnerTestBase):
         from llm_config import LlmConfig
         from solid_coder_config import SolidCoderConfig
         stub_config = SolidCoderConfig(llm=LlmConfig(
-            backend="codex", model="o4-mini", bare_session_timeout=300, codex_home=str(self.output_dir),
+            backend="codex", model="o4-mini", timeout=300, codex_home=str(self.output_dir),
         ))
         with patch("hc_config.load_config", return_value=stub_config):
             runner = make_llm_runner(mcp_config="", allowed_tools="")

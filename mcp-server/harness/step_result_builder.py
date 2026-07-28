@@ -2,7 +2,7 @@
 solid-name: StepResultBuilder
 solid-category: service
 solid-spec: [SPEC-013]
-solid-description: Constructs step result objects from step instances, flow definitions, and optional run state.
+solid-description: Determines execution specifications for step instances by referencing flow definitions and optional state.
 """
 
 from __future__ import annotations
@@ -31,17 +31,14 @@ class StepResultBuilder(StepResultBuilding):
                 execution = {"mode": step_def.mode}
             else:
                 execution = _INLINE_EXECUTION
-            attempts_remaining = None
             rejection_reason = None
             if step_def is not None and run_state is not None:
-                attempts_remaining = step_def.max_attempts - run_state.attempts_used.get(instance.step_id, 0)
                 rejection_reason = run_state.rejection_reasons.get(instance.step_id)
             results.append(StepResult(
                 step_id=instance.step_id,
                 instance_id=instance.instance_id,
                 prompt=instance.prompt,
                 execution=execution,
-                attempts_remaining=attempts_remaining,
                 rejection_reason=rejection_reason,
             ))
         return results

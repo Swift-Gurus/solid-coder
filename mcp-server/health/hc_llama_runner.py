@@ -1,5 +1,5 @@
 """
-solid-description: Provides code analysis and violation detection.
+solid-description: Coordinates code analysis with violation detection.
 solid-category: service
 solid-tags: [hook, llm]
 """
@@ -89,7 +89,7 @@ def make_llama_server_runner(
     Factory function — constructing and wiring concrete dependencies is this
     function's sole responsibility (OCP Factory exception).
     """
-    invoker = GatewayInvoker(gateway, GatewayCommandRunner())
+    invoker = GatewayInvoker(gateway, GatewayCommandRunner(), timeout=hc_config.load_config().llm.timeout)
     observer: Optional[LLMSessionObserving] = None
     if session_id:
         log_dir = solid_coder_project_dir() / "llm-sessions" / session_id

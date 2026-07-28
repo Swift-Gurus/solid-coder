@@ -24,10 +24,10 @@ _ENV_KEY = "SOLID_CODER_SESSION_TYPE"
 _EXPECTED = "health_check"
 
 
-def _config(backend="claude", model="", host="http://localhost:8080", bare_session_timeout=300, codex_home=""):
+def _config(backend="claude", model="", host="http://localhost:8080", timeout=300, codex_home=""):
     return SolidCoderConfig(llm=LlmConfig(
         backend=backend, model=model, host=host,
-        bare_session_timeout=bare_session_timeout, codex_home=codex_home,
+        timeout=timeout, codex_home=codex_home,
     ))
 
 

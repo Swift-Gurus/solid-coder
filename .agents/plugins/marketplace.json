@@ -1,0 +1,20 @@
+{
+  "name": "solid-coder",
+  "interface": {
+    "displayName": "Solid Coder"
+  },
+  "plugins": [
+    {
+      "name": "solid-coder",
+      "source": {
+        "source": "local",
+        "path": "."
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

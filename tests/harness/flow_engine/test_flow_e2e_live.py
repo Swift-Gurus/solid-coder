@@ -29,22 +29,42 @@ from hook_utils import solid_coder_project_dir  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
 
 
-def _run_claude_non_bare(prompt: str, allowed_tools: str, mcp_config: str, timeout: int, cwd: str) -> None:
+def _run_claude_non_bare(
+    prompt: str, allowed_tools: str, mcp_config: str, timeout: int, cwd: str, plugin_dir: str = "",
+) -> subprocess.CompletedProcess:
     """Test-local: same invocation shape as hook_utils.run_claude_bare, minus --bare.
 
     Not touching run_claude_bare itself — it's shared production code used by the
-    health-check gate too. This test only inspects the run's events.jsonl afterward,
-    so the subprocess's own stdout doesn't need to be parsed.
+    health-check gate too. Returns the CompletedProcess for callers that want to inspect
+    the session's own output; existing callers that only check events.jsonl can ignore it.
+
+    `plugin_dir`, when set, loads a plugin from this checkout instead of whatever is
+    globally installed — needed by tests exercising a hook that only exists in this
+    working tree, not yet released to the installed plugin cache.
     """
     cmd = [
         "claude", "-p", prompt, "--output-format", "json",
         "--mcp-config", mcp_config,
         "--allowedTools", allowed_tools,
     ]
-    subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=cwd, stdin=subprocess.DEVNULL)
+    if plugin_dir:
+        cmd += ["--plugin-dir", plugin_dir]
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=cwd, stdin=subprocess.DEVNULL)
+
+
+def _spawned_by_header(parent_session_id: str) -> str:
+    return f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
 
 _PROJECT_ROOT = _MCP_SERVER.parent
-_ALLOWED_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,Task"
+# --plugin-dir (needed so this dev repo's flow_transition_gate.py Stop hook loads, not
+# whatever's in the globally installed plugin cache) registers the MCP server under a
+# plugin-prefixed name (mcp__solid-coder-pipeline__*) alongside mcp__pipeline__* — both
+# listed since either naming could resolve depending on plugin-discovery order.
+_ALLOWED_TOOLS = (
+    "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
+    "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
+    "mcp__solid-coder-pipeline__flow_status,Task"
+)
 
 # Forced by the flow's DAG (see e2e_test.yaml / e2e_review_group.yaml): check_environment auto-runs
 # the instant greet completes, before the agent is ever offered count_words; draft_review gates on
@@ -65,16 +85,22 @@ _EXPECTED_STEP_SEQUENCE = [
 
 
 def _build_prompt(flow_name: str, parent_session_id: str) -> str:
-    header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
-    return (
-        f"{header}"
-        f'Call flow_start with flow="{flow_name}".'
-    )
+    return f'{_spawned_by_header(parent_session_id)}Call flow_start with flow="{flow_name}".'
 
 
 class TestFlowE2ELive(unittest.TestCase):
 
     TIMEOUT = 450
+
+    def setUp(self):
+        # These live tests share the real project's single main-run slot (production
+        # behavior: only one main run active at a time). A prior live test whose spawned
+        # session ended without reaching a terminal state (done/failed/timed_out) — the
+        # documented early-stop non-determinism — leaves runs/active.json pointing at a
+        # dead run, which then blocks flow_start here with "Flow run already active".
+        # Clearing it before each test keeps that leak from cascading into unrelated tests.
+        active_json = solid_coder_project_dir(_PROJECT_ROOT) / "runs" / "active.json"
+        active_json.unlink(missing_ok=True)
 
     def test_e2e_test_flow_reaches_done_with_expected_transitions(self):
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
@@ -87,6 +113,7 @@ class TestFlowE2ELive(unittest.TestCase):
             mcp_config=build_mcp_config(_PROJECT_ROOT),
             timeout=self.TIMEOUT,
             cwd=str(_PROJECT_ROOT),
+            plugin_dir=str(_PROJECT_ROOT),
         )
 
         after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()

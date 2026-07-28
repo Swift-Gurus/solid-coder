@@ -2,7 +2,7 @@
 solid-name: StepExecutionCoordinator
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Executes ready steps repeatedly until the flow completes or cannot progress.
+solid-description: Orchestrates a flow to completion or halt.
 """
 
 from __future__ import annotations

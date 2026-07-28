@@ -1,5 +1,5 @@
 """
-solid-description: Orchestrates gateway CLI operations for code health analysis.
+solid-description: Invokes code health analysis operations through a gateway.
 solid-category: service
 solid-tags: [hook, gateway]
 """
@@ -49,20 +49,20 @@ class GatewayInvoking(Protocol):
 class GatewayInvoker:
     """Builds and executes gateway CLI commands. Shared by all gateway-backed components."""
 
-    def __init__(self, gateway: Path, runner: CommandRunning) -> None:
+    def __init__(self, gateway: Path, runner: CommandRunning, timeout: int) -> None:
         self._gateway = gateway
         self._runner = runner
+        self._timeout = timeout
 
     def invoke(
         self,
         subcommand: str,
         extra_args: Optional[list] = None,
-        timeout: int = 10,
         result_key: Optional[str] = None,
         default=None,
     ):
         cmd = ["python3", str(self._gateway), subcommand] + (extra_args or [])
-        data = self._runner.run_cmd(cmd, timeout)
+        data = self._runner.run_cmd(cmd, self._timeout)
         if data is None:
             return default
         return data.get(result_key, default) if result_key else data

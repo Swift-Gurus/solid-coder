@@ -2,7 +2,7 @@
 solid-name: hc_checker_factory
 solid-category: service
 solid-tags: [hook]
-solid-description: Creates health checkers that validate code quality.
+solid-description: Creates health checkers that validate code.
 """
 
 from __future__ import annotations
@@ -66,8 +66,8 @@ def make_health_checker(
 ) -> HealthChecking:
     path = log_path or (solid_coder_project_dir() / "gate.log")
     logger = GateLogger(DebugLogger(project_dir_fn=lambda: path.parent, filename=path.name))
-    invoker = GatewayInvoker(GATEWAY, GatewayCommandRunner())
     llm = hc_config.load_config().llm
+    invoker = GatewayInvoker(GATEWAY, GatewayCommandRunner(), timeout=llm.timeout)
     return LLMHealthChecker(
         loader=PrinciplesLoader(
             rules=GatewayRuleLoader(invoker=invoker),
@@ -84,7 +84,7 @@ def make_health_checker(
                     cwd=cwd,
                 ),
                 logger=logger,
-                timeout=llm.bare_session_timeout,
+                timeout=llm.timeout,
             ),
             output_handler=FileBasedOutputHandler(
                 FileOutputReader(

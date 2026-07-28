@@ -83,12 +83,15 @@ class StubStepResultBuilder:
 
 
 class StubStepExecutionCoordinator:
-    def __init__(self, result: FlowNextResult | None = None) -> None:
+    def __init__(self, result: FlowNextResult | None = None, error: InterpolationError | None = None) -> None:
         self._result = result
+        self._error = error
         self.calls: list[tuple] = []
 
     def run_ready(self, base_dir, run_id, events_path, flow_def, params):
         self.calls.append((base_dir, run_id, events_path, flow_def, params))
+        if self._error is not None:
+            raise self._error
         return self._result
 
 
@@ -209,6 +212,17 @@ class TestFlowStarter(unittest.TestCase):
     def test_returns_clean_error_when_prompt_interpolation_fails(self):
         sut = FlowStarterFactory().with_run_snapshot_resolver(
             StubRunSnapshotResolver(error=InterpolationError("bad reference"))
+        ).make_sut()
+
+        result = sut.flow_start("code_review")
+
+        self.assertEqual(result.run_id, "run-1")
+        self.assertEqual(result.steps, [])
+        self.assertEqual(result.error, "bad reference")
+
+    def test_returns_clean_error_when_step_execution_coordinator_interpolation_fails(self):
+        sut = FlowStarterFactory().with_step_execution_coordinator(
+            StubStepExecutionCoordinator(error=InterpolationError("bad reference"))
         ).make_sut()
 
         result = sut.flow_start("code_review")

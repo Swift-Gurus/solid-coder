@@ -49,15 +49,18 @@ host = "http://localhost:8080"
 # e.g. "claude-haiku-4-5", "claude-sonnet-4-6". Leave as "claude" to use the CLI default.
 model = "claude-haiku-4-5"
 
-# Timeout for the bare claude -p health-check session (seconds).
-# The new two-phase flow (submit_batch + load_fix_batch + submit_fix_batch)
-# needs more headroom than the single-submission original.
-bare_session_timeout = 1000
-
-# Timeout in seconds for a single health-check LLM session.
-# Local models with many tool call rounds (6+) can take 200-300s on large files.
-# Increase if the gate times out silently on complex files.
-timeout = 2000
+# Timeout in seconds for every subprocess call this gate makes — the LLM
+# health-check session (claude -p / codex exec) and the gateway CLI calls
+# (get_candidate_tags, load_detection_rules, ...) alike. One value, used
+# everywhere, including the Codex hook profile (regenerated fresh from this
+# value on every run). The two-phase flow (submit_batch + load_fix_batch +
+# submit_fix_batch) needs headroom; local models with many tool call rounds
+# (6+) can take 200-300s on large files.
+#
+# Claude's hooks.json is a static file and can't read this value at
+# hook-invocation time — its own per-hook "timeout" entries are set
+# separately there and should stay comfortably above whatever you set here.
+timeout = 1000
 
 
 # ── Local server ──────────────────────────────────────────────────────────────

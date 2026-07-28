@@ -15,9 +15,15 @@ from codex_profile_manager import CodexProfileManager  # noqa: E402
 from test_utils import TempDirTestBase  # noqa: E402
 
 
+class _StubConfig:
+    def __init__(self, timeout: int) -> None:
+        self.llm = type("Llm", (), {"timeout": timeout})()
+
+
 class TestCodexProfileTomlValidity(TempDirTestBase):
-    def _generated_content(self) -> str:
-        CodexProfileManager(codex_home=str(self.output_dir)).ensure_profile()
+    def _generated_content(self, config_loader=None) -> str:
+        kwargs = {"config_loader": config_loader} if config_loader else {}
+        CodexProfileManager(codex_home=str(self.output_dir), **kwargs).ensure_profile()
         return (self.output_dir / "solid-coder-health.config.toml").read_text(encoding="utf-8")
 
     def _load_toml(self, content: str) -> dict:
@@ -49,6 +55,21 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
                         Path(parts[1]).is_absolute(),
                         f"{section} hook script path is not absolute: {parts[1]!r}",
                     )
+
+    def test_hook_timeout_mirrors_configured_llm_timeout(self):
+        content = self._generated_content(config_loader=lambda: _StubConfig(timeout=777))
+        data = self._load_toml(content)
+        for section in ("PreToolUse", "SessionStart", "Stop"):
+            hooks = data.get("hooks", {}).get(section, [])
+            for entry in hooks:
+                for hook in entry.get("hooks", []):
+                    self.assertEqual(hook.get("timeout"), 777)
+
+    def test_hook_timeout_changes_when_configured_timeout_changes(self):
+        low = self._load_toml(self._generated_content(config_loader=lambda: _StubConfig(timeout=100)))
+        high = self._load_toml(self._generated_content(config_loader=lambda: _StubConfig(timeout=900)))
+        self.assertEqual(low["hooks"]["Stop"][0]["hooks"][0]["timeout"], 100)
+        self.assertEqual(high["hooks"]["Stop"][0]["hooks"][0]["timeout"], 900)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 """
-solid-description: Generates and deploys a Codex configuration profile to the active environment.
+solid-description: Initializes configuration in the local environment.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -7,8 +7,9 @@ solid-tags: [hook, utility]
 import sys
 from pathlib import Path
 _MCP_DIR = Path(__file__).resolve().parents[2]
+_HEALTH_DIR = Path(__file__).resolve().parents[1]
 _MODULE_DIR = Path(__file__).resolve().parent
-for _d in (_MCP_DIR, _MODULE_DIR):
+for _d in (_MCP_DIR, _HEALTH_DIR / "config", _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
@@ -16,6 +17,7 @@ import os
 from pathlib import Path
 from typing import Callable
 
+import hc_config
 from hook_utils import PLUGIN_ROOT as _DEFAULT_PLUGIN_ROOT
 
 _PROFILE_NAME = "solid-coder-health"
@@ -37,6 +39,7 @@ matcher = "apply_patch"
 [[hooks.PreToolUse.hooks]]
 type = "command"
 command = "python3 {pre_write_gate}"
+timeout = {hook_timeout}
 
 [[hooks.SessionStart]]
 matcher = ""
@@ -44,6 +47,7 @@ matcher = ""
 [[hooks.SessionStart.hooks]]
 type = "command"
 command = "python3 {on_agent_start}"
+timeout = {hook_timeout}
 
 [[hooks.Stop]]
 matcher = ""
@@ -51,6 +55,7 @@ matcher = ""
 [[hooks.Stop.hooks]]
 type = "command"
 command = "python3 {on_agent_stop}"
+timeout = {hook_timeout}
 """
 
 
@@ -62,9 +67,11 @@ class CodexProfileManager:
         codex_home: str = "",
         plugin_root: Path = _DEFAULT_PLUGIN_ROOT,
         home_resolver: Callable[[], str] = lambda: os.environ.get("CODEX_HOME", str(Path.home() / ".codex")),
+        config_loader: Callable = hc_config.load_config,
     ) -> None:
         self._codex_home = codex_home or home_resolver()
         self._plugin_root = plugin_root
+        self._config_loader = config_loader
 
     def ensure_profile(self) -> str:
         """Write the profile file and return the profile name for use in CLI invocations."""
@@ -78,6 +85,7 @@ class CodexProfileManager:
                 pre_write_gate=str(hooks_dir / "pre_write_gate.py"),
                 on_agent_start=str(hooks_dir / "on_agent_start.py"),
                 on_agent_stop=str(hooks_dir / "on_agent_stop.py"),
+                hook_timeout=self._config_loader().llm.timeout,
             ),
             encoding="utf-8",
         )

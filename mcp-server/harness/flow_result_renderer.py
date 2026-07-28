@@ -7,7 +7,8 @@ solid-description: Renders flow execution results for agent consumption.
 
 from __future__ import annotations
 
-from harness.delegate_instruction_building import build_delegate_instruction
+from harness.delegate_instruction_builder import DelegateInstructionBuilder
+from harness.delegate_instruction_building import DelegateInstructionBuilding
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_rendering import FlowResultRendering
 from harness.flow_start_result import FlowStartResult
@@ -17,12 +18,13 @@ _SUBAGENT_MODE = "subagent"
 _STEP_SEPARATOR = "\n\n---\n\n"
 _TERMINAL_MESSAGES = {
     "done": "Flow complete.",
-    "failed": "Flow failed — a step exhausted its retry attempts.",
-    "timed_out": "Flow timed out — reached the flow's max_turns limit.",
 }
 
 
 class FlowResultRenderer(FlowResultRendering):
+
+    def __init__(self, delegate_instruction_builder: DelegateInstructionBuilding | None = None) -> None:
+        self._delegate_instruction_builder = delegate_instruction_builder or DelegateInstructionBuilder()
 
     def render_start(self, result: FlowStartResult) -> str:
         if result.error:
@@ -47,12 +49,10 @@ class FlowResultRenderer(FlowResultRendering):
     def _render_step(self, step: StepResult) -> str:
         body = step.prompt
         if step.execution.get("mode") == _SUBAGENT_MODE:
-            body = f"Launch a subagent with the following prompt:\n\n{build_delegate_instruction(body)}"
+            instruction = self._delegate_instruction_builder.build(body)
+            body = f"Launch a subagent with the following prompt:\n\n{instruction}"
 
         header = f"id: {step.instance_id}"
         if step.rejection_reason is not None:
-            header = (
-                f"{header}\nRejected: {step.rejection_reason}. Try again — "
-                f"you have {step.attempts_remaining} attempt(s) left."
-            )
+            header = f"{header}\nRejected: {step.rejection_reason}. Try again."
         return f"{header}\n\n{body}"

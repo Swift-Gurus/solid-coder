@@ -45,20 +45,19 @@ class TestFlowResultJsonRenderer(unittest.TestCase):
         self.assertEqual(rendered["steps"], [])
         self.assertIsNone(rendered["error"])
 
-    def test_render_next_includes_rejection_reason_and_attempts_remaining(self):
+    def test_render_next_includes_rejection_reason(self):
         result = FlowNextResult(
             status="ready",
             steps=[
                 StepResult(
                     step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "inline"},
-                    attempts_remaining=2, rejection_reason="12345 is not of type 'string'",
+                    rejection_reason="12345 is not of type 'string'",
                 )
             ],
         )
 
         rendered = json.loads(self.sut.render_next(result))
 
-        self.assertEqual(rendered["steps"][0]["attempts_remaining"], 2)
         self.assertEqual(rendered["steps"][0]["rejection_reason"], "12345 is not of type 'string'")
 
 

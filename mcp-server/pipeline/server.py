@@ -464,9 +464,11 @@ class ApplicationBootstrapper:
             "'id: <instance_id>' each one gave you — each value must match the schema stated in that step's "
             "prompt exactly, or the submission is rejected. Get it right the first time; a rejected submission "
             "wastes a turn. The response is plain text: either the next step(s) to work on, a block starting "
-            "with 'Rejected:' explaining exactly what was wrong and how many attempts remain to retry the same "
-            "step, or 'Flow complete.'/'Flow timed out...'/'Flow failed...' meaning you've reached the end of "
-            "the flow. Operates on the single main run unless you were given a run_id (see flow_start's "
+            "with 'Rejected:' explaining exactly what was wrong (retry the same step with a corrected value), "
+            "or a terminal message ('Flow complete.', or 'Flow failed...'/'Flow timed out...' naming the step, "
+            "why it failed, and the run log path). On a terminal failure/timeout: stop — do not retry or start "
+            "another attempt, report it to the user verbatim, and wait for their instructions. Operates on the "
+            "single main run unless you were given a run_id (see flow_start's "
             "isolated=true response) — call this in a loop, once per completed step.",
             {
                 "type": "object",

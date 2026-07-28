@@ -61,11 +61,17 @@ class TestRunCompletionChecker(unittest.TestCase):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
         sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
-        run_state = RunState(completed={}, running=[], turn_count=5, status="in_progress")
+        run_state = RunState(completed={}, running=["step-a"], turn_count=5, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(max_turns=5), run_state)
 
         self.assertEqual(result.status, "timed_out")
+        self.assertEqual(
+            result.error,
+            "Flow timed out — reached the flow's max_turns limit (5 turns) with step(s) still pending: "
+            "step-a. Full run log: /run/events.jsonl. Stop here — do not retry or continue this flow. "
+            "Report this to the user and wait for their instructions.",
+        )
         self.assertEqual(appender.events, [("/run/events.jsonl", "run_timed_out", {"run_id": "run-1"})])
         self.assertEqual(active_run.deleted_for, [Path("/runs")])
 
@@ -86,11 +92,20 @@ class TestRunCompletionChecker(unittest.TestCase):
         active_run = SpyActiveRunPointer()
         sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[StepDef(id="step-a", prompt="p", max_attempts=3)])
-        run_state = RunState(completed={}, running=[], turn_count=1, status="in_progress", attempts_used={"step-a": 3})
+        run_state = RunState(
+            completed={}, running=[], turn_count=1, status="in_progress",
+            attempts_used={"step-a": 3}, rejection_reasons={"step-a": "12345 is not of type 'string'"},
+        )
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", flow_def, run_state)
 
         self.assertEqual(result.status, "failed")
+        self.assertEqual(
+            result.error,
+            "Flow failed — step 'step-a' exhausted all 3 attempt(s). Last rejection: 12345 is not of type "
+            "'string'. Full run log: /run/events.jsonl. Stop here — do not retry or continue this flow. "
+            "Report this failure to the user and wait for their instructions.",
+        )
         self.assertEqual(appender.events, [("/run/events.jsonl", "run_failed", {"run_id": "run-1", "step_id": "step-a"})])
         self.assertEqual(active_run.deleted_for, [Path("/runs")])
 

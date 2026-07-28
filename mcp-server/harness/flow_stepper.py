@@ -7,6 +7,8 @@ solid-description: Progresses a flow execution to the next step.
 
 from __future__ import annotations
 
+from typing import Callable, TypeVar
+
 from harness.active_run_locating import ActiveRunLocating
 from harness.flow_loading import FlowLoading
 from harness.flow_next_result import FlowNextResult
@@ -18,6 +20,8 @@ from harness.run_completion_checking import RunCompletionChecking
 from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
 from harness.step_execution_coordinating import StepExecutionCoordinating
+
+_T = TypeVar("_T")
 
 
 class FlowStepper(FlowStepping):
@@ -51,10 +55,11 @@ class FlowStepper(FlowStepping):
         metadata = self._metadata_store.read(location.run_dir)
         flow_def = self._flow_loader.load(location.workflow_path, [])
 
-        try:
-            snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
-        except InterpolationError as exc:
-            return FlowNextResult(status="ready", error=str(exc))
+        snapshot, error = self._guard_interpolation(
+            lambda: self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
+        )
+        if error is not None:
+            return error
 
         outcome = self._submission_advancer.submit(
             location.events_path, location.base_dir, location.run_id, snapshot.ready, outputs or {}, flow_def
@@ -69,14 +74,25 @@ class FlowStepper(FlowStepping):
             if terminal is not None:
                 return terminal
 
-        step_terminal = self._step_execution_coordinator.run_ready(
-            location.base_dir, location.run_id, location.events_path, flow_def, metadata.params
+        step_terminal, error = self._guard_interpolation(
+            lambda: self._step_execution_coordinator.run_ready(
+                location.base_dir, location.run_id, location.events_path, flow_def, metadata.params
+            )
         )
+        if error is not None:
+            return error
         if step_terminal is not None:
             return step_terminal
 
-        try:
-            steps = self._ready_steps_resolver.resolve(location.events_path, flow_def, metadata.params)
-        except InterpolationError as exc:
-            return FlowNextResult(status="ready", error=str(exc))
+        steps, error = self._guard_interpolation(
+            lambda: self._ready_steps_resolver.resolve(location.events_path, flow_def, metadata.params)
+        )
+        if error is not None:
+            return error
         return FlowNextResult(status="ready", steps=steps)
+
+    def _guard_interpolation(self, resolve: Callable[[], _T]) -> tuple[_T | None, FlowNextResult | None]:
+        try:
+            return resolve(), None
+        except InterpolationError as exc:
+            return None, FlowNextResult(status="ready", error=str(exc))

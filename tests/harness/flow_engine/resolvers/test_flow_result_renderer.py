@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.delegate_instruction_building import build_delegate_instruction
+from harness.delegate_instruction_builder import build_delegate_instruction
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_renderer import FlowResultRenderer
 from harness.flow_start_result import FlowStartResult
@@ -82,37 +82,35 @@ class TestFlowResultRenderer(unittest.TestCase):
             f"id: a-1\n\nLaunch a subagent with the following prompt:\n\n{build_delegate_instruction('Do the thing.')}",
         )
 
-    def test_render_next_includes_rejection_reason_and_attempts_remaining(self):
+    def test_render_next_includes_rejection_reason_without_exposing_attempt_counts(self):
         result = FlowNextResult(
             status="ready",
             steps=[
                 StepResult(
                     step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "inline"},
-                    attempts_remaining=2, rejection_reason="12345 is not of type 'string'",
+                    rejection_reason="12345 is not of type 'string'",
                 )
             ],
         )
 
         self.assertEqual(
             self.sut.render_next(result),
-            "id: a-1\nRejected: 12345 is not of type 'string'. Try again — you have 2 attempt(s) left."
+            "id: a-1\nRejected: 12345 is not of type 'string'. Try again."
             "\n\nDo the thing.",
         )
 
     def test_render_next_returns_done_message(self):
         self.assertEqual(self.sut.render_next(FlowNextResult(status="done")), "Flow complete.")
 
-    def test_render_next_returns_timed_out_message(self):
-        self.assertEqual(
-            self.sut.render_next(FlowNextResult(status="timed_out")),
-            "Flow timed out — reached the flow's max_turns limit.",
-        )
+    def test_render_next_returns_the_timed_out_error_message_when_set(self):
+        result = FlowNextResult(status="timed_out", error="Flow timed out — step 'a' still pending.")
 
-    def test_render_next_returns_failed_message(self):
-        self.assertEqual(
-            self.sut.render_next(FlowNextResult(status="failed")),
-            "Flow failed — a step exhausted its retry attempts.",
-        )
+        self.assertEqual(self.sut.render_next(result), "Flow timed out — step 'a' still pending.")
+
+    def test_render_next_returns_the_failed_error_message_when_set(self):
+        result = FlowNextResult(status="failed", error="Flow failed — step 'a' exhausted all 3 attempt(s).")
+
+        self.assertEqual(self.sut.render_next(result), "Flow failed — step 'a' exhausted all 3 attempt(s).")
 
     def test_render_next_returns_the_error_message_when_set(self):
         result = FlowNextResult(status="ready", error="Unresolvable reference: step 'nope' not found in context")
@@ -121,6 +119,23 @@ class TestFlowResultRenderer(unittest.TestCase):
             self.sut.render_next(result),
             "Unresolvable reference: step 'nope' not found in context",
         )
+
+    def test_render_next_uses_the_injected_delegate_instruction_builder(self):
+        sut = FlowResultRenderer(delegate_instruction_builder=StubDelegateInstructionBuilder())
+        result = FlowNextResult(
+            status="ready",
+            steps=[StepResult(step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "subagent"})],
+        )
+
+        self.assertEqual(
+            sut.render_next(result),
+            "id: a-1\n\nLaunch a subagent with the following prompt:\n\nSTUB[Do the thing.]",
+        )
+
+
+class StubDelegateInstructionBuilder:
+    def build(self, prompt: str) -> str:
+        return f"STUB[{prompt}]"
 
 
 if __name__ == "__main__":

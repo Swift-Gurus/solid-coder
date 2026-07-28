@@ -43,7 +43,7 @@ def _make_codex_strategy(llm) -> RunnerStrategyBase:
         )
     return CodexRunnerStrategy(
         model=_resolved_model(raw_model),
-        timeout=llm.bare_session_timeout,
+        timeout=llm.timeout,
         codex_home_dir=llm.codex_home,
     )
 

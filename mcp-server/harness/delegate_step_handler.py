@@ -2,12 +2,12 @@
 solid-name: DelegateStepHandler
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Routes delegate steps to appropriate handlers based on their configured mode.
+solid-description: Routes delegate steps to appropriate handlers based on their mode.
 """
 
 from __future__ import annotations
 
-from harness.delegate_instruction_building import build_delegate_instruction
+from harness.delegate_instruction_builder import build_delegate_instruction
 from harness.models import FlowDef, StepDef, StepInstance, ValidationResult
 from harness.session_delegate_running import SessionDelegateRunning
 from harness.step_handling import StepHandling

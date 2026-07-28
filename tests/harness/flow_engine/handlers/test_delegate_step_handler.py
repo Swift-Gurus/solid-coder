@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.delegate_instruction_building import build_delegate_instruction
+from harness.delegate_instruction_builder import build_delegate_instruction
 from harness.delegate_step_handler import DelegateStepHandler
 from harness.models import FlowDef, StepDef, StepInstance, ValidationResult
 from harness.step_run_outcome import StepRunOutcome
