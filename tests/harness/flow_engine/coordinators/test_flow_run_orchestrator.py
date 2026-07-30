@@ -49,6 +49,16 @@ class StubStatusReader:
         return self._result
 
 
+class StubLockClearer:
+    def __init__(self, result: str = "") -> None:
+        self._result = result
+        self.calls: list[str] = []
+
+    def clear(self, run_id: str) -> str:
+        self.calls.append(run_id)
+        return self._result
+
+
 def _no_active_run_status() -> FlowStatusResult:
     return FlowStatusResult(
         flow="", run_id="", status="no_active_run",
@@ -56,15 +66,22 @@ def _no_active_run_status() -> FlowStatusResult:
     )
 
 
+def _make_orchestrator(
+    starter=None, stepper=None, status_reader=None, lock_clearer=None,
+) -> FlowRunOrchestrator:
+    return FlowRunOrchestrator(
+        starter=starter or StubStarter(FlowStartResult(run_id="", steps=[])),
+        stepper=stepper or StubStepper(FlowNextResult(status="ready")),
+        status_reader=status_reader or StubStatusReader(_no_active_run_status()),
+        lock_clearer=lock_clearer or StubLockClearer(),
+    )
+
+
 class TestFlowRunOrchestrator(unittest.TestCase):
 
     def test_flow_start_delegates_to_starter(self):
         starter = StubStarter(FlowStartResult(run_id="run-1", steps=[]))
-        sut = FlowRunOrchestrator(
-            starter=starter,
-            stepper=StubStepper(FlowNextResult(status="ready")),
-            status_reader=StubStatusReader(_no_active_run_status()),
-        )
+        sut = _make_orchestrator(starter=starter)
 
         result = sut.flow_start("code_review", {"key": "value"})
 
@@ -73,11 +90,7 @@ class TestFlowRunOrchestrator(unittest.TestCase):
 
     def test_flow_start_passes_isolated_through_to_starter(self):
         starter = StubStarter(FlowStartResult(run_id="run-1", steps=[], isolated=True))
-        sut = FlowRunOrchestrator(
-            starter=starter,
-            stepper=StubStepper(FlowNextResult(status="ready")),
-            status_reader=StubStatusReader(_no_active_run_status()),
-        )
+        sut = _make_orchestrator(starter=starter)
 
         sut.flow_start("code_review", isolated=True)
 
@@ -85,11 +98,7 @@ class TestFlowRunOrchestrator(unittest.TestCase):
 
     def test_flow_next_delegates_to_stepper(self):
         stepper = StubStepper(FlowNextResult(status="done"))
-        sut = FlowRunOrchestrator(
-            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
-            stepper=stepper,
-            status_reader=StubStatusReader(_no_active_run_status()),
-        )
+        sut = _make_orchestrator(stepper=stepper)
 
         result = sut.flow_next({"step-a-1": {}})
 
@@ -98,11 +107,7 @@ class TestFlowRunOrchestrator(unittest.TestCase):
 
     def test_flow_next_passes_run_id_through_to_stepper(self):
         stepper = StubStepper(FlowNextResult(status="ready"))
-        sut = FlowRunOrchestrator(
-            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
-            stepper=stepper,
-            status_reader=StubStatusReader(_no_active_run_status()),
-        )
+        sut = _make_orchestrator(stepper=stepper)
 
         sut.flow_next({"a-1": {}}, run_id="isolated-run")
 
@@ -113,11 +118,7 @@ class TestFlowRunOrchestrator(unittest.TestCase):
             flow="code_review", run_id="run-1", status="in_progress",
             turn_count=1, max_turns=10, completed=[], running=[], pending=[],
         ))
-        sut = FlowRunOrchestrator(
-            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
-            stepper=StubStepper(FlowNextResult(status="ready")),
-            status_reader=status_reader,
-        )
+        sut = _make_orchestrator(status_reader=status_reader)
 
         result = sut.flow_status()
 
@@ -126,15 +127,20 @@ class TestFlowRunOrchestrator(unittest.TestCase):
 
     def test_flow_status_passes_run_id_through_to_status_reader(self):
         status_reader = StubStatusReader(_no_active_run_status())
-        sut = FlowRunOrchestrator(
-            starter=StubStarter(FlowStartResult(run_id="", steps=[])),
-            stepper=StubStepper(FlowNextResult(status="ready")),
-            status_reader=status_reader,
-        )
+        sut = _make_orchestrator(status_reader=status_reader)
 
         sut.flow_status(run_id="isolated-run")
 
         self.assertEqual(status_reader.calls, ["isolated-run"])
+
+    def test_flow_clear_lock_delegates_to_lock_clearer(self):
+        lock_clearer = StubLockClearer("Cleared the lock for run 'run-1'.")
+        sut = _make_orchestrator(lock_clearer=lock_clearer)
+
+        result = sut.flow_clear_lock("run-1")
+
+        self.assertEqual(result, "Cleared the lock for run 'run-1'.")
+        self.assertEqual(lock_clearer.calls, ["run-1"])
 
 
 if __name__ == "__main__":

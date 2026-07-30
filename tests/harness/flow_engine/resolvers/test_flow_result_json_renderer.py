@@ -36,6 +36,13 @@ class TestFlowResultJsonRenderer(unittest.TestCase):
         self.assertEqual(rendered["steps"][0]["prompt"], "Do the thing.")
         self.assertEqual(rendered["steps"][0]["execution"], {"mode": "inline"})
 
+    def test_render_start_includes_status_when_a_terminal_result_is_reported(self):
+        result = FlowStartResult(run_id="r1", steps=[], status="done")
+
+        rendered = json.loads(self.sut.render_start(result))
+
+        self.assertEqual(rendered["status"], "done")
+
     def test_render_next_returns_the_full_result_as_json_including_status(self):
         result = FlowNextResult(status="done")
 

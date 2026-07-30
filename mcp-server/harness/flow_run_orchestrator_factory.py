@@ -2,7 +2,7 @@
 solid-name: FlowRunOrchestratorFactory
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Creates a flow run orchestrator with all dependencies initialized.
+solid-description: Provides orchestrators configured for flow execution.
 """
 
 from __future__ import annotations
@@ -11,18 +11,25 @@ from pathlib import Path
 from typing import Optional
 
 from harness.active_run_locator import ActiveRunLocator
+from harness.active_run_location_assembler import ActiveRunLocationAssembler
+from harness.active_run_lock_clearer import ActiveRunLockClearer
 from harness.active_run_pointer_store import ActiveRunPointerStore
 from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.delegate_step_handler import DelegateStepHandler
+from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
 from harness.flow_engine_assembly import build_default_assembly
 from harness.flow_file_resolver import FlowFileResolver
+from harness.flow_initializer import FlowInitializer
 from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_search_path_resolver import FlowSearchPathResolver
+from harness.flow_start_result_builder import FlowStartResultBuilder
 from harness.flow_starter import FlowStarter
 from harness.flow_status_reader import FlowStatusReader
 from harness.flow_stepper import FlowStepper
+from harness.interpolation_guard import InterpolationGuard
+from harness.isolated_run_path_resolver import IsolatedRunPathResolver
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.output_recorder import OutputRecorder
@@ -36,7 +43,8 @@ from harness.run_initializer import RunInitializer
 from harness.run_metadata_store import RunMetadataStore
 from harness.run_provisioner import RunProvisioner
 from harness.run_snapshot_resolver import RunSnapshotResolver
-from harness.runs_base_dir_resolver import RunsBaseDirResolving
+from harness.run_started_event_recorder import RunStartedEventRecorder
+from harness.runs_base_dir_resolving import RunsBaseDirResolving
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
 from harness.script_step_handler import ScriptStepHandler
@@ -112,7 +120,13 @@ class FlowRunOrchestratorFactory:
             attempt_failure_handler=attempt_failure_handler,
             output_recorder=output_recorder,
         )
-        starter = FlowStarter(
+        interpolation_guard = InterpolationGuard()
+        execution_and_readiness_coordinator = ExecutionAndReadinessCoordinator(
+            step_execution_coordinator=step_execution_coordinator,
+            ready_steps_resolver=ready_steps_resolver,
+            interpolation_guard=interpolation_guard,
+        )
+        flow_initializer = FlowInitializer(
             startup_context=StartupContextResolver(
                 base_dir_resolver=self._base_dir_resolver,
                 search_paths=FlowSearchPathResolver(),
@@ -122,10 +136,14 @@ class FlowRunOrchestratorFactory:
                 run_initializer=RunInitializer(active_run=active_run, scaffolder=RunDirectoryScaffolder()),
                 metadata_store=metadata_store,
             ),
-            event_appender=assembly.event_appender,
-            run_snapshot_resolver=run_snapshot_resolver,
-            step_result_builder=step_result_builder,
-            step_execution_coordinator=step_execution_coordinator,
+            path_resolver=IsolatedRunPathResolver(),
+            location_assembler=ActiveRunLocationAssembler(),
+            event_recorder=RunStartedEventRecorder(event_appender=assembly.event_appender),
+        )
+        starter = FlowStarter(
+            initializer=flow_initializer,
+            execution_and_readiness_coordinator=execution_and_readiness_coordinator,
+            result_builder=FlowStartResultBuilder(),
         )
         stepper = FlowStepper(
             run_locator=run_locator,
@@ -140,13 +158,16 @@ class FlowRunOrchestratorFactory:
                 turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
             ),
             completion_checker=completion_checker,
-            step_execution_coordinator=step_execution_coordinator,
-            ready_steps_resolver=ready_steps_resolver,
+            execution_and_readiness_coordinator=execution_and_readiness_coordinator,
+            interpolation_guard=interpolation_guard,
         )
         status_reader = FlowStatusReader(
             run_locator=run_locator,
             flow_loader=resolving_flow_loader,
             run_snapshot_resolver=run_snapshot_resolver,
         )
+        lock_clearer = ActiveRunLockClearer(run_locator=run_locator, active_run=active_run)
 
-        return FlowRunOrchestrator(starter=starter, stepper=stepper, status_reader=status_reader)
+        return FlowRunOrchestrator(
+            starter=starter, stepper=stepper, status_reader=status_reader, lock_clearer=lock_clearer
+        )

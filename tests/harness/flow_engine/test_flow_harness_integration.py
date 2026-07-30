@@ -159,7 +159,7 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
 
         self.assertEqual(result.status, "done")
 
-    def test_script_step_exhausting_max_attempts_fails_the_run(self):
+    def test_script_step_exhausting_max_attempts_on_flow_start_fails_the_run(self):
         fail_script = Path(self._tmpdir) / "fail.py"
         fail_script.write_text("import sys\nsys.exit(1)\n")
         flow_file = self._write("failing.yaml", f"""
@@ -176,7 +176,49 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         start_result = sut.flow_start(str(flow_file))
 
         self.assertEqual(start_result.steps, [])
-        self.assertIsNotNone(start_result.error)
+        self.assertEqual(start_result.status, "failed")
+        self.assertIn("gate", start_result.error)
+        self.assertIn("exhausted all 2 attempt(s)", start_result.error)
+        self.assertIn("exited with code 1", start_result.error)
+        self.assertIn("Stop here", start_result.error)
+
+    def test_agent_step_reopened_by_a_failing_downstream_script_eventually_exhausts_and_fails_the_run(self):
+        # A script step's failure is attributed back to its nearest completed agent-type
+        # dependency (ScriptFailureAttributor) — the agent gets reopened to retry, on the theory
+        # that a validation-style script failing right after an agent step is feedback on that
+        # step's output. So it's step_one's own max_attempts that exhausts here, not doomed's.
+        fail_script = Path(self._tmpdir) / "fail.py"
+        fail_script.write_text("import sys\nsys.exit(1)\n")
+        flow_file = self._write("fails_on_second_step.yaml", f"""
+            name: fails_on_second_step
+            max_turns: 10
+            steps:
+              - id: step_one
+                prompt: Say hello
+                max_attempts: 2
+              - id: doomed
+                type: script
+                command: ["{sys.executable}", "{fail_script}"]
+                depends_on: [step_one]
+        """)
+
+        sut = self._build_with_allowlist()
+        start_result = sut.flow_start(str(flow_file))
+        self.assertEqual([s.step_id for s in start_result.steps], ["step_one"])
+
+        first = sut.flow_next({s.instance_id: {} for s in start_result.steps})
+        self.assertEqual(first.status, "ready")
+        self.assertEqual(first.steps[0].step_id, "step_one")
+        self.assertIn("doomed", first.steps[0].rejection_reason)
+
+        result = sut.flow_next({s.instance_id: {} for s in first.steps})
+
+        self.assertEqual(result.status, "failed")
+        self.assertIn("step_one", result.error)
+        self.assertIn("exhausted all 2 attempt(s)", result.error)
+        self.assertIn("doomed", result.error)
+        self.assertIn("exited with code 1", result.error)
+        self.assertIn("Stop here", result.error)
 
 
 if __name__ == "__main__":

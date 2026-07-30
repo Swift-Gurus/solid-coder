@@ -3,25 +3,11 @@ solid-category: utility
 solid-tags: [utility, service]
 """
 
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Callable, Optional
 
 from common.mcp_meta import LARGE_OUTPUT
-
-
-class MCPServerRegistering(Protocol):
-    def tool(self, name: str, description: str, input_schema: dict,
-             meta: Optional[dict] = None) -> Any: ...
-
-
-class ToolRegistering(Protocol):
-    def register(
-        self,
-        name: str,
-        description: str,
-        input_schema: dict,
-        handler: Callable,
-        meta: Optional[dict] = None,
-    ) -> None: ...
+from mcp_server_registering import MCPServerRegistering  # noqa: F401 — re-exported for consumers
+from tool_registering import ToolRegistering  # noqa: F401 — re-exported for consumers
 
 
 class ToolRegistry:

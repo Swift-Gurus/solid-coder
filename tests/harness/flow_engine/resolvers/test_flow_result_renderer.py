@@ -15,6 +15,7 @@ from harness.delegate_instruction_builder import build_delegate_instruction
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_renderer import FlowResultRenderer
 from harness.flow_start_result import FlowStartResult
+from harness.step_renderer import StepRenderer
 from harness.step_result import StepResult
 
 
@@ -120,8 +121,16 @@ class TestFlowResultRenderer(unittest.TestCase):
             "Unresolvable reference: step 'nope' not found in context",
         )
 
+    def test_render_next_uses_the_injected_step_renderer(self):
+        sut = FlowResultRenderer(step_renderer=StubStepRenderer("STUBBED STEPS"))
+        result = FlowNextResult(status="ready", steps=[])
+
+        self.assertEqual(sut.render_next(result), "STUBBED STEPS")
+
     def test_render_next_uses_the_injected_delegate_instruction_builder(self):
-        sut = FlowResultRenderer(delegate_instruction_builder=StubDelegateInstructionBuilder())
+        sut = FlowResultRenderer(step_renderer=StepRenderer(
+            subagent_delegator=StubSubagentDelegator(),
+        ))
         result = FlowNextResult(
             status="ready",
             steps=[StepResult(step_id="a", instance_id="a-1", prompt="Do the thing.", execution={"mode": "subagent"})],
@@ -129,13 +138,26 @@ class TestFlowResultRenderer(unittest.TestCase):
 
         self.assertEqual(
             sut.render_next(result),
-            "id: a-1\n\nLaunch a subagent with the following prompt:\n\nSTUB[Do the thing.]",
+            "id: a-1\n\nSTUB[Do the thing.]",
         )
 
+    def test_render_start_returns_flow_complete_when_status_is_done(self):
+        result = FlowStartResult(run_id="r1", steps=[], status="done")
 
-class StubDelegateInstructionBuilder:
-    def build(self, prompt: str) -> str:
-        return f"STUB[{prompt}]"
+        self.assertEqual(self.sut.render_start(result), "Flow complete.")
+
+
+class StubStepRenderer:
+    def __init__(self, rendered: str) -> None:
+        self._rendered = rendered
+
+    def render_steps(self, steps) -> str:
+        return self._rendered
+
+
+class StubSubagentDelegator:
+    def wrap_if_subagent(self, body: str, execution: dict) -> str:
+        return f"STUB[{body}]" if execution.get("mode") == "subagent" else body
 
 
 if __name__ == "__main__":

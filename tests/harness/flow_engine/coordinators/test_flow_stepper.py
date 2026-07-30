@@ -2,7 +2,8 @@
 solid-name: test_flow_stepper
 solid-category: unit-test
 solid-spec: [SPEC-013, SPEC-027]
-solid-description: Tests coordinating output submission, script step auto-execution, completion checking, and readiness resolution for one flow_next call.
+solid-description: Tests coordinating output submission, completion checking, and delegating
+execution/readiness resolution for one flow_next call.
 """
 
 from __future__ import annotations
@@ -14,9 +15,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.active_run_location import ActiveRunLocation
+from harness.execution_outcome import ExecutionOutcome
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepper import FlowStepper
 from harness.interpolation_error import InterpolationError
+from harness.interpolation_guard import InterpolationGuard
 from harness.models import FlowDef, RunState
 from harness.run_metadata import RunMetadata
 from harness.run_snapshot import RunSnapshot
@@ -91,30 +94,14 @@ class StubCompletionChecker:
         return self._result
 
 
-class StubStepExecutionCoordinator:
-    def __init__(self, result=None, error: InterpolationError | None = None) -> None:
-        self._result = result
-        self._error = error
+class StubExecutionAndReadinessCoordinator:
+    def __init__(self, outcome: ExecutionOutcome | None = None) -> None:
+        self._outcome = outcome or ExecutionOutcome()
         self.calls: list[tuple] = []
 
-    def run_ready(self, base_dir, run_id, events_path, flow_def, params):
-        self.calls.append((base_dir, run_id, events_path, flow_def, params))
-        if self._error is not None:
-            raise self._error
-        return self._result
-
-
-class StubReadyStepsResolver:
-    def __init__(self, steps=None, error: InterpolationError | None = None) -> None:
-        self._steps = steps or []
-        self._error = error
-        self.calls: list[tuple] = []
-
-    def resolve(self, events_path, flow_def, params) -> list[StepResult]:
-        self.calls.append((events_path, flow_def, params))
-        if self._error is not None:
-            raise self._error
-        return self._steps
+    def coordinate(self, effective_base_dir, run_id, events_path, flow_def, params) -> ExecutionOutcome:
+        self.calls.append((effective_base_dir, run_id, events_path, flow_def, params))
+        return self._outcome
 
 
 class FlowStepperFactory:
@@ -128,8 +115,8 @@ class FlowStepperFactory:
         self.run_snapshot_resolver = StubRunSnapshotResolver([RunSnapshot(run_state=default_run_state, ready=[])])
         self.submission_advancer = StubSubmissionAdvancer(SubmissionOutcome())
         self.completion_checker = StubCompletionChecker(None)
-        self.step_execution_coordinator = StubStepExecutionCoordinator(None)
-        self.ready_steps_resolver = StubReadyStepsResolver([])
+        self.execution_and_readiness_coordinator = StubExecutionAndReadinessCoordinator()
+        self.interpolation_guard = InterpolationGuard()
 
     def with_flow_def(self, flow_def) -> "FlowStepperFactory":
         self.flow_loader = StubFlowLoader(flow_def)
@@ -147,12 +134,8 @@ class FlowStepperFactory:
         self.completion_checker = checker
         return self
 
-    def with_step_execution_coordinator(self, coordinator) -> "FlowStepperFactory":
-        self.step_execution_coordinator = coordinator
-        return self
-
-    def with_ready_steps_resolver(self, resolver) -> "FlowStepperFactory":
-        self.ready_steps_resolver = resolver
+    def with_execution_and_readiness_coordinator(self, coordinator) -> "FlowStepperFactory":
+        self.execution_and_readiness_coordinator = coordinator
         return self
 
     def make_sut(self) -> FlowStepper:
@@ -163,8 +146,8 @@ class FlowStepperFactory:
             run_snapshot_resolver=self.run_snapshot_resolver,
             submission_advancer=self.submission_advancer,
             completion_checker=self.completion_checker,
-            step_execution_coordinator=self.step_execution_coordinator,
-            ready_steps_resolver=self.ready_steps_resolver,
+            execution_and_readiness_coordinator=self.execution_and_readiness_coordinator,
+            interpolation_guard=self.interpolation_guard,
         )
 
 
@@ -221,15 +204,15 @@ class TestFlowStepper(unittest.TestCase):
 
         self.assertEqual(checker_calls.calls, [])
 
-    def test_returns_terminal_result_from_step_execution_coordinator(self):
+    def test_returns_terminal_result_from_execution_and_readiness_coordinator(self):
         run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
         terminal = FlowNextResult(status="failed")
         sut = FlowStepperFactory().with_run_snapshot_resolver(
             StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
         ).with_submission_advancer(
             StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
-        ).with_step_execution_coordinator(
-            StubStepExecutionCoordinator(terminal)
+        ).with_execution_and_readiness_coordinator(
+            StubExecutionAndReadinessCoordinator(ExecutionOutcome(terminal=terminal))
         ).make_sut()
 
         result = sut.flow_next()
@@ -243,14 +226,30 @@ class TestFlowStepper(unittest.TestCase):
             StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
         ).with_submission_advancer(
             StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
-        ).with_ready_steps_resolver(
-            StubReadyStepsResolver([step_result])
+        ).with_execution_and_readiness_coordinator(
+            StubExecutionAndReadinessCoordinator(ExecutionOutcome(steps=[step_result]))
         ).make_sut()
 
         result = sut.flow_next({"step-a-1": {}})
 
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.steps, [step_result])
+
+    def test_calls_execution_and_readiness_coordinator_with_the_located_run_and_flow_def(self):
+        flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
+        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        coordinator = StubExecutionAndReadinessCoordinator()
+        sut = FlowStepperFactory().with_flow_def(flow_def).with_run_snapshot_resolver(
+            StubRunSnapshotResolver([RunSnapshot(run_state=run_state, ready=[])])
+        ).with_submission_advancer(
+            StubSubmissionAdvancer(SubmissionOutcome(run_state=run_state))
+        ).with_execution_and_readiness_coordinator(coordinator).make_sut()
+
+        sut.flow_next({"step-a-1": {}})
+
+        self.assertEqual(coordinator.calls, [
+            (Path("/runs"), "run-1", "/runs/run-1/events.jsonl", flow_def, {}),
+        ])
 
     def test_submits_the_resolved_ready_snapshot_and_outputs(self):
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[])
@@ -277,19 +276,9 @@ class TestFlowStepper(unittest.TestCase):
         self.assertEqual(result.status, "ready")
         self.assertEqual(result.error, "bad reference")
 
-    def test_returns_clean_error_when_step_execution_coordinator_interpolation_fails(self):
-        sut = FlowStepperFactory().with_step_execution_coordinator(
-            StubStepExecutionCoordinator(error=InterpolationError("bad reference"))
-        ).make_sut()
-
-        result = sut.flow_next()
-
-        self.assertEqual(result.status, "ready")
-        self.assertEqual(result.error, "bad reference")
-
-    def test_returns_clean_error_when_ready_steps_resolution_fails(self):
-        sut = FlowStepperFactory().with_ready_steps_resolver(
-            StubReadyStepsResolver(error=InterpolationError("bad reference"))
+    def test_returns_clean_error_when_execution_and_readiness_coordinator_reports_an_error(self):
+        sut = FlowStepperFactory().with_execution_and_readiness_coordinator(
+            StubExecutionAndReadinessCoordinator(ExecutionOutcome(error="bad reference"))
         ).make_sut()
 
         result = sut.flow_next()

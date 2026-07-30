@@ -18,3 +18,4 @@ class FlowStartResult:
     steps: list[StepResult]
     error: str | None = None
     isolated: bool = False
+    status: str | None = None
