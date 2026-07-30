@@ -26,9 +26,9 @@ warnings.filterwarnings("ignore")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from protocol import MCPServer
+from mcp_server_factory import MCPServerFactory
 
-server = MCPServer("apple-build", "1.1.0")
+server = MCPServerFactory().build("apple-build", "1.1.0")
 
 # ─── Locks ────────────────────────────────────────────────────────────────────
 _locks: dict = {}
@@ -214,6 +214,30 @@ def _run(cmd, cwd: Path, timeout: int = 600) -> tuple:
     return r.returncode, r.stdout
 
 
+def _run_and_summarize(cmd, root: Path, log_name: str = "build.log", verb: str = "build") -> str:
+    """Run a single command, save its raw output, and return a status summary."""
+    rc, out = _run(cmd, root)
+    _save(root, log_name, out)
+    return _summary(rc, out, verb)
+
+
+def _run_logged_step(cmd, root: Path, log_acc: list, step_label: str, log_name: str = "build.log") -> tuple:
+    """Run one step of a multi-step build, appending to a cumulative log shared by later steps."""
+    rc, out = _run(cmd, root)
+    log_acc.append(f"=== {step_label} ===\n{out}")
+    _save(root, log_name, "\n".join(log_acc))
+    return rc, out
+
+
+def _xcode_target_ref(root: Path, system: str) -> tuple:
+    """Return (xcodebuild flag, path) for the nearest workspace or project."""
+    if system == "xcode-ws":
+        ws = next(f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj"))
+        return "-workspace", ws
+    proj = next(root.glob("*.xcodeproj"))
+    return "-project", proj
+
+
 # ─── Crash detection ──────────────────────────────────────────────────────────
 
 CRASH_PATTERNS = re.compile(
@@ -310,6 +334,59 @@ def _format_crash_response(info: dict, kill_reason: str, kind: str) -> str:
     return "\n".join(lines)
 
 
+class _ProcessOutputReader:
+    """Reads a running process's stdout into shared state, tracking last-activity time."""
+
+    def __init__(self, proc, state: dict) -> None:
+        self._proc = proc
+        self._state = state
+
+    def run(self) -> None:
+        try:
+            for line in self._proc.stdout:
+                self._state["stdout"].append(line)
+                self._state["last_progress"] = time.monotonic()
+        except Exception:
+            pass
+
+
+class _CrashWatcher:
+    """Polls the xcresult bundle for crash markers, signaling shared state on detection."""
+
+    def __init__(self, xcresult: Path, state: dict, stop: threading.Event, poll_interval: float) -> None:
+        self._xcresult = xcresult
+        self._state = state
+        self._stop = stop
+        self._poll_interval = poll_interval
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            info = _scan_for_crash(self._xcresult)
+            if info:
+                self._state["crash"] = info
+                self._state["kill_reason"] = "crash"
+                return
+            if self._stop.wait(self._poll_interval):
+                return
+
+
+class _StallWatcher:
+    """Signals shared state once the process produces no output for stall_timeout seconds."""
+
+    def __init__(self, state: dict, stop: threading.Event, stall_timeout: int) -> None:
+        self._state = state
+        self._stop = stop
+        self._stall_timeout = stall_timeout
+
+    def run(self) -> None:
+        while not self._stop.is_set():
+            if self._stop.wait(5):
+                return
+            if time.monotonic() - self._state["last_progress"] > self._stall_timeout:
+                self._state["kill_reason"] = "stall"
+                return
+
+
 def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
                        hard_timeout: int = 900, stall_timeout: int = 90,
                        crash_poll: float = 2.0) -> tuple:
@@ -337,36 +414,14 @@ def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
     }
     stop = threading.Event()
 
-    def reader():
-        try:
-            for line in proc.stdout:
-                state["stdout"].append(line)
-                state["last_progress"] = time.monotonic()
-        except Exception:
-            pass
-
-    def crash_watcher():
-        while not stop.is_set():
-            info = _scan_for_crash(xcresult)
-            if info:
-                state["crash"] = info
-                state["kill_reason"] = "crash"
-                return
-            if stop.wait(crash_poll):
-                return
-
-    def stall_watcher():
-        while not stop.is_set():
-            if stop.wait(5):
-                return
-            if time.monotonic() - state["last_progress"] > stall_timeout:
-                state["kill_reason"] = "stall"
-                return
+    reader = _ProcessOutputReader(proc, state)
+    crash_watcher = _CrashWatcher(xcresult, state, stop, crash_poll)
+    stall_watcher = _StallWatcher(state, stop, stall_timeout)
 
     threads = [
-        threading.Thread(target=reader, daemon=True),
-        threading.Thread(target=crash_watcher, daemon=True),
-        threading.Thread(target=stall_watcher, daemon=True),
+        threading.Thread(target=reader.run, daemon=True),
+        threading.Thread(target=crash_watcher.run, daemon=True),
+        threading.Thread(target=stall_watcher.run, daemon=True),
     ]
     for t in threads:
         t.start()
@@ -420,44 +475,27 @@ def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
 def _run_tuist_build(root: Path, target: str, configuration: str) -> str:
     """Full tuist flow: install → generate → build."""
     log = []
+    for cmd, label in (
+        (["tuist", "install"], "tuist install"),
+        (["tuist", "generate", "--no-open"], "tuist generate"),
+    ):
+        rc, out = _run_logged_step(cmd, root, log, label)
+        if rc != 0:
+            return _summary(rc, out, label)
 
-    rc, out = _run(["tuist", "install"], root)
-    log.append(f"=== tuist install ===\n{out}")
-    _save(root, "build.log", "\n".join(log))
-    if rc != 0:
-        return _summary(rc, out, "tuist install")
-
-    rc, out = _run(["tuist", "generate", "--no-open"], root)
-    log.append(f"=== tuist generate ===\n{out}")
-    _save(root, "build.log", "\n".join(log))
-    if rc != 0:
-        return _summary(rc, out, "tuist generate")
-
-    rc, out = _run(["tuist", "build", target, "--configuration", configuration], root)
-    log.append(f"=== tuist build ===\n{out}")
-    _save(root, "build.log", "\n".join(log))
+    rc, out = _run_logged_step(["tuist", "build", target, "--configuration", configuration], root, log, "tuist build")
     return _summary(rc, out, "build")
 
 
 def _run_xcode_build(root: Path, target: str, configuration: str, system: str) -> str:
-    if system == "xcode-ws":
-        ws = next(f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj"))
-        cmd = ["xcodebuild", "-workspace", str(ws), "-scheme", target,
-               "-configuration", configuration, "build"]
-    else:
-        proj = next(root.glob("*.xcodeproj"))
-        cmd = ["xcodebuild", "-project", str(proj), "-scheme", target,
-               "-configuration", configuration, "build"]
-    rc, out = _run(cmd, root)
-    _save(root, "build.log", out)
-    return _summary(rc, out, "build")
+    flag, ref = _xcode_target_ref(root, system)
+    cmd = ["xcodebuild", flag, str(ref), "-scheme", target, "-configuration", configuration, "build"]
+    return _run_and_summarize(cmd, root)
 
 
 def _run_swift_build(root: Path, target: str, configuration: str) -> str:
     cfg = "debug" if configuration.lower() == "debug" else "release"
-    rc, out = _run(["swift", "build", "--target", target, "-c", cfg], root)
-    _save(root, "build.log", out)
-    return _summary(rc, out, "build")
+    return _run_and_summarize(["swift", "build", "--target", target, "-c", cfg], root)
 
 
 def _xcresulttool_test_results(xcresult: Path) -> dict:
@@ -508,37 +546,13 @@ def _count_failed(output: str) -> int:
     return len(re.findall(r"Test Case .+ failed", output))
 
 
-def _run_tuist_test(root: Path, target: str, test_targets: list,
-                    skip_ui: bool, skip_unit: bool, only_testing: list) -> str:
-    # Mirror tq log naming: skip-unit-tests → ui-test.log, everything else → test.log
-    kind = "ui-test" if skip_unit else "test"
-    log = []
+def _finalize_test_result(root: Path, kind: str, rc: int, out: str, crash: dict,
+                          kill_reason: str, xcresult: Path) -> str:
+    """Shared post-processing after a watchdog-guarded test run.
 
-    rc, out = _run(["tuist", "generate", "--no-open"], root)
-    log.append(f"=== tuist generate ===\n{out}")
-    _save(root, "build.log", "\n".join(log))
-    if rc != 0:
-        return _summary(rc, out, "tuist generate")
-
-    xcresult = _log_dir(root) / f"{kind}.xcresult"
-    if xcresult.exists():
-        shutil.rmtree(str(xcresult))
-    _clear_crash_info(root, kind)
-
-    cmd = ["tuist", "test", target, "--result-bundle-path", str(xcresult)]
-    if test_targets:
-        cmd += ["--test-targets", ",".join(test_targets)]
-    if skip_ui:
-        cmd += ["--skip-ui-tests"]
-    if skip_unit:
-        cmd += ["--skip-unit-tests"]
-    if only_testing:
-        cmd += ["--"] + [f"-only-testing:{t}" for t in only_testing]
-
-    rc, out, crash, kill_reason = _run_with_watchdog(cmd, root, xcresult)
-    log.append(f"=== tuist test ===\n{out}")
-    _save(root, f"{kind}.log", "\n".join(log))  # always written
-
+    Handles crash/stall/timeout reporting, then pass/fail counting and failure detail,
+    the sequence duplicated identically across the tuist and xcode test runners.
+    """
     if crash:
         _save_crash_info(root, kind, crash)
         return _format_crash_response(crash, kill_reason, kind)
@@ -567,6 +581,38 @@ def _run_tuist_test(root: Path, target: str, test_targets: list,
     return f"{status}\n{signals}" if signals else status
 
 
+def _run_tuist_test(root: Path, target: str, test_targets: list,
+                    skip_ui: bool, skip_unit: bool, only_testing: list) -> str:
+    # Mirror tq log naming: skip-unit-tests → ui-test.log, everything else → test.log
+    kind = "ui-test" if skip_unit else "test"
+    log = []
+
+    rc, out = _run_logged_step(["tuist", "generate", "--no-open"], root, log, "tuist generate")
+    if rc != 0:
+        return _summary(rc, out, "tuist generate")
+
+    xcresult = _log_dir(root) / f"{kind}.xcresult"
+    if xcresult.exists():
+        shutil.rmtree(str(xcresult))
+    _clear_crash_info(root, kind)
+
+    cmd = ["tuist", "test", target, "--result-bundle-path", str(xcresult)]
+    if test_targets:
+        cmd += ["--test-targets", ",".join(test_targets)]
+    if skip_ui:
+        cmd += ["--skip-ui-tests"]
+    if skip_unit:
+        cmd += ["--skip-unit-tests"]
+    if only_testing:
+        cmd += ["--"] + [f"-only-testing:{t}" for t in only_testing]
+
+    rc, out, crash, kill_reason = _run_with_watchdog(cmd, root, xcresult)
+    log.append(f"=== tuist test ===\n{out}")
+    _save(root, f"{kind}.log", "\n".join(log))  # always written
+
+    return _finalize_test_result(root, kind, rc, out, crash, kill_reason, xcresult)
+
+
 def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) -> str:
     kind = "test"
     xcresult = _log_dir(root) / "test.xcresult"
@@ -574,45 +620,15 @@ def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) ->
         shutil.rmtree(str(xcresult))
     _clear_crash_info(root, kind)
 
-    if system == "xcode-ws":
-        ws = next(f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj"))
-        cmd = ["xcodebuild", "test", "-workspace", str(ws), "-scheme", target,
-               "-resultBundlePath", str(xcresult)]
-    else:
-        proj = next(root.glob("*.xcodeproj"))
-        cmd = ["xcodebuild", "test", "-project", str(proj), "-scheme", target,
-               "-resultBundlePath", str(xcresult)]
-
+    flag, ref = _xcode_target_ref(root, system)
+    cmd = ["xcodebuild", "test", flag, str(ref), "-scheme", target, "-resultBundlePath", str(xcresult)]
     for t in only_testing:
         cmd += ["-only-testing", t]
 
     rc, out, crash, kill_reason = _run_with_watchdog(cmd, root, xcresult)
     _save(root, "test.log", out)
 
-    if crash:
-        _save_crash_info(root, kind, crash)
-        return _format_crash_response(crash, kill_reason, kind)
-
-    if kill_reason == "stall":
-        return (f"** TESTS FAILED ** — Run stalled (no progress for 90s, process tree killed). "
-                f"No crash trace found in xcresult. See: get_log(kind=\"{kind}\")")
-    if kill_reason == "hard_timeout":
-        return (f"** TESTS FAILED ** — Hard timeout after 900s, process tree killed. "
-                f"See: get_log(kind=\"{kind}\")")
-
-    if xcresult.exists():
-        passed, failed = _count_from_xcresult(xcresult)
-    else:
-        passed, failed = _count_passed(out), _count_failed(out)
-    if rc == 0:
-        return f"✓ {passed} tests passed"
-    status = f"** TESTS FAILED ** — {failed} failed, {passed} passed"
-    if xcresult.exists():
-        details = _xcresult_failures(xcresult, max_failures=5)
-        if details and details != "(no failures)":
-            return f"{status}\n{details}"
-    signals = _filter(out)
-    return f"{status}\n{signals}" if signals else status
+    return _finalize_test_result(root, kind, rc, out, crash, kill_reason, xcresult)
 
 
 # ─── xcresult querying ────────────────────────────────────────────────────────
@@ -722,14 +738,17 @@ def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
 def build(target: str, project_path=None, configuration: str = "Debug") -> str:
     root = _root(project_path)
     system, root = _detect(root)
+    runners = {
+        "tuist": lambda: _run_tuist_build(root, target, configuration),
+        "xcode-ws": lambda: _run_xcode_build(root, target, configuration, system),
+        "xcode-proj": lambda: _run_xcode_build(root, target, configuration, system),
+        "swift": lambda: _run_swift_build(root, target, configuration),
+    }
     with _lock(root):
-        if system == "tuist":
-            return _run_tuist_build(root, target, configuration)
-        elif system in ("xcode-ws", "xcode-proj"):
-            return _run_xcode_build(root, target, configuration, system)
-        elif system == "swift":
-            return _run_swift_build(root, target, configuration)
-        return f"No build system found scanning up from {root}"
+        runner = runners.get(system)
+        if runner is None:
+            return f"No build system found scanning up from {root}"
+        return runner()
 
 
 @server.tool(
@@ -768,14 +787,18 @@ def test(target: str, project_path=None, test_targets=None, only_testing=None,
     root = _root(project_path)
     system, root = _detect(root)
     only = only_testing or []
+    runners = {
+        "tuist": lambda: _run_tuist_test(root, target, test_targets or [],
+                                         skip_ui=skip_ui_tests, skip_unit=skip_unit_tests,
+                                         only_testing=only),
+        "xcode-ws": lambda: _run_xcode_test(root, target, system, only_testing=only),
+        "xcode-proj": lambda: _run_xcode_test(root, target, system, only_testing=only),
+    }
     with _lock(root):
-        if system == "tuist":
-            return _run_tuist_test(root, target, test_targets or [],
-                                   skip_ui=skip_ui_tests, skip_unit=skip_unit_tests,
-                                   only_testing=only)
-        elif system in ("xcode-ws", "xcode-proj"):
-            return _run_xcode_test(root, target, system, only_testing=only)
-        return f"test not supported for build system: {system}"
+        runner = runners.get(system)
+        if runner is None:
+            return f"test not supported for build system: {system}"
+        return runner()
 
 
 @server.tool(

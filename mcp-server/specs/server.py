@@ -11,7 +11,6 @@ No external dependencies. Python 3.9+.
 """
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -25,22 +24,27 @@ BUILD_SPEC_SCRIPT = SKILLS_ROOT / "build-spec" / "scripts" / "build-spec-query.p
 
 sys.path.insert(0, str(MCP_DIR))
 from spec import parse_frontmatter
-from protocol import MCPServer
+from hook_utils import SubprocessAdapter, SubprocessError, SubprocessJsonRunner
+from mcp_server_factory import MCPServerFactory
 
-server = MCPServer("solid-coder-specs", "1.0.0")
+server = MCPServerFactory().build("solid-coder-specs", "1.0.0")
 
-_CHUNK_SIZE = 40_000
-
-
-def _maybe_chunk(content: str, prefix: str) -> str:
-    return content
+_json_runner = SubprocessJsonRunner(SubprocessAdapter())
 
 
-def _run(cmd: list) -> tuple[bool, str]:
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        return True, result.stdout.strip()
-    return False, result.stderr.strip() or result.stdout.strip()
+def _run_json_tool(cmd: list):
+    """Run cmd and parse JSON stdout. Returns (ok, result_or_error_message)."""
+    try:
+        return True, _json_runner.run(cmd)
+    except SubprocessError as e:
+        return False, f"Error: {e}"
+
+
+def _parse_frontmatter_or_error(file_path):
+    try:
+        return parse_frontmatter.parse(file_path), None
+    except Exception as e:
+        return None, str(e)
 
 
 # ---------------------------------------------------------------------------
@@ -65,26 +69,17 @@ def _run(cmd: list) -> tuple[bool, str]:
     },
 )
 def parse_spec(file_path):
-    from pathlib import Path as _Path
-    p = _Path(file_path)
+    p = Path(file_path)
     if not p.exists():
         return (f"File not found: {file_path}. "
                 "The input must be a spec markdown file. Use `/build-spec` to create one.")
     if p.suffix != ".md":
         return (f"Not a markdown file: {file_path}. "
                 "The input must be a spec .md file with YAML frontmatter.")
-    try:
-        out = json.dumps(parse_frontmatter.parse(file_path))
-        ok = True
-    except Exception as e:
-        ok, out = False, str(e)
-    if not ok:
-        return (f"No YAML frontmatter found in {file_path}: {out}. "
+    fm, err = _parse_frontmatter_or_error(file_path)
+    if err is not None:
+        return (f"No YAML frontmatter found in {file_path}: {err}. "
                 "Spec files must start with a --- frontmatter block. Use `/build-spec` to create one.")
-    try:
-        fm = json.loads(out)
-    except json.JSONDecodeError:
-        return f"Could not parse frontmatter JSON from {file_path}: {out}"
     if "number" not in fm:
         return (f"Frontmatter in {file_path} is missing the required `number` field. "
                 "Use `/build-spec` to generate a properly structured spec.")
@@ -120,22 +115,56 @@ def parse_spec(file_path):
 )
 def query_specs(action, args=None):
     args = args or []
-    if action in ("scan", "children", "ancestors", "next-number"):
-        script = FIND_SPEC_SCRIPT
-    else:
-        script = BUILD_SPEC_SCRIPT
-    ok, out = _run([sys.executable, str(script), action] + args)
-    if not ok:
-        return f"Error: {out}"
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return out
+    script = FIND_SPEC_SCRIPT if action in ("scan", "children", "ancestors", "next-number") else BUILD_SPEC_SCRIPT
+    _, result = _run_json_tool([sys.executable, str(script), action] + args)
+    return result
 
 
 # ---------------------------------------------------------------------------
 # Tool: load_spec_context
 # ---------------------------------------------------------------------------
+
+def _resolve_spec_number(spec_number, file_path):
+    """Returns (spec_number, error_message)."""
+    if not spec_number and not file_path:
+        return None, "Error: either spec_number or file_path is required."
+    if file_path and not spec_number:
+        fm, err = _parse_frontmatter_or_error(file_path)
+        if err is not None:
+            return None, f"Error parsing spec frontmatter: {err}"
+        spec_number = fm.get("number")
+        if not spec_number:
+            return None, f"Error: no 'number' field found in frontmatter of {file_path}"
+    return spec_number, None
+
+
+def _load_ancestors(spec_number, blocked):
+    """Returns (specs_list, error_message)."""
+    cmd = [sys.executable, str(FIND_SPEC_SCRIPT), "ancestors", spec_number]
+    if blocked:
+        cmd.append("--blocked")
+    ok, result = _run_json_tool(cmd)
+    return (result, None) if ok else (None, result)
+
+
+def _format_spec_context(spec_number, specs):
+    sep = "=" * 60
+    lines = [sep, f"  SPEC CONTEXT: {spec_number} ({len(specs)} specs)", sep]
+    for s in specs:
+        number = s.get("number", "?")
+        feature = s.get("feature", "")
+        status = s.get("status", "")
+        path = s.get("path", "")
+        lines.append(f"\n--- {number} — {feature} [{status}] ---\n")
+        if path:
+            try:
+                lines.append(Path(path).read_text(encoding="utf-8").strip())
+            except OSError as e:
+                lines.append(f"(Could not read: {e})")
+        lines.append("")
+    lines.append(sep)
+    return "\n".join(lines)
+
 
 @server.tool(
     name="load_spec_context",
@@ -165,55 +194,15 @@ def query_specs(action, args=None):
     },
 )
 def load_spec_context(spec_number=None, file_path=None, blocked=False):
-    if not spec_number and not file_path:
-        return "Error: either spec_number or file_path is required."
-    if file_path and not spec_number:
-        try:
-            out = json.dumps(parse_frontmatter.parse(file_path))
-            ok = True
-        except Exception as e:
-            ok, out = False, str(e)
-        if not ok:
-            return f"Error parsing spec frontmatter: {out}"
-        try:
-            fm = json.loads(out)
-            spec_number = fm.get("number")
-            if not spec_number:
-                return f"Error: no 'number' field found in frontmatter of {file_path}"
-        except json.JSONDecodeError:
-            return f"Error: could not parse frontmatter JSON from {file_path}"
-    cmd = [sys.executable, str(FIND_SPEC_SCRIPT), "ancestors", spec_number]
-    if blocked:
-        cmd.append("--blocked")
-    ok, out = _run(cmd)
-    if not ok:
-        return f"Error: {out}"
-
-    try:
-        specs = json.loads(out)
-    except json.JSONDecodeError:
-        return out
-
+    spec_number, err = _resolve_spec_number(spec_number, file_path)
+    if err is not None:
+        return err
+    specs, err = _load_ancestors(spec_number, blocked)
+    if err is not None:
+        return err
     if not specs:
         return f"No ancestors found for {spec_number}."
-
-    sep = "=" * 60
-    lines = [sep, f"  SPEC CONTEXT: {spec_number} ({len(specs)} specs)", sep]
-    for s in specs:
-        number = s.get("number", "?")
-        feature = s.get("feature", "")
-        status = s.get("status", "")
-        path = s.get("path", "")
-        lines.append(f"\n--- {number} — {feature} [{status}] ---\n")
-        if path:
-            try:
-                lines.append(Path(path).read_text(encoding="utf-8").strip())
-            except OSError as e:
-                lines.append(f"(Could not read: {e})")
-        lines.append("")
-    lines.append(sep)
-
-    return _maybe_chunk("\n".join(lines), f"spec-context-{spec_number}")
+    return _format_spec_context(spec_number, specs)
 
 
 # ---------------------------------------------------------------------------
@@ -242,13 +231,8 @@ def load_spec_context(spec_number=None, file_path=None, blocked=False):
     },
 )
 def update_spec_status(spec_number, status):
-    ok, out = _run([sys.executable, str(BUILD_SPEC_SCRIPT), "update-status", spec_number, status])
-    if not ok:
-        return f"Error: {out}"
-    try:
-        return json.loads(out)
-    except json.JSONDecodeError:
-        return out
+    _, result = _run_json_tool([sys.executable, str(BUILD_SPEC_SCRIPT), "update-status", spec_number, status])
+    return result
 
 
 if __name__ == "__main__":

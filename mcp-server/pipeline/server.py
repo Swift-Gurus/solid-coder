@@ -28,7 +28,7 @@ sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
-from protocol import MCPServer
+from mcp_server_factory import MCPServerFactory
 from pipeline.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
 from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from pipeline.handlers import ReviewResultsCollector, make_review_results_collector
@@ -204,10 +204,14 @@ def _build_flow_callables(
     def _flow_status(run_id: Optional[str] = None) -> dict:
         return dataclasses.asdict(flow_run.flow_status(run_id))
 
+    def _flow_clear_lock(run_id: str) -> str:
+        return flow_run.flow_clear_lock(run_id)
+
     return {
         "flow_start": _flow_start,
         "flow_next": _flow_next,
         "flow_status": _flow_status,
+        "flow_clear_lock": _flow_clear_lock,
     }
 
 
@@ -514,6 +518,27 @@ class ApplicationBootstrapper:
             flow_tools["flow_status"],
         )
 
+        reg.register(
+            "flow_clear_lock",
+            "Clears a stuck run's lock so flow_start can proceed again. This is for the specific case "
+            "where flow_status shows a run left behind by a DIFFERENT, no-longer-running session — not "
+            "a workaround for a blocked flow_next in your own current run. If flow_next or the Stop hook "
+            "is telling you to keep going, do that instead; do not call this to escape a pending step. "
+            "Requires the exact run_id from flow_status to confirm you're clearing the run you intend "
+            "to. Does not delete the run's event log — only the lock.",
+            {
+                "type": "object",
+                "properties": {
+                    "run_id": {
+                        "type": "string",
+                        "description": "Exact run_id from a prior flow_status call.",
+                    },
+                },
+                "required": ["run_id"],
+            },
+            flow_tools["flow_clear_lock"],
+        )
+
 
 # ── Composition root and entry point ─────────────────────────────────────────
 
@@ -548,7 +573,7 @@ def make_bootstrapper(
         )
         flow_result_renderer = selector.select(load_config().feature_flags.flow_plain_text_response)
 
-    mcp = server or MCPServer("solid-coder-pipeline", "1.0.0")
+    mcp = server or MCPServerFactory().build("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(
         server=mcp,
         registry=registry or ToolRegistry(mcp),

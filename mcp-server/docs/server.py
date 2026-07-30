@@ -34,10 +34,10 @@ from rules.principle_registry import PrincipleRegistry
 from findings.fix_file_lookup import find_fix_file
 from rules.rule_file_collector import collect_files
 import modes as modes_module
-from protocol import MCPServer
+from mcp_server_factory import MCPServerFactory
 from common.mcp_meta import LARGE_OUTPUT
 
-server = MCPServer("solid-coder-docs", "1.0.0")
+server = MCPServerFactory().build("solid-coder-docs", "1.0.0")
 _chunker = Chunker()
 _registry = PrincipleRegistry(REFS_ROOT)
 
