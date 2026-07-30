@@ -1,5 +1,5 @@
 """
-solid-description: Initializes configuration in the local environment.
+solid-description: Manages the solid-coder-health MCP profile for Codex.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -77,7 +77,7 @@ class CodexProfileManager:
         """Write the profile file and return the profile name for use in CLI invocations."""
         home = Path(self._codex_home)
         home.mkdir(parents=True, exist_ok=True)
-        hooks_dir = self._plugin_root / "hooks"
+        hooks_dir = self._plugin_root / "mcp-server" / "hooks"
         (home / f"{_PROFILE_NAME}.config.toml").write_text(
             _PROFILE_TEMPLATE.format(
                 pipeline_server=str(self._plugin_root / "mcp-server" / "pipeline" / "server.py"),

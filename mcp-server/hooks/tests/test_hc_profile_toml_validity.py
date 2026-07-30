@@ -71,6 +71,24 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
         self.assertEqual(low["hooks"]["Stop"][0]["hooks"][0]["timeout"], 100)
         self.assertEqual(high["hooks"]["Stop"][0]["hooks"][0]["timeout"], 900)
 
+    def test_hook_script_paths_point_at_real_files(self):
+        """Regression: hook scripts live under mcp-server/hooks/, not <plugin_root>/hooks/."""
+        content = self._generated_content()
+        data = self._load_toml(content)
+        for section in ("PreToolUse", "SessionStart", "Stop"):
+            hooks = data.get("hooks", {}).get(section, [])
+            for entry in hooks:
+                for hook in entry.get("hooks", []):
+                    _, path = hook.get("command", "").split(" ", 1)
+                    self.assertTrue(Path(path).is_file(), f"{section} hook script does not exist: {path!r}")
+
+    def test_mcp_server_paths_point_at_real_files(self):
+        content = self._generated_content()
+        data = self._load_toml(content)
+        for name in ("pipeline", "docs"):
+            args = data["mcp_servers"][name]["args"]
+            self.assertTrue(Path(args[0]).is_file(), f"{name} server script does not exist: {args[0]!r}")
+
 
 if __name__ == "__main__":
     unittest.main()
