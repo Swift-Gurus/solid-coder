@@ -1,10 +1,11 @@
 """
-solid-description: Sends Claude PreToolUse hook protocol responses.
+solid-description: Sends permission decisions for hook events with optional context or modifications.
 solid-category: service
 solid-tags: [hook]
 """
 
 import sys
+from typing import Optional
 
 from hook_utils import OutputWriting
 from stdout_writer import StdoutWriter
@@ -21,7 +22,25 @@ class HookResponder:
         self._output.write_payload(payload)
         self._exit(0)
 
-    def allow(self) -> None:
+    def allow(self, additional_context: str = "", updated_input: Optional[dict] = None) -> None:
+        if updated_input is not None:
+            self._send({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "updatedInput": updated_input,
+                }
+            })
+            return
+        if additional_context:
+            self._send({
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "allow",
+                    "additionalContext": additional_context,
+                }
+            })
+            return
         self._exit(0)
 
     def block(self, reason: str, additional_context: str = "") -> None:
@@ -33,12 +52,3 @@ class HookResponder:
         if additional_context:
             hook_output["additionalContext"] = additional_context
         self._send({"hookSpecificOutput": hook_output})
-
-    def allow_with_update(self, updated_input: dict) -> None:
-        self._send({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "allow",
-                "updatedInput": updated_input,
-            }
-        })

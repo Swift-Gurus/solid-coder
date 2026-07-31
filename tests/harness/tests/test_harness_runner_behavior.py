@@ -24,6 +24,7 @@ _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 ensure_on_path(_HARNESS_DIR, _HERE)
 
+from llm_config import LlmConfig  # noqa: E402
 from models import DiffEntry, Expectation, ExpectedFinding, FixturePair, ModelProfile, OutputPaths  # noqa: E402
 from test_harness_runner import TestHarnessRunner  # noqa: E402
 
@@ -220,6 +221,61 @@ class TestHarnessRunnerPropagation(unittest.TestCase):
             timeout=10,
         )
         self.assertTrue(result)
+
+
+class TestHarnessRunnerTimeoutResolution(unittest.TestCase):
+    """timeout=None must defer to the model profile's own llm.timeout. ModelProfileLoader
+    guarantees llm.timeout is always present (see test_model_profile_loader.py), so
+    TestHarnessRunner itself does no further defaulting."""
+
+    def _run_with(self, llm: dict, timeout) -> object:
+        tmp_ctx = tempfile.TemporaryDirectory()
+        tmp = Path(tmp_ctx.name)
+        self.addCleanup(tmp_ctx.cleanup)
+
+        pair = _make_pair(tmp)
+        profile = ModelProfile(output_dir_name="test", profile_path=None, llm=llm, inference={})
+        out = _make_output_paths(tmp)
+
+        health_invoker = MagicMock()
+        health_invoker.invoke.return_value = []
+
+        runner = TestHarnessRunner(
+            path_resolver=MagicMock(resolve=MagicMock(return_value=tmp)),
+            fixture_discovery=MagicMock(discover=MagicMock(return_value=[pair])),
+            expectation_loader=MagicMock(load=MagicMock(return_value=Expectation())),
+            model_profile_loader=MagicMock(load=MagicMock(return_value=profile)),
+            output_path_builder=MagicMock(build=MagicMock(return_value=out)),
+            finding_comparer=MagicMock(compare=MagicMock(return_value=[])),
+            finding_normalizer=MagicMock(normalize=MagicMock(return_value=([], []))),
+            result_formatter=MagicMock(
+                format_status=MagicMock(return_value=""),
+                format_failures=MagicMock(return_value=[]),
+            ),
+            apply_invoker=MagicMock(),
+            health_invoker=health_invoker,
+            timestamp_generator=MagicMock(now_str=MagicMock(return_value="2026-01-01")),
+        )
+        runner.run(
+            principle_path="principles/SRP",
+            flow="health",
+            fixture_filter=None,
+            model_name=None,
+            timeout=timeout,
+        )
+        return health_invoker.invoke.call_args.args[-1]
+
+    def test_no_explicit_timeout_defers_to_profile_default_timeout(self):
+        received = self._run_with(llm={"timeout": LlmConfig().timeout}, timeout=None)
+        self.assertEqual(received, LlmConfig().timeout)
+
+    def test_no_explicit_timeout_defers_to_profile_timeout(self):
+        received = self._run_with(llm={"timeout": 600}, timeout=None)
+        self.assertEqual(received, 600)
+
+    def test_explicit_timeout_overrides_profile_timeout(self):
+        received = self._run_with(llm={"timeout": 600}, timeout=42)
+        self.assertEqual(received, 42)
 
 
 if __name__ == "__main__":

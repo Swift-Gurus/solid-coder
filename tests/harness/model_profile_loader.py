@@ -18,11 +18,16 @@ for _p in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
         sys.path.insert(0, str(_p))
 
 from interfaces import ModelProfileLoading, TomlLoading  # noqa: E402
+from llm_config import LlmConfig  # noqa: E402
 from models import ModelProfile  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
 
 
 class ModelProfileLoader(ModelProfileLoading):
+    """Loads a model profile's [llm] section through LlmConfig, so every field (e.g.
+    timeout) is always present with production's own default when the TOML omits it —
+    matching exactly how the real pre-write gate resolves its own config."""
+
     def __init__(
         self,
         project_root: Path,
@@ -39,18 +44,18 @@ class ModelProfileLoader(ModelProfileLoading):
             if not profile_path.exists():
                 raise RuntimeError(f"Model profile not found: {profile_path}")
             data = self._toml_loader.load_toml(profile_path)
+            llm = LlmConfig(**data.get("llm", {})).model_dump()
             return ModelProfile(
                 output_dir_name=model_name,
                 profile_path=profile_path,
-                llm=data.get("llm", {}),
+                llm=llm,
                 inference=data.get("inference", {}),
             )
         project_toml = self._project_root / CONFIG_DIR / CONFIG_LOCAL_TOML
         data = self._toml_loader.load_toml(project_toml)
-        llm = data.get("llm", {})
-        backend = llm.get("backend", "claude")
+        llm = LlmConfig(**data.get("llm", {})).model_dump()
         return ModelProfile(
-            output_dir_name=backend,
+            output_dir_name=llm["backend"],
             profile_path=project_toml if project_toml.exists() else None,
             llm=llm,
             inference=data.get("inference", {}),

@@ -49,6 +49,11 @@ class PathResolving(ABC):
     def resolve(self, references_path: str) -> Path: ...
 
 
+class MetricPrefixResolving(ABC):
+    @abstractmethod
+    def resolve(self, principle_folder: Path) -> str: ...
+
+
 class FixtureDiscovering(ABC):
     @abstractmethod
     def discover(self, tests_path: Path) -> list[FixturePair]: ...
@@ -113,7 +118,7 @@ class TestHarnessRunning(ABC):
         flow: str | None,
         fixture_filter: str | None,
         model_name: str | None,
-        timeout: int,
+        timeout: int | None,
     ) -> bool: ...
 
 

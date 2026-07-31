@@ -1,5 +1,5 @@
 """
-solid-description: Corrects frontmatter and issues appropriate hook responses.
+solid-description: Applies content correction and updates tool input when changes occur.
 solid-category: service
 solid-tags: [hook]
 """
@@ -10,7 +10,7 @@ from tool_content_extractor import ToolContentExtractor
 
 
 class FrontmatterCorrectionOrchestrator:
-    """Runs the injected PromptCorrecting, then issues allow or allow_with_update."""
+    """Runs the injected PromptCorrecting, then issues allow (optionally with an updated tool input)."""
 
     def __init__(self, correction_service: PromptCorrecting, content_extractor: ToolContentExtractor) -> None:
         self._service = correction_service
@@ -31,4 +31,4 @@ class FrontmatterCorrectionOrchestrator:
             return
         updated = dict(tool_input)
         updated[self._content_extractor.input_key_for(tool_name)] = corrected
-        responder.allow_with_update(updated)
+        responder.allow(updated_input=updated)

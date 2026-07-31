@@ -116,6 +116,7 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | `LSP`     | Liskov Substitution — contract violations, type checks                            |
 | `ISP`     | Interface Segregation — fat protocols, unused conformances                        |
 | `SwiftUI` | View best practices — body complexity, view purity, modifier chains, VM injection |
+| `Frontmatter` | Every type declaration carries correct `solid-` frontmatter — presence, name match, category, stack, description quality |
 
 ### Token Cost
 

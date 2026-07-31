@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Frontmatter Metrics",
+  "description": "Schema for the 'frontmatter' key inside the unified review-output metrics object.",
+  "type": "object",
+  "required": [
+    "missing_frontmatter_count",
+    "name_mismatch_count",
+    "invalid_category_count",
+    "incorrect_stack_count",
+    "bad_description_count"
+  ],
+  "properties": {
+    "missing_frontmatter_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "FM-1: count of top-level type declarations with no solid-frontmatter block immediately above them"
+        },
+        "additional-info": {
+          "description": "Optional list of type names missing frontmatter: [string]"
+        }
+      }
+    },
+    "name_mismatch_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "FM-2: count of frontmatter blocks whose solid-name does not match the declared type name"
+        },
+        "additional-info": {
+          "description": "Optional list of mismatches: [{declared_name, frontmatter_name}]"
+        }
+      }
+    },
+    "invalid_category_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "FM-3: count of frontmatter blocks whose solid-category is blank or not a recognizable domain role"
+        },
+        "additional-info": {
+          "description": "Optional list of violations: [{type_name, category_value}]"
+        }
+      }
+    },
+    "incorrect_stack_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "FM-4: count of frontmatter blocks whose solid-stack lists an unused framework or omits one clearly depended on"
+        },
+        "additional-info": {
+          "description": "Optional list of violations: [{type_name, extra: [...], missing: [...]}]"
+        }
+      }
+    },
+    "bad_description_count": {
+      "type": "object",
+      "required": ["value"],
+      "properties": {
+        "value": {
+          "type": "integer",
+          "description": "FM-5: count of frontmatter blocks whose solid-description is vague, implementation-level, or missing the required Contract-for prefix for abstractions"
+        },
+        "additional-info": {
+          "description": "Optional list of violations: [{type_name, reason}]"
+        }
+      }
+    }
+  }
+}

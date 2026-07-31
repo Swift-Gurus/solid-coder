@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-solid-description: Dispatches Claude Code Stop events to registered handlers.
+solid-description: Validates stop events and renders allow or block responses.
 solid-category: hook
 """
 
-import json
-import os
 import sys
 from pathlib import Path
-from typing import Callable, List, Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 _MCP_HEALTH = _MCP_DIR / "health"
@@ -16,15 +14,11 @@ for _d in (_MCP_DIR, _MCP_HEALTH, _MCP_HEALTH / "config"):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_utils import ensure_on_path  # noqa: E402
-
-
-@runtime_checkable
-class StopHandler(Protocol):
-    """Structural protocol for all Stop event handlers."""
-
-    def should_handle(self, event: dict) -> bool: ...
-    def handle(self, event: dict) -> None: ...
+from hook_decision import HookDecision  # noqa: E402
+from hook_responding import HookResponding  # noqa: E402
+from hook_utils import ensure_on_path, parse_json_safely  # noqa: E402
+from logging_protocol import Logging  # noqa: E402
+from stderr_logger import StderrLogger  # noqa: E402
 
 
 class StopEventReading(Protocol):
@@ -33,10 +27,10 @@ class StopEventReading(Protocol):
     def read(self) -> dict: ...
 
 
-class StopDispatching(Protocol):
-    """Narrow dispatch protocol for a stop event gate."""
+class HookDispatching(Protocol):
+    """Narrow dispatch protocol for a Stop event gate."""
 
-    def run(self, event: dict) -> None: ...
+    def dispatch(self, event: dict) -> HookDecision: ...
 
 
 class EventSource(Protocol):
@@ -48,62 +42,49 @@ class EventSource(Protocol):
 class HookEventReader:
     """Reads and parses a Claude Code Stop event from an injectable source."""
 
-    def __init__(self, source: Optional[EventSource] = None) -> None:
+    def __init__(self, source: Optional[EventSource] = None, logger: Logging = StderrLogger()) -> None:
         self._source = source  # None means use sys.stdin at call time
+        self._logger = logger
 
     def read(self) -> dict:
-        try:
-            raw = (self._source.read() if self._source is not None else sys.stdin.read())
-            return json.loads(raw) if raw.strip() else {}
-        except Exception as exc:
-            sys.stderr.write(f"on_stop: failed to parse Stop event: {exc}\n")
+        raw = self._source.read() if self._source is not None else sys.stdin.read()
+        if not raw.strip():
             return {}
+        parsed = parse_json_safely(raw)
+        if parsed is None:
+            self._logger.log("on_stop: failed to parse Stop event: invalid JSON")
+            return {}
+        return parsed
 
 
-class OnStopGate:
-    """Dispatches a Stop event to every registered handler that opts in."""
-
-    def __init__(self, handlers: List[StopHandler]) -> None:
-        self._handlers = handlers
-
-    def run(self, event: dict) -> None:
-        for handler in self._handlers:
-            if handler.should_handle(event):
-                handler.handle(event)
-
-
-class ManagedSessionGuard:
-    """Wraps a stop gate and no-ops when SOLID_CODER_SESSION_TYPE is set.
-
-    Health check and review sessions set this env var so user-facing
-    notifications (e.g. Slack) are not triggered for internal pipeline runs.
-    """
-
-    def __init__(self, gate: StopDispatching, session_type_fn: Callable[[], str]) -> None:
-        self._gate = gate
-        self._session_type_fn = session_type_fn
-
-    def run(self, event: dict) -> None:
-        if self._session_type_fn():
-            return
-        self._gate.run(event)
-
-
-def main(reader: StopEventReading, gate: StopDispatching) -> None:
-    """Dispatch a Stop event via the injected reader and gate, then exit 0."""
+def main(reader: StopEventReading, dispatcher: HookDispatching, responder: HookResponding) -> None:
+    """Dispatch a Stop event, then render the aggregated decision via the responder."""
     event = reader.read()
-    gate.run(event)
-    sys.exit(0)
+    decision = dispatcher.dispatch(event)
+    if not decision.allow:
+        responder.block(decision.reason or "Blocked.", decision.additional_context or "")
+    else:
+        responder.allow(decision.additional_context or "")
 
 
 if __name__ == "__main__":
     ensure_on_path(Path(__file__).resolve().parent)
-    from slack_notify import SlackStopNotifier  # noqa: PLC0415
+    from flow_transition_evaluating import build_default_flow_transition_gate  # noqa: E402
+    from flow_transition_handler import FlowStopEvaluator, FlowTransitionHandler  # noqa: E402
+    from session_validation_handler import SessionValidationHandler  # noqa: E402
+    from slack_notify import SlackStopNotifier  # noqa: E402
+    from slack_stop_handler import SlackStopHandler  # noqa: E402
+
+    from concurrent_handler_executor import ConcurrentHandlerExecutor  # noqa: E402
+    from parallel_hook_dispatcher import ParallelHookDispatcher  # noqa: E402
+    from stop_hook_responder import StopHookResponder  # noqa: E402
 
     main(
         reader=HookEventReader(),
-        gate=ManagedSessionGuard(
-            gate=OnStopGate(handlers=[SlackStopNotifier()]),
-            session_type_fn=lambda: os.environ.get("SOLID_CODER_SESSION_TYPE", ""),
-        ),
+        dispatcher=ParallelHookDispatcher(executor=ConcurrentHandlerExecutor(handlers=[
+            SlackStopHandler(SlackStopNotifier()),
+            SessionValidationHandler(),
+            FlowTransitionHandler(evaluator=FlowStopEvaluator(build_default_flow_transition_gate())),
+        ])),
+        responder=StopHookResponder(),
     )

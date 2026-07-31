@@ -111,9 +111,10 @@ class TestSlackPermissionNotifier(unittest.TestCase):
         self.assertEqual(len(self._sender.calls), 1)
 
     def test_gate_skips_handle_when_disabled(self):
-        from on_stop import OnStopGate
         n = self._make(enabled=False)
-        OnStopGate(handlers=[n]).run({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+        event = {"tool_name": "Bash", "tool_input": {"command": "ls"}}
+        if n.should_handle(event):
+            n.handle(event)
         self.assertEqual(len(self._sender.calls), 0)
 
 

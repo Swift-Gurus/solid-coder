@@ -69,11 +69,12 @@ class TestHarnessRunner(TestHarnessRunning):
         flow: str | None,
         fixture_filter: str | None,
         model_name: str | None,
-        timeout: int,
+        timeout: int | None,
     ) -> bool:
         tests_path = self._path_resolver.resolve(principle_path)
         pairs = self._fixture_discovery.discover(tests_path)
         model_profile = self._model_profile_loader.load(model_name)
+        effective_timeout = timeout if timeout is not None else model_profile.llm["timeout"]
         run_timestamp = self._timestamp_generator.now_str()
         category_path = str(tests_path.relative_to(tests_path.parents[1]))
 
@@ -95,7 +96,7 @@ class TestHarnessRunner(TestHarnessRunning):
                     flow_name=flow_name,
                 )
                 actual_findings = self._invoke_flow(
-                    flow_name, pair, output_paths, model_profile, timeout
+                    flow_name, pair, output_paths, model_profile, effective_timeout
                 )
                 expected_norm, actual_norm = self._finding_normalizer.normalize(
                     flow_name, expectation.findings, actual_findings

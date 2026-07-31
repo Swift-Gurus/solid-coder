@@ -80,7 +80,7 @@ Flags:
 | `--fixture` | all | restrict to a single fixture stem |
 | `--model` | project toml | model profile name |
 | `--mode` | `direct` | `direct` (runs flows) or `e2e` (deferred) |
-| `--timeout` | 120 | per-fixture timeout in seconds |
+| `--timeout` | model profile's `llm.timeout` | per-fixture timeout in seconds; overrides the model profile |
 
 Exit code 0 when all fixtures pass, 1 when any fail.
 

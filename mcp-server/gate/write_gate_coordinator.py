@@ -1,5 +1,5 @@
 """
-solid-description: Validates and corrects content before allowing write operations.
+solid-description: Validates file health and corrects frontmatter before allowing write operations.
 solid-category: service
 solid-tags: [hook]
 """
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from gate_protocols import ContentSimulating, FrontmatterGateApplying, HealthGateChecking
 from hook_utils import GateHandling
+from tool_input_updating import ToolInputUpdating
 
 
 class WriteGateCoordinator:
@@ -22,11 +23,13 @@ class WriteGateCoordinator:
         frontmatter_gate: FrontmatterGateApplying,
         simulator: ContentSimulating,
         gate: GateHandling,
+        input_updater: ToolInputUpdating,
     ) -> None:
         self._health_gate = health_gate
         self._frontmatter_gate = frontmatter_gate
         self._simulator = simulator
         self._gate = gate
+        self._input_updater = input_updater
 
     def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str, cwd: str = "") -> None:
         content, existing, low_risk = self._simulator.simulate(tool_name, tool_input)
@@ -44,7 +47,8 @@ class WriteGateCoordinator:
             if corrected is not None and corrected != content:
                 self._gate.log(f"CORRECTED {file_name}: frontmatter updated")
                 if tool_name in ("Write", "Edit"):
-                    self._gate.allow_with_update(self._build_updated_input(tool_name, tool_input, corrected, existing))
+                    updated_input = self._input_updater.build(tool_name, tool_input, corrected, existing)
+                    self._gate.allow(updated_input=updated_input)
                 else:
                     self._gate.allow()
             else:
@@ -53,15 +57,3 @@ class WriteGateCoordinator:
         else:
             self._gate.log(f"CLEAN {file_name}")
             self._gate.allow()
-
-    def _build_updated_input(self, tool_name: str, tool_input: dict, corrected: str, existing: str) -> dict:
-        updated = dict(tool_input)
-        if tool_name == "Write":
-            updated["content"] = corrected
-        elif existing:
-            updated["old_string"] = existing
-            updated["new_string"] = corrected
-            updated.pop("replace_all", None)
-        else:
-            updated["new_string"] = corrected
-        return updated

@@ -1,0 +1,24 @@
+{
+  "findings": [
+    {
+      "unit_name": "OrderFetcher",
+      "metric_id": "FM-2",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "OrderFetcher",
+      "metric_id": "FM-3",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "OrderFetcher",
+      "metric_id": "FM-4",
+      "severity": "SEVERE"
+    },
+    {
+      "unit_name": "OrderFetcher",
+      "metric_id": "FM-5",
+      "severity": "SEVERE"
+    }
+  ]
+}

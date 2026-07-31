@@ -1,5 +1,5 @@
 """
-solid-description: Assembles fully-configured service components.
+solid-description: Assembles fully-configured write-gate coordination components.
 solid-category: service
 solid-tags: [hook]
 """
@@ -97,6 +97,7 @@ class DefaultCoordinatorFactory:
         })
         from safe_health_checker import SafeHealthChecker
         from safe_frontmatter_fixer import SafeFrontmatterFixer
+        from tool_input_updater import ToolInputUpdater
         violation_parser = ViolationParser()
         return WriteGateCoordinator(
             health_gate=SafeHealthChecker(
@@ -108,4 +109,5 @@ class DefaultCoordinatorFactory:
             ),
             simulator=simulator,
             gate=gate,
+            input_updater=ToolInputUpdater(),
         )

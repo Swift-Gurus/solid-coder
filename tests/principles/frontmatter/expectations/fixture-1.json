@@ -1,0 +1,9 @@
+{
+  "findings": [
+    {
+      "unit_name": "PaymentValidator",
+      "metric_id": "FM-1",
+      "severity": "SEVERE"
+    }
+  ]
+}

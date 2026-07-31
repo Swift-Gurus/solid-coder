@@ -21,6 +21,7 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config")
 
 from interfaces import TomlLoading  # noqa: E402
+from llm_config import LlmConfig  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
 
@@ -66,6 +67,34 @@ class TestModelProfileLoader(unittest.TestCase):
             })
             profile = ModelProfileLoader(root, loader).load(None)
             self.assertEqual(profile.output_dir_name, "claude")
+
+    def test_named_profile_missing_timeout_defaults_to_production_llm_config_timeout(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            models_dir = root / "tests" / "models"
+            models_dir.mkdir(parents=True)
+            claude_toml = models_dir / "claude.toml"
+            claude_toml.touch()
+            loader = FakeTomlLoader({str(claude_toml): {"llm": {"backend": "claude"}, "inference": {}}})
+
+            profile = ModelProfileLoader(root, loader).load("claude")
+
+            self.assertEqual(profile.llm["timeout"], LlmConfig().timeout)
+
+    def test_named_profile_explicit_timeout_is_preserved(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            models_dir = root / "tests" / "models"
+            models_dir.mkdir(parents=True)
+            codex_toml = models_dir / "codex.toml"
+            codex_toml.touch()
+            loader = FakeTomlLoader({
+                str(codex_toml): {"llm": {"backend": "codex", "timeout": 300}, "inference": {}}
+            })
+
+            profile = ModelProfileLoader(root, loader).load("codex")
+
+            self.assertEqual(profile.llm["timeout"], 300)
 
 
 if __name__ == "__main__":

@@ -43,6 +43,7 @@ from fixture_discovery import FixtureDiscovery  # noqa: E402
 from health_flow_invoker import CheckResultWriter, HealthFlowInvoker, SupportedExtensionsProvider  # noqa: E402
 from interfaces import ClaudeRunning, TimestampGenerating, TomlLoading  # noqa: E402
 from mcp_utils import McpConfigBuilder, build_mcp_config  # noqa: E402
+from metric_prefix_resolver import MetricPrefixResolver  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from output_path_builder import OutputPathBuilder  # noqa: E402
 from path_resolver import PathResolver  # noqa: E402
@@ -121,7 +122,7 @@ class HarnessFactory:
             checker=health_checker,
             language_provider=SupportedExtensionsProvider(code_health_check.SUPPORTED_EXTENSIONS),
             result_writer=CheckResultWriter(),
-            principle_name=principle_folder.name,
+            principle_name=MetricPrefixResolver().resolve(principle_folder),
         )
 
         return TestHarnessRunner(

@@ -1,5 +1,5 @@
 """
-solid-description: Validates that metric coverage tracking remains complete and consistent.
+solid-description: Validates that metric definitions remain synchronized across all specification sources.
 solid-category: unit-test
 """
 
@@ -20,6 +20,11 @@ COVERED_METRICS = frozenset([
     ("DRY", "DRY-1", "reuse_misses"),
     ("DRY", "DRY-2", "duplicate_sites"),
     ("DRY", "DRY-3", "missing_abstractions"),
+    ("FM", "FM-1", "missing_frontmatter_count"),
+    ("FM", "FM-2", "name_mismatch_count"),
+    ("FM", "FM-3", "invalid_category_count"),
+    ("FM", "FM-4", "incorrect_stack_count"),
+    ("FM", "FM-5", "bad_description_count"),
     ("ISP", "ISP-1", "width"),
     ("ISP", "ISP-2", "min_coverage"),
     ("ISP", "ISP-3", "cohesion_groups"),

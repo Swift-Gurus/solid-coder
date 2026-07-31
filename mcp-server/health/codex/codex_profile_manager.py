@@ -1,5 +1,5 @@
 """
-solid-description: Manages the solid-coder-health MCP profile for Codex.
+solid-description: Generates and persists a configuration profile in the user's configuration directory.
 solid-category: service
 solid-tags: [hook, utility]
 """
@@ -54,7 +54,7 @@ matcher = ""
 
 [[hooks.Stop.hooks]]
 type = "command"
-command = "python3 {on_agent_stop}"
+command = "python3 {on_stop}"
 timeout = {hook_timeout}
 """
 
@@ -84,7 +84,7 @@ class CodexProfileManager:
                 docs_server=str(self._plugin_root / "mcp-server" / "docs" / "server.py"),
                 pre_write_gate=str(hooks_dir / "pre_write_gate.py"),
                 on_agent_start=str(hooks_dir / "on_agent_start.py"),
-                on_agent_stop=str(hooks_dir / "on_agent_stop.py"),
+                on_stop=str(hooks_dir / "on_stop.py"),
                 hook_timeout=self._config_loader().llm.timeout,
             ),
             encoding="utf-8",

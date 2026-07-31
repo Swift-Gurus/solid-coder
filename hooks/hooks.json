@@ -22,26 +22,6 @@
             "timeout": 1200
           }
         ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_agent_stop.py\"",
-            "timeout": 1200
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/flow_transition_gate.py\"",
-            "timeout": 1200
-          }
-        ]
       }
     ],
     "SubagentStop": [

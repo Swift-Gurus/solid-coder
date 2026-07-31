@@ -2,7 +2,7 @@
 solid-name: RunPrincipleTestsCLI
 solid-category: utility
 solid-spec: [SPEC-014]
-solid-description: CLI entry point for running principle integration tests.
+solid-description: Runs principle integration tests with configurable principle and flow parameters.
 """
 
 from __future__ import annotations
@@ -43,7 +43,10 @@ def main() -> None:
     parser.add_argument("--fixture", help="single fixture stem to run")
     parser.add_argument("--model", help="model profile name (tests/models/<name>.toml)")
     parser.add_argument("--mode", choices=["direct", "e2e"], default="direct")
-    parser.add_argument("--timeout", type=int, default=120, help="per-fixture timeout in seconds")
+    parser.add_argument(
+        "--timeout", type=int, default=None,
+        help="per-fixture timeout in seconds (default: the model profile's own llm.timeout)",
+    )
     args = parser.parse_args()
 
     if args.mode == "e2e":

@@ -4,6 +4,8 @@ solid-category: service
 solid-tags: [hook]
 """
 
+from typing import Optional
+
 from hook_utils import HookResponding, Logging
 
 
@@ -21,11 +23,8 @@ class HookGate:
     def log(self, msg: str) -> None:
         return self._logger.log(msg)
 
-    def allow(self) -> None:
-        return self._responder.allow()
+    def allow(self, additional_context: str = "", updated_input: Optional[dict] = None) -> None:
+        return self._responder.allow(additional_context, updated_input)
 
     def block(self, reason: str, additional_context: str = "") -> None:
         return self._responder.block(reason, additional_context)
-
-    def allow_with_update(self, updated_input: dict) -> None:
-        return self._responder.allow_with_update(updated_input)

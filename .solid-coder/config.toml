@@ -11,6 +11,7 @@ code_review_on_write_enabled = true
 exclude = [
     "tests/fixtures/**",
     "tests/harness/**",
+    "tests/principles/**",
     "hooks/tests/**",
 ]
 
