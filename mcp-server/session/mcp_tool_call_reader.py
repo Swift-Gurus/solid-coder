@@ -22,11 +22,20 @@ ensure_on_path(_MCP_DIR)
 
 
 class McpToolCallReading(Protocol):
+    """
+    solid-name: McpToolCallReading
+    solid-category: abstraction
+    solid-description: Contract for identifying invoked tools from a session transcript.
+    """
+
     def read(self, transcript_path: str) -> set: ...
 
 
 class McpToolCallReader:
-    """Reads MCP tool short-names from a session transcript.
+    """
+    solid-name: McpToolCallReader
+    solid-category: service
+    solid-description: Identifies invoked tools from session transcripts.
 
     Handles three formats:
     - Claude Code: assistant/tool_use events

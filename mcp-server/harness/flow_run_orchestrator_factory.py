@@ -2,7 +2,7 @@
 solid-name: FlowRunOrchestratorFactory
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Provides orchestrators configured for flow execution.
+solid-description: Creates orchestrators for executing flows.
 """
 
 from __future__ import annotations
@@ -30,7 +30,6 @@ from harness.flow_status_reader import FlowStatusReader
 from harness.flow_stepper import FlowStepper
 from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
-from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
@@ -49,6 +48,9 @@ from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
 from harness.script_step_handler import ScriptStepHandler
 from harness.session_delegate_runner import SessionDelegateRunner
+from harness.session_id_reading import SessionIdReading
+from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
+from harness.static_session_id_reader import StaticSessionIdReader
 from harness.startup_context_resolver import StartupContextResolver
 from harness.step_execution_coordinator import StepExecutionCoordinator
 from harness.step_handler_resolver import StepHandlerResolver
@@ -67,14 +69,18 @@ class FlowRunOrchestratorFactory:
         base_dir_resolver: RunsBaseDirResolving,
         plugin_root: Path,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
+        session_reader: Optional[SessionIdReading] = None,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._plugin_root = plugin_root
         self._command_allowlist_resolver = command_allowlist_resolver
+        self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
 
     def build(self) -> FlowRunOrchestrator:
         assembly = build_default_assembly(command_allowlist_resolver=self._command_allowlist_resolver)
-        active_run = ActiveRunPointerStore()
+        active_run = ActiveRunPointerStore(
+            path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
+        )
         metadata_store = RunMetadataStore()
         step_result_builder = StepResultBuilder()
         run_locator = ActiveRunLocator(base_dir_resolver=self._base_dir_resolver, active_run=active_run)
@@ -153,7 +159,7 @@ class FlowRunOrchestratorFactory:
             submission_advancer=OutputSubmissionAdvancer(
                 step_handler_resolver=step_handler_resolver,
                 attempt_failure_handler=attempt_failure_handler,
-                session_reader=McpRequestContextSessionReader(),
+                session_reader=self._session_reader,
                 output_recorder=output_recorder,
                 turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
             ),

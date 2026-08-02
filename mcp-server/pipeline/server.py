@@ -558,11 +558,18 @@ def make_bootstrapper(
     flow_result_renderer: Optional[FlowResultRendering] = None,
 ) -> ApplicationBootstrapper:
     """Composition root: all dependencies injectable; production defaults applied when omitted."""
+    mcp = server or MCPServerFactory().build("solid-coder-pipeline", "1.0.0")
+
     if flow_run is None:
         from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+        from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-        flow_run = FlowRunOrchestratorFactory(base_dir_resolver=RunsBaseDirResolver(), plugin_root=PLUGIN_ROOT).build()
+        flow_run = FlowRunOrchestratorFactory(
+            base_dir_resolver=RunsBaseDirResolver(),
+            plugin_root=PLUGIN_ROOT,
+            session_reader=McpRequestContextSessionReader(call_meta_provider=mcp),
+        ).build()
 
     if flow_result_renderer is None:
         from hc_config_schema import load_config
@@ -573,7 +580,6 @@ def make_bootstrapper(
         )
         flow_result_renderer = selector.select(load_config().feature_flags.flow_plain_text_response)
 
-    mcp = server or MCPServerFactory().build("solid-coder-pipeline", "1.0.0")
     return ApplicationBootstrapper(
         server=mcp,
         registry=registry or ToolRegistry(mcp),

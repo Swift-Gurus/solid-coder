@@ -46,12 +46,13 @@ class StubCommandAllowlistResolver:
 class FlowHarnessTestBuild(unittest.TestCase):
     """Base class assembling the full production wiring against a temp runs directory."""
 
-    def _build(self, tmpdir: str, command_allowlist_resolver=None) -> FlowRunOrchestrator:
+    def _build(self, tmpdir: str, command_allowlist_resolver=None, session_reader=None) -> FlowRunOrchestrator:
         base_dir_resolver = RunsBaseDirResolver(project_dir_fn=lambda: Path(tmpdir))
         return FlowRunOrchestratorFactory(
             base_dir_resolver=base_dir_resolver,
             plugin_root=Path(tmpdir),
             command_allowlist_resolver=command_allowlist_resolver,
+            session_reader=session_reader,
         ).build()
 
 
@@ -100,6 +101,48 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
         self.assertEqual(event_types.count("step_completed"), 3)
         self.assertEqual(event_types.count("session_step_recorded"), 3)
         self.assertEqual(event_types.count("turn_counted"), 3)
+
+
+class StubSessionReader:
+    def __init__(self, session_id: str) -> None:
+        self._session_id = session_id
+
+    def read_session_id(self) -> str:
+        return self._session_id
+
+
+class TestFlowHarnessSessionIsolation(FlowHarnessTestBuild):
+    """Two sessions sharing the same runs directory must not clobber each other's active run."""
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.runs_dir = Path(self._tmpdir) / "runs"
+        self.runs_dir.mkdir(parents=True)
+
+        self._flow_file = Path(self._tmpdir) / "linear_3_step.yaml"
+        self._flow_file.write_text(_LINEAR_FLOW_YAML)
+
+        self.session_a = self._build(self._tmpdir, session_reader=StubSessionReader("session-a"))
+        self.session_b = self._build(self._tmpdir, session_reader=StubSessionReader("session-b"))
+
+    def test_both_sessions_can_start_a_run_concurrently_without_colliding(self):
+        result_a = self.session_a.flow_start(str(self._flow_file))
+        result_b = self.session_b.flow_start(str(self._flow_file))
+
+        self.assertTrue((self.runs_dir / "active-session-a.json").exists())
+        self.assertTrue((self.runs_dir / "active-session-b.json").exists())
+        self.assertFalse((self.runs_dir / "active.json").exists())
+        self.assertNotEqual(result_a.run_id, result_b.run_id)
+
+    def test_each_session_only_advances_its_own_run(self):
+        result_a = self.session_a.flow_start(str(self._flow_file))
+        self.session_b.flow_start(str(self._flow_file))
+
+        status_a = self.session_a.flow_status()
+        status_b = self.session_b.flow_status()
+
+        self.assertEqual(status_a.run_id, result_a.run_id)
+        self.assertNotEqual(status_a.run_id, status_b.run_id)
 
 
 class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):

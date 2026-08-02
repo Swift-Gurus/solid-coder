@@ -26,6 +26,7 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 |---|---|---:|---:|---:|---:|---:|
 | Code Smells | always | 411 | 38 | 431 | 838 | 838 |
 | Don't Repeat Yourself | always | 1,088 | 6,425 | 1,549 | 2,635 | 3,664 |
+| Frontmatter | always | 703 | 38 | 1,298 | 1,997 | 1,997 |
 | Interface Segregation Principle | always | 538 | 5,154 | 1,855 | 2,392 | 3,179 |
 | Liskov Substitution Principle | always | 634 | 5,424 | 2,035 | 2,668 | 3,359 |
 | Open/Closed Principle | always | 3,647 | 6,425 | 1,489 | 2,026 | 2,850 |
@@ -34,10 +35,10 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 | SwiftUI Best Practices | conditional | 1,436 | 14,734 | 4,314 | 5,748 | 7,899 |
 | Unit Testing | conditional | 1,026 | 9,335 | 3,133 | 4,156 | 6,501 |
 | UI Testing | conditional | 1,054 | 9,298 | 2,104 | 3,155 | 5,293 |
-| **MIN** |  | **7,135** | **38** | **8,370** | **12,043** | **15,934** |
-| **MAX** |  | **11,576** | **14,734** | **19,291** | **27,391** | **39,054** |
+| **MIN** |  | **7,838** | **38** | **9,668** | **14,040** | **17,931** |
+| **MAX** |  | **12,279** | **14,734** | **20,589** | **29,388** | **41,051** |
 
-- **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (6). For `per-principle`: smallest single principle.
-- **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (10). For `per-principle`: largest single principle.
+- **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (7). For `per-principle`: smallest single principle.
+- **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (11). For `per-principle`: largest single principle.
 
 See [token-budget.md](token-budget.md) for a per-file / per-folder breakdown (independent of mode).

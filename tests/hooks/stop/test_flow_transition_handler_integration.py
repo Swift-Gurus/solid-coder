@@ -1,5 +1,5 @@
 """
-solid-description: Validates that flow stop is appropriately gated when pending steps remain.
+solid-description: Validates flow stop decisions based on step completion state.
 solid-category: unit-test
 """
 
@@ -14,12 +14,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 
-from flow_transition_evaluating import build_default_flow_transition_gate
+from flow_transition_gate_factory import FlowTransitionGateFactory
 from flow_transition_handler import FlowStopEvaluator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-_TWO_STEP_FLOW_YAML = textwrap.dedent("""\
+_TWO_STEP_FLOW_YAML = textwrap.dedent("""
     name: two_step
     max_turns: 10
     steps:
@@ -41,7 +41,7 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         self.orchestrator = FlowRunOrchestratorFactory(
             base_dir_resolver=base_dir_resolver, plugin_root=Path(self._tmpdir),
         ).build()
-        gate = build_default_flow_transition_gate(base_dir_resolver=base_dir_resolver)
+        gate = FlowTransitionGateFactory(base_dir_resolver=base_dir_resolver).build()
         self.evaluator = FlowStopEvaluator(gate)
 
         self._flow_file = Path(self._tmpdir) / "two_step.yaml"

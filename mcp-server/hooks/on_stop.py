@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-solid-description: Validates stop events and renders allow or block responses.
+solid-description: Evaluates stop events and determines whether to allow or block the requested action.
 solid-category: hook
 """
 
@@ -69,8 +69,9 @@ def main(reader: StopEventReading, dispatcher: HookDispatching, responder: HookR
 
 if __name__ == "__main__":
     ensure_on_path(Path(__file__).resolve().parent)
-    from flow_transition_evaluating import build_default_flow_transition_gate  # noqa: E402
+    from flow_transition_gate_factory import FlowTransitionGateFactory  # noqa: E402
     from flow_transition_handler import FlowStopEvaluator, FlowTransitionHandler  # noqa: E402
+    from pre_read_event_reader import PreReadEventReader  # noqa: E402
     from session_validation_handler import SessionValidationHandler  # noqa: E402
     from slack_notify import SlackStopNotifier  # noqa: E402
     from slack_stop_handler import SlackStopHandler  # noqa: E402
@@ -79,12 +80,17 @@ if __name__ == "__main__":
     from parallel_hook_dispatcher import ParallelHookDispatcher  # noqa: E402
     from stop_hook_responder import StopHookResponder  # noqa: E402
 
+    stop_event = HookEventReader().read()
+    stop_session_id = stop_event.get("session_id", "")
+
     main(
-        reader=HookEventReader(),
+        reader=PreReadEventReader(stop_event),
         dispatcher=ParallelHookDispatcher(executor=ConcurrentHandlerExecutor(handlers=[
             SlackStopHandler(SlackStopNotifier()),
             SessionValidationHandler(),
-            FlowTransitionHandler(evaluator=FlowStopEvaluator(build_default_flow_transition_gate())),
+            FlowTransitionHandler(evaluator=FlowStopEvaluator(
+                FlowTransitionGateFactory(session_id=stop_session_id).build()
+            )),
         ])),
         responder=StopHookResponder(),
     )

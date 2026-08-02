@@ -96,11 +96,16 @@ class TestFlowE2ELive(unittest.TestCase):
         # These live tests share the real project's single main-run slot (production
         # behavior: only one main run active at a time). A prior live test whose spawned
         # session ended without reaching a terminal state (done/failed/timed_out) — the
-        # documented early-stop non-determinism — leaves runs/active.json pointing at a
-        # dead run, which then blocks flow_start here with "Flow run already active".
+        # documented early-stop non-determinism — leaves an active-run pointer pointing at
+        # a dead run, which then blocks flow_start here with "Flow run already active".
         # Clearing it before each test keeps that leak from cascading into unrelated tests.
-        active_json = solid_coder_project_dir(_PROJECT_ROOT) / "runs" / "active.json"
-        active_json.unlink(missing_ok=True)
+        # Session-scoping (see handover-session-scoped-run-lock.md) means the pointer may be
+        # named active.json OR active-{session_id}.json depending on whether the spawned
+        # session's env carries a resolvable session id — clear both shapes.
+        runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
+        if runs_dir.exists():
+            for pointer in runs_dir.glob("active*.json"):
+                pointer.unlink(missing_ok=True)
 
     def test_e2e_test_flow_reaches_done_with_expected_transitions(self):
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
