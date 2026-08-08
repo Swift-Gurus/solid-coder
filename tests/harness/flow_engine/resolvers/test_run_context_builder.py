@@ -1,7 +1,7 @@
 """
 solid-name: test_run_context_builder
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Tests building the template interpolation context from run params, completed step outputs, rejection reasons, and attempts used.
 """
 
@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.models import RunState, StepOutputs
 from harness.run_context_builder import RunContextBuilder
+from harness.step_outputs_builder import StepOutputsBuilder
 
 
 class TestRunContextBuilder(unittest.TestCase):
@@ -21,7 +22,12 @@ class TestRunContextBuilder(unittest.TestCase):
         self.sut = RunContextBuilder()
 
     def test_builds_context_with_params_and_completed_step_outputs(self):
-        run_state = RunState(completed={"a": StepOutputs.from_dict({"x": 1})}, running=[], turn_count=0, status="in_progress")
+        run_state = RunState(
+            completed={"a": StepOutputsBuilder().build({"x": 1})},
+            running=[],
+            turn_count=0,
+            status="in_progress",
+        )
 
         context = self.sut.build({"key": "value"}, run_state)
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_start_result_builder
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests assembling a FlowStartResult from a run's execution outcome.
 """
 

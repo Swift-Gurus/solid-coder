@@ -1,7 +1,7 @@
 """
 solid-name: FlowStatusReader
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Reads the current status of a flow run.
 """
 

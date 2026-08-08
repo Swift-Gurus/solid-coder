@@ -1,7 +1,7 @@
 """
 solid-name: StepResult
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Captures a step execution's outcome and optional rejection information.
 """
 

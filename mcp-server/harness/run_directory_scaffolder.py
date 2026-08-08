@@ -1,7 +1,7 @@
 """
 solid-name: RunDirectoryScaffolder
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Initializes a run directory for a given run ID and persists the provided flow definition.
 """
 

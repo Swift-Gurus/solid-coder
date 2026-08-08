@@ -11,14 +11,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.flow_engine_assembly import build_default_assembly
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.models import OutputSpec
 
 
 class TestSchemaValidator(unittest.TestCase):
 
     def setUp(self):
-        self.validator = build_default_assembly().schema_validator
+        self.validator = FlowEngineAssemblyFactory().build().schema_validator
 
     def test_data_with_no_schema_passes(self):
         spec = OutputSpec(name="out", type="data")

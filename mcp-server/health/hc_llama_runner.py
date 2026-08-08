@@ -23,6 +23,7 @@ from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E4
 import hc_config  # noqa: E402
 from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayFixInvoker  # noqa: E402
 from hc_violation_parser import ViolationParser, ViolationParsing  # noqa: E402
+from health.dry_search_service_factory import DrySearchServiceFactory  # noqa: E402
 
 from llama.urllib_opener import HttpOpening, UrllibOpener  # noqa: E402, F401
 from llama.urllib_request_builder import HttpRequestBuilding, UrllibRequestBuilder  # noqa: E402, F401
@@ -53,6 +54,11 @@ _extract_thinking_and_content = _te.extract
 _MAX_TOOL_ROUNDS = 10
 
 
+"""
+solid-name: LlamaServerRunner
+solid-category: service
+solid-description: Runs the local health-check agent lifecycle and reports its observed result.
+"""
 class LlamaServerRunner:
     """Coordinates review lifecycle: start → loop → parse violations → done."""
 
@@ -98,13 +104,20 @@ def make_llama_server_runner(
 
     from lib.gateway_tools import make_gateway_handler  # noqa: PLC0415
     from search.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
-    from search.codebase_searcher import search as _codebase_search  # noqa: PLC0415
+    from search import codebase_searcher  # noqa: PLC0415
 
     gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
-    findings_submitter = GatewayFindingsSubmitter(handler=gw_handler)
+    dry_search_services = DrySearchServiceFactory()
+    dry_search = dry_search_services.make_search(codebase_searcher)
+    guarded_submission = dry_search_services.make_submission(gw_handler)
+    findings_submitter = GatewayFindingsSubmitter(handler=guarded_submission)
     arg_parser = ToolCallParser()
     searcher = CodebaseSearcher(
-        search_fn=lambda q: _codebase_search(tags=[t for t in q.split() if t], min_matches=1) if q.split() else "",
+        search_fn=lambda query, output_dir: dry_search.search(
+            query=query,
+            output_dir=output_dir,
+            min_matches=1,
+        ),
         grep_fn=grep_by_name,
         glob_fn=glob_by_name,
         read_fn=lambda p: Path(p).read_text(encoding="utf-8"),

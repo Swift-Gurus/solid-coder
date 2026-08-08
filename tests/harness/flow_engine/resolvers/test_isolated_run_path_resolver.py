@@ -1,7 +1,7 @@
 """
 solid-name: test_isolated_run_path_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests the isolation-aware base-directory decisions for provisioning and step execution.
 """
 

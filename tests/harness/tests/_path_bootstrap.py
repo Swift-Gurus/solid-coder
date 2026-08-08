@@ -11,7 +11,7 @@ from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HERE.parents[2]
-_HOOKS_TESTS = _PROJECT_ROOT / "mcp-server" / "hooks" / "tests"
+_HOOKS_TESTS = _PROJECT_ROOT / "tests" / "mcp-server" / "hooks"
 
 _spec = importlib.util.spec_from_file_location(
     "_hooks_path_bootstrap", _HOOKS_TESTS / "_path_bootstrap.py"

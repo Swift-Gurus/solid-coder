@@ -1,7 +1,7 @@
 """
 solid-name: test_name_resolving_flow_loader
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests that the decorator resolves a flow name before delegating to the inner loader.
 """
 

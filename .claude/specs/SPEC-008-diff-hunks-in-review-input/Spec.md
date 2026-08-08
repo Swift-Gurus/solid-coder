@@ -1,20 +1,38 @@
 ---
 number: SPEC-008
-feature: diff hunks in review input
+feature: diff-hunks-in-review-input
 type: bug
 status: draft
+parent: SPEC-001
 blocked-by: []
 blocking: []
 ---
+
+# Refactor review reports pre-existing violations as new findings
 
 ## Description
 
 The refactor pipeline flags pre-existing SOLID violations as actionable findings
 whenever a changed file is touched, even when the change is trivial. This erodes
 trust in the review output and produces noise that obscures real regressions.
-The fix equips review agents with actual diff hunk content so they can classify
-whether each finding was introduced by the change, then filters out pre-existing
-violations in `validate-findings` before they reach synthesize and implement.
+
+## Steps to Reproduce
+
+1. Start with a source file that already contains a known SOLID violation.
+2. Make a trivial change that does not introduce or worsen that violation, such as renaming a field.
+3. Run the refactor pipeline against the change.
+4. Observe that the pre-existing violation is returned as an actionable finding.
+
+## Expected vs Actual
+
+| | Behavior |
+|---|---|
+| Expected | Only violations introduced or worsened by the current change are actionable. |
+| Actual | Violations elsewhere in any touched file are reported even when the diff did not introduce or worsen them. |
+
+## Affected Component
+
+The review-input preparation and validate-findings stages of the refactor pipeline own the affected behavior. The investigation and candidate changes below are retained as draft notes until this bug is promoted to `ready`.
 
 ## Bug Report
 

@@ -1,7 +1,7 @@
 """
 solid-name: ExecutionOutcome
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Represents the outcome of executing a flow's ready steps.
 """
 

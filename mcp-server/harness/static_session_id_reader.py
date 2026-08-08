@@ -1,7 +1,7 @@
 """
 solid-name: StaticSessionIdReader
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Provides consistent session identification.
 """
 

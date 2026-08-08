@@ -1,7 +1,7 @@
 """
 solid-name: RunSnapshot
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Captures the execution state of a run and the steps ready for processing.
 """
 

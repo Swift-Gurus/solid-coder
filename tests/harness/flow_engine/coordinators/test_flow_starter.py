@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_starter
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Tests coordinating flow initialization, execution/readiness resolution, and result assembly.
 """
 

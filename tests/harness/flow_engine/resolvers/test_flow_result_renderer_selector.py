@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_result_renderer_selector
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests selecting between the plain-text and full-JSON flow result renderers.
 """
 

@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-"""
-solid-description: Scores unit metric values against severity band thresholds defined in rule.md YAML frontmatter, with optional per-file config overrides via .solid-coder.yml.
-solid-category: service
-solid-tags: [utility, service]
-"""
+"""Scores immutable unit measurements against configured severity bands."""
 
 from pathlib import Path
 from typing import Any, Optional
 
+from findings.metric_value import MetricValue
+from findings.principle_metrics import PrincipleMetrics
+from findings.review_severity import ReviewSeverity
 from scoring.band_evaluator import BandEvaluating, BandEvaluator
 from scoring.frontmatter_bands_provider import BandsProviding, FrontmatterBandsProvider
+from scoring.metric_id_catalog import MetricIdCatalog
+from scoring.unit_metric_scoring import UnitMetricScoring
+from scoring.unit_scoring_result import UnitScoringResult
 
 
-class SeverityScorer:
+"""
+solid-name: SeverityScorer
+solid-category: service
+solid-description: Applies configured severity bands to immutable measurements for one review principle.
+"""
+class SeverityScorer(UnitMetricScoring):
     """Scores unit metrics against YAML severity bands from rule.md frontmatter.
 
     Inject a BandsProviding to supply per-metric band thresholds (with optional
@@ -34,6 +41,10 @@ class SeverityScorer:
     def known_metric_ids(self) -> list:
         """Metric IDs defined in this principle's frontmatter bands."""
         return list(self._metric_ids)
+
+    @property
+    def metric_ids(self) -> MetricIdCatalog:
+        return MetricIdCatalog(identifiers=tuple(self._metric_ids))
 
     @classmethod
     def from_folder(
@@ -109,27 +120,66 @@ class SeverityScorer:
         if not var_bands:
             return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
 
-        worst = "COMPLIANT"
+        typed_metrics = PrincipleMetrics(
+            principle=metric_id.partition("-")[0],
+            values=tuple(
+                MetricValue(name=name, value=value)
+                for name, value in unit_metrics.items()
+                if value is not None
+            ),
+        )
+        result = self.score(typed_metrics, metric_id, file_path)
+        response = {
+            "metric_id": result.metric_id,
+            "final_severity": result.severity.value,
+            "band_matched": None,
+        }
+        if result.error_message is not None:
+            response["error"] = result.error_message
+        return response
+
+    def score(
+        self,
+        metrics: PrincipleMetrics,
+        metric_id: str,
+        file_path: str,
+    ) -> UnitScoringResult:
+        var_bands = self._bands.metric_variables(metric_id, file_path)
+        if not var_bands:
+            return UnitScoringResult(metric_id, ReviewSeverity.COMPLIANT)
+
+        worst = ReviewSeverity.COMPLIANT
         for var_name, bands in var_bands.items():
             if bands.get("disabled"):
-                continue  # explicitly disabled — skip without error
-            value = unit_metrics.get(var_name)
-            if value is None:
-                return {
-                    "metric_id": metric_id,
-                    "final_severity": "COMPLIANT",
-                    "band_matched": None,
-                    "error": (
+                continue
+            measurement = self._measurement_named(metrics, var_name)
+            if measurement is None:
+                return UnitScoringResult(
+                    metric_id=metric_id,
+                    severity=ReviewSeverity.COMPLIANT,
+                    error_message=(
                         f"metric variable '{var_name}' missing for {metric_id}. "
                         "Ensure all required fields are present per the "
                         "<submission-metrics-example>."
                     ),
-                }
-            sev = self._evaluator.evaluate(value, bands)
-            if sev == "SEVERE":
-                worst = "SEVERE"
+                )
+            severity = ReviewSeverity(
+                self._evaluator.evaluate(measurement.value, bands)
+            )
+            if severity is ReviewSeverity.SEVERE:
+                worst = ReviewSeverity.SEVERE
                 break
-            if sev == "MINOR":
-                worst = "MINOR"
+            if severity is ReviewSeverity.MINOR:
+                worst = ReviewSeverity.MINOR
 
-        return {"metric_id": metric_id, "final_severity": worst, "band_matched": None}
+        return UnitScoringResult(metric_id, worst)
+
+    def _measurement_named(
+        self,
+        metrics: PrincipleMetrics,
+        name: str,
+    ) -> Optional[MetricValue]:
+        return next(
+            (measurement for measurement in metrics.values if measurement.name == name),
+            None,
+        )

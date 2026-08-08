@@ -2,7 +2,7 @@
 number: SPEC-026
 feature: pipeline-output-cleanup-stop-hook
 type: feature
-status: ready
+status: in-progress
 parent: SPEC-001
 blocked-by: []
 blocking: []
@@ -12,7 +12,7 @@ blocking: []
 
 ## Description
 
-When a developer runs `/review`, `/refactor`, or `/implement`, the pipeline writes intermediate artifacts (findings, plans, reports, arch files) to `~/.solid-coder/{project-slug}/{operation}-{timestamp}/`. These directories accumulate over time with no automatic cleanup. This feature adds an async `Stop` hook that fires after every assistant turn, parses the session transcript to find `get_output_path` MCP tool calls made during that turn, and deletes each returned `output_root` directory unless `debug_mode()` returns true. The hook runs in the background (`async: true`) so it never blocks the user from sending the next message.
+When a developer runs `/review`, `/refactor`, or `/implement`, the pipeline writes intermediate artifacts (findings, plans, reports, arch files) to `~/.solid-coder/{project-slug}/{operation}-{timestamp}/`. The cleaner and its safety tests exist, but the consolidated Stop dispatcher does not currently register it, so cleanup is not active in production. Completion requires wiring the existing handler into the dispatcher or explicitly retiring this behavior.
 
 ## Input / Output
 
@@ -22,7 +22,7 @@ When a developer runs `/review`, `/refactor`, or `/implement`, the pipeline writ
 | Input | `solid-coder-local.toml` — `[llm] debug = true/false` read via `debug_mode()` in `hooks/hc_config_llm.py` |
 | Output | Deleted directories: each `output_root` returned by `get_output_path` during the session turn, if `debug_mode()` is false |
 | Output | Preserved directories: same paths, when `debug_mode()` is true |
-| Side effect | Hook registered in `settings.json` under `Stop` with `async: true`; fires silently after every turn |
+| Side effect | Once registered, the cleaner participates in the consolidated Stop dispatch and removes safe output roots silently |
 
 ## User Stories
 
@@ -50,12 +50,12 @@ As a developer debugging the pipeline, when I set `[llm] debug = true` in `solid
 
 ## Technical Requirements
 
-- **Hook script location:** `hooks/cleanup_pipeline_output.py` — follows the existing hook pattern (reads JSON event from stdin, exits 0 on success).
+- **Hook implementation:** `mcp-server/hooks/cleanup_pipeline_output.py` implements a Stop-handler-compatible cleaner and safety boundary.
 - **Transcript parsing:** read `transcript_path` JSONL line by line; find `tool_result` blocks whose content JSON contains an `output_root` key; collect all unique values. Do not fail if a line is malformed — skip it.
 - **Deletion:** `shutil.rmtree(output_root, ignore_errors=True)` per path. Only delete paths that exist and are under `Path.home() / ".solid-coder"` — reject any other path as a safety guard.
-- **Hook registration:** `settings.json` Stop hook entry: `{ "type": "command", "command": "python3 ${CLAUDE_PROJECT_DIR}/hooks/cleanup_pipeline_output.py", "async": true }`. Registered via the `update-config` skill.
+- **Hook registration:** the cleaner must be added to `mcp-server/hooks/on_stop.py`'s consolidated handler list; it is currently absent.
 - **No new dependencies** — uses only stdlib (`json`, `shutil`, `pathlib`, `sys`). Reads `debug_mode()` from existing `hooks/hc_config_llm.py`.
-- **Test coverage:** unit tests in `hooks/tests/test_cleanup_pipeline_output.py` covering: transcript parsing with zero/one/multiple `get_output_path` results, safety guard rejecting paths outside `~/.solid-coder/`, debug mode skip, and malformed JSONL tolerance.
+- **Test coverage:** unit tests in `mcp-server/hooks/tests/test_cleanup_pipeline_output.py` cover transcript parsing with zero/one/multiple `get_output_path` results, the safe-root guard, debug-mode preservation, and malformed JSONL tolerance.
 
 ## Connects To
 
@@ -126,10 +126,10 @@ sequenceDiagram
 
 ## Definition of Done
 
-- [ ] `hooks/cleanup_pipeline_output.py` implemented and all unit tests pass.
-- [ ] Stop hook registered in `settings.json` with `async: true` and `command` pointing to the script.
+- [x] `mcp-server/hooks/cleanup_pipeline_output.py` implemented and focused unit tests pass.
+- [ ] Cleaner registered in the consolidated Stop dispatcher.
 - [ ] Running `/review` on a fixture file results in the output directory being deleted after the turn ends (confirmed by checking `~/.solid-coder/`).
 - [ ] Running `/review` with `[llm] debug = true` leaves the output directory in place.
 - [ ] Hook exits 0 on a regular chat turn that made no `get_output_path` calls.
 - [ ] No source code files outside `~/.solid-coder/` are touched in any test scenario.
-- [ ] `hooks/tests/test_cleanup_pipeline_output.py` added and green.
+- [x] `mcp-server/hooks/tests/test_cleanup_pipeline_output.py` added and green.

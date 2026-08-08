@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_harness_integration
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Integration test validating end-to-end workflow execution from initiation through completion with proper event logging and artifact creation, including file-sourced prompts, script steps, aliased includes, and attempts exhaustion.
 """
 

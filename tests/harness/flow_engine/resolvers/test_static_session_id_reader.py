@@ -1,7 +1,7 @@
 """
 solid-name: test_static_session_id_reader
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests returning a fixed session identifier known at construction time.
 """
 

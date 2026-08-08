@@ -1,7 +1,7 @@
 """
 solid-name: test_active_run_locator
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests deriving the active run's directory and file paths from its id.
 """
 
@@ -15,6 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.active_run_locator import ActiveRunLocator
+from harness.active_run_pointer_store import ActiveRunPointerStore
+from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
+from harness.static_session_id_reader import StaticSessionIdReader
 
 
 class StubBaseDirResolver:
@@ -61,10 +64,15 @@ class TestActiveRunLocator(unittest.TestCase):
             base_dir = Path(tmp)
             isolated_dir = base_dir / "subagents" / "run-abc"
             isolated_dir.mkdir(parents=True)
-            (isolated_dir / "active.json").write_text('{"run_id": "run-abc"}')
+            active_run = ActiveRunPointerStore(
+                path_resolver=SessionScopedActivePathResolver(
+                    session_id_reader=StaticSessionIdReader("child-session")
+                )
+            )
+            active_run.write(isolated_dir, "run-abc")
             sut = ActiveRunLocator(
                 base_dir_resolver=StubBaseDirResolver(base_dir),
-                active_run=StubActiveRunPointer("main-run"),
+                active_run=active_run,
             )
 
             location = sut.locate("run-abc")

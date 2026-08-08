@@ -1,7 +1,4 @@
-"""
-solid-description: Generates standardized output directory paths for solid-coder operations.
-solid-category: service
-"""
+"""Generates standardized output directory paths for solid-coder operations."""
 
 from __future__ import annotations
 
@@ -10,8 +7,15 @@ import uuid as _uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from pipeline.output_path_computing import OutputPathComputing
 
-class OutputPathFactory:
+
+"""
+solid-name: OutputPathFactory
+solid-category: service
+solid-description: Computes project-scoped output locations for model-facing operations.
+"""
+class OutputPathFactory(OutputPathComputing):
     """Generates standardized output directory paths for solid-coder operations."""
 
     def compute(self, operation: str, spec_number: str = "") -> dict:

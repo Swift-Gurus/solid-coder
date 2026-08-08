@@ -1,7 +1,7 @@
 """
 solid-name: FlowStartResultBuilder
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Produces a structured result representing a run's execution state and completion status.
 """
 

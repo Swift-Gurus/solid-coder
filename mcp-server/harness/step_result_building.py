@@ -1,7 +1,7 @@
 """
 solid-name: StepResultBuilding
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract that defines result synthesis from execution tracking data with flow awareness.
 """
 

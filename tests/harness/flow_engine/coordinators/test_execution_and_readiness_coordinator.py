@@ -1,7 +1,7 @@
 """
 solid-name: test_execution_and_readiness_coordinator
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Tests running a flow's ready steps to completion or halt, then resolving its readiness.
 """
 

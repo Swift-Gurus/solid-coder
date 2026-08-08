@@ -1,7 +1,7 @@
 """
 solid-name: test_ready_steps_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests resolving the current run snapshot and building step results for its ready instances.
 """
 

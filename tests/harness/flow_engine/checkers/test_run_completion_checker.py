@@ -1,7 +1,7 @@
 """
 solid-name: test_run_completion_checker
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests detecting done, timed-out, and still-in-progress run states.
 """
 

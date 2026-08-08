@@ -1,6 +1,8 @@
 """
-solid-description: Evaluates template expressions containing variable references and optional filters against a runtime context.
+solid-name: ExpressionResolver
 solid-category: service
+solid-spec: [SPEC-030, SPEC-034]
+solid-description: Evaluates template expressions containing run parameters, step outputs, item values, and optional filters against a runtime flow context.
 """
 
 from __future__ import annotations
@@ -32,9 +34,23 @@ class ExpressionResolver(ExpressionEvaluating):
         parts = expr.split(".")
         if parts[0] == "steps":
             return self._lookup_step(parts, context)
+        if parts[0] == "params":
+            return self._lookup_param(parts, context)
         if expr in context:
             return context[expr]
         raise InterpolationError(f"Unresolvable reference: '{expr}'")
+
+    def _lookup_param(self, parts: list[str], context: dict[str, Any]) -> Any:
+        if len(parts) != 2:
+            joined = ".".join(parts)
+            raise InterpolationError(
+                f"Invalid params reference: expected 'params.<key>', got '{joined}'"
+            )
+        params = context.get("params", {})
+        key = parts[1]
+        if key not in params:
+            raise InterpolationError(f"Unresolvable reference: parameter '{key}' not found in context")
+        return params[key]
 
     def _lookup_step(self, parts: list[str], context: dict[str, Any]) -> Any:
         if len(parts) < 4 or parts[2] != "outputs":

@@ -17,10 +17,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from claude_test_base import ClaudeTestBase  # noqa: E402
 from integration_tests.base import IntegrationTestBase  # noqa: E402
 
 
-class TestOpusPrincipleReview(IntegrationTestBase):
+class TestOpusPrincipleReview(ClaudeTestBase, IntegrationTestBase):
     """Principle review integration tests using claude-opus-4-5.
 
     Opus is the highest-capability Claude model — use it to establish

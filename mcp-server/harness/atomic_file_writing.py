@@ -1,7 +1,7 @@
 """
 solid-name: AtomicFileWriting
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for atomically writing content to a file path, failing if the file already exists.
 """
 

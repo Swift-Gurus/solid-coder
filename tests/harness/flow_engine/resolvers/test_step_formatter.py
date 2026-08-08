@@ -1,7 +1,7 @@
 """
 solid-name: test_step_formatter
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests formatting a step's header and body into the text the calling agent sees.
 """
 

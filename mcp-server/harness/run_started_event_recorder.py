@@ -1,7 +1,7 @@
 """
 solid-name: RunStartedEventRecorder
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Records a run start event.
 """
 

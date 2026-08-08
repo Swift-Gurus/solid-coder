@@ -2,7 +2,7 @@
 number: SPEC-013
 feature: principle-review-test-harness
 type: feature
-status: ready
+status: in-progress
 parent: SPEC-001
 blocked-by: [SPEC-012]
 blocking: []

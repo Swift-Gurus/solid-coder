@@ -1,7 +1,7 @@
 """
 solid-name: RunCompletionChecker
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Determines whether a run has completed, failed, or timed out.
 """
 

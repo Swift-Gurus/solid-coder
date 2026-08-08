@@ -8,13 +8,18 @@ from hc_checker import ClaudeRunning
 from runner_strategy_base import RunnerStrategyBase
 
 
+"""
+solid-name: CodexRunnerStrategy
+solid-category: service
+solid-description: Creates health-check runners for local Codex execution.
+solid-tags: [hook, llm]
+"""
 class CodexRunnerStrategy(RunnerStrategyBase):
     """Runs health checks via a local Codex agent session."""
 
-    def __init__(self, model: str, timeout: int, codex_home_dir: str) -> None:
+    def __init__(self, model: str, timeout: int) -> None:
         self._model = model
         self._timeout = timeout
-        self._codex_home = codex_home_dir
 
     def make_runner(
         self,
@@ -28,6 +33,6 @@ class CodexRunnerStrategy(RunnerStrategyBase):
         return make_codex_runner(
             model=self._model,
             timeout=self._timeout,
-            codex_home=self._codex_home,
             cwd=cwd,
+            mcp_config=mcp_config,
         )

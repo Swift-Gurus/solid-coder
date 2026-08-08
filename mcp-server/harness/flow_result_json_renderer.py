@@ -1,6 +1,6 @@
 """solid-name: FlowResultJsonRenderer
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Renders flow execution results as structured JSON strings.
 """
 

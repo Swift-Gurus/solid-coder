@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from integration_tests.base import IntegrationTestBase  # noqa: E402
+from local_test_base import LocalTestBase  # noqa: E402
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _HOOKS_DIR = _PROJECT_ROOT / "hooks"
@@ -77,7 +78,7 @@ def _wait_for_server(url: str, timeout: int) -> bool:
     return False
 
 
-class TestLlmPrincipleReview(IntegrationTestBase):
+class TestLlmPrincipleReview(LocalTestBase, IntegrationTestBase):
     """Principle review integration tests using a local llama.cpp server.
 
     Fails loudly on setup if llama-server is not available or the model
@@ -86,7 +87,6 @@ class TestLlmPrincipleReview(IntegrationTestBase):
     """
 
     __test__ = True
-    MODEL_PROFILE = "local"
     TIMEOUT = 600
 
     def test_apply_flow(self) -> None:

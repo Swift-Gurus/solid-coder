@@ -375,7 +375,7 @@ def load_detection_rules(principle=None, matched_tags=None):
     description=(
         "Score an array of partial review output documents — one per active principle. "
         "Each document must have agent, principle, timestamp, and files[].units[].metrics filled. "
-        "The MCP applies severity bands from rule.md XML deterministically and fills scoring + findings. "
+        "The MCP applies severity bands from rule.md YAML frontmatter deterministically and fills scoring + findings. "
         "No file is written. Used by the pre-write health check which activates multiple principles simultaneously."
     ),
     input_schema={

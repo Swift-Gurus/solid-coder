@@ -1,7 +1,7 @@
 """
 solid-name: test_subagent_delegator
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests wrapping a step's body with a subagent launch instruction when its mode requires one.
 """
 

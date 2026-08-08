@@ -10,7 +10,9 @@ import json
 import os
 import re
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Callable, Iterator
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
@@ -27,6 +29,7 @@ from interfaces import (  # noqa: E402
     ReviewSessionExecuting,
 )
 from models import ModelProfile, OutputPaths  # noqa: E402
+from hc_runner_factory import make_llm_runner  # noqa: E402
 
 _SKILL_PATH = "skills/apply-principle-review/SKILL.md"
 _ALLOWED_TOOLS = (
@@ -265,6 +268,60 @@ class ClaudeReviewSessionRunner(ReviewSessionExecuting):
         )
 
 
+class ConfiguredReviewSessionRunner(ReviewSessionExecuting):
+    """Runs the apply review through the backend selected by the active model profile."""
+
+    def __init__(
+        self,
+        project_root: Path,
+        mcp_config_builder: McpConfigBuilding,
+        runner_factory: Callable = make_llm_runner,
+    ) -> None:
+        self._project_root = project_root
+        self._mcp_config_builder = mcp_config_builder
+        self._runner_factory = runner_factory
+
+    def execute(
+        self,
+        principle_folder: Path,
+        review_input_path: Path,
+        output_dir: Path,
+        timeout: int,
+        model: str = "",
+    ) -> str | None:
+        parent_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+        prompt = _build_skill_prompt(
+            self._project_root,
+            principle_folder,
+            review_input_path,
+            output_dir,
+            parent_session_id,
+        )
+        runner = self._runner_factory(
+            mcp_config=self._mcp_config_builder.build(self._project_root),
+            allowed_tools=_ALLOWED_TOOLS,
+            cwd=str(self._project_root),
+        )
+        return runner.run(prompt, timeout=timeout)
+
+
+@contextmanager
+def _review_profile_environment(profile_path: Path | None) -> Iterator[None]:
+    overrides = {"SOLID_CODER_SESSION_TYPE": "review"}
+    if profile_path is not None:
+        overrides["SOLID_CODER_TEST_MODEL_PROFILE"] = str(profile_path)
+    previous = {key: os.environ.get(key) for key in overrides}
+    os.environ.update(overrides)
+    try:
+        yield
+    finally:
+        for key, value in previous.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+
 class ApplyFlowInvoker(FlowInvoking):
     def __init__(
         self,
@@ -290,19 +347,15 @@ class ApplyFlowInvoker(FlowInvoking):
         fixture_output_dir.mkdir(parents=True, exist_ok=True)
         review_input_path = self._artifact_handler.build_input(fixture_path, output_paths.log_dir)
         # Skill writes to {fixture_output_dir}/{NAME}/review-output.json
-        # Strip placeholder model names that are meaningful to other backends (e.g. "local"
-        # for llama) but not valid Claude model IDs. Apply flow always uses claude -p so
-        # only real Claude model IDs should be forwarded.
-        _raw_model = model_profile.llm.get("model", "")
-        model = _raw_model if _raw_model not in {"", "local", "claude"} else ""
         try:
-            result = self._session_runner.execute(
-                self._principle_folder, review_input_path, fixture_output_dir, timeout, model=model
-            )
+            with _review_profile_environment(model_profile.profile_path):
+                result = self._session_runner.execute(
+                    self._principle_folder, review_input_path, fixture_output_dir, timeout
+                )
         except TimeoutError:
             raise
         except Exception as exc:
-            raise RuntimeError(f"Claude session failed: {exc}") from exc
+            raise RuntimeError(f"Review session failed: {exc}") from exc
         if result is not None:
             self._artifact_handler.write_reasoning(output_paths.reasoning_path, result)
         # The skill may write review-output.json at {fixture_output_dir}/{NAME}/review-output.json
@@ -316,5 +369,5 @@ class ApplyFlowInvoker(FlowInvoking):
         ]
         actual_output = next((p for p in candidates if p.exists()), None)
         if actual_output is None:
-            raise RuntimeError(f"Claude session failed for fixture: {fixture_path}")
+            raise RuntimeError(f"Review session failed for fixture: {fixture_path}")
         return self._artifact_handler.read_findings(actual_output)

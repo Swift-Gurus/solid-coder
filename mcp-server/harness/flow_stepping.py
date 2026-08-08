@@ -1,7 +1,7 @@
 """
 solid-name: FlowStepping
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for submitting step outputs and receiving the next ready steps or terminal status.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_schema_resolver
 solid-category: unit-test
-solid-spec: [SPEC-012]
+solid-spec: [SPEC-030]
 solid-description: Tests resolving a JSON Schema from an OutputSpec's inline schema field.
 """
 

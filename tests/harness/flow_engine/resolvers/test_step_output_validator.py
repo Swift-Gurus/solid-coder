@@ -1,7 +1,7 @@
 """
 solid-name: test_step_output_validator
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests validating step outputs against declared specs, including malformed (non-object) outputs.
 """
 

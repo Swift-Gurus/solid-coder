@@ -1,7 +1,7 @@
 """
 solid-name: FlowResultRendererSelector
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Routes flow result rendering based on feature configuration.
 """
 

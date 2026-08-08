@@ -1,7 +1,7 @@
 """
 solid-name: ActiveRunLockClearer
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Clears a stuck run's lock after validating the run identifier matches the currently active run.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: ActiveRunPointerStoring
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract that defines atomic read, write (fail-if-exists), and delete operations for the active run identifier.
 """
 

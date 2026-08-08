@@ -1,7 +1,9 @@
 ---
 number: SPEC-007
 feature: build-spec-from-code
-status: draft
+type: feature
+status: done
+parent: SPEC-001
 blocked-by: []
 blocking: []
 ---
@@ -9,6 +11,8 @@ blocking: []
 # build-spec-from-code — Code-to-Spec Decomposer
 
 ## Description
+
+Historical draft retained for traceability. Its scope was superseded by `SPEC-009`, which is the canonical build-spec-from-code feature specification and owns all remaining acceptance work.
 
 User-invocable skill that reads one or more existing source files or folders, decomposes the code into a structured understanding (purpose, inputs, outputs, dependencies, connections to project modules), then interviews the user to confirm and refine before writing a spec file.
 

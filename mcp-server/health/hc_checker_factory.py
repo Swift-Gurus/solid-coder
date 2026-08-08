@@ -29,7 +29,7 @@ from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvok
 import hc_config  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from hc_tag_detector import TagDetector  # noqa: E402
-from health_check_context_writer import HealthCheckContextWriter  # noqa: E402
+from health_check_context_writer_factory import HealthCheckContextWriterFactory  # noqa: E402
 
 _ALLOWED_TOOLS = (
     "Read,"
@@ -41,6 +41,11 @@ _ALLOWED_TOOLS = (
 )
 
 
+"""
+solid-name: GatewayOutputPathResolver
+solid-category: service
+solid-description: Resolves an isolated output directory for one health-check invocation.
+"""
 class GatewayOutputPathResolver:
     """Resolves a unique UUID-based output dir per gate invocation via the gateway CLI."""
 
@@ -97,5 +102,5 @@ def make_health_checker(
             invoker=invoker,
             fallback=SessionOutputPathResolver(),
         ),
-        context_writer=HealthCheckContextWriter(),
+        context_writer=HealthCheckContextWriterFactory().make(),
     )

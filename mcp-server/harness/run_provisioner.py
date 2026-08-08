@@ -1,7 +1,7 @@
 """
 solid-name: RunProvisioner
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Provisions a new run with its identity, directory, and startup metadata.
 """
 

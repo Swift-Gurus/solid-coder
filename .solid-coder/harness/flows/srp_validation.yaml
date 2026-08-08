@@ -1,0 +1,197 @@
+name: srp_validation
+max_turns: 10
+steps:
+  - id: measure_verbs
+    prompt: |
+      Measure the distinct responsibilities expressed as action verbs by the supplied
+      {{params.unit_kind}}. Apply this procedure exactly:
+
+      1. Ignore initializers, deinitializers, and factory methods.
+      2. For every remaining method, identify one primary externally meaningful action
+         that describes the method's complete outcome.
+      3. Calls, branches, fallbacks, collection operations, cache operations, formatting
+         primitives, and storage primitives that merely implement that outcome are not
+         additional actions.
+      4. Add another action for a method only when it performs an independently
+         changeable responsibility that is not required to achieve its primary outcome.
+      5. Keep distinct primary actions from different methods distinct. Do not merge
+         them merely because their labels are synonyms.
+      6. Produce one verb_evidence entry per counted action. verb_count must equal the
+         number of verb_evidence entries.
+
+      Example: a load method that checks a cache and falls back to storage performs the
+      single action "load"; cache lookup and storage lookup are implementation details.
+      A save method that invalidates its cache performs the single action "save" when
+      invalidation is required to keep the saved result consistent.
+
+      Source file: {{params.file_path}}
+      Unit: {{params.unit_name}}
+
+      Source:
+      ```swift
+      {{params.code}}
+      ```
+    outputs:
+      - name: verb_count
+        type: data
+        schema:
+          type: integer
+          minimum: 0
+      - name: verb_evidence
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            required: [method, action, rationale]
+            additionalProperties: false
+            properties:
+              method:
+                type: string
+                minLength: 1
+              action:
+                type: string
+                minLength: 1
+              rationale:
+                type: string
+                minLength: 1
+
+  - id: measure_cohesion
+    prompt: |
+      Measure cohesion groups in the supplied {{params.unit_kind}}. Apply this procedure
+      exactly:
+
+      1. Ignore lifecycle methods and list which instance variables each remaining
+         method directly uses.
+      2. Connect methods when they share an instance variable, including transitive
+         connections, and form the resulting method groups.
+      3. Do not remove a method merely because it uses variables from both sides of a
+         group. Remove it as an orchestrator only when it coordinates independently
+         meaningful operations. A method that needs all of those variables to produce
+         one cohesive result is not an orchestrator and keeps the group connected.
+      4. A cache and its backing storage belong to the same data-access group when the
+         methods use them together to provide consistent save/load/invalidate behavior.
+      5. Formatting machinery and presentation templates belong to the same
+         presentation group when methods combine them to produce rendered output.
+      6. Produce one cohesion_evidence entry per group. cohesion_groups must equal the
+         number of cohesion_evidence entries.
+
+      Source file: {{params.file_path}}
+      Unit: {{params.unit_name}}
+
+      Source:
+      ```swift
+      {{params.code}}
+      ```
+    outputs:
+      - name: cohesion_groups
+        type: data
+        schema:
+          type: integer
+          minimum: 0
+      - name: cohesion_evidence
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            required: [methods, variables, rationale]
+            additionalProperties: false
+            properties:
+              methods:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+              variables:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+              rationale:
+                type: string
+                minLength: 1
+
+  - id: measure_stakeholders
+    prompt: |
+      Measure distinct stakeholders who could independently request changes to the
+      supplied {{params.unit_kind}}. Apply this procedure exactly:
+
+      1. Count change-driving concerns demonstrated by the unit's behavior, not every
+         framework type, dependency, implementation mechanism, or hypothetical team.
+      2. Merge backing storage, caching, and cache consistency into one data-access
+         stakeholder when they jointly implement retrieval and persistence behavior.
+      3. Merge templates, number formatting, string formatting, and collection layout
+         into one presentation stakeholder when they jointly produce displayed output.
+      4. Count security, operations, product policy, validation, or other stakeholders
+         only when code in the unit demonstrates independently changeable behavior for
+         that concern. Do not infer them solely from a type name.
+      5. Produce one stakeholder_evidence entry per stakeholder. stakeholder_count must
+         equal the number of stakeholder_evidence entries.
+
+      Source file: {{params.file_path}}
+      Unit: {{params.unit_name}}
+
+      Source:
+      ```swift
+      {{params.code}}
+      ```
+    outputs:
+      - name: stakeholder_count
+        type: data
+        schema:
+          type: integer
+          minimum: 0
+      - name: stakeholder_evidence
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            required: [stakeholder, methods, rationale]
+            additionalProperties: false
+            properties:
+              stakeholder:
+                type: string
+                minLength: 1
+              methods:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+              rationale:
+                type: string
+                minLength: 1
+
+  - id: score_results
+    depends_on: [measure_verbs, measure_cohesion, measure_stakeholders]
+    prompt: |
+      Call the available score_severity MCP tool with exactly one partial_outputs
+      document having this content:
+
+      timestamp: {{params.timestamp}}
+      files:
+        - file_path: {{params.file_path}}
+          units:
+            - unit_name: {{params.unit_name}}
+              unit_kind: {{params.unit_kind}}
+              metrics:
+                SRP:
+                  verb_count:
+                    value: {{steps.measure_verbs.outputs.verb_count}}
+                  cohesion_groups:
+                    value: {{steps.measure_cohesion.outputs.cohesion_groups}}
+                  stakeholder_count:
+                    value: {{steps.measure_stakeholders.outputs.stakeholder_count}}
+
+      Do not judge, infer, or alter severity. Submit the exact score_severity response
+      as scored_review.
+    outputs:
+      - name: scored_review
+        type: data
+        schema:
+          type: object
+          required: [results]
+          properties:
+            results:
+              type: array

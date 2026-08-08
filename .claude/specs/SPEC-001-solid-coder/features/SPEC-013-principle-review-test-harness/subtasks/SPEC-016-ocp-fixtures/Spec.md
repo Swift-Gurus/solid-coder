@@ -2,7 +2,7 @@
 number: SPEC-016
 feature: ocp-fixtures
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-013
 blocked-by: [SPEC-014]
 blocking: []
@@ -12,14 +12,14 @@ blocking: []
 
 ## Description
 
-Create the OCP fixture files, expectation manifests, and manifest.yaml under `tests/principles/OCP/`. Covers the OCP-1 sealed variation point metric (SEVERE) and a protocol-injected compliant example.
+Create stem-paired OCP fixture and expectation files under `tests/principles/OCP/`. Covers the OCP-1 sealed variation point metric (SEVERE) and a protocol-injected compliant example.
 
 ## Input / Output
 
 |   | Detail |
 |---|--------|
 | Input | `references/principles/OCP/rule.md` — OCP-1 sealed_variation_points, OCP-2 testability metrics |
-| Output | `tests/principles/OCP/fixtures/fixture-N.swift`, `tests/principles/OCP/expectations/*.json`, `tests/principles/OCP/manifest.yaml` |
+| Output | `tests/principles/OCP/fixtures/fixture-N.swift` paired with `tests/principles/OCP/expectations/fixture-N.json` |
 
 ## User Stories
 
@@ -35,7 +35,7 @@ As the system, when `run_principle_tests.py --principle references/principles/OC
 
 ## Technical Requirements
 
-- OCP severity bands are text-based (no XML conditions) — the LLM applies scoring; expectation must match what the LLM reports
+- OCP expectations record the deterministic server-scored result produced from the measured raw metrics
 - Expectation `metrics` field is optional for OCP; include if the LLM reliably reports a count
 - Helper exceptions (DateFormatter, JSONEncoder, etc.) must NOT be the sealed point — use a business-logic dependency
 
@@ -50,8 +50,8 @@ As the system, when `run_principle_tests.py --principle references/principles/OC
 
 ```mermaid
 graph LR
-    F1[fixture-1.swift] -->|OCP-1 SEVERE| E1[ocp-1-severe.json]
-    F2[fixture-2.swift] -->|COMPLIANT| E2[compliant.json]
+    F1[fixture-1.swift] -->|OCP-1 SEVERE| E1[fixture-1.json]
+    F2[fixture-2.swift] -->|COMPLIANT| E2[fixture-2.json]
 ```
 
 ## Test Plan
@@ -62,9 +62,8 @@ graph LR
 
 ## Definition of Done
 
-- [ ] `tests/principles/OCP/fixtures/fixture-1.swift` — sealed-point violation, no hints
-- [ ] `tests/principles/OCP/fixtures/fixture-2.swift` — protocol-injected, no hints
-- [ ] `tests/principles/OCP/expectations/ocp-1-severe.json`
-- [ ] `tests/principles/OCP/expectations/compliant.json`
-- [ ] `tests/principles/OCP/manifest.yaml`
+- [x] `tests/principles/OCP/fixtures/fixture-1.swift` — sealed-point violation, no hints
+- [x] `tests/principles/OCP/fixtures/fixture-2.swift` — protocol-injected, no hints
+- [x] `tests/principles/OCP/expectations/fixture-1.json`
+- [x] `tests/principles/OCP/expectations/fixture-2.json`
 - [ ] `run_principle_tests.py --principle references/principles/OCP` exits 0

@@ -1,7 +1,7 @@
 """
 solid-name: TurnAdvancing
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract that defines advancing the run's state upon turn completion.
 """
 

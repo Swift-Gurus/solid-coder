@@ -28,7 +28,11 @@
      - [] Build a search query: name + camelCase words + responsibility keywords +
        synonyms, all space-separated.
     
-    Run Call `mcp__pipeline__search_codebase` with  aggregated query NOW. Do not defer.
+    Call `mcp__pipeline__search_codebase` ONCE with this exact input shape NOW:
+      - `query`: the aggregated space-separated query prepared above
+      - `output_dir`: `{output_dir}`
+    Do not pass the aggregated query as one entry in `tags`. A malformed search
+    is rejected and does not satisfy this required step. Do not defer the call.
     
     b) Skip any result whose path is {file_path} — that is the file being
        written and cannot be a reuse source for itself.

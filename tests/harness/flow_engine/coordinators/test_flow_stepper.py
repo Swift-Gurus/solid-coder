@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_stepper
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Tests coordinating output submission, completion checking, and delegating
 execution/readiness resolution for one flow_next call.
 """

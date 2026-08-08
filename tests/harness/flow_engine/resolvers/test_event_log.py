@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.event_replayer import EventParser, EventReplayer
 from harness.models import RunState
-from harness.run_state_reconstructor import RunStateReconstructor
+from harness.run_state_reconstructor_factory import make_run_state_reconstructor
 
 
 class StubParser:
@@ -68,7 +68,7 @@ class TestEventReplayer(unittest.TestCase):
             f.write(json.dumps({"event": "run_completed"}) + "\n")
             path = f.name
 
-        replayer = EventReplayer(parser=EventParser(), reconstructor=RunStateReconstructor())
+        replayer = EventReplayer(parser=EventParser(), reconstructor=make_run_state_reconstructor())
 
         state = replayer.replay(path)
 

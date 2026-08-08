@@ -1,7 +1,7 @@
 """
 solid-name: RunProvisioning
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for provisioning a run from a flow definition and configuration parameters.
 """
 

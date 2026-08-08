@@ -2,7 +2,7 @@
 number: SPEC-018
 feature: lsp-fixtures
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-013
 blocked-by: [SPEC-014]
 blocking: []
@@ -12,14 +12,14 @@ blocking: []
 
 ## Description
 
-Create LSP fixture files, expectation manifests, and manifest.yaml under `tests/principles/LSP/`. Targets the LSP-1 type-check dispatch violation (SEVERE) and a polymorphic compliant example.
+Create stem-paired LSP fixture and expectation files under `tests/principles/LSP/`. Targets the LSP-1 type-check dispatch violation (SEVERE) and a polymorphic compliant example.
 
 ## Input / Output
 
 |   | Detail |
 |---|--------|
 | Input | `references/principles/LSP/rule.md` — type_checking, contract_compliance, empty_methods metrics |
-| Output | `tests/principles/LSP/fixtures/fixture-N.swift`, `tests/principles/LSP/expectations/*.json`, `tests/principles/LSP/manifest.yaml` |
+| Output | `tests/principles/LSP/fixtures/fixture-N.swift` paired with `tests/principles/LSP/expectations/fixture-N.json` |
 
 ## User Stories
 
@@ -35,7 +35,7 @@ As the system, when `run_principle_tests.py --principle references/principles/LS
 
 ## Technical Requirements
 
-- LSP severity bands are text-based — LLM scores
+- LSP expectations record deterministic server scoring from the measured raw metrics
 - Framework-forced casts (e.g. `response as? HTTPURLResponse`) are exceptions per rule.md — do NOT use these in fixture-1; use user-defined class hierarchy
 
 ## Connects To
@@ -49,8 +49,8 @@ As the system, when `run_principle_tests.py --principle references/principles/LS
 
 ```mermaid
 graph LR
-    F1[fixture-1.swift] -->|LSP-1 SEVERE| E1[lsp-1-severe.json]
-    F2[fixture-2.swift] -->|COMPLIANT| E2[compliant.json]
+    F1[fixture-1.swift] -->|LSP-1 SEVERE| E1[fixture-1.json]
+    F2[fixture-2.swift] -->|COMPLIANT| E2[fixture-2.json]
 ```
 
 ## Test Plan
@@ -61,9 +61,8 @@ graph LR
 
 ## Definition of Done
 
-- [ ] `tests/principles/LSP/fixtures/fixture-1.swift`
-- [ ] `tests/principles/LSP/fixtures/fixture-2.swift`
-- [ ] `tests/principles/LSP/expectations/lsp-1-severe.json`
-- [ ] `tests/principles/LSP/expectations/compliant.json`
-- [ ] `tests/principles/LSP/manifest.yaml`
+- [x] `tests/principles/LSP/fixtures/fixture-1.swift`
+- [x] `tests/principles/LSP/fixtures/fixture-2.swift`
+- [x] `tests/principles/LSP/expectations/fixture-1.json`
+- [x] `tests/principles/LSP/expectations/fixture-2.json`
 - [ ] `run_principle_tests.py --principle references/principles/LSP` exits 0

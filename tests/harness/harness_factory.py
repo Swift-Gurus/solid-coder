@@ -34,14 +34,13 @@ for _d in (
 import hook_utils  # noqa: E402
 from hc_checker import HealthChecking  # noqa: E402
 from hc_checker_factory import make_health_checker  # noqa: E402
-from hook_callable import CallableAdapting  # noqa: E402
 
-from apply_flow_invoker import ApplyFlowInvoker, ClaudeReviewSessionRunner, FindingsReader, ReasoningWriter, ReviewArtifactHandler, ReviewInputBuilder  # noqa: E402
+from apply_flow_invoker import ApplyFlowInvoker, ConfiguredReviewSessionRunner, FindingsReader, ReasoningWriter, ReviewArtifactHandler, ReviewInputBuilder  # noqa: E402
 from expectation_loader import ExpectationLoader  # noqa: E402
 from finding_comparer import FindingComparer, FlowFindingNormalizer  # noqa: E402
 from fixture_discovery import FixtureDiscovery  # noqa: E402
 from health_flow_invoker import CheckResultWriter, HealthFlowInvoker, SupportedExtensionsProvider  # noqa: E402
-from interfaces import ClaudeRunning, TimestampGenerating, TomlLoading  # noqa: E402
+from interfaces import TimestampGenerating, TomlLoading  # noqa: E402
 from mcp_utils import McpConfigBuilder, build_mcp_config  # noqa: E402
 from metric_prefix_resolver import MetricPrefixResolver  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
@@ -56,28 +55,6 @@ import code_health_check  # noqa: E402
 class HookUtilsTomlLoader(TomlLoading):
     def load_toml(self, path: Path) -> dict:
         return hook_utils.load_toml(path)
-
-
-class HookUtilsClaudeRunner(ClaudeRunning):
-    def run_bare(
-        self,
-        prompt: str,
-        allowed_tools: str,
-        mcp_config: str,
-        timeout: int,
-        session_id: str,
-        cwd: str,
-        model: str,
-    ) -> str | None:
-        return hook_utils.run_claude_bare(
-            prompt=prompt,
-            allowed_tools=allowed_tools,
-            mcp_config=mcp_config,
-            timeout=timeout,
-            session_id=session_id,
-            cwd=cwd,
-            model=model,
-        )
 
 
 class RunTimestampGenerator(TimestampGenerating):
@@ -106,7 +83,6 @@ class HarnessFactory:
         profile_dir: "Path | None" = None,
     ) -> TestHarnessRunner:
         toml_loader = HookUtilsTomlLoader()
-        claude_runner = HookUtilsClaudeRunner()
         mcp_config_builder = McpConfigBuilder()
 
         artifact_handler = ReviewArtifactHandler(
@@ -114,7 +90,7 @@ class HarnessFactory:
             reasoning_writer=ReasoningWriter(),
             findings_reader=FindingsReader(),
         )
-        session_runner = ClaudeReviewSessionRunner(project_root, claude_runner, mcp_config_builder)
+        session_runner = ConfiguredReviewSessionRunner(project_root, mcp_config_builder)
         apply_invoker = ApplyFlowInvoker(principle_folder, artifact_handler, session_runner)
 
         health_checker = DirectHealthChecker()

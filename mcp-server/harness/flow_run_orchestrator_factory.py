@@ -1,9 +1,4 @@
-"""
-solid-name: FlowRunOrchestratorFactory
-solid-category: service
-solid-spec: [SPEC-027]
-solid-description: Creates orchestrators for executing flows.
-"""
+"""Composes flow-run orchestration dependencies."""
 
 from __future__ import annotations
 
@@ -18,8 +13,9 @@ from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.delegate_step_handler import DelegateStepHandler
+from harness.existing_path_filter import ExistingPathFilter
 from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
-from harness.flow_engine_assembly import build_default_assembly
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_file_resolver import FlowFileResolver
 from harness.flow_initializer import FlowInitializer
 from harness.flow_run_orchestrator import FlowRunOrchestrator
@@ -34,6 +30,8 @@ from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
 from harness.path_checking import PathChecker
+from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
+from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from harness.ready_steps_resolver import ReadyStepsResolver
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_context_builder import RunContextBuilder
@@ -57,11 +55,19 @@ from harness.step_handler_resolver import StepHandlerResolver
 from harness.step_output_validator import StepOutputValidator
 from harness.step_result_builder import StepResultBuilder
 from harness.turn_advancer import TurnAdvancer
+from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+from hook_utils import _resolve_project_root
 from subprocess_script_runner import SubprocessScriptRunner
 
 _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
 
 
+"""
+solid-name: FlowRunOrchestratorFactory
+solid-category: service
+solid-spec: [SPEC-027]
+solid-description: Creates flow-run orchestrators with their execution, persistence, discovery, and transition dependencies.
+"""
 class FlowRunOrchestratorFactory:
 
     def __init__(
@@ -77,7 +83,12 @@ class FlowRunOrchestratorFactory:
         self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
 
     def build(self) -> FlowRunOrchestrator:
-        assembly = build_default_assembly(command_allowlist_resolver=self._command_allowlist_resolver)
+        workflow_catalog = make_workflow_catalog_resolver()
+        path_checker = PathChecker()
+        assembly = FlowEngineAssemblyFactory().build(
+            command_allowlist_resolver=self._command_allowlist_resolver,
+            workflow_catalog_resolver=workflow_catalog,
+        )
         active_run = ActiveRunPointerStore(
             path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
         )
@@ -85,7 +96,10 @@ class FlowRunOrchestratorFactory:
         step_result_builder = StepResultBuilder()
         run_locator = ActiveRunLocator(base_dir_resolver=self._base_dir_resolver, active_run=active_run)
         resolving_flow_loader = NameResolvingFlowLoader(
-            file_resolver=FlowFileResolver(path_checker=PathChecker()),
+            file_resolver=FlowFileResolver(
+                path_checker=path_checker,
+                catalog_resolver=workflow_catalog,
+            ),
             inner_loader=assembly.flow_loader,
         )
         run_snapshot_resolver = RunSnapshotResolver(
@@ -135,7 +149,13 @@ class FlowRunOrchestratorFactory:
         flow_initializer = FlowInitializer(
             startup_context=StartupContextResolver(
                 base_dir_resolver=self._base_dir_resolver,
-                search_paths=FlowSearchPathResolver(),
+                search_paths=FlowSearchPathResolver(
+                    sources=[
+                        ProjectWorkflowSearchPathResolver(_resolve_project_root),
+                        PluginWorkflowSearchPathResolver(self._plugin_root),
+                    ],
+                    path_filter=ExistingPathFilter(path_checker),
+                ),
             ),
             flow_loader=resolving_flow_loader,
             run_provisioner=RunProvisioner(

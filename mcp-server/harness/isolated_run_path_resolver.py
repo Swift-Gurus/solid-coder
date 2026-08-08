@@ -1,7 +1,7 @@
 """
 solid-name: IsolatedRunPathResolver
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Decides which directory a run provisions into and which directory its step execution treats as the base, based on whether the run is isolated.
 """
 

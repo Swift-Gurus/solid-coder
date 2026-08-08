@@ -1,7 +1,7 @@
 """
 solid-name: FlowResultRendering
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for rendering flow results to string representations.
 """
 

@@ -12,32 +12,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.agent_step_shape_validator import AgentStepShapeValidator
 from harness.command_allowlist_resolver import CommandAllowlistResolver
-from harness.command_allowlist_validator import CommandAllowlistValidator
-from harness.delegate_step_shape_validator import DelegateStepShapeValidator
-from harness.flow_config_extractor import FlowConfigExtractor
-from harness.flow_engine_assembly import build_default_assembly
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_graph_validator import FlowGraphValidator
 from harness.flow_loader import FlowLoader
 from harness.for_each_reference_validator import ForEachReferenceValidator
-from harness.group_dependency_expander import GroupDependencyExpander
-from harness.include_resolver import IncludeResolver
 from harness.include_structure_validator import IncludeStructureValidator
-from harness.json_loading import JsonLoader
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.models import FlowValidationError
-from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
-from harness.output_schema_resolver import OutputSchemaResolver
-from harness.prompt_content_resolver import PromptContentResolver
-from harness.script_step_shape_validator import ScriptStepShapeValidator
-from harness.step_builder import StepBuilder
 from harness.step_graph_validator import StepGraphValidator
-from harness.step_shape_validator import StepShapeValidator
-from harness.uses_resolver import UsesResolver
-from scoring.yaml_config_file_loader import YamlConfigFileLoader
-from scoring.yaml_loader import PyYamlLoader
-from utils.prompt_builder import PlainTextFileReader
 
 
 def _make_graph_validator() -> FlowGraphValidator:
@@ -50,36 +33,18 @@ def _make_graph_validator() -> FlowGraphValidator:
 
 
 def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
-    yaml_file_loader = YamlConfigFileLoader(loader=PyYamlLoader())
-    json_file_loader = YamlConfigFileLoader(loader=JsonLoader())
-    return FlowLoader(
-        file_loader=yaml_file_loader,
-        config_extractor=FlowConfigExtractor(),
-        uses_resolver=UsesResolver(file_loader=yaml_file_loader),
-        graph_validator=_make_graph_validator(),
-        step_builder=StepBuilder(),
-        include_resolver=IncludeResolver(file_loader=yaml_file_loader),
-        step_shape_validator=StepShapeValidator(
-            validators={
-                "agent": AgentStepShapeValidator(),
-                "script": ScriptStepShapeValidator(),
-                "delegate": DelegateStepShapeValidator(),
-            },
-            default=AgentStepShapeValidator(),
-        ),
-        prompt_content_resolver=PromptContentResolver(reader=PlainTextFileReader()),
-        output_schema_resolver=OutputSchemaResolver(file_loader=json_file_loader),
-        output_schema_prompt_annotator=OutputSchemaPromptAnnotator(),
-        command_allowlist_resolver=CommandAllowlistResolver(section_reader=lambda name: {"permitted_executables": allowlist}),
-        command_allowlist_validator=CommandAllowlistValidator(),
-        group_dependency_expander=GroupDependencyExpander(),
+    resolver = CommandAllowlistResolver(
+        section_reader=lambda name: {"permitted_executables": allowlist}
     )
+    return FlowEngineAssemblyFactory().build(
+        command_allowlist_resolver=resolver
+    ).flow_loader
 
 
 class TestFlowLoader(unittest.TestCase):
 
     def setUp(self):
-        self.assembly = build_default_assembly()
+        self.assembly = FlowEngineAssemblyFactory().build()
         self.loader = self.assembly.flow_loader
         self._tmpdir = tempfile.mkdtemp()
 

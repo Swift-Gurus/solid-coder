@@ -1,7 +1,7 @@
 """
 solid-name: RunSnapshotResolver
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Resolves the current execution state and ready steps of a flow run.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_session_scoped_active_path_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests resolving the active-run pointer file path, scoped per session when available.
 """
 

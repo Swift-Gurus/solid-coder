@@ -30,13 +30,13 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 | Interface Segregation Principle | always | 538 | 5,154 | 1,855 | 2,392 | 3,179 |
 | Liskov Substitution Principle | always | 634 | 5,424 | 2,035 | 2,668 | 3,359 |
 | Open/Closed Principle | always | 3,647 | 6,425 | 1,489 | 2,026 | 2,850 |
-| Single Responsibility Principle | always | 817 | 3,325 | 1,011 | 1,484 | 2,044 |
+| Single Responsibility Principle | always | 817 | 3,760 | 1,447 | 1,919 | 2,480 |
 | Structured Concurrency | conditional | 925 | 2,951 | 1,370 | 2,289 | 3,427 |
 | SwiftUI Best Practices | conditional | 1,436 | 14,734 | 4,314 | 5,748 | 7,899 |
 | Unit Testing | conditional | 1,026 | 9,335 | 3,133 | 4,156 | 6,501 |
 | UI Testing | conditional | 1,054 | 9,298 | 2,104 | 3,155 | 5,293 |
-| **MIN** |  | **7,838** | **38** | **9,668** | **14,040** | **17,931** |
-| **MAX** |  | **12,279** | **14,734** | **20,589** | **29,388** | **41,051** |
+| **MIN** |  | **7,838** | **38** | **10,104** | **14,475** | **18,367** |
+| **MAX** |  | **12,279** | **14,734** | **21,025** | **29,823** | **41,487** |
 
 - **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (7). For `per-principle`: smallest single principle.
 - **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (11). For `per-principle`: largest single principle.

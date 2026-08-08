@@ -3,16 +3,16 @@ number: SPEC-028
 feature: delegate-steps-and-isolated-runs
 type: subtask
 status: done
-parent: SPEC-012
-blocked-by: [SPEC-012, SPEC-013]
-blocking: [SPEC-015]
+parent: SPEC-030
+blocked-by: [SPEC-030, SPEC-031]
+blocking: [SPEC-033, SPEC-036]
 ---
 
 # Delegate Steps and Isolated Runs
 
 ## Description
 
-Extends the flow engine (SPEC-012) with a `delegate` step type that hands a unit of work to a separate agent context — either a spawned subagent or a synchronously-run nested session — instead of the calling agent doing it inline. Delegated work runs its own child flow in a self-contained isolated run box, distinct from the single main-run slot, so it never collides with the parent's own active-run lock. This replaced an earlier environment-variable-detection design (`CLAUDE_AGENT_TYPE`) that never worked in practice, because no such variable exists — isolation mode is instead declared explicitly by the flow author at authoring time.
+Extends the flow engine (SPEC-030) with a `delegate` step type that hands a unit of work to a separate agent context — either a spawned subagent or a synchronously-run nested session — instead of the calling agent doing it inline. Delegated work runs its own child flow in a self-contained isolated run box, distinct from the single main-run slot, so it never collides with the parent's own active-run lock. This replaced an earlier environment-variable-detection design (`CLAUDE_AGENT_TYPE`) that never worked in practice, because no such variable exists — isolation mode is instead declared explicitly by the flow author at authoring time.
 
 ## Input / Output
 
@@ -78,10 +78,10 @@ As the system, when a delegated flow starts with isolation requested, I want it 
 
 | Direction | Spec / Component | Relationship |
 |---|---|---|
-| Upstream | SPEC-012 Core Flow Engine (`models.py`, `dag_runner.py`, step handler/validator dispatch) | Extends the step type model and load-time validation, following the same type-dispatched-handler pattern SPEC-027 established for script steps. |
+| Upstream | SPEC-030 Core Flow Engine (`models.py`, `dag_runner.py`, step handler/validator dispatch) | Extends the step type model and load-time validation, following the same type-dispatched-handler pattern SPEC-027 established for script steps. |
 | Upstream | Pre-write health-check gate's backend-agnostic LLM runner factory | `mode: session` reuses this factory rather than introducing a parallel, delegate-specific backend selection mechanism. |
-| Downstream | SPEC-013 Flow Harness MCP Tools | `flow_start` gains an isolation-request parameter; `flow_next`/`flow_status` gain an optional run-identifier parameter to target an isolated run. |
-| Downstream | SPEC-014 Agent Flow Stop Hook | Must recognize that an isolated run's own stop/turn-ending behavior is independent of the main run's — a pending isolated run does not, by itself, imply the main run is also pending. |
+| Downstream | SPEC-031 Flow Harness MCP Tools | `flow_start` gains an isolation-request parameter; `flow_next`/`flow_status` gain an optional run-identifier parameter to target an isolated run. |
+| Downstream | SPEC-032 Agent Flow Stop Hook | Must recognize that an isolated run's own stop/turn-ending behavior is independent of the main run's — a pending isolated run does not, by itself, imply the main run is also pending. |
 
 ## Diagrams
 
@@ -89,10 +89,10 @@ As the system, when a delegated flow starts with isolation requested, I want it 
 
 ```mermaid
 graph LR
-  SPEC012[SPEC-012 Core Flow Engine] --> SPEC028[SPEC-028 Delegate Steps]
+  SPEC012[SPEC-030 Core Flow Engine] --> SPEC028[SPEC-028 Delegate Steps]
   Gate[Health-check gate's backend-agnostic runner] -.reused by mode: session.-> SPEC028
-  SPEC028 --> SPEC013[SPEC-013 Flow Harness MCP Tools]
-  SPEC028 -.isolated runs must be recognized by.-> SPEC014[SPEC-014 Agent Flow Stop Hook]
+  SPEC028 --> SPEC013[SPEC-031 Flow Harness MCP Tools]
+  SPEC028 -.isolated runs must be recognized by.-> SPEC014[SPEC-032 Agent Flow Stop Hook]
 ```
 
 ### Flow — delegate step dispatch by mode

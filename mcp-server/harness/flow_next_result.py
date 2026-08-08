@@ -1,7 +1,7 @@
 """
 solid-name: FlowNextResult
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Represents the result of a flow operation, conveying execution status, step results, and errors.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_initializer
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests coordinating startup resolution, flow loading, provisioning, and start-event recording.
 """
 

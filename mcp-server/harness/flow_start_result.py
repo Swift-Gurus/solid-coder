@@ -1,7 +1,7 @@
 """
 solid-name: FlowStartResult
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Represents the result of starting a flow execution.
 """
 

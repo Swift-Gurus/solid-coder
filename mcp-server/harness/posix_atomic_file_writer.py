@@ -1,7 +1,7 @@
 """
 solid-name: POSIXAtomicFileWriter
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Atomically writes content to a file, raising an error if the file already exists.
 """
 

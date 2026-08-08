@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_result_json_renderer
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests rendering flow_start/flow_next results as their full JSON representation.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: ActiveRunLocation
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Filesystem locations for the currently active run.
 """
 

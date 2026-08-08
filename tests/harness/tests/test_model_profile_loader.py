@@ -21,6 +21,7 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config")
 
 from interfaces import TomlLoading  # noqa: E402
+from hook_utils import load_toml  # noqa: E402
 from llm_config import LlmConfig  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
@@ -35,6 +36,18 @@ class FakeTomlLoader(TomlLoading):
 
 
 class TestModelProfileLoader(unittest.TestCase):
+    def test_repository_codex_profiles_are_pinned_to_terra(self):
+        profiles = (
+            _PROJECT_ROOT / "tests" / "models" / "codex.toml",
+            _PROJECT_ROOT / "tests" / "harness" / "integration_tests" / "models" / "codex.toml",
+        )
+        for profile_path in profiles:
+            with self.subTest(profile=profile_path):
+                llm = load_toml(profile_path)["llm"]
+                self.assertEqual(llm["backend"], "codex")
+                self.assertEqual(llm["model"], "gpt-5.6-terra")
+                self.assertEqual(llm["timeout"], 1000)
+
     def test_named_profile_returns_model_profile_with_llm_data(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

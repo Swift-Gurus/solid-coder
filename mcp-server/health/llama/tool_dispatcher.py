@@ -25,8 +25,12 @@ TOOLS: list = [
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Space-separated synonyms (name + camelCase words + responsibility keywords)"},
+                    "output_dir": {
+                        "type": "string",
+                        "description": "Health-check output_dir from the prompt, used to record DRY-search completion.",
+                    },
                 },
-                "required": ["query"],
+                "required": ["query", "output_dir"],
             },
         },
     },
@@ -193,10 +197,20 @@ TOOLS: list = [
 ]
 
 
+"""
+solid-name: ToolDispatching
+solid-category: abstraction
+solid-description: Contract for dispatching one parsed health-check tool call.
+"""
 class ToolDispatching(Protocol):
     def dispatch(self, tool_call: dict) -> str: ...
 
 
+"""
+solid-name: GatewayToolDispatcher
+solid-category: service
+solid-description: Routes health-check tool calls to their configured capabilities.
+"""
 class GatewayToolDispatcher:
     """Routes tool calls to CodebaseSearching, FixInvoking, or FindingsSubmitting."""
 
@@ -209,7 +223,9 @@ class GatewayToolDispatcher:
     ) -> None:
         self._parser = parser
         self._dispatch_map: dict = {
-            "mcp__pipeline__search_codebase": lambda a: codebase_search.search(a.get("query", "")),
+            "mcp__pipeline__search_codebase": lambda a: codebase_search.search(
+                a.get("query", ""), a.get("output_dir", "")
+            ),
             "mcp__pipeline__grep_codebase": lambda a: codebase_search.grep(a.get("name", "")),
             "mcp__pipeline__glob_codebase": lambda a: codebase_search.glob(a.get("pattern", "*")),
             "mcp__pipeline__read_file": lambda a: codebase_search.read(a.get("file_path", "")),

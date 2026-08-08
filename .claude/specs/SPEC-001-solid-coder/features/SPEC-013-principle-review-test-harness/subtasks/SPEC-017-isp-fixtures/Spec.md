@@ -2,7 +2,7 @@
 number: SPEC-017
 feature: isp-fixtures
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-013
 blocked-by: [SPEC-014]
 blocking: []
@@ -12,14 +12,14 @@ blocking: []
 
 ## Description
 
-Create ISP fixture files, expectation manifests, and manifest.yaml under `tests/principles/ISP/`. Targets the fat-protocol / low-conformer-coverage violation (SEVERE) and a focused protocol (COMPLIANT).
+Create stem-paired ISP fixture and expectation files under `tests/principles/ISP/`. Targets the fat-protocol / low-conformer-coverage violation (SEVERE) and a focused protocol (COMPLIANT).
 
 ## Input / Output
 
 |   | Detail |
 |---|--------|
 | Input | `references/principles/ISP/rule.md` — protocol_width, conformer_coverage, protocol_cohesion metrics |
-| Output | `tests/principles/ISP/fixtures/fixture-N.swift`, `tests/principles/ISP/expectations/*.json`, `tests/principles/ISP/manifest.yaml` |
+| Output | `tests/principles/ISP/fixtures/fixture-N.swift` paired with `tests/principles/ISP/expectations/fixture-N.json` |
 
 ## User Stories
 
@@ -35,7 +35,7 @@ As the system, when `run_principle_tests.py --principle references/principles/IS
 
 ## Technical Requirements
 
-- ISP severity bands are text-based — LLM scores; expectation matches LLM output
+- ISP expectations record deterministic server scoring from the measured raw metrics
 - Stubbed methods: empty body `{}` or trivial `return []` / `return nil` — not real implementations
 
 ## Connects To
@@ -49,8 +49,8 @@ As the system, when `run_principle_tests.py --principle references/principles/IS
 
 ```mermaid
 graph LR
-    F1[fixture-1.swift] -->|ISP SEVERE| E1[isp-severe.json]
-    F2[fixture-2.swift] -->|COMPLIANT| E2[compliant.json]
+    F1[fixture-1.swift] -->|ISP SEVERE| E1[fixture-1.json]
+    F2[fixture-2.swift] -->|COMPLIANT| E2[fixture-2.json]
 ```
 
 ## Test Plan
@@ -61,9 +61,8 @@ graph LR
 
 ## Definition of Done
 
-- [ ] `tests/principles/ISP/fixtures/fixture-1.swift`
-- [ ] `tests/principles/ISP/fixtures/fixture-2.swift`
-- [ ] `tests/principles/ISP/expectations/isp-severe.json`
-- [ ] `tests/principles/ISP/expectations/compliant.json`
-- [ ] `tests/principles/ISP/manifest.yaml`
+- [x] `tests/principles/ISP/fixtures/fixture-1.swift`
+- [x] `tests/principles/ISP/fixtures/fixture-2.swift`
+- [x] `tests/principles/ISP/expectations/fixture-1.json`
+- [x] `tests/principles/ISP/expectations/fixture-2.json`
 - [ ] `run_principle_tests.py --principle references/principles/ISP` exits 0

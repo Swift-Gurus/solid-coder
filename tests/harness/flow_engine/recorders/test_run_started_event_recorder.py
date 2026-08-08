@@ -1,7 +1,7 @@
 """
 solid-name: test_run_started_event_recorder
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests recording a run's start event via the shared event log.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: StepResultBuilder
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Determines execution specifications for step instances by referencing flow definitions and optional state.
 """
 

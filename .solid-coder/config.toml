@@ -48,7 +48,7 @@ host = "http://localhost:8080"
 
 # Model for the claude backend. Set to a real model id to override the CLI default,
 # e.g. "claude-haiku-4-5", "claude-sonnet-4-6". Leave as "claude" to use the CLI default.
-#model = "claude-haiku-4-5"
+model = "gpt-5.6-terra"
 
 # Timeout in seconds for every subprocess call this gate makes — the LLM
 # health-check session (claude -p / codex exec) and the gateway CLI calls

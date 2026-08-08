@@ -2,10 +2,10 @@
 number: SPEC-012
 feature: llm-measures-mcp-scores
 type: feature
-status: ready
+status: done
 parent: SPEC-001
 blocked-by: [SPEC-011]
-blocking: []
+blocking: [SPEC-034, SPEC-036]
 ---
 
 # LLM Measures, MCP Scores
@@ -166,12 +166,12 @@ flowchart TD
 
 ## Definition of Done
 
-- [ ] `load_detection_rules` tool added — returns XML detection blocks or falls back to full rule.md
-- [ ] `score_severity` tool added — accepts array of partial outputs, applies severity-bands XML per principle, returns completed array with no file write
-- [ ] `submit_findings` tool added — validates, scores, writes output file, returns summary
-- [ ] `load_fix_instructions` tool added — returns fix instruction text per metric ID
-- [ ] `rule.md` for at least SRP updated with `<detection>`, `<definition>`, `<severity-bands>` XML blocks as the reference implementation
-- [ ] `apply_principle_review` SKILL.md updated to use `load_detection_rules` and `submit_findings`
-- [ ] `synthesize-fixes` SKILL.md updated to use `load_fix_instructions`
-- [ ] `hooks/code_health_check.py` updated to use `load_detection_rules` and `score_severity`
-- [ ] All unit tests pass
+- [x] `load_detection_rules` tool added — returns structured detection blocks or falls back to full rule.md
+- [x] `score_severity` tool added — accepts arrays of partial outputs, applies authoritative `bands:` frontmatter deterministically, and returns completed output without writing a file
+- [x] `submit_findings` tool added — validates, scores, writes output files, and returns a summary
+- [x] `load_fix_instructions` tool added — returns fix instruction text per metric ID
+- [x] `rule.md` for at least SRP contains structured detection and definition blocks plus authoritative YAML severity bands
+- [x] `apply-principle-review` uses `load_detection_rules` and server-side findings submission
+- [x] `synthesize-fixes` uses server-provided fix instructions
+- [x] The health-check path uses structured detection rules and server-side deterministic scoring/submission
+- [x] Focused scoring, submission, detection-rule, and fix-instruction unit tests pass

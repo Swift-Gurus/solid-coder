@@ -1,7 +1,7 @@
 """
 solid-name: SessionScopedActivePathResolving
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for resolving an active path within a session scope.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_output_recorder
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests appending step_completed and session_step_recorded events for each ready step instance.
 """
 

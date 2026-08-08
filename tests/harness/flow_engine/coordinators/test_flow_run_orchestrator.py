@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_run_orchestrator
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests that the orchestrator facade delegates each operation to its dedicated coordinator.
 """
 

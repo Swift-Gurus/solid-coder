@@ -1,7 +1,7 @@
 """
 solid-name: SubagentDelegator
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Prepares execution bodies for subagent delegation when required by execution parameters.
 """
 

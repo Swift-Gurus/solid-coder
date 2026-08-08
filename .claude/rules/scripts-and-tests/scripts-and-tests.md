@@ -8,7 +8,11 @@ paths:
 
 When **creating or modifying** any `.py` or `.sh` script in the repo:
 
-1. **Write tests** in the matching `tests/` folder before considering the work done. Cover the contract — inputs, outputs, error paths — not internal implementation detail.
+1. **Write tests** under the repository-root `tests/` tree, mirroring the production path. Cover the contract — inputs, outputs, error paths — not internal implementation detail.
+   - `mcp-server/example.py` → `tests/mcp-server/test_example.py`
+   - `mcp-server/hooks/example.py` → `tests/mcp-server/hooks/test_example.py`
+   - Never create `mcp-server/tests/` or `mcp-server/hooks/tests/`.
+   - Script and skill test suites are the exception: `scripts/tests/` and `skills/<name>/scripts/tests/` remain beside their script entry points.
 2. **Run the tests** and confirm green before ending the turn:
    ```bash
    python3 -m unittest discover -s scripts/tests -v

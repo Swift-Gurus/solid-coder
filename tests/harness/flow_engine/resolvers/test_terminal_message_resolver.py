@@ -1,7 +1,7 @@
 """
 solid-name: test_terminal_message_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests resolving the message to show when a flow result has an error or a terminal status.
 """
 

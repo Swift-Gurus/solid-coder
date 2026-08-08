@@ -1,7 +1,7 @@
 """
 solid-name: ExecutionAndReadinessCoordinating
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for coordinating a flow's execution and readiness state.
 """
 

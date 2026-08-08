@@ -3,7 +3,10 @@
     {
       "unit_name": "ProductCatalog",
       "metric_id": "SRP-1",
-      "severity": "SEVERE"
+      "severity": "SEVERE",
+      "metrics": {
+        "verb_count": 6
+      }
     },
     {
       "unit_name": "ProductCatalog",
@@ -16,7 +19,10 @@
     {
       "unit_name": "ProductCatalog",
       "metric_id": "SRP-3",
-      "severity": "SEVERE"
+      "severity": "SEVERE",
+      "metrics": {
+        "stakeholder_count": 2
+      }
     }
   ]
 }

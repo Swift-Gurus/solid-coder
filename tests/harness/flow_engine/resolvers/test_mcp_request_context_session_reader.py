@@ -1,7 +1,7 @@
 """
 solid-name: test_mcp_request_context_session_reader
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests bridging the Claude and Codex conventions for carrying the current MCP request's session identifier.
 """
 

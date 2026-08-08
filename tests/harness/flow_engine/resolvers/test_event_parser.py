@@ -1,7 +1,7 @@
 """
 solid-name: test_event_parser
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests parsing raw event log lines into structured events, skipping corrupt lines.
 """
 

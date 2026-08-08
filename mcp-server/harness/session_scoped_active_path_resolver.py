@@ -1,7 +1,7 @@
 """
 solid-name: SessionScopedActivePathResolver
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Resolves the path to the active file, scoped by session.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: ActiveRunPointerStore
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Stores and retrieves the active run identifier, scoped per session.
 """
 

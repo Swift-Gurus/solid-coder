@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_status_reader
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests reading the active run's status snapshot, and the no-active-run fallback.
 """
 

@@ -12,13 +12,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.models import StepOutputs
-from harness.run_state_reconstructor import RunStateReconstructor
+from harness.run_state_reconstructor_factory import make_run_state_reconstructor
 
 
 class TestRunStateReconstructor(unittest.TestCase):
 
     def setUp(self):
-        self.sut = RunStateReconstructor()
+        self.sut = make_run_state_reconstructor()
 
     def test_step_started_and_completed(self):
         state = self.sut.reconstruct([

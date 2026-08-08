@@ -1,7 +1,7 @@
 """
 solid-name: test_turn_advancer
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests recording a completed turn and returning the run's replayed state afterward.
 """
 

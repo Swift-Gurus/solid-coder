@@ -1,7 +1,7 @@
 """
 solid-name: test_run_snapshot_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests replaying a run's events, building context, and computing ready steps as one snapshot.
 """
 

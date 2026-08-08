@@ -1,7 +1,7 @@
 """
 solid-name: RunInit
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Encapsulates the unique identifier and working directory of a newly initialized run.
 """
 

@@ -1,8 +1,8 @@
 """
 solid-name: FlowSearchPathResolving
 solid-category: abstraction
-solid-spec: [SPEC-013]
-solid-description: Contract for resolving an ordered list of flow search paths, with project taking precedence over plugin sources.
+solid-spec: [SPEC-031]
+solid-description: Contract for resolving the client, plugin, package, and legacy workflow catalog roots.
 """
 
 from __future__ import annotations

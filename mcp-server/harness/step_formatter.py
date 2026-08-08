@@ -1,7 +1,7 @@
 """
 solid-name: StepFormatter
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Transforms step information into formatted text for the calling agent.
 """
 

@@ -11,8 +11,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.models import FlowValidationError
+from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.path_builder import PathBuilder
 from harness.prompt_content_resolver import PromptContentResolver
+from harness.prompt_file_loader import PromptFileLoader
+from harness.prompt_file_path_resolver import PromptFilePathResolver
+from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 
 
 class StubTextFileReader:
@@ -23,13 +29,22 @@ class StubTextFileReader:
         return self._contents.get(str(path))
 
 
+def _make_resolver(reader: StubTextFileReader) -> PromptContentResolver:
+    error_factory = FlowValidationErrorFactory()
+    resource_path_resolver = WorkflowResourcePathResolver(WorkflowPackageRootLocator())
+    return PromptContentResolver(
+        path_resolver=PromptFilePathResolver(PathBuilder(), resource_path_resolver),
+        prompt_loader=PromptFileLoader(reader, error_factory),
+    )
+
+
 class TestPromptContentResolver(unittest.TestCase):
 
     def test_resolves_prompt_file_relative_to_flow_file(self):
         flow_path = "/flows/my_flow.yaml"
         prompt_path = str(Path("/flows/prompt.md"))
         reader = StubTextFileReader({prompt_path: "Do the thing"})
-        sut = PromptContentResolver(reader=reader)
+        sut = _make_resolver(reader)
 
         resolved = sut.resolve({"id": "step_a", "prompt_file": "prompt.md"}, flow_path)
 
@@ -39,14 +54,14 @@ class TestPromptContentResolver(unittest.TestCase):
         flow_path = "/flows/my_flow.yaml"
         prompt_path = str(Path("/flows/prompt.md"))
         reader = StubTextFileReader({prompt_path: "Do the thing"})
-        sut = PromptContentResolver(reader=reader)
+        sut = _make_resolver(reader)
 
         resolved = sut.resolve({"id": "step_a", "prompt_file": "prompt.md"}, flow_path)
 
         self.assertNotIn("prompt_file", resolved)
 
     def test_leaves_inline_prompt_unchanged_when_no_prompt_file(self):
-        sut = PromptContentResolver(reader=StubTextFileReader({}))
+        sut = _make_resolver(StubTextFileReader({}))
         step = {"id": "step_a", "prompt": "inline text"}
 
         resolved = sut.resolve(step, "/flows/my_flow.yaml")
@@ -54,7 +69,7 @@ class TestPromptContentResolver(unittest.TestCase):
         self.assertEqual(resolved["prompt"], "inline text")
 
     def test_raises_when_prompt_file_does_not_resolve(self):
-        sut = PromptContentResolver(reader=StubTextFileReader({}))
+        sut = _make_resolver(StubTextFileReader({}))
 
         with self.assertRaises(FlowValidationError) as ctx:
             sut.resolve({"id": "step_a", "prompt_file": "missing.md"}, "/flows/my_flow.yaml")

@@ -1,7 +1,7 @@
 """
 solid-name: test_startup_context_resolver
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests gathering base run directory and search paths into one context.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: FlowInitializing
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for initializing a flow with specified parameters and isolation configuration.
 """
 

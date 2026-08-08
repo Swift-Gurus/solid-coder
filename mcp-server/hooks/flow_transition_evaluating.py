@@ -1,7 +1,7 @@
 """
 solid-name: FlowTransitionGate
 solid-category: service
-solid-spec: [SPEC-014]
+solid-spec: [SPEC-032]
 solid-description: Blocks turn endings while a flow run has pending steps.
 solid-tags: [hook]
 """

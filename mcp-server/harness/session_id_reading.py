@@ -1,7 +1,7 @@
 """
 solid-name: SessionIdReading
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for reading a session identifier from the current request context.
 """
 

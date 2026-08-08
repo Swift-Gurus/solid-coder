@@ -1,7 +1,7 @@
 """
 solid-name: test_active_run_lock_clearer
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests clearing a stuck run's lock after confirming the caller named the exact run holding it.
 """
 

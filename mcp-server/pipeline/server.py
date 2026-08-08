@@ -7,14 +7,13 @@ Architecture:
   main()                  — Entry point; calls the factory and runs.
 """
 
-import dataclasses
 import importlib
 import json
 import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, Protocol
+from typing import Optional
 
 SERVER_DIR = Path(__file__).resolve().parent
 MCP_DIR = SERVER_DIR.parent
@@ -29,53 +28,28 @@ sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
 from mcp_server_factory import MCPServerFactory
+from message_transport_running import MessageTransportRunning
 from pipeline.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
 from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from pipeline.handlers import ReviewResultsCollector, make_review_results_collector
 from pipeline.interfaces import ReviewResultsCollecting
 from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
+from findings.gateway_handler import GatewayHandling
 from common.mcp_meta import LARGE_OUTPUT
 from harness.flow_result_json_renderer import FlowResultJsonRenderer
 from harness.flow_result_rendering import FlowResultRendering
 from harness.flow_result_renderer import FlowResultRenderer
 from harness.flow_result_renderer_selector import FlowResultRendererSelector
 from harness.flow_run_orchestrating import FlowRunOrchestrating
+from health.dry_search_service_factory import DrySearchServiceFactory
+from pipeline.check_severity_running import CheckSeverityRunning
+from pipeline.context_loading import ContextLoading
+from pipeline.flow_tool_callables_assembler import FlowToolCallablesAssembler
 from pipeline.output_path_factory import OutputPathFactory
-
-
-# ── Service protocols ─────────────────────────────────────────────────────────
-
-class CheckSeverityRunning(Protocol):
-    def check_severity(self, output_root: str) -> dict: ...
-
-
-class ContextLoading(Protocol):
-    def load_context(self, output_root: str) -> dict: ...
-
-
-class OutputValidating(Protocol):
-    def validate_json(self, json_path: str, schema_path: str) -> dict: ...
-
-
-class CodebaseSearching(Protocol):
-    def search(
-        self,
-        sources_dir: Optional[str] = None,
-        plan_path: Optional[str] = None,
-        tags: Optional[list] = None,
-        spec_numbers: Optional[list] = None,
-        min_matches: int = 3,
-    ) -> Any: ...
-
-
-class GatewayHandling(Protocol):
-    def submit_findings(self, partial_output: dict, output_path: str) -> dict: ...
-    def submit_batch_findings(self, output_dir: str, submissions: dict) -> dict: ...
-    def submit_fix(self, output_dir: str, fixes: list) -> dict: ...
-
-
-class MCPServerRunning(Protocol):
-    def run(self) -> None: ...
+from pipeline.output_validating import OutputValidating
+from pipeline.pipeline_tool_callables_assembler import PipelineToolCallablesAssembler
+from pipeline.tool_callables_building import ToolCallablesBuilding
+from search.tag_codebase_searching import TagCodebaseSearching
 
 
 # ── Path provider ─────────────────────────────────────────────────────────────
@@ -94,129 +68,13 @@ def get_output_path(operation: str, spec_number: str = "") -> dict:
     return OutputPathFactory().compute(operation, spec_number)
 
 
-# ── Shared tool callables ─────────────────────────────────────────────────────
-
-def _build_tool_callables(
-    runner: SkillRunning,
-    fmt: ResultFormatting,
-    search: CodebaseSearching,
-    check_sev: CheckSeverityRunning,
-    ctx: ContextLoading,
-    validate: OutputValidating,
-    gw: GatewayHandling,
-    collector: ReviewResultsCollecting,
-) -> dict:
-    """Build the complete pipeline tool callable dict.
-
-    Single source of truth for tool implementations. Used by both
-    ApplicationBootstrapper (MCP registration) and get_pipeline_tools (CLI access).
-    """
-
-    def _prepare_input(candidate_tags=None):
-        ok, out, err = runner.execute("prepare-review-input", "prepare-changes.py", [])
-        if not ok:
-            return {"error": err}
-        try:
-            data = json.loads(out)
-            data["candidate_tags"] = candidate_tags or []
-            return data
-        except json.JSONDecodeError:
-            return {"error": f"Could not parse script output: {out}"}
-
-    def _run_and_format(skill: str, script: str, args: list, build_extra) -> dict:
-        """Runs a skill script and formats the result, delegating tool-specific
-        extra fields to build_extra(ok, out, err)."""
-        ok, out, err = runner.execute(skill, script, args)
-        extra = build_extra(ok, out, err)
-        return fmt.format(ok, err, **extra)
-
-    def _split_plan(plan_path, output_dir, arch_path=None):
-        args = [plan_path, "--output-dir", output_dir]
-        if arch_path:
-            args += ["--arch", arch_path]
-
-        def _extra(ok, out, err):
-            chunks = sorted(Path(output_dir).glob("*.json")) if ok else []
-            return {"success": ok, "chunks": [str(c) for c in chunks], "count": len(chunks)}
-
-        return _run_and_format("synthesize-implementation", "split-plan.py", args, _extra)
-
-    def _generate_report(data_dir, report_dir=None):
-        report_dir = report_dir or data_dir
-
-        def _extra(ok, out, err):
-            md = str(Path(report_dir) / "report.md") if ok else None
-            html = str(Path(report_dir) / "report.html") if ok else None
-            return {"success": ok, "md_path": md, "html_path": html}
-
-        return _run_and_format("generate-report", "generate-report.py", [data_dir, report_dir], _extra)
-
-    def _validate_arch(arch_path):
-        schema = str(SKILLS_ROOT / "plan" / "arch.schema.json")
-        return _run_and_format(
-            "plan", "validate-arch.py", [arch_path, "--schema", schema],
-            lambda ok, out, err: {"valid": ok, "output": out, "errors": err if not ok else None},
-        )
-
-    def _validate_findings(output_root):
-        return _run_and_format(
-            "validate-findings", "validate-findings.py", [output_root, str(PLUGIN_ROOT)],
-            lambda ok, out, err: {"success": ok, "output": out},
-        )
-
-    def _search_fn(sources_dir=None, plan_path=None, tags=None, spec_numbers=None, min_matches=3):
-        return search.search(
-            sources_dir=sources_dir, plan_path=plan_path, tags=tags,
-            spec_numbers=spec_numbers, min_matches=min_matches,
-        )
-
-    return {
-        "collect_review_results": collector.collect,
-        "check_severity": check_sev.check_severity,
-        "validate_findings": _validate_findings,
-        "load_synthesis_context": ctx.load_context,
-        "generate_report": _generate_report,
-        "validate_architecture": _validate_arch,
-        "split_implementation_plan": _split_plan,
-        "search_codebase": _search_fn,
-        "prepare_review_input": _prepare_input,
-        "validate_phase_output": validate.validate_json,
-        "submit_findings": gw.submit_findings,
-        "submit_batch_findings": gw.submit_batch_findings,
-        "submit_fix": gw.submit_fix,
-        "get_output_path": get_output_path,
-    }
-
-
-def _build_flow_callables(
-    flow_run: FlowRunOrchestrating,
-    result_renderer: Optional[FlowResultRendering] = None,
-) -> dict:
-    """Build flow tool callables that delegate to FlowRunOrchestrating."""
-    renderer = result_renderer or FlowResultRenderer()
-
-    def _flow_start(flow: str, params: Optional[dict] = None, isolated: bool = False) -> str:
-        return renderer.render_start(flow_run.flow_start(flow, params, isolated))
-
-    def _flow_next(outputs: Optional[dict] = None, run_id: Optional[str] = None) -> str:
-        return renderer.render_next(flow_run.flow_next(outputs, run_id))
-
-    def _flow_status(run_id: Optional[str] = None) -> dict:
-        return dataclasses.asdict(flow_run.flow_status(run_id))
-
-    def _flow_clear_lock(run_id: str) -> str:
-        return flow_run.flow_clear_lock(run_id)
-
-    return {
-        "flow_start": _flow_start,
-        "flow_next": _flow_next,
-        "flow_status": _flow_status,
-        "flow_clear_lock": _flow_clear_lock,
-    }
-
-
 # ── Application facade ────────────────────────────────────────────────────────
 
+"""
+solid-name: ApplicationBootstrapper
+solid-category: service
+solid-description: Bootstraps and runs the pipeline tool application.
+"""
 class ApplicationBootstrapper:
     """Wires pipeline services into MCP tools and runs the server.
 
@@ -227,31 +85,15 @@ class ApplicationBootstrapper:
 
     def __init__(
         self,
-        server: MCPServerRunning,
+        server: MessageTransportRunning,
         registry: ToolRegistering,
-        skill_runner: SkillRunning,
-        result_fmt: ResultFormatting,
-        collector: ReviewResultsCollecting,
-        gateway: GatewayHandling,
-        check_severity: CheckSeverityRunning,
-        load_context: ContextLoading,
-        validate_output: OutputValidating,
-        search: CodebaseSearching,
-        flow_run: Optional[FlowRunOrchestrating] = None,
-        flow_result_renderer: Optional[FlowResultRendering] = None,
+        tool_callables: ToolCallablesBuilding,
+        flow_callables: Optional[ToolCallablesBuilding] = None,
     ) -> None:
         self._server = server
         self._registry = registry
-        self._runner = skill_runner
-        self._fmt = result_fmt
-        self._collector = collector
-        self._gw = gateway
-        self._check_sev = check_severity
-        self._ctx = load_context
-        self._validate = validate_output
-        self._search = search
-        self._flow_run = flow_run
-        self._flow_result_renderer = flow_result_renderer
+        self._tool_callables = tool_callables
+        self._flow_callables = flow_callables
 
     def run(self) -> None:
         self._register_all_tools()
@@ -259,11 +101,7 @@ class ApplicationBootstrapper:
 
     def _register_all_tools(self) -> None:
         reg = self._registry
-        tools = _build_tool_callables(
-            self._runner, self._fmt, self._search,
-            self._check_sev, self._ctx, self._validate,
-            self._gw, self._collector,
-        )
+        tools = self._tool_callables.build()
 
         reg.register("collect_review_results",
                      "Collect and summarise all review outputs. Returns verdict (ALL_COMPLIANT|MINOR_ONLY|HAS_SEVERE), summary table, and minor_findings.",
@@ -308,13 +146,28 @@ class ApplicationBootstrapper:
                      tools["split_implementation_plan"])
 
         reg.register("search_codebase",
-                     "Search the codebase for reusable types and existing implementations by solid-frontmatter tags.",
+                     "Search for reusable implementations and record successful health-check DRY-search completion.",
                      {"type": "object", "properties": {
                          "sources_dir": {"type": "string"},
                          "plan_path": {"type": "string"},
-                         "tags": {"type": "array", "items": {"type": "string"}},
+                         "query": {
+                             "type": "string",
+                             "description": "Space-separated type-name, responsibility, and synonym terms.",
+                         },
+                         "tags": {
+                             "type": "array",
+                             "items": {"type": "string"},
+                             "description": (
+                                 "Each array item MUST be exactly one search term containing no spaces. "
+                                 "Never put an aggregated query in tags; use query for space-separated input."
+                             ),
+                         },
                          "spec_numbers": {"type": "array", "items": {"type": "string"}},
                          "min_matches": {"type": "integer"},
+                         "output_dir": {
+                             "type": "string",
+                             "description": "Required during health checks; use the output_dir from the prompt.",
+                         },
                      }, "required": []},
                      tools["search_codebase"], meta=LARGE_OUTPUT)
 
@@ -397,7 +250,7 @@ class ApplicationBootstrapper:
                          "json_path": {"type": "string"},
                          "schema_path": {"type": "string"},
                      }, "required": ["json_path", "schema_path"]},
-                     self._validate.validate_json)
+                     tools["validate_phase_output"])
 
         reg.register("get_output_path",
                      "Compute the standardized home-dir output path for a solid-coder operation. "
@@ -408,11 +261,13 @@ class ApplicationBootstrapper:
                      }, "required": ["operation"]},
                      tools["get_output_path"])
 
-        if self._flow_run is not None:
-            self._register_flow_tools(self._flow_run)
+        if self._flow_callables is not None:
+            self._register_flow_tools()
 
-    def _register_flow_tools(self, flow_run: FlowRunOrchestrating) -> None:
-        flow_tools = _build_flow_callables(flow_run, self._flow_result_renderer)
+    def _register_flow_tools(self) -> None:
+        if self._flow_callables is None:
+            return
+        flow_tools = self._flow_callables.build()
         reg = self._registry
 
         reg.register(
@@ -543,7 +398,7 @@ class ApplicationBootstrapper:
 # ── Composition root and entry point ─────────────────────────────────────────
 
 def make_bootstrapper(
-    server: Optional[MCPServerRunning] = None,
+    server: Optional[MessageTransportRunning] = None,
     registry: Optional[ToolRegistering] = None,
     skill_runner: Optional[SkillRunning] = None,
     result_fmt: Optional[ResultFormatting] = None,
@@ -552,7 +407,7 @@ def make_bootstrapper(
     check_severity: Optional[CheckSeverityRunning] = None,
     load_context: Optional[ContextLoading] = None,
     validate_output: Optional[OutputValidating] = None,
-    search: Optional[CodebaseSearching] = None,
+    search: Optional[TagCodebaseSearching] = None,
     refs_root: Path = PLUGIN_ROOT / "references",
     flow_run: Optional[FlowRunOrchestrating] = None,
     flow_result_renderer: Optional[FlowResultRendering] = None,
@@ -580,19 +435,41 @@ def make_bootstrapper(
         )
         flow_result_renderer = selector.select(load_config().feature_flags.flow_plain_text_response)
 
+    runner_service = skill_runner or SkillRunner(SKILLS_ROOT)
+    formatter_service = result_fmt or SkillResultFormatter()
+    collector_service = collector or make_review_results_collector()
+    gateway_service = gateway or _make_gw_pipeline(
+        refs_root,
+        DrySearchServiceFactory(),
+    )
+    check_severity_service = check_severity or importlib.import_module("check-severity")
+    context_service = load_context or importlib.import_module("load-context")
+    validation_service = validate_output or importlib.import_module("validate-output")
+    search_service = search or importlib.import_module("search.codebase_searcher")
+    tool_callables = PipelineToolCallablesAssembler(
+        runner=runner_service,
+        formatter=formatter_service,
+        dry_search=DrySearchServiceFactory().make_search(search_service),
+        collect_review_results=collector_service.collect,
+        check_severity=check_severity_service.check_severity,
+        load_context=context_service.load_context,
+        validate_json=validation_service.validate_json,
+        submit_findings=gateway_service.submit_findings,
+        submit_batch_findings=gateway_service.submit_batch_findings,
+        submit_fix=gateway_service.submit_fix,
+        output_path=OutputPathFactory(),
+        skills_root=SKILLS_ROOT,
+        plugin_root=PLUGIN_ROOT,
+    )
+
     return ApplicationBootstrapper(
         server=mcp,
         registry=registry or ToolRegistry(mcp),
-        skill_runner=skill_runner or SkillRunner(SKILLS_ROOT),
-        result_fmt=result_fmt or SkillResultFormatter(),
-        collector=collector or make_review_results_collector(),
-        gateway=gateway or _make_gw_pipeline(refs_root),
-        check_severity=check_severity or importlib.import_module("check-severity"),
-        load_context=load_context or importlib.import_module("load-context"),
-        validate_output=validate_output or importlib.import_module("validate-output"),
-        search=search or importlib.import_module("search.codebase_searcher"),
-        flow_run=flow_run,
-        flow_result_renderer=flow_result_renderer,
+        tool_callables=tool_callables,
+        flow_callables=FlowToolCallablesAssembler(
+            flow_run=flow_run,
+            result_renderer=flow_result_renderer,
+        ),
     )
 
 
@@ -601,12 +478,8 @@ def get_pipeline_tools() -> dict:
 
     Delegates to make_bootstrapper to avoid duplicating construction logic.
     """
-    b = make_bootstrapper()
-    return _build_tool_callables(
-        b._runner, b._fmt, b._search,
-        b._check_sev, b._ctx, b._validate,
-        b._gw, b._collector,
-    )
+    bootstrapper = make_bootstrapper()
+    return bootstrapper._tool_callables.build()
 
 
 def main() -> None:

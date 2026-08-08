@@ -14,65 +14,63 @@ for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
+from codex_command_executor import CodexCommandExecutor  # noqa: E402
 from codex_command_builder import CodexCommandBuilder  # noqa: E402
-from codex_profile_manager import CodexProfileManager  # noqa: E402
+from codex_execution_validator import CodexExecutionValidator  # noqa: E402
+from codex_mcp_config_argument_builder import CodexMcpConfigArgumentBuilder  # noqa: E402
+from codex_prompt_artifact_user import CodexPromptArtifactUser  # noqa: E402
+from codex_prompt_executing import CodexPromptExecuting  # noqa: E402
+from codex_prompt_executor import CodexPromptExecutor  # noqa: E402
 from codex_temp_file_manager import CodexTempFileManager  # noqa: E402
-from hook_utils import SubprocessError, SubprocessRunning, SubprocessAdapter  # noqa: E402
+from hook_utils import SubprocessAdapter  # noqa: E402
+from llama.json_deserializer import JsonDeserializer  # noqa: E402
+from llama.json_serializer import JsonSerializer  # noqa: E402
+from subprocess_error_factory import SubprocessErrorFactory  # noqa: E402
 
 
-class CommandBuilding(Protocol):
-    def build(self, result_path: Path) -> list: ...
-
-
-class TempFileManaging(Protocol):
-    def write_prompt(self, prompt: str) -> Path: ...
-    def result_path(self) -> Path: ...
-    def prompt_stdin(self, path: Path): ...
-    def read_result(self, path: Path) -> Optional[str]: ...
-    def cleanup(self, *paths: Path) -> None: ...
-
-
+"""
+solid-name: CodexRunner
+solid-category: service
+solid-description: Delegates prompt execution to a configured Codex execution service.
+"""
 class CodexRunner:
     """Facade: all stored properties are protocol-typed; run() is pure delegation."""
 
     def __init__(
         self,
-        cmd_builder: CommandBuilding,
-        temp_files: TempFileManaging,
-        subprocess_runner: SubprocessRunning,
-        cwd: str = "",
+        prompt_executor: CodexPromptExecuting,
     ) -> None:
-        self._cmd_builder = cmd_builder
-        self._temp_files = temp_files
-        self._runner = subprocess_runner
-        self._cwd = cwd
+        self._prompt_executor = prompt_executor
 
     def run(self, prompt: str, timeout: int) -> Optional[str]:
-        result_path = self._temp_files.result_path()
-        prompt_path = self._temp_files.write_prompt(prompt)
-        try:
-            cmd = self._cmd_builder.build(result_path)
-            with self._temp_files.prompt_stdin(prompt_path) as pf:
-                ok, stdout, stderr = self._runner.run(cmd, timeout=timeout, stdin=pf, cwd=self._cwd or None)
-            if not ok:
-                detail = stderr[:300] or stdout[:300]
-                raise SubprocessError(f"`codex exec` exited with error: {detail}")
-            return self._temp_files.read_result(result_path)
-        finally:
-            self._temp_files.cleanup(result_path, prompt_path)
+        return self._prompt_executor.execute(prompt, timeout)
 
 
 def make_codex_runner(
     model: str = "",
     timeout: int = 300,
-    codex_home: str = "",
     cwd: str = "",
+    mcp_config: str = "",
 ) -> CodexRunner:
-    """Return a CodexRunner with the health-check profile written to the user's CODEX_HOME."""
-    profile_name = CodexProfileManager(codex_home=codex_home).ensure_profile()
+    """Return a CodexRunner configured with isolated inline health-session servers."""
+    temp_files = CodexTempFileManager()
     return CodexRunner(
-        cmd_builder=CodexCommandBuilder(model=model, profile_name=profile_name),
-        temp_files=CodexTempFileManager(),
-        subprocess_runner=SubprocessAdapter(),
-        cwd=cwd,
+        prompt_executor=CodexPromptExecutor(
+            command_builder=CodexCommandBuilder(
+                model=model,
+                mcp_config=mcp_config,
+                config_argument_builder=CodexMcpConfigArgumentBuilder(
+                    deserializer=JsonDeserializer(),
+                    serializer=JsonSerializer(),
+                ),
+            ),
+            artifact_user=CodexPromptArtifactUser(prompt_session=temp_files),
+            command_executor=CodexCommandExecutor(
+                subprocess_runner=SubprocessAdapter(),
+                execution_validator=CodexExecutionValidator(
+                    error_factory=SubprocessErrorFactory(),
+                ),
+            ),
+            cwd=cwd,
+        ),
     )

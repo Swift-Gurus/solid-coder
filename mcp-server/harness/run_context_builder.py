@@ -1,7 +1,7 @@
 """
 solid-name: RunContextBuilder
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Assembles run parameters and run state data into a context dictionary.
 """
 

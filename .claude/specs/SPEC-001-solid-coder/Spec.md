@@ -2,7 +2,7 @@
 number: SPEC-001
 feature: solid-coder
 type: epic
-status: ready
+status: in-progress
 blocked-by: []
 blocking: []
 ---
@@ -153,6 +153,7 @@ flowchart LR
 | 4 | review | done | Read-only SOLID analysis with HTML report |
 | 5 | refactor | done | Full review + fix + implement + iterate loop |
 | 6 | code | done | Write SOLID-compliant code with principle constraints |
+| 7 | packaged workflows | ready | Discoverable client workflow packages plus bundled review, gate-on-write, and refactor flows |
 
 ## Definition of Done
 
@@ -166,3 +167,5 @@ flowchart LR
 - [x] Iteration loop with configurable max iterations
 - [x] Delta-aware review (changed ranges filtering)
 - [ ] build-spec-from-code skill — analyze existing code, produce rewrite spec with subtasks
+- [ ] Workflow package discovery and stable ID-based composition — SPEC-035
+- [ ] Bundled `solid-review`, `solid-gate-on-write`, and `solid-refactor` workflows — SPEC-036

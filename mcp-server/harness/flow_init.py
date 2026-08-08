@@ -1,7 +1,7 @@
 """
 solid-name: FlowInit
 solid-category: model
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Encapsulates everything a newly initialized flow run needs before its first step executes.
 """
 

@@ -1,7 +1,7 @@
 """
 solid-name: test_active_run_location_assembler
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests building an ActiveRunLocation from a run's identity and directories.
 """
 

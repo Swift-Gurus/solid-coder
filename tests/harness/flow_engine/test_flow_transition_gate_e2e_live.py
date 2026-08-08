@@ -15,7 +15,6 @@ snapshot that does not see uncommitted work in this working tree.
 from __future__ import annotations
 
 import json
-import os
 import sys
 import tempfile
 import textwrap
@@ -25,13 +24,18 @@ from pathlib import Path
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 _MCP_HEALTH_CONFIG = _MCP_SERVER / "health" / "config"
 _TEST_DIR = Path(__file__).resolve().parent
-for _d in (_MCP_SERVER, _MCP_HEALTH_CONFIG, _TEST_DIR):
+_HARNESS_DIR = _TEST_DIR.parent
+for _d in (_MCP_SERVER, _MCP_HEALTH_CONFIG, _TEST_DIR, _HARNESS_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
+from claude_test_base import ClaudeTestBase  # noqa: E402
+from harness_factory import HookUtilsTomlLoader  # noqa: E402
 from hook_utils import solid_coder_project_dir  # noqa: E402
+from live_session_request import LiveSessionRequest  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
-from test_flow_e2e_live import _run_claude_non_bare, _spawned_by_header  # noqa: E402
+from model_profile_environment import model_profile_environment  # noqa: E402
+from model_profile_loader import ModelProfileLoader  # noqa: E402
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 # --plugin-dir registers the MCP server under a plugin-prefixed name
@@ -64,8 +68,9 @@ def _summarize_transcript(raw_stdout: str) -> str:
 
 
 def _build_prompt(flow_file: Path, parent_session_id: str) -> str:
+    spawned_by_header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
     return (
-        f'{_spawned_by_header(parent_session_id)}'
+        f'{spawned_by_header}'
         f'Call flow_start with flow="{flow_file}". Submit the output for the first step you are '
         "given via flow_next. Then, as a deliberate test of stop-time enforcement, try to end "
         "your turn immediately with a short closing message without submitting the second step. "
@@ -75,7 +80,7 @@ def _build_prompt(flow_file: Path, parent_session_id: str) -> str:
     )
 
 
-class TestFlowTransitionGateE2ELive(unittest.TestCase):
+class TestFlowTransitionGateE2ELive(ClaudeTestBase, unittest.TestCase):
 
     TIMEOUT = 300
 
@@ -96,16 +101,22 @@ class TestFlowTransitionGateE2ELive(unittest.TestCase):
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
         before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
 
-        parent_session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
-        result = _run_claude_non_bare(
-            prompt=_build_prompt(flow_file, parent_session_id),
+        profile = ModelProfileLoader(
+            project_root=_PROJECT_ROOT,
+            toml_loader=HookUtilsTomlLoader(),
+        ).load(self.MODEL_PROFILE)
+        request = LiveSessionRequest(
+            prompt=_build_prompt(flow_file, self.parent_session_id),
+            project_root=_PROJECT_ROOT,
+            plugin_root=_PROJECT_ROOT,
+            model=profile.llm["model"],
+            timeout=profile.llm["timeout"],
             allowed_tools=_ALLOWED_TOOLS,
             mcp_config=build_mcp_config(_PROJECT_ROOT),
-            timeout=self.TIMEOUT,
-            cwd=str(_PROJECT_ROOT),
-            plugin_dir=str(_PROJECT_ROOT),
         )
-        transcript = _summarize_transcript(result.stdout)
+        with model_profile_environment(profile.profile_path):
+            session_result = self.live_session_runner().run(request)
+        transcript = _summarize_transcript(session_result.final_output)
 
         after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
         new_logs = after - before

@@ -1,7 +1,7 @@
 """
 solid-name: RunsBaseDirResolver
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Resolves the base directory path where flow runs are stored for the current project.
 """
 

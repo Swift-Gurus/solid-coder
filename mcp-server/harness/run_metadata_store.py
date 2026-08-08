@@ -1,7 +1,7 @@
 """
 solid-name: RunMetadataStore
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Provides persistent storage and retrieval of run metadata.
 """
 

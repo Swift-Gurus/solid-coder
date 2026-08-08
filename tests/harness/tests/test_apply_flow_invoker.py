@@ -8,6 +8,7 @@ solid-description: Verifies that the review-apply flow runs a review session, su
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,7 +23,16 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
 
-from apply_flow_invoker import ApplyFlowInvoker, ClaudeReviewSessionRunner, FindingsReader, ReasoningWriter, ReviewArtifactHandler, ReviewInputBuilder  # noqa: E402
+from apply_flow_invoker import (  # noqa: E402
+    ApplyFlowInvoker,
+    ClaudeReviewSessionRunner,
+    ConfiguredReviewSessionRunner,
+    FindingsReader,
+    ReasoningWriter,
+    ReviewArtifactHandler,
+    ReviewInputBuilder,
+    _review_profile_environment,
+)
 from test_fixtures import _make_output_paths, _make_profile  # noqa: E402
 
 
@@ -82,6 +92,71 @@ class TestClaudeReviewSessionRunner(unittest.TestCase):
             runner.execute(self._principle, Path("/input.json"), Path("/output"), timeout=30)
             args = mock_build.call_args
             self.assertEqual(args.kwargs.get("principle_folder", args.args[1] if len(args.args) > 1 else None), self._principle)
+
+
+class TestConfiguredReviewSessionRunner(unittest.TestCase):
+    def setUp(self) -> None:
+        self._root = Path("/fake/project")
+        self._principle = self._root / "references/principles/SRP"
+
+    def test_uses_selected_backend_runner_with_mcp_config_and_timeout(self):
+        backend_runner = MagicMock()
+        backend_runner.run.return_value = "session output"
+        runner_factory = MagicMock(return_value=backend_runner)
+        mcp_builder = _make_mcp_builder("my_config")
+        sut = ConfiguredReviewSessionRunner(self._root, mcp_builder, runner_factory)
+
+        with patch("apply_flow_invoker._build_skill_prompt", return_value="review prompt"):
+            result = sut.execute(self._principle, Path("/input.json"), Path("/output"), timeout=1000)
+
+        runner_factory.assert_called_once_with(
+            mcp_config="my_config",
+            allowed_tools=unittest.mock.ANY,
+            cwd=str(self._root),
+        )
+        backend_runner.run.assert_called_once_with("review prompt", timeout=1000)
+        self.assertEqual(result, "session output")
+
+    def test_codex_profile_builds_terra_codex_runner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "codex.toml"
+            profile.write_text(
+                '[llm]\nbackend = "codex"\nmodel = "gpt-5.6-terra"\ntimeout = 1000\n',
+                encoding="utf-8",
+            )
+            codex_runner = MagicMock()
+            codex_runner.run.return_value = "done"
+            sut = ConfiguredReviewSessionRunner(self._root, _make_mcp_builder())
+
+            with _review_profile_environment(profile), \
+                 patch("apply_flow_invoker._build_skill_prompt", return_value="review prompt"), \
+                 patch("hc_codex_runner.make_codex_runner", return_value=codex_runner) as factory:
+                result = sut.execute(
+                    self._principle, Path("/input.json"), Path("/output"), timeout=1000
+                )
+
+        factory.assert_called_once_with(
+            model="gpt-5.6-terra",
+            timeout=1000,
+            cwd=str(self._root),
+            mcp_config='{"mcpServers": {}}',
+        )
+        codex_runner.run.assert_called_once_with("review prompt", timeout=1000)
+        self.assertEqual(result, "done")
+
+
+class TestReviewProfileEnvironment(unittest.TestCase):
+    def test_sets_profile_and_review_type_then_restores_previous_environment(self):
+        profile = Path("/tmp/codex.toml")
+        before_profile = os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE")
+        before_type = os.environ.get("SOLID_CODER_SESSION_TYPE")
+
+        with _review_profile_environment(profile):
+            self.assertEqual(os.environ["SOLID_CODER_TEST_MODEL_PROFILE"], str(profile))
+            self.assertEqual(os.environ["SOLID_CODER_SESSION_TYPE"], "review")
+
+        self.assertEqual(os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE"), before_profile)
+        self.assertEqual(os.environ.get("SOLID_CODER_SESSION_TYPE"), before_type)
 
 
 class TestApplyFlowInvokerInvoke(unittest.TestCase):

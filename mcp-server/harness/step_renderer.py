@@ -1,7 +1,7 @@
 """
 solid-name: StepRenderer
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Renders step results into the plain text the calling agent sees.
 """
 

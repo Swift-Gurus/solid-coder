@@ -2,7 +2,7 @@
 number: SPEC-015
 feature: srp-fixtures
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-013
 blocked-by: [SPEC-014]
 blocking: []
@@ -67,8 +67,8 @@ graph LR
 
 ## Definition of Done
 
-- [ ] `tests/principles/SRP/fixtures/fixture-1.swift` — 2-cohesion-group class, no violation hints
-- [ ] `tests/principles/SRP/fixtures/fixture-2.swift` — single-concern class, no violation hints
-- [ ] `tests/principles/SRP/expectations/fixture-1.json` — SRP-2 SEVERE finding with metrics
-- [ ] `tests/principles/SRP/expectations/fixture-2.json` — empty findings
+- [x] `tests/principles/SRP/fixtures/fixture-1.swift` — 2-cohesion-group class, no violation hints
+- [x] `tests/principles/SRP/fixtures/fixture-2.swift` — single-concern class, no violation hints
+- [x] `tests/principles/SRP/expectations/fixture-1.json` — SRP-2 SEVERE finding with metrics
+- [x] `tests/principles/SRP/expectations/fixture-2.json` — empty findings
 - [ ] `run_principle_tests.py --principle references/principles/SRP` exits 0

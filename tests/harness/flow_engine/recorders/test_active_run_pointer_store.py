@@ -1,7 +1,7 @@
 """
 solid-name: test_active_run_pointer_store
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Validates atomic write, read, and delete operations on active run pointers.
 """
 

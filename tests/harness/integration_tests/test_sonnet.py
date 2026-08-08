@@ -17,10 +17,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from claude_test_base import ClaudeTestBase  # noqa: E402
 from integration_tests.base import IntegrationTestBase  # noqa: E402
 
 
-class TestSonnetPrincipleReview(IntegrationTestBase):
+class TestSonnetPrincipleReview(ClaudeTestBase, IntegrationTestBase):
     """Principle review integration tests using claude-sonnet-4-6.
 
     Sonnet balances capability and speed — use it as a realistic

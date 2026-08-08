@@ -1,7 +1,7 @@
 """
 solid-name: RunMetadataPersisting
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for persisting and retrieving run metadata across execution steps.
 """
 

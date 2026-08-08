@@ -1,7 +1,7 @@
 """
 solid-name: test_step_renderer
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests coordinating subagent wrapping and formatting to render step results.
 """
 

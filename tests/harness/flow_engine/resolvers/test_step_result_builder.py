@@ -1,7 +1,7 @@
 """
 solid-name: test_step_result_builder
 solid-category: unit-test
-solid-spec: [SPEC-013, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027]
 solid-description: Tests converting step instances to step results with resolved execution mode and rejection reason.
 """
 

@@ -11,8 +11,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.include_cycle_guard import IncludeCycleGuard
 from harness.include_resolver import IncludeResolver
-from harness.models import FlowValidationError
+from harness.include_source_resolver import IncludeSourceResolver
+from harness.include_source_factory import IncludeSourceFactory
+from harness.inline_group_source_resolver import InlineGroupSourceResolver
+from harness.path_builder import PathBuilder
+from harness.path_include_source_resolver import PathIncludeSourceResolver
+from harness.step_declaring_file_resolver import StepDeclaringFileResolver
+from harness.step_qualifier import StepQualifier
+from harness.step_source_annotator import StepSourceAnnotator
+from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 
 
 class StubFileLoader:
@@ -23,12 +35,38 @@ class StubFileLoader:
         return self._files.get(str(path))
 
 
+def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
+    error_factory = FlowValidationErrorFactory()
+    source_annotator = StepSourceAnnotator()
+    source_factory = IncludeSourceFactory()
+    resource_path_resolver = WorkflowResourcePathResolver(WorkflowPackageRootLocator())
+    source_resolver = IncludeSourceResolver(
+        resolvers=[
+            PathIncludeSourceResolver(
+                file_loader=loader,
+                declaring_file_resolver=StepDeclaringFileResolver(PathBuilder()),
+                resource_path_resolver=resource_path_resolver,
+                source_annotator=source_annotator,
+                error_factory=error_factory,
+                source_factory=source_factory,
+            ),
+            InlineGroupSourceResolver(source_annotator, error_factory, source_factory),
+        ],
+        error_factory=error_factory,
+    )
+    return IncludeResolver(
+        source_resolver=source_resolver,
+        cycle_guard=IncludeCycleGuard(error_factory),
+        step_qualifier=StepQualifier(),
+    )
+
+
 class TestIncludeResolver(unittest.TestCase):
 
     def test_qualifies_included_step_ids_with_alias(self):
         sub_flow_path = str(Path("/flows/sub.yaml"))
         loader = StubFileLoader({sub_flow_path: {"steps": [{"id": "step_a", "prompt": "p"}]}})
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         result = sut.resolve([{"include": "sub.yaml", "as": "foo"}], "/flows/parent.yaml")
 
@@ -38,7 +76,7 @@ class TestIncludeResolver(unittest.TestCase):
     def test_includes_same_sub_flow_twice_under_distinct_aliases_without_collision(self):
         sub_flow_path = str(Path("/flows/sub.yaml"))
         loader = StubFileLoader({sub_flow_path: {"steps": [{"id": "step_a", "prompt": "p"}]}})
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         result = sut.resolve(
             [
@@ -57,7 +95,7 @@ class TestIncludeResolver(unittest.TestCase):
             {"id": "step_a", "prompt": "p"},
             {"id": "step_b", "prompt": "p", "depends_on": ["step_a"]},
         ]}})
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         result = sut.resolve([{"include": "sub.yaml", "as": "foo"}], "/flows/parent.yaml")
 
@@ -66,14 +104,14 @@ class TestIncludeResolver(unittest.TestCase):
 
     def test_leaves_top_level_step_depends_on_untouched(self):
         steps = [{"id": "top", "prompt": "p", "depends_on": ["other_top"]}]
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         result = sut.resolve(steps, "/flows/parent.yaml")
 
         self.assertEqual(result.steps, steps)
 
     def test_raises_on_unresolvable_include(self):
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         with self.assertRaises(FlowValidationError):
             sut.resolve([{"include": "missing.yaml", "as": "foo"}], "/flows/parent.yaml")
@@ -85,7 +123,7 @@ class TestIncludeResolver(unittest.TestCase):
             outer_path: {"steps": [{"include": "inner.yaml", "as": "inner"}]},
             inner_path: {"steps": [{"id": "leaf", "prompt": "p"}]},
         })
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         result = sut.resolve([{"include": "outer.yaml", "as": "outer"}], "/flows/parent.yaml")
 
@@ -96,13 +134,13 @@ class TestIncludeResolver(unittest.TestCase):
         loader = StubFileLoader({
             cyclic_path: {"steps": [{"include": "cyclic.yaml", "as": "again"}]},
         })
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         with self.assertRaises(FlowValidationError):
             sut.resolve([{"include": "cyclic.yaml", "as": "first"}], "/flows/parent.yaml")
 
     def test_qualifies_inline_group_step_ids_with_two_steps(self):
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         result = sut.resolve(
             [{"group": "review", "steps": [
@@ -116,7 +154,7 @@ class TestIncludeResolver(unittest.TestCase):
         self.assertEqual(sorted(result.alias_groups["review"]), ["review.approve", "review.draft"])
 
     def test_rewrites_unqualified_sibling_dependency_within_inline_group(self):
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         result = sut.resolve(
             [{"group": "review", "steps": [
@@ -130,7 +168,7 @@ class TestIncludeResolver(unittest.TestCase):
         self.assertEqual(approve["depends_on"], ["review.draft"])
 
     def test_inline_group_leaves_external_dependency_untouched(self):
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         result = sut.resolve(
             [{"group": "review", "steps": [
@@ -143,7 +181,7 @@ class TestIncludeResolver(unittest.TestCase):
         self.assertEqual(draft["depends_on"], ["outside_step"])
 
     def test_raises_on_empty_inline_group_steps(self):
-        sut = IncludeResolver(file_loader=StubFileLoader({}))
+        sut = _make_resolver(StubFileLoader({}))
 
         with self.assertRaises(FlowValidationError):
             sut.resolve([{"group": "review", "steps": []}], "/flows/parent.yaml")
@@ -151,7 +189,7 @@ class TestIncludeResolver(unittest.TestCase):
     def test_inline_group_and_file_include_can_coexist(self):
         sub_flow_path = str(Path("/flows/sub.yaml"))
         loader = StubFileLoader({sub_flow_path: {"steps": [{"id": "step_a", "prompt": "p"}]}})
-        sut = IncludeResolver(file_loader=loader)
+        sut = _make_resolver(loader)
 
         result = sut.resolve(
             [

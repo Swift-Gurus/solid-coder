@@ -1,8 +1,4 @@
-"""
-solid-description: Prepares health check configuration and maintains tracking of the active health check.
-solid-category: service
-solid-tags: [hook, utility]
-"""
+"""Coordinates health-check context and active-check tracking."""
 
 import sys
 from pathlib import Path
@@ -12,20 +8,18 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable, Optional
+from typing import Callable
 
-from hook_utils import solid_coder_project_dir
 from health_check_context_writing import HealthCheckContextWriting
-from code_unit_extractor import CodeUnitExtractor, CodeUnitExtracting
-from findings.json_file_writer import JsonFileWriter, JsonFileWriting
-from json_serializer import JsonSerializer
-from llama.directory_creator import PathDirectoryCreator, DirectoryCreating
 from health_check_input_writing import HealthCheckInputWriting
-from health_check_input_writer import HealthCheckInputWriter
 from active_health_check_pointer_storing import ActiveHealthCheckPointerStoring
-from active_health_check_pointer_store import ActiveHealthCheckPointerStore
 
 
+"""
+solid-name: HealthCheckContextWriter
+solid-category: service
+solid-description: Coordinates health-check context persistence and active-check lifecycle tracking.
+"""
 class HealthCheckContextWriter(HealthCheckContextWriting):
     """Facade: coordinates hook-input.json writing and active-health-check pointer lifecycle.
 
@@ -39,17 +33,13 @@ class HealthCheckContextWriter(HealthCheckContextWriting):
 
     def __init__(
         self,
-        project_dir_fn: Optional[Callable] = None,
-        input_writer: Optional[HealthCheckInputWriting] = None,
-        pointer_store: Optional[ActiveHealthCheckPointerStoring] = None,
+        project_dir_fn: Callable,
+        input_writer: HealthCheckInputWriting,
+        pointer_store: ActiveHealthCheckPointerStoring,
     ) -> None:
-        self._project_dir_fn: Callable = project_dir_fn or solid_coder_project_dir
-        self._input_writer: HealthCheckInputWriting = input_writer or HealthCheckInputWriter(
-            extractor=CodeUnitExtractor(),
-            writer=JsonFileWriter(JsonSerializer()),
-            dir_creator=PathDirectoryCreator(),
-        )
-        self._pointer_store: ActiveHealthCheckPointerStoring = pointer_store or ActiveHealthCheckPointerStore()
+        self._project_dir_fn = project_dir_fn
+        self._input_writer = input_writer
+        self._pointer_store = pointer_store
 
     def write(self, output_dir: str, file_path: str, language: str, content: str = "") -> None:
         self._input_writer.write(output_dir, file_path, language, content)

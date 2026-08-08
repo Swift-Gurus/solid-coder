@@ -2,10 +2,10 @@
 number: SPEC-010
 feature: MCP-Driven Flow Orchestration (Harness)
 type: feature
-status: draft
+status: in-progress
 parent:
 blocked-by: []
-blocking: [SPEC-012, SPEC-013, SPEC-014, SPEC-015]
+blocking: [SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-035]
 ---
 
 # MCP-Driven Flow Orchestration (Harness)
@@ -92,13 +92,13 @@ As a developer, when a run is interrupted (context limit, crash, cancel), I want
 
 ### US-6: User-defined custom flows
 
-As a plugin consumer, I want to define my own flows (or override built-in ones) so I can adapt the harness to my project's pipeline without modifying the plugin.
+As a plugin consumer, I want to define my own flows so I can adapt the harness to my project's pipeline without modifying the plugin.
 
 **Acceptance Criteria:**
 - User flows live in `{project}/.solid-coder/harness/flows/` and `{project}/.solid-coder/harness/steps/`
 - Plugin built-in flows live in `{plugin}/harness/flows/` and `{plugin}/harness/steps/`
-- Resolution: user path checked first, plugin path as fallback — first match wins, by filename
-- User can override a built-in step by placing a file with the same name in their `steps/` folder
+- User and plugin flows must have distinct identifiers; a collision is an error rather than an override
+- SPEC-035 supersedes this flat layout with package discovery while preserving these locations as compatibility roots
 
 ## Technical Requirements
 
@@ -117,11 +117,11 @@ As a plugin consumer, I want to define my own flows (or override built-in ones) 
     validate-findings.yaml
     synthesize-fixes.yaml
 
-{project}/.solid-coder/harness/   ← user custom / override (first-match wins)
+{project}/.solid-coder/harness/   ← legacy user custom location
   flows/
     my-flow.yaml
   steps/
-    load-principles.yaml          ← overrides plugin's step of same name
+    custom-load-principles.yaml
 ```
 
 ### Flow Definition Schema
@@ -317,7 +317,7 @@ MCP validates the DAG at `flow_start` time:
 - Unit: all N parallel instances must complete before dependent step is unblocked
 - Unit: replay from interrupted `events.jsonl` returns correct pending steps
 - Unit: turn counter increments and `timed_out` triggers at `max_turns`
-- Unit: user `steps/` file overrides plugin file of same name
+- Unit: a client/plugin workflow ID collision is rejected; package-relative step fragments never override fragments in another package
 - Integration: full review flow runs to `done` via MCP tools
 - Integration: stop hook re-injects next step prompt on premature exit
 - Integration: interrupted run resumes correctly from `active.json`
@@ -334,4 +334,4 @@ MCP validates the DAG at `flow_start` time:
 - **Extends solid-coder-pipeline** — no new MCP server. Three new tools added to the existing server.
 - **Execution intent is environment-agnostic** — YAML declares `inline` / `parallel_isolated` / `sequential_isolated`. MCP resolves to subagent or new session based on runtime environment detected at `flow_start`.
 - **Flow definition snapshotted at start** — `workflow.yaml` written to run directory at `flow_start`. Resume always uses the original definition, not a newer version shipped with a plugin update.
-- **User harness overrides plugin** — first-match-wins by filename. User can override any built-in step or flow without forking the plugin.
+- **No implicit user/plugin overrides** — identifiers must be unique across client and plugin sources. SPEC-035 owns collision-checked package discovery and migration from flat filenames.

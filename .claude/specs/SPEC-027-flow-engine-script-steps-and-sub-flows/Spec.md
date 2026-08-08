@@ -3,16 +3,16 @@ number: SPEC-027
 feature: flow-engine-script-steps-and-sub-flows
 type: feature
 status: done
-parent: SPEC-012
-blocked-by: [SPEC-012]
-blocking: []
+parent: SPEC-030
+blocked-by: [SPEC-030]
+blocking: [SPEC-035]
 ---
 
 # Flow Engine Extensions: Prompt Files, Script Steps, and Nested Sub-Flows
 
 ## Description
 
-Extends the core flow engine (SPEC-012) with three additive capabilities: steps can source their instruction text from an external file instead of only inline text; a new step type executes a declared command directly rather than waiting on an agent turn, feeding its result into the same output/dependency wiring agent steps use; and a flow can include another flow's steps under a named, aliased group, so the group is inlined at load time and exposed to the rest of the DAG as a single opaque dependency unit. A shared attempts counter bounds every kind of step failure — schema-shape, semantic rejection, or script execution — so a persistent bug short-circuits a run instead of looping indefinitely.
+Extends the core flow engine (SPEC-030) with three additive capabilities: steps can source their instruction text from an external file instead of only inline text; a new step type executes a declared command directly rather than waiting on an agent turn, feeding its result into the same output/dependency wiring agent steps use; and a flow can include another flow's steps under a named, aliased group, so the group is inlined at load time and exposed to the rest of the DAG as a single opaque dependency unit. A shared attempts counter bounds every kind of step failure — schema-shape, semantic rejection, or script execution — so a persistent bug short-circuits a run instead of looping indefinitely.
 
 ## Input / Output
 
@@ -65,9 +65,9 @@ As the system, when a flow includes another flow's steps under a named group, I 
 
 | Direction | Spec / Component | Relationship |
 |---|---|---|
-| Upstream | SPEC-012 Core Flow Engine (`models.py`, `dag_runner.py`, `flow_loader.py`, `interpolator.py`, `schema_validator.py`) | This spec extends the engine's step model, load-time validation, and readiness computation. |
+| Upstream | SPEC-030 Core Flow Engine (`models.py`, `dag_runner.py`, `flow_loader.py`, `interpolator.py`, `schema_validator.py`) | This spec extends the engine's step model, load-time validation, and readiness computation. |
 | Upstream | Existing `schema_file` resolution pattern | `prompt_file` resolution mirrors this precedent for file-backed step content. |
-| Downstream | SPEC-013 Flow Harness MCP Tools | `flow_next` / `flow_status` response contract gains a `failed` run status and per-step `attempts_remaining` / rejection-reason data. |
+| Downstream | SPEC-031 Flow Harness MCP Tools | `flow_next` / `flow_status` response contract gains a `failed` run status and per-step `attempts_remaining` / rejection-reason data. |
 | Downstream | SPEC-010 MCP-Driven Flow Orchestration | Its stop-hook handler must treat `failed` the same as `done`/`timed_out` (allow exit, clear the active run pointer, do not re-inject a prompt). Its "no per-step retry config" design stance is intentionally superseded for the uniform attempts cap introduced here. |
 
 ## Diagrams
@@ -76,9 +76,9 @@ As the system, when a flow includes another flow's steps under a named group, I 
 
 ```mermaid
 graph LR
-  SPEC012[SPEC-012 Core Flow Engine] --> SPEC027[SPEC-027 Flow Engine Extensions]
+  SPEC012[SPEC-030 Core Flow Engine] --> SPEC027[SPEC-027 Flow Engine Extensions]
   SchemaFile[Existing schema_file resolution] -.precedent for.-> SPEC027
-  SPEC027 --> SPEC013[SPEC-013 Flow Harness MCP Tools]
+  SPEC027 --> SPEC013[SPEC-031 Flow Harness MCP Tools]
   SPEC027 -.supersedes retry stance.-> SPEC010[SPEC-010 MCP Flow Orchestration]
 ```
 

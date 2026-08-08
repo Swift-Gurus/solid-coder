@@ -5,5 +5,8 @@ __pycache__/
 # solid-coder pipeline run artifacts
 .solid_coder/
 .solid-coder/config.local.toml
+# Generated test/build artifacts, grouped by owner and execution type.
+.solid-coder/.artifacts/
+# Legacy Codex runtime location; retained to avoid exposing existing local state.
 .solid-coder/codex/
 GATE-OUTPUT-PATH-HANDOFF.md

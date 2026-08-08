@@ -1,7 +1,7 @@
 """
 solid-name: test_interpolation_guard
 solid-category: unit-test
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Tests turning an InterpolationError raised by a callable into an error message.
 """
 

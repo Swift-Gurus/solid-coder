@@ -1,7 +1,7 @@
 """
 solid-name: StepOutputValidator
 solid-category: service
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Validates step output values against their declared specifications.
 """
 

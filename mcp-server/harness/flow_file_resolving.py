@@ -1,7 +1,7 @@
 """
 solid-name: FlowFileResolving
 solid-category: abstraction
-solid-spec: [SPEC-013]
+solid-spec: [SPEC-031]
 solid-description: Contract for resolving a flow identifier to its file path.
 """
 
