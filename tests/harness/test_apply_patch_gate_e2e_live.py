@@ -30,9 +30,11 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CODEX):
         sys.path.insert(0, str(_directory))
 
 from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
 from codex_apply_patch_transcript_reader import (  # noqa: E402
     CodexApplyPatchTranscriptReader,
+)
+from codex_health_review_transcript_reader import (  # noqa: E402
+    CodexHealthReviewTranscriptReader,
 )
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 
@@ -89,8 +91,6 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             project_root=_PROJECT_ROOT,
             toml_loader=HookUtilsTomlLoader(),
         ).load(_MODEL_PROFILE)
-        project_state = solid_coder_project_dir(_PROJECT_ROOT)
-        before_inputs = set(project_state.glob("health-*/hook-input.json"))
         prompt = self._prompt()
         self.generated_config.write_text(self._codex_config(), encoding="utf-8")
         shutil.copyfile(self.generated_config, self.codex_home / "config.toml")
@@ -121,28 +121,19 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
 
         (self.run_dir / "codex-events.jsonl").write_text(process.stdout, encoding="utf-8")
         (self.run_dir / "codex-stderr.log").write_text(process.stderr, encoding="utf-8")
-        after_inputs = set(project_state.glob("health-*/hook-input.json"))
-        new_inputs = after_inputs - before_inputs
-        health_directories = self._health_directories_by_file(new_inputs)
-        reviewed_paths = set(health_directories)
-        expected_paths = {
-            str((_PROJECT_ROOT / relative_path).resolve())
-            for relative_path in self.relative_files
-        }
         result_path = self.run_dir / "last-message.txt"
         result_text = result_path.read_text(encoding="utf-8") if result_path.exists() else ""
         self._assert_single_multi_file_apply_patch()
+        reviewed_file_names = self._assert_isolated_health_reviews()
         print(
             f"\n--- apply_patch gate live result ({elapsed:.2f}s) ---\n"
             f"{result_text}\n"
-            f"review inputs: {sorted(reviewed_paths)}\n"
+            f"reviewed files: {reviewed_file_names}\n"
             "--- end live result ---\n",
             flush=True,
         )
 
         self.assertEqual(process.returncode, 0, process.stderr)
-        self.assertEqual(reviewed_paths, expected_paths)
-        self._assert_complete_principle_outputs(health_directories)
         self.assertTrue(result_text, "The outer Codex session returned no final result.")
         self.assertIn("den", result_text.lower(), "The intentionally severe patch was not denied.")
         for relative_path in self.relative_files:
@@ -215,23 +206,6 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             runtime_artifacts.mkdir(parents=True, exist_ok=True)
             shutil.copy2(database, runtime_artifacts / database.name)
 
-    def _health_directories_by_file(self, inputs: set[Path]) -> dict[str, Path]:
-        expected_names = set(_VIEW_NAMES)
-        directories = {}
-        for input_path in inputs:
-            payload = json.loads(input_path.read_text(encoding="utf-8"))
-            file_path = str(Path(payload["file_path"]).resolve())
-            if Path(file_path).name in expected_names:
-                directories[file_path] = input_path.parent
-        return directories
-
-    def _assert_complete_principle_outputs(self, health_directories: dict[str, Path]) -> None:
-        for file_path, health_directory in health_directories.items():
-            for principle in _EXPECTED_PRINCIPLE_OUTPUTS:
-                output = health_directory / principle / "review-output.json"
-                self.assertTrue(output.exists(), f"{file_path} missing {principle} output")
-                json.loads(output.read_text(encoding="utf-8"))
-
     def _assert_single_multi_file_apply_patch(self) -> None:
         sessions_root = self.run_dir / "codex-runtime" / "sessions"
         calls = CodexApplyPatchTranscriptReader().read(sessions_root)
@@ -241,12 +215,67 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             1,
             f"Expected exactly one apply_patch invocation; observed {transcript_paths}",
         )
-        added_files = [
-            line.removeprefix("*** Add File: ")
+        file_operations = [
+            line
             for line in calls[0].patch_content.splitlines()
-            if line.startswith("*** Add File: ")
+            if line.startswith(
+                (
+                    "*** Add File: ",
+                    "*** Update File: ",
+                    "*** Delete File: ",
+                    "*** Move to: ",
+                )
+            )
         ]
-        self.assertEqual(added_files, list(self.relative_files))
+        expected_operations = [
+            f"*** Add File: {relative_file}"
+            for relative_file in self.relative_files
+        ]
+        self.assertEqual(file_operations, expected_operations)
+
+    def _assert_isolated_health_reviews(self) -> list[str]:
+        sessions_root = self.run_dir / "codex-runtime" / "sessions"
+        submissions = CodexHealthReviewTranscriptReader().read(sessions_root)
+        transcript_paths = frozenset(
+            submission.transcript_path for submission in submissions
+        )
+        self.assertEqual(
+            len(transcript_paths),
+            len(_VIEW_NAMES),
+            "Expected one isolated health-review transcript per edited file",
+        )
+        successful_submissions = []
+        for transcript_path in transcript_paths:
+            attempts = [
+                submission
+                for submission in submissions
+                if submission.transcript_path == transcript_path
+            ]
+            successful_attempts = [
+                submission for submission in attempts if submission.successful
+            ]
+            self.assertEqual(
+                len(successful_attempts),
+                1,
+                f"Expected one successful submission in {transcript_path}",
+            )
+            self.assertTrue(
+                attempts[-1].successful,
+                f"Final health-review attempt failed in {transcript_path}",
+            )
+            successful_submissions.extend(successful_attempts)
+        reviewed_file_names = sorted(
+            submission.file_name for submission in successful_submissions
+        )
+        self.assertEqual(reviewed_file_names, sorted(_VIEW_NAMES))
+        expected_principles = frozenset(_EXPECTED_PRINCIPLE_OUTPUTS)
+        for submission in successful_submissions:
+            missing_principles = expected_principles - submission.principle_names
+            self.assertFalse(
+                missing_principles,
+                f"{submission.file_name} missing {sorted(missing_principles)}",
+            )
+        return reviewed_file_names
 
 
 if __name__ == "__main__":
