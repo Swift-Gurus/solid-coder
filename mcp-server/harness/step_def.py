@@ -23,6 +23,9 @@ class StepDef:
     type: str = "agent"
     mode: str | None = None
     prompt_file: str | None = None
-    command: list[str] | None = None
+    command: list[str] | str | None = None
+    script_file: str | None = None
+    executor: str | None = None
+    args: list[str] | None = None
     timeout_seconds: int | None = None
     max_attempts: int = 3

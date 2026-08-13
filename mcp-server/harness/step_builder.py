@@ -1,41 +1,35 @@
-"""
-solid-description: Transforms input data into executable step specifications.
-solid-category: service
-"""
+"""Builds executable workflow step definitions."""
 
 from __future__ import annotations
 
-from harness.models import OutputSpec, StepDef
+from typing import Optional, Union, cast
+
+from harness.output_spec import OutputSpec
+from harness.step_declaration import StepDeclaration
+from harness.step_def import StepDef
 
 
+"""
+solid-name: StepBuilder
+solid-category: service
+solid-spec: [SPEC-027, SPEC-030, SPEC-035]
+solid-description: Constructs executable workflow-step specifications from validated workflow declarations.
+"""
 class StepBuilder:
-    """
-    solid-description: Transforms input data into executable step specifications.
-    solid-category: service
-    """
-
-    def build(self, raw: dict) -> StepDef:
-        raw_outputs = raw.get("outputs") or []
-        outputs = [
-            OutputSpec(
-                name=o["name"],
-                type=o["type"],
-                schema=o.get("schema"),
-                schema_file=o.get("schema_file"),
-            )
-            for o in raw_outputs
-        ]
-
+    def build(self, declaration: StepDeclaration) -> StepDef:
         return StepDef(
-            id=raw["id"],
-            prompt=raw.get("prompt") or "",
-            depends_on=raw.get("depends_on") or [],
-            outputs=outputs,
-            for_each=raw.get("for_each"),
-            type=raw.get("type", "agent"),
-            mode=raw.get("mode"),
-            prompt_file=raw.get("prompt_file"),
-            command=raw.get("command"),
-            timeout_seconds=raw.get("timeout_seconds"),
-            max_attempts=raw.get("max_attempts", 3),
+            id=cast(str, declaration.id),
+            prompt=cast(str, declaration.prompt or ""),
+            depends_on=cast(list[str], declaration.depends_on or []),
+            outputs=cast(list[OutputSpec], declaration.outputs or []),
+            for_each=cast(Optional[str], declaration.for_each),
+            type=cast(str, declaration.type),
+            mode=cast(Optional[str], declaration.mode),
+            prompt_file=cast(Optional[str], declaration.prompt_file),
+            command=cast(Union[list[str], str, None], declaration.command),
+            script_file=cast(Optional[str], declaration.script_file),
+            executor=cast(Optional[str], declaration.executor),
+            args=cast(Optional[list[str]], declaration.args),
+            timeout_seconds=cast(Optional[int], declaration.timeout_seconds),
+            max_attempts=cast(int, declaration.max_attempts),
         )

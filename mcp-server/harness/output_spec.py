@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 """
@@ -15,5 +16,5 @@ solid-description: Represents the name, type, and validation schema of one step 
 class OutputSpec:
     name: str
     type: str
-    schema: dict | None = None
-    schema_file: str | None = None
+    schema: Optional[dict] = None
+    schema_file: Optional[str] = None

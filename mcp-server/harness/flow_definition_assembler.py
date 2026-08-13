@@ -23,7 +23,7 @@ class FlowDefinitionAssembler:
 
     def assemble(self, definition: FlowDef) -> FlowDef:
         expanded_steps = self._group_dependency_expander.expand(
-            definition.raw_steps,
+            definition.step_declarations,
             definition.alias_groups,
         )
         return FlowDef(

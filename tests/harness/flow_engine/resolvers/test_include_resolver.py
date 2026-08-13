@@ -13,18 +13,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.include_alias_group import IncludeAliasGroup
+from harness.include_alias_group_factory import IncludeAliasGroupFactory
 from harness.include_cycle_guard import IncludeCycleGuard
+from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
+from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_source_factory import IncludeSourceFactory
+from harness.include_step_appender import IncludeStepAppender
+from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
+from harness.nested_include_qualifier import NestedIncludeQualifier
+from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
+from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_builder import PathBuilder
+from harness.path_canonicalizer import PathCanonicalizer
 from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
 from harness.step_source_annotator import StepSourceAnnotator
+from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_resource_directory import WorkflowResourceDirectory
+from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
+from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
 
 
 class StubFileLoader:
@@ -39,13 +53,21 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
     error_factory = FlowValidationErrorFactory()
     source_annotator = StepSourceAnnotator()
     source_factory = IncludeSourceFactory()
-    resource_path_resolver = WorkflowResourcePathResolver(WorkflowPackageRootLocator())
+    resource_path_resolver = WorkflowResourcePathResolver(
+        WorkflowPackageRootLocator(),
+        error_factory,
+    )
+    resource_loader = WorkflowConfigResourceLoader(loader, resource_path_resolver)
+    reference_factory = WorkflowResourceReferenceFactory(
+        WorkflowResourcePathClassifier(),
+        WorkflowResourceDirectory.SUBFLOWS,
+    )
     source_resolver = IncludeSourceResolver(
         resolvers=[
             PathIncludeSourceResolver(
-                file_loader=loader,
                 declaring_file_resolver=StepDeclaringFileResolver(PathBuilder()),
-                resource_path_resolver=resource_path_resolver,
+                resource_loader=resource_loader,
+                reference_factory=reference_factory,
                 source_annotator=source_annotator,
                 error_factory=error_factory,
                 source_factory=source_factory,
@@ -54,10 +76,27 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         ],
         error_factory=error_factory,
     )
+    alias_group_factory = IncludeAliasGroupFactory()
+    resolution_merger = IncludeResolutionMerger(
+        step_appender=IncludeStepAppender(),
+        nested_merger=NestedIncludeResolutionMerger(
+            alias_group_factory=alias_group_factory,
+            ordered_strings=OrderedStringCollector(),
+        ),
+    )
     return IncludeResolver(
-        source_resolver=source_resolver,
-        cycle_guard=IncludeCycleGuard(error_factory),
-        step_qualifier=StepQualifier(),
+        path_canonicalizer=PathCanonicalizer(PathBuilder()),
+        traverser=IncludeTraverser(
+            source_resolver=source_resolver,
+            expansion_preparer=IncludeSourceExpansionPreparer(
+                IncludeCycleGuard(error_factory)
+            ),
+            nested_qualifier=NestedIncludeQualifier(
+                step_qualifier=StepQualifier(),
+                alias_group_factory=alias_group_factory,
+            ),
+            resolution_merger=resolution_merger,
+        ),
     )
 
 
@@ -71,7 +110,10 @@ class TestIncludeResolver(unittest.TestCase):
         result = sut.resolve([{"include": "sub.yaml", "as": "foo"}], "/flows/parent.yaml")
 
         self.assertEqual([s["id"] for s in result.steps], ["foo.step_a"])
-        self.assertEqual(result.alias_groups, {"foo": ["foo.step_a"]})
+        self.assertEqual(
+            result.alias_groups,
+            [IncludeAliasGroup(alias="foo", member_ids=["foo.step_a"])],
+        )
 
     def test_includes_same_sub_flow_twice_under_distinct_aliases_without_collision(self):
         sub_flow_path = str(Path("/flows/sub.yaml"))
@@ -87,7 +129,13 @@ class TestIncludeResolver(unittest.TestCase):
         )
 
         self.assertEqual(sorted(s["id"] for s in result.steps), ["bar.step_a", "foo.step_a"])
-        self.assertEqual(result.alias_groups, {"foo": ["foo.step_a"], "bar": ["bar.step_a"]})
+        self.assertEqual(
+            result.alias_groups,
+            [
+                IncludeAliasGroup(alias="foo", member_ids=["foo.step_a"]),
+                IncludeAliasGroup(alias="bar", member_ids=["bar.step_a"]),
+            ],
+        )
 
     def test_rewrites_unqualified_sibling_dependency_within_group(self):
         sub_flow_path = str(Path("/flows/sub.yaml"))
@@ -129,6 +177,30 @@ class TestIncludeResolver(unittest.TestCase):
 
         self.assertEqual([s["id"] for s in result.steps], ["outer.inner.leaf"])
 
+    def test_qualifies_dependency_on_nested_group_alias(self):
+        inner_path = str(Path("/flows/inner.yaml"))
+        outer_path = str(Path("/flows/outer.yaml"))
+        loader = StubFileLoader({
+            inner_path: {"steps": [{"id": "process_step", "prompt": "p"}]},
+            outer_path: {"steps": [
+                {"include": "inner.yaml", "as": "process"},
+                {"id": "verify", "prompt": "p", "depends_on": ["process"]},
+            ]},
+        })
+        sut = _make_resolver(loader)
+
+        result = sut.resolve(
+            [{"include": "outer.yaml", "as": "first"}],
+            "/flows/parent.yaml",
+        )
+
+        verify = next(step for step in result.steps if step["id"] == "first.verify")
+        self.assertEqual(verify["depends_on"], ["first.process"])
+        nested_group = next(
+            group for group in result.alias_groups if group.alias == "first.process"
+        )
+        self.assertEqual(nested_group.member_ids, ["first.process.process_step"])
+
     def test_raises_on_self_including_flow(self):
         cyclic_path = str(Path("/flows/cyclic.yaml"))
         loader = StubFileLoader({
@@ -151,7 +223,15 @@ class TestIncludeResolver(unittest.TestCase):
         )
 
         self.assertEqual(sorted(s["id"] for s in result.steps), ["review.approve", "review.draft"])
-        self.assertEqual(sorted(result.alias_groups["review"]), ["review.approve", "review.draft"])
+        self.assertEqual(
+            result.alias_groups,
+            [
+                IncludeAliasGroup(
+                    alias="review",
+                    member_ids=["review.draft", "review.approve"],
+                )
+            ],
+        )
 
     def test_rewrites_unqualified_sibling_dependency_within_inline_group(self):
         sut = _make_resolver(StubFileLoader({}))
@@ -200,7 +280,13 @@ class TestIncludeResolver(unittest.TestCase):
         )
 
         self.assertEqual(sorted(s["id"] for s in result.steps), ["bar.step_b", "foo.step_a"])
-        self.assertEqual(result.alias_groups, {"foo": ["foo.step_a"], "bar": ["bar.step_b"]})
+        self.assertEqual(
+            result.alias_groups,
+            [
+                IncludeAliasGroup(alias="foo", member_ids=["foo.step_a"]),
+                IncludeAliasGroup(alias="bar", member_ids=["bar.step_b"]),
+            ],
+        )
 
 
 if __name__ == "__main__":

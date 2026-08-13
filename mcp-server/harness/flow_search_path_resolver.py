@@ -12,7 +12,7 @@ from harness.path_filtering import PathFiltering
 solid-name: FlowSearchPathResolver
 solid-category: service
 solid-spec: [SPEC-031]
-solid-description: Resolves an ordered list of eligible directories from injected project and plugin workflow search-path sources.
+solid-description: Resolves unique eligible directories from injected project and plugin workflow search-path sources.
 """
 class FlowSearchPathResolver:
 
@@ -26,4 +26,9 @@ class FlowSearchPathResolver:
 
     def resolve(self) -> list[Path]:
         candidates = [path for source in self._sources for path in source.resolve()]
-        return self._path_filter.filter(candidates)
+        eligible = self._path_filter.filter(candidates)
+        unique: list[Path] = []
+        for path in eligible:
+            if path not in unique:
+                unique.append(path)
+        return unique

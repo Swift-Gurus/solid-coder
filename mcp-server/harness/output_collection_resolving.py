@@ -3,6 +3,9 @@
 from pathlib import Path
 from typing import Protocol
 
+from harness.output_spec import OutputSpec
+from harness.step_declaration import StepDeclaration
+
 
 """
 solid-name: OutputCollectionResolving
@@ -12,5 +15,9 @@ solid-description: Contract for resolving the complete output declaration collec
 """
 class OutputCollectionResolving(Protocol):
 
-    def resolve(self, step: dict, declaring_file: Path) -> list[dict]:
+    def resolve(
+        self,
+        step: StepDeclaration,
+        declaring_file: Path,
+    ) -> list[OutputSpec]:
         ...

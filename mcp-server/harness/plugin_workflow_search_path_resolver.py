@@ -21,5 +21,5 @@ class PluginWorkflowSearchPathResolver(FlowSearchPathResolving):
     def resolve(self) -> list[Path]:
         return [
             self._plugin_root / "workflows",
-            self._plugin_root / "mcp-server" / "harness" / "flows",
+            self._plugin_root / ".solid-coder" / "harness" / "flows",
         ]

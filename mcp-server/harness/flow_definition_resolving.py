@@ -1,8 +1,9 @@
-"""Defines resolution of a raw workflow document."""
+"""Defines resolution of a validated workflow document."""
 
 from typing import Protocol
 
 from harness.flow_def import FlowDef
+from harness.workflow_document import WorkflowDocument
 
 
 """
@@ -13,5 +14,10 @@ solid-description: Contract for resolving workflow composition and file-backed r
 """
 class FlowDefinitionResolving(Protocol):
 
-    def resolve(self, raw: dict, path: str, search_paths: list[str]) -> FlowDef:
+    def resolve(
+        self,
+        document: WorkflowDocument,
+        path: str,
+        search_paths: list[str],
+    ) -> FlowDef:
         ...

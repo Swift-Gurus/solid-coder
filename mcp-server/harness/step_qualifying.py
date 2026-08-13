@@ -11,5 +11,10 @@ solid-description: Contract for qualifying included step IDs and their sibling d
 """
 class StepQualifying(Protocol):
 
-    def qualify(self, step: dict, alias: str, sibling_ids: set[str]) -> dict:
+    def qualify(
+        self,
+        step: dict,
+        alias: str,
+        local_dependency_ids: set[str],
+    ) -> dict:
         ...

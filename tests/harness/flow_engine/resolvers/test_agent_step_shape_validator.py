@@ -12,31 +12,42 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.agent_step_shape_validator import AgentStepShapeValidator
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.models import FlowValidationError
+from harness.step_declaration import StepDeclaration
 
 
 class TestAgentStepShapeValidator(unittest.TestCase):
 
     def setUp(self):
-        self.sut = AgentStepShapeValidator()
+        self.sut = AgentStepShapeValidator(FlowValidationErrorFactory())
 
     def test_accepts_step_with_only_prompt(self):
-        self.sut.validate({"id": "a", "type": "agent", "prompt": "p"})
+        self.sut.validate(StepDeclaration(id="a", type="agent", prompt="p"))
 
     def test_accepts_step_with_only_prompt_file(self):
-        self.sut.validate({"id": "a", "type": "agent", "prompt_file": "p.md"})
+        self.sut.validate(StepDeclaration(id="a", type="agent", prompt_file="p.md"))
 
     def test_raises_when_declares_both_prompt_and_prompt_file(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "agent", "prompt": "p", "prompt_file": "p.md"})
+            self.sut.validate(
+                StepDeclaration(
+                    id="a",
+                    type="agent",
+                    prompt="p",
+                    prompt_file="p.md",
+                )
+            )
 
     def test_raises_when_declares_neither_prompt_nor_prompt_file(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "agent"})
+            self.sut.validate(StepDeclaration(id="a", type="agent"))
 
     def test_raises_when_declares_command(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "agent", "prompt": "p", "command": ["ls"]})
+            self.sut.validate(
+                StepDeclaration(id="a", type="agent", prompt="p", command=["ls"])
+            )
 
 
 if __name__ == "__main__":

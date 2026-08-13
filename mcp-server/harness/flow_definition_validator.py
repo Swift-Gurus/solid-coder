@@ -2,8 +2,10 @@
 
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validating import CommandAllowlistValidating
+from harness.dependency_graph_validating import DependencyGraphValidating
 from harness.flow_def import FlowDef
-from harness.flow_graph_validator import FlowGraphValidating
+from harness.for_each_reference_validator import ForEachReferenceValidating
+from harness.include_structure_validator import IncludeStructureValidator
 from harness.step_shape_validating import StepShapeValidating
 
 
@@ -20,24 +22,31 @@ class FlowDefinitionValidator:
         step_shape_validator: StepShapeValidating,
         command_allowlist_resolver: CommandAllowlistResolving,
         command_allowlist_validator: CommandAllowlistValidating,
-        graph_validator: FlowGraphValidating,
+        dependency_validator: DependencyGraphValidating,
+        include_validator: IncludeStructureValidator,
+        for_each_validator: ForEachReferenceValidating,
     ) -> None:
         self._step_shape_validator = step_shape_validator
         self._command_allowlist_resolver = command_allowlist_resolver
         self._command_allowlist_validator = command_allowlist_validator
-        self._graph_validator = graph_validator
+        self._dependency_validator = dependency_validator
+        self._include_validator = include_validator
+        self._for_each_validator = for_each_validator
 
     def validate_resolved(self, definition: FlowDef) -> None:
-        self._step_shape_validator.validate(definition.raw_steps)
+        self._step_shape_validator.validate(definition.step_declarations)
         allowlist = self._command_allowlist_resolver.resolve()
-        self._command_allowlist_validator.validate(definition.raw_steps, allowlist)
-        self._graph_validator.validate_raw(definition.raw_steps, definition.alias_groups)
-        self._graph_validator.validate_includes(
-            definition.raw_steps,
+        self._command_allowlist_validator.validate(definition.step_declarations, allowlist)
+        self._dependency_validator.validate(
+            definition.step_declarations,
+            definition.alias_groups,
+        )
+        self._include_validator.validate_includes(
+            definition.step_declarations,
             definition.alias_groups,
             definition.top_level_step_ids,
             definition.include_chain,
         )
 
     def validate_assembled(self, flow: FlowDef) -> None:
-        self._graph_validator.validate_for_each_references(flow.steps)
+        self._for_each_validator.validate_for_each_references(flow.steps)

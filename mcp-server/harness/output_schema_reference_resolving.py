@@ -3,6 +3,9 @@
 from pathlib import Path
 from typing import Protocol
 
+from harness.output_spec import OutputSpec
+from harness.step_declaration import StepDeclaration
+
 
 """
 solid-name: OutputSchemaReferenceResolving
@@ -12,5 +15,10 @@ solid-description: Contract for validating and resolving one output schema decla
 """
 class OutputSchemaReferenceResolving(Protocol):
 
-    def resolve(self, step: dict, output: dict, declaring_file: Path) -> dict:
+    def resolve(
+        self,
+        step: StepDeclaration,
+        output: OutputSpec,
+        declaring_file: Path,
+    ) -> OutputSpec:
         ...

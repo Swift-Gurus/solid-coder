@@ -22,7 +22,7 @@ from flow_transition_evaluating import FlowTransitionGate  # noqa: E402
 solid-name: FlowTransitionGateFactory
 solid-category: service
 solid-spec: [SPEC-032]
-solid-description: Assembles a flow transition gate with production filesystem and workflow dependencies.
+solid-description: Provides a ready-to-use flow-transition decision service.
 solid-tags: [hook]
 """
 class FlowTransitionGateFactory:
@@ -70,6 +70,7 @@ class FlowTransitionGateFactory:
                 catalog_resolver=workflow_catalog,
             ),
             inner_loader=assembly.flow_loader,
+            catalog_scope=workflow_catalog,
         )
         completion_checker = RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run)
         attempt_failure_handler = AttemptFailureHandler(

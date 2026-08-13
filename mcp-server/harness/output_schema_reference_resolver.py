@@ -2,8 +2,12 @@
 
 from pathlib import Path
 
+from harness.output_spec import OutputSpec
 from harness.output_schema_declaration_validating import OutputSchemaDeclarationValidating
 from harness.output_schema_file_loading import OutputSchemaFileLoading
+from harness.resolved_output_schema_applying import ResolvedOutputSchemaApplying
+from harness.step_declaration import StepDeclaration
+from harness.step_identity_resolving import StepIdentityResolving
 
 
 """
@@ -18,12 +22,21 @@ class OutputSchemaReferenceResolver:
         self,
         declaration_validator: OutputSchemaDeclarationValidating,
         schema_loader: OutputSchemaFileLoading,
+        schema_applier: ResolvedOutputSchemaApplying,
+        identity_resolver: StepIdentityResolving,
     ) -> None:
         self._declaration_validator = declaration_validator
         self._schema_loader = schema_loader
+        self._schema_applier = schema_applier
+        self._identity_resolver = identity_resolver
 
-    def resolve(self, step: dict, output: dict, declaring_file: Path) -> dict:
-        schema_file = output.get("schema_file")
+    def resolve(
+        self,
+        step: StepDeclaration,
+        output: OutputSpec,
+        declaring_file: Path,
+    ) -> OutputSpec:
+        schema_file = output.schema_file
         if schema_file is None:
             return output
 
@@ -31,10 +44,7 @@ class OutputSchemaReferenceResolver:
         schema = self._schema_loader.load(
             declaring_file,
             schema_file,
-            step.get("id", ""),
-            output.get("name", ""),
+            self._identity_resolver.resolve(step),
+            output.name,
         )
-        resolved = dict(output)
-        resolved["schema"] = schema
-        del resolved["schema_file"]
-        return resolved
+        return self._schema_applier.apply(output, schema)

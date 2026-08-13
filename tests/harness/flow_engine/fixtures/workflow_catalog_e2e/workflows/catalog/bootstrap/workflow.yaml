@@ -1,0 +1,20 @@
+id: e2e-catalog-combined
+name: e2e_catalog_combined
+max_turns: 3
+steps:
+  - include:
+      workflow: e2e-catalog-shared
+    as: first
+
+  - include:
+      workflow: e2e-catalog-shared
+    as: second
+
+  - id: confirm_combined
+    prompt: Submit true as the combined output.
+    depends_on: [first, second]
+    outputs:
+      - name: combined
+        type: data
+        schema:
+          type: boolean

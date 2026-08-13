@@ -14,8 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.existing_path_filter import ExistingPathFilter
 from harness.flow_file_resolver import FlowFileResolver
+from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.models import FlowValidationError
+from harness.path_checking import PathChecker
+from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
 
 
@@ -111,6 +115,63 @@ class TestFlowFileResolver(unittest.TestCase):
 
         self.assertEqual(first_result, str(first.resolve()))
         self.assertEqual(second_result, str(second.resolve()))
+
+    def test_discovers_a_workflow_added_after_an_earlier_lookup(self):
+        first = self.project_dir / "first.yaml"
+        first.write_text("name: first\nsteps: []\n")
+
+        first_result = self.sut.resolve("first", [str(self.project_dir)])
+
+        second = self.project_dir / "second.yaml"
+        second.write_text("name: second\nsteps: []\n")
+        second_result = self.sut.resolve("second", [str(self.project_dir)])
+
+        self.assertEqual(first_result, str(first.resolve()))
+        self.assertEqual(second_result, str(second.resolve()))
+
+    def test_discovers_plugin_package_and_legacy_workflows_through_plugin_roots(self):
+        package = self.plugin_dir / "workflows" / "review" / "plugin-package" / "workflow.yaml"
+        package.parent.mkdir(parents=True)
+        package.write_text(
+            "id: plugin-package\n"
+            "name: Plugin Package\n"
+            "max_turns: 2\n"
+            "steps: [{id: run, prompt: Run}]\n"
+        )
+        legacy = self.plugin_dir / ".solid-coder" / "harness" / "flows" / "plugin-legacy.yaml"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("name: plugin_legacy\nsteps: [{id: run, prompt: Run}]\n")
+
+        search_paths = self._plugin_search_paths()
+
+        self.assertEqual(self.sut.resolve("plugin-package", search_paths), str(package.resolve()))
+        self.assertEqual(self.sut.resolve("plugin-legacy", search_paths), str(legacy.resolve()))
+
+    def test_rejects_duplicate_id_across_plugin_package_and_legacy_roots(self):
+        package = self.plugin_dir / "workflows" / "review" / "duplicate" / "workflow.yaml"
+        package.parent.mkdir(parents=True)
+        package.write_text(
+            "id: duplicate\n"
+            "name: Package Duplicate\n"
+            "max_turns: 2\n"
+            "steps: [{id: run, prompt: Run}]\n"
+        )
+        legacy = self.plugin_dir / ".solid-coder" / "harness" / "flows" / "duplicate.yaml"
+        legacy.parent.mkdir(parents=True)
+        legacy.write_text("name: legacy_duplicate\nsteps: [{id: run, prompt: Run}]\n")
+
+        with self.assertRaises(FlowValidationError) as context:
+            self.sut.resolve("duplicate", self._plugin_search_paths())
+
+        self.assertIn(str(package.resolve()), str(context.exception))
+        self.assertIn(str(legacy.resolve()), str(context.exception))
+
+    def _plugin_search_paths(self) -> list[str]:
+        resolver = FlowSearchPathResolver(
+            sources=[PluginWorkflowSearchPathResolver(self.plugin_dir)],
+            path_filter=ExistingPathFilter(PathChecker()),
+        )
+        return [str(path) for path in resolver.resolve()]
 
 
 class _RealPathChecker:

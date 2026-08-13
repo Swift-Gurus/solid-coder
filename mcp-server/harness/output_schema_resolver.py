@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from harness.output_collection_resolving import OutputCollectionResolving
 from harness.output_schema_resolving import OutputSchemaResolving
+from harness.resolved_outputs_applying import ResolvedOutputsApplying
 from harness.step_declaring_file_resolving import StepDeclaringFileResolving
+from harness.step_declaration import StepDeclaration
 
 
 """
@@ -19,18 +21,23 @@ class OutputSchemaResolver(OutputSchemaResolving):
         self,
         declaring_file_resolver: StepDeclaringFileResolving,
         output_collection_resolver: OutputCollectionResolving,
+        outputs_applier: ResolvedOutputsApplying,
     ) -> None:
         self._declaring_file_resolver = declaring_file_resolver
         self._output_collection_resolver = output_collection_resolver
+        self._outputs_applier = outputs_applier
 
-    def resolve(self, step: dict, flow_file_path: str) -> dict:
-        outputs = step.get("outputs")
-        if not outputs:
+    def resolve(
+        self,
+        step: StepDeclaration,
+        flow_file_path: str,
+    ) -> StepDeclaration:
+        if not step.outputs:
             return step
 
-        declaring_file = self._declaring_file_resolver.resolve(step, flow_file_path)
+        declaring_file = self._declaring_file_resolver.resolve(
+            step.source_file,
+            flow_file_path,
+        )
         resolved_outputs = self._output_collection_resolver.resolve(step, declaring_file)
-
-        resolved = dict(step)
-        resolved["outputs"] = resolved_outputs
-        return resolved
+        return self._outputs_applier.apply(step, resolved_outputs)

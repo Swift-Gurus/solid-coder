@@ -66,10 +66,13 @@ As a workflow author, I want to include a workflow by stable ID so reusable revi
 As a workflow author, I want prompts, schemas, fragments, and relative subflows to resolve from the package that declares them.
 
 **Acceptance Criteria:**
-- Relative `prompt_file`, `schema_file`, `uses`, and path-based `include` references resolve relative to the declaring YAML file before any search-root fallback.
+- Explicit relative `prompt_file`, `schema_file`, `uses`, and path-based `include` references resolve relative to the declaring YAML file before any search-root fallback.
+- A bare resource filename in a package resolves from its field-specific conventional subfolder: `prompts/`, `schemas/`, `steps/`, `subflows/`, or `scripts/`.
+- `./` and `../` explicitly select declaring-file-relative resolution; `$package/` explicitly selects package-root-relative resolution.
 - A nested include retains its own declaring-file base directory; the parent package directory is not incorrectly reused.
 - `uses` preserves the declared relative path and no longer strips it to a basename.
 - A resource cannot escape its package root through `..` or a symlink unless it was supplied as an explicit top-level flow path.
+- Script files are explicitly declared by `type: script`, `file`, optional `executor`, and optional `args`; inline commands are explicitly declared by `type: command`, `command`, and optional `executor`.
 - The persisted `workflow.yaml` snapshot is fully resolved, while its metadata records the selected package IDs and source files for diagnosis.
 
 ## Technical Requirements
@@ -85,11 +88,11 @@ description: Review normalized input against the bundled SOLID principles.
 max_turns: 60
 steps:
   - id: prepare
-    prompt_file: prompts/prepare.md
+    prompt_file: prepare.md
     outputs:
       - name: review_input
         type: data
-        schema_file: schemas/review-input.schema.json
+        schema_file: review-input.schema.json
 ```
 
 - Required entrypoint fields are `id`, `name`, `max_turns`, and a non-empty `steps` list; `description` is recommended metadata.
@@ -99,17 +102,72 @@ steps:
 
 ### Package subfolders
 
-All subfolders are optional and resolve relative to the declaring YAML file:
+All subfolders are optional. They provide default locations for bare resource filenames; resources are loaded only when a workflow explicitly references them:
 
 | Subfolder | Contract |
 |---|---|
-| `prompts/` | Markdown/text instructions referenced by `prompt_file` |
-| `schemas/` | JSON Schemas referenced by `schema_file` |
-| `steps/` | Reusable step fragments referenced by relative `uses` paths |
-| `subflows/` | Package-private flows referenced by relative path-based `include` entries |
-| `scripts/` | Package-owned executables used by allowlisted `type: script` steps |
+| `prompts/` | Default location for a bare `prompt_file` filename |
+| `schemas/` | Default location for a bare `schema_file` filename |
+| `steps/` | Default location for a bare `uses` filename |
+| `subflows/` | Default location for a bare string `include` filename |
+| `scripts/` | Default location for a bare `type: script` `file` filename |
 
 Category folders above the package—such as `review/`, `brainstorm/`, `release/`, and `test/`—are client-defined organization and have no runtime semantics.
+
+### Resource reference grammar
+
+Package resource fields use one shared path grammar:
+
+| Form | Meaning | Example |
+|---|---|---|
+| Bare filename | Resolve from the field's conventional package subfolder | `schema_file: findings.schema.json` → `<package>/schemas/findings.schema.json` |
+| `./` or `../` | Resolve relative to the YAML file declaring the reference | `prompt_file: ../shared/review.md` |
+| `$package/` | Resolve relative to the owning package root | `uses: $package/custom/prepare.yaml` |
+| Existing unprefixed relative path | Preserve declaring-file-relative behavior for legacy workflows | `prompt_file: prompts/review.md` |
+
+- When no package owns the declaring YAML file, a bare filename remains declaring-file-relative for legacy compatibility.
+- Package-relative and declaring-file-relative references are normalized before containment validation.
+- `..` traversal and symlinks may move within a package but may not resolve outside its root.
+- Cross-package composition uses `include: { workflow: <id> }`; path-based includes remain package-private.
+- Resource subfolders are not scanned for implicit steps, prompts, schemas, subflows, or scripts.
+- A `workflow.yaml` below a package's reserved resource subfolders is a private resource, not a separately discoverable public package.
+
+### Execution step grammar
+
+Script files and inline commands are different step types.
+
+Package script file:
+
+```yaml
+- id: validate
+  type: script
+  file: validate.py
+  executor: python3
+  args: [--strict]
+```
+
+- `file` is required and follows the package resource-reference grammar; a bare filename resolves from `scripts/`.
+- `executor` is an optional non-empty string and defaults to `bash`.
+- `args` is an optional list of strings and defaults to an empty list.
+- The engine executes `[executor, resolved_file, *args]` without shell-string reconstruction.
+- `command` is invalid on `type: script`.
+
+Inline command:
+
+```yaml
+- id: status
+  type: command
+  command: "git status --short"
+```
+
+- `command` is required and is the complete command text.
+- `executor` is an optional non-empty string and defaults to `bash`.
+- The engine executes `[executor, "-lc", command]`; the command text remains one argument and is not split into an engine-generated argument list.
+- `file` and `args` are invalid on `type: command`.
+
+Both forms validate `executor` through the flow-engine permitted-executable allowlist. Runtime execution is represented by typed script-file and command models after YAML parsing; raw dictionaries and positional tuples are not execution-layer contracts.
+
+For migration, the existing `type: script` plus command-array form remains accepted for legacy workflows. It cannot be mixed with `file`, `args`, or scalar `command`, and new packaged workflows use the structured forms above.
 
 ### Client layout
 
@@ -165,7 +223,13 @@ Category folders above the package—such as `review/`, `brainstorm/`, `release/
 - Include the same workflow twice under distinct aliases and complete both groups.
 - Reject a direct and transitive workflow-ID include cycle with the ID chain in the error.
 - Resolve nested prompts, schemas, fragments, and relative subflows from their declaring files.
+- Resolve bare prompt, schema, fragment, subflow, and script filenames from their conventional package subfolders.
+- Resolve explicit `./`, `../`, and `$package/` references according to the shared resource grammar.
 - Reject package-resource traversal outside the package root.
+- Reject symlink-based package-resource escape.
+- Parse and execute structured script-file steps with default and explicit executors.
+- Parse and execute inline command steps with the default `bash` executor and an explicit executor override.
+- Reject mixed or malformed script/command declarations while retaining legacy command-array compatibility.
 - Load and run every existing legacy harness flow unchanged.
 - Live-test a bare workflow ID from both Claude and Codex project sessions.
 
@@ -175,5 +239,7 @@ Category folders above the package—such as `review/`, `brainstorm/`, `release/
 - [ ] Client, bundled, and legacy sources share one collision-checked catalog with no override behavior.
 - [ ] Workflow-ID composition reuses SPEC-027 alias and cycle semantics.
 - [ ] Package-relative resources resolve from their declaring file and remain package-contained.
+- [ ] Bare resource filenames resolve from conventional package subfolders, and explicit path forms follow the shared grammar.
+- [ ] Script-file and inline-command steps use distinct structured contracts with typed runtime models and allowlisted executors.
 - [ ] Run snapshots record selected workflow provenance.
 - [ ] Existing legacy flow suites remain green and Claude/Codex bare-ID live tests pass.

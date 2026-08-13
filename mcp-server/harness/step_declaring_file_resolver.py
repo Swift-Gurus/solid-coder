@@ -1,5 +1,7 @@
 """Resolves the workflow file that declared a step."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from harness.path_building import PathBuilding
@@ -16,5 +18,5 @@ class StepDeclaringFileResolver:
     def __init__(self, path_builder: PathBuilding) -> None:
         self._path_builder = path_builder
 
-    def resolve(self, step: dict, flow_file_path: str) -> Path:
-        return self._path_builder.build(step.get("__source_file") or flow_file_path)
+    def resolve(self, source_file: str | None, flow_file_path: str) -> Path:
+        return self._path_builder.build(source_file or flow_file_path)

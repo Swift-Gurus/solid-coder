@@ -14,22 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
-from harness.flow_graph_validator import FlowGraphValidator
 from harness.flow_loader import FlowLoader
-from harness.for_each_reference_validator import ForEachReferenceValidator
-from harness.include_structure_validator import IncludeStructureValidator
-from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.models import FlowValidationError
-from harness.step_graph_validator import StepGraphValidator
-
-
-def _make_graph_validator() -> FlowGraphValidator:
-    cycle_detector = KahnCycleDetector()
-    return FlowGraphValidator(
-        step_graph_validator=StepGraphValidator(cycle_detector=cycle_detector),
-        include_structure_validator=IncludeStructureValidator(cycle_detector=cycle_detector),
-        for_each_validator=ForEachReferenceValidator(),
-    )
 
 
 def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:

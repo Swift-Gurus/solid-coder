@@ -1,28 +1,41 @@
+"""Expands workflow group dependencies."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import cast
+
+from harness.group_dependency_expanding import GroupDependencyExpanding
+from harness.include_alias_group import IncludeAliasGroup
+from harness.include_alias_group_finding import IncludeAliasGroupFinding
+from harness.step_declaration import StepDeclaration
+
+
 """
 solid-name: GroupDependencyExpander
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Expands group-based step dependency references into explicit member step references.
+solid-description: Expands group aliases into explicit member-step dependency references.
 """
-
-from __future__ import annotations
-
-from harness.group_dependency_expanding import GroupDependencyExpanding
-
-
 class GroupDependencyExpander(GroupDependencyExpanding):
 
-    def expand(self, raw_steps: list[dict], alias_groups: dict[str, list[str]]) -> list[dict]:
-        expanded = []
-        for step in raw_steps:
-            deps = step.get("depends_on") or []
+    def __init__(self, alias_group_finder: IncludeAliasGroupFinding) -> None:
+        self._alias_group_finder = alias_group_finder
+
+    def expand(
+        self,
+        steps: list[StepDeclaration],
+        alias_groups: list[IncludeAliasGroup],
+    ) -> list[StepDeclaration]:
+        expanded: list[StepDeclaration] = []
+        for step in steps:
+            deps = cast(list[str], step.depends_on or [])
             new_deps: list[str] = []
             for dep in deps:
-                new_deps.extend(alias_groups.get(dep, [dep]))
+                group = self._alias_group_finder.find(dep, alias_groups)
+                new_deps.extend(group.member_ids if group is not None else [dep])
             if new_deps == deps:
                 expanded.append(step)
             else:
-                updated = dict(step)
-                updated["depends_on"] = new_deps
-                expanded.append(updated)
+                expanded.append(replace(step, depends_on=new_deps))
         return expanded

@@ -12,35 +12,53 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.models import FlowValidationError
+from harness.step_declaration import StepDeclaration
 
 
 class TestDelegateStepShapeValidator(unittest.TestCase):
 
     def setUp(self):
-        self.sut = DelegateStepShapeValidator()
+        self.sut = DelegateStepShapeValidator(FlowValidationErrorFactory())
 
     def test_accepts_subagent_mode_with_prompt(self):
-        self.sut.validate({"id": "a", "type": "delegate", "mode": "subagent", "prompt": "p"})
+        self.sut.validate(
+            StepDeclaration(id="a", type="delegate", mode="subagent", prompt="p")
+        )
 
     def test_accepts_session_mode_with_prompt(self):
-        self.sut.validate({"id": "a", "type": "delegate", "mode": "session", "prompt": "p"})
+        self.sut.validate(
+            StepDeclaration(id="a", type="delegate", mode="session", prompt="p")
+        )
 
     def test_raises_when_missing_prompt(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "delegate", "mode": "subagent"})
+            self.sut.validate(
+                StepDeclaration(id="a", type="delegate", mode="subagent")
+            )
 
     def test_raises_when_declares_command(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "delegate", "mode": "subagent", "prompt": "p", "command": ["ls"]})
+            self.sut.validate(
+                StepDeclaration(
+                    id="a",
+                    type="delegate",
+                    mode="subagent",
+                    prompt="p",
+                    command=["ls"],
+                )
+            )
 
     def test_raises_when_mode_missing(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "delegate", "prompt": "p"})
+            self.sut.validate(StepDeclaration(id="a", type="delegate", prompt="p"))
 
     def test_raises_when_mode_invalid(self):
         with self.assertRaises(FlowValidationError):
-            self.sut.validate({"id": "a", "type": "delegate", "mode": "bogus", "prompt": "p"})
+            self.sut.validate(
+                StepDeclaration(id="a", type="delegate", mode="bogus", prompt="p")
+            )
 
 
 if __name__ == "__main__":

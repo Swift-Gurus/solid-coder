@@ -17,8 +17,15 @@ from harness.path_builder import PathBuilder
 from harness.prompt_content_resolver import PromptContentResolver
 from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
+from harness.resolved_prompt_applier import ResolvedPromptApplier
+from harness.resolved_step_resources_applier import ResolvedStepResourcesApplier
+from harness.resolved_step_resources_factory import ResolvedStepResourcesFactory
+from harness.step_declaration import StepDeclaration
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_resource_directory import WorkflowResourceDirectory
+from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
+from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
 
 
 class StubTextFileReader:
@@ -31,10 +38,25 @@ class StubTextFileReader:
 
 def _make_resolver(reader: StubTextFileReader) -> PromptContentResolver:
     error_factory = FlowValidationErrorFactory()
-    resource_path_resolver = WorkflowResourcePathResolver(WorkflowPackageRootLocator())
+    resource_path_resolver = WorkflowResourcePathResolver(
+        WorkflowPackageRootLocator(),
+        error_factory,
+    )
+    reference_factory = WorkflowResourceReferenceFactory(
+        WorkflowResourcePathClassifier(),
+        WorkflowResourceDirectory.PROMPTS,
+    )
     return PromptContentResolver(
-        path_resolver=PromptFilePathResolver(PathBuilder(), resource_path_resolver),
+        path_resolver=PromptFilePathResolver(
+            PathBuilder(),
+            resource_path_resolver,
+            reference_factory,
+        ),
         prompt_loader=PromptFileLoader(reader, error_factory),
+        prompt_applier=ResolvedPromptApplier(
+            ResolvedStepResourcesFactory(),
+            ResolvedStepResourcesApplier(),
+        ),
     )
 
 
@@ -46,9 +68,12 @@ class TestPromptContentResolver(unittest.TestCase):
         reader = StubTextFileReader({prompt_path: "Do the thing"})
         sut = _make_resolver(reader)
 
-        resolved = sut.resolve({"id": "step_a", "prompt_file": "prompt.md"}, flow_path)
+        resolved = sut.resolve(
+            StepDeclaration(id="step_a", prompt_file="prompt.md"),
+            flow_path,
+        )
 
-        self.assertEqual(resolved["prompt"], "Do the thing")
+        self.assertEqual(resolved.prompt, "Do the thing")
 
     def test_removes_prompt_file_key_once_resolved_so_the_step_survives_a_round_trip(self):
         flow_path = "/flows/my_flow.yaml"
@@ -56,23 +81,29 @@ class TestPromptContentResolver(unittest.TestCase):
         reader = StubTextFileReader({prompt_path: "Do the thing"})
         sut = _make_resolver(reader)
 
-        resolved = sut.resolve({"id": "step_a", "prompt_file": "prompt.md"}, flow_path)
+        resolved = sut.resolve(
+            StepDeclaration(id="step_a", prompt_file="prompt.md"),
+            flow_path,
+        )
 
-        self.assertNotIn("prompt_file", resolved)
+        self.assertIsNone(resolved.prompt_file)
 
     def test_leaves_inline_prompt_unchanged_when_no_prompt_file(self):
         sut = _make_resolver(StubTextFileReader({}))
-        step = {"id": "step_a", "prompt": "inline text"}
+        step = StepDeclaration(id="step_a", prompt="inline text")
 
         resolved = sut.resolve(step, "/flows/my_flow.yaml")
 
-        self.assertEqual(resolved["prompt"], "inline text")
+        self.assertEqual(resolved.prompt, "inline text")
 
     def test_raises_when_prompt_file_does_not_resolve(self):
         sut = _make_resolver(StubTextFileReader({}))
 
         with self.assertRaises(FlowValidationError) as ctx:
-            sut.resolve({"id": "step_a", "prompt_file": "missing.md"}, "/flows/my_flow.yaml")
+            sut.resolve(
+                StepDeclaration(id="step_a", prompt_file="missing.md"),
+                "/flows/my_flow.yaml",
+            )
 
         self.assertIn("step_a", str(ctx.exception))
         self.assertIn("missing.md", str(ctx.exception))

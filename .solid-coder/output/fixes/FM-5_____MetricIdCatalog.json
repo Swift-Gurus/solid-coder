@@ -1,1 +1,0 @@
-{"rule_id": "FM-5", "file_path": "?", "unit_name": "MetricIdCatalog", "suggested_fix": "Replace \u201cProvides immutable access to the rule identifiers configured for one review principle.\u201d with \u201cProvides the identifiers for a review principle.\u201d The revised sentence states the model\u2019s capability without referring to immutability or configuration details."}

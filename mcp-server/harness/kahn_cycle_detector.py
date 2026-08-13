@@ -1,32 +1,37 @@
+"""Detects cycles in typed directed graphs."""
+
+from harness.cycle_detecting import CycleDetecting
+from harness.directed_graph import DirectedGraph
+from harness.incoming_edge_checking import IncomingEdgeChecking
+
+
 """
 solid-name: KahnCycleDetector
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Determines whether a directed graph contains a cycle.
+solid-description: Determines whether a typed directed graph contains a cycle.
 """
+class KahnCycleDetector(CycleDetecting):
 
-from __future__ import annotations
+    def __init__(self, incoming_edge_checker: IncomingEdgeChecking) -> None:
+        self._incoming_edge_checker = incoming_edge_checker
 
-from typing import Protocol
-
-
-class CycleDetecting(Protocol):
-
-    def has_cycle(self, adjacency: dict[str, list[str]], in_degree: dict[str, int]) -> bool: ...
-
-
-class KahnCycleDetector:
-
-    def has_cycle(self, adjacency: dict[str, list[str]], in_degree: dict[str, int]) -> bool:
-        in_degree = dict(in_degree)
-        queue = [node for node, deg in in_degree.items() if deg == 0]
-        visited = 0
-        while queue:
-            node = queue.pop(0)
-            visited += 1
-            for neighbor in adjacency[node]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-
-        return visited != len(in_degree)
+    def has_cycle(self, graph: DirectedGraph) -> bool:
+        remaining_ids = [node.identifier for node in graph.nodes]
+        while remaining_ids:
+            removable_id = next(
+                (
+                    node_id
+                    for node_id in remaining_ids
+                    if not self._incoming_edge_checker.has_incoming_edge(
+                        node_id,
+                        remaining_ids,
+                        graph,
+                    )
+                ),
+                None,
+            )
+            if removable_id is None:
+                return True
+            remaining_ids.remove(removable_id)
+        return False

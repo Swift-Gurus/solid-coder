@@ -9,11 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.include_alias_group import IncludeAliasGroup
+
 
 @dataclass(frozen=True)
 class IncludeResolution:
-    steps: list[dict]
-    alias_groups: dict[str, list[str]] = field(default_factory=dict)
+    steps: list[dict] = field(default_factory=list)
+    alias_groups: list[IncludeAliasGroup] = field(default_factory=list)
     include_chain: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
     workflow_ids: list[str] = field(default_factory=list)

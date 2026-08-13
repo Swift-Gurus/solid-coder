@@ -1,0 +1,16 @@
+id: e2e-catalog-shared
+name: e2e_catalog_shared
+max_turns: 2
+steps:
+  - include:
+      workflow: e2e-catalog-process
+    as: process
+
+  - id: verify_existing
+    prompt: Submit true as the existing output after the engine-owned process steps finish.
+    depends_on: [process]
+    outputs:
+      - name: existing
+        type: data
+        schema:
+          type: boolean

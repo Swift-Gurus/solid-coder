@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+from harness.step_declaration import StepDeclaration
+
 
 """
 solid-name: PromptFilePathResolving
@@ -13,4 +15,9 @@ solid-spec: [SPEC-027, SPEC-035]
 solid-description: Contract for resolving a step prompt-file reference from its declaring workflow file.
 """
 class PromptFilePathResolving(Protocol):
-    def resolve(self, step: dict, flow_file_path: str, prompt_file: str) -> Path: ...
+    def resolve(
+        self,
+        step: StepDeclaration,
+        flow_file_path: str,
+        prompt_file: str,
+    ) -> Path: ...

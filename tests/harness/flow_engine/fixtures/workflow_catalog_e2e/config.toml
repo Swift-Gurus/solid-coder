@@ -1,0 +1,2 @@
+[flow_engine]
+permitted_executables = ["python3", "bash"]

@@ -23,16 +23,22 @@ from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.flow_start_result_builder import FlowStartResultBuilder
 from harness.flow_starter import FlowStarter
 from harness.flow_status_reader import FlowStatusReader
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.flow_stepper import FlowStepper
 from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
+from harness.pass_through_step_submission_validator import PassThroughStepSubmissionValidator
 from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from harness.ready_steps_resolver import ReadyStepsResolver
+from harness.process_execution_factory import ProcessExecutionFactory
+from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
+from harness.process_step_executor import ProcessStepExecutor
+from harness.process_step_handler import ProcessStepHandler
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_context_builder import RunContextBuilder
 from harness.run_directory_scaffolder import RunDirectoryScaffolder
@@ -44,7 +50,6 @@ from harness.run_started_event_recorder import RunStartedEventRecorder
 from harness.runs_base_dir_resolving import RunsBaseDirResolving
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
-from harness.script_step_handler import ScriptStepHandler
 from harness.session_delegate_runner import SessionDelegateRunner
 from harness.session_id_reading import SessionIdReading
 from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
@@ -52,8 +57,10 @@ from harness.static_session_id_reader import StaticSessionIdReader
 from harness.startup_context_resolver import StartupContextResolver
 from harness.step_execution_coordinator import StepExecutionCoordinator
 from harness.step_handler_resolver import StepHandlerResolver
+from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_output_validator import StepOutputValidator
 from harness.step_result_builder import StepResultBuilder
+from harness.successful_validation_result_provider import SuccessfulValidationResultProvider
 from harness.turn_advancer import TurnAdvancer
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
 from hook_utils import _resolve_project_root
@@ -101,6 +108,7 @@ class FlowRunOrchestratorFactory:
                 catalog_resolver=workflow_catalog,
             ),
             inner_loader=assembly.flow_loader,
+            catalog_scope=workflow_catalog,
         )
         run_snapshot_resolver = RunSnapshotResolver(
             event_replayer=assembly.event_replayer,
@@ -119,12 +127,22 @@ class FlowRunOrchestratorFactory:
             completion_checker=completion_checker,
         )
         agent_handler = AgentStepHandler(output_validator=StepOutputValidator(schema_validator=assembly.schema_validator))
-        step_handler_resolver = StepHandlerResolver(handlers={
-            "agent": agent_handler,
-            "script": ScriptStepHandler(
-                runner=SubprocessScriptRunner(),
+        process_handler = ProcessStepHandler(
+            executor=ProcessStepExecutor(
+                execution_resolver=StepProcessExecutionResolver(
+                    ProcessExecutionFactory(FlowValidationErrorFactory())
+                ),
+                runner=ProcessExecutionRunnerAdapter(SubprocessScriptRunner()),
                 evaluator=ScriptOutcomeEvaluator(schema_validator=assembly.schema_validator),
             ),
+            submission_validator=PassThroughStepSubmissionValidator(
+                SuccessfulValidationResultProvider()
+            ),
+        )
+        step_handler_resolver = StepHandlerResolver(handlers={
+            "agent": agent_handler,
+            "script": process_handler,
+            "command": process_handler,
             "delegate": DelegateStepHandler(
                 agent_handler=agent_handler,
                 session_runner=SessionDelegateRunner(
@@ -145,6 +163,8 @@ class FlowRunOrchestratorFactory:
             step_execution_coordinator=step_execution_coordinator,
             ready_steps_resolver=ready_steps_resolver,
             interpolation_guard=interpolation_guard,
+            run_snapshot_resolver=run_snapshot_resolver,
+            completion_checker=completion_checker,
         )
         flow_initializer = FlowInitializer(
             startup_context=StartupContextResolver(

@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from harness.step_declaration import StepDeclaration
+
 
 class OutputSchemaPromptAnnotating(Protocol):
 
-    def annotate(self, step: dict) -> dict: ...
+    def annotate(self, step: StepDeclaration) -> StepDeclaration: ...

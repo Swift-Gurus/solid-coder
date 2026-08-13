@@ -1,8 +1,8 @@
 """
 solid-name: test_execution_and_readiness_coordinator
 solid-category: unit-test
-solid-spec: [SPEC-031, SPEC-027]
-solid-description: Tests running a flow's ready steps to completion or halt, then resolving its readiness.
+solid-spec: [SPEC-031, SPEC-027, SPEC-035]
+solid-description: Tests automatic execution, completion detection, and external readiness coordination.
 """
 
 from __future__ import annotations
@@ -17,7 +17,8 @@ from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoo
 from harness.flow_next_result import FlowNextResult
 from harness.interpolation_error import InterpolationError
 from harness.interpolation_guard import InterpolationGuard
-from harness.models import FlowDef
+from harness.models import FlowDef, RunState
+from harness.run_snapshot import RunSnapshot
 from harness.step_result import StepResult
 
 
@@ -47,11 +48,32 @@ class StubReadyStepsResolver:
         return self._steps
 
 
+class StubRunSnapshotResolver:
+    def __init__(self, snapshot: RunSnapshot) -> None:
+        self.snapshot = snapshot
+
+    def resolve(self, events_path, flow_def, params) -> RunSnapshot:
+        return self.snapshot
+
+
+class StubCompletionChecker:
+    def __init__(self, result: FlowNextResult | None = None) -> None:
+        self.result = result
+        self.run_state = None
+
+    def check(self, base_dir, run_id, events_path, flow_def, run_state):
+        self.run_state = run_state
+        return self.result
+
+
 class ExecutionAndReadinessCoordinatorFactory:
     def __init__(self) -> None:
         self.step_execution_coordinator = StubStepExecutionCoordinator(None)
         self.ready_steps_resolver = StubReadyStepsResolver([])
         self.interpolation_guard = InterpolationGuard()
+        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        self.run_snapshot_resolver = StubRunSnapshotResolver(RunSnapshot(run_state, []))
+        self.completion_checker = StubCompletionChecker()
 
     def with_step_execution_coordinator(self, coordinator) -> "ExecutionAndReadinessCoordinatorFactory":
         self.step_execution_coordinator = coordinator
@@ -61,11 +83,17 @@ class ExecutionAndReadinessCoordinatorFactory:
         self.ready_steps_resolver = resolver
         return self
 
+    def with_completion_checker(self, checker) -> "ExecutionAndReadinessCoordinatorFactory":
+        self.completion_checker = checker
+        return self
+
     def make_sut(self) -> ExecutionAndReadinessCoordinator:
         return ExecutionAndReadinessCoordinator(
             step_execution_coordinator=self.step_execution_coordinator,
             ready_steps_resolver=self.ready_steps_resolver,
             interpolation_guard=self.interpolation_guard,
+            run_snapshot_resolver=self.run_snapshot_resolver,
+            completion_checker=self.completion_checker,
         )
 
 
@@ -118,6 +146,20 @@ class TestExecutionAndReadinessCoordinator(unittest.TestCase):
         self.assertEqual(result.steps, [step])
         self.assertIsNone(result.terminal)
         self.assertIsNone(result.error)
+
+    def test_returns_terminal_completion_before_resolving_external_steps(self):
+        terminal = FlowNextResult(status="done")
+        ready_steps_resolver = StubReadyStepsResolver([])
+        checker = StubCompletionChecker(terminal)
+        sut = ExecutionAndReadinessCoordinatorFactory().with_completion_checker(
+            checker
+        ).with_ready_steps_resolver(ready_steps_resolver).make_sut()
+
+        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+
+        self.assertIs(result.terminal, terminal)
+        self.assertEqual(ready_steps_resolver.calls, [])
+        self.assertIsNotNone(checker.run_state)
 
     def test_returns_an_error_when_ready_steps_resolver_raises_interpolation_error(self):
         sut = ExecutionAndReadinessCoordinatorFactory().with_ready_steps_resolver(

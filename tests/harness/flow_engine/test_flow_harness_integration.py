@@ -1,8 +1,8 @@
 """
 solid-name: test_flow_harness_integration
 solid-category: unit-test
-solid-spec: [SPEC-031, SPEC-027]
-solid-description: Integration test validating end-to-end workflow execution from initiation through completion with proper event logging and artifact creation, including file-sourced prompts, script steps, aliased includes, and attempts exhaustion.
+solid-spec: [SPEC-031, SPEC-027, SPEC-035]
+solid-description: Integration test validating end-to-end workflow execution, package resources, process steps, includes, snapshots, and attempts exhaustion.
 """
 
 from __future__ import annotations
@@ -158,7 +158,13 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         return path
 
     def _build_with_allowlist(self) -> FlowRunOrchestrator:
-        return self._build(self._tmpdir, command_allowlist_resolver=StubCommandAllowlistResolver([sys.executable]))
+        return self._build(
+            self._tmpdir,
+            command_allowlist_resolver=StubCommandAllowlistResolver([
+                sys.executable,
+                "bash",
+            ]),
+        )
 
     def _drive_to_done(self, sut, first_result, max_iterations: int = 5):
         result = first_result
@@ -200,7 +206,7 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         first_result = sut.flow_next({s.instance_id: {} for s in start_result.steps if s.step_id == "from_file"})
         result = self._drive_to_done(sut, first_result)
 
-        self.assertEqual(result.status, "done")
+        self.assertEqual(result.status, "done", result.error)
 
     def test_script_step_exhausting_max_attempts_on_flow_start_fails_the_run(self):
         fail_script = Path(self._tmpdir) / "fail.py"
@@ -224,6 +230,53 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         self.assertIn("exhausted all 2 attempt(s)", start_result.error)
         self.assertIn("exited with code 1", start_result.error)
         self.assertIn("Stop here", start_result.error)
+
+    def test_packaged_script_file_resolves_executes_and_persists_absolute_path(self):
+        package = Path(self._tmpdir) / "review"
+        scripts = package / "scripts"
+        scripts.mkdir(parents=True)
+        script = scripts / "validate.py"
+        script.write_text(
+            "import json\n"
+            "import sys\n"
+            "print(json.dumps({'strict': '--strict' in sys.argv}))\n"
+        )
+        flow_file = package / "workflow.yaml"
+        flow_file.write_text(textwrap.dedent(f"""
+            id: review
+            name: review
+            max_turns: 10
+            steps:
+              - id: validate
+                type: script
+                file: validate.py
+                executor: "{sys.executable}"
+                args: [--strict]
+        """))
+
+        sut = self._build_with_allowlist()
+        result = sut.flow_start(str(flow_file))
+
+        self.assertEqual(result.status, "done", result.error)
+        snapshot = (self.runs_dir / result.run_id / "workflow.yaml").read_text()
+        self.assertIn(str(script.resolve()), snapshot)
+        self.assertNotIn("file: validate.py", snapshot)
+
+    def test_inline_command_executes_as_one_shell_command(self):
+        flow_file = self._write("command.yaml", """
+            name: command
+            max_turns: 10
+            steps:
+              - id: status
+                type: command
+                command: |
+                  printf '{"ok": true}'
+        """)
+
+        sut = self._build_with_allowlist()
+        result = sut.flow_start(str(flow_file))
+
+        self.assertEqual(result.status, "done", result.error)
 
     def test_agent_step_reopened_by_a_failing_downstream_script_eventually_exhausts_and_fails_the_run(self):
         # A script step's failure is attributed back to its nearest completed agent-type
@@ -262,6 +315,59 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         self.assertIn("doomed", result.error)
         self.assertIn("exited with code 1", result.error)
         self.assertIn("Stop here", result.error)
+
+
+class TestFlowHarnessPackageResources(FlowHarnessTestBuild):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.runs_dir = Path(self._tmpdir) / "runs"
+        self.runs_dir.mkdir(parents=True)
+        self.package = Path(self._tmpdir) / "review"
+        for directory in ("steps", "prompts", "schemas", "subflows"):
+            (self.package / directory).mkdir(parents=True, exist_ok=True)
+
+    def test_bare_package_resources_resolve_from_their_conventional_directories(self):
+        (self.package / "prompts" / "review.md").write_text("Review the supplied change")
+        (self.package / "schemas" / "findings.json").write_text(
+            json.dumps({"type": "array"})
+        )
+        (self.package / "steps" / "reviewer.yaml").write_text(textwrap.dedent("""
+            id: review
+            prompt_file: review.md
+            outputs:
+              - name: findings
+                type: data
+                schema_file: findings.json
+        """))
+        (self.package / "subflows" / "child.yaml").write_text(textwrap.dedent("""
+            steps:
+              - id: leaf
+                prompt: Review the child change
+        """))
+        workflow = self.package / "workflow.yaml"
+        workflow.write_text(textwrap.dedent("""
+            id: package-review
+            name: Package Review
+            max_turns: 10
+            steps:
+              - uses: reviewer.yaml
+              - include: child.yaml
+                as: child
+        """))
+
+        result = self._build(self._tmpdir).flow_start(str(workflow))
+
+        prompts = {step.step_id: step.prompt for step in result.steps}
+        self.assertTrue(prompts["review"].startswith("Review the supplied change"))
+        self.assertIn('{"type": "array"}', prompts["review"])
+        self.assertEqual(prompts["child.leaf"], "Review the child change")
+        snapshot = (self.runs_dir / result.run_id / "workflow.yaml").read_text()
+        self.assertIn("type: array", snapshot)
+        self.assertNotIn("uses: reviewer.yaml", snapshot)
+        self.assertNotIn("findings.json", snapshot)
+        self.assertNotIn("include: child.yaml", snapshot)
+        self.assertIn(str((self.package / "steps" / "reviewer.yaml").resolve()), snapshot)
+        self.assertIn(str((self.package / "subflows" / "child.yaml").resolve()), snapshot)
 
 
 if __name__ == "__main__":

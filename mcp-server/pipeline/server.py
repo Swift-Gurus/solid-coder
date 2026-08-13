@@ -290,10 +290,12 @@ class ApplicationBootstrapper:
                     "flow": {
                         "type": "string",
                         "description": (
-                            "Flow name — matches the YAML file's name, e.g. 'code_review' means "
-                            "'code_review.yaml'. Resolved against '<project>/.solid-coder/harness/flows/"
-                            "<name>.yaml' first, then the plugin's bundled harness/flows/<name>.yaml. "
-                            "A direct path to a flow YAML file also works if no name match is found."
+                            "Stable workflow ID declared by a package workflow.yaml, discovered recursively "
+                            "from '<project>/.solid-coder/workflows/' and '<plugin>/workflows/'. Legacy flat "
+                            "YAML files remain discoverable by filename-derived ID from each "
+                            "'.solid-coder/harness/flows/' compatibility root. IDs must be unique across the "
+                            "combined catalog; collisions fail instead of selecting by root order. An explicit "
+                            "YAML path bypasses catalog lookup."
                         ),
                     },
                     "params": {

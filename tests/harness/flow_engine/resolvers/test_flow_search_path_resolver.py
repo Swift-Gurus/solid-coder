@@ -48,6 +48,23 @@ class TestFlowSearchPathResolver(unittest.TestCase):
 
             self.assertEqual(paths, [project_workflows, plugin_workflows])
 
+    def test_deduplicates_legacy_root_when_plugin_checkout_is_the_project(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project_root = Path(directory)
+            legacy_root = project_root / ".solid-coder" / "harness" / "flows"
+            legacy_root.mkdir(parents=True)
+            resolver = FlowSearchPathResolver(
+                sources=[
+                    ProjectWorkflowSearchPathResolver(lambda: project_root),
+                    PluginWorkflowSearchPathResolver(project_root),
+                ],
+                path_filter=ExistingPathFilter(PathChecker()),
+            )
+
+            paths = resolver.resolve()
+
+            self.assertEqual(paths, [legacy_root])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,24 @@
+id: e2e-catalog-process
+name: e2e_catalog_process
+max_turns: 2
+steps:
+  - id: structured_script
+    type: script
+    file: report_ready.py
+    executor: python3
+    outputs:
+      - name: script_ready
+        type: data
+        schema:
+          type: boolean
+
+  - id: inline_command
+    type: command
+    command: >-
+      printf '%s\n' '{"command_ready": true}'
+    depends_on: [structured_script]
+    outputs:
+      - name: command_ready
+        type: data
+        schema:
+          type: boolean
