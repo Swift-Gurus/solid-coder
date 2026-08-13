@@ -118,8 +118,8 @@ A class is OCP-compliant when it can be tested without modifying its source. Tes
 
 <exceptions>
 1. **Factories/Builders** — a class whose primary responsibility is constructing or composing other objects (name ends in Factory, Builder, Assembler, or Configurator; or its primary output is a fully configured object graph). The ENTIRE class is exempt from OCP-1 and OCP-2: constructing, holding, and wiring concrete dependencies is inherently its job. Do NOT flag individual instantiations inside a Factory/Builder as sealed variation points.
-2. **Helpers** — with no dependencies — Encoders, Formatters, Locks, Queues, Multithreading.
-3. **Pure data structures** — no business logic, no dependencies, no side effects
+2. **Dependency-free units** — units with no dependencies and no hardcoded behavior-selection logic are exempt.
+3. **Pure data structures** — immutable or mutable data carriers with no business logic, runtime collaborators, or side effects are exempt.
 4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
 5. **Pure Views UI elements** - UI elements that don't have any business logic dependencies.
 6. **Test code** — unit tests, UI tests, integration tests, mocks, stubs, fakes, and test helpers are exempt. Test code intentionally uses concrete types and is not subject to OCP review.

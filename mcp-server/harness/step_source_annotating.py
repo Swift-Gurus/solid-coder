@@ -2,6 +2,9 @@
 
 from typing import Protocol
 
+from harness.sourced_workflow_entry import SourcedWorkflowEntry
+from harness.workflow_entry import WorkflowEntry
+
 
 """
 solid-name: StepSourceAnnotating
@@ -11,5 +14,9 @@ solid-description: Contract for attaching declaring-file provenance to expanded 
 """
 class StepSourceAnnotating(Protocol):
 
-    def annotate(self, steps: list[dict], source_path: str) -> list[dict]:
+    def annotate(
+        self,
+        entries: list[WorkflowEntry],
+        source_path: str,
+    ) -> list[SourcedWorkflowEntry]:
         ...
