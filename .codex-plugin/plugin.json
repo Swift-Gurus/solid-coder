@@ -1,6 +1,6 @@
 {
   "name": "solid-coder",
-  "version": "1.7.11",
+  "version": "1.7.12",
   "description": "SOLID review and refactor workflows for Swift projects.",
   "author": {
     "name": "Alex Crowe"

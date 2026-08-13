@@ -52,7 +52,7 @@ A "sealed variation point" is a place where adding a new behavior or swapping an
        - construction methods (init, create type factory methods, convenience methods) can have defatult arguments -> consider INJECTED
      - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
    - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
-3. **Check exceptions** — exclude from count (see Exceptions section below)
+3. **Check OCP exceptions** — apply only the `<exceptions principle="OCP">` block below. Exclude every matching unit or dependency from the OCP count before calculating sealed variation points.
 4. **Count concrete dependencies DIRECT NON-INJECTED** that are NOT exceptions = sealed points from dependencies
 5. **Sum** = total sealed variation points
 </detection>
@@ -100,7 +100,7 @@ A class is OCP-compliant when it can be tested without modifying its source. Tes
 </definition>
 
 <detection id="OCP-2" name="Testability">
-- Use the analysis from OCP-1 to validate if CONCRETE has extension/testability points 
+- Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
 - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
  - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
 
