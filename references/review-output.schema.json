@@ -37,19 +37,38 @@
                   "description": "Keys are principle names (e.g. 'SRP', 'OCP'). Each value follows that principle's review/output.schema.json (metrics sub-object schema).",
                   "additionalProperties": {
                     "type": "object",
-                    "description": "Principle-specific metrics. Each key is a metric variable name; each value has a required 'value' field and an optional 'additional-info' field.",
+                    "description": "Principle-specific metrics. Each measurement records its value, exception classification, reasoning, and source evidence.",
                     "additionalProperties": {
                       "type": "object",
-                      "required": ["value"],
+                      "required": ["value", "is_exception", "additional_info"],
                       "properties": {
                         "value": {
                           "description": "Measured metric value scored against severity bands.",
                           "type": ["integer", "string", "number"]
                         },
-                        "additional-info": {
-                          "description": "Optional opaque context (verb tables, group lists, sealed lists, etc.). Passed through to output unchanged; never read by the scorer."
+                        "is_exception": {
+                          "type": "boolean",
+                          "description": "Whether this measurement is excluded from severity scoring by the matching principle exception rules."
+                        },
+                        "additional_info": {
+                          "type": "object",
+                          "required": ["reasoning", "evidence"],
+                          "properties": {
+                            "reasoning": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Why the submitted value and exception classification are correct."
+                            },
+                            "evidence": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "Relevant source excerpt, line reference, or precise code observation supporting the reasoning."
+                            }
+                          },
+                          "additionalProperties": false
                         }
-                      }
+                      },
+                      "additionalProperties": false
                     }
                   }
                 },

@@ -3,15 +3,10 @@
 
 Architecture:
   ApplicationBootstrapper — SRP Facade, protocol-typed deps, pure delegation.
-  make_bootstrapper()     — Composition root: wires production defaults, all deps injectable.
-  main()                  — Entry point; calls the factory and runs.
+  ApplicationBootstrapperFactory — external composition root for production defaults.
 """
 
-import importlib
-import json
-import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -27,45 +22,11 @@ sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
-from mcp_server_factory import MCPServerFactory
 from message_transport_running import MessageTransportRunning
-from pipeline.skill_runner import SkillRunning, ResultFormatting, SkillRunner, SkillResultFormatter
 from pipeline.tool_registry import ToolRegistering, ToolRegistry
-from pipeline.handlers import ReviewResultsCollector, make_review_results_collector
-from pipeline.interfaces import ReviewResultsCollecting
-from lib.gateway_tools import make_gateway_handler as _make_gw_pipeline
-from findings.gateway_handler import GatewayHandling
 from common.mcp_meta import LARGE_OUTPUT
-from harness.flow_result_json_renderer import FlowResultJsonRenderer
-from harness.flow_result_rendering import FlowResultRendering
-from harness.flow_result_renderer import FlowResultRenderer
-from harness.flow_result_renderer_selector import FlowResultRendererSelector
-from harness.flow_run_orchestrating import FlowRunOrchestrating
-from health.dry_search_service_factory import DrySearchServiceFactory
-from pipeline.check_severity_running import CheckSeverityRunning
-from pipeline.context_loading import ContextLoading
 from pipeline.flow_tool_callables_assembler import FlowToolCallablesAssembler
-from pipeline.output_path_factory import OutputPathFactory
-from pipeline.output_validating import OutputValidating
-from pipeline.pipeline_tool_callables_assembler import PipelineToolCallablesAssembler
 from pipeline.tool_callables_building import ToolCallablesBuilding
-from search.tag_codebase_searching import TagCodebaseSearching
-
-
-# ── Path provider ─────────────────────────────────────────────────────────────
-
-def get_output_path(operation: str, spec_number: str = "") -> dict:
-    """Compute the standardized home-dir output path for a solid-coder operation.
-
-    Reads CLAUDE_PROJECT_DIR from the environment (set by Claude Code) and
-    derives a Claude-style slug by replacing '/' with '-'. Returns the
-    absolute output_root the caller should use as OUTPUT_ROOT.
-
-    Args:
-        operation:   "review" | "refactor" | "implement" | "validate-spec" | "health"
-        spec_number: For implement only — e.g. "SPEC-042". Omit for other ops.
-    """
-    return OutputPathFactory().compute(operation, spec_number)
 
 
 # ── Application facade ────────────────────────────────────────────────────────
@@ -80,7 +41,7 @@ class ApplicationBootstrapper:
 
     Facade: all dependencies are protocol-typed and injected. No internal
     construction — satisfies SRP Facade exception (pure coordination).
-    Use make_bootstrapper() for production defaults.
+    Production composition is provided by ApplicationBootstrapperFactory.
     """
 
     def __init__(
@@ -186,6 +147,31 @@ class ApplicationBootstrapper:
                      }, "required": ["partial_output", "output_path"]},
                      tools["submit_findings"])
 
+        _measurement_schema = {
+            "type": "object",
+            "required": ["value", "is_exception", "additional_info"],
+            "properties": {
+                "value": {"type": ["integer", "number", "string"]},
+                "is_exception": {
+                    "type": "boolean",
+                    "description": "True only when the metric satisfies a documented principle exception.",
+                },
+                "additional_info": {
+                    "type": "object",
+                    "required": ["reasoning", "evidence"],
+                    "properties": {
+                        "reasoning": {
+                            "type": "string",
+                            "description": "Why the measurement and exception classification are correct.",
+                        },
+                        "evidence": {
+                            "type": "string",
+                            "description": "Relevant code excerpt, line reference, or precise source observation.",
+                        },
+                    },
+                },
+            },
+        }
         _unit_schema = {
             "type": "object",
             "required": ["unit_name", "unit_kind", "metrics"],
@@ -196,8 +182,11 @@ class ApplicationBootstrapper:
                 "line_end": {"type": "integer"},
                 "metrics": {
                     "type": "object",
-                    "description": "Keys are principle names (e.g. 'SRP'). Each value is an object of metric_var: {value: N}.",
-                    "additionalProperties": {"type": "object"},
+                    "description": "Keys are principle names. Each metric requires value, is_exception, and additional_info with reasoning and evidence.",
+                    "additionalProperties": {
+                        "type": "object",
+                        "additionalProperties": _measurement_schema,
+                    },
                 },
             },
         }
@@ -224,7 +213,7 @@ class ApplicationBootstrapper:
                          "output_dir": {"type": "string"},
                          "submissions": {
                              "type": "object",
-                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). E.g. {'SRP': {timestamp, files:[{units:[{unit_name, unit_kind, metrics:{SRP:{verb_count:{value:3}}}}]}]}}",
+                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). Every metric must include value, is_exception, and additional_info {reasoning, evidence}.",
                              "additionalProperties": _submission_schema,
                          },
                      }, "required": ["output_dir", "submissions"]},
@@ -397,96 +386,14 @@ class ApplicationBootstrapper:
         )
 
 
-# ── Composition root and entry point ─────────────────────────────────────────
-
-def make_bootstrapper(
-    server: Optional[MessageTransportRunning] = None,
-    registry: Optional[ToolRegistering] = None,
-    skill_runner: Optional[SkillRunning] = None,
-    result_fmt: Optional[ResultFormatting] = None,
-    collector: Optional[ReviewResultsCollecting] = None,
-    gateway: Optional[GatewayHandling] = None,
-    check_severity: Optional[CheckSeverityRunning] = None,
-    load_context: Optional[ContextLoading] = None,
-    validate_output: Optional[OutputValidating] = None,
-    search: Optional[TagCodebaseSearching] = None,
-    refs_root: Path = PLUGIN_ROOT / "references",
-    flow_run: Optional[FlowRunOrchestrating] = None,
-    flow_result_renderer: Optional[FlowResultRendering] = None,
-) -> ApplicationBootstrapper:
-    """Composition root: all dependencies injectable; production defaults applied when omitted."""
-    mcp = server or MCPServerFactory().build("solid-coder-pipeline", "1.0.0")
-
-    if flow_run is None:
-        from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
-        from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
-        from harness.runs_base_dir_resolver import RunsBaseDirResolver
-
-        flow_run = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(),
-            plugin_root=PLUGIN_ROOT,
-            session_reader=McpRequestContextSessionReader(call_meta_provider=mcp),
-        ).build()
-
-    if flow_result_renderer is None:
-        from hc_config_schema import load_config
-
-        selector = FlowResultRendererSelector(
-            plain_text_renderer=FlowResultRenderer(),
-            json_renderer=FlowResultJsonRenderer(),
-        )
-        flow_result_renderer = selector.select(load_config().feature_flags.flow_plain_text_response)
-
-    runner_service = skill_runner or SkillRunner(SKILLS_ROOT)
-    formatter_service = result_fmt or SkillResultFormatter()
-    collector_service = collector or make_review_results_collector()
-    gateway_service = gateway or _make_gw_pipeline(
-        refs_root,
-        DrySearchServiceFactory(),
-    )
-    check_severity_service = check_severity or importlib.import_module("check-severity")
-    context_service = load_context or importlib.import_module("load-context")
-    validation_service = validate_output or importlib.import_module("validate-output")
-    search_service = search or importlib.import_module("search.codebase_searcher")
-    tool_callables = PipelineToolCallablesAssembler(
-        runner=runner_service,
-        formatter=formatter_service,
-        dry_search=DrySearchServiceFactory().make_search(search_service),
-        collect_review_results=collector_service.collect,
-        check_severity=check_severity_service.check_severity,
-        load_context=context_service.load_context,
-        validate_json=validation_service.validate_json,
-        submit_findings=gateway_service.submit_findings,
-        submit_batch_findings=gateway_service.submit_batch_findings,
-        submit_fix=gateway_service.submit_fix,
-        output_path=OutputPathFactory(),
-        skills_root=SKILLS_ROOT,
-        plugin_root=PLUGIN_ROOT,
-    )
-
-    return ApplicationBootstrapper(
-        server=mcp,
-        registry=registry or ToolRegistry(mcp),
-        tool_callables=tool_callables,
-        flow_callables=FlowToolCallablesAssembler(
-            flow_run=flow_run,
-            result_renderer=flow_result_renderer,
-        ),
-    )
-
-
-def get_pipeline_tools() -> dict:
-    """Return pipeline tool callables keyed by name, for CLI/script access.
-
-    Delegates to make_bootstrapper to avoid duplicating construction logic.
-    """
-    bootstrapper = make_bootstrapper()
-    return bootstrapper._tool_callables.build()
-
-
-def main() -> None:
-    make_bootstrapper().run()
-
-
 if __name__ == "__main__":
-    main()
+    from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
+    from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
+    from pipeline.flow_run_creator import FlowRunCreator
+
+    ApplicationBootstrapperFactory(
+        plugin_root=PLUGIN_ROOT,
+        skills_root=SKILLS_ROOT,
+        flow_run_creator=FlowRunCreator(PLUGIN_ROOT),
+        flow_renderer_creator=FlowResultRendererCreator(),
+    ).make().run()

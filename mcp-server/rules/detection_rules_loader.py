@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
 from rules import discover_principles as _dp
-from rules.principle_content_builder import PrincipleContentBuilding
+from rules.principle_content_building import PrincipleContentBuilding
 
 
 class AllPrinciplesProviding(Protocol):

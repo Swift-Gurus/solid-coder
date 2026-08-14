@@ -336,9 +336,9 @@ def load_pattern(name):
 # Implemented in lib/gateway_tools.py; registered here for the docs server.
 # ---------------------------------------------------------------------------
 
-from lib.gateway_tools import make_gateway_handler as _make_gw
+from lib.gateway_tools import GatewayHandlerFactory
 
-_gw = _make_gw(REFS_ROOT)
+_gw = GatewayHandlerFactory().make(REFS_ROOT)
 
 
 @server.tool(

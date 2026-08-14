@@ -130,8 +130,8 @@ TOOLS: list = [
                         "type": "object",
                         "description": (
                             "Map of principle_name to review-output payload. "
-                            "E.g. {'SRP': {timestamp, files:[{units:[{unit_name, unit_kind, "
-                            "metrics:{SRP:{verb_count:{value:3}}}}]}]}}"
+                            "Every metric measurement requires value, is_exception, and "
+                            "additional_info containing reasoning and evidence."
                         ),
                         "additionalProperties": {
                             "type": "object",
@@ -152,7 +152,13 @@ TOOLS: list = [
                                                     "properties": {
                                                         "unit_name": {"type": "string"},
                                                         "unit_kind": {"type": "string"},
-                                                        "metrics": {"type": "object"},
+                                                        "metrics": {
+                                                            "type": "object",
+                                                            "description": (
+                                                                "Principle-keyed metrics. Each measurement MUST include "
+                                                                "value, is_exception, and additional_info {reasoning, evidence}."
+                                                            ),
+                                                        },
                                                     },
                                                 },
                                             },

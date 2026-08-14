@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import field
+from typing import Annotated, Optional
+
+from pydantic import AliasChoices, ConfigDict, Field
+from pydantic.dataclasses import dataclass
 
 from findings.principle_metrics import PrincipleMetrics
 from findings.review_unit_kind import ReviewUnitKind
@@ -15,10 +18,10 @@ solid-name: ReviewUnit
 solid-category: model
 solid-description: Represents one reviewed source-code unit and its principle measurements.
 """
-@dataclass(frozen=True)
+@dataclass(frozen=True, config=ConfigDict(extra="forbid", populate_by_name=True))
 class ReviewUnit:
-    name: str
-    kind: ReviewUnitKind
+    name: Annotated[str, Field(validation_alias=AliasChoices("name", "unit_name"))]
+    kind: Annotated[ReviewUnitKind, Field(validation_alias=AliasChoices("kind", "unit_kind"))]
     metrics: tuple[PrincipleMetrics, ...]
     line_start: Optional[int] = None
     line_end: Optional[int] = None

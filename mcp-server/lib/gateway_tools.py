@@ -14,7 +14,6 @@ from findings.fix_submitter import FixSubmitter
 from findings.gateway_handler import GatewayHandler, GatewayHandling
 from findings.hook_context_ownership_validator import HookContextOwnershipValidator
 from findings.hook_context_path_resolver import HookContextPathResolver
-from findings.json_additional_info_decoder import JsonAdditionalInfoDecoder
 from findings.json_file_writer import JsonFileWriter
 from findings.json_hook_context_parser import JsonHookContextParser
 from findings.json_partial_review_output_renderer import (
@@ -35,8 +34,13 @@ from findings.mcp_batch_submission_response_formatter import (
 from findings.ordered_batch_submission_persister import (
     OrderedBatchSubmissionPersister,
 )
+from findings.metric_payload_builder import MetricPayloadBuilder
 from findings.partial_output_validator import PartialOutputValidator
+from findings.partial_review_output_payload_builder import (
+    PartialReviewOutputPayloadBuilder,
+)
 from findings.partial_review_output_persister import PartialReviewOutputPersister
+from findings.principle_metrics_payload_builder import PrincipleMetricsPayloadBuilder
 from findings.principle_coverage_scope_factory import PrincipleCoverageScopeFactory
 from findings.principle_coverage_scope_input_factory import (
     PrincipleCoverageScopeInputFactory,
@@ -53,6 +57,8 @@ from findings.violation_reader import ViolationReader
 from findings.violation_response_formatting import ViolationResponseFormatter
 from findings.review_unit_kind_parser import ReviewUnitKindParser
 from findings.review_unit_kinds_parser import ReviewUnitKindsParser
+from findings.review_unit_payload_builder import ReviewUnitPayloadBuilder
+from findings.reviewed_file_payload_builder import ReviewedFilePayloadBuilder
 from findings.findings_submitter import FindingsSubmitter
 from findings.utf8_text_file_writer import Utf8TextFileWriter
 from harness.path_builder import PathBuilder
@@ -60,21 +66,27 @@ from health.llama.json_deserializer import JsonDeserializer
 from json_serializer import JsonSerializer
 from rules.detection_rules_loader import DetectionRulesLoader
 from rules.fix_instructions_loader import FixInstructionsLoader
+from rules.metric_submission_example_builder import MetricSubmissionExampleBuilder
 from rules.principle_content_builder import PrincipleContentBuilder
+from rules.principle_metrics_example_loader import PrincipleMetricsExampleLoader
 from rules.principle_registry import PrincipleRegistry
+from rules.principal_folder_resolver import resolve as resolve_principle_folder
 from rules.rules_handler import RulesHandler
+from rules.schema_minimal_value_resolver import SchemaMinimalValueResolver
 from scoring.files_scoring_handler import FilesScoringHandler
 from scoring.principle_scorer import PrincipleScorerProvider
+from scoring.principle_scorer_resolver import PrincipleScorerResolver
 from scoring.principle_submission_scorer import PrincipleSubmissionScorer
 from scoring.review_unit_scorer import ReviewUnitScorer
 from scoring.scoring_handler import ScoringHandler
+from scoring.severity_scorer_factory import SeverityScorerFactory
 from utils.prompt_builder import PlainTextFileReader
 
 
 """
 solid-name: GatewayHandlerFactory
 solid-category: factory
-solid-description: Builds the production gateway and its scoring, submission, rule, and fix capabilities.
+solid-description: Assembles the model-facing review gateway.
 """
 class GatewayHandlerFactory:
     def __init__(
@@ -88,7 +100,13 @@ class GatewayHandlerFactory:
         json_deserializer = JsonDeserializer()
         json_serializer = JsonSerializer()
         registry = PrincipleRegistry(refs_root)
-        principle_scorers = PrincipleScorerProvider(refs_root)
+        principle_scorers = PrincipleScorerProvider(
+            PrincipleScorerResolver(
+                refs_root=refs_root,
+                scorer_factory=SeverityScorerFactory(),
+                folder_resolver=resolve_principle_folder,
+            )
+        )
         scoring = ScoringHandler(
             scorer_provider=principle_scorers,
             files_scorer=FilesScoringHandler(),
@@ -130,8 +148,14 @@ class GatewayHandlerFactory:
                 persisting=PartialReviewOutputPersister(
                     renderer=JsonPartialReviewOutputRenderer(
                         serializer=json_serializer,
-                        additional_info_decoder=JsonAdditionalInfoDecoder(
-                            json_deserializer
+                        payload_builder=PartialReviewOutputPayloadBuilder(
+                            ReviewedFilePayloadBuilder(
+                                ReviewUnitPayloadBuilder(
+                                    PrincipleMetricsPayloadBuilder(
+                                        MetricPayloadBuilder()
+                                    )
+                                )
+                            )
                         ),
                     ),
                     writer=Utf8TextFileWriter(),
@@ -155,7 +179,7 @@ class GatewayHandlerFactory:
             parser=McpBatchSubmissionParser(
                 payload_validator=McpBatchSubmissionPayloadValidator(),
                 output_validator=partial_output_validator,
-                builder=McpBatchSubmissionBuilder(json_serializer),
+                builder=McpBatchSubmissionBuilder(),
             ),
             handler=batch_handler,
         )
@@ -166,7 +190,16 @@ class GatewayHandlerFactory:
                 detection=DetectionRulesLoader(
                     all_principles=registry,
                     refs_root=refs_root,
-                    content_builder=PrincipleContentBuilder(),
+                    content_builder=PrincipleContentBuilder(
+                        reader=PlainTextFileReader(),
+                        metrics_loader=PrincipleMetricsExampleLoader(
+                            reader=PlainTextFileReader(),
+                            deserializer=json_deserializer,
+                            example_builder=MetricSubmissionExampleBuilder(
+                                SchemaMinimalValueResolver()
+                            ),
+                        ),
+                    ),
                 ),
                 fix_instructions=FixInstructionsLoader(registry),
             ),
@@ -176,11 +209,3 @@ class GatewayHandlerFactory:
             ),
             batch_submission=batch_submission,
         )
-
-
-def make_gateway_handler(
-    refs_root: Path,
-    batch_decorator: Optional[BatchSubmissionDecorating] = None,
-) -> GatewayHandler:
-    """Build a gateway with production collaborators."""
-    return GatewayHandlerFactory(batch_decorator).make(refs_root)

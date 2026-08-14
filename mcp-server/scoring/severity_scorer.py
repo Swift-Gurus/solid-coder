@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 """Scores immutable unit measurements against configured severity bands."""
 
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from findings.metric_value import MetricValue
 from findings.principle_metrics import PrincipleMetrics
 from findings.review_severity import ReviewSeverity
 from scoring.band_evaluator import BandEvaluating, BandEvaluator
-from scoring.frontmatter_bands_provider import BandsProviding, FrontmatterBandsProvider
+from scoring.compatibility_metrics_adapting import CompatibilityMetricsAdapting
+from scoring.frontmatter_bands_provider import BandsProviding
 from scoring.metric_id_catalog import MetricIdCatalog
+from scoring.metric_id_catalog_providing import MetricIdCatalogProviding
+from scoring.metric_measurement_resolving import MetricMeasurementResolving
 from scoring.unit_metric_scoring import UnitMetricScoring
 from scoring.unit_scoring_result import UnitScoringResult
+from scoring.unit_scoring_result_formatting import UnitScoringResultFormatting
 
 
 """
@@ -31,72 +33,26 @@ class SeverityScorer(UnitMetricScoring):
         self,
         bands_provider: BandsProviding,
         evaluator: BandEvaluating,
-        metric_ids: list,
+        catalog_provider: MetricIdCatalogProviding,
+        measurement_resolver: MetricMeasurementResolving,
+        compatibility_metrics: CompatibilityMetricsAdapting,
+        result_formatter: UnitScoringResultFormatting,
     ) -> None:
         self._bands = bands_provider
         self._evaluator = evaluator
-        self._metric_ids = metric_ids
+        self._catalog_provider = catalog_provider
+        self._measurement_resolver = measurement_resolver
+        self._compatibility_metrics = compatibility_metrics
+        self._result_formatter = result_formatter
 
     @property
     def known_metric_ids(self) -> list:
         """Metric IDs defined in this principle's frontmatter bands."""
-        return list(self._metric_ids)
+        return list(self._catalog_provider.catalog.identifiers)
 
     @property
     def metric_ids(self) -> MetricIdCatalog:
-        return MetricIdCatalog(identifiers=tuple(self._metric_ids))
-
-    @classmethod
-    def from_folder(
-        cls,
-        principle_folder: Path,
-        project_root: Optional[str] = None,
-    ) -> "SeverityScorer":
-        """Factory: wire YAML-based scoring from a principle directory.
-
-        Factory function — constructing and wiring concrete dependencies is this
-        function's sole responsibility (OCP Factory exception).
-        """
-        from scoring.bands_provider import make_config_bands_provider
-
-        rule_path = principle_folder / "rule.md"
-        rule_path_fn = lambda _p: rule_path  # noqa: E731
-
-        bands_provider = make_config_bands_provider(
-            rule_path_fn=rule_path_fn,
-            project_root=project_root,
-        )
-
-        fm_provider = FrontmatterBandsProvider(rule_path_fn=rule_path_fn)
-        # Discover which metric_ids are defined in this principle's bands
-        fm_provider.metric_variables("_probe", "")  # warm cache for this principle
-        principle_bands = fm_provider._cache.get("_probe", {})  # type: ignore[attr-defined]
-
-        # Proper cache warm: read frontmatter bands keys directly
-        metric_ids = cls._read_metric_ids(rule_path)
-
-        return cls(
-            bands_provider=bands_provider,
-            evaluator=BandEvaluator(),
-            metric_ids=metric_ids,
-        )
-
-    @staticmethod
-    def _read_metric_ids(rule_path: Path) -> list:
-        """Extract metric_id keys from rule.md frontmatter bands section."""
-        try:
-            import yaml as _yaml
-            from spec.parse_frontmatter import extract_frontmatter
-            text = rule_path.read_text(encoding="utf-8")
-            fm_text = extract_frontmatter(text)
-            if not fm_text:
-                return []
-            fm = _yaml.safe_load(fm_text)
-            if not isinstance(fm, dict):
-                return []
-            return list(fm.get("bands", {}).keys())
-        except Exception:
-            return []
+        return self._catalog_provider.catalog
 
     def score_unit(
         self,
@@ -120,23 +76,9 @@ class SeverityScorer(UnitMetricScoring):
         if not var_bands:
             return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
 
-        typed_metrics = PrincipleMetrics(
-            principle=metric_id.partition("-")[0],
-            values=tuple(
-                MetricValue(name=name, value=value)
-                for name, value in unit_metrics.items()
-                if value is not None
-            ),
-        )
+        typed_metrics = self._compatibility_metrics.adapt(unit_metrics, metric_id)
         result = self.score(typed_metrics, metric_id, file_path)
-        response = {
-            "metric_id": result.metric_id,
-            "final_severity": result.severity.value,
-            "band_matched": None,
-        }
-        if result.error_message is not None:
-            response["error"] = result.error_message
-        return response
+        return self._result_formatter.format(result)
 
     def score(
         self,
@@ -152,7 +94,7 @@ class SeverityScorer(UnitMetricScoring):
         for var_name, bands in var_bands.items():
             if bands.get("disabled"):
                 continue
-            measurement = self._measurement_named(metrics, var_name)
+            measurement = self._measurement_resolver.resolve(metrics, var_name)
             if measurement is None:
                 return UnitScoringResult(
                     metric_id=metric_id,
@@ -163,6 +105,8 @@ class SeverityScorer(UnitMetricScoring):
                         "<submission-metrics-example>."
                     ),
                 )
+            if measurement.is_exception:
+                continue
             severity = ReviewSeverity(
                 self._evaluator.evaluate(measurement.value, bands)
             )
@@ -173,13 +117,3 @@ class SeverityScorer(UnitMetricScoring):
                 worst = ReviewSeverity.MINOR
 
         return UnitScoringResult(metric_id, worst)
-
-    def _measurement_named(
-        self,
-        metrics: PrincipleMetrics,
-        name: str,
-    ) -> Optional[MetricValue]:
-        return next(
-            (measurement for measurement in metrics.values if measurement.name == name),
-            None,
-        )

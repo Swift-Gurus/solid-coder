@@ -102,11 +102,11 @@ def make_llama_server_runner(
         logger = LocalLLMLogger(log_dir=log_dir, file_path=file_path, model=model)
         observer = LLMSessionObserver(logger=logger)
 
-    from lib.gateway_tools import make_gateway_handler  # noqa: PLC0415
+    from lib.gateway_tools import GatewayHandlerFactory  # noqa: PLC0415
     from search.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
     from search import codebase_searcher  # noqa: PLC0415
 
-    gw_handler = make_gateway_handler(PLUGIN_ROOT / "references")
+    gw_handler = GatewayHandlerFactory().make(PLUGIN_ROOT / "references")
     dry_search_services = DrySearchServiceFactory()
     dry_search = dry_search_services.make_search(codebase_searcher)
     guarded_submission = dry_search_services.make_submission(gw_handler)

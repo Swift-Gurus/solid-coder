@@ -15,12 +15,12 @@ if str(MCP_DIR) not in sys.path:
 
 REFS_ROOT = MCP_DIR.parent / "references"
 
-from lib.gateway_tools import make_gateway_handler, GatewayHandler
+from lib.gateway_tools import GatewayHandler, GatewayHandlerFactory
 
 
 def make_handler() -> GatewayHandler:
     """Construct a GatewayHandler wired with production defaults for the test refs_root."""
-    return make_gateway_handler(REFS_ROOT)
+    return GatewayHandlerFactory().make(REFS_ROOT)
 
 
 def make_partial_output(files: list, timestamp: str = "2026-01-01T00:00:00Z") -> dict:
@@ -30,12 +30,39 @@ def make_partial_output(files: list, timestamp: str = "2026-01-01T00:00:00Z") ->
 
 def make_unit(unit_name: str, unit_kind: str, metrics: dict) -> dict:
     """Build a single unit dict for use in file fixtures."""
-    return {"unit_name": unit_name, "unit_kind": unit_kind, "metrics": metrics}
+    audited_metrics = {
+        principle: {
+            name: (
+                make_metric(measurement["value"])
+                if set(measurement) == {"value"}
+                else measurement
+            )
+            for name, measurement in measurements.items()
+        }
+        for principle, measurements in metrics.items()
+    }
+    return {
+        "unit_name": unit_name,
+        "unit_kind": unit_kind,
+        "metrics": audited_metrics,
+    }
 
 
 def make_file(file_path: str, units: list) -> dict:
     """Build a single file fixture."""
     return {"file_path": file_path, "units": units}
+
+
+def make_metric(value, is_exception: bool = False) -> dict:
+    """Build one auditable metric measurement for model-facing fixtures."""
+    return {
+        "value": value,
+        "is_exception": is_exception,
+        "additional_info": {
+            "reasoning": "Fixture measurement selected for this test scenario.",
+            "evidence": f"Fixture metric value: {value}",
+        },
+    }
 
 
 # ── SRP fixtures ──────────────────────────────────────────────────────────────
@@ -44,9 +71,9 @@ def make_schema_srp_metrics() -> dict:
     """Minimal SRP metrics in the new {principle: {var: {value: N}}} format — scores COMPLIANT."""
     return {
         "SRP": {
-            "verb_count":        {"value": 2},
-            "cohesion_groups":   {"value": 1},
-            "stakeholder_count": {"value": 1},
+            "verb_count":        make_metric(2),
+            "cohesion_groups":   make_metric(1),
+            "stakeholder_count": make_metric(1),
         }
     }
 
@@ -55,9 +82,9 @@ def make_schema_srp_severe_metrics() -> dict:
     """SRP metrics with 2 cohesion groups and 4 verbs — triggers SRP-1 and SRP-2 SEVERE bands."""
     return {
         "SRP": {
-            "verb_count":        {"value": 4},
-            "cohesion_groups":   {"value": 2},
-            "stakeholder_count": {"value": 2},
+            "verb_count":        make_metric(4),
+            "cohesion_groups":   make_metric(2),
+            "stakeholder_count": make_metric(2),
         }
     }
 
@@ -79,9 +106,9 @@ def make_ocp_partial(
     """Build a schema-compliant OCP partial output with metrics that satisfy scoring."""
     metrics = {
         "OCP": {
-            "sealed_variation_points": {"value": sealed_points},
-            "untestable_dependencies":  {"value": untestable_dependencies},
-            "testable_direct_count":    {"value": testable_direct_count},
+            "sealed_variation_points": make_metric(sealed_points),
+            "untestable_dependencies":  make_metric(untestable_dependencies),
+            "testable_direct_count":    make_metric(testable_direct_count),
         }
     }
     return make_partial_output([make_file("/tmp/Bar.swift", [make_unit("Bar", "class", metrics)])])
@@ -102,9 +129,9 @@ def make_isp_partial(
     """Build a schema-compliant ISP partial output with metrics that satisfy scoring."""
     metrics = {
         "ISP": {
-            "width":           {"value": width},
-            "min_coverage":    {"value": min_coverage},
-            "cohesion_groups": {"value": cohesion_groups},
+            "width":           make_metric(width),
+            "min_coverage":    make_metric(min_coverage),
+            "cohesion_groups": make_metric(cohesion_groups),
         }
     }
     return make_partial_output([
@@ -123,10 +150,10 @@ def make_lsp_partial(
     """Build a schema-compliant LSP partial output with metrics that satisfy scoring."""
     metrics = {
         "LSP": {
-            "type_checks":          {"value": type_checks},
-            "contract_violations":  {"value": contract_violations},
-            "fatal_error_methods":  {"value": fatal_error_methods},
-            "empty_methods":        {"value": empty_methods},
+            "type_checks":          make_metric(type_checks),
+            "contract_violations":  make_metric(contract_violations),
+            "fatal_error_methods":  make_metric(fatal_error_methods),
+            "empty_methods":        make_metric(empty_methods),
         }
     }
     return make_partial_output([
@@ -152,7 +179,11 @@ def make_standard_srp_partial() -> dict:
 
 
 class SubmitFindingsTestBase(unittest.TestCase):
-    """Shared base for submit_findings test classes: handler, temp dir, and path helper."""
+    """
+    solid-name: SubmitFindingsTestBase
+    solid-category: unit-test
+    solid-description: Provides shared submission-test setup and temporary-path support.
+    """
 
     def setUp(self):
         self.handler = make_handler()

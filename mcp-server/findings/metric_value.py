@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Union
+
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass
+
+from findings.metric_additional_info import MetricAdditionalInfo
 
 
 MetricScalar = Union[int, float, str]
@@ -12,10 +16,11 @@ MetricScalar = Union[int, float, str]
 """
 solid-name: MetricValue
 solid-category: model
-solid-description: Represents one named metric measurement and its optional contextual details.
+solid-description: Represents one immutable review metric measurement.
 """
-@dataclass(frozen=True)
+@dataclass(frozen=True, config=ConfigDict(extra="forbid"))
 class MetricValue:
     name: str
     value: MetricScalar
-    additional_info_json: Optional[str] = None
+    is_exception: bool
+    additional_info: MetricAdditionalInfo
