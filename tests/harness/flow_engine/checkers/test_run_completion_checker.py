@@ -13,8 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
+from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.models import FlowDef, RunState, StepDef
 from harness.run_completion_checker import RunCompletionChecker
+from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 
 
 class SpyEventAppender:
@@ -43,12 +46,22 @@ def _flow(max_turns: int = 10) -> FlowDef:
     return FlowDef(name="test_flow", max_turns=max_turns, steps=[StepDef(id="step-a", prompt="Do step-a")])
 
 
+def _make_sut(appender: SpyEventAppender, active_run: SpyActiveRunPointer) -> RunCompletionChecker:
+    return RunCompletionChecker(
+        event_appender=appender,
+        active_run=active_run,
+        exhaustion_evaluator=AttemptExhaustionEvaluator(),
+        exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
+        timeout_message_builder=RunTimeoutMessageBuilder(),
+    )
+
+
 class TestRunCompletionChecker(unittest.TestCase):
 
     def test_returns_done_and_clears_active_run_when_all_steps_complete(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
+        sut = _make_sut(appender, active_run)
         run_state = RunState(completed={"step-a": None}, running=[], turn_count=1, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(), run_state)
@@ -60,7 +73,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_timed_out_and_clears_active_run_when_max_turns_reached(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
+        sut = _make_sut(appender, active_run)
         run_state = RunState(completed={}, running=["step-a"], turn_count=5, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(max_turns=5), run_state)
@@ -78,7 +91,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_none_when_run_is_still_in_progress(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
+        sut = _make_sut(appender, active_run)
         run_state = RunState(completed={}, running=[], turn_count=1, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(max_turns=10), run_state)
@@ -90,7 +103,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_failed_and_clears_active_run_when_a_step_exhausts_max_attempts(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
+        sut = _make_sut(appender, active_run)
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[StepDef(id="step-a", prompt="p", max_attempts=3)])
         run_state = RunState(
             completed={}, running=[], turn_count=1, status="in_progress",
@@ -106,13 +119,17 @@ class TestRunCompletionChecker(unittest.TestCase):
             "'string'. Full run log: /run/events.jsonl. Stop here — do not retry or continue this flow. "
             "Report this failure to the user and wait for their instructions.",
         )
-        self.assertEqual(appender.events, [("/run/events.jsonl", "run_failed", {"run_id": "run-1", "step_id": "step-a"})])
+        self.assertEqual(appender.events, [("/run/events.jsonl", "run_failed", {
+            "run_id": "run-1",
+            "step_id": "step-a",
+            "attempt_id": "step-a",
+        })])
         self.assertEqual(active_run.deleted_for, [Path("/runs")])
 
     def test_ignores_attempts_used_for_an_already_completed_step(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = RunCompletionChecker(event_appender=appender, active_run=active_run)
+        sut = _make_sut(appender, active_run)
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[
             StepDef(id="step-a", prompt="p", max_attempts=3),
             StepDef(id="step-b", prompt="p"),

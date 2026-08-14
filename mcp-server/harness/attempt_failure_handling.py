@@ -1,9 +1,4 @@
-"""
-solid-name: AttemptFailureHandling
-solid-category: abstraction
-solid-spec: [SPEC-027]
-solid-description: Contract for handling a failed step attempt by optionally reopening the step and determining the flow's next state.
-"""
+"""Defines handling of failed workflow-step attempts."""
 
 from __future__ import annotations
 
@@ -14,6 +9,12 @@ from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef
 
 
+"""
+solid-name: AttemptFailureHandling
+solid-category: abstraction
+solid-spec: [SPEC-027]
+solid-description: Contract for handling a failed step attempt by optionally reopening the step and determining the flow's next state.
+"""
 class AttemptFailureHandling(Protocol):
 
     def handle(
@@ -25,4 +26,5 @@ class AttemptFailureHandling(Protocol):
         run_id: str,
         events_path: str,
         flow_def: FlowDef,
+        attempt_id: str | None = None,
     ) -> FlowNextResult | None: ...

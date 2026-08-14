@@ -10,9 +10,12 @@ from harness.active_run_location_assembler import ActiveRunLocationAssembler
 from harness.active_run_lock_clearer import ActiveRunLockClearer
 from harness.active_run_pointer_store import ActiveRunPointerStore
 from harness.agent_step_handler import AgentStepHandler
+from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
+from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.delegate_step_handler import DelegateStepHandler
+from harness.engine_step_drainer import EngineStepDrainer
 from harness.existing_path_filter import ExistingPathFilter
 from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
@@ -34,6 +37,7 @@ from harness.pass_through_step_submission_validator import PassThroughStepSubmis
 from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
+from harness.ready_step_executor import ReadyStepExecutor
 from harness.ready_steps_resolver import ReadyStepsResolver
 from harness.process_execution_factory import ProcessExecutionFactory
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
@@ -47,6 +51,7 @@ from harness.run_metadata_store import RunMetadataStore
 from harness.run_provisioner import RunProvisioner
 from harness.run_snapshot_resolver import RunSnapshotResolver
 from harness.run_started_event_recorder import RunStartedEventRecorder
+from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 from harness.runs_base_dir_resolving import RunsBaseDirResolving
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
@@ -55,7 +60,7 @@ from harness.session_id_reading import SessionIdReading
 from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from harness.startup_context_resolver import StartupContextResolver
-from harness.step_execution_coordinator import StepExecutionCoordinator
+from harness.step_execution_failure_handler import StepExecutionFailureHandler
 from harness.step_handler_resolver import StepHandlerResolver
 from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_output_validator import StepOutputValidator
@@ -120,7 +125,13 @@ class FlowRunOrchestratorFactory:
             step_result_builder=step_result_builder,
         )
         output_recorder = OutputRecorder(event_appender=assembly.event_appender)
-        completion_checker = RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run)
+        completion_checker = RunCompletionChecker(
+            event_appender=assembly.event_appender,
+            active_run=active_run,
+            exhaustion_evaluator=AttemptExhaustionEvaluator(),
+            exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
+            timeout_message_builder=RunTimeoutMessageBuilder(),
+        )
         attempt_failure_handler = AttemptFailureHandler(
             event_appender=assembly.event_appender,
             event_replayer=assembly.event_replayer,
@@ -151,12 +162,16 @@ class FlowRunOrchestratorFactory:
                 ),
             ),
         })
-        step_execution_coordinator = StepExecutionCoordinator(
+        step_execution_coordinator = EngineStepDrainer(
             run_snapshot_resolver=run_snapshot_resolver,
-            step_handler_resolver=step_handler_resolver,
-            failure_attributor=ScriptFailureAttributor(),
-            attempt_failure_handler=attempt_failure_handler,
-            output_recorder=output_recorder,
+            ready_step_executor=ReadyStepExecutor(
+                step_handler_resolver=step_handler_resolver,
+                failure_handler=StepExecutionFailureHandler(
+                    failure_attributor=ScriptFailureAttributor(),
+                    attempt_failure_handler=attempt_failure_handler,
+                ),
+                output_recorder=output_recorder,
+            ),
         )
         interpolation_guard = InterpolationGuard()
         execution_and_readiness_coordinator = ExecutionAndReadinessCoordinator(

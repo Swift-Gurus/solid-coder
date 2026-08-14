@@ -1,7 +1,4 @@
-"""
-solid-description: Advances the run when step outputs are submitted.
-solid-category: service
-"""
+"""Advances workflow runs from submitted step outputs."""
 
 from __future__ import annotations
 
@@ -16,6 +13,12 @@ from harness.submission_outcome import SubmissionOutcome
 from harness.turn_advancing import TurnAdvancing
 
 
+"""
+solid-name: OutputSubmissionAdvancer
+solid-description: Advances a workflow run from validated step-instance output submissions.
+solid-category: service
+solid-spec: [SPEC-010, SPEC-031]
+"""
 class OutputSubmissionAdvancer:
 
     def __init__(
@@ -63,6 +66,7 @@ class OutputSubmissionAdvancer:
                 run_id=run_id,
                 events_path=events_path,
                 flow_def=flow_def,
+                attempt_id=instance.instance_id,
             )
             if terminal is not None:
                 return SubmissionOutcome(terminal=terminal)
@@ -71,6 +75,6 @@ class OutputSubmissionAdvancer:
             return SubmissionOutcome()
 
         session_id = self._session_reader.read_session_id()
-        self._output_recorder.record(events_path, valid_instances, valid_outputs, session_id)
+        self._output_recorder.record(events_path, ready, valid_outputs, session_id)
         run_state = self._turn_advancer.advance(events_path)
         return SubmissionOutcome(run_state=run_state)

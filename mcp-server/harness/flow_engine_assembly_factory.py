@@ -14,6 +14,7 @@ from harness.dag_runner import DAGRunner
 from harness.data_output_validator import DataOutputValidator
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.directed_graph_factory import DirectedGraphFactory
+from harness.empty_step_instance_renderer import EmptyStepInstanceRenderer
 from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
@@ -27,6 +28,8 @@ from harness.flow_definition_validator import FlowDefinitionValidator
 from harness.flow_engine_assembly import FlowEngineAssembly
 from harness.flow_loader import FlowLoader
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.for_each_items_resolver import ForEachItemsResolver
+from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.for_each_reference_validator import ForEachReferenceValidator
 from harness.group_dependency_expander import GroupDependencyExpander
 from harness.include_alias_collision_validator import IncludeAliasCollisionValidator
@@ -86,16 +89,22 @@ from harness.step_builder import StepBuilder
 from harness.step_collection_uses_resolver import StepCollectionUsesResolver
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_declaration_factory import StepDeclarationFactory
+from harness.step_dependency_checker import StepDependencyChecker
+from harness.step_dependency_reachability_checker import StepDependencyReachabilityChecker
 from harness.step_dependency_graph_factory import StepDependencyGraphFactory
 from harness.step_executable_resolver import StepExecutableResolver
 from harness.step_field_validator_registration import StepFieldValidatorRegistration
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_identity_resolver import StepIdentityResolver
+from harness.step_instance_expander import StepInstanceExpander
+from harness.step_instance_renderer import StepInstanceRenderer
 from harness.step_prompt_augmenter import StepPromptAugmenter
+from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_shape_validator import StepShapeValidator
 from harness.step_qualifier import StepQualifier
 from harness.step_source_collector import StepSourceCollector
 from harness.step_source_annotator import StepSourceAnnotator
+from harness.step_status_checker import StepStatusChecker
 from harness.uses_resolver import UsesResolver
 from harness.unique_step_identity_validator import UniqueStepIdentityValidator
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
@@ -357,7 +366,10 @@ class FlowEngineAssemblyFactory:
                 ),
                 dependency_validator=dependency_validator,
                 include_validator=include_structure_validator,
-                for_each_validator=ForEachReferenceValidator(),
+                for_each_validator=ForEachReferenceValidator(
+                    reference_parser=ForEachReferenceParser(),
+                    reachability_checker=StepDependencyReachabilityChecker(),
+                ),
             ),
             definition_assembler=FlowDefinitionAssembler(
                 group_dependency_expander=GroupDependencyExpander(
@@ -387,7 +399,21 @@ class FlowEngineAssemblyFactory:
             flow_loader=flow_loader,
             event_appender=event_appender,
             event_replayer=event_replayer,
-            dag_runner=DAGRunner(renderer=interpolator, evaluator=expression_resolver),
+            dag_runner=DAGRunner(
+                readiness_checker=StepReadinessChecker(
+                    status_checker=StepStatusChecker(),
+                    dependency_checker=StepDependencyChecker(),
+                ),
+                instance_expander=StepInstanceExpander(
+                    items_resolver=ForEachItemsResolver(
+                        evaluator=expression_resolver
+                    ),
+                    instance_renderer=StepInstanceRenderer(
+                        renderer=interpolator
+                    ),
+                    empty_instance_renderer=EmptyStepInstanceRenderer(),
+                ),
+            ),
             interpolator=interpolator,
             schema_validator=SchemaValidator(validators=validators),
         )

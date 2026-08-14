@@ -1,6 +1,11 @@
-struct PreferenceSnapshot {
+final class PreferenceSnapshot {
     let theme: String
     let fontScale: Double
+
+    init(theme: String, fontScale: Double) {
+        self.theme = theme
+        self.fontScale = fontScale
+    }
 }
 
 protocol PreferenceSnapshotPublishing {

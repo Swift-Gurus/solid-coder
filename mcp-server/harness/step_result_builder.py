@@ -1,9 +1,4 @@
-"""
-solid-name: StepResultBuilder
-solid-category: service
-solid-spec: [SPEC-031]
-solid-description: Determines execution specifications for step instances by referencing flow definitions and optional state.
-"""
+"""Builds externally returned workflow-step results."""
 
 from __future__ import annotations
 
@@ -15,6 +10,12 @@ _DELEGATE_TYPE = "delegate"
 _INLINE_EXECUTION = {"mode": "inline"}
 
 
+"""
+solid-name: StepResultBuilder
+solid-category: service
+solid-spec: [SPEC-031]
+solid-description: Synthesizes externally returned workflow-step execution results from definitions and run state.
+"""
 class StepResultBuilder(StepResultBuilding):
 
     def build(
@@ -33,7 +34,9 @@ class StepResultBuilder(StepResultBuilding):
                 execution = _INLINE_EXECUTION
             rejection_reason = None
             if step_def is not None and run_state is not None:
-                rejection_reason = run_state.rejection_reasons.get(instance.step_id)
+                rejection_reason = run_state.rejection_reasons.get(
+                    instance.instance_id
+                ) or run_state.rejection_reasons.get(instance.step_id)
             results.append(StepResult(
                 step_id=instance.step_id,
                 instance_id=instance.instance_id,

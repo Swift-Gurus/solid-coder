@@ -4,7 +4,7 @@ from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validating import CommandAllowlistValidating
 from harness.dependency_graph_validating import DependencyGraphValidating
 from harness.flow_def import FlowDef
-from harness.for_each_reference_validator import ForEachReferenceValidating
+from harness.for_each_reference_validating import ForEachReferenceValidating
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.step_shape_validating import StepShapeValidating
 

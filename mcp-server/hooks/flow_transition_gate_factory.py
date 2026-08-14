@@ -39,6 +39,8 @@ class FlowTransitionGateFactory:
     def build(self) -> FlowTransitionGate:
         from harness.active_run_locator import ActiveRunLocator
         from harness.active_run_pointer_store import ActiveRunPointerStore
+        from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
+        from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
         from harness.attempt_failure_handler import AttemptFailureHandler
         from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
         from harness.flow_file_resolver import FlowFileResolver
@@ -48,6 +50,7 @@ class FlowTransitionGateFactory:
         from harness.run_completion_checker import RunCompletionChecker
         from harness.run_context_builder import RunContextBuilder
         from harness.run_snapshot_resolver import RunSnapshotResolver
+        from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
         from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
         from harness.static_session_id_reader import StaticSessionIdReader
@@ -72,7 +75,13 @@ class FlowTransitionGateFactory:
             inner_loader=assembly.flow_loader,
             catalog_scope=workflow_catalog,
         )
-        completion_checker = RunCompletionChecker(event_appender=assembly.event_appender, active_run=active_run)
+        completion_checker = RunCompletionChecker(
+            event_appender=assembly.event_appender,
+            active_run=active_run,
+            exhaustion_evaluator=AttemptExhaustionEvaluator(),
+            exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
+            timeout_message_builder=RunTimeoutMessageBuilder(),
+        )
         attempt_failure_handler = AttemptFailureHandler(
             event_appender=assembly.event_appender,
             event_replayer=assembly.event_replayer,

@@ -53,8 +53,9 @@ A "sealed variation point" is a place where adding a new behavior or swapping an
      - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
    - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
 3. **Check OCP exceptions** — apply only the `<exceptions principle="OCP">` block below. Exclude every matching unit or dependency from the OCP count before calculating sealed variation points.
-4. **Count concrete dependencies DIRECT NON-INJECTED** that are NOT exceptions = sealed points from dependencies
-5. **Sum** = total sealed variation points
+4. **Count concrete dependencies DIRECT NON-INJECTED**
+5. **Exclude from the count of DIRECT NON-INJECTED** the dependencies that fit the exception for **Pure Data Structures**
+6. **Sum** = total sealed variation points
 </detection>
 
 **Result:** 

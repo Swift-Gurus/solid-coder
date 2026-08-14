@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from harness.step_outputs import StepOutputs
+
 
 """
 solid-name: StepInstance
@@ -18,3 +20,9 @@ class StepInstance:
     instance_id: str
     item: Any
     prompt: str
+    iteration_index: int | None = None
+    automatic_outputs: StepOutputs | None = None
+
+    @property
+    def is_for_each(self) -> bool:
+        return self.iteration_index is not None

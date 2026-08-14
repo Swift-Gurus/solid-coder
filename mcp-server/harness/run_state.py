@@ -4,20 +4,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_outputs import StepOutputs
 
 
-"""
-solid-name: RunState
-solid-category: model
-solid-spec: [SPEC-030, SPEC-027]
-solid-description: Represents completed work, active steps, attempts, rejection reasons, and terminal state for a run.
-"""
 @dataclass(frozen=True)
 class RunState:
+    """
+    solid-name: RunState
+    solid-category: model
+    solid-spec: [SPEC-030, SPEC-027]
+    solid-description: Represents completed work, active steps, attempts, rejection reasons, and terminal state for a run.
+    """
+
     completed: dict[str, StepOutputs]
     running: list[str]
     turn_count: int
     status: str
+    completed_instances: dict[str, StepInstanceCompletion] = field(default_factory=dict)
     attempts_used: dict[str, int] = field(default_factory=dict)
+    attempt_step_ids: dict[str, str] = field(default_factory=dict)
     rejection_reasons: dict[str, str] = field(default_factory=dict)
