@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from harness.output_spec_creating import OutputSpecCreating
+from harness.output_spec import OutputSpec
 from harness.step_declaration import StepDeclaration
 from harness.step_declaration_mapping import StepDeclarationMapping
 
@@ -14,14 +14,11 @@ solid-spec: [SPEC-027, SPEC-030, SPEC-035]
 solid-description: Creates unvalidated workflow-step declarations from structured input.
 """
 class StepDeclarationFactory(StepDeclarationMapping):
-    def __init__(self, output_factory: OutputSpecCreating) -> None:
-        self._output_factory = output_factory
-
     def map(self, raw: dict) -> StepDeclaration:
         outputs = [
-            self._output_factory.create(
+            OutputSpec(
                 name=output["name"],
-                output_type=output["type"],
+                type=output["type"],
                 schema=output.get("schema"),
                 schema_file=output.get("schema_file"),
             )

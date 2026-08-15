@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_source import IncludeSource
-from harness.include_source_creating import IncludeSourceCreating
 from harness.step_source_annotating import StepSourceAnnotating
 
 
@@ -20,11 +19,9 @@ class InlineGroupSourceResolver:
         self,
         source_annotator: StepSourceAnnotating,
         error_factory: FlowValidationErrorCreating,
-        source_factory: IncludeSourceCreating,
     ) -> None:
         self._source_annotator = source_annotator
         self._error_factory = error_factory
-        self._source_factory = source_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
         alias = entry.get("group")
@@ -36,7 +33,7 @@ class InlineGroupSourceResolver:
                 f"Group '{alias}' must declare a non-empty 'steps' list"
             )
         source_path = entry.get("__source_file") or flow_file_path
-        return self._source_factory.create(
+        return IncludeSource(
             alias=alias,
             steps=self._source_annotator.annotate(steps, source_path),
             flow_path=source_path,

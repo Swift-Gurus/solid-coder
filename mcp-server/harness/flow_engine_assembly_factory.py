@@ -14,7 +14,6 @@ from harness.dag_runner import DAGRunner
 from harness.data_output_validator import DataOutputValidator
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.directed_graph_factory import DirectedGraphFactory
-from harness.empty_step_instance_renderer import EmptyStepInstanceRenderer
 from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
@@ -43,7 +42,6 @@ from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
-from harness.include_source_factory import IncludeSourceFactory
 from harness.include_step_appender import IncludeStepAppender
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.include_traverser import IncludeTraverser
@@ -61,7 +59,6 @@ from harness.output_collection_resolver import OutputCollectionResolver
 from harness.output_schema_file_loader import OutputSchemaFileLoader
 from harness.output_schema_description_collector import OutputSchemaDescriptionCollector
 from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
-from harness.output_spec_factory import OutputSpecFactory
 from harness.output_schema_reference_resolver import OutputSchemaReferenceResolver
 from harness.output_schema_resolver import OutputSchemaResolver
 from harness.output_validating import OutputValidating
@@ -72,7 +69,6 @@ from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.prompt_content_resolver import PromptContentResolver
 from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
-from harness.resolved_flow_definition_factory import ResolvedFlowDefinitionFactory
 from harness.resolved_output_schema_applier import ResolvedOutputSchemaApplier
 from harness.resolved_outputs_applier import ResolvedOutputsApplier
 from harness.resolved_prompt_applier import ResolvedPromptApplier
@@ -97,7 +93,6 @@ from harness.step_field_validator_registration import StepFieldValidatorRegistra
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_identity_resolver import StepIdentityResolver
 from harness.step_instance_expander import StepInstanceExpander
-from harness.step_instance_renderer import StepInstanceRenderer
 from harness.step_prompt_augmenter import StepPromptAugmenter
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_shape_validator import StepShapeValidator
@@ -175,7 +170,6 @@ class FlowEngineAssemblyFactory:
             path_resolver=resource_path_resolver,
         )
         source_annotator = StepSourceAnnotator()
-        include_source_factory = IncludeSourceFactory()
 
         expression_resolver: ExpressionEvaluating = ExpressionResolver(
             filter_resolver=FilterResolver()
@@ -235,7 +229,6 @@ class FlowEngineAssemblyFactory:
                             catalog_resolver=catalog_resolver,
                             source_annotator=source_annotator,
                             error_factory=error_factory,
-                            source_factory=include_source_factory,
                         ),
                         PathIncludeSourceResolver(
                             declaring_file_resolver=StepDeclaringFileResolver(path_builder),
@@ -243,12 +236,10 @@ class FlowEngineAssemblyFactory:
                             reference_factory=subflow_reference_factory,
                             source_annotator=source_annotator,
                             error_factory=error_factory,
-                            source_factory=include_source_factory,
                         ),
                         InlineGroupSourceResolver(
                             source_annotator,
                             error_factory,
-                            include_source_factory,
                         ),
                     ],
                     error_factory=error_factory,
@@ -280,7 +271,6 @@ class FlowEngineAssemblyFactory:
                 resources_applier=step_resources_applier,
             ),
         )
-        output_spec_factory = OutputSpecFactory()
         schema_resolver = OutputSchemaResolver(
             declaring_file_resolver=StepDeclaringFileResolver(path_builder),
             output_collection_resolver=OutputCollectionResolver(
@@ -291,9 +281,7 @@ class FlowEngineAssemblyFactory:
                         reference_factory=schema_reference_factory,
                         error_factory=error_factory,
                     ),
-                    schema_applier=ResolvedOutputSchemaApplier(
-                        output_spec_factory
-                    ),
+                    schema_applier=ResolvedOutputSchemaApplier(),
                     identity_resolver=step_identity_resolver,
                 )
             ),
@@ -328,8 +316,7 @@ class FlowEngineAssemblyFactory:
                     ),
                     prompt_augmenter=StepPromptAugmenter(),
                 ),
-                step_mapper=StepDeclarationFactory(output_spec_factory),
-                definition_factory=ResolvedFlowDefinitionFactory(),
+                step_mapper=StepDeclarationFactory(),
             ),
             definition_validator=FlowDefinitionValidator(
                 step_shape_validator=StepShapeValidator(
@@ -408,10 +395,7 @@ class FlowEngineAssemblyFactory:
                     items_resolver=ForEachItemsResolver(
                         evaluator=expression_resolver
                     ),
-                    instance_renderer=StepInstanceRenderer(
-                        renderer=interpolator
-                    ),
-                    empty_instance_renderer=EmptyStepInstanceRenderer(),
+                    renderer=interpolator,
                 ),
             ),
             interpolator=interpolator,

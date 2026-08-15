@@ -20,7 +20,6 @@ from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
-from harness.include_source_factory import IncludeSourceFactory
 from harness.include_step_appender import IncludeStepAppender
 from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
@@ -52,7 +51,6 @@ class StubFileLoader:
 def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
     error_factory = FlowValidationErrorFactory()
     source_annotator = StepSourceAnnotator()
-    source_factory = IncludeSourceFactory()
     resource_path_resolver = WorkflowResourcePathResolver(
         WorkflowPackageRootLocator(),
         error_factory,
@@ -70,9 +68,8 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
                 reference_factory=reference_factory,
                 source_annotator=source_annotator,
                 error_factory=error_factory,
-                source_factory=source_factory,
             ),
-            InlineGroupSourceResolver(source_annotator, error_factory, source_factory),
+            InlineGroupSourceResolver(source_annotator, error_factory),
         ],
         error_factory=error_factory,
     )

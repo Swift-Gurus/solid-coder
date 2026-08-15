@@ -11,13 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.output_spec_factory import OutputSpecFactory
 from harness.step_declaration_factory import StepDeclarationFactory
 
 
 class TestStepDeclarationFactory(unittest.TestCase):
     def setUp(self):
-        self.sut = StepDeclarationFactory(OutputSpecFactory())
+        self.sut = StepDeclarationFactory()
 
     def test_maps_process_fields_to_named_attributes(self):
         declaration = self.sut.map(

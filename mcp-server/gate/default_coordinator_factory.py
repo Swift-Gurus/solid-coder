@@ -1,172 +1,29 @@
-"""
-solid-description: Assembles fully-configured write-gate coordination components.
-solid-category: service
-solid-tags: [hook]
-"""
+"""Provides the write-gate construction facade."""
 
-import os
-from pathlib import Path
-from typing import Optional
-
-import sys
-_HOOKS_DIR = Path(__file__).resolve().parents[1]
-for _d in (_HOOKS_DIR, _HOOKS_DIR / "gate", _HOOKS_DIR / "patch"):
-    if str(_d) not in sys.path:
-        sys.path.insert(0, str(_d))
-
-from api_key_guard import ApiKeyGuard
-from apply_patch_content_simulator import ApplyPatchContentSimulator
-from apply_patch_request_handler import ApplyPatchRequestHandler
-from apply_patch_reviewer import ApplyPatchReviewer
-from apply_patch_parser import ApplyPatchParser
-from code_health_check_adapter import CodeHealthCheckAdapter
-from composite_guard import CompositeGuard
-from concurrent_handler_executor import ConcurrentHandlerExecutor
-from config_feature_toggle import ConfigFeatureToggle
-from content_simulator import ContentSimulator
-from default_hook_event_parser import DefaultHookEventParser
-from decision_gate_factory import DecisionGateFactory
-from diff_chunker import DiffChunker
-from edit_classifier import EditClassifier
-from edit_content_simulator import EditContentSimulator
-from frontmatter_adapter import FrontmatterAdapter
-from gate_request_router import GateRequestRouter
-from gate_exclusion_checker import GateExclusionChecker
-from hunk_applicator import HunkApplicator
-from hook_decision_factory import HookDecisionFactory
-from add_content_extractor import AddContentExtractor
-from parallel_hook_dispatcher import ParallelHookDispatcher
-from patch_format_parser import PatchFormatParser
-from path_file_system_reader import PathFileSystemReader
-from patch_entry_selector import PatchEntrySelector
-from patch_entry_simulator import PatchEntrySimulator
-from patch_file_handler_factory import PatchFileHandlerFactory
-from patch_file_simulation_factory import PatchFileSimulationFactory
-from patch_handler_planner import PatchHandlerPlanner
-from pathlib_extractor import PathlibExtractor
-from standard_write_request_handler import StandardWriteRequestHandler
-from write_content_simulator import WriteContentSimulator
-from write_gate_coordinator import WriteGateCoordinator
+from coordinator_making import CoordinatorMaking
+from coordinator_running import CoordinatorRunning
+from gate_handling import GateHandling
+from gate_orchestrator import GateOrchestrator
+from gate_orchestrator_factory import GateOrchestratorFactory
 
 
 """
 solid-name: DefaultCoordinatorFactory
-solid-category: service
-solid-description: Assembles fully configured write-gate coordination components.
+solid-category: facade
+solid-description: Coordinates creation of write-gate coordinator and orchestrator products.
 solid-tags: [hook]
 """
 class DefaultCoordinatorFactory:
-    """Factory: constructs WriteGateCoordinator with production-wired dependencies.
+    def __init__(
+        self,
+        coordinator_factory: CoordinatorMaking,
+        orchestrator_factory: GateOrchestratorFactory,
+    ) -> None:
+        self._coordinator_factory = coordinator_factory
+        self._orchestrator_factory = orchestrator_factory
 
-    OCP Factory exception: constructing, holding, and wiring concrete dependencies
-    is inherently this class's job.
-    """
+    def make_coordinator(self, gate: GateHandling) -> CoordinatorRunning:
+        return self._coordinator_factory.make_coordinator(gate)
 
-    def make_guard(self) -> ApiKeyGuard:
-        import hc_config as _hc
-        return ApiKeyGuard(
-            backend_fn=lambda: _hc.load_config().llm.backend,
-            api_key_fn=lambda: os.environ.get("ANTHROPIC_API_KEY", ""),
-        )
-
-    def make_toggle(self) -> ConfigFeatureToggle:
-        import hc_config as _hc
-        return ConfigFeatureToggle(enabled_fn=lambda: _hc.load_config().code_review_on_write_enabled)
-
-    def make_exclusion_checker(self) -> GateExclusionChecker:
-        import hc_config as _hc
-        from hook_utils import path_matches_pattern
-        return GateExclusionChecker(
-            exclude_patterns_fn=lambda: _hc.load_config().hook_exclude("pre_write_gate"),
-            path_matcher_fn=path_matches_pattern,
-        )
-
-    def make_patch_simulator(self) -> ApplyPatchContentSimulator:
-        parser = ApplyPatchParser(
-            format_parser=PatchFormatParser(),
-            content_extractor=AddContentExtractor(),
-            hunk_applicator=HunkApplicator(),
-        )
-        return ApplyPatchContentSimulator(
-            entry_selector=PatchEntrySelector(parser=parser),
-            entry_simulator=PatchEntrySimulator(
-                parser=parser,
-                file_reader=PathFileSystemReader(),
-                result_factory=PatchFileSimulationFactory(),
-            ),
-        )
-
-    def make_orchestrator(self, gate) -> "GateOrchestrator":
-        from gate_orchestrator import GateOrchestrator
-        from dict_extension_lookup import DictExtensionLookup
-        import code_health_check as health
-        patch_sim = self.make_patch_simulator()
-        extension_lookup = DictExtensionLookup(health.SUPPORTED_EXTENSIONS)
-        extension_extractor = PathlibExtractor(lambda path: Path(path).suffix.lower())
-        exclusion_checker = self.make_exclusion_checker()
-        patch_reviewer = ApplyPatchReviewer(
-            planner=PatchHandlerPlanner(
-                simulator=patch_sim,
-                extension_lookup=extension_lookup,
-                extension_extractor=extension_extractor,
-                exclusion_checker=exclusion_checker,
-                handler_factory=PatchFileHandlerFactory(
-                    coordinator_maker=self,
-                    gate_factory=DecisionGateFactory(),
-                    decision_factory=HookDecisionFactory(),
-                    logger=gate,
-                ),
-            ),
-            dispatcher=lambda handlers, event: ParallelHookDispatcher(
-                executor=ConcurrentHandlerExecutor(handlers=handlers),
-            ).dispatch(event),
-        )
-        return GateOrchestrator(
-            gate=gate,
-            guard=CompositeGuard([self.make_toggle(), self.make_guard()]),
-            event_parser=DefaultHookEventParser(__import__('hook_utils').parse_hook_event),
-            request_router=GateRequestRouter(
-                handlers={
-                    "apply_patch": ApplyPatchRequestHandler(
-                        reviewer=patch_reviewer,
-                        gate=gate,
-                    ),
-                },
-                fallback=StandardWriteRequestHandler(
-                    gate=gate,
-                    extension_lookup=extension_lookup,
-                    extension_extractor=extension_extractor,
-                    exclusion_checker=exclusion_checker,
-                    coordinator_maker=self,
-                ),
-            ),
-        )
-
-    def make_coordinator(self, gate) -> WriteGateCoordinator:
-        import code_health_check as health
-        import validate_swift_frontmatter as frontmatter
-        from hc_violation_parser import ViolationParser
-        classifier = EditClassifier()
-        reader = PathFileSystemReader()
-        chunker = DiffChunker()
-        simulator = ContentSimulator(handlers={
-            "Write": WriteContentSimulator(file_reader=reader, classifier=classifier, chunker=chunker),
-            "Edit": EditContentSimulator(file_reader=reader, classifier=classifier),
-            "apply_patch": self.make_patch_simulator(),
-        })
-        from safe_health_checker import SafeHealthChecker
-        from safe_frontmatter_fixer import SafeFrontmatterFixer
-        from tool_input_updater import ToolInputUpdater
-        violation_parser = ViolationParser()
-        return WriteGateCoordinator(
-            health_gate=SafeHealthChecker(
-                checker=CodeHealthCheckAdapter(check_fn=health._check),
-                formatter=violation_parser,
-            ),
-            frontmatter_gate=SafeFrontmatterFixer(
-                fixer=FrontmatterAdapter(fix_fn=frontmatter.fix),
-            ),
-            simulator=simulator,
-            gate=gate,
-            input_updater=ToolInputUpdater(),
-        )
+    def make_orchestrator(self, gate: GateHandling) -> GateOrchestrator:
+        return self._orchestrator_factory.create(gate, self)

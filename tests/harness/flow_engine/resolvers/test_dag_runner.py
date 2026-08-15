@@ -12,7 +12,6 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.dag_runner import DAGRunner
-from harness.empty_step_instance_renderer import EmptyStepInstanceRenderer
 from harness.expression_resolver import ExpressionResolver
 from harness.filter_resolver import FilterResolver
 from harness.for_each_items_resolver import ForEachItemsResolver
@@ -21,7 +20,6 @@ from harness.models import FlowDef, OutputSpec, RunState, StepDef, StepOutputs
 from harness.step_dependency_checker import StepDependencyChecker
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_instance_expander import StepInstanceExpander
-from harness.step_instance_renderer import StepInstanceRenderer
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_status_checker import StepStatusChecker
 
@@ -35,10 +33,7 @@ def _make_runner() -> DAGRunner:
         ),
         instance_expander=StepInstanceExpander(
             items_resolver=ForEachItemsResolver(evaluator=resolver),
-            instance_renderer=StepInstanceRenderer(
-                renderer=Interpolator(evaluator=resolver)
-            ),
-            empty_instance_renderer=EmptyStepInstanceRenderer(),
+            renderer=Interpolator(evaluator=resolver),
         ),
     )
 

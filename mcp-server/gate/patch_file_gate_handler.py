@@ -3,7 +3,6 @@
 from coordinator_making import CoordinatorMaking
 from decision_gate_creating import DecisionGateCreating
 from hook_decision import HookDecision
-from hook_decision_creating import HookDecisionCreating
 from logging_protocol import Logging
 from patch_file_simulation import PatchFileSimulation
 
@@ -21,18 +20,16 @@ class PatchFileGateHandler:
         language: str,
         coordinator_maker: CoordinatorMaking,
         gate_factory: DecisionGateCreating,
-        decision_factory: HookDecisionCreating,
         logger: Logging,
     ) -> None:
         self._simulation = simulation
         self._language = language
         self._coordinator_maker = coordinator_maker
         self._gate_factory = gate_factory
-        self._decision_factory = decision_factory
         self._logger = logger
 
     def should_handle(self, event: dict) -> bool:
-        return True
+        return bool(self._simulation.file_path)
 
     def handle(self, event: dict) -> HookDecision:
         gate = self._gate_factory.create(self._logger)
@@ -50,7 +47,7 @@ class PatchFileGateHandler:
         decision = gate.decision
         if decision.allow or not decision.reason:
             return decision
-        return self._decision_factory.create(
+        return HookDecision(
             allow=False,
             reason=f"{self._simulation.file_path}:\n{decision.reason}",
             additional_context=decision.additional_context,

@@ -15,7 +15,6 @@ from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.output_collection_resolver import OutputCollectionResolver
 from harness.output_spec import OutputSpec
-from harness.output_spec_factory import OutputSpecFactory
 from harness.output_schema_declaration_validator import OutputSchemaDeclarationValidator
 from harness.output_schema_file_loader import OutputSchemaFileLoader
 from harness.output_schema_reference_resolver import OutputSchemaReferenceResolver
@@ -61,7 +60,7 @@ def _make_resolver(loader: StubFileLoader) -> OutputSchemaResolver:
             reference_factory,
             error_factory,
         ),
-        schema_applier=ResolvedOutputSchemaApplier(OutputSpecFactory()),
+        schema_applier=ResolvedOutputSchemaApplier(),
         identity_resolver=StepIdentityResolver(error_factory),
     )
     resources_factory = ResolvedStepResourcesFactory()

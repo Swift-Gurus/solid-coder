@@ -7,7 +7,6 @@ from harness.output_schema_prompt_annotating import OutputSchemaPromptAnnotating
 from harness.output_schema_resolving import OutputSchemaResolving
 from harness.path_building import PathBuilding
 from harness.prompt_content_resolving import PromptContentResolving
-from harness.resolved_flow_definition_creating import ResolvedFlowDefinitionCreating
 from harness.script_file_resolving import ScriptFileResolving
 from harness.step_collection_uses_resolving import StepCollectionUsesResolving
 from harness.step_declaration_mapping import StepDeclarationMapping
@@ -36,7 +35,6 @@ class FlowDefinitionResolver:
         schema_resolver: OutputSchemaResolving,
         prompt_annotator: OutputSchemaPromptAnnotating,
         step_mapper: StepDeclarationMapping,
-        definition_factory: ResolvedFlowDefinitionCreating,
     ) -> None:
         self._config_extractor = config_extractor
         self._path_builder = path_builder
@@ -49,7 +47,6 @@ class FlowDefinitionResolver:
         self._schema_resolver = schema_resolver
         self._prompt_annotator = prompt_annotator
         self._step_mapper = step_mapper
-        self._definition_factory = definition_factory
 
     def resolve(self, raw: dict, path: str, search_paths: list[str]) -> FlowDef:
         resolved_source_path = self._path_builder.build(path)
@@ -82,10 +79,11 @@ class FlowDefinitionResolver:
             self._prompt_annotator.annotate(step) for step in schema_steps
         ]
 
-        return self._definition_factory.create(
-            workflow_id=workflow_id,
+        return FlowDef(
+            id=workflow_id,
             name=self._config_extractor.extract_name(raw),
             max_turns=self._config_extractor.extract_max_turns(raw),
+            steps=[],
             step_declarations=step_declarations,
             top_level_step_ids=top_level_step_ids,
             alias_groups=inclusion.alias_groups,

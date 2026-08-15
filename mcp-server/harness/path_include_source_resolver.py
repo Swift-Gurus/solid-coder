@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_source import IncludeSource
-from harness.include_source_creating import IncludeSourceCreating
 from harness.step_declaring_file_resolving import StepDeclaringFileResolving
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
@@ -26,14 +25,12 @@ class PathIncludeSourceResolver:
         reference_factory: WorkflowResourceReferenceCreating,
         source_annotator: StepSourceAnnotating,
         error_factory: FlowValidationErrorCreating,
-        source_factory: IncludeSourceCreating,
     ) -> None:
         self._declaring_file_resolver = declaring_file_resolver
         self._resource_loader = resource_loader
         self._reference_factory = reference_factory
         self._source_annotator = source_annotator
         self._error_factory = error_factory
-        self._source_factory = source_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
         include_path = entry.get("include")
@@ -53,7 +50,7 @@ class PathIncludeSourceResolver:
                 f"Unresolvable include: '{include_path}' not found relative to '{declaring_file}'"
             )
         source_path = str(resource.path)
-        return self._source_factory.create(
+        return IncludeSource(
             alias=entry["as"],
             steps=self._source_annotator.annotate(resource.content.get("steps") or [], source_path),
             flow_path=source_path,
