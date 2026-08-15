@@ -1,22 +1,26 @@
-"""
-solid-name: YamlWorkflowPersister
-solid-category: service
-solid-spec: [SPEC-031]
-solid-description: Persists a flow definition to the run directory.
-"""
+"""Persists resolved workflow snapshots in run directories."""
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from pathlib import Path
-
-import yaml
 
 from harness.models import FlowDef
 from harness.workflow_persisting import WorkflowPersisting
+from harness.workflow_yaml_serializing import WorkflowYamlSerializing
 
 
+"""
+solid-name: YamlWorkflowPersister
+solid-category: service
+solid-spec: [SPEC-031, SPEC-037]
+solid-description: Persists durable workflow snapshots in run directories.
+"""
 class YamlWorkflowPersister:
 
+    def __init__(self, workflow_serializer: WorkflowYamlSerializing) -> None:
+        self._workflow_serializer = workflow_serializer
+
     def persist(self, run_dir: Path, flow_def: FlowDef) -> None:
-        (run_dir / "workflow.yaml").write_text(yaml.dump(asdict(flow_def), default_flow_style=False))
+        (run_dir / "workflow.yaml").write_text(
+            self._workflow_serializer.serialize(flow_def)
+        )

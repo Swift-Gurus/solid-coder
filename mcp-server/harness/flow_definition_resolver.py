@@ -1,5 +1,6 @@
 """Resolves a raw workflow document and all composition resources."""
 
+from harness.condition_parsing import ConditionParsing
 from harness.flow_config_extractor import FlowConfigExtracting
 from harness.flow_def import FlowDef
 from harness.include_resolving import IncludeResolving
@@ -25,6 +26,7 @@ class FlowDefinitionResolver:
     def __init__(
         self,
         config_extractor: FlowConfigExtracting,
+        condition_parser: ConditionParsing,
         path_builder: PathBuilding,
         source_annotator: StepSourceAnnotating,
         source_collector: StepSourceCollecting,
@@ -37,6 +39,7 @@ class FlowDefinitionResolver:
         step_mapper: StepDeclarationMapping,
     ) -> None:
         self._config_extractor = config_extractor
+        self._condition_parser = condition_parser
         self._path_builder = path_builder
         self._source_annotator = source_annotator
         self._source_collector = source_collector
@@ -52,6 +55,11 @@ class FlowDefinitionResolver:
         resolved_source_path = self._path_builder.build(path)
         source_path = str(resolved_source_path)
         workflow_id = raw.get("id") or resolved_source_path.stem
+        condition = (
+            self._condition_parser.parse(raw["when"])
+            if raw.get("when") is not None
+            else None
+        )
         declared_steps = self._source_annotator.annotate(
             self._config_extractor.extract_steps(raw),
             source_path,
@@ -84,6 +92,7 @@ class FlowDefinitionResolver:
             name=self._config_extractor.extract_name(raw),
             max_turns=self._config_extractor.extract_max_turns(raw),
             steps=[],
+            condition=condition,
             step_declarations=step_declarations,
             top_level_step_ids=top_level_step_ids,
             alias_groups=inclusion.alias_groups,

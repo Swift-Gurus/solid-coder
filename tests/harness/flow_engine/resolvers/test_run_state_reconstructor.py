@@ -11,6 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.models import StepOutputs
 from harness.run_state_reconstructor_factory import make_run_state_reconstructor
 
@@ -71,6 +73,60 @@ class TestRunStateReconstructor(unittest.TestCase):
             {"event": "run_failed", "step_id": "gate"},
         ])
         self.assertEqual(state.status, "failed")
+
+    def test_step_skipped_restores_terminal_condition_decision_without_attempts(self):
+        state = self.sut.reconstruct([
+            {"event": "step_started", "step_id": "inspect"},
+            {
+                "event": "step_skipped",
+                "step_id": "inspect",
+                "instance_id": "inspect-1",
+                "condition": {
+                    "ref": "{{params.enabled}}",
+                    "equals": True,
+                },
+                "item": None,
+                "parent_completed": True,
+            },
+        ])
+
+        self.assertNotIn("inspect", state.running)
+        self.assertEqual(
+            state.skipped["inspect"].condition,
+            ComparisonCondition(
+                reference="{{params.enabled}}",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+            ),
+        )
+        self.assertEqual(state.attempts_used, {})
+        self.assertEqual(state.turn_count, 0)
+
+    def test_workflow_condition_evaluated_restores_decision_without_attempts(self):
+        state = self.sut.reconstruct([
+            {
+                "event": "workflow_condition_evaluated",
+                "condition": {
+                    "ref": "{{params.enabled}}",
+                    "equals": True,
+                },
+                "matched": False,
+            },
+        ])
+
+        decision = state.workflow_condition_decision
+        self.assertIsNotNone(decision)
+        self.assertEqual(
+            decision.condition,
+            ComparisonCondition(
+                reference="{{params.enabled}}",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+            ),
+        )
+        self.assertFalse(decision.matched)
+        self.assertEqual(state.attempts_used, {})
+        self.assertEqual(state.turn_count, 0)
 
 
 if __name__ == "__main__":

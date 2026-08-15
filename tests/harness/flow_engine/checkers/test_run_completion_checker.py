@@ -15,9 +15,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.models import FlowDef, RunState, StepDef
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
+from harness.step_skip import StepSkip
+from harness.workflow_condition_decision import WorkflowConditionDecision
 
 
 class SpyEventAppender:
@@ -68,6 +72,77 @@ class TestRunCompletionChecker(unittest.TestCase):
 
         self.assertEqual(result.status, "done")
         self.assertEqual(appender.events, [("/run/events.jsonl", "run_completed", {"run_id": "run-1"})])
+        self.assertEqual(active_run.deleted_for, [Path("/runs")])
+
+    def test_returns_done_when_all_steps_are_terminally_skipped(self):
+        appender = SpyEventAppender()
+        active_run = SpyActiveRunPointer()
+        sut = _make_sut(appender, active_run)
+        skip = StepSkip(
+            step_id="step-a",
+            instance_id="step-a-1",
+            condition=ComparisonCondition(
+                reference="{{params.enabled}}",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+            ),
+        )
+        run_state = RunState(
+            completed={},
+            skipped={"step-a": skip},
+            running=[],
+            turn_count=0,
+            status="in_progress",
+        )
+
+        result = sut.check(
+            Path("/runs"),
+            "run-1",
+            "/run/events.jsonl",
+            _flow(),
+            run_state,
+        )
+
+        self.assertEqual(result.status, "done")
+        self.assertEqual(
+            appender.events,
+            [("/run/events.jsonl", "run_completed", {"run_id": "run-1"})],
+        )
+        self.assertEqual(active_run.deleted_for, [Path("/runs")])
+
+    def test_returns_done_when_workflow_condition_is_false(self):
+        appender = SpyEventAppender()
+        active_run = SpyActiveRunPointer()
+        sut = _make_sut(appender, active_run)
+        condition = ComparisonCondition(
+            reference="{{params.enabled}}",
+            operator=ConditionOperator.EQUALS,
+            expected=True,
+        )
+        run_state = RunState(
+            completed={},
+            running=[],
+            turn_count=0,
+            status="in_progress",
+            workflow_condition_decision=WorkflowConditionDecision(
+                condition=condition,
+                matched=False,
+            ),
+        )
+
+        result = sut.check(
+            Path("/runs"),
+            "run-1",
+            "/run/events.jsonl",
+            _flow(),
+            run_state,
+        )
+
+        self.assertEqual(result.status, "done")
+        self.assertEqual(
+            appender.events,
+            [("/run/events.jsonl", "run_completed", {"run_id": "run-1"})],
+        )
         self.assertEqual(active_run.deleted_for, [Path("/runs")])
 
     def test_returns_timed_out_and_clears_active_run_when_max_turns_reached(self):

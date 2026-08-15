@@ -1,6 +1,9 @@
 """Assembles the production run-state reconstruction pipeline."""
 
 from harness.attempt_failed_transition import AttemptFailedTransition
+from harness.comparison_condition_parser import ComparisonConditionParser
+from harness.composition_condition_parser import CompositionConditionParser
+from harness.condition_parser import ConditionParser
 from harness.run_state_builder import RunStateBuilder
 from harness.run_state_event_router import RunStateEventRouter
 from harness.run_state_reconstructor import RunStateReconstructor
@@ -9,12 +12,20 @@ from harness.step_completed_transition import StepCompletedTransition
 from harness.step_instance_output_aggregator import StepInstanceOutputAggregator
 from harness.step_outputs_builder import StepOutputsBuilder
 from harness.step_rejected_transition import StepRejectedTransition
+from harness.step_skipped_transition import StepSkippedTransition
 from harness.step_started_transition import StepStartedTransition
 from harness.turn_counted_transition import TurnCountedTransition
+from harness.workflow_condition_evaluated_transition import (
+    WorkflowConditionEvaluatedTransition,
+)
 
 
 def make_run_state_reconstructor() -> RunStateReconstructor:
     attempt_failed = AttemptFailedTransition()
+    condition_parser = ConditionParser(
+        composition_parser=CompositionConditionParser(),
+        comparison_parser=ComparisonConditionParser(),
+    )
     return RunStateReconstructor(
         state_builder=RunStateBuilder(),
         event_router=RunStateEventRouter(
@@ -23,6 +34,12 @@ def make_run_state_reconstructor() -> RunStateReconstructor:
                 "step_completed": StepCompletedTransition(
                     step_outputs_builder=StepOutputsBuilder(),
                     output_aggregator=StepInstanceOutputAggregator(),
+                ),
+                "step_skipped": StepSkippedTransition(
+                    condition_parser=condition_parser,
+                ),
+                "workflow_condition_evaluated": WorkflowConditionEvaluatedTransition(
+                    condition_parser=condition_parser,
                 ),
                 "turn_counted": TurnCountedTransition(),
                 "run_completed": RunStatusTransition(status="done"),

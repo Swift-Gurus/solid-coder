@@ -9,9 +9,12 @@ from harness.step_dependency_checking import StepDependencyChecking
 """
 solid-name: StepDependencyChecker
 solid-category: service
-solid-spec: [SPEC-010, SPEC-030]
-solid-description: Determines whether every declared dependency of a workflow step is complete.
+solid-spec: [SPEC-010, SPEC-030, SPEC-037]
+solid-description: Determines whether every declared dependency of a workflow step is terminal.
 """
 class StepDependencyChecker(StepDependencyChecking):
     def dependencies_met(self, step: StepDef, run_state: RunState) -> bool:
-        return all(dependency in run_state.completed for dependency in step.depends_on)
+        return all(
+            dependency in run_state.completed or dependency in run_state.skipped
+            for dependency in step.depends_on
+        )

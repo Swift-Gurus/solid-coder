@@ -2,10 +2,10 @@
 number: SPEC-035
 feature: workflow-packages-and-discovery
 type: subtask
-status: ready
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-027, SPEC-030, SPEC-031]
-blocking: [SPEC-036]
+blocking: [SPEC-036, SPEC-037]
 ---
 
 # Workflow Packages, Discovery, and Composition
@@ -235,11 +235,11 @@ For migration, the existing `type: script` plus command-array form remains accep
 
 ## Definition of Done
 
-- [ ] Recursive package discovery and stable IDs are implemented.
-- [ ] Client, bundled, and legacy sources share one collision-checked catalog with no override behavior.
-- [ ] Workflow-ID composition reuses SPEC-027 alias and cycle semantics.
-- [ ] Package-relative resources resolve from their declaring file and remain package-contained.
-- [ ] Bare resource filenames resolve from conventional package subfolders, and explicit path forms follow the shared grammar.
-- [ ] Script-file and inline-command steps use distinct structured contracts with typed runtime models and allowlisted executors.
-- [ ] Run snapshots record selected workflow provenance.
-- [ ] Existing legacy flow suites remain green and Claude/Codex bare-ID live tests pass.
+- [x] Recursive package discovery and stable IDs are implemented.
+- [x] Client, bundled, and legacy sources share one collision-checked catalog with no override behavior.
+- [x] Workflow-ID composition reuses SPEC-027 alias and cycle semantics.
+- [x] Package-relative resources resolve from their declaring file and remain package-contained.
+- [x] Bare resource filenames resolve from conventional package subfolders, and explicit path forms follow the shared grammar.
+- [x] Script-file and inline-command steps use distinct structured contracts with typed runtime models and allowlisted executors.
+- [x] Run snapshots record selected workflow provenance.
+- [x] Existing legacy flow suites remain green and Claude/Codex bare-ID live tests pass.

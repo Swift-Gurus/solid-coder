@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from harness.condition_parsing import ConditionParsing
 from harness.output_spec import OutputSpec
 from harness.step_declaration import StepDeclaration
 from harness.step_declaration_mapping import StepDeclarationMapping
@@ -14,6 +15,9 @@ solid-spec: [SPEC-027, SPEC-030, SPEC-035]
 solid-description: Creates unvalidated workflow-step declarations from structured input.
 """
 class StepDeclarationFactory(StepDeclarationMapping):
+    def __init__(self, condition_parser: ConditionParsing) -> None:
+        self._condition_parser = condition_parser
+
     def map(self, raw: dict) -> StepDeclaration:
         outputs = [
             OutputSpec(
@@ -31,6 +35,11 @@ class StepDeclarationFactory(StepDeclarationMapping):
             depends_on=raw.get("depends_on"),
             outputs=outputs,
             for_each=raw.get("for_each"),
+            condition=(
+                self._condition_parser.parse(raw["when"])
+                if raw.get("when") is not None
+                else None
+            ),
             mode=raw.get("mode"),
             prompt_file=raw.get("prompt_file"),
             command=raw.get("command"),

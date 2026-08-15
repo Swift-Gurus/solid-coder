@@ -14,10 +14,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.active_run_location import ActiveRunLocation
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.flow_status_reader import FlowStatusReader
 from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
 from harness.run_snapshot import RunSnapshot
+from harness.step_skip import StepSkip
+from harness.workflow_condition_decision import WorkflowConditionDecision
+
+
+class StubConditionSerializer:
+    def serialize(self, condition) -> dict[str, object]:
+        return {
+            "ref": condition.reference,
+            condition.operator.value: condition.expected,
+        }
 
 
 class RaisingRunLocator:
@@ -61,6 +73,7 @@ class TestFlowStatusReader(unittest.TestCase):
             run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(
                 run_state=RunState(completed={}, running=[], turn_count=0, status="not_started"), ready=[],
             )),
+            condition_serializer=StubConditionSerializer(),
         )
 
         result = sut.flow_status()
@@ -75,11 +88,36 @@ class TestFlowStatusReader(unittest.TestCase):
         )
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
         instance = StepInstance(step_id="step-b", instance_id="step-b-1", item=None, prompt="Do step-b")
-        run_state = RunState(completed={"step-a": None}, running=["step-b"], turn_count=1, status="in_progress")
+        skip = StepSkip(
+            step_id="step-c",
+            instance_id="step-c-1",
+            condition=ComparisonCondition(
+                reference="{{params.enabled}}",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+            ),
+        )
+        run_state = RunState(
+            completed={"step-a": None},
+            skipped={"step-c": skip},
+            skipped_instances={"step-c-1": skip},
+            running=["step-b"],
+            turn_count=1,
+            status="in_progress",
+            workflow_condition_decision=WorkflowConditionDecision(
+                condition=ComparisonCondition(
+                    reference="{{params.workflow_enabled}}",
+                    operator=ConditionOperator.EQUALS,
+                    expected=True,
+                ),
+                matched=False,
+            ),
+        )
         sut = FlowStatusReader(
             run_locator=StubRunLocator(location),
             flow_loader=StubFlowLoader(flow_def),
             run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(run_state=run_state, ready=[instance])),
+            condition_serializer=StubConditionSerializer(),
         )
 
         result = sut.flow_status()
@@ -90,8 +128,18 @@ class TestFlowStatusReader(unittest.TestCase):
         self.assertEqual(result.turn_count, 1)
         self.assertEqual(result.max_turns, 10)
         self.assertEqual(result.completed, ["step-a"])
+        self.assertEqual(result.skipped[0].step_id, "step-c")
+        self.assertEqual(
+            result.skipped[0].condition,
+            {"ref": "{{params.enabled}}", "equals": True},
+        )
         self.assertEqual(result.running, ["step-b"])
         self.assertEqual(result.pending, ["step-b"])
+        self.assertFalse(result.workflow_condition.matched)
+        self.assertEqual(
+            result.workflow_condition.condition,
+            {"ref": "{{params.workflow_enabled}}", "equals": True},
+        )
 
     def test_returns_clean_error_status_when_interpolation_fails(self):
         location = ActiveRunLocation(
@@ -103,6 +151,7 @@ class TestFlowStatusReader(unittest.TestCase):
             run_locator=StubRunLocator(location),
             flow_loader=StubFlowLoader(flow_def),
             run_snapshot_resolver=StubRunSnapshotResolver(error=InterpolationError("bad reference")),
+            condition_serializer=StubConditionSerializer(),
         )
 
         result = sut.flow_status()

@@ -1,9 +1,4 @@
-"""
-solid-name: RunDirectoryScaffolder
-solid-category: service
-solid-spec: [SPEC-031]
-solid-description: Initializes a run directory for a given run ID and persists the provided flow definition.
-"""
+"""Initializes durable workflow run directories."""
 
 from __future__ import annotations
 
@@ -11,13 +6,18 @@ from pathlib import Path
 
 from harness.models import FlowDef
 from harness.workflow_persisting import WorkflowPersisting
-from harness.yaml_workflow_persister import YamlWorkflowPersister
 
 
+"""
+solid-name: RunDirectoryScaffolder
+solid-category: service
+solid-spec: [SPEC-031, SPEC-037]
+solid-description: Initializes run directories and persists their resolved workflow snapshots.
+"""
 class RunDirectoryScaffolder:
 
-    def __init__(self, workflow_persister: WorkflowPersisting | None = None) -> None:
-        self._workflow_persister: WorkflowPersisting = workflow_persister or YamlWorkflowPersister()
+    def __init__(self, workflow_persister: WorkflowPersisting) -> None:
+        self._workflow_persister = workflow_persister
 
     def scaffold(self, base_dir: Path, run_id: str, flow_def: FlowDef) -> Path:
         run_dir = base_dir / run_id

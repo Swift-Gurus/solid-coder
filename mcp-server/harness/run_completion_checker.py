@@ -17,7 +17,7 @@ from harness.run_timeout_message_building import RunTimeoutMessageBuilding
 """
 solid-name: RunCompletionChecker
 solid-category: service
-solid-spec: [SPEC-031]
+solid-spec: [SPEC-031, SPEC-037]
 solid-description: Coordinates completed, exhausted, and timed-out workflow-run terminal states.
 """
 class RunCompletionChecker(RunCompletionChecking):
@@ -45,7 +45,13 @@ class RunCompletionChecker(RunCompletionChecking):
         run_state: RunState,
     ) -> FlowNextResult | None:
         all_step_ids = {s.id for s in flow_def.steps}
-        if all_step_ids.issubset(run_state.completed.keys()):
+        terminal_step_ids = set(run_state.completed).union(run_state.skipped)
+        workflow_condition = run_state.workflow_condition_decision
+        workflow_skipped = (
+            workflow_condition is not None
+            and not workflow_condition.matched
+        )
+        if workflow_skipped or all_step_ids.issubset(terminal_step_ids):
             self._event_appender.append(events_path, "run_completed", {"run_id": run_id})
             self._active_run.delete(base_dir)
             return FlowNextResult(status="done")

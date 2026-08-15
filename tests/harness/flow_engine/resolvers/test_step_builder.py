@@ -11,6 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.step_builder import StepBuilder
 from harness.step_declaration import StepDeclaration
 
@@ -49,6 +51,19 @@ class TestStepBuilder(unittest.TestCase):
     def test_reads_prompt_file_reference(self):
         step = self.sut.build(StepDeclaration(id="a", prompt_file="prompt.md"))
         self.assertEqual(step.prompt_file, "prompt.md")
+
+    def test_preserves_typed_step_condition(self):
+        condition = ComparisonCondition(
+            reference="{{params.enabled}}",
+            operator=ConditionOperator.EQUALS,
+            expected=True,
+        )
+
+        step = self.sut.build(
+            StepDeclaration(id="conditional", prompt="Review", condition=condition)
+        )
+
+        self.assertIs(step.condition, condition)
 
 
 if __name__ == "__main__":

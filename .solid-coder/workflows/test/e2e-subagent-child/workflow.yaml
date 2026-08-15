@@ -1,4 +1,5 @@
-name: e2e_subagent_child
+id: e2e-subagent-child
+name: E2E Subagent Child
 max_turns: 6
 steps:
   - id: child_step_one

@@ -2,9 +2,9 @@
 number: SPEC-033
 feature: Subagent Flow Stop Hook
 type: subtask
-status: draft
+status: deferred
 parent: SPEC-010
-blocked-by: [SPEC-031, SPEC-032, SPEC-028]
+blocked-by: [SPEC-031, SPEC-032, SPEC-028, SPEC-037]
 blocking: []
 ---
 
@@ -17,6 +17,10 @@ Prevents a subagent spawned to drive a delegated, isolated child flow (SPEC-028'
 **Redesigned from the original draft.** The original design assumed a subagent submits its output directly into the *parent's* run by calling the parent's own `flow_next`, and could be checked via a `session_id → instance_id` mapping recorded in the parent's event log. That model predates SPEC-028: a `mode: subagent` delegate step's subagent starts and drives its own **isolated** child flow (its own run directory, its own event log) via `flow_start(isolated=true)`/`flow_next(run_id=...)` — it never calls the parent's `flow_next` at all, so the parent's event log never contains any record of the subagent's session. The original mechanism cannot see the isolated run and would silently no-op for every real `mode: subagent` case. This redesign checks the *isolated* run's own state instead.
 
 **Why this still matters despite SPEC-032 already covering the parent.** The parent's own turn-ending is already blocked correctly by SPEC-032 while the delegate step (from the parent's perspective, an ordinary pending step) remains unsubmitted — a parent can't silently walk away from a delegate step it never got a result for. What SPEC-032 does *not* catch: the subagent itself abandoning its isolated child flow mid-way and reporting back to the parent anyway (a plausible-looking but incomplete result), or simply leaving an orphaned isolated run directory behind. This spec closes that narrower gap; it is a safety net for the subagent's own diligence, not the safety-critical parent-side guarantee (which is already secure).
+
+## Deferral Decision
+
+This work is deliberately deferred until SPEC-037 finalizes the main conditional workflow, included-workflow lifecycle, and aggregation behavior. Subagent-owned isolated-flow enforcement is separate follow-up work and is not a completion condition for SPEC-010's main flow or the first bundled workflows. Resume this spec only after the main flow contracts are stable.
 
 ## Input / Output
 
@@ -119,4 +123,4 @@ flowchart TD
 - [ ] Registers as one more check in the existing generic Stop/SubagentStop dispatch mechanism, not a standalone script
 - [ ] All test plan cases pass
 
-**Not yet implemented** — this is a redesigned plan, not a built feature. Nothing under `## Definition of Done` is checked. See `handover-session-scoped-run-lock.md`'s "Next session" list for follow-up.
+**Deferred and not implemented** — this is a redesigned follow-up plan, not a built feature. Nothing under `## Definition of Done` is checked; implementation resumes only after SPEC-037 is complete.

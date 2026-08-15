@@ -14,6 +14,7 @@ from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.command_allowlist_resolving import CommandAllowlistResolving
+from harness.condition_serializer_factory import make_condition_serializer
 from harness.delegate_step_handler import DelegateStepHandler
 from harness.engine_step_drainer import EngineStepDrainer
 from harness.existing_path_filter import ExistingPathFilter
@@ -65,9 +66,13 @@ from harness.step_handler_resolver import StepHandlerResolver
 from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_output_validator import StepOutputValidator
 from harness.step_result_builder import StepResultBuilder
+from harness.step_skip_recorder import StepSkipRecorder
 from harness.successful_validation_result_provider import SuccessfulValidationResultProvider
 from harness.turn_advancer import TurnAdvancer
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+from harness.workflow_condition_gate import WorkflowConditionGate
+from harness.workflow_condition_recorder import WorkflowConditionRecorder
+from harness.workflow_persister_factory import make_workflow_persister
 from hook_utils import _resolve_project_root
 from subprocess_script_runner import SubprocessScriptRunner
 
@@ -115,9 +120,10 @@ class FlowRunOrchestratorFactory:
             inner_loader=assembly.flow_loader,
             catalog_scope=workflow_catalog,
         )
+        run_context_builder = RunContextBuilder()
         run_snapshot_resolver = RunSnapshotResolver(
             event_replayer=assembly.event_replayer,
-            context_builder=RunContextBuilder(),
+            context_builder=run_context_builder,
             dag_runner=assembly.dag_runner,
         )
         ready_steps_resolver = ReadyStepsResolver(
@@ -162,8 +168,21 @@ class FlowRunOrchestratorFactory:
                 ),
             ),
         })
+        condition_serializer = make_condition_serializer()
         step_execution_coordinator = EngineStepDrainer(
             run_snapshot_resolver=run_snapshot_resolver,
+            workflow_condition_gate=WorkflowConditionGate(
+                context_builder=run_context_builder,
+                condition_evaluator=assembly.condition_evaluator,
+                decision_recorder=WorkflowConditionRecorder(
+                    event_appender=assembly.event_appender,
+                    condition_serializer=condition_serializer,
+                ),
+            ),
+            step_skip_recorder=StepSkipRecorder(
+                event_appender=assembly.event_appender,
+                condition_serializer=condition_serializer,
+            ),
             ready_step_executor=ReadyStepExecutor(
                 step_handler_resolver=step_handler_resolver,
                 failure_handler=StepExecutionFailureHandler(
@@ -194,7 +213,12 @@ class FlowRunOrchestratorFactory:
             ),
             flow_loader=resolving_flow_loader,
             run_provisioner=RunProvisioner(
-                run_initializer=RunInitializer(active_run=active_run, scaffolder=RunDirectoryScaffolder()),
+                run_initializer=RunInitializer(
+                    active_run=active_run,
+                    scaffolder=RunDirectoryScaffolder(
+                        workflow_persister=make_workflow_persister(),
+                    ),
+                ),
                 metadata_store=metadata_store,
             ),
             path_resolver=IsolatedRunPathResolver(),
@@ -226,6 +250,7 @@ class FlowRunOrchestratorFactory:
             run_locator=run_locator,
             flow_loader=resolving_flow_loader,
             run_snapshot_resolver=run_snapshot_resolver,
+            condition_serializer=condition_serializer,
         )
         lock_clearer = ActiveRunLockClearer(run_locator=run_locator, active_run=active_run)
 

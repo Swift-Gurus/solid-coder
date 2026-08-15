@@ -64,7 +64,7 @@ class FlowSessionScopingE2ELiveBase(unittest.TestCase, ABC):
         request = LiveSessionRequest(
             prompt=(
                 f"# spawned-by: {self.parent_session_id}\n\n"
-                f'Call {self.FLOW_START_TOOL} exactly once with flow="e2e_test". '
+                f'Call {self.FLOW_START_TOOL} exactly once with flow="e2e-test". '
                 "Immediately stop after that tool returns; do not call another tool."
             ),
             project_root=_PROJECT_ROOT,

@@ -102,6 +102,70 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
         self.assertEqual(event_types.count("session_step_recorded"), 3)
         self.assertEqual(event_types.count("turn_counted"), 3)
 
+    def test_false_workflow_condition_completes_without_executing_steps(self):
+        flow_file = Path(self._tmpdir) / "conditional.yaml"
+        flow_file.write_text(textwrap.dedent("""
+            name: conditional
+            when:
+              ref: "{{params.enabled}}"
+              equals: true
+            steps:
+              - id: review
+                prompt: Never execute
+        """))
+
+        result = self.sut.flow_start(
+            str(flow_file),
+            params={"enabled": False},
+        )
+
+        self.assertEqual(result.status, "done")
+        self.assertEqual(result.steps, [])
+        events_path = self.runs_dir / result.run_id / "events.jsonl"
+        events = [
+            json.loads(line)
+            for line in events_path.read_text().strip().splitlines()
+        ]
+        event_types = [event["event"] for event in events]
+        self.assertEqual(event_types.count("workflow_condition_evaluated"), 1)
+        self.assertEqual(event_types.count("run_completed"), 1)
+        self.assertNotIn("step_started", event_types)
+        self.assertNotIn("step_completed", event_types)
+        self.assertNotIn("turn_counted", event_types)
+
+    def test_true_workflow_condition_is_not_reevaluated_after_flow_next(self):
+        flow_file = Path(self._tmpdir) / "conditional.yaml"
+        flow_file.write_text(textwrap.dedent("""
+            name: conditional
+            when:
+              ref: "{{params.enabled}}"
+              equals: true
+            steps:
+              - id: review
+                prompt: Review the change
+        """))
+
+        started = self.sut.flow_start(
+            str(flow_file),
+            params={"enabled": True},
+        )
+        completed = self.sut.flow_next(
+            {step.instance_id: {} for step in started.steps}
+        )
+
+        self.assertEqual(len(started.steps), 1)
+        self.assertEqual(completed.status, "done")
+        events_path = self.runs_dir / started.run_id / "events.jsonl"
+        events = [
+            json.loads(line)
+            for line in events_path.read_text().strip().splitlines()
+        ]
+        event_types = [event["event"] for event in events]
+        self.assertEqual(event_types.count("workflow_condition_evaluated"), 1)
+        self.assertEqual(event_types.count("step_completed"), 1)
+        self.assertEqual(event_types.count("turn_counted"), 1)
+        self.assertEqual(event_types.count("run_completed"), 1)
+
 
 class StubSessionReader:
     def __init__(self, session_id: str) -> None:

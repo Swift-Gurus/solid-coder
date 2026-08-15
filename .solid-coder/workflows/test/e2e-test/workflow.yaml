@@ -1,0 +1,146 @@
+id: e2e-test
+name: E2E Flow Engine
+description: Exercises agent, process, include, delegate, conditional, and fan-out flow behavior.
+max_turns: 20
+steps:
+  - id: greet
+    prompt: >
+      Produce a short, friendly one-sentence greeting. Submit it as the
+      "greeting" output field of this step.
+    outputs:
+      - name: greeting
+        type: data
+        schema:
+          type: string
+
+  - id: count_words
+    prompt: >
+      Count the number of words in this greeting: "{{steps.greet.outputs.greeting}}".
+      Submit the count as the "word_count" output field of this step.
+    depends_on: [greet]
+    outputs:
+      - name: word_count
+        type: data
+        schema:
+          type: integer
+
+  - id: check_environment
+    type: command
+    command: "python3 -c \"import json; print(json.dumps({'ok': True}))\""
+    depends_on: [greet]
+
+  - include: review.yaml
+    as: review
+
+  - id: delegate
+    type: delegate
+    mode: subagent
+    prompt: >
+      Call flow_start with flow="e2e-subagent-child". If your own prompt included a
+      "# spawned-by: <id>" header, pass that same header along at the top of the prompt
+      you give to whatever you launch for this. Once the subagent reports the child
+      flow is done, relay the "value" output it produced for child_step_two as this
+      step's own "child_value" output.
+    outputs:
+      - name: child_value
+        type: data
+        schema:
+          type: integer
+    depends_on: [review]
+
+  - id: classify
+    prompt_file: classify.md
+    depends_on: [delegate]
+    outputs:
+      - name: category
+        type: data
+        schema:
+          type: string
+          enum: [question, statement]
+
+  - id: respond_question
+    prompt: >
+      Submit exactly "QUESTION CATEGORY SELECTED" as the "sentence" output field.
+    depends_on: [classify]
+    when:
+      ref: "{{steps.classify.outputs.category}}"
+      equals: question
+    outputs:
+      - name: sentence
+        type: data
+        schema:
+          type: string
+          enum: ["QUESTION CATEGORY SELECTED"]
+
+  - id: respond_statement
+    prompt: >
+      Submit exactly "STATEMENT CATEGORY SELECTED" as the "sentence" output field.
+    depends_on: [classify]
+    when:
+      ref: "{{steps.classify.outputs.category}}"
+      equals: statement
+    outputs:
+      - name: sentence
+        type: data
+        schema:
+          type: string
+          enum: ["STATEMENT CATEGORY SELECTED"]
+
+  - id: prepare_units
+    type: script
+    file: emit-units.py
+    executor: python3
+    depends_on: [respond_question, respond_statement]
+    outputs:
+      - name: units
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            required: [text, category]
+            properties:
+              text:
+                type: string
+              category:
+                type: string
+                enum: [question, statement]
+
+  - id: handle_question_units
+    depends_on: [prepare_units]
+    for_each: "{{steps.prepare_units.outputs.units}}"
+    when:
+      ref: "{{item.category}}"
+      equals: question
+    prompt: >
+      The unit "{{item.text}}" was categorized as a question. Submit exactly
+      "QUESTION UNIT SELECTED" as the "sentence" output field.
+    outputs:
+      - name: sentence
+        type: data
+        schema:
+          type: string
+          enum: ["QUESTION UNIT SELECTED"]
+
+  - id: handle_statement_units
+    depends_on: [prepare_units]
+    for_each: "{{steps.prepare_units.outputs.units}}"
+    when:
+      ref: "{{item.category}}"
+      equals: statement
+    prompt: >
+      The unit "{{item.text}}" was categorized as a statement. Submit exactly
+      "STATEMENT UNIT SELECTED" as the "sentence" output field.
+    outputs:
+      - name: sentence
+        type: data
+        schema:
+          type: string
+          enum: ["STATEMENT UNIT SELECTED"]
+
+  - id: summarize
+    prompt: >
+      Write one sentence noting that the greeting was "{{steps.greet.outputs.greeting}}"
+      and it contained {{steps.count_words.outputs.word_count}} words. This step has no
+      declared outputs — just say the sentence back in your final reply.
+    depends_on: [handle_question_units, handle_statement_units]

@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.condition_declaration import ConditionDeclaration
 from harness.output_spec import OutputSpec
 
 
 """
 solid-name: StepDef
 solid-category: model
-solid-spec: [SPEC-030, SPEC-027, SPEC-028]
+solid-spec: [SPEC-030, SPEC-027, SPEC-028, SPEC-037]
 solid-description: Represents a validated workflow step with its execution, dependency, and output contracts.
 """
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class StepDef:
     depends_on: list[str] = field(default_factory=list)
     outputs: list[OutputSpec] = field(default_factory=list)
     for_each: str | None = None
+    condition: ConditionDeclaration | None = None
     type: str = "agent"
     mode: str | None = None
     prompt_file: str | None = None

@@ -5,7 +5,7 @@ type: subtask
 status: done
 parent: SPEC-010
 blocked-by: []
-blocking: [SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035]
+blocking: [SPEC-031, SPEC-032, SPEC-033, SPEC-034, SPEC-035, SPEC-037]
 ---
 
 # Core Flow Engine (Abstraction)
@@ -35,7 +35,8 @@ As a caller, I want to load a flow YAML and get back a validated DAG so invalid 
 **Acceptance Criteria:**
 - `flow_loader.load(path, search_paths)` resolves `uses:` references using the supplied search paths; SPEC-035 supersedes the original basename/first-match behavior with package-relative resolution and a collision-checked workflow catalog
 - Returns a `FlowDef` dataclass: `name`, `max_turns`, `steps[]` each with `id`, `prompt`, `depends_on`, `outputs`, `execution`, `for_each`
-- Raises `FlowValidationError` with a clear message for: missing required fields, duplicate step IDs, unresolvable `uses:` references, dependency cycles (topological sort), `for_each` referencing a non-existent dependency output
+- Raises `FlowValidationError` with a clear message for: missing required fields, duplicate step IDs, unresolvable `uses:` references, dependency cycles (topological sort), and malformed `for_each` expressions
+- A `for_each` expression must have the exact form `{{steps.<id>.outputs.<name>}}`, reference an output from a transitive dependency, and target an output whose declared JSON Schema is an array
 
 ### US-2: Append and replay events
 
@@ -43,7 +44,7 @@ As a caller, I want to append events to an append-only log and replay the log to
 
 **Acceptance Criteria:**
 - `event_log.append(path, event_type, payload)` appends one JSON line to `events.jsonl`; atomic on POSIX (`os.write` to fd opened with `O_APPEND`)
-- `event_log.replay(path)` reads all lines, returns `RunState`: `{ completed: {step_id: outputs}, running: [step_id], turn_count, status }`
+- `event_log.replay(path)` reads all lines and restores both declared-step completion and individually completed `for_each` instances, including each instance's source index and outputs
 - Partial/corrupt lines at end of file (interrupted write) are skipped with a warning, not a hard error
 - Replay is pure — no I/O side effects, deterministic given the same file
 
@@ -54,7 +55,11 @@ As a caller, given a `FlowDef` and a `RunState`, I want the list of steps that a
 **Acceptance Criteria:**
 - `dag_runner.ready_steps(flow_def, run_state)` returns steps whose `depends_on` are all in `run_state.completed`
 - Excludes steps already in `running` or `completed`
-- Expands `for_each` steps into N `StepInstance` objects, one per item, with `item` bound in each instance's context
+- Expands `for_each` steps into one stable `StepInstance` per source item, with `item` bound in that instance's context and its source index preserved
+- Returns only incomplete instances after a partial submission or replay; completed siblings are not returned or executed again
+- Keeps the declared parent step incomplete until every expanded instance completes, then publishes each declared output as an ordered array using source-item order rather than completion order
+- Treats an empty source array as an engine-owned completion with empty arrays for the declared outputs, so downstream dependencies unblock without an agent turn
+- Applies validation and retry accounting to the addressed instance; a failed instance neither consumes a sibling's attempt budget nor reopens a completed sibling
 - Returns `[]` when all steps are complete (`status = done`)
 - Returns `[]` when `run_state.turn_count >= flow_def.max_turns` (`status = timed_out`)
 
@@ -83,6 +88,7 @@ As a caller, I want submitted step outputs validated against the declared schema
 - Unit: `flow_loader` — valid flow loads correctly; each validation error case raises with message
 - Unit: `event_log.append` — file grows by one line per call; concurrent appends from threads don't corrupt lines
 - Unit: `event_log.replay` — correct `RunState` from a sequence of events; corrupt final line skipped
-- Unit: `dag_runner.ready_steps` — respects depends_on; for_each expansion; timed_out at max_turns
+- Unit: `dag_runner.ready_steps` — respects dependencies; expands `for_each`; excludes completed instances; completes empty collections; times out at `max_turns`
+- Integration: partial and out-of-order instance completion preserves source ordering, replay returns only incomplete instances, retries remain instance-scoped, and downstream steps receive aggregated arrays
 - Unit: `interpolator.render` — resolves all context types; raises on unresolvable
 - Unit: `schema_validator.validate` — inline schema pass/fail; schema_file pass/fail; type:file exists/missing

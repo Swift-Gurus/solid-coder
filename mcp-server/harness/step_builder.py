@@ -12,7 +12,7 @@ from harness.step_def import StepDef
 """
 solid-name: StepBuilder
 solid-category: service
-solid-spec: [SPEC-027, SPEC-030, SPEC-035]
+solid-spec: [SPEC-027, SPEC-030, SPEC-035, SPEC-037]
 solid-description: Constructs executable workflow-step specifications from validated workflow declarations.
 """
 class StepBuilder:
@@ -23,6 +23,7 @@ class StepBuilder:
             depends_on=cast(list[str], declaration.depends_on or []),
             outputs=cast(list[OutputSpec], declaration.outputs or []),
             for_each=cast(Optional[str], declaration.for_each),
+            condition=declaration.condition,
             type=cast(str, declaration.type),
             mode=cast(Optional[str], declaration.mode),
             prompt_file=cast(Optional[str], declaration.prompt_file),

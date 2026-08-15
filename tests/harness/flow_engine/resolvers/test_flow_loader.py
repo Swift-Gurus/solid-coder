@@ -13,6 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.command_allowlist_resolver import CommandAllowlistResolver
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_loader import FlowLoader
 from harness.models import FlowValidationError
@@ -52,6 +54,28 @@ class TestFlowLoader(unittest.TestCase):
         self.assertEqual(flow.max_turns, 5)
         self.assertEqual(len(flow.steps), 1)
         self.assertEqual(flow.steps[0].id, "step_a")
+
+    def test_loads_workflow_level_when_as_a_typed_condition(self):
+        path = self._write("conditional.yaml", """
+            name: conditional
+            when:
+              ref: "{{params.enabled}}"
+              equals: true
+            steps:
+              - id: step_a
+                prompt: Do something
+        """)
+
+        flow = self.loader.load(path, [])
+
+        self.assertEqual(
+            flow.condition,
+            ComparisonCondition(
+                reference="{{params.enabled}}",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+            ),
+        )
 
     def test_raises_on_missing_file(self):
         with self.assertRaises(FlowValidationError):

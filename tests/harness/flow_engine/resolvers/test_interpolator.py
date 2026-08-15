@@ -9,17 +9,39 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.expression_resolver import ExpressionResolver
+from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.filter_resolver import FilterResolver
 from harness.interpolation_error import InterpolationError
+from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
 from harness.models import StepOutputs
+from harness.nested_component_accessor import NestedComponentAccessor
+from harness.nested_path_resolver import NestedPathResolver
+from harness.step_output_expression_resolver import StepOutputExpressionResolver
 
 
 class TestInterpolator(unittest.TestCase):
 
     def setUp(self):
-        self.interp = Interpolator(evaluator=ExpressionResolver(filter_resolver=FilterResolver()))
+        error_factory = InterpolationErrorFactory()
+        expression_resolver = ExpressionResolver(
+            step_output_resolver=StepOutputExpressionResolver(error_factory),
+            nested_value_resolver=NestedPathResolver(
+                component_accessor=NestedComponentAccessor(
+                    attribute_reader=BuiltinAttributeReader()
+                ),
+                error_factory=error_factory,
+            ),
+            error_factory=error_factory,
+        )
+        self.interp = Interpolator(
+            evaluator=FilteredExpressionEvaluator(
+                expression_evaluator=expression_resolver,
+                filter_resolver=FilterResolver(),
+            )
+        )
 
     def _ctx(self, **step_outputs):
         return {

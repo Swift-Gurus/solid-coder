@@ -7,18 +7,22 @@ from typing import Annotated, ClassVar, Optional, Union
 
 from pydantic import AliasChoices, ConfigDict, Field
 
+from harness.condition_declaration import ConditionDeclaration
 from harness.output_spec import OutputSpec
 
 
 """
 solid-name: StepDeclaration
 solid-category: model
-solid-spec: [SPEC-027, SPEC-035]
+solid-spec: [SPEC-027, SPEC-035, SPEC-037]
 solid-description: Represents an unvalidated workflow step for later validation.
 """
 @dataclass(frozen=True)
 class StepDeclaration:
-    __pydantic_config__: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+    __pydantic_config__: ClassVar[ConfigDict] = ConfigDict(
+        extra="forbid",
+        arbitrary_types_allowed=True,
+    )
 
     id: Optional[str] = None
     type: str = "agent"
@@ -26,6 +30,7 @@ class StepDeclaration:
     depends_on: Optional[list[str]] = None
     outputs: list[OutputSpec] = field(default_factory=list)
     for_each: Optional[str] = None
+    condition: Optional[ConditionDeclaration] = None
     mode: Optional[str] = None
     prompt_file: Optional[str] = None
     command: Optional[Union[str, list[str]]] = None

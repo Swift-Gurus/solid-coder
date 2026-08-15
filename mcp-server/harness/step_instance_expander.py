@@ -13,8 +13,8 @@ from harness.step_instance_expanding import StepInstanceExpanding
 """
 solid-name: StepInstanceExpander
 solid-category: service
-solid-spec: [SPEC-010, SPEC-030]
-solid-description: Coordinates ordered workflow iteration expansion while excluding completed instances.
+solid-spec: [SPEC-010, SPEC-030, SPEC-037]
+solid-description: Coordinates ordered workflow iteration expansion while excluding terminal instances.
 """
 class StepInstanceExpander(StepInstanceExpanding):
     def __init__(
@@ -74,4 +74,6 @@ class StepInstanceExpander(StepInstanceExpanding):
             for iteration_index, item in enumerate(items)
             if f"{step.id}-{iteration_index + 1}"
             not in run_state.completed_instances
+            and f"{step.id}-{iteration_index + 1}"
+            not in run_state.skipped_instances
         ]

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
+import tempfile
 import unittest
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
@@ -25,20 +28,31 @@ from model_profile_environment import model_profile_environment  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 
 _PROJECT_ROOT = _MCP_SERVER.parent
+_FLOW_PACKAGE = (
+    _PROJECT_ROOT / ".solid-coder" / "workflows" / "test" / "e2e-test"
+)
 _ALLOWED_TOOLS = (
     "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
     "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
     "mcp__solid-coder-pipeline__flow_status,Task"
 )
-_EXPECTED_STEP_SEQUENCE = [
+_EXPECTED_STEP_PREFIX = [
     "greet",
     "check_environment",
     "count_words",
     "review.draft_review",
     "review.approve_review",
     "delegate",
-    "summarize",
 ]
+
+
+@dataclass(frozen=True)
+class ClassificationCase:
+    text: str
+    expected_category: str
+    completed_branch: str
+    skipped_branch: str
+    expected_sentence: str
 
 
 """
@@ -67,7 +81,57 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             for pointer in runs_dir.glob("active*.json"):
                 pointer.unlink(missing_ok=True)
 
-    def test_flow_reaches_done_with_expected_transitions(self) -> None:
+    def test_question_prompt_selects_question_branch(self) -> None:
+        self._run_classification_case(
+            ClassificationCase(
+                text="Is the deployment ready?",
+                expected_category="question",
+                completed_branch="respond_question",
+                skipped_branch="respond_statement",
+                expected_sentence="QUESTION CATEGORY SELECTED",
+            )
+        )
+
+    def test_statement_prompt_selects_statement_branch(self) -> None:
+        self._run_classification_case(
+            ClassificationCase(
+                text="The deployment is ready.",
+                expected_category="statement",
+                completed_branch="respond_statement",
+                skipped_branch="respond_question",
+                expected_sentence="STATEMENT CATEGORY SELECTED",
+            )
+        )
+
+    def _run_classification_case(self, case: ClassificationCase) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            workflow_package = Path(temporary_directory) / "flows"
+            shutil.copytree(_FLOW_PACKAGE, workflow_package)
+            self._write_classification_prompt(workflow_package, case.text)
+            self._run_workflow_case(workflow_package / "workflow.yaml", case)
+
+    def _write_classification_prompt(
+        self,
+        workflow_package: Path,
+        classification_text: str,
+    ) -> None:
+        prompt = (
+            "Classify the text below as exactly `question` or `statement`.\n\n"
+            "Use `question` when the text asks for information. Use `statement` "
+            "when it asserts information without asking for an answer.\n\n"
+            "Submit only the selected value as the `category` output field.\n\n"
+            f"Text:\n{classification_text}\n"
+        )
+        (workflow_package / "prompts" / "classify.md").write_text(
+            prompt,
+            encoding="utf-8",
+        )
+
+    def _run_workflow_case(
+        self,
+        workflow_path: Path,
+        case: ClassificationCase,
+    ) -> None:
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
         before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
         profile = ModelProfileLoader(
@@ -77,8 +141,12 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         parent_session_id = self.parent_session_id
         prompt = (
             f"# spawned-by: {parent_session_id}\n\n"
-            f'Call {self.FLOW_START_TOOL} with flow="e2e_test".'
+            f'Call {self.FLOW_START_TOOL} with flow="{workflow_path}". '
+            "Drive every returned step through flow_next until the flow reports done, "
+            "failed, or timed out."
         )
+        self.assertNotIn(case.text, prompt)
+        self.assertNotIn(case.expected_sentence, prompt)
         request = LiveSessionRequest(
             prompt=prompt,
             project_root=_PROJECT_ROOT,
@@ -116,8 +184,108 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             if event.get("event") == "session_step_recorded"
             and event.get("session_id") != "engine"
         }
+        classification_event = next(
+            event
+            for event in events
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == "classify"
+        )
+        completed_branch_event = next(
+            event
+            for event in events
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == case.completed_branch
+        )
+        skipped_branch_events = [
+            event
+            for event in events
+            if event.get("event") == "step_skipped"
+            and event.get("step_id") == case.skipped_branch
+        ]
+        completed_prefix = [
+            *_EXPECTED_STEP_PREFIX,
+            "classify",
+            case.completed_branch,
+        ]
+        question_unit_completed = self._matching_step_events(
+            events,
+            event_type="step_completed",
+            step_id="handle_question_units",
+        )
+        question_unit_skipped = self._matching_step_events(
+            events,
+            event_type="step_skipped",
+            step_id="handle_question_units",
+        )
+        statement_unit_completed = self._matching_step_events(
+            events,
+            event_type="step_completed",
+            step_id="handle_statement_units",
+        )
+        statement_unit_skipped = self._matching_step_events(
+            events,
+            event_type="step_skipped",
+            step_id="handle_statement_units",
+        )
         self.assertEqual(event_types[0], "run_started", event_types)
-        self.assertEqual(completed_sequence, _EXPECTED_STEP_SEQUENCE, event_types)
+        self.assertEqual(completed_sequence[: len(completed_prefix)], completed_prefix)
+        self.assertEqual(completed_sequence[-1], "summarize", event_types)
+        self.assertEqual(completed_sequence.count("prepare_units"), 1, event_types)
+        self.assertEqual(
+            classification_event["outputs"]["category"],
+            case.expected_category,
+        )
+        self.assertEqual(
+            completed_branch_event["outputs"]["sentence"],
+            case.expected_sentence,
+        )
+        self.assertEqual(len(skipped_branch_events), 1, event_types)
+        self._assert_unit_route(
+            completed=question_unit_completed,
+            skipped=question_unit_skipped,
+            completed_index=0,
+            skipped_index=1,
+            expected_sentence="QUESTION UNIT SELECTED",
+        )
+        self._assert_unit_route(
+            completed=statement_unit_completed,
+            skipped=statement_unit_skipped,
+            completed_index=1,
+            skipped_index=0,
+            expected_sentence="STATEMENT UNIT SELECTED",
+        )
+        self.assertFalse(
+            {"step_attempt_failed", "step_rejected", "run_failed"}.intersection(
+                event_types
+            ),
+            event_types,
+        )
         self.assertNotEqual(session_result.session_id, parent_session_id)
         self.assertEqual(model_session_ids, {session_result.session_id})
         self.assertEqual(event_types[-1], "run_completed", event_types)
+
+    def _matching_step_events(
+        self,
+        events: list[dict],
+        event_type: str,
+        step_id: str,
+    ) -> list[dict]:
+        return [
+            event
+            for event in events
+            if event.get("event") == event_type and event.get("step_id") == step_id
+        ]
+
+    def _assert_unit_route(
+        self,
+        completed: list[dict],
+        skipped: list[dict],
+        completed_index: int,
+        skipped_index: int,
+        expected_sentence: str,
+    ) -> None:
+        self.assertEqual(len(completed), 1)
+        self.assertEqual(len(skipped), 1)
+        self.assertEqual(completed[0]["iteration_index"], completed_index)
+        self.assertEqual(skipped[0]["iteration_index"], skipped_index)
+        self.assertEqual(completed[0]["outputs"]["sentence"], expected_sentence)

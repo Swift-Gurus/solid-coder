@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from harness.condition_decision_evaluating import ConditionDecisionEvaluating
 from harness.dag_running import DAGRunning
 from harness.event_appender import EventAppending
 from harness.event_replayer import EventReplayer
@@ -23,5 +24,6 @@ class FlowEngineAssembly:
     event_appender: EventAppending
     event_replayer: EventReplayer
     dag_runner: DAGRunning
+    condition_evaluator: ConditionDecisionEvaluating
     interpolator: TemplateRendering
     schema_validator: SchemaValidator

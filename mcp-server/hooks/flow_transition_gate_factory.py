@@ -42,6 +42,7 @@ class FlowTransitionGateFactory:
         from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
         from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
         from harness.attempt_failure_handler import AttemptFailureHandler
+        from harness.condition_serializer_factory import make_condition_serializer
         from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
         from harness.flow_file_resolver import FlowFileResolver
         from harness.flow_status_reader import FlowStatusReader
@@ -95,6 +96,7 @@ class FlowTransitionGateFactory:
                 context_builder=RunContextBuilder(),
                 dag_runner=assembly.dag_runner,
             ),
+            condition_serializer=make_condition_serializer(),
         )
         failure_recorder = PendingStepFailureRecorder(
             run_locator=run_locator,

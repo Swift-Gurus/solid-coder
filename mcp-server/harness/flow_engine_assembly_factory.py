@@ -5,11 +5,22 @@ from __future__ import annotations
 from typing import Optional
 
 from harness.agent_step_shape_validator import AgentStepShapeValidator
+from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.command_step_shape_validator import CommandStepShapeValidator
 from harness.command_step_value_validator import CommandStepValueValidator
+from harness.comparison_condition_parser import ComparisonConditionParser
+from harness.composition_condition_parser import CompositionConditionParser
+from harness.condition_comparator import ConditionComparator
+from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
+from harness.condition_evaluator import ConditionEvaluator
+from harness.condition_parser import ConditionParser
+from harness.condition_reference_normalizer import ConditionReferenceNormalizer
+from harness.condition_reference_resolver import ConditionReferenceResolver
+from harness.condition_value_matcher import ConditionValueMatcher
+from harness.conditional_step_instance_expander import ConditionalStepInstanceExpander
 from harness.dag_runner import DAGRunner
 from harness.data_output_validator import DataOutputValidator
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
@@ -19,6 +30,7 @@ from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.expression_resolver import ExpressionResolver
 from harness.file_output_validator import FileOutputValidator
+from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.filter_resolver import FilterResolver
 from harness.flow_config_extractor import FlowConfigExtractor
 from harness.flow_definition_assembler import FlowDefinitionAssembler
@@ -46,13 +58,16 @@ from harness.include_step_appender import IncludeStepAppender
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
+from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
 from harness.incoming_edge_checker import IncomingEdgeChecker
 from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
+from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
+from harness.nested_path_resolver import NestedPathResolver
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.output_schema_declaration_validator import OutputSchemaDeclarationValidator
 from harness.output_collection_resolver import OutputCollectionResolver
@@ -100,6 +115,7 @@ from harness.step_qualifier import StepQualifier
 from harness.step_source_collector import StepSourceCollector
 from harness.step_source_annotator import StepSourceAnnotator
 from harness.step_status_checker import StepStatusChecker
+from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.uses_resolver import UsesResolver
 from harness.unique_step_identity_validator import UniqueStepIdentityValidator
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
@@ -170,9 +186,28 @@ class FlowEngineAssemblyFactory:
             path_resolver=resource_path_resolver,
         )
         source_annotator = StepSourceAnnotator()
+        condition_parser = ConditionParser(
+            composition_parser=CompositionConditionParser(),
+            comparison_parser=ComparisonConditionParser(),
+        )
 
-        expression_resolver: ExpressionEvaluating = ExpressionResolver(
-            filter_resolver=FilterResolver()
+        interpolation_error_factory = InterpolationErrorFactory()
+        nested_value_resolver = NestedPathResolver(
+            component_accessor=NestedComponentAccessor(
+                attribute_reader=BuiltinAttributeReader()
+            ),
+            error_factory=interpolation_error_factory,
+        )
+        unfiltered_expression_resolver = ExpressionResolver(
+            step_output_resolver=StepOutputExpressionResolver(
+                interpolation_error_factory
+            ),
+            nested_value_resolver=nested_value_resolver,
+            error_factory=interpolation_error_factory,
+        )
+        expression_resolver: ExpressionEvaluating = FilteredExpressionEvaluator(
+            expression_evaluator=unfiltered_expression_resolver,
+            filter_resolver=FilterResolver(),
         )
         interpolator = Interpolator(evaluator=expression_resolver)
         graph_factory = DirectedGraphFactory()
@@ -294,6 +329,7 @@ class FlowEngineAssemblyFactory:
             file_loader=yaml_file_loader,
             definition_resolver=FlowDefinitionResolver(
                 config_extractor=FlowConfigExtractor(),
+                condition_parser=condition_parser,
                 path_builder=path_builder,
                 source_annotator=source_annotator,
                 source_collector=StepSourceCollector(),
@@ -316,7 +352,9 @@ class FlowEngineAssemblyFactory:
                     ),
                     prompt_augmenter=StepPromptAugmenter(),
                 ),
-                step_mapper=StepDeclarationFactory(),
+                step_mapper=StepDeclarationFactory(
+                    condition_parser=condition_parser,
+                ),
             ),
             definition_validator=FlowDefinitionValidator(
                 step_shape_validator=StepShapeValidator(
@@ -382,6 +420,16 @@ class FlowEngineAssemblyFactory:
                 json_schema=JsonSchemaValidator(),
             ),
         }
+        condition_evaluator = ConditionEvaluator(
+            declaration_evaluator=ConditionDeclarationEvaluator(),
+            comparison_runtime=ConditionComparator(
+                reference_resolver=ConditionReferenceResolver(
+                    normalizer=ConditionReferenceNormalizer(),
+                    expression_evaluator=unfiltered_expression_resolver,
+                ),
+                value_matcher=ConditionValueMatcher(),
+            ),
+        )
         return FlowEngineAssembly(
             flow_loader=flow_loader,
             event_appender=event_appender,
@@ -391,13 +439,17 @@ class FlowEngineAssemblyFactory:
                     status_checker=StepStatusChecker(),
                     dependency_checker=StepDependencyChecker(),
                 ),
-                instance_expander=StepInstanceExpander(
-                    items_resolver=ForEachItemsResolver(
-                        evaluator=expression_resolver
+                instance_expander=ConditionalStepInstanceExpander(
+                    instance_expander=StepInstanceExpander(
+                        items_resolver=ForEachItemsResolver(
+                            evaluator=expression_resolver
+                        ),
+                        renderer=interpolator,
                     ),
-                    renderer=interpolator,
+                    condition_evaluator=condition_evaluator,
                 ),
             ),
+            condition_evaluator=condition_evaluator,
             interpolator=interpolator,
             schema_validator=SchemaValidator(validators=validators),
         )

@@ -1,0 +1,41 @@
+"""Provides the workflow condition evaluation facade."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_decision_evaluating import ConditionDecisionEvaluating
+from harness.condition_declaration import ConditionDeclaration
+from harness.condition_evaluating import ConditionEvaluating
+from harness.condition_runtime import ConditionRuntime
+
+
+"""
+solid-name: ConditionEvaluator
+solid-category: service
+solid-spec: [SPEC-037]
+solid-description: Delegates typed condition dispatch and runtime comparison.
+"""
+class ConditionEvaluator(ConditionDecisionEvaluating, ConditionRuntime):
+    def __init__(
+        self,
+        declaration_evaluator: ConditionEvaluating,
+        comparison_runtime: ConditionRuntime,
+    ) -> None:
+        self._declaration_evaluator = declaration_evaluator
+        self._comparison_runtime = comparison_runtime
+
+    def evaluate(
+        self,
+        condition: ConditionDeclaration,
+        context: dict[str, Any],
+    ) -> bool:
+        return self._declaration_evaluator.evaluate(condition, self, context)
+
+    def compare(
+        self,
+        condition: ComparisonCondition,
+        context: dict[str, Any],
+    ) -> bool:
+        return self._comparison_runtime.compare(condition, context)
