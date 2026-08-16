@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness.models import FlowDef
 from harness.run_snapshot import RunSnapshot
 
 
@@ -21,4 +20,3 @@ class ReadyStepExecutionRequest:
     base_dir: Path
     run_id: str
     events_path: str
-    flow_def: FlowDef

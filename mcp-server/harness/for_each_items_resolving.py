@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from harness.workflow_run_context import WorkflowRunContext
+
 
 """
 solid-name: ForEachItemsResolving
@@ -16,5 +18,5 @@ class ForEachItemsResolving(Protocol):
         self,
         step_id: str,
         expression: str,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> list[Any]: ...

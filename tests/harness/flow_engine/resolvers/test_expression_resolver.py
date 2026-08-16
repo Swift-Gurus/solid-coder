@@ -19,12 +19,24 @@ from harness.interpolation_error import InterpolationError  # noqa: E402
 from harness.interpolation_error_factory import InterpolationErrorFactory  # noqa: E402
 from harness.nested_component_accessor import NestedComponentAccessor  # noqa: E402
 from harness.nested_path_resolver import NestedPathResolver  # noqa: E402
+from harness.run_context_builder import RunContextBuilder  # noqa: E402
+from harness.run_state import RunState  # noqa: E402
 from harness.step_output_expression_resolver import StepOutputExpressionResolver  # noqa: E402
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper  # noqa: E402
 
 
 class TestExpressionResolver(unittest.TestCase):
 
     def setUp(self):
+        self.context_builder = RunContextBuilder(
+            values_mapper=WorkflowContextValuesMapper()
+        )
+        self.run_state = RunState(
+            completed={},
+            running=[],
+            turn_count=0,
+            status="in_progress",
+        )
         error_factory = InterpolationErrorFactory()
         self.sut = ExpressionResolver(
             step_output_resolver=StepOutputExpressionResolver(error_factory),
@@ -38,13 +50,22 @@ class TestExpressionResolver(unittest.TestCase):
         )
 
     def test_named_parameter_reference_returns_the_parameter_value(self):
-        result = self.sut.evaluate("params.file_path", {"params": {"file_path": "/tmp/Foo.swift"}})
+        result = self.sut.evaluate(
+            "params.file_path",
+            self.context_builder.build(
+                {"file_path": "/tmp/Foo.swift"},
+                self.run_state,
+            ),
+        )
 
         self.assertEqual(result, "/tmp/Foo.swift")
 
     def test_missing_parameter_reference_raises_an_actionable_error(self):
         with self.assertRaisesRegex(InterpolationError, "parameter 'file_path' not found"):
-            self.sut.evaluate("params.file_path", {"params": {}})
+            self.sut.evaluate(
+                "params.file_path",
+                self.context_builder.build({}, self.run_state),
+            )
 
 
 if __name__ == "__main__":

@@ -56,6 +56,7 @@ class FlowTransitionGateFactory:
         from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
         from harness.static_session_id_reader import StaticSessionIdReader
         from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+        from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
         from pending_step_failure_recorder import PendingStepFailureRecorder
 
         active_run = ActiveRunPointerStore(
@@ -93,7 +94,10 @@ class FlowTransitionGateFactory:
             flow_loader=resolving_flow_loader,
             run_snapshot_resolver=RunSnapshotResolver(
                 event_replayer=assembly.event_replayer,
-                context_builder=RunContextBuilder(),
+                context_builder=RunContextBuilder(
+                    values_mapper=WorkflowContextValuesMapper()
+                ),
+                step_resolver=assembly.dynamic_step_resolver,
                 dag_runner=assembly.dag_runner,
             ),
             condition_serializer=make_condition_serializer(),

@@ -17,10 +17,13 @@ from harness.run_state import RunState
 from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_gate_result import WorkflowConditionGateResult
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
+from harness.workflow_run_context import WorkflowRunContext
 
 
 class StubContextBuilder:
-    def __init__(self, context: dict) -> None:
+    def __init__(self, context: WorkflowRunContext) -> None:
         self.context = context
         self.calls = []
 
@@ -78,7 +81,15 @@ class TestWorkflowConditionGate(unittest.TestCase):
 
     def test_evaluates_and_records_the_first_workflow_decision(self):
         condition = _condition()
-        context_builder = StubContextBuilder({"params": {"enabled": False}})
+        context_builder = StubContextBuilder(
+            WorkflowRunContext(
+                parameters=WorkflowContextValues(
+                    entries=[
+                        WorkflowContextValue(name="enabled", value=False)
+                    ]
+                )
+            )
+        )
         evaluator = StubConditionEvaluator(matched=False)
         recorder = SpyWorkflowConditionRecorder()
         sut = WorkflowConditionGate(context_builder, evaluator, recorder)
@@ -100,7 +111,7 @@ class TestWorkflowConditionGate(unittest.TestCase):
 
     def test_replayed_false_decision_blocks_without_reevaluation(self):
         decision = WorkflowConditionDecision(condition=_condition(), matched=False)
-        context_builder = StubContextBuilder({})
+        context_builder = StubContextBuilder(WorkflowRunContext())
         evaluator = StubConditionEvaluator(matched=True)
         recorder = SpyWorkflowConditionRecorder()
         sut = WorkflowConditionGate(context_builder, evaluator, recorder)
@@ -122,7 +133,7 @@ class TestWorkflowConditionGate(unittest.TestCase):
 
     def test_replayed_true_decision_allows_execution_without_reevaluation(self):
         decision = WorkflowConditionDecision(condition=_condition(), matched=True)
-        context_builder = StubContextBuilder({})
+        context_builder = StubContextBuilder(WorkflowRunContext())
         evaluator = StubConditionEvaluator(matched=False)
         recorder = SpyWorkflowConditionRecorder()
         sut = WorkflowConditionGate(context_builder, evaluator, recorder)

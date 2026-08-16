@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 from harness.models import RunState, StepDef, StepInstance
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -17,6 +18,6 @@ class StepInstanceExpanding(Protocol):
     def expand(
         self,
         step: StepDef,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
         run_state: RunState,
     ) -> list[StepInstance]: ...

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.output_spec import OutputSpec
 
 
@@ -31,3 +32,4 @@ class StepDef:
     args: list[str] | None = None
     timeout_seconds: int | None = None
     max_attempts: int = 3
+    workflow_instance: IncludedWorkflowInstance | None = None

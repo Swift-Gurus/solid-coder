@@ -38,6 +38,12 @@ from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
+from harness.workflow_include_runtime_parser import WorkflowIncludeRuntimeParser
+
+
+class UnusedConditionParser:
+    def parse(self, raw):
+        raise AssertionError("Static include tests do not declare conditions")
 
 
 class StubFileLoader:
@@ -60,6 +66,7 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         WorkflowResourcePathClassifier(),
         WorkflowResourceDirectory.SUBFLOWS,
     )
+    runtime_parser = WorkflowIncludeRuntimeParser(UnusedConditionParser())
     source_resolver = IncludeSourceResolver(
         resolvers=[
             PathIncludeSourceResolver(
@@ -67,6 +74,7 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
                 resource_loader=resource_loader,
                 reference_factory=reference_factory,
                 source_annotator=source_annotator,
+                runtime_parser=runtime_parser,
                 error_factory=error_factory,
             ),
             InlineGroupSourceResolver(source_annotator, error_factory),
@@ -77,7 +85,6 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
     resolution_merger = IncludeResolutionMerger(
         step_appender=IncludeStepAppender(),
         nested_merger=NestedIncludeResolutionMerger(
-            alias_group_factory=alias_group_factory,
             ordered_strings=OrderedStringCollector(),
         ),
     )

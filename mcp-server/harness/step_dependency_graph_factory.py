@@ -48,4 +48,17 @@ class StepDependencyGraphFactory(StepDependencyGraphCreating):
                         target_id=step_id,
                     )
                 )
+        for group in alias_groups:
+            for dependency in group.depends_on:
+                if dependency not in node_ids:
+                    raise self._error_factory.create(
+                        f"Workflow include '{group.alias}' depends on unknown step "
+                        f"'{dependency}'"
+                    )
+                edges.append(
+                    DirectedGraphEdge(
+                        source_id=dependency,
+                        target_id=group.alias,
+                    )
+                )
         return self._graph_factory.create(node_ids, edges)

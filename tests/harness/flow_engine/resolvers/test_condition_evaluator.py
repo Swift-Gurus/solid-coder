@@ -22,6 +22,10 @@ from harness.condition_reference_resolver import ConditionReferenceResolver  # n
 from harness.condition_value_matcher import ConditionValueMatcher  # noqa: E402
 from harness.interpolation_error import InterpolationError  # noqa: E402
 from harness.not_condition import NotCondition  # noqa: E402
+from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
+
+
+_CONTEXT = WorkflowRunContext()
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,7 @@ class StubExpressionEvaluator:
     resolved: tuple[ResolvedExpression, ...]
     evaluated: list[str] = field(default_factory=list)
 
-    def evaluate(self, expression: str, context: dict[str, Any]) -> Any:
+    def evaluate(self, expression: str, context: WorkflowRunContext) -> Any:
         self.evaluated.append(expression)
         for candidate in self.resolved:
             if candidate.reference == expression:
@@ -49,26 +53,26 @@ class TestConditionEvaluator(unittest.TestCase):
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.value", True),))
         sut = self._sut(evaluator)
 
-        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.EQUALS, 1), {}))
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_EQUALS, 1), {}))
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.EQUALS, True), {}))
+        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.EQUALS, 1), _CONTEXT))
+        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_EQUALS, 1), _CONTEXT))
+        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.EQUALS, True), _CONTEXT))
 
     def test_membership_is_type_strict(self) -> None:
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.value", True),))
         sut = self._sut(evaluator)
 
-        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.IN, [1, 2]), {}))
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.IN, [False, True]), {}))
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_IN, [1, 2]), {}))
+        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.IN, [1, 2]), _CONTEXT))
+        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.IN, [False, True]), _CONTEXT))
+        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_IN, [1, 2]), _CONTEXT))
 
     def test_exists_distinguishes_absent_from_present_null(self) -> None:
         present = self._sut(StubExpressionEvaluator((ResolvedExpression("item.value", None),)))
         absent = self._sut(StubExpressionEvaluator(()))
 
-        self.assertTrue(present.evaluate(self._comparison(ConditionOperator.EXISTS, True), {}))
-        self.assertFalse(present.evaluate(self._comparison(ConditionOperator.EXISTS, False), {}))
-        self.assertFalse(absent.evaluate(self._comparison(ConditionOperator.EXISTS, True), {}))
-        self.assertTrue(absent.evaluate(self._comparison(ConditionOperator.EXISTS, False), {}))
+        self.assertTrue(present.evaluate(self._comparison(ConditionOperator.EXISTS, True), _CONTEXT))
+        self.assertFalse(present.evaluate(self._comparison(ConditionOperator.EXISTS, False), _CONTEXT))
+        self.assertFalse(absent.evaluate(self._comparison(ConditionOperator.EXISTS, True), _CONTEXT))
+        self.assertTrue(absent.evaluate(self._comparison(ConditionOperator.EXISTS, False), _CONTEXT))
 
     def test_evaluates_nested_all_any_and_not_conditions(self) -> None:
         evaluator = StubExpressionEvaluator((
@@ -89,7 +93,7 @@ class TestConditionEvaluator(unittest.TestCase):
             )),
         ))
 
-        self.assertTrue(sut.evaluate(condition, {}))
+        self.assertTrue(sut.evaluate(condition, _CONTEXT))
 
     def test_composite_conditions_short_circuit(self) -> None:
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.first", False),))
@@ -99,7 +103,7 @@ class TestConditionEvaluator(unittest.TestCase):
             ComparisonCondition("{{item.unreachable}}", ConditionOperator.EQUALS, True),
         ))
 
-        self.assertFalse(sut.evaluate(condition, {}))
+        self.assertFalse(sut.evaluate(condition, _CONTEXT))
         self.assertEqual(evaluator.evaluated, ["item.first"])
 
     def _comparison(

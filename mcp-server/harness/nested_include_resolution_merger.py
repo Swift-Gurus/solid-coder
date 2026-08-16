@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from harness.include_alias_group_creating import IncludeAliasGroupCreating
+from harness.include_alias_group import IncludeAliasGroup
 from harness.include_resolution import IncludeResolution
 from harness.include_source import IncludeSource
 from harness.nested_include_resolution_merging import NestedIncludeResolutionMerging
@@ -19,10 +19,8 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
 
     def __init__(
         self,
-        alias_group_factory: IncludeAliasGroupCreating,
         ordered_strings: OrderedStringCollecting,
     ) -> None:
-        self._alias_group_factory = alias_group_factory
         self._ordered_strings = ordered_strings
 
     def merge(
@@ -31,9 +29,13 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
         source: IncludeSource,
         nested: IncludeResolution,
     ) -> IncludeResolution:
-        source_group = self._alias_group_factory.create(
+        source_group = IncludeAliasGroup(
             alias=source.alias,
             member_ids=[step["id"] for step in nested.steps],
+            depends_on=source.runtime.depends_on,
+            for_each=source.runtime.for_each,
+            input_bindings=source.runtime.input_bindings,
+            condition=source.runtime.condition,
         )
         alias_groups = [
             group

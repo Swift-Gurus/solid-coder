@@ -14,12 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.models import RunState, StepOutputs
 from harness.run_context_builder import RunContextBuilder
 from harness.step_outputs_builder import StepOutputsBuilder
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 
 
 class TestRunContextBuilder(unittest.TestCase):
 
     def setUp(self):
-        self.sut = RunContextBuilder()
+        self.sut = RunContextBuilder(
+            values_mapper=WorkflowContextValuesMapper()
+        )
 
     def test_builds_context_with_params_and_completed_step_outputs(self):
         run_state = RunState(
@@ -31,8 +34,8 @@ class TestRunContextBuilder(unittest.TestCase):
 
         context = self.sut.build({"key": "value"}, run_state)
 
-        self.assertEqual(context["params"], {"key": "value"})
-        self.assertEqual(context["steps"]["a"].get("x"), 1)
+        self.assertEqual(context.parameters.find("key").value, "value")
+        self.assertEqual(context.completed_steps.find("a").value.get("x"), 1)
 
     def test_exposes_rejection_reasons_for_prompt_interpolation(self):
         run_state = RunState(
@@ -42,7 +45,10 @@ class TestRunContextBuilder(unittest.TestCase):
 
         context = self.sut.build({}, run_state)
 
-        self.assertEqual(context["rejection_reasons"], {"writer": "bad shape"})
+        self.assertEqual(
+            context.rejection_reasons.find("writer").value,
+            "bad shape",
+        )
 
     def test_exposes_attempts_used(self):
         run_state = RunState(
@@ -52,7 +58,7 @@ class TestRunContextBuilder(unittest.TestCase):
 
         context = self.sut.build({}, run_state)
 
-        self.assertEqual(context["attempts_used"], {"writer": 2})
+        self.assertEqual(context.attempts_used.find("writer").value, 2)
 
 
 if __name__ == "__main__":

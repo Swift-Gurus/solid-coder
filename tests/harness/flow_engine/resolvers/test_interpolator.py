@@ -5,6 +5,7 @@ solid-category: unit-test
 
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
@@ -19,7 +20,14 @@ from harness.interpolator import Interpolator
 from harness.models import StepOutputs
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
+from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
+from harness.run_context_builder import RunContextBuilder
+from harness.run_state import RunState
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
+
+
+_MISSING_ITEM = object()
 
 
 class TestInterpolator(unittest.TestCase):
@@ -42,12 +50,29 @@ class TestInterpolator(unittest.TestCase):
                 filter_resolver=FilterResolver(),
             )
         )
+        self.context_builder = RunContextBuilder(
+            values_mapper=WorkflowContextValuesMapper()
+        )
 
-    def _ctx(self, **step_outputs):
-        return {
-            "steps": {k: StepOutputs(values=v) for k, v in step_outputs.items()},
-            "output_dir": "/tmp/out",
-        }
+    def _ctx(self, item=_MISSING_ITEM, **step_outputs):
+        context = self.context_builder.build(
+            {"output_dir": "/tmp/out"},
+            RunState(
+                completed={
+                    step_id: StepOutputs(values=outputs)
+                    for step_id, outputs in step_outputs.items()
+                },
+                running=[],
+                turn_count=0,
+                status="in_progress",
+            ),
+        )
+        if item is _MISSING_ITEM:
+            return context
+        return replace(
+            context,
+            item=ResolvedWorkflowContextValue(present=True, value=item),
+        )
 
     def test_renders_steps_outputs_reference(self):
         ctx = self._ctx(load_principles={"principles": ["SRP", "OCP"]})
@@ -60,12 +85,12 @@ class TestInterpolator(unittest.TestCase):
         self.assertEqual(result, "Count: 3")
 
     def test_renders_item_in_context(self):
-        ctx = {**self._ctx(), "item": "SRP"}
+        ctx = self._ctx(item="SRP")
         result = self.interp.render("Principle: {{item}}", ctx)
         self.assertEqual(result, "Principle: SRP")
 
     def test_renders_output_dir(self):
-        result = self.interp.render("Dir: {{output_dir}}", self._ctx())
+        result = self.interp.render("Dir: {{params.output_dir}}", self._ctx())
         self.assertEqual(result, "Dir: /tmp/out")
 
     def test_passthrough_when_no_placeholders(self):
@@ -83,7 +108,7 @@ class TestInterpolator(unittest.TestCase):
             self.interp.render("{{steps.step_a.outputs.y}}", ctx)
 
     def test_raises_for_unknown_filter(self):
-        ctx = {**self._ctx(), "item": "x"}
+        ctx = self._ctx(item="x")
         with self.assertRaises(InterpolationError):
             self.interp.render("{{item | upper}}", ctx)
 

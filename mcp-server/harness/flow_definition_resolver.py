@@ -3,6 +3,7 @@
 from harness.condition_parsing import ConditionParsing
 from harness.flow_config_extractor import FlowConfigExtracting
 from harness.flow_def import FlowDef
+from harness.include_alias_group_snapshot_parsing import IncludeAliasGroupSnapshotParsing
 from harness.include_resolving import IncludeResolving
 from harness.output_schema_prompt_annotating import OutputSchemaPromptAnnotating
 from harness.output_schema_resolving import OutputSchemaResolving
@@ -32,6 +33,7 @@ class FlowDefinitionResolver:
         source_collector: StepSourceCollecting,
         uses_resolver: StepCollectionUsesResolving,
         include_resolver: IncludeResolving,
+        alias_group_snapshot_parser: IncludeAliasGroupSnapshotParsing,
         script_file_resolver: ScriptFileResolving,
         prompt_resolver: PromptContentResolving,
         schema_resolver: OutputSchemaResolving,
@@ -45,6 +47,7 @@ class FlowDefinitionResolver:
         self._source_collector = source_collector
         self._uses_resolver = uses_resolver
         self._include_resolver = include_resolver
+        self._alias_group_snapshot_parser = alias_group_snapshot_parser
         self._script_file_resolver = script_file_resolver
         self._prompt_resolver = prompt_resolver
         self._schema_resolver = schema_resolver
@@ -72,6 +75,9 @@ class FlowDefinitionResolver:
             search_paths,
             root_workflow_id=workflow_id,
         )
+        restored_alias_groups = self._alias_group_snapshot_parser.parse(
+            raw.get("alias_groups")
+        )
         included_steps = self._uses_resolver.resolve(inclusion.steps, path, search_paths)
         sources = self._source_collector.collect(
             included_steps,
@@ -95,7 +101,7 @@ class FlowDefinitionResolver:
             condition=condition,
             step_declarations=step_declarations,
             top_level_step_ids=top_level_step_ids,
-            alias_groups=inclusion.alias_groups,
+            alias_groups=[*inclusion.alias_groups, *restored_alias_groups],
             include_chain=inclusion.include_chain,
             source_path=source_path,
             sources=sources,

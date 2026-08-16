@@ -1,28 +1,29 @@
-"""
-solid-name: RunContextBuilder
-solid-category: service
-solid-spec: [SPEC-031]
-solid-description: Assembles run parameters and run state data into a context dictionary.
-"""
+"""Builds typed workflow runtime context."""
 
 from __future__ import annotations
 
-from typing import Any
-
 from harness.models import RunState
 from harness.run_context_building import RunContextBuilding
+from harness.workflow_context_values_mapping import WorkflowContextValuesMapping
+from harness.workflow_run_context import WorkflowRunContext
 
 
-class RunContextBuilder:
+"""
+solid-name: RunContextBuilder
+solid-category: service
+solid-spec: [SPEC-031, SPEC-037]
+solid-description: Assembles run parameters and replayed state into typed workflow runtime context.
+"""
+class RunContextBuilder(RunContextBuilding):
+    def __init__(self, values_mapper: WorkflowContextValuesMapping) -> None:
+        self._values_mapper = values_mapper
 
-    def build(self, params: dict, run_state: RunState) -> dict[str, Any]:
-        steps_context: dict[str, Any] = {
-            step_id: step_outputs
-            for step_id, step_outputs in run_state.completed.items()
-        }
-        return {
-            "params": params,
-            "steps": steps_context,
-            "rejection_reasons": dict(run_state.rejection_reasons),
-            "attempts_used": dict(run_state.attempts_used),
-        }
+    def build(self, params: dict, run_state: RunState) -> WorkflowRunContext:
+        return WorkflowRunContext(
+            parameters=self._values_mapper.map(params),
+            completed_steps=self._values_mapper.map(run_state.completed),
+            rejection_reasons=self._values_mapper.map(
+                run_state.rejection_reasons
+            ),
+            attempts_used=self._values_mapper.map(run_state.attempts_used),
+        )

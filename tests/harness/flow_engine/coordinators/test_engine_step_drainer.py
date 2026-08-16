@@ -49,11 +49,13 @@ class ScriptedHandlerResolver:
 class StubHandler:
     def __init__(self, outcome: StepRunOutcome) -> None:
         self._outcome = outcome
+        self.validated_flow_defs: list[FlowDef] = []
 
     def run(self, instance, step_def) -> StepRunOutcome:
         return self._outcome
 
     def validate(self, instance, outputs, flow_def) -> ValidationResult:
+        self.validated_flow_defs.append(flow_def)
         return ValidationResult(ok=True)
 
 
@@ -136,11 +138,18 @@ def _run_state() -> RunState:
     return RunState(completed={}, running=[], turn_count=0, status="in_progress")
 
 
+def _snapshot(flow_def: FlowDef, ready: list[StepInstance]) -> RunSnapshot:
+    return RunSnapshot(run_state=_run_state(), flow_def=flow_def, ready=ready)
+
+
 class EngineStepDrainerFactory:
     """Builds an EngineStepDrainer with sensible stub and spy defaults."""
 
     def __init__(self) -> None:
-        self.run_snapshot_resolver = ScriptedRunSnapshotResolver([RunSnapshot(run_state=_run_state(), ready=[])])
+        empty_flow = FlowDef(name="f", max_turns=10, steps=[])
+        self.run_snapshot_resolver = ScriptedRunSnapshotResolver([
+            _snapshot(empty_flow, [])
+        ])
         self.workflow_condition_gate = ScriptedWorkflowConditionGate([
             WorkflowConditionGateResult(progressed=False, allows_execution=True)
         ])
@@ -201,7 +210,12 @@ class TestEngineStepDrainer(unittest.TestCase):
             item=None,
             prompt="Never execute",
         )
-        snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
+        flow_def = FlowDef(
+            name="conditional",
+            max_turns=10,
+            steps=[StepDef(id="review", prompt="Never execute")],
+        )
+        snapshot = _snapshot(flow_def, [instance])
         condition_gate = ScriptedWorkflowConditionGate([
             WorkflowConditionGateResult(progressed=True, allows_execution=False),
             WorkflowConditionGateResult(progressed=False, allows_execution=False),
@@ -218,11 +232,7 @@ class TestEngineStepDrainer(unittest.TestCase):
             Path("/runs"),
             "run-1",
             "events.jsonl",
-            FlowDef(
-                name="conditional",
-                max_turns=10,
-                steps=[StepDef(id="review", prompt="Never execute")],
-            ),
+            flow_def,
             {"enabled": False},
         )
 
@@ -239,8 +249,13 @@ class TestEngineStepDrainer(unittest.TestCase):
             prompt="",
             automatic_outputs=StepOutputs(values={"ready": True}),
         )
-        ready_snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
-        empty_snapshot = RunSnapshot(run_state=_run_state(), ready=[])
+        flow_def = FlowDef(
+            name="conditional",
+            max_turns=10,
+            steps=[StepDef(id="prepare", prompt="")],
+        )
+        ready_snapshot = _snapshot(flow_def, [instance])
+        empty_snapshot = _snapshot(flow_def, [])
         condition_gate = ScriptedWorkflowConditionGate([
             WorkflowConditionGateResult(progressed=True, allows_execution=True),
             WorkflowConditionGateResult(progressed=False, allows_execution=True),
@@ -259,11 +274,7 @@ class TestEngineStepDrainer(unittest.TestCase):
             Path("/runs"),
             "run-1",
             "events.jsonl",
-            FlowDef(
-                name="conditional",
-                max_turns=10,
-                steps=[StepDef(id="prepare", prompt="")],
-            ),
+            flow_def,
             {"enabled": True},
         )
 
@@ -289,8 +300,13 @@ class TestEngineStepDrainer(unittest.TestCase):
             prompt="Never execute",
             skip=skip,
         )
-        first_snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
-        second_snapshot = RunSnapshot(run_state=_run_state(), ready=[])
+        flow_def = FlowDef(
+            name="f",
+            max_turns=10,
+            steps=[StepDef(id="conditional", prompt="Never execute")],
+        )
+        first_snapshot = _snapshot(flow_def, [instance])
+        second_snapshot = _snapshot(flow_def, [])
         factory = EngineStepDrainerFactory().with_run_snapshot_resolver(
             ScriptedRunSnapshotResolver([first_snapshot, second_snapshot])
         )
@@ -299,11 +315,7 @@ class TestEngineStepDrainer(unittest.TestCase):
             Path("/runs"),
             "run-1",
             "events.jsonl",
-            FlowDef(
-                name="f",
-                max_turns=10,
-                steps=[StepDef(id="conditional", prompt="Never execute")],
-            ),
+            flow_def,
             {},
         )
 
@@ -324,13 +336,13 @@ class TestEngineStepDrainer(unittest.TestCase):
             iteration_index=0,
             automatic_outputs=automatic_outputs,
         )
-        first_snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
-        second_snapshot = RunSnapshot(run_state=_run_state(), ready=[])
         flow_def = FlowDef(
             name="f",
             max_turns=10,
             steps=[StepDef(id="review", prompt="", type="agent")],
         )
+        first_snapshot = _snapshot(flow_def, [instance])
+        second_snapshot = _snapshot(flow_def, [])
         factory = EngineStepDrainerFactory().with_run_snapshot_resolver(
             ScriptedRunSnapshotResolver([first_snapshot, second_snapshot])
         )
@@ -351,8 +363,8 @@ class TestEngineStepDrainer(unittest.TestCase):
 
     def test_returns_none_when_only_agent_steps_are_ready(self):
         instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
-        snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
         flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="a", prompt="p", type="agent")])
+        snapshot = _snapshot(flow_def, [instance])
         sut = EngineStepDrainerFactory().with_run_snapshot_resolver(
             ScriptedRunSnapshotResolver([snapshot])
         ).with_step_handler_resolver(
@@ -365,24 +377,28 @@ class TestEngineStepDrainer(unittest.TestCase):
 
     def test_records_outputs_for_a_successful_script_step_and_stops_when_nothing_more_is_ready(self):
         instance = StepInstance(step_id="s", instance_id="s-1", item=None, prompt="")
-        first_snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
-        second_snapshot = RunSnapshot(run_state=_run_state(), ready=[])
-        flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="s", prompt="", type="script", command=["run.sh"])])
+        catalog_flow = FlowDef(name="catalog", max_turns=10, steps=[])
+        executable_flow = FlowDef(name="executable", max_turns=10, steps=[StepDef(id="s", prompt="", type="script", command=["run.sh"])])
+        first_snapshot = _snapshot(executable_flow, [instance])
+        second_snapshot = _snapshot(executable_flow, [])
+        handler = StubHandler(StepRunOutcome(awaiting_input=False, outputs={"x": 1}))
         factory = EngineStepDrainerFactory().with_run_snapshot_resolver(
             ScriptedRunSnapshotResolver([first_snapshot, second_snapshot])
         ).with_step_handler_resolver(ScriptedHandlerResolver({
-            "script": StubHandler(StepRunOutcome(awaiting_input=False, outputs={"x": 1})),
+            "script": handler,
         })).with_failure_attributor(StubFailureAttributor("s"))
 
-        result = factory.make_sut().run_ready(Path("/runs"), "run-1", "events.jsonl", flow_def, {})
+        result = factory.make_sut().run_ready(Path("/runs"), "run-1", "events.jsonl", catalog_flow, {})
 
         self.assertIsNone(result)
         self.assertEqual(factory.output_recorder.calls, [("events.jsonl", [instance], {"s-1": {"x": 1}}, "engine")])
+        self.assertEqual(handler.validated_flow_defs, [executable_flow])
 
     def test_delegates_failure_to_attempt_failure_handler_and_returns_its_terminal_result(self):
         instance = StepInstance(step_id="s", instance_id="s-1", item=None, prompt="")
-        snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
-        flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="s", prompt="", type="script", command=["run.sh"])])
+        catalog_flow = FlowDef(name="catalog", max_turns=10, steps=[])
+        executable_flow = FlowDef(name="executable", max_turns=10, steps=[StepDef(id="s", prompt="", type="script", command=["run.sh"])])
+        snapshot = _snapshot(executable_flow, [instance])
         terminal = FlowNextResult(status="failed")
         failure_handler = SpyAttemptFailureHandler(terminal)
         sut = EngineStepDrainerFactory().with_run_snapshot_resolver(
@@ -391,7 +407,7 @@ class TestEngineStepDrainer(unittest.TestCase):
             "script": StubHandler(StepRunOutcome(awaiting_input=False, rejection_reason="boom")),
         })).with_failure_attributor(StubFailureAttributor("s")).with_attempt_failure_handler(failure_handler).make_sut()
 
-        result = sut.run_ready(Path("/runs"), "run-1", "events.jsonl", flow_def, {})
+        result = sut.run_ready(Path("/runs"), "run-1", "events.jsonl", catalog_flow, {})
 
         self.assertIs(result, terminal)
         self.assertEqual(
@@ -408,12 +424,12 @@ class TestEngineStepDrainer(unittest.TestCase):
         self.assertEqual(failure_handler.base_dir, Path("/runs"))
         self.assertEqual(failure_handler.run_id, "run-1")
         self.assertEqual(failure_handler.events_path, "events.jsonl")
-        self.assertIs(failure_handler.flow_def, flow_def)
+        self.assertIs(failure_handler.flow_def, executable_flow)
 
     def test_retries_a_failing_script_step_internally_until_attempts_are_exhausted(self):
         instance = StepInstance(step_id="s", instance_id="s-1", item=None, prompt="")
-        snapshot_with_ready = RunSnapshot(run_state=_run_state(), ready=[instance])
         flow_def = FlowDef(name="f", max_turns=10, steps=[StepDef(id="s", prompt="", type="script", command=["run.sh"])])
+        snapshot_with_ready = _snapshot(flow_def, [instance])
         terminal = FlowNextResult(status="failed")
         failure_handler = ExhaustsAfterAttemptFailureHandler(attempts_before_exhaustion=3, terminal=terminal)
         sut = EngineStepDrainerFactory().with_run_snapshot_resolver(
@@ -429,11 +445,11 @@ class TestEngineStepDrainer(unittest.TestCase):
 
     def test_reopens_an_upstream_agent_step_attributed_by_the_failure_attributor(self):
         instance = StepInstance(step_id="s", instance_id="s-1", item=None, prompt="")
-        snapshot = RunSnapshot(run_state=_run_state(), ready=[instance])
         flow_def = FlowDef(name="f", max_turns=10, steps=[
             StepDef(id="writer", prompt="p", type="agent"),
             StepDef(id="s", prompt="", type="script", command=["run.sh"], depends_on=["writer"]),
         ])
+        snapshot = _snapshot(flow_def, [instance])
         failure_handler = ExhaustsAfterAttemptFailureHandler(attempts_before_exhaustion=1, terminal=FlowNextResult(status="failed"))
         sut = EngineStepDrainerFactory().with_run_snapshot_resolver(
             ScriptedRunSnapshotResolver([snapshot])

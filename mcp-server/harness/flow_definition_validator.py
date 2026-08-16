@@ -49,4 +49,7 @@ class FlowDefinitionValidator:
         )
 
     def validate_assembled(self, flow: FlowDef) -> None:
-        self._for_each_validator.validate_for_each_references(flow.steps)
+        self._for_each_validator.validate_for_each_references(
+            flow.steps,
+            flow.alias_groups,
+        )

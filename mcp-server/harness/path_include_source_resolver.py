@@ -7,6 +7,7 @@ from harness.include_source import IncludeSource
 from harness.step_declaring_file_resolving import StepDeclaringFileResolving
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
+from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
 
 
@@ -24,12 +25,14 @@ class PathIncludeSourceResolver:
         resource_loader: WorkflowConfigResourceLoading,
         reference_factory: WorkflowResourceReferenceCreating,
         source_annotator: StepSourceAnnotating,
+        runtime_parser: WorkflowIncludeRuntimeParsing,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._declaring_file_resolver = declaring_file_resolver
         self._resource_loader = resource_loader
         self._reference_factory = reference_factory
         self._source_annotator = source_annotator
+        self._runtime_parser = runtime_parser
         self._error_factory = error_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
@@ -54,6 +57,7 @@ class PathIncludeSourceResolver:
             alias=entry["as"],
             steps=self._source_annotator.annotate(resource.content.get("steps") or [], source_path),
             flow_path=source_path,
+            runtime=self._runtime_parser.parse(entry),
             identity=source_path,
             label=source_path,
             source_path=source_path,

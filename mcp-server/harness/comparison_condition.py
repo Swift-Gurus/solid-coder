@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_operator import ConditionOperator
 from harness.condition_runtime import ConditionRuntime
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -25,6 +25,6 @@ class ComparisonCondition(ConditionDeclaration):
     def evaluate(
         self,
         runtime: ConditionRuntime,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool:
         return runtime.compare(self, context)

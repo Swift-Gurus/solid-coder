@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from dataclasses import replace
 
 from harness.for_each_items_resolving import ForEachItemsResolving
 from harness.interpolator import TemplateRendering
 from harness.models import RunState, StepDef, StepInstance, StepOutputs
+from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_instance_expanding import StepInstanceExpanding
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -28,7 +30,7 @@ class StepInstanceExpander(StepInstanceExpanding):
     def expand(
         self,
         step: StepDef,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
         run_state: RunState,
     ) -> list[StepInstance]:
         if step.for_each is None:
@@ -36,8 +38,13 @@ class StepInstanceExpander(StepInstanceExpanding):
                 StepInstance(
                     step_id=step.id,
                     instance_id=f"{step.id}-1",
-                    item=None,
+                    item=(
+                        step.workflow_instance.source_item
+                        if step.workflow_instance is not None
+                        else None
+                    ),
                     prompt=self._renderer.render(step.prompt, context),
+                    workflow_instance=step.workflow_instance,
                 )
             ]
 
@@ -57,6 +64,7 @@ class StepInstanceExpander(StepInstanceExpanding):
                     automatic_outputs=StepOutputs(
                         values={output.name: [] for output in step.outputs}
                     ),
+                    workflow_instance=step.workflow_instance,
                 )
             ]
 
@@ -67,9 +75,16 @@ class StepInstanceExpander(StepInstanceExpanding):
                 item=item,
                 prompt=self._renderer.render(
                     step.prompt,
-                    {**context, "item": item},
+                    replace(
+                        context,
+                        item=ResolvedWorkflowContextValue(
+                            present=True,
+                            value=item,
+                        ),
+                    ),
                 ),
                 iteration_index=iteration_index,
+                workflow_instance=step.workflow_instance,
             )
             for iteration_index, item in enumerate(items)
             if f"{step.id}-{iteration_index + 1}"

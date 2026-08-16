@@ -147,6 +147,11 @@ Workflow includes retain SPEC-027 and SPEC-035 alias qualification and package r
 - The include alias remains the opaque dependency name used by downstream steps.
 - Each expanded include instance has a stable identity derived from the alias and source-item index.
 - Runtime fields belong to the alias group as a whole. They are not copied onto every inlined child step; one matching group instance executes one complete child DAG with instance-scoped internal step identities.
+- Each transition resolves one executable workflow snapshot containing both the materialized child-step definitions and the ready instances derived from them. Readiness, handler selection, output validation, failure attribution, retry accounting, dependency release, and completion all consume that same runtime definition set.
+- Runtime child-step identities remain stable across `flow_next`, `flow_status`, and event replay. Reconstructing a run from the persisted workflow, parameters, and events produces the same instance-scoped child DAG without persisting generated steps back into the workflow source.
+- A runtime child-step identity must resolve to exactly one materialized definition. An unknown or ambiguous runtime identity produces a controlled flow error rather than an internal lookup failure or fallback to an unrelated template.
+- Dynamic include templates describe the child DAG but are not themselves outstanding executable steps. Run completion waits for every materialized child instance and never waits for an unmaterialized template identity.
+- Completing one internal step releases dependents only within the same included-workflow instance; sibling item instances retain independent readiness, outputs, attempts, and completion state.
 - A false condition skips the complete included workflow instance rather than evaluating each internal step independently.
 - A true condition resolves and validates `with`, then executes the included workflow using only its mapped inputs plus its own internal step outputs.
 
@@ -349,6 +354,12 @@ These tests are written and passing before conditional execution code is changed
 - Missing, unknown, or schema-invalid mapped inputs fail before the child workflow instance starts.
 - One iterated include creates one complete instance-scoped child DAG per matching source item rather than applying iteration independently to every child step.
 - A child workflow cannot read undeclared parent parameters, parent step outputs, or another child instance's context.
+- When an upstream step emits two source items, the next transition exposes two materialized child roots whose identities and rendered inputs correspond to their source indexes.
+- When one materialized child root submits valid output, validation uses that child step's declared schema and only its same-instance dependent becomes ready while the sibling root remains ready.
+- When a materialized process or session-delegate step becomes ready, execution selects the handler from its runtime definition and attributes any failed attempt to that exact child instance.
+- When every materialized child step completes, run completion succeeds without treating the child templates as pending work.
+- When the run is reloaded after partial child completion, replay recreates the same runtime identities and returns only unfinished child instances.
+- When a submitted runtime identity is unknown or cannot resolve uniquely, the flow returns a controlled error and records no output or attempt against another step.
 
 ### Integration Tests — Health-check routing
 
@@ -381,6 +392,7 @@ These tests are written and passing before conditional execution code is changed
 - [ ] Workflow-level conditions evaluate against validated declared inputs and can skip a complete top-level or included workflow instance.
 - [ ] Step-level conditions evaluate after dependencies and per-instance `for_each` expansion, skipping only the addressed step instance.
 - [ ] Conditional workflow includes support dependency waiting and per-item fan-out without executing false branches.
+- [ ] Each transition uses one executable runtime snapshot for dynamic readiness, execution, validation, retries, dependency release, replay, and completion.
 - [ ] Workflow inputs and include `with` mappings provide explicit, schema-validated child values without ambient parent-context access.
 - [ ] Skipped outcomes are durable, replayable, terminal for dependency joins, and visible through flow status.
 - [ ] Workflow packages can declare schema-validated outputs exposed through stable alias result collections.

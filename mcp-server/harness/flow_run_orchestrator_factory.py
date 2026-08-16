@@ -43,7 +43,6 @@ from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from harness.ready_step_executor import ReadyStepExecutor
-from harness.ready_steps_resolver import ReadyStepsResolver
 from harness.process_execution_factory import ProcessExecutionFactory
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
 from harness.process_step_executor import ProcessStepExecutor
@@ -82,6 +81,7 @@ from harness.successful_validation_result_provider import SuccessfulValidationRe
 from harness.turn_advancer import TurnAdvancer
 from harness.thread_pool_executor_factory import ThreadPoolExecutorFactory
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
 from harness.workflow_persister_factory import make_workflow_persister
@@ -96,7 +96,7 @@ _DELEGATE_SESSION_MAX_WORKERS = 4
 solid-name: FlowRunOrchestratorFactory
 solid-category: service
 solid-spec: [SPEC-027]
-solid-description: Creates flow-run orchestrators with their execution, persistence, discovery, and transition dependencies.
+solid-description: Prepares flow-run orchestration for workflow execution.
 """
 class FlowRunOrchestratorFactory:
 
@@ -137,15 +137,14 @@ class FlowRunOrchestratorFactory:
             inner_loader=assembly.flow_loader,
             catalog_scope=workflow_catalog,
         )
-        run_context_builder = RunContextBuilder()
+        run_context_builder = RunContextBuilder(
+            values_mapper=WorkflowContextValuesMapper()
+        )
         run_snapshot_resolver = RunSnapshotResolver(
             event_replayer=assembly.event_replayer,
             context_builder=run_context_builder,
+            step_resolver=assembly.dynamic_step_resolver,
             dag_runner=assembly.dag_runner,
-        )
-        ready_steps_resolver = ReadyStepsResolver(
-            run_snapshot_resolver=run_snapshot_resolver,
-            step_result_builder=step_result_builder,
         )
         output_recorder = OutputRecorder(event_appender=assembly.event_appender)
         completion_checker = RunCompletionChecker(
@@ -240,7 +239,7 @@ class FlowRunOrchestratorFactory:
         interpolation_guard = InterpolationGuard()
         execution_and_readiness_coordinator = ExecutionAndReadinessCoordinator(
             step_execution_coordinator=step_execution_coordinator,
-            ready_steps_resolver=ready_steps_resolver,
+            step_result_builder=step_result_builder,
             interpolation_guard=interpolation_guard,
             run_snapshot_resolver=run_snapshot_resolver,
             completion_checker=completion_checker,
@@ -287,7 +286,6 @@ class FlowRunOrchestratorFactory:
                 output_recorder=output_recorder,
                 turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
             ),
-            completion_checker=completion_checker,
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
             interpolation_guard=interpolation_guard,
         )

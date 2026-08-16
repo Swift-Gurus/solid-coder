@@ -49,7 +49,7 @@ class StepExecutionBatchAdvancer(StepExecutionBatchAdvancing):
             validation = validator.validate(
                 execution.instance,
                 outcome.outputs,
-                request.ready_request.flow_def,
+                request.ready_request.snapshot.flow_def,
             )
             if validation.ok:
                 completed.append(execution)
@@ -83,7 +83,7 @@ class StepExecutionBatchAdvancer(StepExecutionBatchAdvancing):
                 base_dir=request.ready_request.base_dir,
                 run_id=request.ready_request.run_id,
                 events_path=request.ready_request.events_path,
-                flow_def=request.ready_request.flow_def,
+                flow_def=request.ready_request.snapshot.flow_def,
             )
             return ReadyStepExecutionOutcome(progressed=True, terminal=terminal)
 

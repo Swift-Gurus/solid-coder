@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
 
 from harness.condition_runtime import ConditionRuntime
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -21,6 +21,6 @@ class ConditionDeclaration(ABC):
     def evaluate(
         self,
         runtime: ConditionRuntime,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool:
         raise NotImplementedError

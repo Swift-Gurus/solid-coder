@@ -6,6 +6,7 @@ from typing import Any
 
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.filter_resolver import FilterResolving
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -23,7 +24,7 @@ class FilteredExpressionEvaluator(ExpressionEvaluating):
         self._expression_evaluator = expression_evaluator
         self._filter_resolver = filter_resolver
 
-    def evaluate(self, expr: str, context: dict[str, Any]) -> Any:
+    def evaluate(self, expr: str, context: WorkflowRunContext) -> Any:
         if " | " not in expr:
             return self._expression_evaluator.evaluate(expr, context)
         raw_expression, filter_name = expr.split(" | ", 1)

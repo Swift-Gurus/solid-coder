@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from harness.condition_reference_normalizing import ConditionReferenceNormalizing
 from harness.condition_reference_resolving import ConditionReferenceResolving
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.interpolation_error import InterpolationError
 from harness.resolved_condition_value import ResolvedConditionValue
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -29,7 +28,7 @@ class ConditionReferenceResolver(ConditionReferenceResolving):
     def resolve(
         self,
         reference: str,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> ResolvedConditionValue:
         expression = self._normalizer.normalize(reference)
         try:

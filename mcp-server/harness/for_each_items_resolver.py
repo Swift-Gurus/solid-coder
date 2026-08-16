@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from harness.expression_evaluating import ExpressionEvaluating
+from harness.expression_normalizing import ExpressionNormalizing
 from harness.for_each_items_resolving import ForEachItemsResolving
 from harness.models import FlowValidationError
-
-_SINGLE_EXPRESSION = re.compile(r"^\{\{([^}]+)\}\}$")
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -19,21 +18,21 @@ solid-spec: [SPEC-010, SPEC-030]
 solid-description: Resolves and validates workflow for-each expressions as ordered item collections.
 """
 class ForEachItemsResolver(ForEachItemsResolving):
-    def __init__(self, evaluator: ExpressionEvaluating) -> None:
+    def __init__(
+        self,
+        evaluator: ExpressionEvaluating,
+        expression_normalizer: ExpressionNormalizing,
+    ) -> None:
         self._evaluator = evaluator
+        self._expression_normalizer = expression_normalizer
 
     def resolve(
         self,
         step_id: str,
         expression: str,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> list[Any]:
-        expression_match = _SINGLE_EXPRESSION.match(expression.strip())
-        normalized_expression = (
-            expression_match.group(1).strip()
-            if expression_match
-            else expression.strip()
-        )
+        normalized_expression = self._expression_normalizer.normalize(expression)
         value = self._evaluator.evaluate(normalized_expression, context)
         if not isinstance(value, list):
             raise FlowValidationError(

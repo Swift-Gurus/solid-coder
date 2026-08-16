@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_runtime import ConditionRuntime
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -22,6 +22,6 @@ class AnyCondition(ConditionDeclaration):
     def evaluate(
         self,
         runtime: ConditionRuntime,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool:
         return any(condition.evaluate(runtime, context) for condition in self.conditions)

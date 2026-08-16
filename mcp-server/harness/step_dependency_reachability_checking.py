@@ -17,6 +17,6 @@ class StepDependencyReachabilityChecking(Protocol):
     def is_dependency(
         self,
         source_step_id: str,
-        target_step: StepDef,
+        dependency_ids: list[str],
         steps: list[StepDef],
     ) -> bool: ...

@@ -49,7 +49,11 @@ class ReadyStepExecutor(ReadyStepExecuting):
             if instance.step_id not in step_ids:
                 step_ids.append(instance.step_id)
         for step_id in step_ids:
-            step_def = next(step for step in request.flow_def.steps if step.id == step_id)
+            step_def = next(
+                step
+                for step in request.snapshot.flow_def.steps
+                if step.id == step_id
+            )
             instances = [
                 instance
                 for instance in request.snapshot.ready

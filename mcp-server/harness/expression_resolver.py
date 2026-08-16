@@ -5,6 +5,8 @@ from typing import Any
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.interpolation_error_creating import InterpolationErrorCreating
 from harness.nested_value_resolving import NestedValueResolving
+from harness.workflow_context_values import WorkflowContextValues
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -24,34 +26,66 @@ class ExpressionResolver(ExpressionEvaluating):
         self._nested_values = nested_value_resolver
         self._error_factory = error_factory
 
-    def evaluate(self, expr: str, context: dict[str, Any]) -> Any:
+    def evaluate(self, expr: str, context: WorkflowRunContext) -> Any:
         parts = expr.split(".")
         if parts[0] == "steps":
             return self._step_outputs.evaluate(expr, context)
         if parts[0] == "params":
-            return self._resolve_parameter(parts, expr, context)
-        root_name = parts[0]
-        if root_name not in context:
-            raise self._error_factory.create(expr)
-        return self._nested_values.resolve(context[root_name], parts[1:], expr)
+            return self._resolve_parameter(parts, expr, context.parameters)
+        if parts[0] == "rejection_reasons":
+            return self._resolve_named_value(
+                parts,
+                expr,
+                context.rejection_reasons,
+            )
+        if parts[0] == "attempts_used":
+            return self._resolve_named_value(
+                parts,
+                expr,
+                context.attempts_used,
+            )
+        if parts[0] == "item" and context.item.present:
+            return self._nested_values.resolve(
+                context.item.value,
+                parts[1:],
+                expr,
+            )
+        raise self._error_factory.create(expr)
 
     def _resolve_parameter(
         self,
         parts: list[str],
         reference: str,
-        context: dict[str, Any],
+        parameters: WorkflowContextValues[object],
     ) -> object:
         if len(parts) < 2:
             raise self._error_factory.create(reference)
-        params = context.get("params", {})
         parameter_name = parts[1]
-        if parameter_name not in params:
+        parameter = parameters.find(parameter_name)
+        if not parameter.present:
             raise self._error_factory.create(
                 reference,
                 f"parameter '{parameter_name}' not found in context",
             )
         return self._nested_values.resolve(
-            params[parameter_name],
+            parameter.value,
+            parts[2:],
+            reference,
+        )
+
+    def _resolve_named_value(
+        self,
+        parts: list[str],
+        reference: str,
+        values: WorkflowContextValues[Any],
+    ) -> object:
+        if len(parts) < 2:
+            raise self._error_factory.create(reference)
+        value = values.find(parts[1])
+        if not value.present:
+            raise self._error_factory.create(reference)
+        return self._nested_values.resolve(
+            value.value,
             parts[2:],
             reference,
         )

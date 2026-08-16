@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Protocol
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -17,5 +18,5 @@ class ConditionDecisionEvaluating(Protocol):
     def evaluate(
         self,
         condition: ConditionDeclaration,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool: ...

@@ -5,12 +5,11 @@ solid-category: service
 
 from __future__ import annotations
 
-from typing import Any
-
 from harness.dag_running import DAGRunning
 from harness.models import FlowDef, RunState, StepInstance
 from harness.step_instance_expanding import StepInstanceExpanding
 from harness.step_readiness_checking import StepReadinessChecking
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -29,7 +28,12 @@ class DAGRunner(DAGRunning):
         self._readiness_checker = readiness_checker
         self._instance_expander = instance_expander
 
-    def ready_steps(self, flow_def: FlowDef, run_state: RunState, context: dict[str, Any]) -> list[StepInstance]:
+    def ready_steps(
+        self,
+        flow_def: FlowDef,
+        run_state: RunState,
+        context: WorkflowRunContext,
+    ) -> list[StepInstance]:
         if run_state.turn_count >= flow_def.max_turns:
             return []
         return [

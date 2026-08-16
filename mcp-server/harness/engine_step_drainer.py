@@ -66,7 +66,6 @@ class EngineStepDrainer(StepExecutionCoordinating):
                     base_dir=base_dir,
                     run_id=run_id,
                     events_path=events_path,
-                    flow_def=flow_def,
                 )
             )
             if outcome.terminal is not None:

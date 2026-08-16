@@ -24,6 +24,8 @@ from harness.interpolator import Interpolator
 from harness.models import FlowDef, OutputSpec, RunState, StepDef, StepOutputs
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
+from harness.run_context_builder import RunContextBuilder
+from harness.single_expression_normalizer import SingleExpressionNormalizer
 from harness.step_dependency_checker import StepDependencyChecker
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_instance_expander import StepInstanceExpander
@@ -31,6 +33,13 @@ from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_status_checker import StepStatusChecker
 from harness.step_skip import StepSkip
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
+from harness.workflow_run_context import WorkflowRunContext
+
+
+_CONTEXT_BUILDER = RunContextBuilder(
+    values_mapper=WorkflowContextValuesMapper()
+)
 
 
 def _make_runner() -> DAGRunner:
@@ -55,7 +64,10 @@ def _make_runner() -> DAGRunner:
             dependency_checker=StepDependencyChecker(),
         ),
         instance_expander=StepInstanceExpander(
-            items_resolver=ForEachItemsResolver(evaluator=resolver),
+            items_resolver=ForEachItemsResolver(
+                evaluator=resolver,
+                expression_normalizer=SingleExpressionNormalizer(),
+            ),
             renderer=Interpolator(evaluator=resolver),
         ),
     )
@@ -82,16 +94,16 @@ class TestDAGRunner(unittest.TestCase):
 
     def test_ready_and_blocked_steps(self):
         flow = self._flow(self._step("a"), self._step("b", depends_on=["a"]))
-        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), {})}
+        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())}
         self.assertIn("a", ids)
         self.assertNotIn("b", ids)
-        ids_after = {i.step_id for i in self.runner.ready_steps(flow, self._state(completed=["a"]), {})}
+        ids_after = {i.step_id for i in self.runner.ready_steps(flow, self._state(completed=["a"]), WorkflowRunContext())}
         self.assertIn("b", ids_after)
         self.assertNotIn("a", ids_after)
 
     def test_completed_step_not_returned(self):
         flow = self._flow(self._step("a"))
-        self.assertEqual(self.runner.ready_steps(flow, self._state(completed=["a"]), {}), [])
+        self.assertEqual(self.runner.ready_steps(flow, self._state(completed=["a"]), WorkflowRunContext()), [])
 
     def test_skipped_step_is_terminal_and_unlocks_its_dependent(self):
         condition = ComparisonCondition(
@@ -114,7 +126,7 @@ class TestDAGRunner(unittest.TestCase):
         )
         flow = self._flow(self._step("a"), self._step("b", depends_on=["a"]))
 
-        ids = {instance.step_id for instance in self.runner.ready_steps(flow, state, {})}
+        ids = {instance.step_id for instance in self.runner.ready_steps(flow, state, WorkflowRunContext())}
 
         self.assertEqual(ids, {"b"})
 
@@ -123,7 +135,11 @@ class TestDAGRunner(unittest.TestCase):
         flow = self._flow(self._step("load"), step)
         outputs = StepOutputs(values={"principles": ["SRP", "OCP", "LSP"]})
         state = RunState(completed={"load": outputs}, running=[], turn_count=0, status="in_progress")
-        instances = self.runner.ready_steps(flow, state, {"steps": {"load": outputs}})
+        instances = self.runner.ready_steps(
+            flow,
+            state,
+            _CONTEXT_BUILDER.build({}, state),
+        )
         self.assertEqual(len(instances), 3)
         self.assertEqual({i.item for i in instances}, {"SRP", "OCP", "LSP"})
         self.assertEqual([i.iteration_index for i in instances], [0, 1, 2])
@@ -154,7 +170,7 @@ class TestDAGRunner(unittest.TestCase):
         instances = self.runner.ready_steps(
             flow,
             state,
-            {"steps": {"load": outputs}},
+            _CONTEXT_BUILDER.build({}, state),
         )
 
         self.assertEqual(
@@ -187,7 +203,7 @@ class TestDAGRunner(unittest.TestCase):
         instances = self.runner.ready_steps(
             self._flow(step),
             state,
-            {"params": {"items": ["OCP", "SRP"]}},
+            _CONTEXT_BUILDER.build({"items": ["OCP", "SRP"]}, state),
         )
 
         self.assertEqual(
@@ -216,7 +232,7 @@ class TestDAGRunner(unittest.TestCase):
         instances = self.runner.ready_steps(
             flow,
             state,
-            {"steps": {"load": outputs}},
+            _CONTEXT_BUILDER.build({}, state),
         )
 
         self.assertEqual(len(instances), 1)
@@ -228,11 +244,11 @@ class TestDAGRunner(unittest.TestCase):
 
     def test_returns_empty_when_max_turns_reached(self):
         flow = self._flow(self._step("a"), max_turns=2)
-        self.assertEqual(self.runner.ready_steps(flow, self._state(turn_count=2), {}), [])
+        self.assertEqual(self.runner.ready_steps(flow, self._state(turn_count=2), WorkflowRunContext()), [])
 
     def test_parallel_steps_all_returned(self):
         flow = self._flow(self._step("a"), self._step("b"), self._step("c"))
-        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), {})}
+        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())}
         self.assertEqual(ids, {"a", "b", "c"})
 
 

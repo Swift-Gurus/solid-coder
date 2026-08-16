@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
 
 """
 solid-name: IncludeSource
 solid-category: model
 solid-spec: [SPEC-027, SPEC-035]
-solid-description: Carries the steps, identity, location, and provenance selected for one include entry.
+solid-description: Represents one resolved reusable workflow entry selected for inclusion.
 """
 @dataclass(frozen=True)
 class IncludeSource:
     alias: str
     steps: list[dict]
     flow_path: str
+    runtime: WorkflowIncludeRuntime = field(default_factory=WorkflowIncludeRuntime)
     identity: str | None = None
     label: str | None = None
     source_path: str | None = None

@@ -67,11 +67,14 @@ class StubRunSnapshotResolver:
 class TestFlowStatusReader(unittest.TestCase):
 
     def test_returns_no_active_run_when_locator_raises_file_not_found(self):
+        flow_def = FlowDef(name="", max_turns=0, steps=[])
         sut = FlowStatusReader(
             run_locator=RaisingRunLocator(),
-            flow_loader=StubFlowLoader(FlowDef(name="", max_turns=0, steps=[])),
+            flow_loader=StubFlowLoader(flow_def),
             run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(
-                run_state=RunState(completed={}, running=[], turn_count=0, status="not_started"), ready=[],
+                run_state=RunState(completed={}, running=[], turn_count=0, status="not_started"),
+                flow_def=flow_def,
+                ready=[],
             )),
             condition_serializer=StubConditionSerializer(),
         )
@@ -116,7 +119,11 @@ class TestFlowStatusReader(unittest.TestCase):
         sut = FlowStatusReader(
             run_locator=StubRunLocator(location),
             flow_loader=StubFlowLoader(flow_def),
-            run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(run_state=run_state, ready=[instance])),
+            run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(
+                run_state=run_state,
+                flow_def=flow_def,
+                ready=[instance],
+            )),
             condition_serializer=StubConditionSerializer(),
         )
 

@@ -1,9 +1,4 @@
-"""
-solid-name: FlowStepper
-solid-category: service
-solid-spec: [SPEC-031]
-solid-description: Advances flow execution and determines the next ready steps based on submitted outputs.
-"""
+"""Advances an active workflow run from submitted outputs."""
 
 from __future__ import annotations
 
@@ -14,17 +9,17 @@ from harness.flow_next_result import FlowNextResult
 from harness.flow_stepping import FlowStepping
 from harness.interpolation_guarding import InterpolationGuarding
 from harness.output_submission_advancing import OutputSubmissionAdvancing
-from harness.run_completion_checking import RunCompletionChecking
 from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
 
 
+"""
+solid-name: FlowStepper
+solid-category: service
+solid-spec: [SPEC-031, SPEC-037]
+solid-description: Advances submitted outputs through the next executable workflow snapshot and returns its next ready result.
+"""
 class FlowStepper(FlowStepping):
-    """
-    solid-description: Advances flow execution and determines the next ready steps based on submitted outputs.
-    solid-category: service
-    """
-
     def __init__(
         self,
         run_locator: ActiveRunLocating,
@@ -32,7 +27,6 @@ class FlowStepper(FlowStepping):
         flow_loader: FlowLoading,
         run_snapshot_resolver: RunSnapshotResolving,
         submission_advancer: OutputSubmissionAdvancing,
-        completion_checker: RunCompletionChecking,
         execution_and_readiness_coordinator: ExecutionAndReadinessCoordinating,
         interpolation_guard: InterpolationGuarding,
     ) -> None:
@@ -41,7 +35,6 @@ class FlowStepper(FlowStepping):
         self._flow_loader = flow_loader
         self._run_snapshot_resolver = run_snapshot_resolver
         self._submission_advancer = submission_advancer
-        self._completion_checker = completion_checker
         self._execution_and_readiness_coordinator = execution_and_readiness_coordinator
         self._interpolation_guard = interpolation_guard
 
@@ -57,17 +50,15 @@ class FlowStepper(FlowStepping):
             return FlowNextResult(status="ready", error=error)
 
         outcome = self._submission_advancer.submit(
-            location.events_path, location.base_dir, location.run_id, snapshot.ready, outputs or {}, flow_def
+            location.events_path,
+            location.base_dir,
+            location.run_id,
+            snapshot.ready,
+            outputs or {},
+            snapshot.flow_def,
         )
         if outcome.terminal is not None:
             return outcome.terminal
-
-        if outcome.run_state is not None:
-            terminal = self._completion_checker.check(
-                location.base_dir, location.run_id, location.events_path, flow_def, outcome.run_state
-            )
-            if terminal is not None:
-                return terminal
 
         execution = self._execution_and_readiness_coordinator.coordinate(
             location.base_dir, location.run_id, location.events_path, flow_def, metadata.params

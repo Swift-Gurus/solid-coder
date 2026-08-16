@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from harness.comparison_condition import ComparisonCondition
+    from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -18,5 +19,5 @@ class ConditionRuntime(Protocol):
     def compare(
         self,
         condition: ComparisonCondition,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool: ...

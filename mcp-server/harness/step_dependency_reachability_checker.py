@@ -16,10 +16,10 @@ class StepDependencyReachabilityChecker(StepDependencyReachabilityChecking):
     def is_dependency(
         self,
         source_step_id: str,
-        target_step: StepDef,
+        dependency_ids: list[str],
         steps: list[StepDef],
     ) -> bool:
-        pending = list(target_step.depends_on)
+        pending = list(dependency_ids)
         visited: set[str] = set()
         while pending:
             dependency_id = pending.pop(0)

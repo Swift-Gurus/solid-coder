@@ -6,7 +6,6 @@ import sys
 import unittest
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
@@ -14,7 +13,10 @@ from harness.comparison_condition import ComparisonCondition  # noqa: E402
 from harness.condition_declaration import ConditionDeclaration  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
 from harness.conditional_step_instance_expander import ConditionalStepInstanceExpander  # noqa: E402
+from harness.included_workflow_instance import IncludedWorkflowInstance  # noqa: E402
 from harness.models import RunState, StepDef, StepInstance  # noqa: E402
+from harness.step_condition_applier import StepConditionApplier  # noqa: E402
+from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
 
 
 @dataclass
@@ -24,7 +26,7 @@ class StubStepInstanceExpander:
     def expand(
         self,
         step: StepDef,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
         run_state: RunState,
     ) -> list[StepInstance]:
         return self.instances
@@ -33,12 +35,12 @@ class StubStepInstanceExpander:
 @dataclass
 class StubConditionEvaluator:
     decisions: list[bool]
-    contexts: list[dict[str, Any]] = field(default_factory=list)
+    contexts: list[WorkflowRunContext] = field(default_factory=list)
 
     def evaluate(
         self,
         condition: ConditionDeclaration,
-        context: dict[str, Any],
+        context: WorkflowRunContext,
     ) -> bool:
         self.contexts.append(context)
         return self.decisions.pop(0)
@@ -51,6 +53,12 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
             reference="{{item.language}}",
             operator=ConditionOperator.EQUALS,
             expected="swift",
+        )
+        workflow_instance = IncludedWorkflowInstance(
+            alias="review",
+            instance_id="review-2",
+            source_index=1,
+            source_item={"language": "kotlin"},
         )
         instances = [
             StepInstance(
@@ -66,12 +74,13 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
                 item={"language": "kotlin"},
                 prompt="Review Kotlin",
                 iteration_index=1,
+                workflow_instance=workflow_instance,
             ),
         ]
         evaluator = StubConditionEvaluator(decisions=[True, False])
         sut = ConditionalStepInstanceExpander(
             instance_expander=StubStepInstanceExpander(instances),
-            condition_evaluator=evaluator,
+            condition_applier=StepConditionApplier(evaluator),
         )
 
         result = sut.expand(
@@ -81,15 +90,16 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
                 for_each="{{params.units}}",
                 condition=condition,
             ),
-            {"params": {"units": []}},
+            WorkflowRunContext(),
             RunState(completed={}, running=[], turn_count=0, status="in_progress"),
         )
 
         self.assertIsNone(result[0].skip)
         self.assertEqual(result[1].skip.condition, condition)
         self.assertEqual(result[1].skip.instance_id, "review-2")
+        self.assertEqual(result[1].workflow_instance, workflow_instance)
         self.assertEqual(
-            [context["item"] for context in evaluator.contexts],
+            [context.item.value for context in evaluator.contexts],
             [{"language": "swift"}, {"language": "kotlin"}],
         )
 
@@ -103,12 +113,12 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
         evaluator = StubConditionEvaluator(decisions=[])
         sut = ConditionalStepInstanceExpander(
             instance_expander=StubStepInstanceExpander([instance]),
-            condition_evaluator=evaluator,
+            condition_applier=StepConditionApplier(evaluator),
         )
 
         result = sut.expand(
             StepDef(id="review", prompt="Review"),
-            {},
+            WorkflowRunContext(),
             RunState(completed={}, running=[], turn_count=0, status="in_progress"),
         )
 
