@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Protocol
 
 from harness.flow_next_result import FlowNextResult
-from harness.models import FlowDef, RunState, StepDef, StepInstance
+from harness.models import FlowDef, RunState, StepDef
+from harness.step_instance_execution import StepInstanceExecution
 
 
 """
@@ -16,11 +17,10 @@ solid-spec: [SPEC-010, SPEC-027]
 solid-description: Contract for attributing and handling one failed workflow-step execution.
 """
 class StepExecutionFailureHandling(Protocol):
-    def handle(
+    def handle_all(
         self,
-        reason: str,
+        failures: list[StepInstanceExecution],
         failed_step: StepDef,
-        failed_instance: StepInstance,
         run_state: RunState,
         base_dir: Path,
         run_id: str,

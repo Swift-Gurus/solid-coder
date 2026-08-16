@@ -1,10 +1,3 @@
-"""
-solid-name: SessionDelegateRunner
-solid-category: service
-solid-spec: [SPEC-027]
-solid-description: Executes a provided prompt in a dedicated execution context.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -32,6 +25,7 @@ from hc_checker import ClaudeRunning  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
 
+from harness.json_loading import JsonLoading
 from harness.session_delegate_running import SessionDelegateRunning
 from harness.step_run_outcome import StepRunOutcome
 
@@ -41,18 +35,26 @@ McpConfigBuilding = Callable[[Path], str]
 _FLOW_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status"
 
 
+"""
+solid-name: SessionDelegateRunner
+solid-category: service
+solid-spec: [SPEC-027, SPEC-037]
+solid-description: Executes a prompt in a configured session and parses its declared output object.
+"""
 class SessionDelegateRunner(SessionDelegateRunning):
 
     def __init__(
         self,
         plugin_root: Path,
         timeout: int,
+        output_loader: JsonLoading,
         cwd_resolver: Callable[[], Path] = Path.cwd,
         runner_factory: RunnerFactory = make_llm_runner,
         mcp_config_builder: McpConfigBuilding = build_mcp_config,
     ) -> None:
         self._plugin_root = plugin_root
         self._timeout = timeout
+        self._output_loader = output_loader
         self._cwd_resolver = cwd_resolver
         self._runner_factory = runner_factory
         self._mcp_config_builder = mcp_config_builder
@@ -66,4 +68,13 @@ class SessionDelegateRunner(SessionDelegateRunning):
         result = runner.run(prompt, self._timeout)
         if result is None:
             return StepRunOutcome(awaiting_input=False, rejection_reason="Delegated session produced no result")
-        return StepRunOutcome(awaiting_input=False, outputs={})
+        try:
+            outputs = self._output_loader.safe_load(result)
+        except (TypeError, ValueError):
+            outputs = None
+        if not isinstance(outputs, dict):
+            return StepRunOutcome(
+                awaiting_input=False,
+                rejection_reason="Delegated session must return one JSON object",
+            )
+        return StepRunOutcome(awaiting_input=False, outputs=outputs)

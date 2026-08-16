@@ -20,6 +20,11 @@ exclude = [
 [flow_engine]
 permitted_executables = ["python3", "bash", "sh"]
 
+# Maximum configured LLM sessions started concurrently by one delegate fan-out.
+# Defaults to 4 and must be at least 1.
+# max_parallel_sessions = 4
+
+
 # ── Feature flags ────────────────────────────────────────────────────────────
 # Opt-in experimental behaviors. Toggle to compare token cost / quality.
 [feature_flags]

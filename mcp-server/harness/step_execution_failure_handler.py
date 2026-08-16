@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from harness.attempt_failure_handling import AttemptFailureHandling
+from harness.attempt_failure import AttemptFailure
+from harness.attempt_failures_handling import AttemptFailuresHandling
 from harness.flow_next_result import FlowNextResult
-from harness.models import FlowDef, RunState, StepDef, StepInstance
+from harness.models import FlowDef, RunState, StepDef
 from harness.script_failure_attributing import ScriptFailureAttributing
 from harness.step_execution_failure_handling import StepExecutionFailureHandling
+from harness.step_instance_execution import StepInstanceExecution
 
 
 """
@@ -21,16 +23,15 @@ class StepExecutionFailureHandler(StepExecutionFailureHandling):
     def __init__(
         self,
         failure_attributor: ScriptFailureAttributing,
-        attempt_failure_handler: AttemptFailureHandling,
+        attempt_failure_handler: AttemptFailuresHandling,
     ) -> None:
         self._failure_attributor = failure_attributor
         self._attempt_failure_handler = attempt_failure_handler
 
-    def handle(
+    def handle_all(
         self,
-        reason: str,
+        failures: list[StepInstanceExecution],
         failed_step: StepDef,
-        failed_instance: StepInstance,
         run_state: RunState,
         base_dir: Path,
         run_id: str,
@@ -42,17 +43,26 @@ class StepExecutionFailureHandler(StepExecutionFailureHandling):
             run_state,
             flow_def,
         )
-        return self._attempt_failure_handler.handle(
-            step_id=target_step_id,
-            reason=reason,
-            reopen=target_step_id != failed_step.id,
+        reopen = target_step_id != failed_step.id
+        return self._attempt_failure_handler.handle_all(
+            failures=[
+                AttemptFailure(
+                    step_id=target_step_id,
+                    reason=(
+                        failure.outcome.rejection_reason
+                        or "Step produced no outputs"
+                    ),
+                    reopen=reopen,
+                    attempt_id=(
+                        failure.instance.instance_id
+                        if not reopen
+                        else None
+                    ),
+                )
+                for failure in failures
+            ],
             base_dir=base_dir,
             run_id=run_id,
             events_path=events_path,
             flow_def=flow_def,
-            attempt_id=(
-                failed_instance.instance_id
-                if target_step_id == failed_step.id
-                else None
-            ),
         )

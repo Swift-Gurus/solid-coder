@@ -45,10 +45,14 @@ class TestOutputSchemaPromptAnnotator(unittest.TestCase):
         self.assertEqual(
             resolved.prompt,
             "Produce a short greeting.\n\n"
-            "Submit output 'greeting' matching this schema: {\"type\": \"string\"}",
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"greeting\": "
+            "{\"type\": \"string\"}}, \"required\": [\"greeting\"], "
+            "\"additionalProperties\": false}",
         )
 
-    def test_appends_one_line_per_output_with_a_schema(self):
+    def test_appends_one_response_schema_for_all_outputs(self):
         step = StepDeclaration(
             id="a",
             prompt="Do the thing.",
@@ -63,11 +67,41 @@ class TestOutputSchemaPromptAnnotator(unittest.TestCase):
         self.assertEqual(
             resolved.prompt,
             "Do the thing.\n\n"
-            "Submit output 'a_out' matching this schema: {\"type\": \"string\"}\n\n"
-            "Submit output 'b_out' matching this schema: {\"type\": \"integer\"}",
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"a_out\": "
+            "{\"type\": \"string\"}, \"b_out\": {\"type\": \"integer\"}}, "
+            "\"required\": [\"a_out\", \"b_out\"], \"additionalProperties\": false}",
         )
 
-    def test_skips_outputs_without_a_schema(self):
+    def test_appends_declared_response_schema_to_session_delegate_prompt(self):
+        step = StepDeclaration(
+            id="delegate",
+            type="delegate",
+            mode="session",
+            prompt="Drive the child workflow.",
+            outputs=[
+                OutputSpec(
+                    name="child_value",
+                    type="data",
+                    schema={"type": "integer"},
+                )
+            ],
+        )
+
+        resolved = self.sut.annotate(step)
+
+        self.assertEqual(
+            resolved.prompt,
+            "Drive the child workflow.\n\n"
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"child_value\": "
+            "{\"type\": \"integer\"}}, \"required\": [\"child_value\"], "
+            "\"additionalProperties\": false}",
+        )
+
+    def test_names_declared_outputs_without_a_value_schema(self):
         step = StepDeclaration(
             id="a",
             prompt="Do the thing.",
@@ -76,7 +110,14 @@ class TestOutputSchemaPromptAnnotator(unittest.TestCase):
 
         resolved = self.sut.annotate(step)
 
-        self.assertEqual(resolved.prompt, "Do the thing.")
+        self.assertEqual(
+            resolved.prompt,
+            "Do the thing.\n\n"
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"a_out\": {}}, "
+            "\"required\": [\"a_out\"], \"additionalProperties\": false}",
+        )
 
     def test_leaves_step_unchanged_when_no_outputs_declared(self):
         step = StepDeclaration(id="a", prompt="Do the thing.")

@@ -2,7 +2,7 @@
 number: SPEC-037
 feature: conditional-workflow-routing-and-result-aggregation
 type: subtask
-status: ready
+status: in-progress
 parent: SPEC-010
 blocked-by: [SPEC-030, SPEC-035]
 blocking: [SPEC-036, SPEC-033]
@@ -49,6 +49,12 @@ As the flow engine, I want to route classified review units through every matchi
 - Every included-workflow alias exposes an ordered `results` collection to downstream interpolation; each completed item contains its stable instance identity, source item, and already validated declared workflow outputs, while skipped items are omitted from the collection. The envelope does not create a second output-schema system.
 - A non-iterated included workflow exposes the same collection shape with zero or one item, so aggregators do not need separate scalar and fan-out handling.
 - The result collection order follows the source `for_each` order, independent of the order in which parallel branches finish.
+- A `type: delegate`, `mode: session` step with `for_each` starts one configured-backend session per ready item through a bounded concurrent executor. This is MCP-owned session fan-out; it does not use `mode: subagent` or depend on SPEC-033.
+- Before a delegated session starts, the engine adds one response-envelope JSON Schema derived from the step's declared outputs to the resolved prompt. Every declared output is required and undeclared properties are forbidden; the runner does not replace that contract with a generic output instruction.
+- Each delegated session's final response must be only one JSON object matching that response-envelope schema, without Markdown fences or surrounding prose. The runner does not repair a non-conforming response, and the existing step-output validator remains authoritative before that instance is recorded as completed.
+- Session delegate successes are recorded even when a sibling session fails. A failed or schema-invalid sibling consumes only its own instance attempt and retrying it never relaunches completed siblings.
+- When multiple delegated sessions fail in the same concurrent batch, every failed instance's attempt is durably recorded before terminal run state is evaluated once; no sibling failure is dropped because another instance exhausts its attempts first.
+- Downstream dependencies become ready only after every delegated session instance completes or exhausts its attempts. Aggregated delegate outputs retain source-item order rather than session completion order, and replay never relaunches completed instances.
 - A downstream aggregation step may depend on included-workflow aliases and interpolate their `results` collections into an agent prompt, script argument, or command text; the aggregation operation itself remains workflow-defined and may call an MCP tool or use a process-backed step.
 - The bundled health-check flow can break input into units, run a general review for applicable units, additionally run the SwiftUI review only when `language == "swift"` and `unit_kind == "view"`, and aggregate every emitted review result into the existing normalized review-result structure.
 - If an executed branch exhausts retries, produces an invalid declared workflow output, or otherwise fails, the join does not run, a `run_failed` event is recorded, and the run reports `failed`; skipped branches are not failures.
@@ -161,6 +167,33 @@ Steps inside either a top-level or included workflow use the same grammar:
 - Each expanded instance receives an independent condition decision using its own `item` binding.
 - A skipped step instance starts no agent, process, or delegate execution and consumes no turn or attempt.
 - Internal dependents wait until every relevant dependency instance is completed or skipped.
+
+### Session delegate fan-out
+
+Session-backed delegates reuse the existing `for_each` instance lifecycle while MCP owns their execution:
+
+```yaml
+- id: review_units
+  type: delegate
+  mode: session
+  depends_on: [prepare_units]
+  for_each: "{{steps.prepare_units.outputs.units}}"
+  prompt: Review {{item.path}} and return its findings.
+  outputs:
+    - name: findings
+      type: data
+      schema_file: findings.schema.json
+```
+
+- The engine submits every currently ready instance of one session-delegate step to a bounded executor and correlates each outcome by stable `instance_id`; completion order cannot change result ordering.
+- Worker threads execute configured sessions and return typed outcomes only. They do not append flow events or mutate run state; after the bounded executor joins, the orchestrator records valid outputs and failed attempts serially in source order, then evaluates terminal state once. The flow event log therefore requires no worker-thread lock.
+- The configured Claude, Codex, or local runner remains selected through the existing backend profile. Fan-out does not introduce another backend-selection path.
+- A successful raw session response is parsed only at the LLM boundary as a JSON object, then validated through the same declared-output contract used for agent submissions.
+- The schema-derived response instruction is part of the persisted resolved prompt, so replay and every configured backend receive the same output contract. A later session hook may reject a non-conforming final response before session termination, but it does not replace engine validation.
+- Missing, malformed, or schema-invalid session output is an instance-scoped failed attempt. Valid sibling results from the same batch are durably recorded before retry readiness is computed.
+- Empty `for_each` input retains the existing automatic empty completion behavior and starts no session.
+- The executor's concurrency bound is loaded from `[flow_engine].max_parallel_sessions`, validated as an integer of at least `1`, and defaults to `4` when omitted. The production composition root passes that value to the bounded executor; workflow authors do not create or coordinate threads and no unbounded worker count is derived from input size.
+- The project-level `active-sessions.json` hook registry is not a concurrency primitive for delegate fan-out and is not used to coordinate flow instances. A future per-session response hook that stores delegate contracts there must add an inter-process transactional lock and correlate each registered session with its own response schema; the current type-and-timestamp entries are insufficient.
 
 ### Workflow output contract
 
@@ -326,6 +359,14 @@ These tests are written and passing before conditional execution code is changed
 - When one selected review workflow exhausts retries, the final aggregation does not execute and the run reports the existing failure outcome.
 - When a conditional health-check run is interrupted and resumed, completed reviews are not repeated and skipped branches remain skipped.
 
+### Integration Tests — Session delegate fan-out
+
+- When a session delegate expands over three items, three configured-backend runner calls overlap within the executor bound and each receives the prompt rendered for its own item.
+- When sessions finish out of order, their validated outputs aggregate in source-item order and release the downstream dependency only after all instances are terminal.
+- When one session returns malformed or schema-invalid output, valid siblings are recorded, only the failed instance is returned for retry, and completed sessions are not relaunched.
+- When a partially completed session-delegate fan-out is reconstructed from events, only incomplete instances run and the final fan-in contains each source item exactly once.
+- When the source collection is empty, no session runner is called and the downstream dependency receives the existing empty aggregate.
+
 ### Live Model E2E — Swappable classification prompt and conditional routing
 
 - The test copies the fixed E2E workflow package to a temporary directory and writes `prompts/classify.md` before launching the model session; the workflow YAML and branch definitions remain identical between cases.
@@ -348,5 +389,7 @@ These tests are written and passing before conditional execution code is changed
 - [ ] The health-check integration proves SwiftUI routing by language and unit kind followed by normalized result aggregation.
 - [ ] Shared Codex and Claude live E2E tests prove that prompt-file content can be swapped without changing workflow YAML or exposing test expectations in the launch prompt, and that model-produced categories deterministically select the matching conditional branch.
 - [ ] A live E2E fan-out case proves per-item `for_each` condition evaluation with mixed categories, completed matching instances, and durable non-matching skips.
+- [ ] Deterministic integration tests prove bounded concurrent `mode: session` delegate fan-out, typed result validation, instance-scoped retry, ordered fan-in, empty input, and replay without relaunch.
+- [ ] Shared Codex and Claude live E2E tests prove multiple session delegates complete and feed one downstream join without using subagents.
 - [ ] Unit and integration tests cover validation, execution, failure, ordering, status, and resume behavior.
 - [ ] Existing `for_each` characterization tests pass unchanged before and after conditional routing is added.

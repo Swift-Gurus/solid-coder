@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from harness.output_recording import OutputRecording
 from harness.ready_step_executing import ReadyStepExecuting
 from harness.ready_step_execution_outcome import ReadyStepExecutionOutcome
 from harness.ready_step_execution_request import ReadyStepExecutionRequest
-from harness.step_execution_failure_handling import StepExecutionFailureHandling
-from harness.step_handler_resolving import StepHandlerResolving
+from harness.output_recording import OutputRecording
+from harness.step_batch_runner_resolving import StepBatchRunnerResolving
+from harness.step_execution_batch_advancing import StepExecutionBatchAdvancing
+from harness.step_execution_batch_request import StepExecutionBatchRequest
 
 _ENGINE_SESSION_ID = "engine"
 
@@ -15,18 +16,18 @@ _ENGINE_SESSION_ID = "engine"
 """
 solid-name: ReadyStepExecutor
 solid-category: service
-solid-spec: [SPEC-010, SPEC-027]
-solid-description: Executes one ready workflow instance, records validated outputs, and delegates execution failures.
+solid-spec: [SPEC-010, SPEC-027, SPEC-037]
+solid-description: Coordinates batch execution of ready workflow-step instances and automatic empty completions.
 """
 class ReadyStepExecutor(ReadyStepExecuting):
     def __init__(
         self,
-        step_handler_resolver: StepHandlerResolving,
-        failure_handler: StepExecutionFailureHandling,
+        batch_runner_resolver: StepBatchRunnerResolving,
+        batch_advancer: StepExecutionBatchAdvancing,
         output_recorder: OutputRecording,
     ) -> None:
-        self._step_handler_resolver = step_handler_resolver
-        self._failure_handler = failure_handler
+        self._batch_runner_resolver = batch_runner_resolver
+        self._batch_advancer = batch_advancer
         self._output_recorder = output_recorder
 
     def execute(
@@ -43,38 +44,29 @@ class ReadyStepExecutor(ReadyStepExecuting):
                 )
                 return ReadyStepExecutionOutcome(progressed=True)
 
-            step_def = next(
-                step
-                for step in request.flow_def.steps
-                if step.id == instance.step_id
+        step_ids: list[str] = []
+        for instance in request.snapshot.ready:
+            if instance.step_id not in step_ids:
+                step_ids.append(instance.step_id)
+        for step_id in step_ids:
+            step_def = next(step for step in request.flow_def.steps if step.id == step_id)
+            instances = [
+                instance
+                for instance in request.snapshot.ready
+                if instance.step_id == step_id
+            ]
+            executions = self._batch_runner_resolver.resolve(step_def).run_batch(
+                instances,
+                step_def,
             )
-            handler = self._step_handler_resolver.resolve(step_def.type)
-            outcome = handler.run(instance, step_def)
-            if outcome.awaiting_input:
-                continue
-
-            if outcome.rejection_reason is not None:
-                terminal = self._failure_handler.handle(
-                    reason=outcome.rejection_reason,
-                    failed_step=step_def,
-                    failed_instance=instance,
-                    run_state=request.snapshot.run_state,
-                    base_dir=request.base_dir,
-                    run_id=request.run_id,
-                    events_path=request.events_path,
-                    flow_def=request.flow_def,
+            outcome = self._batch_advancer.advance(
+                StepExecutionBatchRequest(
+                    ready_request=request,
+                    step_def=step_def,
+                    executions=executions,
                 )
-                return ReadyStepExecutionOutcome(
-                    progressed=True,
-                    terminal=terminal,
-                )
-
-            self._output_recorder.record(
-                request.events_path,
-                request.snapshot.ready,
-                {instance.instance_id: outcome.outputs},
-                _ENGINE_SESSION_ID,
             )
-            return ReadyStepExecutionOutcome(progressed=True)
+            if outcome.progressed or outcome.terminal is not None:
+                return outcome
 
         return ReadyStepExecutionOutcome(progressed=False)

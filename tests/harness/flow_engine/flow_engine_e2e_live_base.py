@@ -34,7 +34,7 @@ _FLOW_PACKAGE = (
 _ALLOWED_TOOLS = (
     "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
     "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
-    "mcp__solid-coder-pipeline__flow_status,Task"
+    "mcp__solid-coder-pipeline__flow_status"
 )
 _EXPECTED_STEP_PREFIX = [
     "greet",
@@ -42,6 +42,8 @@ _EXPECTED_STEP_PREFIX = [
     "count_words",
     "review.draft_review",
     "review.approve_review",
+    "prepare_delegations",
+    "delegate",
     "delegate",
 ]
 
@@ -58,8 +60,8 @@ class ClassificationCase:
 """
 solid-name: FlowEngineE2ELiveBase
 solid-category: test-support
-solid-spec: [SPEC-031, SPEC-027]
-solid-description: Executes one model-profile-backed flow session and verifies the complete persisted engine transition sequence.
+solid-spec: [SPEC-031, SPEC-027, SPEC-037]
+solid-description: Executes model-profile-backed routing and session-delegate fan-out while verifying persisted engine transitions.
 """
 class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
 
@@ -202,6 +204,11 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             if event.get("event") == "step_skipped"
             and event.get("step_id") == case.skipped_branch
         ]
+        delegated_sessions = self._matching_step_events(
+            events,
+            event_type="step_completed",
+            step_id="delegate",
+        )
         completed_prefix = [
             *_EXPECTED_STEP_PREFIX,
             "classify",
@@ -231,6 +238,19 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual(completed_sequence[: len(completed_prefix)], completed_prefix)
         self.assertEqual(completed_sequence[-1], "summarize", event_types)
         self.assertEqual(completed_sequence.count("prepare_units"), 1, event_types)
+        self.assertEqual(len(delegated_sessions), 2, event_types)
+        self.assertEqual(
+            [event["iteration_index"] for event in delegated_sessions],
+            [0, 1],
+        )
+        self.assertEqual(
+            [event["outputs"]["child_value"] for event in delegated_sessions],
+            [42, 42],
+        )
+        self.assertEqual(
+            {event["session_id"] for event in delegated_sessions},
+            {"engine"},
+        )
         self.assertEqual(
             classification_event["outputs"]["category"],
             case.expected_category,

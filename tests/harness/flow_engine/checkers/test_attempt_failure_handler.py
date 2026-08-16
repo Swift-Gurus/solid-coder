@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from doubles import SpyCompletionChecker, SpyEventAppender
+from harness.attempt_failure import AttemptFailure
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef, RunState
@@ -21,8 +22,10 @@ from harness.models import FlowDef, RunState
 class StubEventReplayer:
     def __init__(self, run_state: RunState) -> None:
         self._run_state = run_state
+        self.calls: list[str] = []
 
     def replay(self, path: str) -> RunState:
+        self.calls.append(path)
         return self._run_state
 
 
@@ -80,6 +83,60 @@ class TestAttemptFailureHandler(unittest.TestCase):
                              events_path="events.jsonl", flow_def=FlowDef(name="f", max_turns=10, steps=[]))
 
         self.assertIsNone(result)
+
+    def test_appends_every_batch_failure_before_replaying_once(self):
+        appender = SpyEventAppender()
+        replayer = StubEventReplayer(
+            RunState(
+                completed={},
+                running=[],
+                turn_count=0,
+                status="in_progress",
+            )
+        )
+        terminal = FlowNextResult(status="failed")
+        sut = AttemptFailureHandler(
+            event_appender=appender,
+            event_replayer=replayer,
+            completion_checker=SpyCompletionChecker(terminal),
+        )
+
+        result = sut.handle_all(
+            failures=[
+                AttemptFailure("review", "bad alpha", False, "review-1"),
+                AttemptFailure("review", "bad beta", False, "review-2"),
+            ],
+            base_dir=Path("/runs"),
+            run_id="r1",
+            events_path="events.jsonl",
+            flow_def=FlowDef(name="f", max_turns=10, steps=[]),
+        )
+
+        self.assertEqual(
+            appender.events,
+            [
+                (
+                    "events.jsonl",
+                    "step_attempt_failed",
+                    {
+                        "step_id": "review",
+                        "reason": "bad alpha",
+                        "attempt_id": "review-1",
+                    },
+                ),
+                (
+                    "events.jsonl",
+                    "step_attempt_failed",
+                    {
+                        "step_id": "review",
+                        "reason": "bad beta",
+                        "attempt_id": "review-2",
+                    },
+                ),
+            ],
+        )
+        self.assertEqual(replayer.calls, ["events.jsonl"])
+        self.assertIs(result, terminal)
 
 
 if __name__ == "__main__":

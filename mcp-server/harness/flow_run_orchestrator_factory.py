@@ -14,9 +14,12 @@ from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.command_allowlist_resolving import CommandAllowlistResolving
+from harness.concurrent_session_delegate_batch_runner import ConcurrentSessionDelegateBatchRunner
 from harness.condition_serializer_factory import make_condition_serializer
+from harness.delegate_instruction_builder import DelegateInstructionBuilder
 from harness.delegate_step_handler import DelegateStepHandler
 from harness.engine_step_drainer import EngineStepDrainer
+from harness.executor_item_mapper import ExecutorItemMapper
 from harness.existing_path_filter import ExistingPathFilter
 from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
@@ -31,6 +34,7 @@ from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.flow_stepper import FlowStepper
 from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
+from harness.json_loading import JsonLoader
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
@@ -54,21 +58,29 @@ from harness.run_snapshot_resolver import RunSnapshotResolver
 from harness.run_started_event_recorder import RunStartedEventRecorder
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 from harness.runs_base_dir_resolving import RunsBaseDirResolving
+from harness.safe_session_delegate_instance_runner import SafeSessionDelegateInstanceRunner
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
 from harness.session_delegate_runner import SessionDelegateRunner
+from harness.session_delegate_running import SessionDelegateRunning
+from harness.session_delegate_step_batch_runner import SessionDelegateStepBatchRunner
 from harness.session_id_reading import SessionIdReading
 from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from harness.startup_context_resolver import StartupContextResolver
 from harness.step_execution_failure_handler import StepExecutionFailureHandler
+from harness.step_execution_batch_advancer import StepExecutionBatchAdvancer
+from harness.step_batch_runner_registration import StepBatchRunnerRegistration
+from harness.step_batch_runner_resolver import StepBatchRunnerResolver
 from harness.step_handler_resolver import StepHandlerResolver
 from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_output_validator import StepOutputValidator
 from harness.step_result_builder import StepResultBuilder
 from harness.step_skip_recorder import StepSkipRecorder
+from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRunner
 from harness.successful_validation_result_provider import SuccessfulValidationResultProvider
 from harness.turn_advancer import TurnAdvancer
+from harness.thread_pool_executor_factory import ThreadPoolExecutorFactory
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
@@ -77,6 +89,7 @@ from hook_utils import _resolve_project_root
 from subprocess_script_runner import SubprocessScriptRunner
 
 _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
+_DELEGATE_SESSION_MAX_WORKERS = 4
 
 
 """
@@ -93,11 +106,15 @@ class FlowRunOrchestratorFactory:
         plugin_root: Path,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
         session_reader: Optional[SessionIdReading] = None,
+        session_delegate_runner: Optional[SessionDelegateRunning] = None,
+        session_delegate_max_workers: int = _DELEGATE_SESSION_MAX_WORKERS,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._plugin_root = plugin_root
         self._command_allowlist_resolver = command_allowlist_resolver
         self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
+        self._session_delegate_runner = session_delegate_runner
+        self._session_delegate_max_workers = session_delegate_max_workers
 
     def build(self) -> FlowRunOrchestrator:
         workflow_catalog = make_workflow_catalog_resolver()
@@ -156,19 +173,46 @@ class FlowRunOrchestratorFactory:
                 SuccessfulValidationResultProvider()
             ),
         )
+        session_delegate_runner = self._session_delegate_runner or SessionDelegateRunner(
+            plugin_root=self._plugin_root,
+            timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
+            output_loader=JsonLoader(),
+        )
+        delegate_handler = DelegateStepHandler(
+            agent_handler=agent_handler,
+            session_runner=session_delegate_runner,
+        )
         step_handler_resolver = StepHandlerResolver(handlers={
             "agent": agent_handler,
             "script": process_handler,
             "command": process_handler,
-            "delegate": DelegateStepHandler(
-                agent_handler=agent_handler,
-                session_runner=SessionDelegateRunner(
-                    plugin_root=self._plugin_root,
-                    timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
-                ),
-            ),
+            "delegate": delegate_handler,
         })
+        single_agent_batch = SingleInstanceStepBatchRunner(agent_handler)
+        single_process_batch = SingleInstanceStepBatchRunner(process_handler)
+        single_delegate_batch = SingleInstanceStepBatchRunner(delegate_handler)
+        session_delegate_batch = SessionDelegateStepBatchRunner(
+            ConcurrentSessionDelegateBatchRunner(
+                item_mapper=ExecutorItemMapper(ThreadPoolExecutorFactory()),
+                instance_runner=SafeSessionDelegateInstanceRunner(
+                    runner=session_delegate_runner,
+                    instruction_builder=DelegateInstructionBuilder(),
+                ),
+                max_workers=self._session_delegate_max_workers,
+            )
+        )
+        batch_runner_resolver = StepBatchRunnerResolver(registrations=[
+            StepBatchRunnerRegistration("delegate", "session", session_delegate_batch),
+            StepBatchRunnerRegistration("delegate", "subagent", single_delegate_batch),
+            StepBatchRunnerRegistration("agent", "", single_agent_batch),
+            StepBatchRunnerRegistration("script", "", single_process_batch),
+            StepBatchRunnerRegistration("command", "", single_process_batch),
+        ])
         condition_serializer = make_condition_serializer()
+        step_execution_failure_handler = StepExecutionFailureHandler(
+            failure_attributor=ScriptFailureAttributor(),
+            attempt_failure_handler=attempt_failure_handler,
+        )
         step_execution_coordinator = EngineStepDrainer(
             run_snapshot_resolver=run_snapshot_resolver,
             workflow_condition_gate=WorkflowConditionGate(
@@ -184,10 +228,11 @@ class FlowRunOrchestratorFactory:
                 condition_serializer=condition_serializer,
             ),
             ready_step_executor=ReadyStepExecutor(
-                step_handler_resolver=step_handler_resolver,
-                failure_handler=StepExecutionFailureHandler(
-                    failure_attributor=ScriptFailureAttributor(),
-                    attempt_failure_handler=attempt_failure_handler,
+                batch_runner_resolver=batch_runner_resolver,
+                batch_advancer=StepExecutionBatchAdvancer(
+                    validator_resolver=step_handler_resolver,
+                    output_recorder=output_recorder,
+                    failure_handler=step_execution_failure_handler,
                 ),
                 output_recorder=output_recorder,
             ),

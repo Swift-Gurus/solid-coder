@@ -43,6 +43,28 @@ class TestScriptFailureAttributor(unittest.TestCase):
 
         self.assertEqual(self.sut.attribute(gate, run_state, flow_def), "gate")
 
+    def test_session_delegate_failure_is_attributed_to_its_own_instance(self):
+        prepare = StepDef(id="prepare", prompt="p", type="agent")
+        delegate = StepDef(
+            id="review",
+            prompt="p",
+            type="delegate",
+            mode="session",
+            depends_on=["prepare"],
+        )
+        flow_def = FlowDef(name="f", max_turns=10, steps=[prepare, delegate])
+        run_state = RunState(
+            completed={"prepare": StepOutputs()},
+            running=[],
+            turn_count=1,
+            status="in_progress",
+        )
+
+        self.assertEqual(
+            self.sut.attribute(delegate, run_state, flow_def),
+            "review",
+        )
+
     def test_attributes_to_most_recently_completed_dependency_on_tie(self):
         first = StepDef(id="first", prompt="p", type="agent")
         second = StepDef(id="second", prompt="p", type="agent")

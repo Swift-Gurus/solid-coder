@@ -32,21 +32,35 @@ steps:
   - include: review.yaml
     as: review
 
+  - id: prepare_delegations
+    type: script
+    file: emit-delegations.py
+    executor: python3
+    depends_on: [review]
+    outputs:
+      - name: delegations
+        type: data
+        schema:
+          type: array
+          items:
+            type: string
+
   - id: delegate
     type: delegate
-    mode: subagent
+    mode: session
     prompt: >
-      Call flow_start with flow="e2e-subagent-child". If your own prompt included a
-      "# spawned-by: <id>" header, pass that same header along at the top of the prompt
-      you give to whatever you launch for this. Once the subagent reports the child
-      flow is done, relay the "value" output it produced for child_step_two as this
-      step's own "child_value" output.
+      This is the {{item}} delegated session. Call flow_start with
+      flow="e2e-session-child". Drive that isolated child flow until it is terminal.
+      When it completes, return the "value" produced by child_step_two as this step's
+      "child_value" output.
+    depends_on: [prepare_delegations]
+    for_each: "{{steps.prepare_delegations.outputs.delegations}}"
+    max_attempts: 2
     outputs:
       - name: child_value
         type: data
         schema:
           type: integer
-    depends_on: [review]
 
   - id: classify
     prompt_file: classify.md

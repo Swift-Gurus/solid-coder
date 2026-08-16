@@ -188,7 +188,11 @@ class TestFlowLoader(unittest.TestCase):
         self.assertEqual(
             flow.steps[0].prompt,
             "Produce a short greeting.\n\n"
-            "Submit output 'greeting' matching this schema: {\"type\": \"string\"}",
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"greeting\": "
+            "{\"type\": \"string\"}}, \"required\": [\"greeting\"], "
+            "\"additionalProperties\": false}",
         )
 
     def test_loading_an_already_resolved_workflow_snapshot_does_not_double_the_folded_schema(self):
@@ -202,7 +206,7 @@ class TestFlowLoader(unittest.TestCase):
                 prompt: |-
                   Produce a short greeting.
 
-                  Submit output 'greeting' matching this schema: {"type": "string"}
+                  Return only one JSON object matching this schema. Do not wrap it in Markdown fences or include any other text: {"type": "object", "properties": {"greeting": {"type": "string"}}, "required": ["greeting"], "additionalProperties": false}
                 outputs:
                   - name: greeting
                     type: data
@@ -214,7 +218,11 @@ class TestFlowLoader(unittest.TestCase):
         self.assertEqual(
             flow.steps[0].prompt,
             "Produce a short greeting.\n\n"
-            "Submit output 'greeting' matching this schema: {\"type\": \"string\"}",
+            "Return only one JSON object matching this schema. Do not wrap it in "
+            "Markdown fences or include any other text: "
+            "{\"type\": \"object\", \"properties\": {\"greeting\": "
+            "{\"type\": \"string\"}}, \"required\": [\"greeting\"], "
+            "\"additionalProperties\": false}",
         )
 
     def test_raises_when_schema_file_missing(self):

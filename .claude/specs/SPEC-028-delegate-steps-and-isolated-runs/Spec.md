@@ -19,7 +19,7 @@ Extends the flow engine (SPEC-030) with a `delegate` step type that hands a unit
 |   | Detail |
 |---|--------|
 | Input | A step in a flow YAML declaring `type: delegate` and `mode: subagent` or `mode: session`, with `prompt`, `outputs`, and `depends_on` like any other step. |
-| Output | For `mode: subagent`: a rendered instruction telling the calling agent to launch a subagent, which starts and drives its own isolated child flow via `flow_start(isolated=true)`/`flow_next(run_id=...)`, then relays its outputs back through the normal step-output contract. For `mode: session`: the delegate step runs to completion synchronously within the same process, with no separate outputs — the same mechanism a script step's success/failure and dependent-unblocking uses. |
+| Output | For `mode: subagent`: a rendered instruction telling the calling agent to launch a subagent, which starts and drives its own isolated child flow via `flow_start(isolated=true)`/`flow_next(run_id=...)`, then relays its outputs back through the normal step-output contract. For the original non-iterated `mode: session` contract: the delegate step runs to completion synchronously within the same process, with no separate outputs — the same mechanism a script step's success/failure and dependent-unblocking uses. SPEC-037 extends session delegates with bounded concurrent `for_each` execution and validated per-instance outputs. |
 
 ## User Stories
 
@@ -82,6 +82,7 @@ As the system, when a delegated flow starts with isolation requested, I want it 
 | Upstream | Pre-write health-check gate's backend-agnostic LLM runner factory | `mode: session` reuses this factory rather than introducing a parallel, delegate-specific backend selection mechanism. |
 | Downstream | SPEC-031 Flow Harness MCP Tools | `flow_start` gains an isolation-request parameter; `flow_next`/`flow_status` gain an optional run-identifier parameter to target an isolated run. |
 | Downstream | SPEC-032 Agent Flow Stop Hook | Must recognize that an isolated run's own stop/turn-ending behavior is independent of the main run's — a pending isolated run does not, by itself, imply the main run is also pending. |
+| Downstream | SPEC-037 Conditional Workflow Routing and Result Aggregation | Extends `mode: session` from the completed single-instance baseline to bounded concurrent `for_each` sessions with validated outputs, ordered fan-in, instance-scoped retries, and replay safety. |
 
 ## Diagrams
 

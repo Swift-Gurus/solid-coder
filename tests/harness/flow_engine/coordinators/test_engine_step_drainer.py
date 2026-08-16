@@ -14,10 +14,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
 from harness.engine_step_drainer import EngineStepDrainer
+from harness.attempt_failure import AttemptFailure
 from harness.flow_next_result import FlowNextResult
-from harness.models import FlowDef, RunState, StepDef, StepInstance, StepOutputs
+from harness.models import FlowDef, RunState, StepDef, StepInstance, StepOutputs, ValidationResult
 from harness.ready_step_executor import ReadyStepExecutor
 from harness.run_snapshot import RunSnapshot
+from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRunner
+from harness.step_execution_batch_advancer import StepExecutionBatchAdvancer
 from harness.step_execution_failure_handler import StepExecutionFailureHandler
 from harness.step_run_outcome import StepRunOutcome
 from harness.step_skip import StepSkip
@@ -50,6 +53,19 @@ class StubHandler:
     def run(self, instance, step_def) -> StepRunOutcome:
         return self._outcome
 
+    def validate(self, instance, outputs, flow_def) -> ValidationResult:
+        return ValidationResult(ok=True)
+
+
+class HandlerBackedBatchRunnerResolver:
+    def __init__(self, handler_resolver: ScriptedHandlerResolver) -> None:
+        self._handler_resolver = handler_resolver
+
+    def resolve(self, step_def: StepDef) -> SingleInstanceStepBatchRunner:
+        return SingleInstanceStepBatchRunner(
+            self._handler_resolver.resolve(step_def.type)
+        )
+
 
 class SpyOutputRecorder:
     def __init__(self) -> None:
@@ -81,10 +97,18 @@ class ScriptedWorkflowConditionGate:
 class SpyAttemptFailureHandler:
     def __init__(self, result) -> None:
         self._result = result
-        self.calls: list[dict] = []
+        self.calls: list[AttemptFailure] = []
+        self.base_dir = None
+        self.run_id = None
+        self.events_path = None
+        self.flow_def = None
 
-    def handle(self, **kwargs):
-        self.calls.append(kwargs)
+    def handle_all(self, failures, base_dir, run_id, events_path, flow_def):
+        self.calls.extend(failures)
+        self.base_dir = base_dir
+        self.run_id = run_id
+        self.events_path = events_path
+        self.flow_def = flow_def
         return self._result
 
 
@@ -92,10 +116,10 @@ class ExhaustsAfterAttemptFailureHandler:
     def __init__(self, attempts_before_exhaustion: int, terminal: FlowNextResult) -> None:
         self._remaining = attempts_before_exhaustion
         self._terminal = terminal
-        self.calls: list[dict] = []
+        self.calls: list[AttemptFailure] = []
 
-    def handle(self, **kwargs):
-        self.calls.append(kwargs)
+    def handle_all(self, failures, base_dir, run_id, events_path, flow_def):
+        self.calls.extend(failures)
         self._remaining -= 1
         return self._terminal if self._remaining <= 0 else None
 
@@ -152,10 +176,16 @@ class EngineStepDrainerFactory:
             workflow_condition_gate=self.workflow_condition_gate,
             step_skip_recorder=self.step_skip_recorder,
             ready_step_executor=ReadyStepExecutor(
-                step_handler_resolver=self.step_handler_resolver,
-                failure_handler=StepExecutionFailureHandler(
-                    failure_attributor=self.failure_attributor,
-                    attempt_failure_handler=self.attempt_failure_handler,
+                batch_runner_resolver=HandlerBackedBatchRunnerResolver(
+                    self.step_handler_resolver
+                ),
+                batch_advancer=StepExecutionBatchAdvancer(
+                    validator_resolver=self.step_handler_resolver,
+                    output_recorder=self.output_recorder,
+                    failure_handler=StepExecutionFailureHandler(
+                        failure_attributor=self.failure_attributor,
+                        attempt_failure_handler=self.attempt_failure_handler,
+                    ),
                 ),
                 output_recorder=self.output_recorder,
             ),
@@ -364,11 +394,21 @@ class TestEngineStepDrainer(unittest.TestCase):
         result = sut.run_ready(Path("/runs"), "run-1", "events.jsonl", flow_def, {})
 
         self.assertIs(result, terminal)
-        self.assertEqual(failure_handler.calls, [{
-            "step_id": "s", "reason": "boom", "reopen": False,
-            "base_dir": Path("/runs"), "run_id": "run-1", "events_path": "events.jsonl", "flow_def": flow_def,
-            "attempt_id": "s-1",
-        }])
+        self.assertEqual(
+            failure_handler.calls,
+            [
+                AttemptFailure(
+                    step_id="s",
+                    reason="boom",
+                    reopen=False,
+                    attempt_id="s-1",
+                )
+            ],
+        )
+        self.assertEqual(failure_handler.base_dir, Path("/runs"))
+        self.assertEqual(failure_handler.run_id, "run-1")
+        self.assertEqual(failure_handler.events_path, "events.jsonl")
+        self.assertIs(failure_handler.flow_def, flow_def)
 
     def test_retries_a_failing_script_step_internally_until_attempts_are_exhausted(self):
         instance = StepInstance(step_id="s", instance_id="s-1", item=None, prompt="")
@@ -403,8 +443,8 @@ class TestEngineStepDrainer(unittest.TestCase):
 
         sut.run_ready(Path("/runs"), "run-1", "events.jsonl", flow_def, {})
 
-        self.assertEqual(failure_handler.calls[0]["step_id"], "writer")
-        self.assertTrue(failure_handler.calls[0]["reopen"])
+        self.assertEqual(failure_handler.calls[0].step_id, "writer")
+        self.assertTrue(failure_handler.calls[0].reopen)
 
 
 if __name__ == "__main__":
