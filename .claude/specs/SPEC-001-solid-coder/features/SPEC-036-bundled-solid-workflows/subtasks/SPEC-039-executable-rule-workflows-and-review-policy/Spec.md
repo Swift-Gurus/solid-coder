@@ -2,13 +2,26 @@
 number: SPEC-039
 feature: executable-rule-workflows-and-review-policy
 type: subtask
-status: ready
+status: in-progress
 parent: SPEC-036
 blocked-by: [SPEC-012, SPEC-035, SPEC-037]
 blocking: [SPEC-036]
 ---
 
 # Executable Rule Workflows and Client Review Policy
+
+## Implementation Progress
+
+Completed policy-planning slice:
+
+- The singular `{project}/.solid-coder/policies/review.yaml` is resolved from the active project boundary. An absent file produces an explicit typed default resolution; malformed authored policy fails with its exact path.
+- Authored policy content, path, and SHA-256 hash are preserved as typed provenance. No parent-directory policy chain or bundled default policy file is loaded.
+- Catalog rule sources are converted into a stable workflow-ID-ordered effective plan with project/plugin origin, source path, workflow hash, category, required tags, and explicit enablement decisions.
+- Workflow enablement defaults to `true`. When the project policy supplies `enabled`, the project-requested value is the effective value and the decision records the authored default, requested value, effective value, policy path/hash, and optional reason.
+- Policy records targeting unknown rule workflows fail plan construction. Metric overrides against workflows that do not declare engine scoring fail before persistence.
+- Production composition now performs policy loading, shared catalog construction, effective-plan construction, and mandatory persistence of `effective-rule-plan.json` plus verbatim `review-policy.yaml` when authored.
+
+Remaining SPEC-039 work includes typed scoring declarations and overrides, referenced-resource hashes, review-input and result snapshots, per-file/unit rule execution, rule decision events, replay/resume integration, and bundled review/gate/refactor workflow migration.
 
 ## Description
 

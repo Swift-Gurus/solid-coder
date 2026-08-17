@@ -13,17 +13,19 @@ from scoring.yaml_config_file_loader import YamlConfigFileLoader
 from scoring.yaml_loader import PyYamlLoader
 
 
-def make_workflow_catalog_resolver() -> WorkflowCatalogResolver:
+def make_workflow_catalog_builder() -> WorkflowCatalogBuilder:
     file_loader = YamlConfigFileLoader(loader=PyYamlLoader())
-    return WorkflowCatalogResolver(
-        builder=WorkflowCatalogBuilder(
-            discoverer=PackageWorkflowSourceDiscoverer(
-                file_loader=file_loader,
-                document_decoder=PydanticModelDecoder(
-                    model_type=WorkflowPackageCatalogDocument,
-                    error_factory=FlowValidationErrorFactory(),
-                ),
+    return WorkflowCatalogBuilder(
+        discoverer=PackageWorkflowSourceDiscoverer(
+            file_loader=file_loader,
+            document_decoder=PydanticModelDecoder(
+                model_type=WorkflowPackageCatalogDocument,
+                error_factory=FlowValidationErrorFactory(),
             ),
-            indexer=WorkflowSourceIndexer(),
-        )
+        ),
+        indexer=WorkflowSourceIndexer(),
     )
+
+
+def make_workflow_catalog_resolver() -> WorkflowCatalogResolver:
+    return WorkflowCatalogResolver(builder=make_workflow_catalog_builder())
