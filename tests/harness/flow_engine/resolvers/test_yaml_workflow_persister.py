@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
+from harness.workflow_expression import WorkflowExpression
 from harness.flow_def import FlowDef
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.step_def import StepDef
@@ -25,12 +26,14 @@ class TestYamlWorkflowPersister(unittest.TestCase):
 
     def test_persists_workflow_and_step_conditions_using_public_when_grammar(self):
         workflow_condition = ComparisonCondition(
-            reference="{{params.enabled}}",
+            reference=WorkflowExpression(value="params.enabled"),
             operator=ConditionOperator.EQUALS,
             expected=True,
         )
         step_condition = ComparisonCondition(
-            reference="{{steps.inspect.outputs.language}}",
+            reference=WorkflowExpression(
+                value="steps.inspect.outputs.language"
+            ),
             operator=ConditionOperator.EQUALS,
             expected="swift",
         )

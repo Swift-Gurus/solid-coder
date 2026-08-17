@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.condition_evidence import ConditionEvidence
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -19,4 +20,4 @@ class ConditionDecisionEvaluating(Protocol):
         self,
         condition: ConditionDeclaration,
         context: WorkflowRunContext,
-    ) -> bool: ...
+    ) -> ConditionEvidence: ...

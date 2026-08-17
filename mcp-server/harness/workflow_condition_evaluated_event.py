@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, StrictBool
+
+from harness.condition_evidence import ConditionEvidence
 
 
 """
@@ -16,3 +20,4 @@ class WorkflowConditionEvaluatedEvent(BaseModel):
 
     condition: object
     matched: StrictBool
+    evidence: Optional[ConditionEvidence] = None

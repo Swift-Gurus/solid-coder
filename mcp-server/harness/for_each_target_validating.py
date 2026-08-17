@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from harness.models import StepDef
+from harness.step_output_reference import StepOutputReference
 
 
 """
@@ -17,7 +18,7 @@ class ForEachTargetValidating(Protocol):
     def validate(
         self,
         target_id: str,
-        for_each: str | None,
+        for_each: StepOutputReference | None,
         dependency_ids: list[str],
         steps: list[StepDef],
     ) -> None: ...

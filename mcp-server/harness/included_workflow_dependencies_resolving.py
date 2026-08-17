@@ -3,6 +3,7 @@
 from typing import Protocol
 
 from harness.include_alias_group import IncludeAliasGroup
+from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.models import StepDef
 
 
@@ -17,5 +18,5 @@ class IncludedWorkflowDependenciesResolving(Protocol):
         self,
         template: StepDef,
         group: IncludeAliasGroup,
-        instance_prefix: str,
+        step_identities: IncludedWorkflowStepIdentities,
     ) -> list[str]: ...

@@ -45,6 +45,9 @@ As a developer, when an agent proposes a source write, I want the existing write
 - Deterministic preparation normalizes that content as `source_type: buffer`, including target path, language/import-derived tags, timestamp, units when available, and the full candidate source.
 - The shared `prepare_review_input` application service supports this buffer input. It remains exposed through MCP for agent callers, while the hook calls the same application service directly rather than opening an MCP loopback connection.
 - The hook starts an isolated `solid-gate-on-write` run before starting the child LLM session.
+- The flow engine owns the isolated run's artifact directory under the project's user-level `.solid-coder` storage. The bootstrap prompt, workflow prompts, and model-facing MCP tool schemas neither expose nor accept an `output_dir` or other caller-selected persistence path.
+- Search, measurement, scoring, and fix artifacts resolve from server-owned run context and remain within that run's artifact tree. Missing, stale, or mismatched run context fails closed; it is never treated as a non-gate invocation and never falls back to the process working directory or repository root.
+- Concurrent gate runs bind their MCP operations to distinct run contexts, so one run cannot read, overwrite, or redirect another run's artifacts.
 - The child session's bootstrap prompt is a generic flow envelope containing the prepared code once, the `run_id`, and the initial ready-step instructions returned by the flow engine.
 - The child session advances only through `flow_next(run_id=...)`; every step output is schema-validated and recorded before the next instruction is returned.
 - The old `HealthPromptBuilder` detection/workflow prompt path is removed from gate execution; there is no direct-prompt fallback that can produce different review semantics.
@@ -133,6 +136,8 @@ sequenceDiagram
 - Assert the gate invokes no direct `HealthPromptBuilder` review path.
 - Assert prepared candidate code appears once in the bootstrap prompt and all subsequent instructions come from flow results.
 - Force malformed output, timeout, and runner failure; assert fail-closed behavior and preserved run diagnostics.
+- Assert model-facing gate tools expose no persistence-path parameter, every generated search/finding/fix artifact remains beneath the engine-owned run directory, and no artifact is written beneath the repository working directory.
+- Run two gate workflows concurrently and assert each MCP operation resolves only its bound run context; missing, stale, and cross-run context identifiers are rejected without writing artifacts.
 - Attempt to publish a client package under each bundled public ID and prove catalog construction rejects every collision.
 - Run `solid-refactor` and assert both initial and verification review groups resolve from `solid-review`.
 - Repeat the same fixed fixture/model profile through gate and review workflows; compare metric accuracy, tokens, and elapsed time from complete runs.
@@ -142,6 +147,7 @@ sequenceDiagram
 - [ ] All three public workflow packages are shipped and start by stable ID.
 - [ ] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics.
 - [ ] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
+- [ ] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
 - [ ] Candidate-write preparation is deterministic and shared with the MCP-facing review-input boundary.
 - [ ] `solid-refactor` includes `solid-review` for both initial and verification analysis.
 - [ ] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.

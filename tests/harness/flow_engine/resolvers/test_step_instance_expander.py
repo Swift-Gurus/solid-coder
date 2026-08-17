@@ -10,9 +10,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.included_workflow_instance import IncludedWorkflowInstance
-from harness.models import RunState, StepDef
+from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
+from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
+from harness.models import RunState, StepDef, StepOutputs
 from harness.step_instance_expander import StepInstanceExpander
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
 
 @dataclass(frozen=True)
@@ -27,7 +32,13 @@ class StubItemsResolver:
 
 class StubRenderer:
     def render(self, template: str, context: WorkflowRunContext) -> str:
-        return template
+        review_unit = context.parameters.find("review_unit").value
+        finding = context.completed_steps.find("inspect").value.get("finding")
+        return (
+            template
+            .replace("{{params.review_unit.name}}", review_unit.name)
+            .replace("{{steps.inspect.outputs.finding}}", finding)
+        )
 
 
 """
@@ -45,20 +56,63 @@ class TestStepInstanceExpander(unittest.TestCase):
             instance_id="review-2",
             source_index=1,
             source_item=source_item,
+            inputs=WorkflowContextValues(
+                entries=[
+                    WorkflowContextValue(
+                        name="review_unit",
+                        value=source_item,
+                    )
+                ]
+            ),
+            steps=IncludedWorkflowStepIdentities(
+                entries=[
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.inspect",
+                        local_step_id="inspect",
+                        execution_step_id="review-2.inspect",
+                    ),
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.report",
+                        local_step_id="report",
+                        execution_step_id="review-2.report",
+                    ),
+                ]
+            ),
         )
         step = StepDef(
-            id="review-2.inspect",
-            prompt="Inspect Beta.",
+            id="review-2.report",
+            prompt=(
+                "Report {{params.review_unit.name}} using "
+                "{{steps.inspect.outputs.finding}}."
+            ),
             workflow_instance=workflow_instance,
         )
         sut = StepInstanceExpander(
             items_resolver=StubItemsResolver(),
             renderer=StubRenderer(),
+            context_resolver=WorkflowStepContextResolver(),
         )
 
         instances = sut.expand(
             step,
-            context=WorkflowRunContext(),
+            context=WorkflowRunContext(
+                completed_steps=WorkflowContextValues(
+                    entries=[
+                        WorkflowContextValue(
+                            name="review-1.inspect",
+                            value=StepOutputs(
+                                values={"finding": "Alpha inspected"}
+                            ),
+                        ),
+                        WorkflowContextValue(
+                            name="review-2.inspect",
+                            value=StepOutputs(
+                                values={"finding": "Beta inspected"}
+                            ),
+                        ),
+                    ]
+                )
+            ),
             run_state=RunState(
                 completed={},
                 running=[],
@@ -70,6 +124,10 @@ class TestStepInstanceExpander(unittest.TestCase):
         self.assertEqual(len(instances), 1)
         self.assertEqual(instances[0].workflow_instance, workflow_instance)
         self.assertEqual(instances[0].item, source_item)
+        self.assertEqual(
+            instances[0].prompt,
+            "Report Beta using Beta inspected.",
+        )
         self.assertIsNone(instances[0].iteration_index)
 
 

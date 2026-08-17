@@ -21,7 +21,9 @@ from harness.models import FlowDef, RunState, StepDef
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 from harness.step_skip import StepSkip
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_condition_decision import WorkflowConditionDecision
+from harness.workflow_expression import WorkflowExpression
 
 
 class SpyEventAppender:
@@ -82,10 +84,11 @@ class TestRunCompletionChecker(unittest.TestCase):
             step_id="step-a",
             instance_id="step-a-1",
             condition=ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),
+            evidence=UnavailableConditionEvidence(matched=False),
         )
         run_state = RunState(
             completed={},
@@ -115,7 +118,7 @@ class TestRunCompletionChecker(unittest.TestCase):
         active_run = SpyActiveRunPointer()
         sut = _make_sut(appender, active_run)
         condition = ComparisonCondition(
-            reference="{{params.enabled}}",
+            reference=WorkflowExpression(value="params.enabled"),
             operator=ConditionOperator.EQUALS,
             expected=True,
         )
@@ -126,7 +129,7 @@ class TestRunCompletionChecker(unittest.TestCase):
             status="in_progress",
             workflow_condition_decision=WorkflowConditionDecision(
                 condition=condition,
-                matched=False,
+                evidence=UnavailableConditionEvidence(matched=False),
             ),
         )
 

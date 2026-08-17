@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
+from harness.workflow_expression import WorkflowExpression
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_loader import FlowLoader
 from harness.models import FlowValidationError
@@ -71,7 +72,7 @@ class TestFlowLoader(unittest.TestCase):
         self.assertEqual(
             flow.condition,
             ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),

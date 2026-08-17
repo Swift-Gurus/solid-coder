@@ -25,9 +25,14 @@ class FlowDefinitionAssembler:
         self._step_builder = step_builder
 
     def assemble(self, definition: FlowDef) -> FlowDef:
+        static_groups = [
+            group
+            for group in definition.alias_groups
+            if not self._dynamic_group_checker.is_dynamic(group)
+        ]
         expanded_steps = self._group_dependency_expander.expand(
             definition.step_declarations,
-            definition.alias_groups,
+            static_groups,
         )
         return FlowDef(
             id=definition.id,

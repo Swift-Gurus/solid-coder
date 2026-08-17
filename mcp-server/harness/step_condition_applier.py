@@ -32,7 +32,7 @@ class StepConditionApplier(StepConditionApplying):
         condition = step.condition
         if instance.automatic_outputs is not None or condition is None:
             return instance
-        if self._condition_evaluator.evaluate(
+        evidence = self._condition_evaluator.evaluate(
             condition,
             replace(
                 context,
@@ -41,7 +41,8 @@ class StepConditionApplier(StepConditionApplying):
                     value=instance.item,
                 ),
             ),
-        ):
+        )
+        if evidence.matched:
             return instance
         return replace(
             instance,
@@ -49,6 +50,7 @@ class StepConditionApplier(StepConditionApplying):
                 step_id=instance.step_id,
                 instance_id=instance.instance_id,
                 condition=condition,
+                evidence=evidence,
                 item=instance.item,
                 iteration_index=instance.iteration_index,
             ),

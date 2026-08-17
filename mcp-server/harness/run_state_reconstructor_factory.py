@@ -2,8 +2,10 @@
 
 from harness.attempt_failed_transition import AttemptFailedTransition
 from harness.comparison_condition_parser import ComparisonConditionParser
+from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_parser import ConditionParser
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.run_state_builder import RunStateBuilder
 from harness.run_state_event_router import RunStateEventRouter
 from harness.run_state_reconstructor import RunStateReconstructor
@@ -18,13 +20,18 @@ from harness.turn_counted_transition import TurnCountedTransition
 from harness.workflow_condition_evaluated_transition import (
     WorkflowConditionEvaluatedTransition,
 )
+from harness.workflow_expression_parser import WorkflowExpressionParser
 
 
 def make_run_state_reconstructor() -> RunStateReconstructor:
     attempt_failed = AttemptFailedTransition()
+    error_factory = FlowValidationErrorFactory()
     condition_parser = ConditionParser(
         composition_parser=CompositionConditionParser(),
-        comparison_parser=ComparisonConditionParser(),
+        comparison_parser=ComparisonConditionParser(
+            expression_parser=WorkflowExpressionParser(),
+            operation_parser=ComparisonOperationParser(error_factory),
+        ),
     )
     return RunStateReconstructor(
         state_builder=RunStateBuilder(),

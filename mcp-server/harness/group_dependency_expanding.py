@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, TypeVar
 
+from harness.graph_step_field_reading import GraphStepFieldReading
 from harness.include_alias_group import IncludeAliasGroup
-from harness.step_declaration import StepDeclaration
+
+DependencyEntry = TypeVar("DependencyEntry", bound=GraphStepFieldReading)
 
 
 """
@@ -18,6 +20,6 @@ class GroupDependencyExpanding(Protocol):
 
     def expand(
         self,
-        steps: list[StepDeclaration],
+        steps: list[DependencyEntry],
         alias_groups: list[IncludeAliasGroup],
-    ) -> list[StepDeclaration]: ...
+    ) -> list[DependencyEntry]: ...

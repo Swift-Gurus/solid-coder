@@ -1,0 +1,33 @@
+id: e2e-dynamic-review-unit
+name: E2E Dynamic Review Unit
+inputs:
+  - name: review_unit
+    schema:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+      additionalProperties: false
+steps:
+  - id: inspect
+    prompt: >
+      Inspect the review unit named "{{params.review_unit.name}}". Submit exactly
+      "{{params.review_unit.name}} inspected" as the "finding" output field.
+    outputs:
+      - name: finding
+        type: data
+        schema:
+          type: string
+
+  - id: report
+    depends_on: [inspect]
+    prompt: >
+      The unit named "{{params.review_unit.name}}" produced the finding
+      "{{steps.inspect.outputs.finding}}". Submit exactly
+      "{{params.review_unit.name}} reported" as the "report" output field.
+    outputs:
+      - name: report
+        type: data
+        schema:
+          type: string

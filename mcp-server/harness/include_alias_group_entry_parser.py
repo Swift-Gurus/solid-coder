@@ -1,11 +1,15 @@
 """Restores one include alias group from a durable snapshot entry."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
-from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.for_each_reference_parsing import ForEachReferenceParsing
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_entry_parsing import IncludeAliasGroupEntryParsing
+from harness.step_output_reference import StepOutputReference
 from harness.workflow_input_binding_snapshot_parsing import (
     WorkflowInputBindingSnapshotParsing,
 )
@@ -23,41 +27,50 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         self,
         binding_parser: WorkflowInputBindingSnapshotParsing,
         condition_parser: ConditionParsing,
+        for_each_parser: ForEachReferenceParsing,
+        error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._binding_parser = binding_parser
         self._condition_parser = condition_parser
+        self._for_each_parser = for_each_parser
+        self._error_factory = error_factory
 
     def parse(self, raw: object) -> IncludeAliasGroup:
         if not isinstance(raw, Mapping):
-            raise FlowValidationError("Workflow snapshot alias group must be an object")
+            raise self._error_factory.create(
+                "Workflow snapshot alias group must be an object"
+            )
         alias = raw.get("alias")
         member_ids = raw.get("member_ids")
         depends_on = raw.get("depends_on") or []
         bindings = raw.get("input_bindings") or []
         if not isinstance(alias, str) or not alias:
-            raise FlowValidationError("Workflow snapshot alias group requires an alias")
+            raise self._error_factory.create(
+                "Workflow snapshot alias group requires an alias"
+            )
         if not isinstance(member_ids, list) or not all(
             isinstance(member_id, str) for member_id in member_ids
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Workflow snapshot alias group '{alias}' requires member IDs"
             )
         if not isinstance(depends_on, list) or not all(
             isinstance(dependency, str) for dependency in depends_on
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Workflow snapshot alias group '{alias}' has invalid dependencies"
             )
         if not isinstance(bindings, list):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Workflow snapshot alias group '{alias}' has invalid input bindings"
             )
         raw_condition = raw.get("when")
+        raw_for_each = raw.get("for_each")
         return IncludeAliasGroup(
             alias=alias,
             member_ids=member_ids,
             depends_on=depends_on,
-            for_each=raw.get("for_each") if isinstance(raw.get("for_each"), str) else None,
+            for_each=self._parse_for_each(alias, raw_for_each),
             input_bindings=[
                 self._binding_parser.parse(binding, alias) for binding in bindings
             ],
@@ -67,3 +80,12 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
                 else None
             ),
         )
+
+    def _parse_for_each(
+        self,
+        alias: str,
+        raw: object,
+    ) -> StepOutputReference | None:
+        if raw is None:
+            return None
+        return self._for_each_parser.parse(alias, raw)

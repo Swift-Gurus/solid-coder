@@ -11,9 +11,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_operator import ConditionOperator
+from harness.resolved_condition_value import ResolvedConditionValue
 from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
+from harness.workflow_expression import WorkflowExpression
 
 
 class SpyEventAppender:
@@ -43,11 +46,17 @@ class TestWorkflowConditionRecorder(unittest.TestCase):
         )
         decision = WorkflowConditionDecision(
             condition=ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),
-            matched=False,
+            evidence=ComparisonConditionEvidence(
+                reference="params.enabled",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+                actual=ResolvedConditionValue(present=True, value=False),
+                matched=False,
+            ),
         )
 
         sut.record("events.jsonl", decision)
@@ -58,7 +67,18 @@ class TestWorkflowConditionRecorder(unittest.TestCase):
                 (
                     "events.jsonl",
                     "workflow_condition_evaluated",
-                    {"condition": serialized, "matched": False},
+                    {
+                        "condition": serialized,
+                        "matched": False,
+                        "evidence": {
+                            "kind": "comparison",
+                            "reference": "params.enabled",
+                            "operator": "equals",
+                            "expected": True,
+                            "actual": {"present": True, "value": False},
+                            "matched": False,
+                        },
+                    },
                 )
             ],
         )

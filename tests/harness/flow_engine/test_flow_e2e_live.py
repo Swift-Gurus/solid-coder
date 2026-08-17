@@ -1,7 +1,7 @@
 """
 solid-name: test_flow_e2e_live
 solid-category: integration-test
-solid-spec: [SPEC-031, SPEC-027]
+solid-spec: [SPEC-031, SPEC-027, SPEC-037]
 solid-description: Applies the shared live flow-engine transition contract to Codex and Claude model-profile test bases.
 
 Run one backend explicitly:

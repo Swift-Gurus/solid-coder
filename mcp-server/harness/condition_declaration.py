@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from harness.condition_evidence import ConditionEvidence
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
 
@@ -22,5 +23,5 @@ class ConditionDeclaration(ABC):
         self,
         runtime: ConditionRuntime,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ConditionEvidence:
         raise NotImplementedError

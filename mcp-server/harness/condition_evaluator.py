@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_decision_evaluating import ConditionDecisionEvaluating
 from harness.condition_declaration import ConditionDeclaration
+from harness.condition_evidence import ConditionEvidence
 from harness.condition_evaluating import ConditionEvaluating
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
@@ -29,12 +31,12 @@ class ConditionEvaluator(ConditionDecisionEvaluating, ConditionRuntime):
         self,
         condition: ConditionDeclaration,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ConditionEvidence:
         return self._declaration_evaluator.evaluate(condition, self, context)
 
     def compare(
         self,
         condition: ComparisonCondition,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ComparisonConditionEvidence:
         return self._comparison_runtime.compare(condition, context)

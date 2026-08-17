@@ -10,13 +10,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition  # noqa: E402
+from harness.comparison_condition_evidence import ComparisonConditionEvidence  # noqa: E402
 from harness.condition_declaration import ConditionDeclaration  # noqa: E402
+from harness.condition_evidence import ConditionEvidence  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
 from harness.conditional_step_instance_expander import ConditionalStepInstanceExpander  # noqa: E402
 from harness.included_workflow_instance import IncludedWorkflowInstance  # noqa: E402
 from harness.models import RunState, StepDef, StepInstance  # noqa: E402
+from harness.resolved_condition_value import ResolvedConditionValue  # noqa: E402
 from harness.step_condition_applier import StepConditionApplier  # noqa: E402
 from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
+from harness.workflow_expression import WorkflowExpression  # noqa: E402
 
 
 @dataclass
@@ -34,14 +38,14 @@ class StubStepInstanceExpander:
 
 @dataclass
 class StubConditionEvaluator:
-    decisions: list[bool]
+    decisions: list[ConditionEvidence]
     contexts: list[WorkflowRunContext] = field(default_factory=list)
 
     def evaluate(
         self,
         condition: ConditionDeclaration,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ConditionEvidence:
         self.contexts.append(context)
         return self.decisions.pop(0)
 
@@ -50,7 +54,7 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
 
     def test_marks_each_false_expanded_instance_as_skipped(self) -> None:
         condition = ComparisonCondition(
-            reference="{{item.language}}",
+            reference=WorkflowExpression(value="item.language"),
             operator=ConditionOperator.EQUALS,
             expected="swift",
         )
@@ -77,7 +81,9 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
                 workflow_instance=workflow_instance,
             ),
         ]
-        evaluator = StubConditionEvaluator(decisions=[True, False])
+        matching = self._evidence(actual="swift", matched=True)
+        skipped = self._evidence(actual="kotlin", matched=False)
+        evaluator = StubConditionEvaluator(decisions=[matching, skipped])
         sut = ConditionalStepInstanceExpander(
             instance_expander=StubStepInstanceExpander(instances),
             condition_applier=StepConditionApplier(evaluator),
@@ -97,6 +103,7 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
         self.assertIsNone(result[0].skip)
         self.assertEqual(result[1].skip.condition, condition)
         self.assertEqual(result[1].skip.instance_id, "review-2")
+        self.assertEqual(result[1].skip.evidence, skipped)
         self.assertEqual(result[1].workflow_instance, workflow_instance)
         self.assertEqual(
             [context.item.value for context in evaluator.contexts],
@@ -124,6 +131,19 @@ class TestConditionalStepInstanceExpander(unittest.TestCase):
 
         self.assertEqual(result, [instance])
         self.assertEqual(evaluator.contexts, [])
+
+    def _evidence(
+        self,
+        actual: str,
+        matched: bool,
+    ) -> ComparisonConditionEvidence:
+        return ComparisonConditionEvidence(
+            reference="item.language",
+            operator=ConditionOperator.EQUALS,
+            expected="swift",
+            actual=ResolvedConditionValue(present=True, value=actual),
+            matched=matched,
+        )
 
 
 if __name__ == "__main__":

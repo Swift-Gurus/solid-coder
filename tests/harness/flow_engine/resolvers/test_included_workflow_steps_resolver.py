@@ -13,13 +13,17 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.included_workflow_dependencies_resolver import (
     IncludedWorkflowDependenciesResolver,
 )
-from harness.included_workflow_identifier_qualifier import (
-    IncludedWorkflowIdentifierQualifier,
-)
 from harness.included_workflow_instance import IncludedWorkflowInstance
+from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
+from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
+from harness.included_workflow_step_identity_resolver import (
+    IncludedWorkflowStepIdentityResolver,
+)
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.models import StepDef
 from harness.resolved_workflow_input import ResolvedWorkflowInput
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -38,15 +42,6 @@ class StubInputResolver:
         ]
 
 
-class StubRenderer:
-    def render(self, template: str, context: WorkflowRunContext) -> str:
-        review_unit = context.parameters.find("review_unit").value
-        return template.replace(
-            "{{params.review_unit.name}}",
-            review_unit.name,
-        )
-
-
 """
 solid-name: TestIncludedWorkflowStepsResolver
 solid-category: unit-test
@@ -56,12 +51,10 @@ solid-description: Verifies that every materialized child step retains its ownin
 class TestIncludedWorkflowStepsResolver(unittest.TestCase):
 
     def test_associates_each_child_step_with_its_source_item(self) -> None:
-        qualifier = IncludedWorkflowIdentifierQualifier()
         sut = IncludedWorkflowStepsResolver(
             input_resolver=StubInputResolver(),
-            identifier_qualifier=qualifier,
-            dependency_resolver=IncludedWorkflowDependenciesResolver(qualifier),
-            renderer=StubRenderer(),
+            identity_resolver=IncludedWorkflowStepIdentityResolver(),
+            dependency_resolver=IncludedWorkflowDependenciesResolver(),
         )
         group = IncludeAliasGroup(
             alias="review",
@@ -93,6 +86,28 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
             instance_id="review-2",
             source_index=1,
             source_item=source_item,
+            inputs=WorkflowContextValues(
+                entries=[
+                    WorkflowContextValue(
+                        name="review_unit",
+                        value=source_item,
+                    )
+                ]
+            ),
+            steps=IncludedWorkflowStepIdentities(
+                entries=[
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.inspect",
+                        local_step_id="inspect",
+                        execution_step_id="review-2.inspect",
+                    ),
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.report",
+                        local_step_id="report",
+                        execution_step_id="review-2.report",
+                    ),
+                ]
+            ),
         )
         self.assertEqual(
             [step.workflow_instance for step in steps],
@@ -100,6 +115,13 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
         )
         self.assertEqual([step.id for step in steps], ["review-2.inspect", "review-2.report"])
         self.assertEqual(steps[1].depends_on, ["review-2.inspect"])
+        self.assertEqual(
+            [step.prompt for step in steps],
+            [
+                "Inspect {{params.review_unit.name}}.",
+                "Report {{params.review_unit.name}}.",
+            ],
+        )
 
 
 if __name__ == "__main__":

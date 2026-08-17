@@ -3,10 +3,12 @@
 from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
-from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.for_each_reference_parsing import ForEachReferenceParsing
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_input_binding import WorkflowInputBinding
+from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
 
 """
@@ -17,8 +19,17 @@ solid-description: Validates include-boundary runtime fields and maps them into 
 """
 class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
 
-    def __init__(self, condition_parser: ConditionParsing) -> None:
+    def __init__(
+        self,
+        condition_parser: ConditionParsing,
+        for_each_parser: ForEachReferenceParsing,
+        expression_parser: WorkflowExpressionParsing,
+        error_factory: FlowValidationErrorCreating,
+    ) -> None:
         self._condition_parser = condition_parser
+        self._for_each_parser = for_each_parser
+        self._expression_parser = expression_parser
+        self._error_factory = error_factory
 
     def parse(self, raw: Mapping[str, object]) -> WorkflowIncludeRuntime:
         depends_on = raw.get("depends_on") or []
@@ -26,7 +37,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             isinstance(dependency, str) and dependency
             for dependency in depends_on
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 "Workflow include 'depends_on' must be an array of non-empty strings"
             )
 
@@ -34,7 +45,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
         if for_each is not None and (
             not isinstance(for_each, str) or not for_each
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 "Workflow include 'for_each' must be a non-empty string"
             )
 
@@ -46,7 +57,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             and expression
             for name, expression in raw_bindings.items()
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 "Workflow include 'with' must map input names to non-empty expressions"
             )
 
@@ -58,9 +69,16 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
         )
         return WorkflowIncludeRuntime(
             depends_on=list(depends_on),
-            for_each=for_each,
+            for_each=(
+                self._for_each_parser.parse("workflow include", for_each)
+                if isinstance(for_each, str)
+                else None
+            ),
             input_bindings=[
-                WorkflowInputBinding(name=name, expression=expression)
+                WorkflowInputBinding(
+                    name=name,
+                    expression=self._expression_parser.parse(expression),
+                )
                 for name, expression in raw_bindings.items()
             ],
             condition=condition,

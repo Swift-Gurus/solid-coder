@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 """
 solid-name: StepCompletedEvent
 solid-category: model
-solid-spec: [SPEC-010, SPEC-030]
-solid-description: Represents persisted step completion state for one workflow instance and its parent step.
+solid-spec: [SPEC-010, SPEC-030, SPEC-037]
+solid-description: Represents persisted step completion state with explicit execution, nested-workflow, local-step, iteration, and source identities.
 """
 class StepCompletedEvent(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -20,6 +20,9 @@ class StepCompletedEvent(BaseModel):
     instance_id: str = ""
     outputs: dict[str, Any] = Field(default_factory=dict)
     iteration_index: Optional[int] = None
+    workflow_source_index: Optional[int] = None
+    workflow_instance_id: Optional[str] = None
+    local_step_id: Optional[str] = None
     item: Any = None
     parent_completed: bool = True
     empty_collection: bool = False

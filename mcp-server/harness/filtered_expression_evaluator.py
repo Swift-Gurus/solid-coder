@@ -28,5 +28,5 @@ class FilteredExpressionEvaluator(ExpressionEvaluating):
         if " | " not in expr:
             return self._expression_evaluator.evaluate(expr, context)
         raw_expression, filter_name = expr.split(" | ", 1)
-        value = self._expression_evaluator.evaluate(raw_expression.strip(), context)
-        return self._filter_resolver.apply(value, filter_name.strip())
+        value = self._expression_evaluator.evaluate(raw_expression, context)
+        return self._filter_resolver.apply(value, filter_name)

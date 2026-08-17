@@ -19,7 +19,7 @@ Extend the flow engine so a workflow can classify its input, conditionally execu
 | | Detail |
 |---|---|
 | Input | A validated workflow definition containing ordinary steps and included workflow packages with optional `depends_on`, `for_each`, declarative `when` rules, and explicit input mappings; top-level `flow_start` parameters, current items, and upstream step outputs provide values. |
-| Output | Durable completed or skipped branch events, validated workflow-level output envelopes for every executed branch instance, and deterministic branch-result collections available to downstream aggregation steps. |
+| Output | Durable completed or skipped branch events with typed condition evidence, validated workflow-level output envelopes for every executed branch instance, and deterministic branch-result collections available to downstream aggregation steps. |
 | Consumer | `flow_start`, `flow_next`, `flow_status`, bundled review and gate workflows from SPEC-036, and client-authored workflow packages. |
 
 ## User Stories
@@ -37,10 +37,12 @@ As the flow engine, I want to route classified review units through every matchi
 - Nested item paths such as `{{item.language}}` are an explicit extension of the expression resolver. Existing `{{item}}`, `{{params.<name>}}`, and `{{steps.<id>.outputs.<name>}}` behavior remains unchanged.
 - Conditions use structured `all`, `any`, and `not` composition with the leaf operators `equals`, `not_equals`, `in`, `not_in`, and `exists`; arbitrary code and host-language expression evaluation are rejected.
 - Condition evaluation is deterministic engine behavior. The LLM is not asked to interpret the condition, classify the payload, choose branches, or report which branches should run.
+- Authored and snapshotted condition references, include input bindings, and `for_each` references are normalized once when decoded into typed workflow models. Runtime condition evaluation and replay consume those typed values without trimming, unwrapping, or reparsing expression strings.
 - Health-check file and unit classification is produced by an engine-owned script/command step or an existing deterministic MCP boundary with schema-validated outputs; the classifier is not an agent step.
 - Equality and membership comparisons are type-strict: the engine does not coerce strings, numbers, booleans, arrays, objects, or null values before comparison.
 - When a condition evaluates true, the step or included workflow instance follows the existing execution, retry, output-validation, and failure lifecycle.
-- When a condition evaluates false, the engine records a durable skipped outcome containing the branch identity and evaluated condition, starts no execution attempt, and consumes neither an execution attempt nor a turn.
+- When a condition evaluates false, the engine records a durable skipped outcome containing the step and instance identities, evaluated condition, `for_each` item and index, nested-workflow identity when applicable, parent-completion state, and typed evaluation evidence; it starts no execution attempt and consumes neither an execution attempt nor a turn.
+- Typed condition evidence preserves each evaluated comparison's normalized reference, operator, expected value, resolved actual presence and value, and match result. Composite `all`, `any`, and `not` evidence preserves the ordered children actually evaluated under short-circuit semantics and the composite result.
 - A false workflow-level condition skips the complete workflow instance before any internal step becomes ready. For an included workflow, the parent alias records a skipped instance and publishes no result for it; for a top-level run, the engine records the skipped workflow outcome and completes the run without executing steps.
 - A false step-level condition skips only that expanded step instance. Its internal dependents treat it as terminal for dependency resolution, while the rest of the workflow continues.
 - A skipped branch is terminal for dependency resolution, so a downstream join waits until every dependency is either completed or skipped and does not deadlock on a non-matching branch.
@@ -58,7 +60,7 @@ As the flow engine, I want to route classified review units through every matchi
 - A downstream aggregation step may depend on included-workflow aliases and interpolate their `results` collections into an agent prompt, script argument, or command text; the aggregation operation itself remains workflow-defined and may call an MCP tool or use a process-backed step.
 - The bundled health-check flow can break input into units, run a general review for applicable units, additionally run the SwiftUI review only when `language == "swift"` and `unit_kind == "view"`, and aggregate every emitted review result into the existing normalized review-result structure.
 - If an executed branch exhausts retries, produces an invalid declared workflow output, or otherwise fails, the join does not run, a `run_failed` event is recorded, and the run reports `failed`; skipped branches are not failures.
-- Event replay restores the original completed/skipped decisions and branch output ordering without re-evaluating conditions or re-running completed workflow instances.
+- Event replay restores the original completed/skipped decisions, their typed condition evidence, and branch output ordering without re-evaluating conditions or re-running completed workflow instances. Events created before evidence persistence restore explicit `unavailable` evidence rather than inventing operands or silently using `None` in runtime state.
 - `flow_status` distinguishes pending, running, completed, and skipped branch instances and reports the condition summary for skipped instances.
 - A conditional ordinary step that is skipped has no outputs. Existing interpolation failure behavior applies if a downstream step incorrectly references those absent outputs; optional branch aggregation uses the include alias's zero-or-one `results` collection.
 
@@ -83,6 +85,7 @@ when:
 - `all` and `any` require a non-empty list of conditions; `not` wraps exactly one condition.
 - A conditional declaration must depend on every step referenced by its condition. Transitive upstream references are valid; sibling, downstream, and cyclic references are invalid.
 - `for_each` resolves before `when`, and `{{item}}` is available only for the corresponding expanded item.
+- Raw expression whitespace and optional `{{...}}` wrappers are accepted only by the workflow-definition and persisted-snapshot parsers. Parsed declarations carry normalized typed references; downstream resolvers do not call `strip`, split identity strings, or depend on wrapper formatting.
 - `for_each` instance identity, partial completion, empty-source completion, ordered output fan-in, replay, engine-owned process execution, and per-instance attempt budgets are inherited unchanged from SPEC-030 and its characterization tests.
 - Conditions are evaluated from outermost to innermost without collapsing their namespaces: include-invocation `when`, workflow-level `when`, then each ready step's `when`. Every applicable scope must pass, and a false outer scope prevents evaluation or execution of inner scopes.
 
@@ -360,6 +363,9 @@ These tests are written and passing before conditional execution code is changed
 - When every materialized child step completes, run completion succeeds without treating the child templates as pending work.
 - When the run is reloaded after partial child completion, replay recreates the same runtime identities and returns only unfinished child instances.
 - When a submitted runtime identity is unknown or cannot resolve uniquely, the flow returns a controlled error and records no output or attempt against another step.
+- Authored `steps.<local-id>.outputs.<name>` references are decoded into typed local references when the workflow is loaded. Materialization and execution do not parse, split, regex-match, or derive scope from runtime execution IDs.
+- Materializing a child DAG leaves its authored prompts unchanged. Prompt expressions resolve exactly once when that child instance becomes ready, against its mapped inputs and same-instance completed steps.
+- Completed and skipped child events persist `workflow_instance_id` and `local_step_id` separately from the opaque execution `step_id`; replay restores those fields without decoding the execution ID.
 
 ### Integration Tests — Health-check routing
 
@@ -386,6 +392,15 @@ These tests are written and passing before conditional execution code is changed
 - With an unambiguous statement injected into `classify.md`, the classification step emits `category: statement`, the statement branch emits its exact required sentence, the question branch records one durable skipped outcome, and the run completes without retries or failures.
 - A fan-out case uses an engine-owned preparation step to emit multiple already categorized source units, then expands per-item conditional steps over those units with `for_each`. For mixed question and statement units, each conditional step completes only its matching instance, skips its non-matching instance, preserves source order, consumes no attempt or turn for skips, and reaches `run_completed`.
 
+### Live Model E2E — Dynamic included workflow fan-out
+
+- A fixed parent workflow uses an engine-owned command to emit two source units, then invokes one reusable child workflow with include-level `depends_on`, `for_each`, and `with` mappings.
+- The shared Codex and Claude contract receives only the parent workflow path and instructions to drive the flow to terminal state; expected child outputs remain inside the workflow package rather than the launch prompt.
+- The event log records `review-1.inspect`, `review-2.inspect`, `review-1.report`, and `review-2.report` in dependency order, with each child event carrying its source item, `workflow_source_index`, `workflow_instance_id`, and `local_step_id` while retaining scalar step outputs.
+- Internal child expressions such as `{{steps.inspect.outputs.finding}}` resolve against the same runtime workflow instance, never a sibling instance, and a downstream step depending on the opaque include alias becomes ready only after every materialized child DAG completes.
+- Both configured live backends reach `run_completed` without retries or failures for this isolated dynamic-include contract.
+- Before temporary inputs or isolated runtimes are removed, every live run preserves the effective workflow package, exact flow event log, final output, and backend-native execution logs under `.solid-coder/.artifacts/test/<backend>/e2e/live-session/<run-id>/`; Codex runs additionally retain rollout transcripts and state databases. Assertion failures and backend failures identify this directory for later inspection.
+
 ## Definition of Done
 
 - [ ] Flow definitions accept and validate the same declarative `when` grammar at workflow, include-invocation, and step scopes.
@@ -403,5 +418,8 @@ These tests are written and passing before conditional execution code is changed
 - [ ] A live E2E fan-out case proves per-item `for_each` condition evaluation with mixed categories, completed matching instances, and durable non-matching skips.
 - [ ] Deterministic integration tests prove bounded concurrent `mode: session` delegate fan-out, typed result validation, instance-scoped retry, ordered fan-in, empty input, and replay without relaunch.
 - [ ] Shared Codex and Claude live E2E tests prove multiple session delegates complete and feed one downstream join without using subagents.
+- [x] Shared Codex and Claude live E2E tests prove engine-owned source preparation materializes one complete included child DAG per item, preserves source association, resolves internal child outputs, and releases the downstream alias join.
+- [x] Live Codex and Claude flow-engine runs preserve the effective workflow, flow events, final response, and backend-native evidence before cleanup and report the artifact directory.
+- [x] Typed local output references, readiness-time child prompt rendering, explicit child event identities, and replay restoration avoid runtime execution-ID parsing.
 - [ ] Unit and integration tests cover validation, execution, failure, ordering, status, and resume behavior.
 - [ ] Existing `for_each` characterization tests pass unchanged before and after conditional routing is added.

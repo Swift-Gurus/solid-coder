@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from harness.composite_condition_evidence import CompositeConditionEvidence
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
@@ -23,5 +24,10 @@ class NotCondition(ConditionDeclaration):
         self,
         runtime: ConditionRuntime,
         context: WorkflowRunContext,
-    ) -> bool:
-        return not self.condition.evaluate(runtime, context)
+    ) -> CompositeConditionEvidence:
+        child = self.condition.evaluate(runtime, context)
+        return CompositeConditionEvidence(
+            kind="not",
+            children=[child],
+            matched=not child.matched,
+        )

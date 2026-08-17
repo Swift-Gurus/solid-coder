@@ -9,6 +9,7 @@ from pydantic import AliasChoices, ConfigDict, Field
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.output_spec import OutputSpec
+from harness.step_output_reference import StepOutputReference
 
 
 """
@@ -29,7 +30,7 @@ class StepDeclaration:
     prompt: Optional[str] = None
     depends_on: Optional[list[str]] = None
     outputs: list[OutputSpec] = field(default_factory=list)
-    for_each: Optional[str] = None
+    for_each: Optional[StepOutputReference] = None
     condition: Optional[ConditionDeclaration] = None
     mode: Optional[str] = None
     prompt_file: Optional[str] = None

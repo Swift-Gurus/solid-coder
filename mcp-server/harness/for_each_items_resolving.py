@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
+from harness.step_output_reference import StepOutputReference
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -17,6 +18,6 @@ class ForEachItemsResolving(Protocol):
     def resolve(
         self,
         step_id: str,
-        expression: str,
+        reference: StepOutputReference,
         context: WorkflowRunContext,
     ) -> list[Any]: ...

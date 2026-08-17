@@ -1,5 +1,6 @@
 """Applies a step-completed event to reconstructed state."""
 
+from harness.included_workflow_step_completion import IncludedWorkflowStepCompletion
 from harness.step_completed_event import StepCompletedEvent
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_instance_output_aggregating import StepInstanceOutputAggregating
@@ -26,6 +27,21 @@ class StepCompletedTransition:
         completion_event = StepCompletedEvent.model_validate(event)
         step_id = completion_event.step_id or completion_event.instance_id
         outputs = self._step_outputs_builder.build(completion_event.outputs)
+        if (
+            completion_event.workflow_instance_id is not None
+            and completion_event.local_step_id is not None
+        ):
+            state.setdefault("included_workflow_completions", []).append(
+                IncludedWorkflowStepCompletion(
+                    workflow_instance_id=completion_event.workflow_instance_id,
+                    local_step_id=completion_event.local_step_id,
+                    execution_step_id=step_id,
+                    instance_id=completion_event.instance_id,
+                    workflow_source_index=completion_event.workflow_source_index,
+                    item=completion_event.item,
+                    outputs=outputs,
+                )
+            )
 
         if completion_event.iteration_index is None:
             state["completed"][step_id] = outputs

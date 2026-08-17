@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_reference_resolving import ConditionReferenceResolving
 from harness.condition_runtime import ConditionRuntime
 from harness.condition_value_matching import ConditionValueMatching
@@ -28,10 +29,16 @@ class ConditionComparator(ConditionRuntime):
         self,
         condition: ComparisonCondition,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ComparisonConditionEvidence:
         resolved = self._reference_resolver.resolve(condition.reference, context)
-        return self._value_matcher.matches(
-            condition.operator,
-            resolved,
-            condition.expected,
+        return ComparisonConditionEvidence(
+            reference=condition.reference.value,
+            operator=condition.operator,
+            expected=condition.expected,
+            actual=resolved,
+            matched=self._value_matcher.matches(
+                condition.operator,
+                resolved,
+                condition.expected,
+            ),
         )

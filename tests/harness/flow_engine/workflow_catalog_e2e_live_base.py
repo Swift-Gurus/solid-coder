@@ -110,7 +110,15 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
 
         self._assert_completed_steps(
             combined_events,
-            ["first.verify_existing", "second.verify_existing", "confirm_combined"],
+            [
+                "first.process.structured_script",
+                "first.process.inline_command",
+                "second.process.structured_script",
+                "second.process.inline_command",
+                "first.verify_existing",
+                "second.verify_existing",
+                "confirm_combined",
+            ],
         )
         self._assert_successful(combined_events)
         self.assertEqual(self._step_output(combined_events, "first.verify_existing", "existing"), True)

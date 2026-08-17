@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_factory import IncludeAliasGroupFactory
 from harness.include_cycle_guard import IncludeCycleGuard
@@ -31,6 +32,7 @@ from harness.path_canonicalizer import PathCanonicalizer
 from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
+from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_source_annotator import StepSourceAnnotator
 from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
@@ -39,6 +41,7 @@ from harness.workflow_resource_path_classifier import WorkflowResourcePathClassi
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
 from harness.workflow_include_runtime_parser import WorkflowIncludeRuntimeParser
+from harness.workflow_expression_parser import WorkflowExpressionParser
 
 
 class UnusedConditionParser:
@@ -66,7 +69,15 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         WorkflowResourcePathClassifier(),
         WorkflowResourceDirectory.SUBFLOWS,
     )
-    runtime_parser = WorkflowIncludeRuntimeParser(UnusedConditionParser())
+    runtime_parser = WorkflowIncludeRuntimeParser(
+        condition_parser=UnusedConditionParser(),
+        for_each_parser=ForEachReferenceParser(
+            expression_parser=WorkflowExpressionParser(),
+            reference_parser=StepOutputReferenceParser(),
+        ),
+        expression_parser=WorkflowExpressionParser(),
+        error_factory=error_factory,
+    )
     source_resolver = IncludeSourceResolver(
         resolvers=[
             PathIncludeSourceResolver(

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
+
 if TYPE_CHECKING:
     from harness.comparison_condition import ComparisonCondition
     from harness.workflow_run_context import WorkflowRunContext
@@ -20,4 +22,4 @@ class ConditionRuntime(Protocol):
         self,
         condition: ComparisonCondition,
         context: WorkflowRunContext,
-    ) -> bool: ...
+    ) -> ComparisonConditionEvidence: ...

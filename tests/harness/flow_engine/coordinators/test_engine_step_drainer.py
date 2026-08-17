@@ -24,7 +24,9 @@ from harness.step_execution_batch_advancer import StepExecutionBatchAdvancer
 from harness.step_execution_failure_handler import StepExecutionFailureHandler
 from harness.step_run_outcome import StepRunOutcome
 from harness.step_skip import StepSkip
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_condition_gate_result import WorkflowConditionGateResult
+from harness.workflow_expression import WorkflowExpression
 
 
 class ScriptedRunSnapshotResolver:
@@ -284,7 +286,7 @@ class TestEngineStepDrainer(unittest.TestCase):
 
     def test_records_skipped_instances_before_invoking_an_executor(self):
         condition = ComparisonCondition(
-            reference="{{params.enabled}}",
+            reference=WorkflowExpression(value="params.enabled"),
             operator=ConditionOperator.EQUALS,
             expected=True,
         )
@@ -292,6 +294,7 @@ class TestEngineStepDrainer(unittest.TestCase):
             step_id="conditional",
             instance_id="conditional-1",
             condition=condition,
+            evidence=UnavailableConditionEvidence(matched=False),
         )
         instance = StepInstance(
             step_id="conditional",

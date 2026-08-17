@@ -22,6 +22,6 @@ class ComparisonConditionSerializer(
         nested_serializer: ConditionSerializing,
     ) -> dict[str, object]:
         return {
-            "ref": condition.reference,
+            "ref": f"{{{{{condition.reference.value}}}}}",
             condition.operator.value: condition.expected,
         }

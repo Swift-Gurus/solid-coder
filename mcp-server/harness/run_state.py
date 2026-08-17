@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.included_workflow_step_completion import IncludedWorkflowStepCompletion
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_outputs import StepOutputs
 from harness.step_skip import StepSkip
@@ -23,6 +24,9 @@ class RunState:
     turn_count: int
     status: str
     workflow_condition_decision: WorkflowConditionDecision | None = None
+    included_workflow_completions: list[IncludedWorkflowStepCompletion] = field(
+        default_factory=list
+    )
     completed_instances: dict[str, StepInstanceCompletion] = field(default_factory=dict)
     skipped: dict[str, StepSkip] = field(default_factory=dict)
     skipped_instances: dict[str, StepSkip] = field(default_factory=dict)

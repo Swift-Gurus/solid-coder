@@ -31,6 +31,14 @@ _PROJECT_ROOT = _MCP_SERVER.parent
 _FLOW_PACKAGE = (
     _PROJECT_ROOT / ".solid-coder" / "workflows" / "test" / "e2e-test"
 )
+_DYNAMIC_INCLUDE_FLOW = (
+    _PROJECT_ROOT
+    / ".solid-coder"
+    / "workflows"
+    / "test"
+    / "e2e-dynamic-include"
+    / "workflow.yaml"
+)
 _ALLOWED_TOOLS = (
     "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
     "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
@@ -105,6 +113,79 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             )
         )
 
+    def test_dynamic_include_materializes_one_child_dag_per_item(self) -> None:
+        events = self._run_live_workflow(
+            _DYNAMIC_INCLUDE_FLOW,
+            prohibited_prompt_fragments=[
+                "Alpha inspected",
+                "Beta inspected",
+                "DYNAMIC WORKFLOW COMPLETE",
+            ],
+        )
+        completed = [
+            event for event in events if event.get("event") == "step_completed"
+        ]
+        completed_step_ids = [event.get("step_id") for event in completed]
+        self.assertEqual(
+            completed_step_ids,
+            [
+                "prepare_units",
+                "review-1.inspect",
+                "review-2.inspect",
+                "review-1.report",
+                "review-2.report",
+                "summarize",
+            ],
+        )
+        included_events = [
+            event
+            for event in completed
+            if str(event.get("step_id", "")).startswith("review-")
+        ]
+        self.assertEqual(
+            [event.get("workflow_source_index") for event in included_events],
+            [0, 1, 0, 1],
+        )
+        self.assertEqual(
+            [event.get("workflow_instance_id") for event in included_events],
+            ["review-1", "review-2", "review-1", "review-2"],
+        )
+        self.assertEqual(
+            [event.get("local_step_id") for event in included_events],
+            ["inspect", "inspect", "report", "report"],
+        )
+        self.assertEqual(
+            [event.get("item") for event in included_events],
+            [
+                {"name": "Alpha"},
+                {"name": "Beta"},
+                {"name": "Alpha"},
+                {"name": "Beta"},
+            ],
+        )
+        self.assertEqual(
+            [event.get("outputs") for event in included_events],
+            [
+                {"finding": "Alpha inspected"},
+                {"finding": "Beta inspected"},
+                {"report": "Alpha reported"},
+                {"report": "Beta reported"},
+            ],
+        )
+        self.assertEqual(
+            completed[-1].get("outputs"),
+            {"sentence": "DYNAMIC WORKFLOW COMPLETE"},
+        )
+        event_types = [event.get("event") for event in events]
+        self.assertEqual(event_types[0], "run_started")
+        self.assertEqual(event_types[-1], "run_completed")
+        self.assertFalse(
+            {"step_attempt_failed", "step_rejected", "run_failed"}.intersection(
+                event_types
+            ),
+            event_types,
+        )
+
     def _run_classification_case(self, case: ClassificationCase) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             workflow_package = Path(temporary_directory) / "flows"
@@ -134,58 +215,16 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         workflow_path: Path,
         case: ClassificationCase,
     ) -> None:
-        runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
-        before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
-        profile = ModelProfileLoader(
-            project_root=_PROJECT_ROOT,
-            toml_loader=HookUtilsTomlLoader(),
-        ).load(self.MODEL_PROFILE)
-        parent_session_id = self.parent_session_id
-        prompt = (
-            f"# spawned-by: {parent_session_id}\n\n"
-            f'Call {self.FLOW_START_TOOL} with flow="{workflow_path}". '
-            "Drive every returned step through flow_next until the flow reports done, "
-            "failed, or timed out."
+        events = self._run_live_workflow(
+            workflow_path,
+            prohibited_prompt_fragments=[case.text, case.expected_sentence],
         )
-        self.assertNotIn(case.text, prompt)
-        self.assertNotIn(case.expected_sentence, prompt)
-        request = LiveSessionRequest(
-            prompt=prompt,
-            project_root=_PROJECT_ROOT,
-            plugin_root=_PROJECT_ROOT,
-            model=profile.llm["model"],
-            timeout=profile.llm["timeout"],
-            allowed_tools=_ALLOWED_TOOLS,
-            mcp_config=build_mcp_config(_PROJECT_ROOT),
-        )
-        with model_profile_environment(profile.profile_path):
-            session_result = self.live_session_runner().run(request)
-
-        after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
-        new_logs = after - before
-        self.assertTrue(
-            new_logs,
-            "No new events.jsonl appeared after the session. "
-            f"Session result: {session_result.final_output}",
-        )
-        events_path = max(new_logs, key=lambda path: path.stat().st_mtime)
-        events = [
-            json.loads(line)
-            for line in events_path.read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
         event_types = [event.get("event") for event in events]
         completed_sequence = [
             event.get("step_id", event.get("instance_id"))
             for event in events
             if event.get("event") == "step_completed"
         ]
-        model_session_ids = {
-            event.get("session_id")
-            for event in events
-            if event.get("event") == "session_step_recorded"
-            and event.get("session_id") != "engine"
-        }
         classification_event = next(
             event
             for event in events
@@ -280,9 +319,79 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             ),
             event_types,
         )
-        self.assertNotEqual(session_result.session_id, parent_session_id)
-        self.assertEqual(model_session_ids, {session_result.session_id})
         self.assertEqual(event_types[-1], "run_completed", event_types)
+
+    def _run_live_workflow(
+        self,
+        workflow_path: Path,
+        prohibited_prompt_fragments: list[str],
+    ) -> list[dict]:
+        runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
+        before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
+        profile = ModelProfileLoader(
+            project_root=_PROJECT_ROOT,
+            toml_loader=HookUtilsTomlLoader(),
+        ).load(self.MODEL_PROFILE)
+        parent_session_id = self.parent_session_id
+        prompt = (
+            f"# spawned-by: {parent_session_id}\n\n"
+            f'Call {self.FLOW_START_TOOL} with flow="{workflow_path}". '
+            "Drive every returned step through flow_next until the flow reports done, "
+            "failed, or timed out."
+        )
+        for fragment in prohibited_prompt_fragments:
+            self.assertNotIn(fragment, prompt)
+        request = LiveSessionRequest(
+            prompt=prompt,
+            project_root=_PROJECT_ROOT,
+            plugin_root=_PROJECT_ROOT,
+            model=profile.llm["model"],
+            timeout=profile.llm["timeout"],
+            allowed_tools=_ALLOWED_TOOLS,
+            mcp_config=build_mcp_config(_PROJECT_ROOT),
+        )
+        with model_profile_environment(profile.profile_path):
+            session_result = self.live_session_runner().run(request)
+
+        after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
+        new_logs = after - before
+        self.assertTrue(
+            new_logs,
+            "No new events.jsonl appeared after the session. "
+            f"Session result: {session_result.final_output}",
+        )
+        events_path = max(new_logs, key=lambda path: path.stat().st_mtime)
+        preserved_workflow = session_result.artifact_directory / "workflow"
+        shutil.copytree(workflow_path.parent, preserved_workflow)
+        preserved_events_path = session_result.artifact_directory / "flow-events.jsonl"
+        shutil.copy2(events_path, preserved_events_path)
+        events = [
+            json.loads(line)
+            for line in preserved_events_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        self.assertTrue(preserved_workflow.joinpath(workflow_path.name).is_file())
+        self.assertEqual(
+            preserved_events_path.read_bytes(),
+            events_path.read_bytes(),
+        )
+        model_session_ids = {
+            event.get("session_id")
+            for event in events
+            if event.get("event") == "session_step_recorded"
+            and event.get("session_id") != "engine"
+        }
+        self.assertNotEqual(session_result.session_id, parent_session_id)
+        self.assertEqual(
+            model_session_ids,
+            {session_result.session_id},
+            f"Events: {events}\n\nSession output: {session_result.final_output}",
+        )
+        print(
+            f"\nLive flow artifacts: {session_result.artifact_directory}\n",
+            flush=True,
+        )
+        return events
 
     def _matching_step_events(
         self,
@@ -309,3 +418,6 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual(completed[0]["iteration_index"], completed_index)
         self.assertEqual(skipped[0]["iteration_index"], skipped_index)
         self.assertEqual(completed[0]["outputs"]["sentence"], expected_sentence)
+        self.assertEqual(skipped[0]["evidence"]["kind"], "comparison")
+        self.assertFalse(skipped[0]["evidence"]["matched"])
+        self.assertTrue(skipped[0]["evidence"]["actual"]["present"])

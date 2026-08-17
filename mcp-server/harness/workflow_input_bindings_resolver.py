@@ -1,7 +1,6 @@
 """Resolves declared child-workflow input expressions."""
 
 from harness.expression_evaluating import ExpressionEvaluating
-from harness.expression_normalizing import ExpressionNormalizing
 from harness.resolved_workflow_input import ResolvedWorkflowInput
 from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_input_bindings_resolving import WorkflowInputBindingsResolving
@@ -19,10 +18,8 @@ class WorkflowInputBindingsResolver(WorkflowInputBindingsResolving):
     def __init__(
         self,
         evaluator: ExpressionEvaluating,
-        expression_normalizer: ExpressionNormalizing,
     ) -> None:
         self._evaluator = evaluator
-        self._expression_normalizer = expression_normalizer
 
     def resolve(
         self,
@@ -33,7 +30,7 @@ class WorkflowInputBindingsResolver(WorkflowInputBindingsResolving):
             ResolvedWorkflowInput(
                 name=binding.name,
                 value=self._evaluator.evaluate(
-                    self._expression_normalizer.normalize(binding.expression),
+                    binding.expression.value,
                     context,
                 ),
             )

@@ -53,6 +53,73 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             ["Inspect Alpha.", "Inspect Beta."],
         )
 
+    def test_engine_owned_prepare_releases_dynamic_roots_during_start(self) -> None:
+        flow_path = self.project_root / "engine-prepared-parent.yaml"
+        flow_path.write_text(
+            textwrap.dedent(
+                """
+                name: engine_prepared_parent
+                max_turns: 20
+                steps:
+                  - id: prepare
+                    type: command
+                    command: >
+                      python3 -c "import json; print(json.dumps({'units': [{'name': 'Alpha'}, {'name': 'Beta'}]}))"
+                    outputs:
+                      - name: units
+                        type: data
+                        schema:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name: {type: string}
+                            required: [name]
+                  - include: child.yaml
+                    as: review
+                    depends_on: [prepare]
+                    for_each: "{{steps.prepare.outputs.units}}"
+                    with:
+                      review_unit: "{{item}}"
+                  - id: summarize
+                    depends_on: [review]
+                    prompt: Summarize completed reviews.
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        result = self.sut.flow_start(str(flow_path))
+
+        self.assertIsNone(result.error, result.error)
+        self.assertEqual(
+            [step.step_id for step in result.steps],
+            ["review-1.inspect", "review-2.inspect"],
+        )
+        reports = self.sut.flow_next({
+            result.steps[0].instance_id: {"finding": "Alpha finding"},
+            result.steps[1].instance_id: {"finding": "Beta finding"},
+        })
+        self.assertEqual(
+            [step.step_id for step in reports.steps],
+            ["review-1.report", "review-2.report"],
+        )
+        self.assertEqual(
+            [step.prompt.splitlines()[0] for step in reports.steps],
+            [
+                "Report Alpha using Alpha finding.",
+                "Report Beta using Beta finding.",
+            ],
+        )
+        summarized = self.sut.flow_next({
+            reports.steps[0].instance_id: {"report": "Alpha report"},
+            reports.steps[1].instance_id: {"report": "Beta report"},
+        })
+        self.assertEqual(
+            [step.step_id for step in summarized.steps],
+            ["summarize"],
+        )
+
     def test_completed_root_releases_only_its_own_child_dag(self) -> None:
         initial = self._start()
         expanded = self.sut.flow_next(
@@ -79,7 +146,7 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
         prompts_by_step = {step.step_id: step.prompt for step in result.steps}
         self.assertEqual(
             prompts_by_step["review-1.report"].splitlines()[0],
-            "Report Alpha.",
+            "Report Alpha using Alpha finding.",
         )
         self.assertEqual(
             prompts_by_step["review-2.inspect"].splitlines()[0],
@@ -135,6 +202,46 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             completed_events["review-2.report"]["item"],
             {"name": "Beta"},
         )
+        self.assertEqual(
+            completed_events["review-1.inspect"]["workflow_source_index"],
+            0,
+        )
+        self.assertEqual(
+            completed_events["review-1.report"]["workflow_source_index"],
+            0,
+        )
+        self.assertEqual(
+            completed_events["review-2.inspect"]["workflow_source_index"],
+            1,
+        )
+        self.assertEqual(
+            completed_events["review-2.report"]["workflow_source_index"],
+            1,
+        )
+        self.assertEqual(
+            completed_events["review-1.inspect"]["workflow_instance_id"],
+            "review-1",
+        )
+        self.assertEqual(
+            completed_events["review-1.inspect"]["local_step_id"],
+            "inspect",
+        )
+        self.assertEqual(
+            completed_events["review-1.report"]["local_step_id"],
+            "report",
+        )
+        self.assertEqual(
+            completed_events["review-2.inspect"]["workflow_instance_id"],
+            "review-2",
+        )
+        self.assertEqual(
+            completed_events["review-2.inspect"]["local_step_id"],
+            "inspect",
+        )
+        self.assertEqual(
+            completed_events["review-2.report"]["local_step_id"],
+            "report",
+        )
 
     def _start(self):
         result = self.sut.flow_start(str(self.flow_path))
@@ -170,7 +277,9 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
                         type: data
                         schema: {type: string}
                   - id: report
-                    prompt: Report {{params.review_unit.name}}.
+                    prompt: >
+                      Report {{params.review_unit.name}} using
+                      {{steps.inspect.outputs.finding}}.
                     depends_on: [inspect]
                     outputs:
                       - name: report

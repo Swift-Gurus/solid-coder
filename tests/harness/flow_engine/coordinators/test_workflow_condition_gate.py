@@ -11,15 +11,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_operator import ConditionOperator
 from harness.flow_def import FlowDef
 from harness.run_state import RunState
+from harness.resolved_condition_value import ResolvedConditionValue
 from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_gate_result import WorkflowConditionGateResult
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_expression import WorkflowExpression
 
 
 class StubContextBuilder:
@@ -34,12 +37,12 @@ class StubContextBuilder:
 
 class StubConditionEvaluator:
     def __init__(self, matched: bool) -> None:
-        self.matched = matched
+        self.evidence = _evidence(matched)
         self.calls = []
 
-    def evaluate(self, condition, context) -> bool:
+    def evaluate(self, condition, context) -> ComparisonConditionEvidence:
         self.calls.append((condition, context))
-        return self.matched
+        return self.evidence
 
 
 class SpyWorkflowConditionRecorder:
@@ -52,9 +55,19 @@ class SpyWorkflowConditionRecorder:
 
 def _condition() -> ComparisonCondition:
     return ComparisonCondition(
-        reference="{{params.enabled}}",
+        reference=WorkflowExpression(value="params.enabled"),
         operator=ConditionOperator.EQUALS,
         expected=True,
+    )
+
+
+def _evidence(matched: bool) -> ComparisonConditionEvidence:
+    return ComparisonConditionEvidence(
+        reference="params.enabled",
+        operator=ConditionOperator.EQUALS,
+        expected=True,
+        actual=ResolvedConditionValue(present=True, value=matched),
+        matched=matched,
     )
 
 
@@ -101,7 +114,10 @@ class TestWorkflowConditionGate(unittest.TestCase):
             _state(),
         )
 
-        decision = WorkflowConditionDecision(condition=condition, matched=False)
+        decision = WorkflowConditionDecision(
+            condition=condition,
+            evidence=evaluator.evidence,
+        )
         self.assertEqual(
             result,
             WorkflowConditionGateResult(progressed=True, allows_execution=False),
@@ -110,7 +126,10 @@ class TestWorkflowConditionGate(unittest.TestCase):
         self.assertEqual(recorder.calls, [("events.jsonl", decision)])
 
     def test_replayed_false_decision_blocks_without_reevaluation(self):
-        decision = WorkflowConditionDecision(condition=_condition(), matched=False)
+        decision = WorkflowConditionDecision(
+            condition=_condition(),
+            evidence=_evidence(False),
+        )
         context_builder = StubContextBuilder(WorkflowRunContext())
         evaluator = StubConditionEvaluator(matched=True)
         recorder = SpyWorkflowConditionRecorder()
@@ -132,7 +151,10 @@ class TestWorkflowConditionGate(unittest.TestCase):
         self.assertEqual(recorder.calls, [])
 
     def test_replayed_true_decision_allows_execution_without_reevaluation(self):
-        decision = WorkflowConditionDecision(condition=_condition(), matched=True)
+        decision = WorkflowConditionDecision(
+            condition=_condition(),
+            evidence=_evidence(True),
+        )
         context_builder = StubContextBuilder(WorkflowRunContext())
         evaluator = StubConditionEvaluator(matched=False)
         recorder = SpyWorkflowConditionRecorder()

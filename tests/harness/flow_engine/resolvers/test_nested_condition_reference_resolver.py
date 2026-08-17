@@ -19,6 +19,8 @@ from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.run_context_builder import RunContextBuilder  # noqa: E402
 from harness.run_state import RunState  # noqa: E402
 from harness.step_output_expression_resolver import StepOutputExpressionResolver  # noqa: E402
+from harness.step_output_reference_parser import StepOutputReferenceParser  # noqa: E402
+from harness.step_output_reference_resolver import StepOutputReferenceResolver  # noqa: E402
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper  # noqa: E402
 from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
 
@@ -40,7 +42,13 @@ class TestNestedConditionReferenceResolver(unittest.TestCase):
             error_factory=error_factory,
         )
         self.sut = ExpressionResolver(
-            step_output_resolver=StepOutputExpressionResolver(error_factory),
+            step_output_resolver=StepOutputExpressionResolver(
+                reference_parser=StepOutputReferenceParser(),
+                reference_resolver=StepOutputReferenceResolver[object](
+                    error_factory
+                ),
+                error_factory=error_factory,
+            ),
             nested_value_resolver=nested_values,
             error_factory=error_factory,
         )

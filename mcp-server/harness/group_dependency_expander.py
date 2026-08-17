@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import cast
+from typing import TypeVar, cast
 
+from harness.graph_step_field_reading import GraphStepFieldReading
 from harness.group_dependency_expanding import GroupDependencyExpanding
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_finding import IncludeAliasGroupFinding
-from harness.step_declaration import StepDeclaration
+
+DependencyEntry = TypeVar("DependencyEntry", bound=GraphStepFieldReading)
 
 
 """
@@ -24,10 +26,10 @@ class GroupDependencyExpander(GroupDependencyExpanding):
 
     def expand(
         self,
-        steps: list[StepDeclaration],
+        steps: list[DependencyEntry],
         alias_groups: list[IncludeAliasGroup],
-    ) -> list[StepDeclaration]:
-        expanded: list[StepDeclaration] = []
+    ) -> list[DependencyEntry]:
+        expanded: list[DependencyEntry] = []
         for step in steps:
             deps = cast(list[str], step.depends_on or [])
             new_deps: list[str] = []
@@ -37,5 +39,8 @@ class GroupDependencyExpander(GroupDependencyExpanding):
             if new_deps == deps:
                 expanded.append(step)
             else:
-                expanded.append(replace(step, depends_on=new_deps))
+                expanded.append(cast(
+                    DependencyEntry,
+                    replace(step, depends_on=new_deps),
+                ))
         return expanded

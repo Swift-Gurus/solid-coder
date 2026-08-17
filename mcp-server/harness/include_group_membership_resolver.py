@@ -20,5 +20,5 @@ class IncludeGroupMembershipResolver(IncludeGroupMembershipResolving):
         return {
             group.alias
             for group in alias_groups
-            if group.contains(step_id)
+            if step_id in group.member_ids
         }

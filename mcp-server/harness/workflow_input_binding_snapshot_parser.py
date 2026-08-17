@@ -7,6 +7,7 @@ from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_input_binding_snapshot_parsing import (
     WorkflowInputBindingSnapshotParsing,
 )
+from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
 
 """
@@ -16,6 +17,9 @@ solid-spec: [SPEC-037]
 solid-description: Restores a validated child input binding from a workflow snapshot.
 """
 class WorkflowInputBindingSnapshotParser(WorkflowInputBindingSnapshotParsing):
+    def __init__(self, expression_parser: WorkflowExpressionParsing) -> None:
+        self._expression_parser = expression_parser
+
     def parse(self, raw: object, alias: str) -> WorkflowInputBinding:
         if not isinstance(raw, Mapping):
             raise FlowValidationError(
@@ -23,8 +27,11 @@ class WorkflowInputBindingSnapshotParser(WorkflowInputBindingSnapshotParsing):
             )
         name = raw.get("name")
         expression = raw.get("expression")
-        if not isinstance(name, str) or not isinstance(expression, str):
+        if not isinstance(name, str):
             raise FlowValidationError(
                 f"Workflow snapshot alias group '{alias}' has invalid input bindings"
             )
-        return WorkflowInputBinding(name=name, expression=expression)
+        return WorkflowInputBinding(
+            name=name,
+            expression=self._expression_parser.parse(expression),
+        )

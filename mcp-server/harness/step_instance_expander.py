@@ -1,15 +1,20 @@
-"""Expands ready workflow declarations into executable instances."""
+"""
+Expands ready workflow declarations into executable instances.
+
+solid-name: StepInstanceExpander
+solid-category: service
+solid-spec: [SPEC-010, SPEC-030, SPEC-037]
+solid-description: Coordinates ordered workflow iteration expansion while excluding terminal instances.
+"""
 
 from __future__ import annotations
-
-from dataclasses import replace
 
 from harness.for_each_items_resolving import ForEachItemsResolving
 from harness.interpolator import TemplateRendering
 from harness.models import RunState, StepDef, StepInstance, StepOutputs
-from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_instance_expanding import StepInstanceExpanding
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
 """
@@ -23,9 +28,11 @@ class StepInstanceExpander(StepInstanceExpanding):
         self,
         items_resolver: ForEachItemsResolving,
         renderer: TemplateRendering,
+        context_resolver: WorkflowStepContextResolving,
     ) -> None:
         self._items_resolver = items_resolver
         self._renderer = renderer
+        self._context_resolver = context_resolver
 
     def expand(
         self,
@@ -34,16 +41,24 @@ class StepInstanceExpander(StepInstanceExpanding):
         run_state: RunState,
     ) -> list[StepInstance]:
         if step.for_each is None:
+            item = (
+                step.workflow_instance.source_item
+                if step.workflow_instance is not None
+                else None
+            )
             return [
                 StepInstance(
                     step_id=step.id,
                     instance_id=f"{step.id}-1",
-                    item=(
-                        step.workflow_instance.source_item
-                        if step.workflow_instance is not None
-                        else None
+                    item=item,
+                    prompt=self._renderer.render(
+                        step.prompt,
+                        self._context_resolver.resolve(
+                            context,
+                            step.workflow_instance,
+                            item,
+                        ),
                     ),
-                    prompt=self._renderer.render(step.prompt, context),
                     workflow_instance=step.workflow_instance,
                 )
             ]
@@ -75,12 +90,10 @@ class StepInstanceExpander(StepInstanceExpanding):
                 item=item,
                 prompt=self._renderer.render(
                     step.prompt,
-                    replace(
+                    self._context_resolver.resolve(
                         context,
-                        item=ResolvedWorkflowContextValue(
-                            present=True,
-                            value=item,
-                        ),
+                        step.workflow_instance,
+                        item,
                     ),
                 ),
                 iteration_index=iteration_index,

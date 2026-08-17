@@ -13,10 +13,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.comparison_condition_parser import ComparisonConditionParser
+from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
+from harness.for_each_reference_parser import ForEachReferenceParser
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.step_declaration_factory import StepDeclarationFactory
+from harness.step_output_reference import StepOutputReference
+from harness.step_output_reference_parser import StepOutputReferenceParser
+from harness.workflow_expression_parser import WorkflowExpressionParser
+from harness.workflow_expression import WorkflowExpression
 
 
 class TestStepDeclarationFactory(unittest.TestCase):
@@ -24,8 +31,31 @@ class TestStepDeclarationFactory(unittest.TestCase):
         self.sut = StepDeclarationFactory(
             condition_parser=ConditionParser(
                 composition_parser=CompositionConditionParser(),
-                comparison_parser=ComparisonConditionParser(),
-            )
+                comparison_parser=ComparisonConditionParser(
+                    expression_parser=WorkflowExpressionParser(),
+                    operation_parser=ComparisonOperationParser(
+                        FlowValidationErrorFactory()
+                    ),
+                ),
+            ),
+            for_each_parser=ForEachReferenceParser(
+                expression_parser=WorkflowExpressionParser(),
+                reference_parser=StepOutputReferenceParser(),
+            ),
+        )
+
+    def test_maps_for_each_expression_to_a_typed_reference(self):
+        declaration = self.sut.map(
+            {
+                "id": "review",
+                "prompt": "Review {{item}}",
+                "for_each": "{{steps.load.outputs.units}}",
+            }
+        )
+
+        self.assertEqual(
+            declaration.for_each,
+            StepOutputReference(step_id="load", output_name="units"),
         )
 
     def test_maps_when_to_a_typed_condition_declaration(self):
@@ -43,7 +73,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
         self.assertEqual(
             declaration.condition,
             ComparisonCondition(
-                reference="{{item.language}}",
+                reference=WorkflowExpression(value="item.language"),
                 operator=ConditionOperator.EQUALS,
                 expected="swift",
             ),

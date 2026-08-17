@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.condition_evidence import ConditionEvidence
 
 
 """
@@ -16,4 +17,8 @@ solid-description: Represents the evaluated eligibility of one workflow invocati
 @dataclass(frozen=True)
 class WorkflowConditionDecision:
     condition: ConditionDeclaration
-    matched: bool
+    evidence: ConditionEvidence
+
+    @property
+    def matched(self) -> bool:
+        return self.evidence.matched

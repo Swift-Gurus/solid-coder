@@ -24,6 +24,8 @@ from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.run_context_builder import RunContextBuilder
 from harness.run_state import RunState
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
+from harness.step_output_reference_parser import StepOutputReferenceParser
+from harness.step_output_reference_resolver import StepOutputReferenceResolver
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 
 
@@ -35,7 +37,13 @@ class TestInterpolator(unittest.TestCase):
     def setUp(self):
         error_factory = InterpolationErrorFactory()
         expression_resolver = ExpressionResolver(
-            step_output_resolver=StepOutputExpressionResolver(error_factory),
+            step_output_resolver=StepOutputExpressionResolver(
+                reference_parser=StepOutputReferenceParser(),
+                reference_resolver=StepOutputReferenceResolver[object](
+                    error_factory
+                ),
+                error_factory=error_factory,
+            ),
             nested_value_resolver=NestedPathResolver(
                 component_accessor=NestedComponentAccessor(
                     attribute_reader=BuiltinAttributeReader()

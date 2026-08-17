@@ -37,5 +37,6 @@ class WorkflowConditionRecorder(WorkflowConditionRecording):
                     decision.condition
                 ),
                 "matched": decision.matched,
+                "evidence": decision.evidence.model_dump(mode="json"),
             },
         )

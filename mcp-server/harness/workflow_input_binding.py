@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from harness.workflow_expression import WorkflowExpression
+
 
 """
 solid-name: WorkflowInputBinding
@@ -12,4 +14,4 @@ solid-description: Associates one declared child workflow input with its parent-
 @dataclass(frozen=True)
 class WorkflowInputBinding:
     name: str
-    expression: str
+    expression: WorkflowExpression

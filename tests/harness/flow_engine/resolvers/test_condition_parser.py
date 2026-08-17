@@ -12,11 +12,15 @@ from harness.all_condition import AllCondition  # noqa: E402
 from harness.any_condition import AnyCondition  # noqa: E402
 from harness.comparison_condition import ComparisonCondition  # noqa: E402
 from harness.comparison_condition_parser import ComparisonConditionParser  # noqa: E402
+from harness.comparison_operation_parser import ComparisonOperationParser  # noqa: E402
 from harness.composition_condition_parser import CompositionConditionParser  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
 from harness.condition_parser import ConditionParser  # noqa: E402
 from harness.models import FlowValidationError  # noqa: E402
+from harness.flow_validation_error_factory import FlowValidationErrorFactory  # noqa: E402
 from harness.not_condition import NotCondition  # noqa: E402
+from harness.workflow_expression import WorkflowExpression  # noqa: E402
+from harness.workflow_expression_parser import WorkflowExpressionParser  # noqa: E402
 
 
 class TestConditionParser(unittest.TestCase):
@@ -24,7 +28,12 @@ class TestConditionParser(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = ConditionParser(
             composition_parser=CompositionConditionParser(),
-            comparison_parser=ComparisonConditionParser(),
+            comparison_parser=ComparisonConditionParser(
+                expression_parser=WorkflowExpressionParser(),
+                operation_parser=ComparisonOperationParser(
+                    FlowValidationErrorFactory()
+                ),
+            ),
         )
 
     def test_parses_each_leaf_operator(self) -> None:
@@ -43,7 +52,7 @@ class TestConditionParser(unittest.TestCase):
                 self.assertEqual(
                     parsed,
                     ComparisonCondition(
-                        reference="{{item.language}}",
+                        reference=WorkflowExpression(value="item.language"),
                         operator=operator,
                         expected=expected,
                     ),
@@ -64,18 +73,18 @@ class TestConditionParser(unittest.TestCase):
             parsed,
             AllCondition(conditions=(
                 ComparisonCondition(
-                    reference="{{item.language}}",
+                    reference=WorkflowExpression(value="item.language"),
                     operator=ConditionOperator.EQUALS,
                     expected="swift",
                 ),
                 AnyCondition(conditions=(
                     ComparisonCondition(
-                        reference="{{item.unit_kind}}",
+                        reference=WorkflowExpression(value="item.unit_kind"),
                         operator=ConditionOperator.EQUALS,
                         expected="view",
                     ),
                     NotCondition(condition=ComparisonCondition(
-                        reference="{{item.generated}}",
+                        reference=WorkflowExpression(value="item.generated"),
                         operator=ConditionOperator.EQUALS,
                         expected=True,
                     )),

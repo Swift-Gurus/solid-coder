@@ -21,13 +21,15 @@ from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
 from harness.run_snapshot import RunSnapshot
 from harness.step_skip import StepSkip
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_condition_decision import WorkflowConditionDecision
+from harness.workflow_expression import WorkflowExpression
 
 
 class StubConditionSerializer:
     def serialize(self, condition) -> dict[str, object]:
         return {
-            "ref": condition.reference,
+            "ref": f"{{{{{condition.reference.value}}}}}",
             condition.operator.value: condition.expected,
         }
 
@@ -95,10 +97,11 @@ class TestFlowStatusReader(unittest.TestCase):
             step_id="step-c",
             instance_id="step-c-1",
             condition=ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),
+            evidence=UnavailableConditionEvidence(matched=False),
         )
         run_state = RunState(
             completed={"step-a": None},
@@ -109,11 +112,13 @@ class TestFlowStatusReader(unittest.TestCase):
             status="in_progress",
             workflow_condition_decision=WorkflowConditionDecision(
                 condition=ComparisonCondition(
-                    reference="{{params.workflow_enabled}}",
+                    reference=WorkflowExpression(
+                        value="params.workflow_enabled"
+                    ),
                     operator=ConditionOperator.EQUALS,
                     expected=True,
                 ),
-                matched=False,
+                evidence=UnavailableConditionEvidence(matched=False),
             ),
         )
         sut = FlowStatusReader(

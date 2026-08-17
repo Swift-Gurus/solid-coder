@@ -52,9 +52,10 @@ class WorkflowConditionGate(WorkflowConditionAdvancing):
             )
 
         context = self._context_builder.build(params, run_state)
+        evidence = self._condition_evaluator.evaluate(condition, context)
         decision = WorkflowConditionDecision(
             condition=condition,
-            matched=self._condition_evaluator.evaluate(condition, context),
+            evidence=evidence,
         )
         self._decision_recorder.record(events_path, decision)
         return WorkflowConditionGateResult(

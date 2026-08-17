@@ -22,6 +22,8 @@ from harness.nested_path_resolver import NestedPathResolver  # noqa: E402
 from harness.run_context_builder import RunContextBuilder  # noqa: E402
 from harness.run_state import RunState  # noqa: E402
 from harness.step_output_expression_resolver import StepOutputExpressionResolver  # noqa: E402
+from harness.step_output_reference_parser import StepOutputReferenceParser  # noqa: E402
+from harness.step_output_reference_resolver import StepOutputReferenceResolver  # noqa: E402
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper  # noqa: E402
 
 
@@ -39,7 +41,13 @@ class TestExpressionResolver(unittest.TestCase):
         )
         error_factory = InterpolationErrorFactory()
         self.sut = ExpressionResolver(
-            step_output_resolver=StepOutputExpressionResolver(error_factory),
+            step_output_resolver=StepOutputExpressionResolver(
+                reference_parser=StepOutputReferenceParser(),
+                reference_resolver=StepOutputReferenceResolver[object](
+                    error_factory
+                ),
+                error_factory=error_factory,
+            ),
             nested_value_resolver=NestedPathResolver(
                 component_accessor=NestedComponentAccessor(
                     attribute_reader=BuiltinAttributeReader()

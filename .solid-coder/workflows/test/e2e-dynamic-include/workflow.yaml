@@ -1,0 +1,40 @@
+id: e2e-dynamic-include
+name: E2E Dynamic Workflow Include
+description: Exercises per-item materialization of one reusable child workflow.
+max_turns: 8
+steps:
+  - id: prepare_units
+    type: command
+    command: >
+      python3 -c "import json; print(json.dumps({'units': [{'name': 'Alpha'}, {'name': 'Beta'}]}))"
+    outputs:
+      - name: units
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+            additionalProperties: false
+
+  - include: review-unit.yaml
+    as: review
+    depends_on: [prepare_units]
+    for_each: "{{steps.prepare_units.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+
+  - id: summarize
+    depends_on: [review]
+    prompt: >
+      Both dynamically included review workflows are complete. Submit exactly
+      "DYNAMIC WORKFLOW COMPLETE" as the "sentence" output field.
+    outputs:
+      - name: sentence
+        type: data
+        schema:
+          type: string
+          enum: ["DYNAMIC WORKFLOW COMPLETE"]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -37,18 +38,54 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
             )
         )
 
-        with patch("claude_live_session_runner.subprocess.run", return_value=completed):
-            result = ClaudeLiveSessionRunner().run(self._request())
+        with tempfile.TemporaryDirectory() as directory:
+            artifact_directory = Path(directory)
+            with (
+                patch(
+                    "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
+                    return_value=artifact_directory,
+                ),
+                patch(
+                    "claude_live_session_runner.subprocess.run",
+                    return_value=completed,
+                ),
+            ):
+                result = ClaudeLiveSessionRunner().run(self._request())
 
-        self.assertEqual(result.session_id, "claude-child")
-        self.assertEqual(result.final_output, "completed")
+            self.assertEqual(result.session_id, "claude-child")
+            self.assertEqual(result.final_output, "completed")
+            self.assertEqual(result.artifact_directory, artifact_directory)
+            self.assertEqual(
+                (artifact_directory / "claude-result.json").read_text(),
+                completed.stdout,
+            )
+            self.assertEqual(
+                (artifact_directory / "claude-stderr.log").read_text(),
+                completed.stderr,
+            )
 
     def test_rejects_output_without_child_session_id(self) -> None:
         completed = self._completed_process(json.dumps({"result": "completed"}))
 
-        with patch("claude_live_session_runner.subprocess.run", return_value=completed):
-            with self.assertRaisesRegex(RuntimeError, "no session ID"):
-                ClaudeLiveSessionRunner().run(self._request())
+        with tempfile.TemporaryDirectory() as directory:
+            artifact_directory = Path(directory)
+            with (
+                patch(
+                    "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
+                    return_value=artifact_directory,
+                ),
+                patch(
+                    "claude_live_session_runner.subprocess.run",
+                    return_value=completed,
+                ),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "no session ID"):
+                    ClaudeLiveSessionRunner().run(self._request())
+
+            self.assertEqual(
+                (artifact_directory / "claude-result.json").read_text(),
+                completed.stdout,
+            )
 
     def _request(self) -> LiveSessionRequest:
         return LiveSessionRequest(

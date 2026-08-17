@@ -14,6 +14,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.models import StepInstance
+from harness.included_workflow_instance import IncludedWorkflowInstance
+from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
+from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
 from harness.output_recorder import OutputRecorder
 
 
@@ -114,6 +117,41 @@ class TestOutputRecorder(unittest.TestCase):
         sut.record("/run/events.jsonl", [], {}, "session-1")
 
         self.assertEqual(appender.events, [])
+
+    def test_records_explicit_child_workflow_and_local_step_identities(self):
+        appender = SpyEventAppender()
+        sut = OutputRecorder(event_appender=appender)
+        workflow_instance = IncludedWorkflowInstance(
+            alias="review",
+            instance_id="workflow-instance-7",
+            source_index=0,
+            source_item="Alpha.swift",
+            steps=IncludedWorkflowStepIdentities(entries=[
+                IncludedWorkflowStepIdentity(
+                    declaration_id="review.inspect",
+                    local_step_id="inspect",
+                    execution_step_id="opaque-step-a7f4",
+                )
+            ]),
+        )
+        instance = StepInstance(
+            step_id="opaque-step-a7f4",
+            instance_id="opaque-step-a7f4-1",
+            item="Alpha.swift",
+            prompt="Inspect Alpha.swift",
+            workflow_instance=workflow_instance,
+        )
+
+        sut.record(
+            "/run/events.jsonl",
+            [instance],
+            {instance.instance_id: {"finding": "ok"}},
+            "session-42",
+        )
+
+        completion = appender.events[0][2]
+        self.assertEqual(completion["workflow_instance_id"], "workflow-instance-7")
+        self.assertEqual(completion["local_step_id"], "inspect")
 
     def _for_each_instances(self) -> list[StepInstance]:
         return [

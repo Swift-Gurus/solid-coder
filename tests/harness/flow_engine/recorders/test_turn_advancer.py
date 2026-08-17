@@ -8,12 +8,16 @@ solid-description: Tests recording a completed turn and returning the run's repl
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
+from harness.event_replayer import EventParser, EventReplayer
 from harness.models import RunState
+from harness.run_state_reconstructor_factory import make_run_state_reconstructor
 from harness.turn_advancer import TurnAdvancer
 
 
@@ -49,6 +53,29 @@ class TestTurnAdvancer(unittest.TestCase):
         self.assertIs(result, after)
         self.assertEqual(appender.events, [("/run/events.jsonl", "turn_counted", {"total": 3})])
         self.assertEqual(replayer.calls, ["/run/events.jsonl", "/run/events.jsonl"])
+
+    def test_advances_and_replays_a_real_event_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            events_path = str(Path(directory) / "events.jsonl")
+            appender = EventAppender(
+                serializer=EventSerializer(),
+                file_appender=POSIXFileAppender(),
+            )
+            replayer = EventReplayer(
+                parser=EventParser(),
+                reconstructor=make_run_state_reconstructor(),
+            )
+            appender.append(events_path, "turn_counted", {"total": 2})
+            sut = TurnAdvancer(
+                event_replayer=replayer,
+                event_appender=appender,
+            )
+
+            advanced = sut.advance(events_path)
+            replayed = replayer.replay(events_path)
+
+        self.assertEqual(advanced.turn_count, 3)
+        self.assertEqual(replayed.turn_count, 3)
 
 
 if __name__ == "__main__":

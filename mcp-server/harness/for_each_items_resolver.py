@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from harness.expression_evaluating import ExpressionEvaluating
-from harness.expression_normalizing import ExpressionNormalizing
 from harness.for_each_items_resolving import ForEachItemsResolving
-from harness.models import FlowValidationError
+from harness.step_output_reference import StepOutputReference
+from harness.step_output_reference_resolving import StepOutputReferenceResolving
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -20,22 +19,14 @@ solid-description: Resolves and validates workflow for-each expressions as order
 class ForEachItemsResolver(ForEachItemsResolving):
     def __init__(
         self,
-        evaluator: ExpressionEvaluating,
-        expression_normalizer: ExpressionNormalizing,
+        reference_resolver: StepOutputReferenceResolving[list[Any]],
     ) -> None:
-        self._evaluator = evaluator
-        self._expression_normalizer = expression_normalizer
+        self._reference_resolver = reference_resolver
 
     def resolve(
         self,
         step_id: str,
-        expression: str,
+        reference: StepOutputReference,
         context: WorkflowRunContext,
     ) -> list[Any]:
-        normalized_expression = self._expression_normalizer.normalize(expression)
-        value = self._evaluator.evaluate(normalized_expression, context)
-        if not isinstance(value, list):
-            raise FlowValidationError(
-                f"Step '{step_id}' for_each must resolve to an array"
-            )
-        return value
+        return self._reference_resolver.resolve(reference, context)

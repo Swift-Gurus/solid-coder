@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from live_session_artifact_directory_creator import LiveSessionArtifactDirectoryCreator
 from live_session_request import LiveSessionRequest
 from live_session_result import LiveSessionResult
 from live_session_running import LiveSessionRunning
@@ -21,23 +22,44 @@ solid-description: Adapts isolated Codex CLI execution with checkout plugin hook
 """
 class CodexLiveSessionRunner(LiveSessionRunning):
 
+    def __init__(
+        self,
+        artifact_directory_creator: LiveSessionArtifactDirectoryCreator = LiveSessionArtifactDirectoryCreator(),
+    ) -> None:
+        self._artifact_directory_creator = artifact_directory_creator
+
     def run(self, request: LiveSessionRequest) -> LiveSessionResult:
+        artifact_directory = self._artifact_directory_creator.create(
+            request.project_root,
+            "codex",
+        )
         codex_home = Path(tempfile.mkdtemp(prefix="solid-coder-live-codex-home-"))
-        result_path = codex_home / "last-message.txt"
+        result_path = artifact_directory / "last-message.txt"
         try:
             self._write_config(codex_home, request.plugin_root)
             self._link_auth(codex_home)
             environment = os.environ.copy()
             environment["CODEX_HOME"] = str(codex_home)
-            self._install_plugin(request, environment)
-            event_stream = self._execute(request, environment, result_path)
+            self._install_plugin(request, environment, artifact_directory)
+            event_stream = self._execute(
+                request,
+                environment,
+                result_path,
+                artifact_directory,
+            )
             if not result_path.exists():
                 raise RuntimeError("Codex session returned no final output")
             return LiveSessionResult(
                 session_id=self._read_session_id(event_stream),
                 final_output=result_path.read_text(encoding="utf-8"),
+                artifact_directory=artifact_directory,
             )
+        except Exception as error:
+            raise RuntimeError(
+                f"{error}. Artifacts: {artifact_directory}"
+            ) from error
         finally:
+            self._preserve_runtime(codex_home, artifact_directory)
             shutil.rmtree(codex_home, ignore_errors=True)
 
     def _read_session_id(self, event_stream: str) -> str:
@@ -67,7 +89,12 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             raise RuntimeError(f"Codex auth file not found: {auth_path}")
         (codex_home / "auth.json").symlink_to(auth_path)
 
-    def _install_plugin(self, request: LiveSessionRequest, environment: dict[str, str]) -> None:
+    def _install_plugin(
+        self,
+        request: LiveSessionRequest,
+        environment: dict[str, str],
+        artifact_directory: Path,
+    ) -> None:
         process = subprocess.run(
             ["codex", "plugin", "add", "solid-coder@solid-coder", "--json"],
             capture_output=True,
@@ -75,6 +102,14 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             timeout=120,
             cwd=str(request.project_root),
             env=environment,
+        )
+        (artifact_directory / "plugin-install.json").write_text(
+            process.stdout,
+            encoding="utf-8",
+        )
+        (artifact_directory / "plugin-install.stderr.log").write_text(
+            process.stderr,
+            encoding="utf-8",
         )
         if process.returncode != 0:
             raise RuntimeError(f"Codex plugin installation failed: {process.stderr}")
@@ -84,6 +119,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         request: LiveSessionRequest,
         environment: dict[str, str],
         result_path: Path,
+        artifact_directory: Path,
     ) -> str:
         pipeline_server = request.plugin_root / "mcp-server" / "pipeline" / "server.py"
         process = subprocess.run(
@@ -111,6 +147,27 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             cwd=str(request.project_root),
             env=environment,
         )
+        (artifact_directory / "codex-events.jsonl").write_text(
+            process.stdout,
+            encoding="utf-8",
+        )
+        (artifact_directory / "codex-stderr.log").write_text(
+            process.stderr,
+            encoding="utf-8",
+        )
         if process.returncode != 0:
             raise RuntimeError(f"Codex session failed: {process.stderr or process.stdout}")
         return process.stdout
+
+    def _preserve_runtime(
+        self,
+        codex_home: Path,
+        artifact_directory: Path,
+    ) -> None:
+        runtime_artifacts = artifact_directory / "codex-runtime"
+        sessions = codex_home / "sessions"
+        if sessions.exists():
+            shutil.copytree(sessions, runtime_artifacts / "sessions")
+        for database in codex_home.glob("state_*.sqlite*"):
+            runtime_artifacts.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(database, runtime_artifacts / database.name)

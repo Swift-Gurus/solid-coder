@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
 from harness.for_each_items_resolving import ForEachItemsResolving
+from harness.group_dependency_expanding import GroupDependencyExpanding
+from harness.include_alias_group import IncludeAliasGroup
 from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 from harness.include_group_readiness_checking import IncludeGroupReadinessChecking
 from harness.included_workflow_steps_resolving import IncludedWorkflowStepsResolving
@@ -25,11 +29,13 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
         readiness_checker: IncludeGroupReadinessChecking,
         items_resolver: ForEachItemsResolving,
         included_steps_resolver: IncludedWorkflowStepsResolving,
+        group_dependency_expander: GroupDependencyExpanding,
     ) -> None:
         self._dynamic_checker = dynamic_checker
         self._readiness_checker = readiness_checker
         self._items_resolver = items_resolver
         self._included_steps_resolver = included_steps_resolver
+        self._group_dependency_expander = group_dependency_expander
 
     def resolve(
         self,
@@ -50,6 +56,7 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
         resolved_steps = [
             step for step in flow.steps if step.id not in dynamic_member_ids
         ]
+        materialized_groups: list[IncludeAliasGroup] = []
         for group in dynamic_groups:
             if not self._readiness_checker.is_ready(group, run_state):
                 continue
@@ -65,8 +72,9 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
                 if group.for_each is not None
                 else [None]
             )
+            materialized_steps: list[StepDef] = []
             for iteration_index, item in enumerate(items):
-                resolved_steps.extend(
+                materialized_steps.extend(
                     self._included_steps_resolver.resolve(
                         group,
                         templates,
@@ -75,4 +83,12 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
                         context,
                     )
                 )
-        return resolved_steps
+            resolved_steps.extend(materialized_steps)
+            materialized_groups.append(replace(
+                group,
+                member_ids=[step.id for step in materialized_steps],
+            ))
+        return self._group_dependency_expander.expand(
+            resolved_steps,
+            materialized_groups,
+        )

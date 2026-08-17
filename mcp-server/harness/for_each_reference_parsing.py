@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from harness.for_each_reference import ForEachReference
+from harness.step_output_reference import StepOutputReference
 
 
 """
 solid-name: ForEachReferenceParsing
 solid-category: abstraction
 solid-spec: [SPEC-010, SPEC-030]
-solid-description: Contract for parsing a workflow for-each expression into a source output reference.
+solid-description: Contract for decoding an authored or snapshotted workflow for-each value into a typed source-output reference.
 """
 class ForEachReferenceParsing(Protocol):
-    def parse(self, step_id: str, expression: str) -> ForEachReference: ...
+    def parse(self, step_id: str, expression: object) -> StepOutputReference: ...

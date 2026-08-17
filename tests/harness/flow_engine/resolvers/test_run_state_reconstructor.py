@@ -12,9 +12,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_operator import ConditionOperator
 from harness.models import StepOutputs
+from harness.included_workflow_step_completion import IncludedWorkflowStepCompletion
 from harness.run_state_reconstructor_factory import make_run_state_reconstructor
+from harness.resolved_condition_value import ResolvedConditionValue
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
+from harness.workflow_expression import WorkflowExpression
 
 
 class TestRunStateReconstructor(unittest.TestCase):
@@ -31,6 +36,35 @@ class TestRunStateReconstructor(unittest.TestCase):
         self.assertNotIn("load_principles", state.running)
         self.assertIsInstance(state.completed["load_principles"], StepOutputs)
         self.assertEqual(state.completed["load_principles"].get("principles"), ["SRP"])
+
+    def test_restores_child_completion_with_explicit_nested_identity(self):
+        state = self.sut.reconstruct([
+            {
+                "event": "step_completed",
+                "step_id": "opaque-step-a7f4",
+                "instance_id": "opaque-step-a7f4-1",
+                "workflow_instance_id": "workflow-instance-7",
+                "local_step_id": "inspect",
+                "workflow_source_index": 0,
+                "item": {"name": "Alpha"},
+                "outputs": {"finding": "ok"},
+            },
+        ])
+
+        self.assertEqual(
+            state.included_workflow_completions,
+            [
+                IncludedWorkflowStepCompletion(
+                    workflow_instance_id="workflow-instance-7",
+                    local_step_id="inspect",
+                    execution_step_id="opaque-step-a7f4",
+                    instance_id="opaque-step-a7f4-1",
+                    workflow_source_index=0,
+                    item={"name": "Alpha"},
+                    outputs=StepOutputs(values={"finding": "ok"}),
+                )
+            ],
+        )
 
     def test_turn_count_accumulates(self):
         state = self.sut.reconstruct([
@@ -94,13 +128,89 @@ class TestRunStateReconstructor(unittest.TestCase):
         self.assertEqual(
             state.skipped["inspect"].condition,
             ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),
         )
         self.assertEqual(state.attempts_used, {})
         self.assertEqual(state.turn_count, 0)
+        self.assertEqual(
+            state.skipped["inspect"].evidence,
+            UnavailableConditionEvidence(matched=False),
+        )
+
+    def test_step_skipped_restores_complete_audit_context_without_completing_parent(self):
+        state = self.sut.reconstruct([
+            {
+                "event": "step_skipped",
+                "step_id": "review",
+                "instance_id": "review-2",
+                "condition": {
+                    "ref": "{{item.language}}",
+                    "equals": "swift",
+                },
+                "evidence": {
+                    "kind": "comparison",
+                    "reference": "item.language",
+                    "operator": "equals",
+                    "expected": "swift",
+                    "actual": {"present": True, "value": "kotlin"},
+                    "matched": False,
+                },
+                "item": {"language": "kotlin"},
+                "iteration_index": 1,
+                "workflow_instance_id": "workflow-instance-7",
+                "local_step_id": "inspect",
+                "workflow_source_index": 0,
+                "parent_completed": False,
+            },
+        ])
+
+        skip = state.skipped_instances["review-2"]
+        self.assertEqual(skip.step_id, "review")
+        self.assertEqual(skip.instance_id, "review-2")
+        self.assertEqual(skip.item, {"language": "kotlin"})
+        self.assertEqual(skip.iteration_index, 1)
+        self.assertEqual(skip.workflow_instance_id, "workflow-instance-7")
+        self.assertEqual(skip.local_step_id, "inspect")
+        self.assertEqual(skip.workflow_source_index, 0)
+        self.assertEqual(
+            skip.evidence,
+            ComparisonConditionEvidence(
+                reference="item.language",
+                operator=ConditionOperator.EQUALS,
+                expected="swift",
+                actual=ResolvedConditionValue(
+                    present=True,
+                    value="kotlin",
+                ),
+                matched=False,
+            ),
+        )
+        self.assertNotIn("review", state.skipped)
+
+    def test_step_skipped_restores_explicit_child_scope(self):
+        state = self.sut.reconstruct([
+            {
+                "event": "step_skipped",
+                "step_id": "opaque-step-a7f4",
+                "instance_id": "opaque-step-a7f4-1",
+                "condition": {
+                    "ref": "{{item.language}}",
+                    "equals": "swift",
+                },
+                "workflow_instance_id": "workflow-instance-7",
+                "local_step_id": "inspect",
+                "workflow_source_index": 0,
+                "parent_completed": True,
+            },
+        ])
+
+        skip = state.skipped["opaque-step-a7f4"]
+        self.assertEqual(skip.workflow_instance_id, "workflow-instance-7")
+        self.assertEqual(skip.local_step_id, "inspect")
+        self.assertEqual(skip.workflow_source_index, 0)
 
     def test_workflow_condition_evaluated_restores_decision_without_attempts(self):
         state = self.sut.reconstruct([
@@ -119,14 +229,52 @@ class TestRunStateReconstructor(unittest.TestCase):
         self.assertEqual(
             decision.condition,
             ComparisonCondition(
-                reference="{{params.enabled}}",
+                reference=WorkflowExpression(value="params.enabled"),
                 operator=ConditionOperator.EQUALS,
                 expected=True,
             ),
         )
         self.assertFalse(decision.matched)
+        self.assertEqual(
+            decision.evidence,
+            UnavailableConditionEvidence(matched=False),
+        )
         self.assertEqual(state.attempts_used, {})
         self.assertEqual(state.turn_count, 0)
+
+    def test_workflow_condition_evaluated_restores_audit_evidence(self):
+        state = self.sut.reconstruct([
+            {
+                "event": "workflow_condition_evaluated",
+                "condition": {
+                    "ref": "{{params.enabled}}",
+                    "equals": True,
+                },
+                "matched": True,
+                "evidence": {
+                    "kind": "comparison",
+                    "reference": "params.enabled",
+                    "operator": "equals",
+                    "expected": True,
+                    "actual": {"present": True, "value": True},
+                    "matched": True,
+                },
+            },
+        ])
+
+        decision = state.workflow_condition_decision
+        self.assertIsNotNone(decision)
+        self.assertEqual(
+            decision.evidence,
+            ComparisonConditionEvidence(
+                reference="params.enabled",
+                operator=ConditionOperator.EQUALS,
+                expected=True,
+                actual=ResolvedConditionValue(present=True, value=True),
+                matched=True,
+            ),
+        )
+        self.assertTrue(decision.matched)
 
 
 if __name__ == "__main__":

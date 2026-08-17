@@ -25,16 +25,21 @@ from harness.models import FlowDef, OutputSpec, RunState, StepDef, StepOutputs
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
 from harness.run_context_builder import RunContextBuilder
-from harness.single_expression_normalizer import SingleExpressionNormalizer
 from harness.step_dependency_checker import StepDependencyChecker
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_instance_expander import StepInstanceExpander
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
+from harness.step_output_reference import StepOutputReference
+from harness.step_output_reference_parser import StepOutputReferenceParser
+from harness.step_output_reference_resolver import StepOutputReferenceResolver
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_status_checker import StepStatusChecker
 from harness.step_skip import StepSkip
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_expression import WorkflowExpression
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
 
 _CONTEXT_BUILDER = RunContextBuilder(
@@ -45,7 +50,11 @@ _CONTEXT_BUILDER = RunContextBuilder(
 def _make_runner() -> DAGRunner:
     error_factory = InterpolationErrorFactory()
     unfiltered_resolver = ExpressionResolver(
-        step_output_resolver=StepOutputExpressionResolver(error_factory),
+        step_output_resolver=StepOutputExpressionResolver(
+            reference_parser=StepOutputReferenceParser(),
+            reference_resolver=StepOutputReferenceResolver[object](error_factory),
+            error_factory=error_factory,
+        ),
         nested_value_resolver=NestedPathResolver(
             component_accessor=NestedComponentAccessor(
                 attribute_reader=BuiltinAttributeReader()
@@ -65,10 +74,12 @@ def _make_runner() -> DAGRunner:
         ),
         instance_expander=StepInstanceExpander(
             items_resolver=ForEachItemsResolver(
-                evaluator=resolver,
-                expression_normalizer=SingleExpressionNormalizer(),
+                reference_resolver=StepOutputReferenceResolver[list[object]](
+                    error_factory
+                ),
             ),
             renderer=Interpolator(evaluator=resolver),
+            context_resolver=WorkflowStepContextResolver(),
         ),
     )
 
@@ -81,8 +92,16 @@ class TestDAGRunner(unittest.TestCase):
     def _flow(self, *steps: StepDef, max_turns: int = 10) -> FlowDef:
         return FlowDef(name="test", max_turns=max_turns, steps=list(steps))
 
-    def _step(self, sid: str, depends_on: Optional[List[str]] = None, for_each: Optional[str] = None) -> StepDef:
+    def _step(
+        self,
+        sid: str,
+        depends_on: Optional[List[str]] = None,
+        for_each: Optional[StepOutputReference] = None,
+    ) -> StepDef:
         return StepDef(id=sid, prompt=f"Do {sid}", depends_on=depends_on or [], for_each=for_each)
+
+    def _for_each(self, step_id: str, output_name: str) -> StepOutputReference:
+        return StepOutputReference(step_id=step_id, output_name=output_name)
 
     def _state(self, completed: Optional[List[str]] = None, turn_count: int = 0) -> RunState:
         return RunState(
@@ -107,7 +126,7 @@ class TestDAGRunner(unittest.TestCase):
 
     def test_skipped_step_is_terminal_and_unlocks_its_dependent(self):
         condition = ComparisonCondition(
-            reference="{{params.enabled}}",
+            reference=WorkflowExpression(value="params.enabled"),
             operator=ConditionOperator.EQUALS,
             expected=True,
         )
@@ -115,6 +134,7 @@ class TestDAGRunner(unittest.TestCase):
             step_id="a",
             instance_id="a-1",
             condition=condition,
+            evidence=UnavailableConditionEvidence(matched=False),
         )
         state = RunState(
             completed={},
@@ -131,7 +151,11 @@ class TestDAGRunner(unittest.TestCase):
         self.assertEqual(ids, {"b"})
 
     def test_for_each_expands_into_n_instances(self):
-        step = self._step("review", depends_on=["load"], for_each="{{steps.load.outputs.principles}}")
+        step = self._step(
+            "review",
+            depends_on=["load"],
+            for_each=self._for_each("load", "principles"),
+        )
         flow = self._flow(self._step("load"), step)
         outputs = StepOutputs(values={"principles": ["SRP", "OCP", "LSP"]})
         state = RunState(completed={"load": outputs}, running=[], turn_count=0, status="in_progress")
@@ -148,7 +172,7 @@ class TestDAGRunner(unittest.TestCase):
         step = self._step(
             "review",
             depends_on=["load"],
-            for_each="{{steps.load.outputs.principles}}",
+            for_each=self._for_each("load", "principles"),
         )
         flow = self._flow(self._step("load"), step)
         outputs = StepOutputs(values={"principles": ["SRP", "OCP", "LSP"]})
@@ -179,9 +203,13 @@ class TestDAGRunner(unittest.TestCase):
         )
 
     def test_for_each_returns_only_iterations_not_already_skipped(self):
-        step = self._step("review", for_each="{{params.items}}")
+        step = self._step(
+            "review",
+            depends_on=["load"],
+            for_each=self._for_each("load", "items"),
+        )
         condition = ComparisonCondition(
-            reference="{{item}}",
+            reference=WorkflowExpression(value="item"),
             operator=ConditionOperator.EQUALS,
             expected="SRP",
         )
@@ -189,11 +217,12 @@ class TestDAGRunner(unittest.TestCase):
             step_id="review",
             instance_id="review-1",
             condition=condition,
+            evidence=UnavailableConditionEvidence(matched=False),
             item="OCP",
             iteration_index=0,
         )
         state = RunState(
-            completed={},
+            completed={"load": StepOutputs(values={"items": ["OCP", "SRP"]})},
             skipped_instances={"review-1": skipped_iteration},
             running=[],
             turn_count=0,
@@ -201,9 +230,9 @@ class TestDAGRunner(unittest.TestCase):
         )
 
         instances = self.runner.ready_steps(
-            self._flow(step),
+            self._flow(self._step("load"), step),
             state,
-            _CONTEXT_BUILDER.build({"items": ["OCP", "SRP"]}, state),
+            _CONTEXT_BUILDER.build({}, state),
         )
 
         self.assertEqual(
@@ -217,7 +246,7 @@ class TestDAGRunner(unittest.TestCase):
             id="review",
             prompt="Review {{item}}",
             depends_on=["load"],
-            for_each="{{steps.load.outputs.principles}}",
+            for_each=self._for_each("load", "principles"),
             outputs=[OutputSpec(name="finding", type="data")],
         )
         flow = self._flow(load, review)

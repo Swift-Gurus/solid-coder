@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.condition_evidence import ConditionEvidence
 from harness.condition_evaluating import ConditionEvaluating
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
@@ -20,5 +21,5 @@ class ConditionDeclarationEvaluator(ConditionEvaluating):
         condition: ConditionDeclaration,
         runtime: ConditionRuntime,
         context: WorkflowRunContext,
-    ) -> bool:
+    ) -> ConditionEvidence:
         return condition.evaluate(runtime, context)

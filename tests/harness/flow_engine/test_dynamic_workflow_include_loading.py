@@ -12,6 +12,8 @@ from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
+from harness.step_output_reference import StepOutputReference
+from harness.workflow_expression import WorkflowExpression
 
 
 class TestDynamicWorkflowIncludeLoading(unittest.TestCase):
@@ -34,16 +36,16 @@ class TestDynamicWorkflowIncludeLoading(unittest.TestCase):
         self.assertEqual(group.depends_on, ["prepare"])
         self.assertEqual(
             group.for_each,
-            "{{steps.prepare.outputs.units}}",
+            StepOutputReference(step_id="prepare", output_name="units"),
         )
         self.assertEqual(
             [(binding.name, binding.expression) for binding in group.input_bindings],
-            [("review_unit", "{{item}}")],
+            [("review_unit", WorkflowExpression(value="item"))],
         )
         self.assertEqual(
             group.condition,
             ComparisonCondition(
-                reference="{{item.language}}",
+                reference=WorkflowExpression(value="item.language"),
                 operator=ConditionOperator.EQUALS,
                 expected="swift",
             ),

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from harness.resolved_condition_value import ResolvedConditionValue
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -17,6 +18,6 @@ solid-description: Contract for resolving workflow condition references with pre
 class ConditionReferenceResolving(Protocol):
     def resolve(
         self,
-        reference: str,
+        reference: WorkflowExpression,
         context: WorkflowRunContext,
     ) -> ResolvedConditionValue: ...

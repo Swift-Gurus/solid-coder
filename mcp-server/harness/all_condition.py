@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from harness.composite_condition_evidence import CompositeConditionEvidence
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
@@ -23,5 +24,19 @@ class AllCondition(ConditionDeclaration):
         self,
         runtime: ConditionRuntime,
         context: WorkflowRunContext,
-    ) -> bool:
-        return all(condition.evaluate(runtime, context) for condition in self.conditions)
+    ) -> CompositeConditionEvidence:
+        children = []
+        for condition in self.conditions:
+            evidence = condition.evaluate(runtime, context)
+            children.append(evidence)
+            if not evidence.matched:
+                return CompositeConditionEvidence(
+                    kind="all",
+                    children=children,
+                    matched=False,
+                )
+        return CompositeConditionEvidence(
+            kind="all",
+            children=children,
+            matched=True,
+        )

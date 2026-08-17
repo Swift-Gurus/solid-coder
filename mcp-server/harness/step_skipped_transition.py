@@ -23,8 +23,12 @@ class StepSkippedTransition:
             step_id=skipped_event.step_id,
             instance_id=skipped_event.instance_id,
             condition=self._condition_parser.parse(skipped_event.condition),
+            evidence=skipped_event.evidence,
             item=skipped_event.item,
             iteration_index=skipped_event.iteration_index,
+            workflow_instance_id=skipped_event.workflow_instance_id,
+            local_step_id=skipped_event.local_step_id,
+            workflow_source_index=skipped_event.workflow_source_index,
         )
         skipped_instances = state.setdefault("skipped_instances", {})
         skipped_instances[skip.instance_id] = skip

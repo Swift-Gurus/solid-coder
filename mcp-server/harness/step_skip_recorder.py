@@ -33,6 +33,14 @@ class StepSkipRecorder(StepSkipRecording):
             skip = instance.skip
             if skip is None:
                 continue
+            workflow_instance = instance.workflow_instance
+            local_step_id = (
+                workflow_instance.steps.require_execution(
+                    instance.step_id
+                ).local_step_id
+                if workflow_instance is not None
+                else None
+            )
             siblings = [
                 sibling
                 for sibling in ready
@@ -52,8 +60,20 @@ class StepSkipRecorder(StepSkipRecording):
                     "step_id": skip.step_id,
                     "instance_id": skip.instance_id,
                     "condition": self._condition_serializer.serialize(skip.condition),
+                    "evidence": skip.evidence.model_dump(mode="json"),
                     "item": skip.item,
                     "iteration_index": skip.iteration_index,
+                    "workflow_instance_id": (
+                        workflow_instance.instance_id
+                        if workflow_instance is not None
+                        else None
+                    ),
+                    "local_step_id": local_step_id,
+                    "workflow_source_index": (
+                        workflow_instance.source_index
+                        if workflow_instance is not None
+                        else None
+                    ),
                     "parent_completed": parent_completed,
                 },
             )

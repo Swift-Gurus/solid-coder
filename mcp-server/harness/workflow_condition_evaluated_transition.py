@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from harness.condition_parsing import ConditionParsing
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_evaluated_event import (
     WorkflowConditionEvaluatedEvent,
@@ -22,7 +23,10 @@ class WorkflowConditionEvaluatedTransition:
 
     def apply(self, state: dict, event: dict) -> None:
         evaluated_event = WorkflowConditionEvaluatedEvent.model_validate(event)
+        evidence = evaluated_event.evidence or UnavailableConditionEvidence(
+            matched=evaluated_event.matched
+        )
         state["workflow_condition_decision"] = WorkflowConditionDecision(
             condition=self._condition_parser.parse(evaluated_event.condition),
-            matched=evaluated_event.matched,
+            evidence=evidence,
         )

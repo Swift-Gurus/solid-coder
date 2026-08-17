@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.step_output_reference import StepOutputReference
 from harness.workflow_input_binding import WorkflowInputBinding
 
 
@@ -19,13 +20,6 @@ class IncludeAliasGroup:
     alias: str
     member_ids: list[str]
     depends_on: list[str] = field(default_factory=list)
-    for_each: str | None = None
+    for_each: StepOutputReference | None = None
     input_bindings: list[WorkflowInputBinding] = field(default_factory=list)
     condition: ConditionDeclaration | None = None
-
-    @property
-    def id(self) -> str:
-        return self.alias
-
-    def contains(self, step_id: str) -> bool:
-        return step_id in self.member_ids
