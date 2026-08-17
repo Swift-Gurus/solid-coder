@@ -36,39 +36,35 @@ class TestFlowFileResolver(unittest.TestCase):
             catalog_resolver=make_workflow_catalog_resolver(),
         )
 
-    def test_resolves_bare_name_to_yaml_in_first_search_dir(self):
-        flow_file = self.project_dir / "code_review.yaml"
-        flow_file.write_text("name: code_review\nsteps: []\n")
+    def test_resolves_package_id_in_first_search_dir(self):
+        flow_file = self._package(self.project_dir, "code-review")
 
-        result = self.sut.resolve("code_review", [str(self.project_dir), str(self.plugin_dir)])
+        result = self.sut.resolve("code-review", [str(self.project_dir), str(self.plugin_dir)])
 
         self.assertEqual(result, str(flow_file.resolve()))
 
-    def test_resolves_bare_name_to_yml_extension(self):
+    def test_flat_yaml_is_not_catalog_discoverable(self):
         flow_file = self.project_dir / "code_review.yml"
         flow_file.write_text("name: code_review\nsteps: []\n")
 
         result = self.sut.resolve("code_review", [str(self.project_dir), str(self.plugin_dir)])
 
-        self.assertEqual(result, str(flow_file.resolve()))
+        self.assertEqual(result, "code_review")
 
     def test_duplicate_ids_across_search_dirs_are_rejected(self):
-        project_file = self.project_dir / "code_review.yaml"
-        project_file.write_text("name: code_review\nsteps: []\n")
-        plugin_file = self.plugin_dir / "code_review.yaml"
-        plugin_file.write_text("name: code_review\nsteps: []\n")
+        project_file = self._package(self.project_dir, "code-review")
+        plugin_file = self._package(self.plugin_dir, "code-review")
 
         with self.assertRaises(FlowValidationError) as ctx:
-            self.sut.resolve("code_review", [str(self.project_dir), str(self.plugin_dir)])
+            self.sut.resolve("code-review", [str(self.project_dir), str(self.plugin_dir)])
 
         self.assertIn(str(project_file.resolve()), str(ctx.exception))
         self.assertIn(str(plugin_file.resolve()), str(ctx.exception))
 
     def test_falls_back_to_second_search_dir_when_first_has_no_match(self):
-        plugin_file = self.plugin_dir / "code_review.yaml"
-        plugin_file.write_text("name: code_review\nsteps: []\n")
+        plugin_file = self._package(self.plugin_dir, "code-review")
 
-        result = self.sut.resolve("code_review", [str(self.project_dir), str(self.plugin_dir)])
+        result = self.sut.resolve("code-review", [str(self.project_dir), str(self.plugin_dir)])
 
         self.assertEqual(result, str(plugin_file.resolve()))
 
@@ -117,19 +113,17 @@ class TestFlowFileResolver(unittest.TestCase):
         self.assertEqual(second_result, str(second.resolve()))
 
     def test_discovers_a_workflow_added_after_an_earlier_lookup(self):
-        first = self.project_dir / "first.yaml"
-        first.write_text("name: first\nsteps: []\n")
+        first = self._package(self.project_dir, "first")
 
         first_result = self.sut.resolve("first", [str(self.project_dir)])
 
-        second = self.project_dir / "second.yaml"
-        second.write_text("name: second\nsteps: []\n")
+        second = self._package(self.project_dir, "second")
         second_result = self.sut.resolve("second", [str(self.project_dir)])
 
         self.assertEqual(first_result, str(first.resolve()))
         self.assertEqual(second_result, str(second.resolve()))
 
-    def test_discovers_plugin_package_and_legacy_workflows_through_plugin_roots(self):
+    def test_discovers_plugin_package_but_not_flat_legacy_workflow(self):
         package = self.plugin_dir / "workflows" / "review" / "plugin-package" / "workflow.yaml"
         package.parent.mkdir(parents=True)
         package.write_text(
@@ -145,9 +139,9 @@ class TestFlowFileResolver(unittest.TestCase):
         search_paths = self._plugin_search_paths()
 
         self.assertEqual(self.sut.resolve("plugin-package", search_paths), str(package.resolve()))
-        self.assertEqual(self.sut.resolve("plugin-legacy", search_paths), str(legacy.resolve()))
+        self.assertEqual(self.sut.resolve("plugin-legacy", search_paths), "plugin-legacy")
 
-    def test_rejects_duplicate_id_across_plugin_package_and_legacy_roots(self):
+    def test_flat_legacy_workflow_does_not_collide_with_a_package_id(self):
         package = self.plugin_dir / "workflows" / "review" / "duplicate" / "workflow.yaml"
         package.parent.mkdir(parents=True)
         package.write_text(
@@ -160,11 +154,9 @@ class TestFlowFileResolver(unittest.TestCase):
         legacy.parent.mkdir(parents=True)
         legacy.write_text("name: legacy_duplicate\nsteps: [{id: run, prompt: Run}]\n")
 
-        with self.assertRaises(FlowValidationError) as context:
-            self.sut.resolve("duplicate", self._plugin_search_paths())
+        result = self.sut.resolve("duplicate", self._plugin_search_paths())
 
-        self.assertIn(str(package.resolve()), str(context.exception))
-        self.assertIn(str(legacy.resolve()), str(context.exception))
+        self.assertEqual(result, str(package.resolve()))
 
     def _plugin_search_paths(self) -> list[str]:
         resolver = FlowSearchPathResolver(
@@ -172,6 +164,18 @@ class TestFlowFileResolver(unittest.TestCase):
             path_filter=ExistingPathFilter(PathChecker()),
         )
         return [str(path) for path in resolver.resolve()]
+
+    @staticmethod
+    def _package(root: Path, workflow_id: str) -> Path:
+        entrypoint = root / workflow_id / "workflow.yaml"
+        entrypoint.parent.mkdir(parents=True)
+        entrypoint.write_text(
+            f"id: {workflow_id}\n"
+            f"name: {workflow_id}\n"
+            "max_turns: 2\n"
+            "steps: [{id: run, prompt: Run}]\n"
+        )
+        return entrypoint
 
 
 class _RealPathChecker:

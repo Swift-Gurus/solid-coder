@@ -22,6 +22,7 @@ from harness.step_dependency_graph_factory import StepDependencyGraphFactory
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_identity_resolver import StepIdentityResolver
 from harness.unique_step_identity_validator import UniqueStepIdentityValidator
+from harness.unique_string_validator import UniqueStringValidator
 
 
 def _make_validator() -> StepGraphValidator:
@@ -30,7 +31,7 @@ def _make_validator() -> StepGraphValidator:
     return StepGraphValidator(
         identity_validator=UniqueStepIdentityValidator(
             identity_resolver,
-            error_factory,
+            UniqueStringValidator(error_factory),
         ),
         graph_factory=StepDependencyGraphFactory(
             identity_resolver=identity_resolver,

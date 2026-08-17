@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
+
+from harness.rule_declaration import RuleDeclaration
 
 
 """
@@ -17,4 +20,4 @@ class WorkflowSource:
     id: str
     entry_path: Path
     package_root: Path | None
-    legacy: bool = False
+    rule: Optional[RuleDeclaration] = None

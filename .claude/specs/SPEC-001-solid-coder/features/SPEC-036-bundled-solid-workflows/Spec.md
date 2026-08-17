@@ -4,7 +4,7 @@ feature: bundled-solid-workflows
 type: feature
 status: ready
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039]
 blocking: []
 ---
 

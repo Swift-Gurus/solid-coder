@@ -5,7 +5,7 @@ type: feature
 status: done
 parent: SPEC-001
 blocked-by: [SPEC-011]
-blocking: [SPEC-034, SPEC-036]
+blocking: [SPEC-034, SPEC-036, SPEC-039]
 ---
 
 # LLM Measures, MCP Scores

@@ -32,7 +32,7 @@ class TestWorkflowCatalogResolver(unittest.TestCase):
 
     def test_reuses_one_catalog_for_all_lookups_within_a_load(self):
         source = self._source("/first/workflow.yaml")
-        builder = RecordingCatalogBuilder([WorkflowCatalog(sources={"review": source})])
+        builder = RecordingCatalogBuilder([WorkflowCatalog(sources=[source])])
         sut = WorkflowCatalogResolver(builder)
 
         with sut.scope(["/workflows"]):
@@ -47,8 +47,8 @@ class TestWorkflowCatalogResolver(unittest.TestCase):
         first_source = self._source("/first/workflow.yaml")
         second_source = self._source("/second/workflow.yaml")
         builder = RecordingCatalogBuilder([
-            WorkflowCatalog(sources={"review": first_source}),
-            WorkflowCatalog(sources={"review": second_source}),
+            WorkflowCatalog(sources=[first_source]),
+            WorkflowCatalog(sources=[second_source]),
         ])
         sut = WorkflowCatalogResolver(builder)
 
@@ -65,8 +65,8 @@ class TestWorkflowCatalogResolver(unittest.TestCase):
         first_source = self._source("/first/workflow.yaml")
         second_source = self._source("/second/workflow.yaml")
         builder = RecordingCatalogBuilder([
-            WorkflowCatalog(sources={"review": first_source}),
-            WorkflowCatalog(sources={"review": second_source}),
+            WorkflowCatalog(sources=[first_source]),
+            WorkflowCatalog(sources=[second_source]),
         ])
         sut = WorkflowCatalogResolver(builder)
 

@@ -5,7 +5,7 @@ type: subtask
 status: in-progress
 parent: SPEC-010
 blocked-by: [SPEC-030, SPEC-035]
-blocking: [SPEC-036, SPEC-033]
+blocking: [SPEC-036, SPEC-033, SPEC-039]
 ---
 
 # Conditional Workflow Routing and Result Aggregation

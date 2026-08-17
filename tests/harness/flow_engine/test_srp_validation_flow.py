@@ -52,6 +52,9 @@ _MEASUREMENTS = {
 }
 
 
+@unittest.skip(
+    "Obsolete flat-file SRP flow POC; executable review rules use workflow packages."
+)
 class TestSRPValidationFlow(unittest.TestCase):
 
     def setUp(self):

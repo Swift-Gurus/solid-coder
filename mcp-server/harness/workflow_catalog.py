@@ -15,7 +15,16 @@ solid-description: Provides immutable lookup of uniquely identified workflow sou
 """
 @dataclass(frozen=True)
 class WorkflowCatalog:
-    sources: dict[str, WorkflowSource]
+    sources: list[WorkflowSource]
 
     def find(self, workflow_id: str) -> WorkflowSource | None:
-        return self.sources.get(workflow_id)
+        return next(
+            (source for source in self.sources if source.id == workflow_id),
+            None,
+        )
+
+    def rule_sources(self) -> list[WorkflowSource]:
+        return sorted(
+            (source for source in self.sources if source.rule is not None),
+            key=lambda source: source.id,
+        )

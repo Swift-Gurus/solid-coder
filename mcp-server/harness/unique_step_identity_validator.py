@@ -1,9 +1,9 @@
-"""Validates workflow-step identity uniqueness."""
+"""Resolves workflow-step identities and validates their uniqueness."""
 
-from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.graph_step_field_reading import GraphStepFieldReading
 from harness.step_identity_resolving import StepIdentityResolving
 from harness.unique_step_identity_validating import UniqueStepIdentityValidating
+from harness.unique_string_validating import UniqueStringValidating
 
 
 """
@@ -17,15 +17,13 @@ class UniqueStepIdentityValidator(UniqueStepIdentityValidating):
     def __init__(
         self,
         identity_resolver: StepIdentityResolving,
-        error_factory: FlowValidationErrorCreating,
+        identity_validator: UniqueStringValidating,
     ) -> None:
         self._identity_resolver = identity_resolver
-        self._error_factory = error_factory
+        self._identity_validator = identity_validator
 
     def validate(self, steps: list[GraphStepFieldReading]) -> None:
-        seen_ids: set[str] = set()
-        for step in steps:
-            step_id = self._identity_resolver.resolve(step)
-            if step_id in seen_ids:
-                raise self._error_factory.create(f"Duplicate step ID: '{step_id}'")
-            seen_ids.add(step_id)
+        self._identity_validator.validate(
+            [self._identity_resolver.resolve(step) for step in steps],
+            "step ID",
+        )

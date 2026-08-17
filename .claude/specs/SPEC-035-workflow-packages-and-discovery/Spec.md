@@ -5,7 +5,7 @@ type: subtask
 status: done
 parent: SPEC-010
 blocked-by: [SPEC-027, SPEC-030, SPEC-031]
-blocking: [SPEC-036, SPEC-037]
+blocking: [SPEC-036, SPEC-037, SPEC-039]
 ---
 
 # Workflow Packages, Discovery, and Composition

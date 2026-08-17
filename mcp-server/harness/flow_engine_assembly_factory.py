@@ -134,6 +134,7 @@ from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_output_reference_resolver import StepOutputReferenceResolver
 from harness.uses_resolver import UsesResolver
 from harness.unique_step_identity_validator import UniqueStepIdentityValidator
+from harness.unique_string_validator import UniqueStringValidator
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_catalog_factory import make_workflow_catalog_resolver
 from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
@@ -258,7 +259,7 @@ class FlowEngineAssemblyFactory:
         dependency_validator = StepGraphValidator(
             identity_validator=UniqueStepIdentityValidator(
                 step_identity_resolver,
-                error_factory,
+                UniqueStringValidator(error_factory),
             ),
             graph_factory=StepDependencyGraphFactory(
                 identity_resolver=step_identity_resolver,
