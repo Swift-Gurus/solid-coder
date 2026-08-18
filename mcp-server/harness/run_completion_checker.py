@@ -11,6 +11,7 @@ from harness.event_appender import EventAppending
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef, RunState
 from harness.run_completion_checking import RunCompletionChecking
+from harness.run_completion_finalizing import RunCompletionFinalizing
 from harness.run_timeout_message_building import RunTimeoutMessageBuilding
 
 
@@ -29,12 +30,14 @@ class RunCompletionChecker(RunCompletionChecking):
         exhaustion_evaluator: AttemptExhaustionEvaluating,
         exhaustion_message_builder: AttemptExhaustionMessageBuilding,
         timeout_message_builder: RunTimeoutMessageBuilding,
+        finalizer: RunCompletionFinalizing,
     ) -> None:
         self._event_appender = event_appender
         self._active_run = active_run
         self._exhaustion_evaluator = exhaustion_evaluator
         self._exhaustion_message_builder = exhaustion_message_builder
         self._timeout_message_builder = timeout_message_builder
+        self._finalizer = finalizer
 
     def check(
         self,
@@ -52,6 +55,12 @@ class RunCompletionChecker(RunCompletionChecking):
             and not workflow_condition.matched
         )
         if workflow_skipped or all_step_ids.issubset(terminal_step_ids):
+            self._finalizer.finalize(
+                base_dir / run_id,
+                events_path,
+                flow_def,
+                run_state,
+            )
             self._event_appender.append(events_path, "run_completed", {"run_id": run_id})
             self._active_run.delete(base_dir)
             return FlowNextResult(status="done")

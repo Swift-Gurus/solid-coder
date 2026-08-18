@@ -14,6 +14,7 @@ if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
 from codex_live_session_runner import CodexLiveSessionRunner  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_session_request import LiveSessionRequest  # noqa: E402
 from live_session_result import LiveSessionResult  # noqa: E402
 
@@ -112,6 +113,10 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
     def _request(self) -> LiveSessionRequest:
         return LiveSessionRequest(
             prompt="prompt",
+            artifact_scope=LiveSessionArtifactScope(
+                domain="runner",
+                scenario="codex",
+            ),
             project_root=Path("/project"),
             plugin_root=Path("/plugin"),
             model="model",

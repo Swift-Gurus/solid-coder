@@ -17,6 +17,7 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
 
 from harness_factory import HookUtilsTomlLoader  # noqa: E402
 from hook_utils import solid_coder_project_dir  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_session_request import LiveSessionRequest  # noqa: E402
 from live_session_running import LiveSessionRunning  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
@@ -66,6 +67,10 @@ class FlowSessionScopingE2ELiveBase(unittest.TestCase, ABC):
                 f"# spawned-by: {self.parent_session_id}\n\n"
                 f'Call {self.FLOW_START_TOOL} exactly once with flow="e2e-test". '
                 "Immediately stop after that tool returns; do not call another tool."
+            ),
+            artifact_scope=LiveSessionArtifactScope(
+                domain="flow-engine",
+                scenario="session-scoping",
             ),
             project_root=_PROJECT_ROOT,
             plugin_root=_PROJECT_ROOT,

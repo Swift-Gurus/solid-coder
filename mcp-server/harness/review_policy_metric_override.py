@@ -2,16 +2,16 @@
 
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
-from harness.review_policy_measurement_override import ReviewPolicyMeasurementOverride
+from harness.metric_scoring_declaration import MetricScoringDeclaration
 
 
 """
 solid-name: ReviewPolicyMetricOverride
 solid-category: model
 solid-spec: [SPEC-039]
-solid-description: Carries optional metric enablement and typed measurement scoring overrides.
+solid-description: Carries optional metric enablement and complete typed scoring-band replacement.
 """
 class ReviewPolicyMetricOverride(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -19,4 +19,4 @@ class ReviewPolicyMetricOverride(BaseModel):
     id: str
     enabled: Optional[bool] = None
     reason: Optional[str] = None
-    measurements: list[ReviewPolicyMeasurementOverride] = Field(default_factory=list)
+    scoring: Optional[MetricScoringDeclaration] = None

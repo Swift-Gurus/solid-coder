@@ -32,6 +32,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         artifact_directory = self._artifact_directory_creator.create(
             request.project_root,
             "codex",
+            request.artifact_scope,
         )
         codex_home = Path(tempfile.mkdtemp(prefix="solid-coder-live-codex-home-"))
         result_path = artifact_directory / "last-message.txt"

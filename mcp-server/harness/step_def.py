@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.included_workflow_instance import IncludedWorkflowInstance
+from harness.metric_declaration import MetricDeclaration
 from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
 
@@ -13,7 +14,7 @@ from harness.step_output_reference import StepOutputReference
 """
 solid-name: StepDef
 solid-category: model
-solid-spec: [SPEC-030, SPEC-027, SPEC-028, SPEC-037]
+solid-spec: [SPEC-030, SPEC-027, SPEC-028, SPEC-037, SPEC-039]
 solid-description: Represents a validated workflow step with its execution, dependency, and output contracts.
 """
 @dataclass(frozen=True)
@@ -34,3 +35,4 @@ class StepDef:
     timeout_seconds: int | None = None
     max_attempts: int = 3
     workflow_instance: IncludedWorkflowInstance | None = None
+    metric: MetricDeclaration | None = None

@@ -1,8 +1,8 @@
 """
 solid-name: test_run_completion_checker
 solid-category: unit-test
-solid-spec: [SPEC-031]
-solid-description: Tests detecting done, timed-out, and still-in-progress run states.
+solid-spec: [SPEC-031, SPEC-039]
+solid-description: Tests terminal-state detection and completion finalization for workflow runs.
 """
 
 from __future__ import annotations
@@ -48,17 +48,36 @@ class SpyActiveRunPointer:
         self.deleted_for.append(base_dir)
 
 
+class SpyRunCompletionFinalizer:
+    def __init__(self) -> None:
+        self.run_directories: list[Path] = []
+
+    def finalize(
+        self,
+        run_directory: Path,
+        events_path: str,
+        flow_def: FlowDef,
+        run_state: RunState,
+    ) -> None:
+        self.run_directories.append(run_directory)
+
+
 def _flow(max_turns: int = 10) -> FlowDef:
     return FlowDef(name="test_flow", max_turns=max_turns, steps=[StepDef(id="step-a", prompt="Do step-a")])
 
 
-def _make_sut(appender: SpyEventAppender, active_run: SpyActiveRunPointer) -> RunCompletionChecker:
+def _make_sut(
+    appender: SpyEventAppender,
+    active_run: SpyActiveRunPointer,
+    finalizer: SpyRunCompletionFinalizer,
+) -> RunCompletionChecker:
     return RunCompletionChecker(
         event_appender=appender,
         active_run=active_run,
         exhaustion_evaluator=AttemptExhaustionEvaluator(),
         exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
         timeout_message_builder=RunTimeoutMessageBuilder(),
+        finalizer=finalizer,
     )
 
 
@@ -67,7 +86,8 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_done_and_clears_active_run_when_all_steps_complete(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        finalizer = SpyRunCompletionFinalizer()
+        sut = _make_sut(appender, active_run, finalizer)
         run_state = RunState(completed={"step-a": None}, running=[], turn_count=1, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(), run_state)
@@ -75,11 +95,12 @@ class TestRunCompletionChecker(unittest.TestCase):
         self.assertEqual(result.status, "done")
         self.assertEqual(appender.events, [("/run/events.jsonl", "run_completed", {"run_id": "run-1"})])
         self.assertEqual(active_run.deleted_for, [Path("/runs")])
+        self.assertEqual(finalizer.run_directories, [Path("/runs/run-1")])
 
     def test_returns_done_when_all_steps_are_terminally_skipped(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         skip = StepSkip(
             step_id="step-a",
             instance_id="step-a-1",
@@ -116,7 +137,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_done_when_workflow_condition_is_false(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         condition = ComparisonCondition(
             reference=WorkflowExpression(value="params.enabled"),
             operator=ConditionOperator.EQUALS,
@@ -151,7 +172,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_timed_out_and_clears_active_run_when_max_turns_reached(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         run_state = RunState(completed={}, running=["step-a"], turn_count=5, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(max_turns=5), run_state)
@@ -169,7 +190,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_none_when_run_is_still_in_progress(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         run_state = RunState(completed={}, running=[], turn_count=1, status="in_progress")
 
         result = sut.check(Path("/runs"), "run-1", "/run/events.jsonl", _flow(max_turns=10), run_state)
@@ -181,7 +202,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_returns_failed_and_clears_active_run_when_a_step_exhausts_max_attempts(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[StepDef(id="step-a", prompt="p", max_attempts=3)])
         run_state = RunState(
             completed={}, running=[], turn_count=1, status="in_progress",
@@ -207,7 +228,7 @@ class TestRunCompletionChecker(unittest.TestCase):
     def test_ignores_attempts_used_for_an_already_completed_step(self):
         appender = SpyEventAppender()
         active_run = SpyActiveRunPointer()
-        sut = _make_sut(appender, active_run)
+        sut = _make_sut(appender, active_run, SpyRunCompletionFinalizer())
         flow_def = FlowDef(name="test_flow", max_turns=10, steps=[
             StepDef(id="step-a", prompt="p", max_attempts=3),
             StepDef(id="step-b", prompt="p"),

@@ -14,6 +14,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.models import FlowDef, OutputSpec, StepDef, StepInstance
+from harness.step_output_shape_checker import StepOutputShapeChecker
+from harness.step_output_submission_collector import StepOutputSubmissionCollector
 from harness.step_output_validator import StepOutputValidator
 
 
@@ -41,10 +43,18 @@ def _instance(step_id: str) -> StepInstance:
     return StepInstance(step_id=step_id, instance_id=f"{step_id}-1", item=None, prompt="Do it")
 
 
+def _validator(errors: list[str] | None = None) -> StepOutputValidator:
+    return StepOutputValidator(
+        schema_validator=StubSchemaValidator(errors=errors),
+        shape_checker=StepOutputShapeChecker(),
+        submission_collector=StepOutputSubmissionCollector(),
+    )
+
+
 class TestStepOutputValidator(unittest.TestCase):
 
     def test_valid_object_outputs_pass_when_schema_ok(self):
-        sut = StepOutputValidator(schema_validator=StubSchemaValidator())
+        sut = _validator()
         flow_def = _flow_with_output("greet", "greeting")
 
         errors = sut.validate([_instance("greet")], {"greet-1": {"greeting": "hi"}}, flow_def)
@@ -52,15 +62,15 @@ class TestStepOutputValidator(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_schema_violation_is_reported(self):
-        sut = StepOutputValidator(schema_validator=StubSchemaValidator(errors=["not a string"]))
+        sut = _validator(errors=["not a string"])
         flow_def = _flow_with_output("greet", "greeting")
 
         errors = sut.validate([_instance("greet")], {"greet-1": {"greeting": 123}}, flow_def)
 
-        self.assertEqual(errors, ["not a string"])
+        self.assertEqual(errors, ["greet-1.greeting: not a string"])
 
     def test_non_object_instance_outputs_reports_clean_shape_error_without_crashing(self):
-        sut = StepOutputValidator(schema_validator=StubSchemaValidator())
+        sut = _validator()
         flow_def = _flow_with_output("greet", "greeting")
 
         errors = sut.validate([_instance("greet")], {"greet-1": "just a string"}, flow_def)
@@ -70,7 +80,7 @@ class TestStepOutputValidator(unittest.TestCase):
         self.assertIn("must be an object", errors[0])
 
     def test_missing_instance_id_defaults_to_empty_object(self):
-        sut = StepOutputValidator(schema_validator=StubSchemaValidator())
+        sut = _validator()
         flow_def = _flow_with_output("greet", "greeting")
 
         errors = sut.validate([_instance("greet")], {}, flow_def)

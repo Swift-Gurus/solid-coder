@@ -3,9 +3,13 @@
 from pathlib import Path
 from typing import Callable
 
+from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
 from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.metric_override_applier import MetricOverrideApplier
+from harness.ordered_string_collector import OrderedStringCollector
 from harness.review_plan_artifact_persister import ReviewPlanArtifactPersister
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_identity_validator import ReviewPolicyIdentityValidator
@@ -52,8 +56,14 @@ def make_review_rule_plan_preparer(
                 content_hasher=content_hasher,
                 enablement_resolver=RuleEnablementResolver(),
                 origin_resolver=RuleWorkflowOriginResolver(project_directory),
+                metric_plan_resolver=EffectiveMetricPlanResolver(
+                    override_applier=MetricOverrideApplier(),
+                    error_factory=error_factory,
+                ),
                 error_factory=error_factory,
             ),
+            flow_loader=FlowEngineAssemblyFactory().build().flow_loader,
+            search_path_collector=OrderedStringCollector(),
         ),
         artifact_persister=ReviewPlanArtifactPersister(),
     )

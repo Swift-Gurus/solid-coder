@@ -1,0 +1,131 @@
+id: solid-srp-review
+name: Single Responsibility Review
+description: Measures responsibility signals and reports deterministic SRP severity.
+max_turns: 10
+
+rule:
+  category: solid
+
+steps:
+  - id: verb_count
+    type: metric
+    metric_id: SRP-1
+    prompt: |
+      Measure the distinct responsibilities expressed as action verbs by the supplied
+      unit. Apply this procedure exactly:
+
+      1. Ignore initializers, deinitializers, and factory methods.
+      2. For every remaining method, identify one primary externally meaningful action
+         that describes the method's complete outcome.
+      3. Calls, branches, fallbacks, collection operations, cache operations, formatting
+         primitives, and storage primitives that merely implement that outcome are not
+         additional actions.
+      4. Add another action for a method only when it performs an independently
+         changeable responsibility that is not required to achieve its primary outcome.
+      5. Keep distinct primary actions from different methods distinct. Do not merge
+         them merely because their labels are synonyms.
+      6. In evidence, enumerate every counted method, action, and rationale. The number
+         of enumerated actions must equal the returned value.
+
+      Example: a load method that checks a cache and falls back to storage performs the
+      single action "load"; cache lookup and storage lookup are implementation details.
+      A save method that invalidates its cache performs the single action "save" when
+      invalidation is required to keep the saved result consistent.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      minor:
+        operator: greater_than_or_equal
+        value: 3
+      severe:
+        operator: greater_than
+        value: 5
+
+  - id: cohesion_groups
+    type: metric
+    metric_id: SRP-2
+    prompt: |
+      Measure cohesion groups in the supplied unit. Apply this procedure exactly:
+
+      1. Ignore lifecycle methods and list which instance variables each remaining
+         method directly uses.
+      2. Connect methods when they share an instance variable, including transitive
+         connections, and form the resulting method groups.
+      3. Do not remove a method merely because it uses variables from both sides of a
+         group. Remove it as an orchestrator only when it coordinates independently
+         meaningful operations. A method that needs all of those variables to produce
+         one cohesive result is not an orchestrator and keeps the group connected.
+      4. A cache and its backing storage belong to the same data-access group when the
+         methods use them together to provide consistent save/load/invalidate behavior.
+      5. Formatting machinery and presentation templates belong to the same presentation
+         group when methods combine them to produce rendered output.
+      6. In evidence, enumerate every group with its methods, variables, and rationale.
+         The number of enumerated groups must equal the returned value.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 2
+
+  - id: stakeholder_count
+    type: metric
+    metric_id: SRP-3
+    prompt: |
+      Measure distinct stakeholders who could independently request changes to the
+      supplied unit. Apply this procedure exactly:
+
+      1. Count change-driving concerns demonstrated by the unit's behavior, not every
+         framework type, dependency, implementation mechanism, or hypothetical team.
+      2. Merge backing storage, caching, and cache consistency into one data-access
+         stakeholder when they jointly implement retrieval and persistence behavior.
+      3. Merge templates, number formatting, string formatting, and collection layout
+         into one presentation stakeholder when they jointly produce displayed output.
+      4. Count security, operations, product policy, validation, or other stakeholders
+         only when code in the unit demonstrates independently changeable behavior for
+         that concern. Do not infer them solely from a type name.
+      5. In evidence, enumerate every stakeholder with its methods and rationale. The
+         number of enumerated stakeholders must equal the returned value.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 2
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      Decide whether the supplied unit is an SRP facade/coordinator exception. It is an
+      exception only when all conditions hold:
+
+      1. Every stored property and initializer parameter is protocol-typed.
+      2. Every method body is pure delegation with no business logic and no branching
+         on the unit's own mutable state.
+      3. The unit creates no objects internally; all collaborators are injected.
+
+      Return true only when all three conditions are supported by the source. Explain
+      the decision and cite precise source evidence whether the result is true or false.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```

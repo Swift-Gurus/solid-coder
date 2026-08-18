@@ -19,7 +19,6 @@ from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_identity_validator import ReviewPolicyIdentityValidator
 from harness.review_policy_parser import ReviewPolicyParser
-from harness.scoring_band_severity import ScoringBandSeverity
 from harness.scoring_comparison_operator import ScoringComparisonOperator
 from harness.unique_string_validator import UniqueStringValidator
 
@@ -40,7 +39,7 @@ class TestReviewPolicyParser(unittest.TestCase):
             ],
         )
 
-    def test_decodes_rule_metric_measurement_and_band_overrides(self):
+    def test_decodes_rule_metric_and_scoring_overrides(self):
         policy = self.sut.parse(
             {
                 "version": 1,
@@ -52,19 +51,13 @@ class TestReviewPolicyParser(unittest.TestCase):
                         "metrics": [
                             {
                                 "id": "SRP-1",
-                                "measurements": [
-                                    {
-                                        "name": "verb_count",
-                                        "bands": [
-                                            {
-                                                "severity": "severe",
-                                                "operator": "greater_than",
-                                                "value": 8,
-                                                "reason": "Larger units are accepted.",
-                                            }
-                                        ],
+                                "scoring": {
+                                    "severe": {
+                                        "operator": "greater_than",
+                                        "value": 8,
                                     }
-                                ],
+                                },
+                                "reason": "Larger units are accepted.",
                             }
                         ],
                     }
@@ -73,11 +66,14 @@ class TestReviewPolicyParser(unittest.TestCase):
         )
 
         rule = policy.rules[0]
-        band = rule.metrics[0].measurements[0].bands[0]
+        band = rule.metrics[0].scoring.severe
         self.assertFalse(rule.enabled)
-        self.assertEqual(band.severity, ScoringBandSeverity.SEVERE)
         self.assertEqual(band.operator, ScoringComparisonOperator.GREATER_THAN)
         self.assertEqual(band.value, 8)
+        self.assertEqual(
+            rule.metrics[0].reason,
+            "Larger units are accepted.",
+        )
 
     def test_omitted_enablement_is_preserved_as_no_client_request(self):
         policy = self.sut.parse(

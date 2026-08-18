@@ -53,6 +53,7 @@ from harness.run_directory_scaffolder import RunDirectoryScaffolder
 from harness.run_initializer import RunInitializer
 from harness.run_metadata_store import RunMetadataStore
 from harness.run_provisioner import RunProvisioner
+from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
 from harness.run_snapshot_resolver import RunSnapshotResolver
 from harness.run_started_event_recorder import RunStartedEventRecorder
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
@@ -74,6 +75,8 @@ from harness.step_batch_runner_resolver import StepBatchRunnerResolver
 from harness.step_handler_resolver import StepHandlerResolver
 from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_output_validator import StepOutputValidator
+from harness.step_output_shape_checker import StepOutputShapeChecker
+from harness.step_output_submission_collector import StepOutputSubmissionCollector
 from harness.step_result_builder import StepResultBuilder
 from harness.step_skip_recorder import StepSkipRecorder
 from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRunner
@@ -153,13 +156,20 @@ class FlowRunOrchestratorFactory:
             exhaustion_evaluator=AttemptExhaustionEvaluator(),
             exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
             timeout_message_builder=RunTimeoutMessageBuilder(),
+            finalizer=RuleRunFinalizerFactory().build(assembly.event_appender),
         )
         attempt_failure_handler = AttemptFailureHandler(
             event_appender=assembly.event_appender,
             event_replayer=assembly.event_replayer,
             completion_checker=completion_checker,
         )
-        agent_handler = AgentStepHandler(output_validator=StepOutputValidator(schema_validator=assembly.schema_validator))
+        agent_handler = AgentStepHandler(
+            output_validator=StepOutputValidator(
+                schema_validator=assembly.schema_validator,
+                shape_checker=StepOutputShapeChecker(),
+                submission_collector=StepOutputSubmissionCollector(),
+            )
+        )
         process_handler = ProcessStepHandler(
             executor=ProcessStepExecutor(
                 execution_resolver=StepProcessExecutionResolver(
@@ -183,6 +193,8 @@ class FlowRunOrchestratorFactory:
         )
         step_handler_resolver = StepHandlerResolver(handlers={
             "agent": agent_handler,
+            "metric": agent_handler,
+            "exception": agent_handler,
             "script": process_handler,
             "command": process_handler,
             "delegate": delegate_handler,
@@ -204,6 +216,8 @@ class FlowRunOrchestratorFactory:
             StepBatchRunnerRegistration("delegate", "session", session_delegate_batch),
             StepBatchRunnerRegistration("delegate", "subagent", single_delegate_batch),
             StepBatchRunnerRegistration("agent", "", single_agent_batch),
+            StepBatchRunnerRegistration("metric", "", single_agent_batch),
+            StepBatchRunnerRegistration("exception", "", single_agent_batch),
             StepBatchRunnerRegistration("script", "", single_process_batch),
             StepBatchRunnerRegistration("command", "", single_process_batch),
         ])

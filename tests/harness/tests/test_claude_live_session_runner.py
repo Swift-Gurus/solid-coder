@@ -15,6 +15,7 @@ if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
 from claude_live_session_runner import ClaudeLiveSessionRunner  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_session_request import LiveSessionRequest  # noqa: E402
 
 
@@ -90,6 +91,10 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
     def _request(self) -> LiveSessionRequest:
         return LiveSessionRequest(
             prompt="prompt",
+            artifact_scope=LiveSessionArtifactScope(
+                domain="runner",
+                scenario="claude",
+            ),
             project_root=Path("/project"),
             plugin_root=Path("/plugin"),
             model="model",

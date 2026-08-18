@@ -29,6 +29,7 @@ class ClaudeLiveSessionRunner(LiveSessionRunning):
         artifact_directory = self._artifact_directory_creator.create(
             request.project_root,
             "claude",
+            request.artifact_scope,
         )
         try:
             command = [

@@ -9,17 +9,19 @@ from harness.output_schema_prompt_annotating import OutputSchemaPromptAnnotating
 from harness.output_schema_resolving import OutputSchemaResolving
 from harness.path_building import PathBuilding
 from harness.prompt_content_resolving import PromptContentResolving
+from harness.rule_declaration import RuleDeclaration
 from harness.script_file_resolving import ScriptFileResolving
 from harness.step_collection_uses_resolving import StepCollectionUsesResolving
 from harness.step_declaration_mapping import StepDeclarationMapping
 from harness.step_source_collecting import StepSourceCollecting
 from harness.step_source_annotating import StepSourceAnnotating
+from harness.structured_model_decoding import StructuredModelDecoding
 
 
 """
 solid-name: FlowDefinitionResolver
 solid-category: service
-solid-spec: [SPEC-030, SPEC-035]
+solid-spec: [SPEC-030, SPEC-035, SPEC-039]
 solid-description: Runs the ordered workflow composition and resource-resolution pipeline with source provenance.
 """
 class FlowDefinitionResolver:
@@ -39,6 +41,7 @@ class FlowDefinitionResolver:
         schema_resolver: OutputSchemaResolving,
         prompt_annotator: OutputSchemaPromptAnnotating,
         step_mapper: StepDeclarationMapping,
+        rule_decoder: StructuredModelDecoding[RuleDeclaration],
     ) -> None:
         self._config_extractor = config_extractor
         self._condition_parser = condition_parser
@@ -53,6 +56,7 @@ class FlowDefinitionResolver:
         self._schema_resolver = schema_resolver
         self._prompt_annotator = prompt_annotator
         self._step_mapper = step_mapper
+        self._rule_decoder = rule_decoder
 
     def resolve(self, raw: dict, path: str, search_paths: list[str]) -> FlowDef:
         resolved_source_path = self._path_builder.build(path)
@@ -106,4 +110,9 @@ class FlowDefinitionResolver:
             source_path=source_path,
             sources=sources,
             workflow_ids=[workflow_id, *inclusion.workflow_ids],
+            rule=(
+                self._rule_decoder.decode(raw["rule"], "workflow rule declaration")
+                if raw.get("rule") is not None
+                else None
+            ),
         )

@@ -9,7 +9,7 @@ from harness.step_building import StepBuilding
 """
 solid-name: FlowDefinitionAssembler
 solid-category: service
-solid-spec: [SPEC-030, SPEC-035, SPEC-037]
+solid-spec: [SPEC-030, SPEC-035, SPEC-037, SPEC-039]
 solid-description: Expands opaque group dependencies and builds the immutable executable workflow model.
 """
 class FlowDefinitionAssembler:
@@ -48,4 +48,5 @@ class FlowDefinitionAssembler:
             source_path=definition.source_path,
             sources=definition.sources,
             workflow_ids=definition.workflow_ids,
+            rule=definition.rule,
         )

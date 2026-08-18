@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from live_session_artifact_scope import LiveSessionArtifactScope
+
 
 """
 solid-name: LiveSessionRequest
@@ -15,6 +17,7 @@ solid-description: Carries the prompt, model, timeout, project, plugin, MCP, and
 class LiveSessionRequest:
 
     prompt: str
+    artifact_scope: LiveSessionArtifactScope
     project_root: Path
     plugin_root: Path
     model: str

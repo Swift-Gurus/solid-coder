@@ -32,6 +32,7 @@ for _d in (_MCP_SERVER, _MCP_HEALTH_CONFIG, _TEST_DIR, _HARNESS_DIR):
 from claude_test_base import ClaudeTestBase  # noqa: E402
 from harness_factory import HookUtilsTomlLoader  # noqa: E402
 from hook_utils import solid_coder_project_dir  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_session_request import LiveSessionRequest  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
 from model_profile_environment import model_profile_environment  # noqa: E402
@@ -107,6 +108,10 @@ class TestFlowTransitionGateE2ELive(ClaudeTestBase, unittest.TestCase):
         ).load(self.MODEL_PROFILE)
         request = LiveSessionRequest(
             prompt=_build_prompt(flow_file, self.parent_session_id),
+            artifact_scope=LiveSessionArtifactScope(
+                domain="flow-engine",
+                scenario="transition-gate",
+            ),
             project_root=_PROJECT_ROOT,
             plugin_root=_PROJECT_ROOT,
             model=profile.llm["model"],

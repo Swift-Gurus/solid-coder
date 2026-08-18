@@ -10,7 +10,7 @@ from harness.workflow_catalog import WorkflowCatalog
 solid-name: ReviewPolicyTargetValidator
 solid-category: service
 solid-spec: [SPEC-039]
-solid-description: Rejects project review-policy records that target unknown rules or unsupported scoring capabilities.
+solid-description: Rejects project review-policy records that target workflows outside the enrolled review-rule catalog.
 """
 class ReviewPolicyTargetValidator(ReviewPolicyTargetValidating):
 
@@ -27,8 +27,4 @@ class ReviewPolicyTargetValidator(ReviewPolicyTargetValidating):
             if source is None or source.rule is None:
                 raise self._error_factory.create(
                     f"Review policy targets unknown rule workflow '{override.workflow_id}'"
-                )
-            if override.metrics:
-                raise self._error_factory.create(
-                    f"Rule workflow '{override.workflow_id}' does not declare engine scoring"
                 )

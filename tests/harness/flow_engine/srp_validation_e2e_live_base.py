@@ -1,178 +1,147 @@
-"""Defines the backend-neutral live SRP workflow contract."""
+"""Defines the backend-neutral live SRP workflow assertions."""
 
 from __future__ import annotations
 
 import json
 import sys
-import unittest
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import ClassVar
 
 _HARNESS_DIR = Path(__file__).resolve().parents[1]
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
-_MCP_HEALTH_CONFIG = _MCP_SERVER / "health" / "config"
-for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
+for _directory in (_HARNESS_DIR, _MCP_SERVER):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from live_session_running import LiveSessionRunning  # noqa: E402
-from mcp_config_builder import build_mcp_config  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from expectation_loader import ExpectationLoader  # noqa: E402
+from harness.review_result import ReviewResult  # noqa: E402
+from harness.rule_review_result import RuleReviewResult  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
+from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase  # noqa: E402
+from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
+from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
+from review_unit_workflow_parameters import ReviewUnitWorkflowParameters  # noqa: E402
+
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 _FIXTURE = _PROJECT_ROOT / "tests" / "principles" / "SRP" / "fixtures" / "fixture-1.swift"
 _EXPECTATION = _PROJECT_ROOT / "tests" / "principles" / "SRP" / "expectations" / "fixture-1.json"
-_UNIT_NAME = "ProductCatalog"
-_ALLOWED_TOOLS = (
-    "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
-    "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
-    "mcp__solid-coder-pipeline__flow_status"
-)
-_EXPECTED_STEP_OUTPUTS = {
-    "measure_verbs": ("verb_count", "verb_evidence", 6),
-    "measure_cohesion": ("cohesion_groups", "cohesion_evidence", 2),
-    "measure_stakeholders": ("stakeholder_count", "stakeholder_evidence", 2),
-}
+_EXPECTED_STEP_IDS = [
+    "verb_count",
+    "cohesion_groups",
+    "stakeholder_count",
+]
+_EXPECTED_STEP_VALUES = [6, 2, 2]
 
 
 """
 solid-name: SRPValidationE2ELiveBase
 solid-category: test-support
-solid-spec: [SPEC-034]
-solid-description: Runs the same exact SRP workflow assertions through any model-profile-backed live session.
+solid-spec: [SPEC-034, SPEC-039]
+solid-description: Supplies the SRP scenario and exact rule-result assertions to the shared live workflow E2E contract.
 """
-class SRPValidationE2ELiveBase(unittest.TestCase, ABC):
+class SRPValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
 
-    __test__ = False
-    MODEL_PROFILE: ClassVar[str]
-    FLOW_START_TOOL: ClassVar[str]
+    PROJECT_ROOT = _PROJECT_ROOT
 
     @property
-    @abstractmethod
-    def parent_session_id(self) -> str:
-        raise NotImplementedError
-
-    def live_session_runner(self) -> LiveSessionRunning:
-        raise NotImplementedError
-
-    def setUp(self) -> None:
-        runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
-        if runs_dir.exists():
-            for pointer in runs_dir.glob("active*.json"):
-                pointer.unlink(missing_ok=True)
-
-    def test_fixture_completes_with_exact_metrics_and_findings(self) -> None:
-        runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
-        before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
-        params = {
-            "code": _FIXTURE.read_text(encoding="utf-8"),
-            "file_path": str(_FIXTURE),
-            "unit_name": _UNIT_NAME,
-            "unit_kind": "class",
-            "timestamp": "2026-08-02T20:00:00Z",
-        }
-        parent_session_id = self.parent_session_id
-        prompt = (
-            f"# spawned-by: {parent_session_id}\n\n"
-            f'Call {self.FLOW_START_TOOL} with flow="srp_validation" and params equal to this JSON. '
-            "Drive every returned step with flow_next until the flow reaches done. Do not edit files: "
-            f"{json.dumps(params)}"
-        )
-        profile = ModelProfileLoader(
-            project_root=_PROJECT_ROOT,
-            toml_loader=HookUtilsTomlLoader(),
-        ).load(self.MODEL_PROFILE)
-        request = LiveSessionRequest(
-            prompt=prompt,
-            project_root=_PROJECT_ROOT,
-            plugin_root=_PROJECT_ROOT,
-            model=profile.llm["model"],
-            timeout=profile.llm["timeout"],
-            allowed_tools=_ALLOWED_TOOLS,
-            mcp_config=build_mcp_config(_PROJECT_ROOT),
+    def scenario(self) -> LiveWorkflowScenario:
+        return LiveWorkflowScenario(
+            workflow_id="solid-srp-review",
+            parameters=ReviewUnitWorkflowParameters(
+                review_unit=_FIXTURE.read_text(encoding="utf-8"),
+            ),
+            artifact_scope=LiveSessionArtifactScope(
+                domain="review",
+                scenario="srp",
+            ),
         )
 
-        with model_profile_environment(profile.profile_path):
-            session_result = self.live_session_runner().run(request)
-
-        after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
-        new_logs = after - before
-        self.assertTrue(
-            new_logs,
-            "No flow event log was created. "
-            f"Session output: {session_result.final_output}",
-        )
-        events_path = max(new_logs, key=lambda path: path.stat().st_mtime)
+    def assert_workflow(self, run: PreservedLiveWorkflowRun) -> None:
         events = [
             json.loads(line)
-            for line in events_path.read_text(encoding="utf-8").splitlines()
+            for line in (run.run_directory / "events.jsonl").read_text().splitlines()
             if line.strip()
         ]
-        self._assert_events(events, session_result.session_id, parent_session_id)
-
-    def _assert_events(
-        self,
-        events: list[dict],
-        child_session_id: str,
-        parent_session_id: str,
-    ) -> None:
-        completed_steps = [event for event in events if event.get("event") == "step_completed"]
-        metric_steps = completed_steps[:-1]
-        score_event = completed_steps[-1]
-
         self.assertEqual(events[-1]["event"], "run_completed")
         self.assertFalse(
             {event.get("event") for event in events}
             & {"step_attempt_failed", "step_rejected", "run_failed"}
         )
-        self.assertEqual({event["step_id"] for event in metric_steps}, set(_EXPECTED_STEP_OUTPUTS))
-        self.assertEqual(score_event["step_id"], "score_results")
-        metric_outputs = {event["step_id"]: event["outputs"] for event in metric_steps}
-        for step_id, expectation in _EXPECTED_STEP_OUTPUTS.items():
-            metric_name, evidence_name, expected_value = expectation
-            outputs = metric_outputs[step_id]
-            self.assertEqual(outputs[metric_name], expected_value)
-            self.assertEqual(len(outputs[evidence_name]), expected_value)
+
+        completed_steps = [
+            event for event in events if event.get("event") == "step_completed"
+        ]
+        self.assertEqual(
+            {event["step_id"] for event in completed_steps},
+            {*_EXPECTED_STEP_IDS, "classify_exception"},
+        )
+        for step_id, expected_value in zip(
+            _EXPECTED_STEP_IDS,
+            _EXPECTED_STEP_VALUES,
+        ):
+            completed = next(
+                event for event in completed_steps if event["step_id"] == step_id
+            )
+            self.assertEqual(completed["outputs"]["value"], expected_value)
+            self.assertTrue(
+                completed["outputs"]["additional_info"]["reasoning"]
+            )
+            self.assertTrue(completed["outputs"]["additional_info"]["evidence"])
+        exception_step = next(
+            event
+            for event in completed_steps
+            if event["step_id"] == "classify_exception"
+        )
+        self.assertFalse(exception_step["outputs"]["is_exception"])
 
         recorded_sessions = [
             event for event in events if event.get("event") == "session_step_recorded"
         ]
         self.assertEqual(
             {event["instance_id"] for event in recorded_sessions},
-            {"measure_verbs-1", "measure_cohesion-1", "measure_stakeholders-1", "score_results-1"},
+            {
+                "verb_count-1",
+                "cohesion_groups-1",
+                "stakeholder_count-1",
+                "classify_exception-1",
+            },
         )
-        model_session_ids = {
-            event.get("session_id")
-            for event in recorded_sessions
-            if event.get("session_id") != "engine"
-        }
-        self.assertNotEqual(child_session_id, parent_session_id)
-        self.assertEqual(model_session_ids, {child_session_id})
+        self._assert_review_result(run.run_directory)
 
-        scored_unit = score_event["outputs"]["scored_review"]["results"][0]["files"][0]["units"][0]
-        scored_metrics = {
-            name: value["value"]
-            for name, value in scored_unit["metrics"]["SRP"].items()
-        }
-        self.assertEqual(
-            scored_metrics,
-            {"verb_count": 6, "cohesion_groups": 2, "stakeholder_count": 2},
+    def _assert_review_result(self, run_directory: Path) -> None:
+        review_directory = run_directory / "results" / "review"
+        aggregate = ReviewResult.model_validate_json(
+            (review_directory / "result.json").read_text()
         )
-        actual_findings = {
-            (scored_unit["unit_name"], violation["rule_id"], violation["severity"])
-            for violation in scored_unit["violations"]
-        }
-        expected_entries = json.loads(_EXPECTATION.read_text(encoding="utf-8"))["findings"]
-        expected_findings = {
-            (entry["unit_name"], entry["metric_id"], entry["severity"])
-            for entry in expected_entries
-        }
-        self.assertEqual(actual_findings, expected_findings)
-        for entry in expected_entries:
-            for metric_name, expected_value in entry.get("metrics", {}).items():
-                self.assertEqual(scored_metrics[metric_name], expected_value)
+        self.assertEqual(aggregate.workflow_id, "solid-srp-review")
+        self.assertEqual(aggregate.severity, "SEVERE")
+        self.assertEqual(len(aggregate.rule_results), 1)
+
+        result = aggregate.rule_results[0]
+        preserved_rule_result = RuleReviewResult.model_validate_json(
+            (
+                review_directory
+                / result.workflow_id
+                / result.rule_instance_id
+                / "result.json"
+            ).read_text()
+        )
+        self.assertEqual(preserved_rule_result, result)
+        self.assertEqual(result.workflow_id, "solid-srp-review")
+        self.assertEqual(result.severity, "SEVERE")
+        self.assertEqual(result.scoring_authority, "mcp")
+        self.assertFalse(result.exception.is_exception)
+
+        expectation = ExpectationLoader().load(_EXPECTATION)
+        self.assertEqual(
+            [metric.metric_id for metric in result.metrics],
+            [finding.metric_id for finding in expectation.findings],
+        )
+        self.assertEqual(
+            [metric.severity for metric in result.metrics],
+            [finding.severity for finding in expectation.findings],
+        )
+        self.assertEqual(
+            [metric.value for metric in result.metrics],
+            _EXPECTED_STEP_VALUES,
+        )

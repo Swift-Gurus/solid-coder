@@ -33,6 +33,8 @@ As a client, I want to group workflow packages under folders such as `review`, `
 - Each package is a directory containing `workflow.yaml`; it may also contain `prompts/`, `schemas/`, `steps/`, and other package-private files.
 - `workflow.yaml` declares a required stable `id` matching `^[a-z0-9]+(?:[-/][a-z0-9]+)*$`.
 - Package discovery is recursive, so category-folder depth is not prescribed.
+- Discovery only indexes workflows for lookup; it never starts, schedules, or sequences workflows merely because they exist beneath a catalog root or share a category folder.
+- One `flow_start(<id-or-path>)` selects exactly one top-level workflow. Execution reaches only that workflow's authored steps and its explicitly declared `include`/`uses` dependencies.
 - Moving a package within the same workflow root does not change its ID or break `flow_start(<id>)` and workflow-to-workflow references.
 - Duplicate IDs within one root fail discovery with an error naming every conflicting package; filesystem traversal order never decides the winner.
 
@@ -198,6 +200,7 @@ For migration, the existing `type: script` plus command-array form remains accep
 
 - Workflow discovery and selection belong to a catalog/resolver abstraction; the DAG runner must remain unaware of package roots and precedence.
 - The catalog is built once per start operation and indexes only `workflow.yaml` files below package roots plus direct YAML files in legacy roots.
+- Catalog construction has no bulk-execution semantics. Running several workflows requires explicit caller starts or an authored parent/domain workflow that selects them through its own contract.
 - Workflow IDs are the public API. Category directory names are presentation and ownership structure only.
 - Workflow IDs are globally unique within the combined client/plugin catalog. This spec provides neither replacement nor merging for duplicate IDs.
 - Existing `flow_start` and `flow_next` wire contracts remain compatible; only accepted flow identifiers and snapshot provenance expand.
@@ -236,6 +239,7 @@ For migration, the existing `type: script` plus command-array form remains accep
 ## Definition of Done
 
 - [x] Recursive package discovery and stable IDs are implemented.
+- [x] Discovery is lookup-only: a selected workflow executes its reachable authored graph without implicitly running sibling catalog entries.
 - [x] Client, bundled, and legacy sources share one collision-checked catalog with no override behavior.
 - [x] Workflow-ID composition reuses SPEC-027 alias and cycle semantics.
 - [x] Package-relative resources resolve from their declaring file and remain package-contained.

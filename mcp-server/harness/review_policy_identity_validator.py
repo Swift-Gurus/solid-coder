@@ -9,7 +9,7 @@ from harness.unique_string_validating import UniqueStringValidating
 solid-name: ReviewPolicyIdentityValidator
 solid-category: service
 solid-spec: [SPEC-039]
-solid-description: Traverses review policy scopes and delegates rule, metric, measurement, and band identity checks.
+solid-description: Traverses review policy scopes and delegates rule and metric identity checks.
 """
 class ReviewPolicyIdentityValidator(ReviewPolicyValidating):
 
@@ -26,13 +26,3 @@ class ReviewPolicyIdentityValidator(ReviewPolicyValidating):
                 [metric.id for metric in rule.metrics],
                 "review policy metric ID",
             )
-            for metric in rule.metrics:
-                self._identity_validator.validate(
-                    [measurement.name for measurement in metric.measurements],
-                    "review policy measurement name",
-                )
-                for measurement in metric.measurements:
-                    self._identity_validator.validate(
-                        [band.severity.value for band in measurement.bands],
-                        "review policy band severity",
-                    )

@@ -8,6 +8,7 @@ from typing import Annotated, ClassVar, Optional, Union
 from pydantic import AliasChoices, ConfigDict, Field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.metric_declaration import MetricDeclaration
 from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
 
@@ -15,7 +16,7 @@ from harness.step_output_reference import StepOutputReference
 """
 solid-name: StepDeclaration
 solid-category: model
-solid-spec: [SPEC-027, SPEC-035, SPEC-037]
+solid-spec: [SPEC-027, SPEC-035, SPEC-037, SPEC-039]
 solid-description: Represents an unvalidated workflow step for later validation.
 """
 @dataclass(frozen=True)
@@ -45,3 +46,4 @@ class StepDeclaration:
     timeout_seconds: Optional[int] = None
     max_attempts: int = 3
     source_file: Optional[str] = None
+    metric: Optional[MetricDeclaration] = None

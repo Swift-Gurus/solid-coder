@@ -16,11 +16,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
+from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
 from harness.project_review_policy_audit import ProjectReviewPolicyAudit
 from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
+from harness.metric_override_applier import MetricOverrideApplier
+from harness.ordered_string_collector import OrderedStringCollector
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_metric_override import ReviewPolicyMetricOverride
 from harness.review_policy_rule_override import ReviewPolicyRuleOverride
@@ -54,8 +58,14 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
                 origin_resolver=RuleWorkflowOriginResolver(
                     lambda: self.project_root
                 ),
+                metric_plan_resolver=EffectiveMetricPlanResolver(
+                    override_applier=MetricOverrideApplier(),
+                    error_factory=error_factory,
+                ),
                 error_factory=error_factory,
             ),
+            flow_loader=FlowEngineAssemblyFactory().build().flow_loader,
+            search_path_collector=OrderedStringCollector(),
         )
 
     def test_project_policy_enablement_takes_precedence_over_workflow_default(self):
@@ -174,7 +184,7 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
         with self.assertRaisesRegex(FlowValidationError, "missing-rule"):
             self.sut.build(WorkflowCatalog([]), resolution)
 
-    def test_rejects_metric_override_for_rule_without_scoring_contract(self):
+    def test_rejects_policy_that_disables_the_only_metric(self):
         source = self._source(
             root=self.plugin_root,
             workflow_id="solid-srp-review",
@@ -186,7 +196,12 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
                 rules=[
                     ReviewPolicyRuleOverride(
                         workflow_id="solid-srp-review",
-                        metrics=[ReviewPolicyMetricOverride(id="SRP-1")],
+                        metrics=[
+                            ReviewPolicyMetricOverride(
+                                id="TEST-1",
+                                enabled=False,
+                            )
+                        ],
                     )
                 ],
             ),
@@ -197,14 +212,29 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
             authored_content="version: 1\n",
         )
 
-        with self.assertRaisesRegex(FlowValidationError, "does not declare engine scoring"):
+        with self.assertRaisesRegex(FlowValidationError, "at least one enabled metric"):
             self.sut.build(WorkflowCatalog([source]), resolution)
 
     def _source(self, root: Path, workflow_id: str, content: str) -> WorkflowSource:
         package_root = root / workflow_id
         package_root.mkdir(parents=True)
         entry_path = package_root / "workflow.yaml"
-        entry_path.write_text(content)
+        entry_path.write_text(
+            content
+            + "name: Test Rule\n"
+            + "max_turns: 5\n"
+            + "steps:\n"
+            + "  - id: measure\n"
+            + "    type: metric\n"
+            + "    metric_id: TEST-1\n"
+            + "    prompt: Measure the unit.\n"
+            + "    value: {type: integer}\n"
+            + "    scoring:\n"
+            + "      severe: {operator: greater_than, value: 1}\n"
+            + "  - id: classify_exception\n"
+            + "    type: exception\n"
+            + "    prompt: Classify the exception.\n"
+        )
         return WorkflowSource(
             id=workflow_id,
             entry_path=entry_path,

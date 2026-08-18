@@ -1,142 +1,141 @@
 """
 solid-name: test_srp_validation_flow
 solid-category: integration-test
-solid-spec: [SPEC-034]
-solid-description: Verifies the project SRP validation flow resolves by bare name, measures three independent metrics with supporting evidence, interpolates recorded values, rejects malformed output, and completes with a scorer response.
+solid-spec: [SPEC-039]
+solid-description: Verifies packaged SRP observation, validation, scoring, and audit behavior through the flow engine.
 """
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
+from harness.review_result import ReviewResult  # noqa: E402
+from harness.rule_review_result import RuleReviewResult  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
 
-_PARAMS = {
-    "code": "final class Example {\n    func load() {}\n    func save() {}\n}",
-    "file_path": "/tmp/Example.swift",
-    "unit_name": "Example",
-    "unit_kind": "class",
-    "timestamp": "2026-08-02T20:00:00Z",
-}
-_MEASUREMENTS = {
-    "measure_verbs": {
-        "verb_count": 2,
-        "verb_evidence": [
-            {"method": "load", "action": "load", "rationale": "Loads data."},
-            {"method": "save", "action": "save", "rationale": "Saves data."},
-        ],
-    },
-    "measure_cohesion": {
-        "cohesion_groups": 1,
-        "cohesion_evidence": [
-            {"methods": ["load", "save"], "variables": ["storage"], "rationale": "Shared storage."},
-        ],
-    },
-    "measure_stakeholders": {
-        "stakeholder_count": 1,
-        "stakeholder_evidence": [
-            {"stakeholder": "data", "methods": ["load", "save"], "rationale": "Data access."},
-        ],
-    },
+
+_REVIEW_UNIT = """final class Example {
+    func load() {}
+    func save() {}
+}"""
+_METRIC_VALUES = {
+    "verb_count": 6,
+    "cohesion_groups": 2,
+    "stakeholder_count": 2,
 }
 
 
-@unittest.skip(
-    "Obsolete flat-file SRP flow POC; executable review rules use workflow packages."
-)
 class TestSRPValidationFlow(unittest.TestCase):
-
-    def setUp(self):
+    def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        runs_root = Path(temporary.name)
-        (runs_root / "runs").mkdir()
-        environment = patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(_PROJECT_ROOT)})
-        environment.start()
-        self.addCleanup(environment.stop)
+        self.project_root = Path(temporary.name)
         self.sut = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: runs_root),
+            base_dir_resolver=RunsBaseDirResolver(
+                project_dir_fn=lambda: self.project_root
+            ),
             plugin_root=_PROJECT_ROOT,
-            session_reader=StaticSessionIdReader("spec-034-test"),
+            session_reader=StaticSessionIdReader("spec-039-test"),
         ).build()
-        self.runs_dir = runs_root / "runs"
 
-    def _start(self):
-        return self.sut.flow_start("srp_validation", _PARAMS)
-
-    def _submit_measurements(self, start_result):
-        outputs = {
-            step.instance_id: _MEASUREMENTS[step.step_id]
-            for step in start_result.steps
-        }
-        return self.sut.flow_next(outputs)
-
-    def test_bare_name_start_returns_three_independent_metric_steps(self):
-        result = self._start()
+    def test_starts_three_metrics_and_one_exception_without_scoring_step(self) -> None:
+        started = self._start()
 
         self.assertEqual(
-            {step.step_id for step in result.steps},
-            {"measure_verbs", "measure_cohesion", "measure_stakeholders"},
+            {step.step_id for step in started.steps},
+            {
+                "verb_count",
+                "cohesion_groups",
+                "stakeholder_count",
+                "classify_exception",
+            },
+        )
+        self.assertNotIn("score_results", {step.step_id for step in started.steps})
+        self.assertTrue(all(_REVIEW_UNIT in step.prompt for step in started.steps))
+
+    def test_rejects_unaudited_measurement_before_scoring(self) -> None:
+        started = self._start()
+        metric = next(step for step in started.steps if step.step_id == "verb_count")
+
+        rejected = self.sut.flow_next({metric.instance_id: {"value": 6}})
+
+        self.assertEqual(rejected.status, "ready")
+        rejected_metric = next(
+            step for step in rejected.steps if step.step_id == "verb_count"
+        )
+        self.assertIn("additional_info", rejected_metric.rejection_reason)
+
+    def test_mcp_scores_all_metrics_and_publishes_audited_result(self) -> None:
+        started = self._start()
+
+        completed = self.sut.flow_next(
+            {
+                step.instance_id: self._output_for(step.step_id)
+                for step in started.steps
+            }
         )
 
-    def test_each_metric_prompt_contains_the_exact_supplied_source(self):
-        result = self._start()
+        self.assertEqual(completed.status, "done")
+        review_directory = (
+            self.project_root / "runs" / started.run_id / "results" / "review"
+        )
+        result_path = (
+            review_directory
+            / "solid-srp-review"
+            / started.run_id
+            / "result.json"
+        )
+        result = RuleReviewResult.model_validate_json(result_path.read_text())
+        aggregate = ReviewResult.model_validate_json(
+            (review_directory / "result.json").read_text()
+        )
+        self.assertEqual(result.workflow_id, "solid-srp-review")
+        self.assertEqual(result.rule_instance_id, started.run_id)
+        self.assertEqual(result.severity, "SEVERE")
+        self.assertEqual(result.scoring_authority, "mcp")
+        self.assertFalse(result.exception.is_exception)
+        self.assertEqual(aggregate.rule_results, [result])
+        self.assertEqual(
+            [metric.metric_id for metric in result.metrics],
+            ["SRP-1", "SRP-2", "SRP-3"],
+        )
+        self.assertEqual(
+            [metric.value for metric in result.metrics],
+            [6, 2, 2],
+        )
+        self.assertEqual(
+            [metric.severity for metric in result.metrics],
+            ["SEVERE", "SEVERE", "SEVERE"],
+        )
 
-        self.assertTrue(all(_PARAMS["code"] in step.prompt for step in result.steps))
+    def _start(self):
+        return self.sut.flow_start(
+            "solid-srp-review",
+            {"review_unit": _REVIEW_UNIT},
+        )
 
-    def test_non_integer_metric_is_rejected_without_making_scoring_ready(self):
-        start = self._start()
-        verb_step = next(step for step in start.steps if step.step_id == "measure_verbs")
-
-        result = self.sut.flow_next({verb_step.instance_id: {"verb_count": "two"}})
-
-        self.assertEqual(result.status, "ready")
-        self.assertNotIn("score_results", {step.step_id for step in result.steps})
-        rejected = next(step for step in result.steps if step.step_id == "measure_verbs")
-        self.assertIn("not of type 'integer'", rejected.rejection_reason)
-
-    def test_all_measurements_make_scoring_ready_with_recorded_values_and_metadata(self):
-        start = self._start()
-
-        result = self._submit_measurements(start)
-
-        self.assertEqual([step.step_id for step in result.steps], ["score_results"])
-        prompt = result.steps[0].prompt
-        for expected in ("value: 2", "value: 1", _PARAMS["file_path"], _PARAMS["unit_name"], _PARAMS["timestamp"]):
-            self.assertIn(expected, prompt)
-
-    def test_malformed_scorer_response_is_rejected_and_scoring_remains_ready(self):
-        scoring = self._submit_measurements(self._start())
-
-        result = self.sut.flow_next({scoring.steps[0].instance_id: {"scored_review": {"error": "bad"}}})
-
-        self.assertEqual(result.status, "ready")
-        self.assertEqual([step.step_id for step in result.steps], ["score_results"])
-        self.assertIn("'results' is a required property", result.steps[0].rejection_reason)
-
-    def test_valid_scorer_response_completes_and_records_all_outputs(self):
-        start = self._start()
-        scoring = self._submit_measurements(start)
-        scored_review = {"results": [{"files": [{"units": [{"violations": []}]}]}]}
-
-        result = self.sut.flow_next({scoring.steps[0].instance_id: {"scored_review": scored_review}})
-
-        self.assertEqual(result.status, "done")
-        events_path = self.runs_dir / start.run_id / "events.jsonl"
-        events = [json.loads(line) for line in events_path.read_text().splitlines()]
-        completed = [event for event in events if event["event"] == "step_completed"]
-        self.assertEqual(len(completed), 4)
+    def _output_for(self, step_id: str) -> dict:
+        additional_info = {
+            "reasoning": f"Measured {step_id} from the supplied source.",
+            "evidence": "Example lines 1-4",
+        }
+        if step_id == "classify_exception":
+            return {
+                "is_exception": False,
+                "additional_info": additional_info,
+            }
+        return {
+            "value": _METRIC_VALUES[step_id],
+            "additional_info": additional_info,
+        }
 
 
 if __name__ == "__main__":

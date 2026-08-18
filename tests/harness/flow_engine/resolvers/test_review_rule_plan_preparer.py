@@ -47,7 +47,15 @@ class TestReviewRulePlanPreparer(unittest.TestCase):
                 "rule: {}\n"
                 "steps:\n"
                 "  - id: inspect\n"
+                "    type: metric\n"
+                "    metric_id: SRP-1\n"
                 "    prompt: Inspect the supplied unit.\n"
+                "    value: {type: integer, minimum: 0}\n"
+                "    scoring:\n"
+                "      severe: {operator: greater_than, value: 5}\n"
+                "  - id: classify_exception\n"
+                "    type: exception\n"
+                "    prompt: Classify the supplied unit.\n"
             )
 
             plan = make_review_rule_plan_preparer(

@@ -13,7 +13,7 @@ from harness.step_output_reference import StepOutputReference
 """
 solid-name: StepBuilder
 solid-category: service
-solid-spec: [SPEC-027, SPEC-030, SPEC-035, SPEC-037]
+solid-spec: [SPEC-027, SPEC-030, SPEC-035, SPEC-037, SPEC-039]
 solid-description: Constructs executable workflow-step specifications from validated workflow declarations.
 """
 class StepBuilder:
@@ -34,4 +34,5 @@ class StepBuilder:
             args=cast(Optional[list[str]], declaration.args),
             timeout_seconds=cast(Optional[int], declaration.timeout_seconds),
             max_attempts=cast(int, declaration.max_attempts),
+            metric=declaration.metric,
         )

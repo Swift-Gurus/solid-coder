@@ -77,6 +77,7 @@ from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolv
 from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
+from harness.metric_declaration import MetricDeclaration
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
@@ -97,6 +98,7 @@ from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.prompt_content_resolver import PromptContentResolver
 from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.resolved_output_schema_applier import ResolvedOutputSchemaApplier
 from harness.resolved_outputs_applier import ResolvedOutputsApplier
 from harness.resolved_prompt_applier import ResolvedPromptApplier
@@ -104,6 +106,12 @@ from harness.resolved_script_file_applier import ResolvedScriptFileApplier
 from harness.resolved_step_resources_applier import ResolvedStepResourcesApplier
 from harness.resolved_step_resources_factory import ResolvedStepResourcesFactory
 from harness.run_state_reconstructor_factory import make_run_state_reconstructor
+from harness.rule_declaration import RuleDeclaration
+from harness.rule_step_contract_resolver import RuleStepContractResolver
+from harness.rule_validating_flow_definition_validator import (
+    RuleValidatingFlowDefinitionValidator,
+)
+from harness.rule_workflow_validator import RuleWorkflowValidator
 from harness.schema_resolving import SchemaResolver
 from harness.schema_validator import SchemaValidator
 from harness.script_file_resolver import ScriptFileResolver
@@ -413,48 +421,62 @@ class FlowEngineAssemblyFactory:
                 step_mapper=StepDeclarationFactory(
                     condition_parser=condition_parser,
                     for_each_parser=for_each_reference_parser,
-                ),
-            ),
-            definition_validator=FlowDefinitionValidator(
-                step_shape_validator=StepShapeValidator(
-                    registrations=[
-                        StepFieldValidatorRegistration(
-                            "agent",
-                            AgentStepShapeValidator(error_factory),
+                    rule_step_contract_resolver=RuleStepContractResolver(
+                        metric_decoder=PydanticModelDecoder(
+                            model_type=MetricDeclaration,
+                            error_factory=error_factory,
                         ),
-                        StepFieldValidatorRegistration(
-                            "script",
-                            ScriptStepShapeValidator(
-                                ScriptStepValueValidator(error_factory),
-                                error_factory,
-                            ),
-                        ),
-                        StepFieldValidatorRegistration(
-                            "command",
-                            CommandStepShapeValidator(
-                                CommandStepValueValidator(error_factory),
-                                error_factory,
-                            ),
-                        ),
-                        StepFieldValidatorRegistration(
-                            "delegate",
-                            DelegateStepShapeValidator(error_factory),
-                        ),
-                    ],
-                    default=AgentStepShapeValidator(error_factory),
-                ),
-                command_allowlist_resolver=allowlist_resolver,
-                command_allowlist_validator=CommandAllowlistValidator(
-                    executable_resolver=StepExecutableResolver(),
-                    error_factory=error_factory,
-                ),
-                dependency_validator=dependency_validator,
-                include_validator=include_structure_validator,
-                for_each_validator=ForEachCollectionValidator(
-                    target_validator=ForEachReferenceValidator(
-                        reachability_checker=StepDependencyReachabilityChecker(),
+                        error_factory=error_factory,
                     ),
                 ),
+                rule_decoder=PydanticModelDecoder(
+                    model_type=RuleDeclaration,
+                    error_factory=error_factory,
+                ),
+            ),
+            definition_validator=RuleValidatingFlowDefinitionValidator(
+                delegate=FlowDefinitionValidator(
+                    step_shape_validator=StepShapeValidator(
+                        registrations=[
+                            StepFieldValidatorRegistration(
+                                "agent",
+                                AgentStepShapeValidator(error_factory),
+                            ),
+                            StepFieldValidatorRegistration(
+                                "script",
+                                ScriptStepShapeValidator(
+                                    ScriptStepValueValidator(error_factory),
+                                    error_factory,
+                                ),
+                            ),
+                            StepFieldValidatorRegistration(
+                                "command",
+                                CommandStepShapeValidator(
+                                    CommandStepValueValidator(error_factory),
+                                    error_factory,
+                                ),
+                            ),
+                            StepFieldValidatorRegistration(
+                                "delegate",
+                                DelegateStepShapeValidator(error_factory),
+                            ),
+                        ],
+                        default=AgentStepShapeValidator(error_factory),
+                    ),
+                    command_allowlist_resolver=allowlist_resolver,
+                    command_allowlist_validator=CommandAllowlistValidator(
+                        executable_resolver=StepExecutableResolver(),
+                        error_factory=error_factory,
+                    ),
+                    dependency_validator=dependency_validator,
+                    include_validator=include_structure_validator,
+                    for_each_validator=ForEachCollectionValidator(
+                        target_validator=ForEachReferenceValidator(
+                            reachability_checker=StepDependencyReachabilityChecker(),
+                        ),
+                    ),
+                ),
+                rule_validator=RuleWorkflowValidator(error_factory),
             ),
             definition_assembler=FlowDefinitionAssembler(
                 group_dependency_expander=group_dependency_expander,

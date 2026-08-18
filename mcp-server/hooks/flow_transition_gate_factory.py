@@ -50,6 +50,7 @@ class FlowTransitionGateFactory:
         from harness.path_checking import PathChecker
         from harness.run_completion_checker import RunCompletionChecker
         from harness.run_context_builder import RunContextBuilder
+        from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
         from harness.run_snapshot_resolver import RunSnapshotResolver
         from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
@@ -83,6 +84,7 @@ class FlowTransitionGateFactory:
             exhaustion_evaluator=AttemptExhaustionEvaluator(),
             exhaustion_message_builder=AttemptExhaustionMessageBuilder(),
             timeout_message_builder=RunTimeoutMessageBuilder(),
+            finalizer=RuleRunFinalizerFactory().build(assembly.event_appender),
         )
         attempt_failure_handler = AttemptFailureHandler(
             event_appender=assembly.event_appender,

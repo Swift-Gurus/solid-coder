@@ -5,6 +5,7 @@ from typing import Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from harness.effective_metric_plan_entry import EffectiveMetricPlanEntry
 from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
 from harness.rule_workflow_origin import RuleWorkflowOrigin
 from harness.workflow_default_rule_decision import WorkflowDefaultRuleDecision
@@ -29,3 +30,4 @@ class EffectiveRulePlanEntry(BaseModel):
         WorkflowDefaultRuleDecision,
         ProjectPolicyRuleDecision,
     ]
+    metrics: list[EffectiveMetricPlanEntry] = Field(default_factory=list)

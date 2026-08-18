@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from live_session_artifact_scope import LiveSessionArtifactScope
+
 
 """
 solid-name: LiveSessionArtifactDirectoryCreator
@@ -14,7 +16,14 @@ solid-description: Creates uniquely named backend-specific directories for durab
 """
 class LiveSessionArtifactDirectoryCreator:
 
-    def create(self, project_root: Path, backend: str) -> Path:
+    def create(
+        self,
+        project_root: Path,
+        backend: str,
+        scope: LiveSessionArtifactScope,
+    ) -> Path:
+        self._validate_component(scope.domain)
+        self._validate_component(scope.scenario)
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         artifact_directory = (
             project_root
@@ -23,8 +32,21 @@ class LiveSessionArtifactDirectoryCreator:
             / "test"
             / backend
             / "e2e"
-            / "live-session"
+            / scope.domain
+            / scope.scenario
             / f"{timestamp}-{uuid.uuid4().hex[:8]}"
         )
         artifact_directory.mkdir(parents=True)
         return artifact_directory
+
+    @staticmethod
+    def _validate_component(component: str) -> None:
+        if (
+            not component
+            or component in {".", ".."}
+            or Path(component).name != component
+        ):
+            raise ValueError(
+                "Live-session artifact scope components must be non-empty "
+                "single directory names"
+            )
