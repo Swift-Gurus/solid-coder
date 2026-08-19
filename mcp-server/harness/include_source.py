@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
 
@@ -23,3 +24,4 @@ class IncludeSource:
     label: str | None = None
     source_path: str | None = None
     workflow_id: str | None = None
+    rule_workflow: IncludedRuleWorkflow | None = None

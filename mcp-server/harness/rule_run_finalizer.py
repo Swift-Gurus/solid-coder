@@ -2,12 +2,13 @@
 
 from pathlib import Path
 
-from harness.flow_def import FlowDef
+from harness.rule_execution_finalizing import RuleExecutionFinalizing
+from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_observation_collecting import RuleObservationCollecting
 from harness.rule_result_event_publishing import RuleResultEventPublishing
+from harness.rule_review_result import RuleReviewResult
 from harness.rule_review_result_building import RuleReviewResultBuilding
 from harness.rule_review_result_persisting import RuleReviewResultPersisting
-from harness.run_completion_finalizing import RunCompletionFinalizing
 from harness.run_state import RunState
 
 
@@ -15,9 +16,9 @@ from harness.run_state import RunState
 solid-name: RuleRunFinalizer
 solid-category: service
 solid-spec: [SPEC-039]
-solid-description: Coordinates deterministic scoring and audit publication for a completed review-rule run.
+solid-description: Produces and publishes the deterministic scored result for one completed rule execution instance.
 """
-class RuleRunFinalizer(RunCompletionFinalizing):
+class RuleRunFinalizer(RuleExecutionFinalizing):
     def __init__(
         self,
         observation_collector: RuleObservationCollecting,
@@ -34,16 +35,15 @@ class RuleRunFinalizer(RunCompletionFinalizing):
         self,
         run_directory: Path,
         events_path: str,
-        flow_def: FlowDef,
+        instance: RuleExecutionInstance,
         run_state: RunState,
-    ) -> None:
-        if flow_def.rule is None:
-            return
-        observations = self._observation_collector.collect(flow_def, run_state)
+    ) -> RuleReviewResult:
+        observations = self._observation_collector.collect(instance, run_state)
         result = self._result_builder.build(
-            flow_def.workflow_id,
-            run_directory.name,
+            instance.workflow.workflow_id,
+            instance.instance_id,
             observations,
         )
         self._result_persister.persist(run_directory, result)
         self._event_publisher.publish(events_path, result)
+        return result

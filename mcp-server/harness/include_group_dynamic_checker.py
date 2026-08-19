@@ -17,4 +17,5 @@ class IncludeGroupDynamicChecker(IncludeGroupDynamicChecking):
             or group.for_each is not None
             or group.input_bindings
             or group.condition is not None
+            or group.rule_workflow is not None
         )

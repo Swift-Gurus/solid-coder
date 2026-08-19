@@ -18,6 +18,7 @@ from harness.models import FlowValidationError
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
+from harness.workflow_persister_factory import make_workflow_persister
 
 
 class TestRuleWorkflowLoading(unittest.TestCase):
@@ -100,6 +101,81 @@ class TestRuleWorkflowLoading(unittest.TestCase):
         self.assertIn('"evidence"', exception.prompt)
 
     def test_expands_all_marked_rules_in_stable_id_order(self) -> None:
+        flow = self._load_composite_rules()
+
+        self.assertEqual(
+            [step.id for step in flow.steps],
+            [
+                "rule_reviews.a-rule.measure",
+                "rule_reviews.a-rule.classify_exception",
+                "rule_reviews.z-rule.measure",
+                "rule_reviews.z-rule.classify_exception",
+            ],
+        )
+        self.assertEqual(
+            [group.alias for group in flow.alias_groups],
+            ["rule_reviews.a-rule", "rule_reviews.z-rule"],
+        )
+        self.assertEqual(
+            [
+                group.rule_workflow.workflow_id
+                for group in flow.alias_groups
+                if group.rule_workflow is not None
+            ],
+            ["a-rule", "z-rule"],
+        )
+        self.assertEqual(
+            flow.workflow_ids,
+            ["composite-review", "a-rule", "z-rule"],
+        )
+        conditions = [group.condition for group in flow.alias_groups]
+        self.assertEqual(
+            [condition.conditions[0].expected for condition in conditions],
+            [[".py"], [".swift"]],
+        )
+
+    def test_preserves_included_rule_ownership_through_snapshot_reload(self) -> None:
+        flow = self._load_composite_rules()
+        run_directory = self.directory / "run"
+        run_directory.mkdir()
+
+        make_workflow_persister().persist(run_directory, flow)
+        reloaded = self.loader.load(str(run_directory / "workflow.yaml"), [])
+
+        self.assertEqual(
+            [
+                group.rule_workflow.workflow_id
+                for group in reloaded.alias_groups
+                if group.rule_workflow is not None
+            ],
+            ["a-rule", "z-rule"],
+        )
+
+    def test_rejects_invalid_included_rule_under_its_own_identity(self) -> None:
+        self._write_package(
+            "invalid-rule",
+            """
+            id: invalid-rule
+            name: Invalid Rule
+            max_turns: 5
+            rule: {}
+            steps:
+              - id: classify_exception
+                type: exception
+                prompt: Classify the exception.
+            """,
+        )
+
+        with self.assertRaisesRegex(
+            FlowValidationError,
+            "Rule workflow 'invalid-rule' must declare at least one 'metric' step",
+        ):
+            self.loader.load(
+                self._write_composite(),
+                [str(self.directory)],
+            )
+
+    def _load_composite_rules(self):
         self._write_package(
             "z-rule",
             self._rule_source("z-rule", ".swift", "swiftui"),
@@ -108,7 +184,13 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             "a-rule",
             self._rule_source("a-rule", ".py", "test"),
         )
-        parent = self._write_package(
+        return self.loader.load(
+            self._write_composite(),
+            [str(self.directory)],
+        )
+
+    def _write_composite(self) -> str:
+        return self._write_package(
             "review",
             """
             id: composite-review
@@ -123,29 +205,6 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             """,
         )
 
-        flow = self.loader.load(parent, [str(self.directory)])
-
-        self.assertEqual(
-            [step.id for step in flow.steps],
-            [
-                "rule_reviews.a-rule.inspect",
-                "rule_reviews.z-rule.inspect",
-            ],
-        )
-        self.assertEqual(
-            [group.alias for group in flow.alias_groups],
-            ["rule_reviews.a-rule", "rule_reviews.z-rule"],
-        )
-        self.assertEqual(
-            flow.workflow_ids,
-            ["composite-review", "a-rule", "z-rule"],
-        )
-        conditions = [group.condition for group in flow.alias_groups]
-        self.assertEqual(
-            [condition.conditions[0].expected for condition in conditions],
-            [[".py"], [".swift"]],
-        )
-
     def _rule_source(self, workflow_id: str, extension: str, tag: str) -> str:
         return f"""
         id: {workflow_id}
@@ -158,8 +217,19 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             tags:
               included: [{tag}]
         steps:
-          - id: inspect
-            prompt: Inspect the unit.
+          - id: measure
+            type: metric
+            metric_id: {workflow_id.upper()}-1
+            prompt: Measure the unit.
+            value:
+              type: boolean
+            scoring:
+              severe:
+                operator: equals
+                value: true
+          - id: classify_exception
+            type: exception
+            prompt: Classify the exception.
         """
 
     def test_rejects_rule_without_a_metric_step(self) -> None:
@@ -257,7 +327,7 @@ class TestRuleWorkflowLoading(unittest.TestCase):
                 type: exception
                 prompt: Classify the exception.
             """,
-            "duplicate metric_id 'TEST-1'",
+            "Duplicate metric_id in rule workflow duplicate-metric: 'TEST-1'",
         )
 
     def test_rejects_non_scalar_metric_value_schema(self) -> None:

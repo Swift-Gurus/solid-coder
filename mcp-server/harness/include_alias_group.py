@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.step_output_reference import StepOutputReference
 from harness.workflow_input_binding import WorkflowInputBinding
 
@@ -23,3 +24,4 @@ class IncludeAliasGroup:
     for_each: StepOutputReference | None = None
     input_bindings: list[WorkflowInputBinding] = field(default_factory=list)
     condition: ConditionDeclaration | None = None
+    rule_workflow: IncludedRuleWorkflow | None = None

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_source import IncludeSource
+from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
@@ -62,4 +63,12 @@ class WorkflowIncludeSourceResolver:
             label=workflow_id,
             source_path=source_path,
             workflow_id=workflow_id,
+            rule_workflow=(
+                IncludedRuleWorkflow(
+                    workflow_id=workflow_id,
+                    declaration=source.rule,
+                )
+                if source.rule is not None
+                else None
+            ),
         )

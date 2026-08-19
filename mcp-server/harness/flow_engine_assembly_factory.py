@@ -50,6 +50,9 @@ from harness.for_each_reference_validator import ForEachReferenceValidator
 from harness.group_dependency_expander import GroupDependencyExpander
 from harness.include_alias_collision_validator import IncludeAliasCollisionValidator
 from harness.include_alias_group_entry_parser import IncludeAliasGroupEntryParser
+from harness.include_alias_group_for_each_parser import (
+    IncludeAliasGroupForEachParser,
+)
 from harness.include_alias_group_finder import IncludeAliasGroupFinder
 from harness.include_alias_group_snapshot_parser import IncludeAliasGroupSnapshotParser
 from harness.include_cycle_guard import IncludeCycleGuard
@@ -75,6 +78,7 @@ from harness.included_workflow_dependencies_resolver import (
 from harness.included_workflow_step_identity_resolver import (
     IncludedWorkflowStepIdentityResolver,
 )
+from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
@@ -123,6 +127,15 @@ from harness.rule_validating_flow_definition_validator import (
     RuleValidatingFlowDefinitionValidator,
 )
 from harness.rule_workflow_validator import RuleWorkflowValidator
+from harness.rule_workflow_validation_plan_validator import (
+    RuleWorkflowValidationPlanValidator,
+)
+from harness.rule_workflow_validation_planner import (
+    RuleWorkflowValidationPlanner,
+)
+from harness.rule_workflow_validation_scope_validator import (
+    RuleWorkflowValidationScopeValidator,
+)
 from harness.rule_match_condition_compiler import RuleMatchConditionCompiler
 from harness.rule_selection_condition_compiler import RuleSelectionConditionCompiler
 from harness.rule_set_include_reference import RuleSetIncludeReference
@@ -441,7 +454,13 @@ class FlowEngineAssemblyFactory:
                             workflow_expression_parser
                         ),
                         condition_parser=condition_parser,
-                        for_each_parser=for_each_reference_parser,
+                        for_each_parser=IncludeAliasGroupForEachParser(
+                            for_each_reference_parser
+                        ),
+                        rule_workflow_decoder=PydanticModelDecoder(
+                            model_type=IncludedRuleWorkflow,
+                            error_factory=error_factory,
+                        ),
                         error_factory=error_factory,
                     )
                 ),
@@ -533,8 +552,15 @@ class FlowEngineAssemblyFactory:
                     ),
                 ),
                 rule_validator=RuleWorkflowValidator(
-                    match_validator=RuleMatchValidator(error_factory),
-                    error_factory=error_factory,
+                    planner=RuleWorkflowValidationPlanner(),
+                    plan_validator=RuleWorkflowValidationPlanValidator(
+                        scope_validator=RuleWorkflowValidationScopeValidator(
+                            match_validator=RuleMatchValidator(error_factory),
+                            identity_validator=UniqueStringValidator(error_factory),
+                            error_factory=error_factory,
+                        ),
+                        error_factory=error_factory,
+                    ),
                 ),
             ),
             definition_assembler=FlowDefinitionAssembler(

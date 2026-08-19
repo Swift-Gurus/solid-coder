@@ -36,6 +36,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             for_each=source.runtime.for_each,
             input_bindings=source.runtime.input_bindings,
             condition=source.runtime.condition,
+            rule_workflow=source.rule_workflow,
         )
         alias_groups = [
             group

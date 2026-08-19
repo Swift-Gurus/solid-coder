@@ -1,8 +1,8 @@
 """Collects typed observations from completed executable rule steps."""
 
 from harness.completed_step_outputs_resolving import CompletedStepOutputsResolving
-from harness.flow_def import FlowDef
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_observation import RuleMetricObservation
 from harness.rule_observation_collecting import RuleObservationCollecting
@@ -27,13 +27,13 @@ class RuleObservationCollector(RuleObservationCollecting):
 
     def collect(
         self,
-        flow_def: FlowDef,
+        instance: RuleExecutionInstance,
         run_state: RunState,
     ) -> RuleObservations:
         metrics: list[RuleMetricObservation] = []
         exception: RuleExceptionDecision | None = None
 
-        for step in flow_def.steps:
+        for step in instance.steps:
             if step.metric is not None:
                 outputs = self._outputs_resolver.resolve(step.id, run_state)
                 metrics.append(
@@ -56,6 +56,6 @@ class RuleObservationCollector(RuleObservationCollecting):
 
         if exception is None:
             raise self._error_factory.create(
-                f"Rule workflow '{flow_def.workflow_id}' has no completed exception observation"
+                f"Rule workflow '{instance.workflow.workflow_id}' has no completed exception observation"
             )
         return RuleObservations(metrics=metrics, exception=exception)

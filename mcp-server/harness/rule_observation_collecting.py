@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from harness.flow_def import FlowDef
+from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_observations import RuleObservations
 from harness.run_state import RunState
 
@@ -16,6 +16,6 @@ solid-description: Contract for collecting a rule's validated outputs into typed
 class RuleObservationCollecting(Protocol):
     def collect(
         self,
-        flow_def: FlowDef,
+        instance: RuleExecutionInstance,
         run_state: RunState,
     ) -> RuleObservations: ...

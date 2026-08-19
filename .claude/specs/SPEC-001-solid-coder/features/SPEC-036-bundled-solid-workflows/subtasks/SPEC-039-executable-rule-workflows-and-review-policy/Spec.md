@@ -14,7 +14,7 @@ blocking: [SPEC-036]
 
 Completed:
 
-- `rule: {}` plus optional `category` and legacy required tags is parsed as typed rule metadata; migration to the included/excluded matcher below remains.
+- `rule: {}` plus optional `category` and typed `match` selectors is parsed and validated; exact file-extension, typed unit-kind, and tag included/excluded selectors compile into reusable workflow conditions.
 - Rule discovery reuses the recursive project/plugin workflow catalog, its stable workflow IDs, provenance, and collision rejection.
 - Rule enrollment is explicit to the review domain. Catalog discovery does not automatically run workflows.
 - The singular `{project}/.solid-coder/policies/review.yaml` is loaded as typed policy data. An absent file produces an explicit default resolution; malformed policy fails with its source path.
@@ -26,13 +26,16 @@ Completed:
 - The bundled `solid-srp-review` package replaces the flat SRP POC's model-scoring step with three metric steps, one exception step, and MCP finalization.
 - The locked SRP fixture passes the same exact metric/result assertions through both Codex and Claude live profiles without reading `rule.md` for execution.
 - One backend-neutral live workflow contract accepts typed scenarios, recursively preserves the complete canonical run, and organizes model evidence by backend, domain, and scenario.
+- The explicit `include: { rules: all }` source expands marked catalog rules in stable workflow-ID order without auto-running ordinary workflows.
+- Included rule identity survives qualification, runtime materialization, durable workflow snapshots, and replay; composite validation evaluates each child rule's real metric and exception steps under its own workflow ID.
+- Composite rule runs deterministically finalize and persist each materialized rule instance, then publish one ordered aggregate review result with worst-severity selection.
 
 Remaining:
 
 - Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
 - Consume normalized review targets from SPEC-041 and exact extension, typed unit kind, and auditable tags/evidence from SPEC-040; the review-domain matcher materializes ordered rule/unit instances internally.
-- Replace the legacy flat rule-tag list with the typed `match` declaration and its reusable included/excluded selectors.
-- Implement the explicit `rules: all` include source and its ordered policy/applicability expansion.
+- Replace the remaining legacy flat rule-tag callers with the typed `match` declaration.
+- Integrate the effective policy with `rules: all` materialization so policy disablement and scoring overrides are applied before child sessions start.
 - Complete replay projection and idempotent result publication from snapshots/events, including skipped-rule and retry audit identities.
 - Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders.
 

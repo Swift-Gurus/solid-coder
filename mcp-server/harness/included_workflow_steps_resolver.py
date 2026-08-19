@@ -71,6 +71,7 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             condition=group.condition,
             inputs=child_inputs,
             steps=step_identities,
+            rule_workflow=group.rule_workflow,
         )
         return [
             replace(

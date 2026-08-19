@@ -6,10 +6,13 @@ from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
-from harness.for_each_reference_parsing import ForEachReferenceParsing
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_entry_parsing import IncludeAliasGroupEntryParsing
-from harness.step_output_reference import StepOutputReference
+from harness.include_alias_group_for_each_parsing import (
+    IncludeAliasGroupForEachParsing,
+)
+from harness.included_rule_workflow import IncludedRuleWorkflow
+from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_input_binding_snapshot_parsing import (
     WorkflowInputBindingSnapshotParsing,
 )
@@ -27,12 +30,14 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         self,
         binding_parser: WorkflowInputBindingSnapshotParsing,
         condition_parser: ConditionParsing,
-        for_each_parser: ForEachReferenceParsing,
+        for_each_parser: IncludeAliasGroupForEachParsing,
+        rule_workflow_decoder: StructuredModelDecoding[IncludedRuleWorkflow],
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._binding_parser = binding_parser
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
+        self._rule_workflow_decoder = rule_workflow_decoder
         self._error_factory = error_factory
 
     def parse(self, raw: object) -> IncludeAliasGroup:
@@ -70,7 +75,7 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
             alias=alias,
             member_ids=member_ids,
             depends_on=depends_on,
-            for_each=self._parse_for_each(alias, raw_for_each),
+            for_each=self._for_each_parser.parse(alias, raw_for_each),
             input_bindings=[
                 self._binding_parser.parse(binding, alias) for binding in bindings
             ],
@@ -79,13 +84,12 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
                 if raw_condition is not None
                 else None
             ),
+            rule_workflow=(
+                self._rule_workflow_decoder.decode(
+                    raw["rule_workflow"],
+                    f"workflow snapshot alias group '{alias}' rule ownership",
+                )
+                if raw.get("rule_workflow") is not None
+                else None
+            ),
         )
-
-    def _parse_for_each(
-        self,
-        alias: str,
-        raw: object,
-    ) -> StepOutputReference | None:
-        if raw is None:
-            return None
-        return self._for_each_parser.parse(alias, raw)
