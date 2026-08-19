@@ -30,7 +30,9 @@ from harness.review_policy_metric_override import ReviewPolicyMetricOverride
 from harness.review_policy_rule_override import ReviewPolicyRuleOverride
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_enablement_resolver import RuleEnablementResolver
+from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_plan_entry_builder import RulePlanEntryBuilder
+from harness.rule_selection import RuleSelection
 from harness.rule_workflow_origin import RuleWorkflowOrigin
 from harness.rule_workflow_origin_resolver import RuleWorkflowOriginResolver
 from harness.sha256_content_hasher import Sha256ContentHasher
@@ -135,7 +137,18 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
         project_source = self._source(
             root=self.project_root / ".solid-coder" / "workflows",
             workflow_id="acme-accessibility",
-            content="id: acme-accessibility\nrule:\n  tags: [swiftui]\n",
+            content=(
+                "id: acme-accessibility\n"
+                "rule:\n"
+                "  match:\n"
+                "    tags:\n"
+                "      included: [swiftui]\n"
+            ),
+            rule=RuleDeclaration(
+                match=RuleMatchDeclaration(
+                    tags=RuleSelection(included=["swiftui"]),
+                )
+            ),
         )
         plugin_source = self._source(
             root=self.plugin_root,
@@ -166,6 +179,10 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
         self.assertEqual(
             client.workflow_hash,
             hashlib.sha256(project_source.entry_path.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(
+            client.match.tags.included,
+            ["swiftui"],
         )
 
     def test_rejects_policy_records_for_unknown_workflows(self):
@@ -215,7 +232,13 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
         with self.assertRaisesRegex(FlowValidationError, "at least one enabled metric"):
             self.sut.build(WorkflowCatalog([source]), resolution)
 
-    def _source(self, root: Path, workflow_id: str, content: str) -> WorkflowSource:
+    def _source(
+        self,
+        root: Path,
+        workflow_id: str,
+        content: str,
+        rule: RuleDeclaration | None = None,
+    ) -> WorkflowSource:
         package_root = root / workflow_id
         package_root.mkdir(parents=True)
         entry_path = package_root / "workflow.yaml"
@@ -239,7 +262,7 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
             id=workflow_id,
             entry_path=entry_path,
             package_root=package_root,
-            rule=RuleDeclaration(),
+            rule=rule or RuleDeclaration(),
         )
 
 

@@ -17,6 +17,8 @@ from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.rule_declaration import RuleDeclaration
+from harness.rule_match_declaration import RuleMatchDeclaration
+from harness.rule_selection import RuleSelection
 
 
 class TestPydanticModelDecoder(unittest.TestCase):
@@ -28,9 +30,19 @@ class TestPydanticModelDecoder(unittest.TestCase):
         )
 
     def test_decodes_the_configured_model_type(self):
-        rule = self.sut.decode({"tags": ["swift"]}, "workflow rule metadata")
+        rule = self.sut.decode(
+            {"match": {"tags": {"included": ["swift"]}}},
+            "workflow rule metadata",
+        )
 
-        self.assertEqual(rule, RuleDeclaration(tags=["swift"]))
+        self.assertEqual(
+            rule,
+            RuleDeclaration(
+                match=RuleMatchDeclaration(
+                    tags=RuleSelection(included=["swift"])
+                )
+            ),
+        )
 
     def test_wraps_pydantic_failures_in_the_domain_error(self):
         with self.assertRaisesRegex(

@@ -2,6 +2,7 @@
 
 from harness.flow_def import FlowDef
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.rule_match_validating import RuleMatchValidating
 from harness.rule_workflow_validating import RuleWorkflowValidating
 
 
@@ -12,7 +13,12 @@ solid-spec: [SPEC-039]
 solid-description: Validates rule enrollment, required observation steps, and unique metric identities.
 """
 class RuleWorkflowValidator(RuleWorkflowValidating):
-    def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
+    def __init__(
+        self,
+        match_validator: RuleMatchValidating,
+        error_factory: FlowValidationErrorCreating,
+    ) -> None:
+        self._match_validator = match_validator
         self._error_factory = error_factory
 
     def validate(self, definition: FlowDef) -> None:
@@ -28,6 +34,7 @@ class RuleWorkflowValidator(RuleWorkflowValidating):
                     "Metric and exception steps require a root 'rule' declaration"
                 )
             return
+        self._match_validator.validate(definition.rule.match)
         if not metric_steps:
             raise self._error_factory.create(
                 f"Rule workflow '{definition.workflow_id}' must declare at least one 'metric' step"

@@ -15,6 +15,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.rule_declaration import RuleDeclaration
+from harness.rule_match_declaration import RuleMatchDeclaration
+from harness.rule_selection import RuleSelection
 from harness.package_workflow_source_discoverer import PackageWorkflowSourceDiscoverer
 from harness.workflow_source import WorkflowSource
 from harness.workflow_package_catalog_document import WorkflowPackageCatalogDocument
@@ -50,7 +52,11 @@ class TestWorkflowSourceDiscoverer(unittest.TestCase):
                 name="ACME Quality",
                 max_turns=2,
                 steps=[object()],
-                rule=RuleDeclaration(tags=["swift"]),
+                rule=RuleDeclaration(
+                    match=RuleMatchDeclaration(
+                        tags=RuleSelection(included=["ui"]),
+                    )
+                ),
             )
             sut = PackageWorkflowSourceDiscoverer(
                 file_loader=StubConfigFileLoader({"id": "unvalidated-id"}),
@@ -70,7 +76,7 @@ class TestWorkflowSourceDiscoverer(unittest.TestCase):
                 )
             ],
         )
-        self.assertEqual(sources[0].rule.tags, ["swift"])
+        self.assertEqual(sources[0].rule.match.tags.included, ["ui"])
 
 
 if __name__ == "__main__":

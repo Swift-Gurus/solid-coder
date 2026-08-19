@@ -26,6 +26,10 @@ from harness.condition_value_matcher import ConditionValueMatcher  # noqa: E402
 from harness.interpolation_error import InterpolationError  # noqa: E402
 from harness.not_condition import NotCondition  # noqa: E402
 from harness.resolved_condition_value import ResolvedConditionValue  # noqa: E402
+from harness.strict_collection_value_matcher import (  # noqa: E402
+    StrictCollectionValueMatcher,
+)
+from harness.strict_value_comparator import StrictValueComparator  # noqa: E402
 from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
 from harness.workflow_expression import WorkflowExpression  # noqa: E402
 
@@ -109,6 +113,31 @@ class TestConditionEvaluator(unittest.TestCase):
         self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.IN, [False, True]), _CONTEXT).matched)
         self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_IN, [1, 2]), _CONTEXT).matched)
 
+    def test_collection_containment_is_type_strict(self) -> None:
+        evaluator = StubExpressionEvaluator((
+            ResolvedExpression("item.value", ["swiftui", True]),
+        ))
+        sut = self._sut(evaluator)
+
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.CONTAINS, "swiftui"),
+                _CONTEXT,
+            ).matched
+        )
+        self.assertFalse(
+            sut.evaluate(
+                self._comparison(ConditionOperator.CONTAINS, 1),
+                _CONTEXT,
+            ).matched
+        )
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.NOT_CONTAINS, "generated"),
+                _CONTEXT,
+            ).matched
+        )
+
     def test_exists_distinguishes_absent_from_present_null(self) -> None:
         present = self._sut(StubExpressionEvaluator((ResolvedExpression("item.value", None),)))
         absent = self._sut(StubExpressionEvaluator(()))
@@ -162,12 +191,16 @@ class TestConditionEvaluator(unittest.TestCase):
         )
 
     def _sut(self, expression_evaluator: StubExpressionEvaluator) -> ConditionEvaluator:
+        comparator = StrictValueComparator()
         reference_resolver = ConditionReferenceResolver(
             expression_evaluator=expression_evaluator,
         )
         comparison_runtime = ConditionComparator(
             reference_resolver=reference_resolver,
-            value_matcher=ConditionValueMatcher(),
+            value_matcher=ConditionValueMatcher(
+                comparator=comparator,
+                collection_matcher=StrictCollectionValueMatcher(comparator),
+            ),
         )
         return ConditionEvaluator(
             declaration_evaluator=ConditionDeclarationEvaluator(),

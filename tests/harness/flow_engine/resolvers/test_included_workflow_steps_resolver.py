@@ -9,6 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.include_alias_group import IncludeAliasGroup
 from harness.included_workflow_dependencies_resolver import (
     IncludedWorkflowDependenciesResolver,
@@ -21,6 +23,7 @@ from harness.included_workflow_step_identity_resolver import (
 )
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.models import StepDef
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
@@ -122,6 +125,47 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
                 "Inspect {{params.review_unit.name}}.",
                 "Report {{params.review_unit.name}}.",
             ],
+        )
+
+    def test_preserves_include_and_child_conditions_at_their_own_scopes(self) -> None:
+        include_condition = ComparisonCondition(
+            reference=WorkflowExpression("item.file_extension"),
+            operator=ConditionOperator.EQUALS,
+            expected=".swift",
+        )
+        child_condition = ComparisonCondition(
+            reference=WorkflowExpression("item.unit_kind"),
+            operator=ConditionOperator.EQUALS,
+            expected="struct",
+        )
+        sut = IncludedWorkflowStepsResolver(
+            input_resolver=StubInputResolver(),
+            identity_resolver=IncludedWorkflowStepIdentityResolver(),
+            dependency_resolver=IncludedWorkflowDependenciesResolver(),
+        )
+
+        steps = sut.resolve(
+            group=IncludeAliasGroup(
+                alias="review",
+                member_ids=["review.inspect"],
+                condition=include_condition,
+            ),
+            templates=[
+                StepDef(
+                    id="review.inspect",
+                    prompt="Inspect the unit.",
+                    condition=child_condition,
+                )
+            ],
+            iteration_index=0,
+            item=ReviewUnit(name="Dashboard"),
+            context=WorkflowRunContext(),
+        )
+
+        self.assertEqual(steps[0].condition, child_condition)
+        self.assertEqual(
+            steps[0].workflow_instance.condition,
+            include_condition,
         )
 
 

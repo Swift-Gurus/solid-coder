@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.models import FlowValidationError
 from harness.rule_declaration import RuleDeclaration
+from harness.rule_match_declaration import RuleMatchDeclaration
+from harness.rule_selection import RuleSelection
 
 
 class TestRuleWorkflowLoading(unittest.TestCase):
@@ -34,7 +36,11 @@ class TestRuleWorkflowLoading(unittest.TestCase):
                 max_turns: 10
                 rule:
                   category: solid
-                  tags: [swift]
+                  match:
+                    file_extensions:
+                      included: [.swift]
+                    tags:
+                      included: [ui]
                 steps:
                   - id: verb_count
                     type: metric
@@ -60,7 +66,13 @@ class TestRuleWorkflowLoading(unittest.TestCase):
 
         self.assertEqual(
             flow.rule,
-            RuleDeclaration(category="solid", tags=["swift"]),
+            RuleDeclaration(
+                category="solid",
+                match=RuleMatchDeclaration(
+                    file_extensions=RuleSelection(included=[".swift"]),
+                    tags=RuleSelection(included=["ui"]),
+                ),
+            ),
         )
         metric = flow.steps[0]
         self.assertEqual(metric.metric.metric_id, "SRP-1")
@@ -87,6 +99,69 @@ class TestRuleWorkflowLoading(unittest.TestCase):
         self.assertIn('"reasoning"', exception.prompt)
         self.assertIn('"evidence"', exception.prompt)
 
+    def test_expands_all_marked_rules_in_stable_id_order(self) -> None:
+        self._write_package(
+            "z-rule",
+            self._rule_source("z-rule", ".swift", "swiftui"),
+        )
+        self._write_package(
+            "a-rule",
+            self._rule_source("a-rule", ".py", "test"),
+        )
+        parent = self._write_package(
+            "review",
+            """
+            id: composite-review
+            name: Composite Review
+            max_turns: 20
+            steps:
+              - include:
+                  rules: all
+                as: rule_reviews
+                with:
+                  review_unit: "{{params.review_unit}}"
+            """,
+        )
+
+        flow = self.loader.load(parent, [str(self.directory)])
+
+        self.assertEqual(
+            [step.id for step in flow.steps],
+            [
+                "rule_reviews.a-rule.inspect",
+                "rule_reviews.z-rule.inspect",
+            ],
+        )
+        self.assertEqual(
+            [group.alias for group in flow.alias_groups],
+            ["rule_reviews.a-rule", "rule_reviews.z-rule"],
+        )
+        self.assertEqual(
+            flow.workflow_ids,
+            ["composite-review", "a-rule", "z-rule"],
+        )
+        conditions = [group.condition for group in flow.alias_groups]
+        self.assertEqual(
+            [condition.conditions[0].expected for condition in conditions],
+            [[".py"], [".swift"]],
+        )
+
+    def _rule_source(self, workflow_id: str, extension: str, tag: str) -> str:
+        return f"""
+        id: {workflow_id}
+        name: {workflow_id}
+        max_turns: 5
+        rule:
+          match:
+            file_extensions:
+              included: [{extension}]
+            tags:
+              included: [{tag}]
+        steps:
+          - id: inspect
+            prompt: Inspect the unit.
+        """
+
     def test_rejects_rule_without_a_metric_step(self) -> None:
         self._assert_invalid(
             """
@@ -100,6 +175,32 @@ class TestRuleWorkflowLoading(unittest.TestCase):
                 prompt: Classify the exception.
             """,
             "at least one 'metric' step",
+        )
+
+    def test_rejects_ambiguous_rule_match_before_execution(self) -> None:
+        self._assert_invalid(
+            """
+            id: ambiguous-match
+            name: Ambiguous Match
+            max_turns: 5
+            rule:
+              match:
+                tags:
+                  included: [test]
+                  excluded: [test]
+            steps:
+              - id: smell
+                type: metric
+                metric_id: TEST-1
+                prompt: Measure the smell.
+                value: {type: boolean}
+                scoring:
+                  severe: {operator: equals, value: true}
+              - id: classify_exception
+                type: exception
+                prompt: Classify the exception.
+            """,
+            "included and excluded",
         )
 
     def test_rejects_rule_without_exactly_one_exception_step(self) -> None:
@@ -211,6 +312,13 @@ class TestRuleWorkflowLoading(unittest.TestCase):
 
     def _write(self, source: str) -> str:
         path = self.directory / "workflow.yaml"
+        path.write_text(textwrap.dedent(source))
+        return str(path)
+
+    def _write_package(self, name: str, source: str) -> str:
+        package = self.directory / name
+        package.mkdir()
+        path = package / "workflow.yaml"
         path.write_text(textwrap.dedent(source))
         return str(path)
 

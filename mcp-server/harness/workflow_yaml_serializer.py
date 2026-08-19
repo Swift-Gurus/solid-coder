@@ -46,4 +46,11 @@ class WorkflowYamlSerializer(WorkflowYamlSerializing):
                 flow_def.steps[index].condition,
             )
 
+        serialized_groups = snapshot["alias_groups"]
+        for index in range(len(flow_def.alias_groups)):
+            self._condition_field_rewriter.rewrite(
+                serialized_groups[index],
+                flow_def.alias_groups[index].condition,
+            )
+
         return self._yaml_dumper.dump(snapshot)

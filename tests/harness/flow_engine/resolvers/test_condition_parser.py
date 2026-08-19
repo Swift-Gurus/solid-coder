@@ -42,6 +42,8 @@ class TestConditionParser(unittest.TestCase):
             ("not_equals", "swift", ConditionOperator.NOT_EQUALS),
             ("in", ["swift", "python"], ConditionOperator.IN),
             ("not_in", ["view", "test"], ConditionOperator.NOT_IN),
+            ("contains", "swiftui", ConditionOperator.CONTAINS),
+            ("not_contains", "generated", ConditionOperator.NOT_CONTAINS),
             ("exists", True, ConditionOperator.EXISTS),
         ]
 

@@ -4,7 +4,7 @@ feature: executable-rule-workflows-and-review-policy
 type: subtask
 status: in-progress
 parent: SPEC-036
-blocked-by: [SPEC-012, SPEC-035, SPEC-037, SPEC-040]
+blocked-by: [SPEC-012, SPEC-035, SPEC-037, SPEC-040, SPEC-041]
 blocking: [SPEC-036]
 ---
 
@@ -14,11 +14,11 @@ blocking: [SPEC-036]
 
 Completed:
 
-- `rule: {}` plus optional `category` and `tags` is parsed as typed rule metadata.
+- `rule: {}` plus optional `category` and legacy required tags is parsed as typed rule metadata; migration to the included/excluded matcher below remains.
 - Rule discovery reuses the recursive project/plugin workflow catalog, its stable workflow IDs, provenance, and collision rejection.
 - Rule enrollment is explicit to the review domain. Catalog discovery does not automatically run workflows.
 - The singular `{project}/.solid-coder/policies/review.yaml` is loaded as typed policy data. An absent file produces an explicit default resolution; malformed policy fails with its source path.
-- A stable effective plan records workflow origin, path, hash, category, tags, enablement, policy path/hash, and the authored/requested/effective enablement decision.
+- A stable effective plan records workflow origin, path, hash, category, authored applicability, enablement, policy path/hash, and the authored/requested/effective enablement decision.
 - Unknown rule IDs fail plan construction. The effective plan and verbatim authored policy are persisted before execution.
 - Typed `metric` and `exception` steps generate and validate the required scalar/boolean plus reasoning/evidence response contracts.
 - MCP deterministically scores validated metric observations, applies exception classification, and publishes typed metric, exception, and rule-result audit events plus normalized artifacts beneath `results/review/`.
@@ -30,7 +30,9 @@ Completed:
 Remaining:
 
 - Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
-- Consume the dedicated `source` MCP namespace from SPEC-040 for Git changes and explicit review targets. It supplies normalized files, units, and auditable language/framework/capability tags; the review-domain rule selector consumes that typed input and materializes ordered rule/unit instances internally.
+- Consume normalized review targets from SPEC-041 and exact extension, typed unit kind, and auditable tags/evidence from SPEC-040; the review-domain matcher materializes ordered rule/unit instances internally.
+- Replace the legacy flat rule-tag list with the typed `match` declaration and its reusable included/excluded selectors.
+- Implement the explicit `rules: all` include source and its ordered policy/applicability expansion.
 - Complete replay projection and idempotent result publication from snapshots/events, including skipped-rule and retry audit identities.
 - Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders.
 
@@ -38,7 +40,7 @@ Remaining:
 
 Replace review-time `rule.md` parsing with executable rule workflow packages. A root `rule` marker enrolls an otherwise ordinary workflow into the explicitly selected `solid-review` rule set. Rule authors declare what the model must measure and whether the inspected unit is an exception; MCP validates those answers, applies deterministic scoring, and publishes the normalized review result.
 
-Clients may add namespaced rule packages under the existing project workflow root and may optionally override enablement or scoring in one project review policy. They cannot replace bundled workflow IDs, prompts, schemas, tags, or executable resources.
+Clients may add namespaced rule packages under the existing project workflow root and may optionally override enablement or scoring in one project review policy. They cannot replace bundled workflow IDs, prompts, schemas, applicability matchers, or executable resources.
 
 V1 gate-affecting rules are metric-backed. A subjective or binary check is represented as a boolean metric, so the model never chooses severity. Advisory workflows without deterministic scoring remain ordinary explicitly invoked workflows and are not enrolled as gate-affecting rules by this contract.
 
@@ -46,7 +48,7 @@ V1 gate-affecting rules are metric-backed. A subjective or binary check is repre
 
 | | Detail |
 |---|---|
-| Input | Bundled and project `workflow.yaml` packages, normalized review files/units with MCP-detected tags, and optional `{project}/.solid-coder/policies/review.yaml` |
+| Input | Bundled and project `workflow.yaml` packages, normalized review files/units with exact extension, typed unit kind, MCP-detected tags/evidence, and optional `{project}/.solid-coder/policies/review.yaml` |
 | Output | A typed effective rule plan, validated metric and exception observations, deterministic decisions, one aggregate review result, and replayable audit evidence |
 | Consumers | `solid-review`; transitively `solid-gate-on-write` and `solid-refactor` |
 
@@ -60,8 +62,12 @@ As a workflow author, I want to express measurement prompts and simple severity 
 
 - A workflow is enrolled as a review rule only when its root declares `rule`.
 - `rule: {}` means enabled by default and applicable to every normalized review unit.
-- The only optional rule metadata fields are `category` and `tags`; unknown or duplicated identity fields are rejected.
-- Every declared tag must be present in the MCP-detected unit tags. Model output cannot add, remove, or change applicability tags.
+- The only optional rule metadata fields are `category` and `match`; unknown or duplicated identity fields are rejected.
+- `match` may select exact file extensions, unit kinds, and MCP-detected tags through the same `included`/`excluded` structure.
+- Missing `match` or a missing matcher dimension means everything in that dimension is included except explicitly excluded values.
+- Exclusion always wins. A value authored in both `included` and `excluded` is rejected before execution.
+- Included file extensions and unit kinds use any-match semantics because a file/unit has one value in each dimension. Included tags use all-required semantics because a unit may carry multiple tags. Any excluded tag makes the rule inapplicable.
+- Model output cannot add, remove, or change file identity, unit kind, tags, or applicability decisions.
 - Every executable V1 rule declares at least one `type: metric` step and exactly one `type: exception` step.
 - A metric step declares one stable `metric_id`, one prompt, one scalar value schema, and one or more deterministic severity bands.
 - Metric IDs are unique within a rule workflow and are the policy-addressable scoring coordinates.
@@ -91,8 +97,8 @@ As a review caller, I want one explicit review operation to select applicable ru
 - `solid-unit-review` declares one explicit `include: { rules: all }` extension point. It resolves every workflow marked with `rule:` from the snapshotted catalog; folder names do not enroll or activate workflows.
 - The rule-set include accepts the same runtime controls as an included workflow group and supplies the standard typed `review_unit` input to every enrolled rule.
 - `solid-review` normalizes one or many files into one ordered collection and uses the same `solid-file-review` `for_each` path for both cases.
-- MCP splits each file into normalized review units and tags, then materializes every enabled/applicable rule independently for each unit using the existing nested-workflow, retry, replay, and fan-in machinery.
-- A policy-disabled or tag-inapplicable rule starts no agent session and consumes no model turn.
+- MCP rejects file-inapplicable rules before unit fan-out, then materializes every enabled and unit-applicable rule independently for each remaining unit using the existing nested-workflow, retry, replay, and fan-in machinery.
+- A policy-disabled or matcher-inapplicable rule starts no agent session and consumes no model turn.
 - Results are ordered by file, unit, and stable workflow ID, independent of completion order.
 - Empty file/unit/rule collections complete through the existing empty fan-in behavior.
 
@@ -105,7 +111,7 @@ As a client, I want one small review policy to disable checks or tune thresholds
 - The only policy location is `{project}/.solid-coder/policies/review.yaml`.
 - Omitting the policy preserves workflow defaults.
 - A policy may enable/disable a rule, enable/disable a declared metric, or replace declared severity bands by workflow ID and metric ID.
-- Policy cannot change workflow identity, category, tags, prompts, steps, value schemas, resources, or outputs.
+- Policy cannot change workflow identity, category, match declaration, prompts, steps, value schemas, resources, or outputs.
 - Unknown workflow IDs, metric IDs, severities, operators, or unsupported value types fail before any model call.
 - Workflow defaults are applied first and the project policy second; project values take precedence only at explicitly authored override coordinates.
 - Disabling a metric is valid only if at least one metric remains enabled. A rule with no effective metrics is rejected before execution.
@@ -120,8 +126,8 @@ As a maintainer, I want to explain exactly what the model observed and what MCP 
 **Acceptance Criteria:**
 
 - Before the first rule executes, the run persists the resolved workflow snapshot, normalized review input, effective rule plan, optional verbatim review policy, and run metadata.
-- The effective plan includes workflow/resource hashes, origin, category/tags, effective metrics/bands, and every override decision.
-- Append-only events record enrollment, applicability, policy disablement, metric completion/failure, exception classification, scoring decisions, retries, and publication with file/unit/rule/step identities.
+- The effective plan includes workflow/resource hashes, origin, category/match declaration, effective metrics/bands, and every override decision.
+- Append-only events record enrollment, file-extension matching, unit-kind matching, tag matching, policy disablement, metric completion/failure, exception classification, scoring decisions, retries, and publication with file/unit/rule/step identities.
 - Metric events retain the validated value, reasoning, evidence, effective matching band, and resulting severity.
 - Exception events retain `is_exception`, reasoning, evidence, and the classification step identity.
 - Published results retain whether a decision was compliant, violating, or compliant-by-exception and identify MCP as the scoring authority.
@@ -139,12 +145,25 @@ The rule marker provides applicability metadata only:
 ```yaml
 rule:
   category: solid
-  tags:
-    - swiftui
+  match:
+    file_extensions:
+      included: [".swift"]
+    unit_kinds:
+      included: [class, struct]
+      excluded: [function]
+    tags:
+      included: [ui]
+      excluded: [test, generated]
 ```
 
 - `category` is optional reporting metadata.
-- `tags` is an optional list of MCP-owned applicability requirements. Missing and empty mean always applicable.
+- `match` is optional applicability metadata. Its only fields are `file_extensions`, `unit_kinds`, and `tags`.
+- Each matcher dimension uses the same optional `included` and `excluded` fields. Missing `included` means all values minus `excluded`; missing `excluded` means no exclusions.
+- File extensions are normalized lowercase exact suffixes with a leading dot. They are not inferred language names.
+- Unit kinds are closed typed values including `class`, `struct`, `enum`, `protocol`, `extension`, `actor`, `function`, and `document`.
+- Tags express every remaining semantic classification, including UI/framework, concurrency, test, generated, specification, and client-defined concepts.
+- Included extensions/unit kinds are alternatives; all included tags are required. Any excluded value wins and produces an auditable skip decision.
+- Empty included/excluded lists normalize to the same behavior as absent lists. Duplicate values and included/excluded intersections fail validation.
 - `rule` forbids unknown fields and is decoded once into a typed declaration.
 - Package examples, scripts, and other resources are loaded only through explicit workflow references.
 - Materialization does not rewrite authored prompts.
@@ -357,15 +376,15 @@ steps:
       review_unit: "{{params.review_unit}}"
 ```
 
-`rules: all` means every workflow marked with root `rule:` in the run's snapshotted catalog. It does not mean every workflow beneath a folder named `review`. The resolver expands those catalog members into ordinary child workflow instances, applies effective policy enablement and exact all-required tag matching before any rule step starts, and preserves disabled/inapplicable members as typed skip decisions. A rule's authored workflow-level `when` remains an additional intrinsic condition after policy and tag eligibility.
+`rules: all` means every workflow marked with root `rule:` in the run's snapshotted catalog. It does not mean every workflow beneath a folder named `review`. The resolver expands those catalog members into ordinary child workflow instances in stable workflow-ID order. It applies effective policy enablement, file-extension matching, unit-kind matching, and tag matching before any rule step starts, and preserves every disabled/inapplicable member as a typed skip decision. A rule's authored workflow-level `when` remains an additional intrinsic condition after policy and matcher eligibility.
 
 The source form, rule membership, stable ordering, workflow hashes, and effective policy are frozen for the run. Adding a client rule affects the next catalog snapshot without editing bundled aggregate YAML; merely discovering it outside an explicit `rules: all` boundary never executes it.
 
-The preparation boundary is MCP-callable and accepts current Git changes (staged, unstaged, and untracked) as well as explicit file, files, folder, or buffer targets. It returns typed normalized review input rather than an application-layer dictionary. Candidate activation tags come from the snapshotted effective rule plan; callers and models cannot invent the tag vocabulary. Each normalized unit records the tags MCP detected from file-level evidence such as language/imports and unit-level evidence such as declaration kind or source patterns, together with enough evidence to audit why each tag was assigned. Rule activation then requires both effective policy enablement and exact all-required tag matching for that unit.
+The SPEC-041 preparation boundary accepts working-tree changes, file, files, folder, Git range, resolved pull request, buffer, and code-block targets. It returns typed normalized review input rather than an application-layer dictionary. Candidate tags come from the snapshotted effective rule plan; callers and models cannot invent the tag vocabulary. Each normalized file records its exact extension and file tags/evidence; each unit records its typed kind plus inherited and unit tags/evidence. Rule activation requires effective policy enablement and all three matcher dimensions to pass.
 
 Source analysis belongs to the dedicated `source` MCP namespace because review, gate, refactor, test, and client workflows may all consume it. SPEC-040 owns typed change collection, file/text analysis, unit extraction, technology detection, detector configuration, and evidence. It also extracts useful behavior from the existing pipeline `prepare_review_input` implementation rather than duplicating it.
 
-Source analysis returns distinct typed language, framework, concurrency/capability, and unit-trait detections with source evidence. File-level detections such as imports may be inherited by contained units, while unit-level detections such as `View`, `Reducer`, or actor conformance apply only to the matching unit. Rule selection flattens those verified detections into exact applicability tags; callers and model output cannot assert tags without MCP detection evidence.
+Source analysis returns exact extension, typed unit kind, and verified tags with source evidence. File-level tags such as `ui`, `test`, or `generated` may be inherited by contained units, while unit-level tags such as `view` or `reducer` apply only to the matching unit. Callers and model output cannot assert tags without MCP detection evidence.
 
 Rule-set expansion and child-workflow materialization are internal review-domain services invoked by the explicit `rules: all` include after source analysis. The `flow-engine.start`/`flow-engine.next` lifecycle remains the only public workflow lifecycle, so review does not introduce a competing start operation or a model-facing rule selector.
 
@@ -407,7 +426,8 @@ Rule-set expansion and child-workflow materialization are internal review-domain
 | Upstream | SPEC-012 LLM Measures, MCP Scores | Supplies the authoritative measure-then-score boundary |
 | Upstream | SPEC-035 Workflow Packages and Discovery | Supplies catalog lookup, provenance, and collision rejection |
 | Upstream | SPEC-037 Conditional Routing and Result Aggregation | Supplies fan-out, nested workflow materialization, ordered results, skip evidence, and replay |
-| Upstream | SPEC-040 Source MCP Namespace | Supplies typed Git changes, source units, technology tags, evidence, and internal source operations |
+| Upstream | SPEC-040 Source MCP Namespace | Supplies typed Git changes/ranges, exact extensions, source/document units, tags, evidence, and internal source operations |
+| Upstream | SPEC-041 Review Target Normalization | Converges working tree, file(s), folder, Git range/PR, buffer, and code-block requests before rule matching |
 | Replaces | `references/**/rule.md` runtime loading | Moves executable rule behavior into workflow YAML |
 | Replaces | `.solid-coder/severity-bands.yml` | Moves supported project overrides into one review policy |
 
@@ -419,8 +439,8 @@ flowchart TD
     Snapshot --> Plan["Build typed effective rule plan"]
     Plan --> Persist["Persist input, plan, policy, and hashes"]
     Persist --> Files["for_each normalized file"]
-    Files --> Units["MCP prepares units and tags"]
-    Units --> Applicable{"Rule enabled and tags match?"}
+    Files --> Units["MCP prepares extension, units, and tags"]
+    Units --> Applicable{"Rule enabled and extension/unit/tags match?"}
     Applicable -- "No" --> Skip["Persist typed skip decision"]
     Applicable -- "Yes" --> Observe["Run metric and exception steps"]
     Observe --> Validate["Validate generated response contracts"]
@@ -437,7 +457,7 @@ flowchart TD
 
 - An ordinary workflow without `rule` retains unchanged behavior and is not enrolled.
 - `rule: {}` parses as always applicable, but executable review validation requires metric and exception steps.
-- Category/tags decode into typed values; unknown rule fields fail at the source field.
+- Category and extension/unit/tag match selectors decode into typed values; unknown fields, duplicates, malformed extensions, and include/exclude intersections fail at the source field.
 - Metric and exception entries decode into distinct typed step models rather than generic application maps.
 - Missing/duplicate metric IDs, zero metric steps, zero/multiple exception steps, unsupported scalar schemas, empty scoring, invalid operators, incompatible comparison values, and unknown fields fail before execution.
 - Generated metric/exception response schemas require non-empty reasoning/evidence and reject model-supplied severity/applicability fields.
@@ -449,7 +469,7 @@ flowchart TD
 - Project rule/metric enablement and metric scoring replace only their declared coordinates and take precedence over package defaults.
 - Unknown rule/metric/severity/operator fields fail with the policy path before any model call.
 - Disabling the last effective metric fails plan construction.
-- Policy cannot mutate prompts, tags, schemas, resources, or identities.
+- Policy cannot mutate prompts, match declarations, schemas, resources, or identities.
 - The effective plan contains workflow/resource hashes and authored/requested/effective decisions for every override.
 - Current workflow/policy changes do not affect replay; a new run sees them.
 
@@ -471,10 +491,11 @@ flowchart TD
 - Git-change preparation includes staged, unstaged, and untracked files, extracts changed ranges and normalized units, and produces the same typed review input consumed by explicit file/files/folder/buffer requests.
 - Both Codex and Claude plugin manifests expose the `source` namespace; the broad pipeline server no longer registers `prepare_review_input` after SPEC-040 migration.
 - Candidate tags are derived from the snapshotted effective rule plan, and unit tag decisions retain their detection evidence; neither a caller nor model output can activate an undeclared tag.
-- SwiftUI-tagged rules run only for MCP-tagged SwiftUI units while always-applicable rules run for every unit.
+- Extension-specific alternatives can exclude `.swift` from a generic rule while a Swift-specific rule includes `.swift`; UI-specific alternatives can exclude `ui` from a generic rule while an UI rule includes it.
+- Rules matching `.md` plus `spec` run only for specification documents, while always-applicable rules run for every normalized unit.
 - A namespaced client rule is enrolled on the next snapshot; a bundled-ID collision fails before execution.
 - A client rule added beneath any configured project workflow root appears beneath `rules: all` on the next run without changing bundled aggregate YAML; an ordinary unmarked workflow in the same folder does not appear.
-- A `rules: all` group expands in stable workflow-ID order, applies policy/tags before starting child work, records skipped members, and fans results in that same order.
+- A `rules: all` group expands in stable workflow-ID order, applies policy and extension/unit/tag matching before starting child work, records skipped members with the decisive included/excluded value, and fans results in that same order.
 - A project policy disable/override changes the effective execution and result while preserving authored/requested/effective audit evidence.
 - `solid-gate-on-write` and `solid-refactor` consume the same `solid-review` plan and results rather than loading another rule source.
 - Full non-live tests and the existing Codex/Claude flow-engine live E2E suites pass after migration.
@@ -486,7 +507,7 @@ flowchart TD
 - [ ] MCP owns severity, finalization, and normalized review results; authored rules contain no scoring prompt or root result boilerplate.
 - [ ] Discovery reuses the existing catalog and never auto-runs workflows outside explicit review selection.
 - [ ] `solid-unit-review` explicitly expands all and only catalog workflows marked with `rule:` through `include: { rules: all }` without assigning runtime semantics to folder names.
-- [ ] Review applies MCP-owned tags and project-precedence policy before materializing independent rule/unit instances.
+- [ ] Review applies exact-extension, typed-unit-kind, MCP-owned-tag, and project-precedence policy before materializing independent rule/unit instances.
 - [ ] One optional review policy controls only rule/metric enablement and complete metric band replacement.
 - [ ] Effective plans and events preserve source hashes, observations, exceptions, scoring, overrides, skips, retries, and publication.
 - [ ] Replay uses only run snapshots/events and never rereads current workflow or policy state.

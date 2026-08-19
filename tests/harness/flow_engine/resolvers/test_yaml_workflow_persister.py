@@ -18,6 +18,7 @@ from harness.condition_operator import ConditionOperator
 from harness.workflow_expression import WorkflowExpression
 from harness.flow_def import FlowDef
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
+from harness.include_alias_group import IncludeAliasGroup
 from harness.step_def import StepDef
 from harness.workflow_persister_factory import make_workflow_persister
 
@@ -49,6 +50,13 @@ class TestYamlWorkflowPersister(unittest.TestCase):
                     condition=step_condition,
                 )
             ],
+            alias_groups=[
+                IncludeAliasGroup(
+                    alias="swift_review",
+                    member_ids=["review"],
+                    condition=step_condition,
+                )
+            ],
         )
 
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -74,8 +82,17 @@ class TestYamlWorkflowPersister(unittest.TestCase):
         )
         self.assertNotIn("condition", snapshot)
         self.assertNotIn("condition", snapshot["steps"][0])
+        self.assertEqual(
+            snapshot["alias_groups"][0]["when"],
+            {
+                "ref": "{{steps.inspect.outputs.language}}",
+                "equals": "swift",
+            },
+        )
+        self.assertNotIn("condition", snapshot["alias_groups"][0])
         self.assertEqual(reloaded.condition, workflow_condition)
         self.assertEqual(reloaded.steps[0].condition, step_condition)
+        self.assertEqual(reloaded.alias_groups[0].condition, step_condition)
 
 
 if __name__ == "__main__":

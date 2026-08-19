@@ -55,7 +55,7 @@ class RulePlanEntryBuilder(RulePlanEntryBuilding):
             source_path=source.entry_path.resolve(),
             workflow_hash=self._content_hasher.hash(workflow_content),
             category=source.rule.category or "",
-            required_tags=source.rule.tags,
+            match=source.rule.match,
             enablement=self._enablement_resolver.resolve(
                 source.id,
                 policy_resolution,

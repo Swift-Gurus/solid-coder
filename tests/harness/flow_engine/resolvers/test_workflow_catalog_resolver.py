@@ -32,13 +32,16 @@ class TestWorkflowCatalogResolver(unittest.TestCase):
 
     def test_reuses_one_catalog_for_all_lookups_within_a_load(self):
         source = self._source("/first/workflow.yaml")
-        builder = RecordingCatalogBuilder([WorkflowCatalog(sources=[source])])
+        catalog = WorkflowCatalog(sources=[source])
+        builder = RecordingCatalogBuilder([catalog])
         sut = WorkflowCatalogResolver(builder)
 
         with sut.scope(["/workflows"]):
+            snapshot = sut.catalog(["/workflows"])
             first = sut.resolve("review", ["/workflows"])
             second = sut.resolve("review", ["/workflows"])
 
+        self.assertIs(snapshot, catalog)
         self.assertIs(first, source)
         self.assertIs(second, source)
         self.assertEqual(builder.calls, [[Path("/workflows")]])

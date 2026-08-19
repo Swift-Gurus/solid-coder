@@ -29,13 +29,20 @@ class TestWorkflowPackageCatalogDocument(unittest.TestCase):
 
     def test_decodes_empty_rule_marker_and_optional_metadata(self):
         document = self.sut.decode(
-            self._workflow(rule={"category": "quality", "tags": ["swift"]}),
+            self._workflow(
+                rule={
+                    "category": "quality",
+                    "match": {
+                        "tags": {"included": ["ui"]},
+                    },
+                }
+            ),
             "workflow package",
         )
 
         self.assertEqual(document.id, "acme-review")
         self.assertEqual(document.rule.category, "quality")
-        self.assertEqual(document.rule.tags, ["swift"])
+        self.assertEqual(document.rule.match.tags.included, ["ui"])
 
     def test_omitted_rule_marker_remains_an_ordinary_workflow(self):
         document = self.sut.decode(self._workflow(), "workflow package")

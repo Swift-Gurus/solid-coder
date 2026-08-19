@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import AbstractContextManager
 from typing import Protocol
 
+from harness.workflow_catalog import WorkflowCatalog
 from harness.workflow_source import WorkflowSource
 
 
@@ -16,6 +17,8 @@ solid-description: Contract for resolving workflow IDs across a combined client 
 """
 class WorkflowCatalogResolving(Protocol):
     def resolve(self, workflow_id: str, search_paths: list[str]) -> WorkflowSource | None: ...
+
+    def catalog(self, search_paths: list[str]) -> WorkflowCatalog: ...
 
 
 """

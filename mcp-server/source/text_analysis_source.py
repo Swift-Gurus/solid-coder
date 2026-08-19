@@ -16,7 +16,7 @@ VisitResult = TypeVar("VisitResult")
 solid-name: TextAnalysisSource
 solid-category: model
 solid-spec: [SPEC-040]
-solid-description: Carries source text and optional identity hints for deterministic analysis.
+solid-description: Carries source text and optional path or exact extension identity for deterministic analysis.
 """
 class TextAnalysisSource(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -24,7 +24,7 @@ class TextAnalysisSource(BaseModel):
     kind: Literal["text"] = "text"
     text: str
     virtual_path: Optional[str] = None
-    language_hint: Optional[str] = None
+    file_extension: Optional[str] = None
 
     def accept(
         self,

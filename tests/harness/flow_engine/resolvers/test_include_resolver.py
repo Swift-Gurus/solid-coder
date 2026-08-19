@@ -15,7 +15,6 @@ from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.include_alias_group import IncludeAliasGroup
-from harness.include_alias_group_factory import IncludeAliasGroupFactory
 from harness.include_cycle_guard import IncludeCycleGuard
 from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
@@ -92,7 +91,6 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         ],
         error_factory=error_factory,
     )
-    alias_group_factory = IncludeAliasGroupFactory()
     resolution_merger = IncludeResolutionMerger(
         step_appender=IncludeStepAppender(),
         nested_merger=NestedIncludeResolutionMerger(
@@ -108,7 +106,6 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
             ),
             nested_qualifier=NestedIncludeQualifier(
                 step_qualifier=StepQualifier(),
-                alias_group_factory=alias_group_factory,
             ),
             resolution_merger=resolution_merger,
         ),

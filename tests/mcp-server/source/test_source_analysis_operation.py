@@ -12,6 +12,7 @@ from source.file_analysis_source import FileAnalysisSource
 from findings.review_unit_kind import ReviewUnitKind
 from source.source_analysis_decision import SourceAnalysisDecision
 from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
+from source.technology_detection_scope import TechnologyDetectionScope
 from source.text_analysis_source import TextAnalysisSource
 
 
@@ -50,7 +51,7 @@ class TestSourceAnalysisOperation(unittest.TestCase):
                 source=TextAnalysisSource(
                     text=self.swift,
                     virtual_path=str(path),
-                    language_hint="swift",
+                    file_extension=".swift",
                 )
             )
         )
@@ -67,7 +68,7 @@ class TestSourceAnalysisOperation(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result.language, "swift")
+        self.assertEqual(result.file_extension, ".swift")
         self.assertEqual(result.decision, SourceAnalysisDecision.PARSED)
         self.assertEqual(
             [(unit.kind, unit.name, unit.span.start, unit.span.end) for unit in result.units],
@@ -83,6 +84,32 @@ class TestSourceAnalysisOperation(unittest.TestCase):
         )
         self.assertNotIn("nestedMethod", [unit.name for unit in result.units])
         self.assertEqual(len({unit.identity for unit in result.units}), 7)
+
+    def test_detects_file_and_unit_tags_with_source_evidence(self) -> None:
+        result = self.operation.execute(
+            AnalyzeSourceInput(
+                source=TextAnalysisSource(
+                    text=self.swift,
+                    virtual_path="Feature.swift",
+                )
+            )
+        )
+
+        file_tags = [
+            detection.tag
+            for detection in result.detections
+            if detection.scope is TechnologyDetectionScope.FILE
+        ]
+        self.assertEqual(file_tags, ["ui", "swiftui"])
+        view_detection = next(
+            detection
+            for detection in result.detections
+            if detection.tag == "view"
+        )
+        dashboard = next(unit for unit in result.units if unit.name == "DashboardView")
+        self.assertEqual(view_detection.scope, TechnologyDetectionScope.UNIT)
+        self.assertEqual(view_detection.scope_identity, dashboard.identity)
+        self.assertEqual(view_detection.evidence[0].span, dashboard.span)
 
     def test_partial_swift_returns_safe_units_and_parse_diagnostics(self) -> None:
         result = self.operation.execute(
@@ -112,13 +139,29 @@ class TestSourceAnalysisOperation(unittest.TestCase):
             )
         )
 
-        self.assertEqual(result.language, "python")
+        self.assertEqual(result.file_extension, ".py")
         self.assertEqual(
             result.decision,
             SourceAnalysisDecision.WHOLE_FILE_UNSUPPORTED,
         )
-        self.assertEqual(result.units, [])
+        self.assertEqual(len(result.units), 1)
+        document = result.units[0]
+        self.assertEqual(document.kind, ReviewUnitKind.DOCUMENT)
+        self.assertEqual(document.span.start, 1)
+        self.assertEqual(document.span.end, 2)
         self.assertEqual(result.diagnostics, [])
+
+    def test_unpathed_text_returns_a_document_with_an_empty_extension(self) -> None:
+        result = self.operation.execute(
+            AnalyzeSourceInput(
+                source=TextAnalysisSource(text="Review this text.\n")
+            )
+        )
+
+        self.assertEqual(result.file_extension, "")
+        self.assertEqual(result.units[0].kind, ReviewUnitKind.DOCUMENT)
+        self.assertEqual(result.units[0].span.start, 1)
+        self.assertEqual(result.units[0].span.end, 1)
 
 
 if __name__ == "__main__":

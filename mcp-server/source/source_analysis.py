@@ -12,13 +12,13 @@ from source.technology_detection import TechnologyDetection
 solid-name: SourceAnalysis
 solid-category: model
 solid-spec: [SPEC-040]
-solid-description: Carries source identity, language, parse outcome, recoverable diagnostics, and ordered units.
+solid-description: Carries source identity, exact extension, parse outcome, recoverable diagnostics, ordered units, and tag evidence.
 """
 class SourceAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     source_identity: str = Field(min_length=1)
-    language: str = Field(min_length=1)
+    file_extension: str
     decision: SourceAnalysisDecision
     diagnostics: list[SourceParseDiagnostic] = Field(default_factory=list)
     units: list[SourceUnit] = Field(default_factory=list)

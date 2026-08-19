@@ -2,9 +2,9 @@
 number: SPEC-036
 feature: bundled-solid-workflows
 type: feature
-status: ready
+status: in-progress
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041]
 blocking: []
 ---
 
@@ -18,8 +18,8 @@ Ship three stable workflows—`solid-review`, `solid-gate-on-write`, and `solid-
 
 | Workflow | Input | Output |
 |---|---|---|
-| `solid-review` | Normalized review input for changes, folders, files, or a buffer | Schema-validated per-principle measurements, deterministic findings, and review artifacts |
-| `solid-gate-on-write` | Prospective post-write buffer, target path, language, session metadata, and candidate tags | Deterministic `allow` or `deny` result with structured violations and fix guidance |
+| `solid-review` | A typed working-tree, file, files, folder, Git-range/PR, buffer, or code-block target | Schema-validated per-rule measurements, deterministic findings, and review artifacts |
+| `solid-gate-on-write` | Prospective post-write buffer, required target path, and session metadata | Deterministic `allow` or `deny` result with structured violations and fix guidance |
 | `solid-refactor` | The same review target plus refactor limits | Initial `solid-review` results, synthesized fixes, applied changes, verification, and residual findings |
 
 ## User Stories
@@ -30,7 +30,7 @@ As a developer, I want one stable `solid-review` workflow so review behavior is 
 
 **Acceptance Criteria:**
 - The plugin distributes a package whose declared ID is `solid-review`.
-- It accepts the established normalized `review-input` contract rather than inventing another target format.
+- It accepts the sealed review-target contract from SPEC-041 and normalizes every variant into one review-input model before rule selection.
 - It reviews SRP, OCP, LSP, ISP, and DRY using explicit metric procedures and schema-validated outputs; server-side scoring remains authoritative.
 - Each required metric is represented by an independently completable/validatable step or subflow output, so a model cannot silently omit a metric in a single holistic response.
 - Per-principle results are aggregated only after every required principle output is present and valid.
@@ -42,8 +42,8 @@ As a developer, when an agent proposes a source write, I want the existing write
 
 **Acceptance Criteria:**
 - The existing content simulator produces the exact prospective post-write content before any LLM call.
-- Deterministic preparation normalizes that content as `source_type: buffer`, including target path, language/import-derived tags, timestamp, units when available, and the full candidate source.
-- The shared `prepare_review_input` application service supports this buffer input. It remains exposed through MCP for agent callers, while the hook calls the same application service directly rather than opening an MCP loopback connection.
+- Deterministic preparation constructs the SPEC-041 `buffer` target using the exact target path and prospective content. Exact extension comes from the path; units and tags come from SPEC-040 source analysis.
+- The hook calls the same typed review-target normalization application service used by `solid-review`, directly rather than opening an MCP loopback connection.
 - The hook starts an isolated `solid-gate-on-write` run before starting the child LLM session.
 - The flow engine owns the isolated run's artifact directory under the project's user-level `.solid-coder` storage. The bootstrap prompt, workflow prompts, and model-facing MCP tool schemas neither expose nor accept an `output_dir` or other caller-selected persistence path.
 - Search, measurement, scoring, and fix artifacts resolve from server-owned run context and remain within that run's artifact tree. Missing, stale, or mismatched run context fails closed; it is never treated as a non-gate invocation and never falls back to the process working directory or repository root.
@@ -79,7 +79,10 @@ As a maintainer, I want the gate and full review paths to share the same princip
 
 ```text
 {plugin}/workflows/
-  review/solid-review/workflow.yaml
+  review/
+    solid-review/workflow.yaml
+    solid-file-review/workflow.yaml
+    solid-unit-review/workflow.yaml
   gates/solid-gate-on-write/workflow.yaml
   refactor/solid-refactor/workflow.yaml
   internal/
@@ -100,10 +103,10 @@ As a maintainer, I want the gate and full review paths to share the same princip
 ```mermaid
 sequenceDiagram
   participant Hook as Pre-write hook
-  participant Prep as Review input preparer
+  participant Prep as Review target normalizer
   participant Flow as Flow engine
   participant LLM as Configured LLM session
-  Hook->>Prep: prospective content + path + language
+  Hook->>Prep: typed buffer target with prospective content + path
   Prep-->>Hook: normalized buffer review input
   Hook->>Flow: start solid-gate-on-write, isolated
   Flow-->>Hook: run_id + initial instructions
@@ -132,11 +135,13 @@ sequenceDiagram
 | Upstream | SPEC-012 and SPEC-029 | Provide deterministic scoring, batch submission, and fix submission |
 | Upstream | SPEC-028 | Provides isolated configured-backend sessions and explicit run IDs |
 | Replaces | Direct pre-write health-check prompt assembly | Gate execution becomes a flow run |
-| Reuses | Existing review-input schema and preparation boundary | Normalizes direct review and prospective-write inputs consistently |
+| Upstream | SPEC-040 Source MCP Namespace | Supplies deterministic change/range collection, exact extension, units, tags, and evidence |
+| Upstream | SPEC-041 Review Target Normalization | Converges working tree, file(s), folder, Git range/PR, buffer, and code-block requests |
 
 ## Test Plan
 
 - Validate every bundled package and every workflow-ID include without starting an LLM.
+- Normalize and run working-tree, file, files, folder, Git-range/PR, buffer, and code-block targets through the same `solid-review` package.
 - Run `solid-review` against the established SRP fixture and assert every step/output pair plus final score.
 - Run a five-principle fixture through `solid-review` and prove no principle or required metric is missing.
 - Run `solid-gate-on-write` through the real pre-write hook for compliant and violating buffers; assert allow/deny, run completion, and recorded evidence.
@@ -156,7 +161,7 @@ sequenceDiagram
 - [ ] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics.
 - [ ] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
 - [ ] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
-- [ ] Candidate-write preparation is deterministic and shared with the MCP-facing review-input boundary.
+- [ ] Candidate-write preparation is deterministic and shared with the typed review-target boundary.
 - [ ] Test code is classified deterministically, test-specific exceptions are auditable, and the temporary blanket `tests/**` gate exclusion is narrowed or removed without excluding production code.
 - [ ] `solid-refactor` includes `solid-review` for both initial and verification analysis.
 - [ ] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.

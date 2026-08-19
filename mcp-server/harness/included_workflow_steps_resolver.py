@@ -68,6 +68,7 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             instance_id=instance_prefix,
             source_index=iteration_index,
             source_item=item,
+            condition=group.condition,
             inputs=child_inputs,
             steps=step_identities,
         )

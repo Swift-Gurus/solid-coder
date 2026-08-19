@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from harness.workflow_catalog_building import WorkflowCatalogBuilding
+from harness.workflow_catalog import WorkflowCatalog
 from harness.workflow_catalog_load import WorkflowCatalogLoad
 from harness.workflow_source import WorkflowSource
 
@@ -38,10 +39,13 @@ class WorkflowCatalogResolver:
             self._active_load.reset(token)
 
     def resolve(self, workflow_id: str, search_paths: list[str]) -> WorkflowSource | None:
+        return self.catalog(search_paths).find(workflow_id)
+
+    def catalog(self, search_paths: list[str]) -> WorkflowCatalog:
         active_load = self._active_load.get()
         if active_load is None:
-            return self._builder.build([Path(path) for path in search_paths]).find(workflow_id)
+            return self._builder.build([Path(path) for path in search_paths])
 
         if active_load.catalog is None:
             active_load.catalog = self._builder.build(active_load.search_roots)
-        return active_load.catalog.find(workflow_id)
+        return active_load.catalog

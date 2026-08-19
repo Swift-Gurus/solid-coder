@@ -16,4 +16,6 @@ class ConditionOperator(str, Enum):
     NOT_EQUALS = "not_equals"
     IN = "in"
     NOT_IN = "not_in"
+    CONTAINS = "contains"
+    NOT_CONTAINS = "not_contains"
     EXISTS = "exists"

@@ -139,6 +139,7 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             }
         )
 
+        self.assertIsNone(result.error, result.error)
         self.assertEqual(
             {step.step_id for step in result.steps},
             {"review-1.report", "review-2.inspect"},
@@ -151,6 +152,63 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
         self.assertEqual(
             prompts_by_step["review-2.inspect"].splitlines()[0],
             "Inspect Beta.",
+        )
+
+    def test_include_condition_skips_inapplicable_child_instances(self) -> None:
+        conditional_path = self.project_root / "conditional-parent.yaml"
+        conditional_path.write_text(
+            textwrap.dedent(
+                """
+                name: conditional_parent
+                max_turns: 20
+                steps:
+                  - id: prepare
+                    prompt: Prepare units.
+                    outputs:
+                      - name: units
+                        type: data
+                        schema:
+                          type: array
+                          items: {type: object}
+                  - include: child.yaml
+                    as: review
+                    depends_on: [prepare]
+                    for_each: "{{steps.prepare.outputs.units}}"
+                    with:
+                      review_unit: "{{item}}"
+                    when:
+                      ref: "{{item.file_extension}}"
+                      equals: .swift
+                """
+            ),
+            encoding="utf-8",
+        )
+        initial = self.sut.flow_start(str(conditional_path))
+
+        result = self.sut.flow_next(
+            {
+                initial.steps[0].instance_id: {
+                    "units": [
+                        {"name": "Dashboard", "file_extension": ".swift"},
+                        {"name": "Readme", "file_extension": ".md"},
+                    ]
+                }
+            }
+        )
+
+        self.assertIsNone(result.error, result.error)
+        self.assertEqual(
+            [step.step_id for step in result.steps],
+            ["review-1.inspect"],
+        )
+        skipped = [
+            event
+            for event in self._events(initial.run_id)
+            if event.get("event") == "step_skipped"
+        ]
+        self.assertEqual(
+            [event["step_id"] for event in skipped],
+            ["review-2.inspect", "review-2.report"],
         )
 
     def test_completes_child_dags_and_records_their_source_associations(self) -> None:

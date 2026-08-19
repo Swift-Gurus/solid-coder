@@ -16,3 +16,4 @@ class ReviewUnitKind(str, Enum):
     EXTENSION = "extension"
     ACTOR = "actor"
     FUNCTION = "function"
+    DOCUMENT = "document"

@@ -1,7 +1,10 @@
 """Defines the nested execution scope of one included workflow instance."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
+from harness.condition_declaration import ConditionDeclaration
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.workflow_context_values import WorkflowContextValues
 
@@ -10,7 +13,7 @@ from harness.workflow_context_values import WorkflowContextValues
 solid-name: IncludedWorkflowInstance
 solid-category: model
 solid-spec: [SPEC-037]
-solid-description: Carries one included workflow's identity, source association, resolved inputs, and child step identities.
+solid-description: Represents the execution scope of one materialized included workflow.
 """
 @dataclass(frozen=True)
 class IncludedWorkflowInstance:
@@ -18,6 +21,7 @@ class IncludedWorkflowInstance:
     instance_id: str
     source_index: int
     source_item: object
+    condition: ConditionDeclaration | None = None
     inputs: WorkflowContextValues[object] = field(
         default_factory=WorkflowContextValues
     )
