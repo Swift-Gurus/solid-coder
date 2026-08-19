@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from harness.condition_parsing import ConditionParsing
 from harness.for_each_reference_parsing import ForEachReferenceParsing
+from harness.operation_step_contract_resolving import (
+    OperationStepContractResolving,
+)
 from harness.rule_step_contract_resolving import RuleStepContractResolving
 from harness.step_declaration import StepDeclaration
 from harness.step_declaration_mapping import StepDeclarationMapping
@@ -21,19 +24,26 @@ class StepDeclarationFactory(StepDeclarationMapping):
         condition_parser: ConditionParsing,
         for_each_parser: ForEachReferenceParsing,
         rule_step_contract_resolver: RuleStepContractResolving,
+        operation_step_contract_resolver: OperationStepContractResolving,
     ) -> None:
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._rule_step_contract_resolver = rule_step_contract_resolver
+        self._operation_step_contract_resolver = operation_step_contract_resolver
 
     def map(self, raw: dict) -> StepDeclaration:
         rule_contract = self._rule_step_contract_resolver.resolve(raw)
+        operation_contract = self._operation_step_contract_resolver.resolve(raw)
         return StepDeclaration(
             id=raw.get("id"),
             type=raw.get("type", "agent"),
             prompt=raw.get("prompt"),
             depends_on=raw.get("depends_on"),
-            outputs=rule_contract.outputs,
+            outputs=(
+                operation_contract.outputs
+                if operation_contract.step is not None
+                else rule_contract.outputs
+            ),
             for_each=(
                 self._for_each_parser.parse(
                     raw.get("id") or "<unknown>",
@@ -58,4 +68,5 @@ class StepDeclarationFactory(StepDeclarationMapping):
             max_attempts=raw.get("max_attempts", 3),
             source_file=raw.get("__source_file"),
             metric=rule_contract.metric,
+            operation=operation_contract.step,
         )

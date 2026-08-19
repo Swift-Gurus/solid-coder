@@ -13,6 +13,7 @@ from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
 from harness.models import RunState, StepDef, StepOutputs
+from harness.step_instance_builder import StepInstanceBuilder
 from harness.step_instance_expander import StepInstanceExpander
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
@@ -39,6 +40,11 @@ class StubRenderer:
             .replace("{{params.review_unit.name}}", review_unit.name)
             .replace("{{steps.inspect.outputs.finding}}", finding)
         )
+
+
+class UnexpectedOperationInputsResolver:
+    def resolve(self, operation, context):
+        raise AssertionError("This fixture does not declare an operation step")
 
 
 """
@@ -89,8 +95,11 @@ class TestStepInstanceExpander(unittest.TestCase):
         )
         sut = StepInstanceExpander(
             items_resolver=StubItemsResolver(),
-            renderer=StubRenderer(),
-            context_resolver=WorkflowStepContextResolver(),
+            instance_builder=StepInstanceBuilder(
+                renderer=StubRenderer(),
+                context_resolver=WorkflowStepContextResolver(),
+                operation_inputs_resolver=UnexpectedOperationInputsResolver(),
+            ),
         )
 
         instances = sut.expand(

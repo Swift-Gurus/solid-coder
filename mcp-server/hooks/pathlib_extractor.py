@@ -4,9 +4,14 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from hook_callable import CallableAdapting
+from utils.hook_callable import CallableAdapting
 
 
+"""
+solid-name: PathlibExtractor
+solid-category: utility
+solid-description: Obtains a normalized file extension from a file path.
+"""
 class PathlibExtractor(CallableAdapting):
     """Extracts the lowercased file extension via an injected suffix-extraction callable."""
 

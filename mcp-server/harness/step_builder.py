@@ -35,4 +35,5 @@ class StepBuilder:
             timeout_seconds=cast(Optional[int], declaration.timeout_seconds),
             max_attempts=cast(int, declaration.max_attempts),
             metric=declaration.metric,
+            operation=declaration.operation,
         )

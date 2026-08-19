@@ -21,7 +21,6 @@ from harness.included_workflow_step_identity_resolver import (
 )
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.models import StepDef
-from harness.resolved_workflow_input import ResolvedWorkflowInput
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
@@ -34,12 +33,14 @@ class ReviewUnit:
 
 class StubInputResolver:
     def resolve(self, bindings, context: WorkflowRunContext):
-        return [
-            ResolvedWorkflowInput(
-                name="review_unit",
-                value=context.item.value,
-            )
-        ]
+        return WorkflowContextValues(
+            entries=[
+                WorkflowContextValue(
+                    name="review_unit",
+                    value=context.item.value,
+                )
+            ]
+        )
 
 
 """

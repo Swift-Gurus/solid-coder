@@ -82,6 +82,12 @@ from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.nested_path_resolver import NestedPathResolver
+from harness.logical_operation_name_validator import LogicalOperationNameValidator
+from harness.operation_inputs_resolver import OperationInputsResolver
+from harness.operation_registration_resolving import OperationRegistrationResolving
+from harness.operation_registry import OperationRegistry
+from harness.operation_step_contract_resolver import OperationStepContractResolver
+from harness.operation_step_shape_validator import OperationStepShapeValidator
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.output_schema_declaration_validator import OutputSchemaDeclarationValidator
 from harness.output_collection_resolver import OutputCollectionResolver
@@ -99,6 +105,9 @@ from harness.prompt_content_resolver import PromptContentResolver
 from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.pydantic_operation_output_specs_resolver import (
+    PydanticOperationOutputSpecsResolver,
+)
 from harness.resolved_output_schema_applier import ResolvedOutputSchemaApplier
 from harness.resolved_outputs_applier import ResolvedOutputsApplier
 from harness.resolved_prompt_applier import ResolvedPromptApplier
@@ -130,6 +139,7 @@ from harness.step_field_validator_registration import StepFieldValidatorRegistra
 from harness.step_graph_validator import StepGraphValidator
 from harness.step_identity_resolver import StepIdentityResolver
 from harness.step_instance_expander import StepInstanceExpander
+from harness.step_instance_builder import StepInstanceBuilder
 from harness.step_prompt_augmenter import StepPromptAugmenter
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_shape_validator import StepShapeValidator
@@ -176,6 +186,7 @@ class FlowEngineAssemblyFactory:
         self,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
         workflow_catalog_resolver: Optional[WorkflowCatalogResolving] = None,
+        operation_registry: Optional[OperationRegistrationResolving] = None,
     ) -> FlowEngineAssembly:
         allowlist_resolver = command_allowlist_resolver or CommandAllowlistResolver()
         catalog_resolver = workflow_catalog_resolver or make_workflow_catalog_resolver()
@@ -183,6 +194,11 @@ class FlowEngineAssemblyFactory:
         json_file_loader = YamlConfigFileLoader(loader=JsonLoader())
         path_builder = PathBuilder()
         error_factory = FlowValidationErrorFactory()
+        registered_operations = operation_registry or OperationRegistry(
+            registrations=[],
+            name_validator=LogicalOperationNameValidator(),
+            error_factory=error_factory,
+        )
         package_root_locator = WorkflowPackageRootLocator()
         resource_path_classifier = WorkflowResourcePathClassifier()
         prompt_reference_factory = WorkflowResourceReferenceFactory(
@@ -428,6 +444,14 @@ class FlowEngineAssemblyFactory:
                         ),
                         error_factory=error_factory,
                     ),
+                    operation_step_contract_resolver=OperationStepContractResolver(
+                        registry=registered_operations,
+                        expression_parser=workflow_expression_parser,
+                        output_specs_resolver=PydanticOperationOutputSpecsResolver(
+                            error_factory
+                        ),
+                        error_factory=error_factory,
+                    ),
                 ),
                 rule_decoder=PydanticModelDecoder(
                     model_type=RuleDeclaration,
@@ -459,6 +483,10 @@ class FlowEngineAssemblyFactory:
                             StepFieldValidatorRegistration(
                                 "delegate",
                                 DelegateStepShapeValidator(error_factory),
+                            ),
+                            StepFieldValidatorRegistration(
+                                "operation",
+                                OperationStepShapeValidator(error_factory),
                             ),
                         ],
                         default=AgentStepShapeValidator(error_factory),
@@ -516,14 +544,15 @@ class FlowEngineAssemblyFactory:
                 interpolation_error_factory
             ),
         )
+        input_bindings_resolver = WorkflowInputBindingsResolver(
+            evaluator=expression_resolver,
+        )
         dynamic_step_resolver = DynamicWorkflowStepsResolver(
             dynamic_checker=dynamic_group_checker,
             readiness_checker=IncludeGroupReadinessChecker(dependency_checker),
             items_resolver=items_resolver,
             included_steps_resolver=IncludedWorkflowStepsResolver(
-                input_resolver=WorkflowInputBindingsResolver(
-                    evaluator=expression_resolver,
-                ),
+                input_resolver=input_bindings_resolver,
                 identity_resolver=IncludedWorkflowStepIdentityResolver(),
                 dependency_resolver=IncludedWorkflowDependenciesResolver(),
             ),
@@ -542,8 +571,13 @@ class FlowEngineAssemblyFactory:
                 instance_expander=ConditionalStepInstanceExpander(
                     instance_expander=StepInstanceExpander(
                         items_resolver=items_resolver,
-                        renderer=interpolator,
-                        context_resolver=WorkflowStepContextResolver(),
+                        instance_builder=StepInstanceBuilder(
+                            renderer=interpolator,
+                            context_resolver=WorkflowStepContextResolver(),
+                            operation_inputs_resolver=OperationInputsResolver(
+                                input_bindings_resolver
+                            ),
+                        ),
                     ),
                     condition_applier=StepConditionApplier(condition_evaluator),
                 ),

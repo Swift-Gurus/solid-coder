@@ -13,36 +13,37 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.inline_command_execution import InlineCommandExecution
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
-from harness.script_execution_result import ScriptExecutionResult
-
-
 class StubArgumentRunner:
-    def __init__(self, result: ScriptExecutionResult) -> None:
-        self.result = result
+    def __init__(self) -> None:
         self.arguments = None
         self.timeout_seconds = None
+        self.working_directory = None
 
-    def run(self, arguments, timeout_seconds):
+    def run(self, arguments, timeout=None, cwd=None):
         self.arguments = arguments
-        self.timeout_seconds = timeout_seconds
-        return self.result
+        self.timeout_seconds = timeout
+        self.working_directory = cwd
+        return True, "clean", ""
 
 
 class TestProcessExecutionRunnerAdapter(unittest.TestCase):
     def test_materializes_arguments_only_at_subprocess_boundary(self):
-        expected = ScriptExecutionResult(0, "clean", "", False)
-        runner = StubArgumentRunner(expected)
+        runner = StubArgumentRunner()
         sut = ProcessExecutionRunnerAdapter(runner)
         execution = InlineCommandExecution("bash", "git status --short")
 
-        result = sut.run(execution, 15)
+        result = sut.run(execution, 15, "/project")
 
-        self.assertIs(result, expected)
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.stdout, "clean")
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(result.timed_out)
         self.assertEqual(
             runner.arguments,
             ["bash", "-lc", "git status --short"],
         )
         self.assertEqual(runner.timeout_seconds, 15)
+        self.assertEqual(runner.working_directory, "/project")
 
 
 if __name__ == "__main__":

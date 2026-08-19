@@ -20,6 +20,7 @@ from harness.condition_parser import ConditionParser
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_declaration import MetricDeclaration
+from harness.operation_step_contract import OperationStepContract
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.step_declaration_factory import StepDeclarationFactory
@@ -27,6 +28,11 @@ from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.workflow_expression_parser import WorkflowExpressionParser
 from harness.workflow_expression import WorkflowExpression
+
+
+class EmptyOperationStepContractResolver:
+    def resolve(self, raw: object) -> OperationStepContract:
+        return OperationStepContract()
 
 
 class TestStepDeclarationFactory(unittest.TestCase):
@@ -53,6 +59,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
                 ),
                 error_factory=error_factory,
             ),
+            operation_step_contract_resolver=EmptyOperationStepContractResolver(),
         )
 
     def test_maps_for_each_expression_to_a_typed_reference(self):

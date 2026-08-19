@@ -19,4 +19,5 @@ class ProcessExecutionRunning(Protocol):
         self,
         execution: ProcessExecution,
         timeout_seconds: int | None,
+        working_directory: str | None = None,
     ) -> ScriptExecutionResult: ...

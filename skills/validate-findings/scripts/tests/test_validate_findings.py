@@ -203,6 +203,16 @@ def _build_review_input(source_type="folder"):
 
 def _build_review_output():
     """Build a new-format review output with SRP violations."""
+    def measurement(value, reasoning, evidence):
+        return {
+            "value": value,
+            "is_exception": False,
+            "additional_info": {
+                "reasoning": reasoning,
+                "evidence": evidence,
+            },
+        }
+
     return {
         "timestamp": "2026-01-01T00:00:00Z",
         "files": [
@@ -216,9 +226,21 @@ def _build_review_output():
                         "line_end": 50,
                         "metrics": {
                             "SRP": {
-                                "verb_count":        {"value": 4},
-                                "cohesion_groups":   {"value": 2},
-                                "stakeholder_count": {"value": 2},
+                                "verb_count": measurement(
+                                    4,
+                                    "MyClass performs four distinct actions.",
+                                    "MyClass lines 1-50 contain four action methods.",
+                                ),
+                                "cohesion_groups": measurement(
+                                    2,
+                                    "The actions form two independent cohesion groups.",
+                                    "MyClass lines 1-50 contain two disconnected action groups.",
+                                ),
+                                "stakeholder_count": measurement(
+                                    2,
+                                    "Two stakeholders can independently request changes.",
+                                    "MyClass lines 1-50 serves two distinct responsibilities.",
+                                ),
                             }
                         },
                         "violations": [

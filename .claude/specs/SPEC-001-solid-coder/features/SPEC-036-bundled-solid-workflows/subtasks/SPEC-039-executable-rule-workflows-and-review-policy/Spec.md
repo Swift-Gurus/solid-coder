@@ -4,7 +4,7 @@ feature: executable-rule-workflows-and-review-policy
 type: subtask
 status: in-progress
 parent: SPEC-036
-blocked-by: [SPEC-012, SPEC-035, SPEC-037]
+blocked-by: [SPEC-012, SPEC-035, SPEC-037, SPEC-040]
 blocking: [SPEC-036]
 ---
 
@@ -30,7 +30,7 @@ Completed:
 Remaining:
 
 - Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
-- Add the explicit review-domain operation that tags normalized units, selects applicable catalog rules, and materializes ordered rule/unit instances.
+- Consume the dedicated `source` MCP namespace from SPEC-040 for Git changes and explicit review targets. It supplies normalized files, units, and auditable language/framework/capability tags; the review-domain rule selector consumes that typed input and materializes ordered rule/unit instances internally.
 - Complete replay projection and idempotent result publication from snapshots/events, including skipped-rule and retry audit identities.
 - Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders.
 
@@ -88,6 +88,8 @@ As a review caller, I want one explicit review operation to select applicable ru
 - Adding a namespaced client package beneath `{project}/.solid-coder/workflows/` enrolls it in the next review catalog snapshot without changing bundled YAML or TOML search paths.
 - Workflow-ID collision rules from SPEC-035 apply unchanged; clients cannot replace bundled rules.
 - Merely discovering a marked workflow never schedules it. Rules execute only through `solid-review`, an authored nested-workflow reference, or an explicit `flow_start` selection.
+- `solid-unit-review` declares one explicit `include: { rules: all }` extension point. It resolves every workflow marked with `rule:` from the snapshotted catalog; folder names do not enroll or activate workflows.
+- The rule-set include accepts the same runtime controls as an included workflow group and supplies the standard typed `review_unit` input to every enrolled rule.
 - `solid-review` normalizes one or many files into one ordered collection and uses the same `solid-file-review` `for_each` path for both cases.
 - MCP splits each file into normalized review units and tags, then materializes every enabled/applicable rule independently for each unit using the existing nested-workflow, retry, replay, and fan-in machinery.
 - A policy-disabled or tag-inapplicable rule starts no agent session and consumes no model turn.
@@ -291,22 +293,81 @@ rules:
 
 ### Review execution topology
 
-`solid-review` has one explicit rule-set boundary:
+`solid-review` collects the current changes and fans out through one reusable file workflow:
 
 ```yaml
 id: solid-review
 name: SOLID Review
 
 steps:
+  - id: changes
+    type: operation
+    operation: source.collect_changes
+
   - include:
       workflow: solid-file-review
     as: file_reviews
-    for_each: "{{params.review_input.files}}"
+    depends_on: [changes]
+    for_each: "{{steps.changes.outputs.files}}"
     with:
       review_file: "{{item}}"
 ```
 
-`solid-file-review` asks an MCP-owned preparation operation for normalized units/tags, then invokes the review-domain rule-set operation. That operation selects catalog entries containing `rule`, applies the snapshotted policy and tags, and materializes matching child workflows through SPEC-037. It is not a second include grammar and does not add automatic catalog execution.
+`solid-file-review` asks the source namespace for normalized units and fans out through one reusable unit workflow:
+
+```yaml
+id: solid-file-review
+name: SOLID File Review
+
+inputs:
+  - name: review_file
+    schema_file: review-file.schema.json
+
+steps:
+  - id: analyze
+    type: operation
+    operation: source.analyze
+    with:
+      source: "{{params.review_file}}"
+
+  - include:
+      workflow: solid-unit-review
+    as: unit_reviews
+    depends_on: [analyze]
+    for_each: "{{steps.analyze.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+```
+
+`solid-unit-review` owns the explicit catalog extension point:
+
+```yaml
+id: solid-unit-review
+name: SOLID Unit Review
+
+inputs:
+  - name: review_unit
+    schema_file: review-unit.schema.json
+
+steps:
+  - include:
+      rules: all
+    as: rule_reviews
+    with:
+      review_unit: "{{params.review_unit}}"
+```
+
+`rules: all` means every workflow marked with root `rule:` in the run's snapshotted catalog. It does not mean every workflow beneath a folder named `review`. The resolver expands those catalog members into ordinary child workflow instances, applies effective policy enablement and exact all-required tag matching before any rule step starts, and preserves disabled/inapplicable members as typed skip decisions. A rule's authored workflow-level `when` remains an additional intrinsic condition after policy and tag eligibility.
+
+The source form, rule membership, stable ordering, workflow hashes, and effective policy are frozen for the run. Adding a client rule affects the next catalog snapshot without editing bundled aggregate YAML; merely discovering it outside an explicit `rules: all` boundary never executes it.
+
+The preparation boundary is MCP-callable and accepts current Git changes (staged, unstaged, and untracked) as well as explicit file, files, folder, or buffer targets. It returns typed normalized review input rather than an application-layer dictionary. Candidate activation tags come from the snapshotted effective rule plan; callers and models cannot invent the tag vocabulary. Each normalized unit records the tags MCP detected from file-level evidence such as language/imports and unit-level evidence such as declaration kind or source patterns, together with enough evidence to audit why each tag was assigned. Rule activation then requires both effective policy enablement and exact all-required tag matching for that unit.
+
+Source analysis belongs to the dedicated `source` MCP namespace because review, gate, refactor, test, and client workflows may all consume it. SPEC-040 owns typed change collection, file/text analysis, unit extraction, technology detection, detector configuration, and evidence. It also extracts useful behavior from the existing pipeline `prepare_review_input` implementation rather than duplicating it.
+
+Source analysis returns distinct typed language, framework, concurrency/capability, and unit-trait detections with source evidence. File-level detections such as imports may be inherited by contained units, while unit-level detections such as `View`, `Reducer`, or actor conformance apply only to the matching unit. Rule selection flattens those verified detections into exact applicability tags; callers and model output cannot assert tags without MCP detection evidence.
+
+Rule-set expansion and child-workflow materialization are internal review-domain services invoked by the explicit `rules: all` include after source analysis. The `flow-engine.start`/`flow-engine.next` lifecycle remains the only public workflow lifecycle, so review does not introduce a competing start operation or a model-facing rule selector.
 
 ### Audit contract
 
@@ -346,6 +407,7 @@ steps:
 | Upstream | SPEC-012 LLM Measures, MCP Scores | Supplies the authoritative measure-then-score boundary |
 | Upstream | SPEC-035 Workflow Packages and Discovery | Supplies catalog lookup, provenance, and collision rejection |
 | Upstream | SPEC-037 Conditional Routing and Result Aggregation | Supplies fan-out, nested workflow materialization, ordered results, skip evidence, and replay |
+| Upstream | SPEC-040 Source MCP Namespace | Supplies typed Git changes, source units, technology tags, evidence, and internal source operations |
 | Replaces | `references/**/rule.md` runtime loading | Moves executable rule behavior into workflow YAML |
 | Replaces | `.solid-coder/severity-bands.yml` | Moves supported project overrides into one review policy |
 
@@ -406,8 +468,13 @@ flowchart TD
 - The SRP fixture runs through `solid-srp-review`; MCP obtains SRP-1/2/3 values and exception evidence, applies the YAML bands, and matches the locked health-check baseline without reading `rule.md`.
 - Repeating the same SRP run through Codex and Claude preserves the same step/output contract and deterministic scoring; model observations, elapsed time, and token usage remain comparison data.
 - One-file and multi-file inputs use the same `for_each` path; rule/unit instances are independent and aggregate in stable order.
+- Git-change preparation includes staged, unstaged, and untracked files, extracts changed ranges and normalized units, and produces the same typed review input consumed by explicit file/files/folder/buffer requests.
+- Both Codex and Claude plugin manifests expose the `source` namespace; the broad pipeline server no longer registers `prepare_review_input` after SPEC-040 migration.
+- Candidate tags are derived from the snapshotted effective rule plan, and unit tag decisions retain their detection evidence; neither a caller nor model output can activate an undeclared tag.
 - SwiftUI-tagged rules run only for MCP-tagged SwiftUI units while always-applicable rules run for every unit.
 - A namespaced client rule is enrolled on the next snapshot; a bundled-ID collision fails before execution.
+- A client rule added beneath any configured project workflow root appears beneath `rules: all` on the next run without changing bundled aggregate YAML; an ordinary unmarked workflow in the same folder does not appear.
+- A `rules: all` group expands in stable workflow-ID order, applies policy/tags before starting child work, records skipped members, and fans results in that same order.
 - A project policy disable/override changes the effective execution and result while preserving authored/requested/effective audit evidence.
 - `solid-gate-on-write` and `solid-refactor` consume the same `solid-review` plan and results rather than loading another rule source.
 - Full non-live tests and the existing Codex/Claude flow-engine live E2E suites pass after migration.
@@ -418,6 +485,7 @@ flowchart TD
 - [ ] Every executable V1 review rule has at least one unique metric and exactly one exception classifier.
 - [ ] MCP owns severity, finalization, and normalized review results; authored rules contain no scoring prompt or root result boilerplate.
 - [ ] Discovery reuses the existing catalog and never auto-runs workflows outside explicit review selection.
+- [ ] `solid-unit-review` explicitly expands all and only catalog workflows marked with `rule:` through `include: { rules: all }` without assigning runtime semantics to folder names.
 - [ ] Review applies MCP-owned tags and project-precedence policy before materializing independent rule/unit instances.
 - [ ] One optional review policy controls only rule/metric enablement and complete metric band replacement.
 - [ ] Effective plans and events preserve source hashes, observations, exceptions, scoring, overrides, skips, retries, and publication.

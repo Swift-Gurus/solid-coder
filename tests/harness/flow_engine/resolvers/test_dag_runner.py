@@ -27,6 +27,7 @@ from harness.nested_path_resolver import NestedPathResolver
 from harness.run_context_builder import RunContextBuilder
 from harness.step_dependency_checker import StepDependencyChecker
 from harness.step_instance_completion import StepInstanceCompletion
+from harness.step_instance_builder import StepInstanceBuilder
 from harness.step_instance_expander import StepInstanceExpander
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_output_reference import StepOutputReference
@@ -45,6 +46,11 @@ from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 _CONTEXT_BUILDER = RunContextBuilder(
     values_mapper=WorkflowContextValuesMapper()
 )
+
+
+class UnexpectedOperationInputsResolver:
+    def resolve(self, operation, context):
+        raise AssertionError("DAG runner fixtures do not declare operation steps")
 
 
 def _make_runner() -> DAGRunner:
@@ -78,8 +84,11 @@ def _make_runner() -> DAGRunner:
                     error_factory
                 ),
             ),
-            renderer=Interpolator(evaluator=resolver),
-            context_resolver=WorkflowStepContextResolver(),
+            instance_builder=StepInstanceBuilder(
+                renderer=Interpolator(evaluator=resolver),
+                context_resolver=WorkflowStepContextResolver(),
+                operation_inputs_resolver=UnexpectedOperationInputsResolver(),
+            ),
         ),
     )
 

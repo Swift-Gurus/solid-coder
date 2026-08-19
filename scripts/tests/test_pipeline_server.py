@@ -8,14 +8,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "pipeline"))
 
-import importlib.util
-spec = importlib.util.spec_from_file_location(
-    "pipeline_server", ROOT / "mcp-server" / "pipeline" / "server.py"
-)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
+from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
+from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
+from pipeline.flow_run_creator import FlowRunCreator
 
-tools = mod.get_pipeline_tools()
+tools = ApplicationBootstrapperFactory(
+    plugin_root=ROOT,
+    skills_root=ROOT / "skills",
+    flow_run_creator=FlowRunCreator(ROOT),
+    flow_renderer_creator=FlowResultRendererCreator(),
+).make_tool_callables().build()
 
 
 class TestHandshake(unittest.TestCase):

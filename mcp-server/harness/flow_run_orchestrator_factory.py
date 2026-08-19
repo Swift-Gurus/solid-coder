@@ -35,7 +35,12 @@ from harness.flow_stepper import FlowStepper
 from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
 from harness.json_loading import JsonLoader
+from harness.logical_operation_name_validator import LogicalOperationNameValidator
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
+from harness.operation_registration import OperationRegistration
+from harness.operation_registry import OperationRegistry
+from harness.operation_step_executor import OperationStepExecutor
+from harness.operation_step_runner_adapter import OperationStepRunnerAdapter
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
 from harness.pass_through_step_submission_validator import PassThroughStepSubmissionValidator
@@ -47,6 +52,7 @@ from harness.process_execution_factory import ProcessExecutionFactory
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
 from harness.process_step_executor import ProcessStepExecutor
 from harness.process_step_handler import ProcessStepHandler
+from harness.pydantic_operation_invoker import PydanticOperationInvoker
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_context_builder import RunContextBuilder
 from harness.run_directory_scaffolder import RunDirectoryScaffolder
@@ -89,7 +95,7 @@ from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
 from harness.workflow_persister_factory import make_workflow_persister
 from hook_utils import _resolve_project_root
-from subprocess_script_runner import SubprocessScriptRunner
+from subprocess_adapter import SubprocessAdapter
 
 _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
 _DELEGATE_SESSION_MAX_WORKERS = 4
@@ -111,6 +117,7 @@ class FlowRunOrchestratorFactory:
         session_reader: Optional[SessionIdReading] = None,
         session_delegate_runner: Optional[SessionDelegateRunning] = None,
         session_delegate_max_workers: int = _DELEGATE_SESSION_MAX_WORKERS,
+        operation_registrations: Optional[list[OperationRegistration]] = None,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._plugin_root = plugin_root
@@ -118,13 +125,21 @@ class FlowRunOrchestratorFactory:
         self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
         self._session_delegate_runner = session_delegate_runner
         self._session_delegate_max_workers = session_delegate_max_workers
+        self._operation_registrations = operation_registrations or []
 
     def build(self) -> FlowRunOrchestrator:
         workflow_catalog = make_workflow_catalog_resolver()
         path_checker = PathChecker()
+        error_factory = FlowValidationErrorFactory()
+        operation_registry = OperationRegistry(
+            registrations=self._operation_registrations,
+            name_validator=LogicalOperationNameValidator(),
+            error_factory=error_factory,
+        )
         assembly = FlowEngineAssemblyFactory().build(
             command_allowlist_resolver=self._command_allowlist_resolver,
             workflow_catalog_resolver=workflow_catalog,
+            operation_registry=operation_registry,
         )
         active_run = ActiveRunPointerStore(
             path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
@@ -175,8 +190,20 @@ class FlowRunOrchestratorFactory:
                 execution_resolver=StepProcessExecutionResolver(
                     ProcessExecutionFactory(FlowValidationErrorFactory())
                 ),
-                runner=ProcessExecutionRunnerAdapter(SubprocessScriptRunner()),
+                runner=ProcessExecutionRunnerAdapter(SubprocessAdapter()),
                 evaluator=ScriptOutcomeEvaluator(schema_validator=assembly.schema_validator),
+            ),
+            submission_validator=PassThroughStepSubmissionValidator(
+                SuccessfulValidationResultProvider()
+            ),
+        )
+        operation_handler = ProcessStepHandler(
+            executor=OperationStepRunnerAdapter(
+                OperationStepExecutor(
+                    registry=operation_registry,
+                    invoker=PydanticOperationInvoker(error_factory),
+                    error_factory=error_factory,
+                )
             ),
             submission_validator=PassThroughStepSubmissionValidator(
                 SuccessfulValidationResultProvider()
@@ -198,10 +225,12 @@ class FlowRunOrchestratorFactory:
             "script": process_handler,
             "command": process_handler,
             "delegate": delegate_handler,
+            "operation": operation_handler,
         })
         single_agent_batch = SingleInstanceStepBatchRunner(agent_handler)
         single_process_batch = SingleInstanceStepBatchRunner(process_handler)
         single_delegate_batch = SingleInstanceStepBatchRunner(delegate_handler)
+        single_operation_batch = SingleInstanceStepBatchRunner(operation_handler)
         session_delegate_batch = SessionDelegateStepBatchRunner(
             ConcurrentSessionDelegateBatchRunner(
                 item_mapper=ExecutorItemMapper(ThreadPoolExecutorFactory()),
@@ -220,6 +249,7 @@ class FlowRunOrchestratorFactory:
             StepBatchRunnerRegistration("exception", "", single_agent_batch),
             StepBatchRunnerRegistration("script", "", single_process_batch),
             StepBatchRunnerRegistration("command", "", single_process_batch),
+            StepBatchRunnerRegistration("operation", "", single_operation_batch),
         ])
         condition_serializer = make_condition_serializer()
         step_execution_failure_handler = StepExecutionFailureHandler(

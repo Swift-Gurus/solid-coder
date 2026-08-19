@@ -9,6 +9,7 @@ from pydantic import AliasChoices, ConfigDict, Field
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.metric_declaration import MetricDeclaration
+from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
 
@@ -47,3 +48,4 @@ class StepDeclaration:
     max_attempts: int = 3
     source_file: Optional[str] = None
     metric: Optional[MetricDeclaration] = None
+    operation: Optional[OperationStep] = None

@@ -1,7 +1,8 @@
 """Resolves declared child-workflow input expressions."""
 
 from harness.expression_evaluating import ExpressionEvaluating
-from harness.resolved_workflow_input import ResolvedWorkflowInput
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_input_bindings_resolving import WorkflowInputBindingsResolving
 from harness.workflow_run_context import WorkflowRunContext
@@ -25,14 +26,16 @@ class WorkflowInputBindingsResolver(WorkflowInputBindingsResolving):
         self,
         bindings: list[WorkflowInputBinding],
         context: WorkflowRunContext,
-    ) -> list[ResolvedWorkflowInput]:
-        return [
-            ResolvedWorkflowInput(
-                name=binding.name,
-                value=self._evaluator.evaluate(
-                    binding.expression.value,
-                    context,
-                ),
-            )
-            for binding in bindings
-        ]
+    ) -> WorkflowContextValues[object]:
+        return WorkflowContextValues(
+            entries=[
+                WorkflowContextValue(
+                    name=binding.name,
+                    value=self._evaluator.evaluate(
+                        binding.expression.value,
+                        context,
+                    ),
+                )
+                for binding in bindings
+            ]
+        )

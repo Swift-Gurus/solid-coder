@@ -15,8 +15,6 @@ from harness.included_workflow_step_identity_resolving import (
 from harness.included_workflow_steps_resolving import IncludedWorkflowStepsResolving
 from harness.models import StepDef
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
-from harness.workflow_context_value import WorkflowContextValue
-from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_input_bindings_resolving import WorkflowInputBindingsResolving
 from harness.workflow_run_context import WorkflowRunContext
 
@@ -50,18 +48,9 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             context,
             item=ResolvedWorkflowContextValue(present=True, value=item),
         )
-        resolved_inputs = self._input_resolver.resolve(
+        child_inputs = self._input_resolver.resolve(
             group.input_bindings,
             item_context,
-        )
-        child_inputs = WorkflowContextValues(
-            entries=[
-                WorkflowContextValue(
-                    name=resolved_input.name,
-                    value=resolved_input.value,
-                )
-                for resolved_input in resolved_inputs
-            ]
         )
         instance_prefix = f"{group.alias}-{iteration_index + 1}"
         step_identities = IncludedWorkflowStepIdentities(

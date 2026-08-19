@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from harness.process_execution import ProcessExecution
+from harness.process_execution_running import ProcessExecutionRunning
 from harness.script_execution_result import ScriptExecutionResult
-from script_command_running import ScriptCommandRunning
+from subprocess_running import SubprocessRunning
 
 
 """
@@ -13,13 +14,24 @@ solid-category: adapter
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Runs typed workflow process requests through the established subprocess execution boundary.
 """
-class ProcessExecutionRunnerAdapter:
-    def __init__(self, runner: ScriptCommandRunning) -> None:
+class ProcessExecutionRunnerAdapter(ProcessExecutionRunning):
+    def __init__(self, runner: SubprocessRunning) -> None:
         self._runner = runner
 
     def run(
         self,
         execution: ProcessExecution,
         timeout_seconds: int | None,
+        working_directory: str | None = None,
     ) -> ScriptExecutionResult:
-        return self._runner.run(execution.process_arguments(), timeout_seconds)
+        succeeded, stdout, stderr = self._runner.run(
+            execution.process_arguments(),
+            timeout=timeout_seconds,
+            cwd=working_directory,
+        )
+        return ScriptExecutionResult(
+            exit_code=0 if succeeded else 1,
+            stdout=stdout,
+            stderr=stderr,
+            timed_out=False,
+        )

@@ -5,7 +5,7 @@ type: feature
 status: in-progress
 parent:
 blocked-by: []
-blocking: [SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-035, SPEC-037]
+blocking: [SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-035, SPEC-037, SPEC-040]
 ---
 
 # MCP-Driven Flow Orchestration (Harness)
@@ -25,7 +25,7 @@ Current pipeline orchestration has four weaknesses:
 
 ## Proposed Solution
 
-A harness built on top of the existing `solid-coder-pipeline` MCP server:
+A harness whose model-facing lifecycle moves from the broad pipeline server into the plugin's dedicated `flow-engine` MCP namespace:
 
 - Flow definitions are YAML DAGs discovered from project and plugin workflow packages; legacy flat `flows/` and `steps/` roots remain compatibility inputs
 - Each step carries a static NL prompt — the MCP returns it to the agent as the instruction for that step
@@ -33,6 +33,7 @@ A harness built on top of the existing `solid-coder-pipeline` MCP server:
 - The shared Stop dispatcher checks the current session's active run and blocks premature exit while actionable work remains
 - Outputs are schema-validated by MCP before a step is marked complete
 - Flow-level `max_turns` and per-step `max_attempts` bound stalled runs and repeated failures
+- Only `flow-engine.start` and `flow-engine.next` are exposed to the model. Status inspection, replay, and lock recovery remain typed internal services used by hooks, diagnostics, and tests.
 
 This replaces skills as the orchestration layer. Skills keep domain logic where needed; the harness handles ordering, dependency resolution, fan-out, validation, and enforcement.
 
@@ -105,6 +106,18 @@ As a plugin consumer, I want to define my own flows so I can adapt the harness t
 - Every public package contains `workflow.yaml` with a stable ID; optional package resources live in conventional `prompts/`, `schemas/`, `steps/`, `subflows/`, and `scripts/` folders
 - User and plugin flows must have distinct identifiers; a collision is an error rather than an override
 - `{project}/.solid-coder/harness/flows/`, `{project}/.solid-coder/harness/steps/`, and their plugin equivalents remain compatibility roots only
+
+### US-7: Keep the model-facing flow API minimal
+
+As a workflow engine, I want only progression operations exposed to the model so agents cannot inspect or mutate internal recovery state outside the authored flow.
+
+**Acceptance Criteria:**
+- The plugin MCP server name is `flow-engine`; the plugin already supplies the `solid-coder` product namespace and does not repeat it in the server name.
+- The only model-facing lifecycle tools are `start` and `next`.
+- Run status remains available through the typed internal status reader used by Stop hooks, replay, diagnostics, and tests, but is not registered as an MCP tool.
+- Lock clearing remains an internal run-ID-checked recovery service and is not registered as an MCP tool.
+- Agent prompts, delegate instructions, and live-test allowlists do not advertise internal status or lock-recovery operations.
+- Internal workflow operations resolve through stable logical names and never embed runtime MCP transport names or executable file paths.
 
 ## Technical Requirements
 
@@ -199,6 +212,7 @@ Step type and delegate mode explicitly determine who executes ready work:
 | `type: agent` or omitted | Calling agent | Returned by `flow_start`/`flow_next`; completed by submitting outputs keyed by `instance_id` |
 | `type: script` | MCP engine | Executes a declared script file through an allowlisted executor |
 | `type: command` | MCP engine | Executes declared command text through an allowlisted executor |
+| `type: operation` | MCP engine | Resolves a namespaced typed operation such as `source.analyze` from the internal operation registry and executes it without an MCP loopback or model turn |
 | `type: delegate`, `mode: subagent` | Calling agent plus spawned subagent | Returned with explicit launch/isolation instructions; parent receives relayed outputs |
 | `type: delegate`, `mode: session` | MCP engine | Runs synchronously through the configured Claude, Codex, or local backend |
 
@@ -251,31 +265,23 @@ Append-only, replay-based. No full-file rewrites. Safe for concurrent subagent a
 
 Current state = replay all events in order. Resume = replay and return incomplete steps whose deps are satisfied.
 
-### MCP Tools (added to solid-coder-pipeline)
+### Model-facing MCP tools
 
-**`flow_start(flow, params?, isolated?)`**
+**`flow-engine.start(flow, params?, isolated?)`**
 - Resolves an explicit path or a collision-checked workflow ID
 - Creates run directory, writes `workflow.yaml` snapshot
 - Writes `run_started` event to `events.jsonl`
 - Writes the current session's main pointer, or a self-contained marker when `isolated=true`
 - Returns first ready agent-owned steps with `step_id`, `instance_id`, rendered prompt, and execution metadata; isolated starts additionally disclose the `run_id` that subsequent calls must pass
 
-**`flow_next(outputs?, run_id?)`**
+**`flow-engine.next(outputs?, run_id?)`**
 - Resolves the current session's main run when `run_id` is absent, or the named isolated run when present
 - Replays `events.jsonl` to determine current state
 - If outputs are provided: validates each addressed `instance_id`; invalid instances consume attempts without completing, while valid addressed instances transition
 - Drains ready MCP-owned script, command, and session-delegate steps before returning agent-owned work
 - Returns ready steps or terminal `done`, `failed`, or `timed_out` status
 
-**`flow_status(run_id?)`**
-- Resolves the main or named isolated run and replays `events.jsonl`
-- Returns `{ flow, run_id, status, turn_count, max_turns, completed: [...], running: [...], pending: [...] }`
-- Returns `{ status: "no_active_run" }` if no current-session main pointer exists
-
-**`flow_clear_lock(run_id)`**
-- Clears only the current session's main-run pointer and only when the supplied ID matches the active run
-- Rejects mismatches without changing state; reports a no-op when no main run is active
-- Leaves the cleared run's persisted event log and snapshot intact
+Status reading and lock recovery retain the same typed application behavior but are intentionally absent from the MCP tool registry. Hooks and diagnostics call those services directly.
 
 ### Stop Enforcement
 
@@ -335,6 +341,8 @@ MCP validates the DAG at `flow_start` time:
 - **Append-only replay** — `events.jsonl` is the durable audit and resume source; completed `for_each` instances, attempts, rejections, and terminal transitions replay deterministically.
 - **Validated, bounded transitions** — outputs are schema-validated; `max_attempts` bounds instance failures and `max_turns` bounds the complete flow.
 - **Explicit execution ownership** — step type and delegate mode select the handler; no environment-based subagent/session inference exists.
+- **Transport-independent internal operations** — workflow YAML addresses engine-owned application operations through stable names such as `source.analyze`; definitions never contain generated MCP transport identifiers or server executable paths.
+- **Minimal model surface** — models may start and advance runs, while status inspection and lock recovery remain internal capabilities.
 - **Snapshotted definitions** — each run persists its fully resolved workflow and parameters so plugin/package changes do not alter an in-progress run.
 - **Collision rejection, not overrides** — project and plugin workflow IDs share one catalog and duplicates fail deterministically.
 
@@ -345,6 +353,7 @@ Completed child contracts: SPEC-030 core engine and `for_each` lifecycle, SPEC-0
 Remaining main-flow work:
 
 - SPEC-037 — deterministic conditional routing, skipped branch state, explicit included-workflow inputs/outputs, and result aggregation.
+- Move model-facing lifecycle registration into the `flow-engine` server as `start`/`next`, retain status and lock recovery internally, and add typed namespaced operation-step dispatch for general MCP-owned workflow capabilities.
 
 Deferred follow-up, not a SPEC-010 completion condition:
 
@@ -358,6 +367,8 @@ Deferred follow-up, not a SPEC-010 completion condition:
 - [x] Main runs are session-scoped; isolated child runs are explicitly addressed and cannot collide with main locks.
 - [x] The main-agent Stop check blocks abandoned active flows through the shared dispatcher.
 - [x] Project and plugin workflow packages compose through collision-checked stable IDs.
+- [ ] Only `flow-engine.start` and `flow-engine.next` are model-facing; status and lock recovery are internal.
+- [ ] Engine-owned workflows invoke typed namespaced operations without MCP transport names or executable paths.
 - [x] Subagent Stop enforcement is tracked as separate deferred work in SPEC-033 and does not block the main-flow harness.
 - [ ] Conditional workflow routing and aggregation are complete per SPEC-037.
 - [ ] All active main-flow child-spec test plans pass, including their required Claude/Codex live coverage.

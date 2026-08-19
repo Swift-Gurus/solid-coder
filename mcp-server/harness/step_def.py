@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from harness.condition_declaration import ConditionDeclaration
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.metric_declaration import MetricDeclaration
+from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
 
@@ -36,3 +37,4 @@ class StepDef:
     max_attempts: int = 3
     workflow_instance: IncludedWorkflowInstance | None = None
     metric: MetricDeclaration | None = None
+    operation: OperationStep | None = None

@@ -11,6 +11,9 @@ from hc_config_schema import load_config
 from message_transport_running import MessageTransportRunning
 from pipeline.flow_run_creating import FlowRunCreating
 from solid_coder_config import SolidCoderConfig
+from source.source_operation_registrations_factory import (
+    SourceOperationRegistrationsFactory,
+)
 
 
 ConfigLoading = Callable[[], SolidCoderConfig]
@@ -41,4 +44,5 @@ class FlowRunCreator(FlowRunCreating):
             session_delegate_max_workers=(
                 flow_engine_config.max_parallel_sessions
             ),
+            operation_registrations=SourceOperationRegistrationsFactory().make(),
         ).build()

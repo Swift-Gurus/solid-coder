@@ -1,7 +1,7 @@
 """Rewrites typed rule steps into their public workflow YAML fields."""
 
-from harness.rule_step_snapshot_rewriting import RuleStepSnapshotRewriting
 from harness.step_def import StepDef
+from harness.step_snapshot_rewriting import StepSnapshotRewriting
 
 
 """
@@ -10,7 +10,7 @@ solid-category: boundary
 solid-spec: [SPEC-039]
 solid-description: Serializes internal metric data into public YAML fields and removes engine-generated rule outputs.
 """
-class RuleStepSnapshotRewriter(RuleStepSnapshotRewriting):
+class RuleStepSnapshotRewriter(StepSnapshotRewriting):
     def rewrite(self, snapshot: dict, step: StepDef) -> None:
         snapshot.pop("metric", None)
         if step.type not in {"metric", "exception"}:

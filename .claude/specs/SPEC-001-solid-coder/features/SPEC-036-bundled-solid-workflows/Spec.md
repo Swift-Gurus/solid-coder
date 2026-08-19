@@ -116,6 +116,13 @@ sequenceDiagram
   Hook-->>Hook: allow or block original write
 ```
 
+## Temporary Test-Code Gate Workaround
+
+- This repository currently excludes `tests/**` from the pre-write health-check gate. This is a temporary development workaround because the current prompt-based gate does not classify test support, mocks, fixtures, and test-only composition reliably, and its authored exception handling can produce false-positive SOLID findings for those units.
+- The blanket test-tree exclusion is not the target behavior for `solid-gate-on-write`. The workflow-based gate must identify test code through deterministic path/source tags and apply explicit test-code or test-double rule exceptions with recorded reasoning and evidence.
+- Once test-code classification and auditable exceptions are covered by deterministic and live gate tests, the blanket `tests/**` exclusion must be narrowed or removed.
+- No production source path may be added to the exclusion list to suppress a finding. Production exceptions must remain explicit rule decisions recorded in the workflow audit trail.
+
 ## Connects To
 
 | Direction | Target | Relationship |
@@ -133,6 +140,7 @@ sequenceDiagram
 - Run `solid-review` against the established SRP fixture and assert every step/output pair plus final score.
 - Run a five-principle fixture through `solid-review` and prove no principle or required metric is missing.
 - Run `solid-gate-on-write` through the real pre-write hook for compliant and violating buffers; assert allow/deny, run completion, and recorded evidence.
+- Run test-support, mock, fixture, and test-only composition buffers through `solid-gate-on-write`; assert deterministic test tags, applicable exceptions, and persisted reasoning/evidence before removing the temporary `tests/**` exclusion.
 - Assert the gate invokes no direct `HealthPromptBuilder` review path.
 - Assert prepared candidate code appears once in the bootstrap prompt and all subsequent instructions come from flow results.
 - Force malformed output, timeout, and runner failure; assert fail-closed behavior and preserved run diagnostics.
@@ -149,6 +157,7 @@ sequenceDiagram
 - [ ] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
 - [ ] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
 - [ ] Candidate-write preparation is deterministic and shared with the MCP-facing review-input boundary.
+- [ ] Test code is classified deterministically, test-specific exceptions are auditable, and the temporary blanket `tests/**` gate exclusion is narrowed or removed without excluding production code.
 - [ ] `solid-refactor` includes `solid-review` for both initial and verification analysis.
 - [ ] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.
 - [ ] Live gate/review/refactor tests and token/time/accuracy evidence pass on the locked model profile.

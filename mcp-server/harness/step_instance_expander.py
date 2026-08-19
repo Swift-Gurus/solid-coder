@@ -10,11 +10,10 @@ solid-description: Coordinates ordered workflow iteration expansion while exclud
 from __future__ import annotations
 
 from harness.for_each_items_resolving import ForEachItemsResolving
-from harness.interpolator import TemplateRendering
 from harness.models import RunState, StepDef, StepInstance, StepOutputs
+from harness.step_instance_building import StepInstanceBuilding
 from harness.step_instance_expanding import StepInstanceExpanding
 from harness.workflow_run_context import WorkflowRunContext
-from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
 """
@@ -27,12 +26,10 @@ class StepInstanceExpander(StepInstanceExpanding):
     def __init__(
         self,
         items_resolver: ForEachItemsResolving,
-        renderer: TemplateRendering,
-        context_resolver: WorkflowStepContextResolving,
+        instance_builder: StepInstanceBuilding,
     ) -> None:
         self._items_resolver = items_resolver
-        self._renderer = renderer
-        self._context_resolver = context_resolver
+        self._instance_builder = instance_builder
 
     def expand(
         self,
@@ -47,19 +44,11 @@ class StepInstanceExpander(StepInstanceExpanding):
                 else None
             )
             return [
-                StepInstance(
-                    step_id=step.id,
-                    instance_id=f"{step.id}-1",
-                    item=item,
-                    prompt=self._renderer.render(
-                        step.prompt,
-                        self._context_resolver.resolve(
-                            context,
-                            step.workflow_instance,
-                            item,
-                        ),
-                    ),
-                    workflow_instance=step.workflow_instance,
+                self._instance_builder.build(
+                    step,
+                    context,
+                    item,
+                    f"{step.id}-1",
                 )
             ]
 
@@ -84,20 +73,12 @@ class StepInstanceExpander(StepInstanceExpanding):
             ]
 
         return [
-            StepInstance(
-                step_id=step.id,
-                instance_id=f"{step.id}-{iteration_index + 1}",
-                item=item,
-                prompt=self._renderer.render(
-                    step.prompt,
-                    self._context_resolver.resolve(
-                        context,
-                        step.workflow_instance,
-                        item,
-                    ),
-                ),
-                iteration_index=iteration_index,
-                workflow_instance=step.workflow_instance,
+            self._instance_builder.build(
+                step,
+                context,
+                item,
+                f"{step.id}-{iteration_index + 1}",
+                iteration_index,
             )
             for iteration_index, item in enumerate(items)
             if f"{step.id}-{iteration_index + 1}"

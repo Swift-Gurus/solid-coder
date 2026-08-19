@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from harness.resolved_workflow_input import ResolvedWorkflowInput
 from harness.workflow_input_binding import WorkflowInputBinding
+from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -18,4 +18,4 @@ class WorkflowInputBindingsResolving(Protocol):
         self,
         bindings: list[WorkflowInputBinding],
         context: WorkflowRunContext,
-    ) -> list[ResolvedWorkflowInput]: ...
+    ) -> WorkflowContextValues[object]: ...

@@ -9,9 +9,7 @@ code_review_on_write_enabled = true
 # Uses ** glob: "tests/fixtures/**" matches any file under that directory.
 [hooks.pre_write_gate]
 exclude = [
-    "tests/fixtures/**",
-    "tests/harness/**",
-    "tests/principles/**",
+    "tests/**",
     "hooks/tests/**",
 ]
 
