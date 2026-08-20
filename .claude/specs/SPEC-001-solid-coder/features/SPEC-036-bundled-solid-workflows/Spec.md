@@ -80,22 +80,27 @@ As a maintainer, I want the gate and full review paths to share the same princip
 ```text
 {plugin}/workflows/
   review/
-    solid-review/workflow.yaml
-    solid-file-review/workflow.yaml
-    solid-unit-review/workflow.yaml
-  gates/solid-gate-on-write/workflow.yaml
-  refactor/solid-refactor/workflow.yaml
-  internal/
-    principles/
+    bundles/
+      solid-review/workflow.yaml
+      solid-files-review/workflow.yaml
+      solid-file-review/workflow.yaml
+      solid-unit-review/workflow.yaml
+    rules/
       srp/workflow.yaml
       ocp/workflow.yaml
       lsp/workflow.yaml
       isp/workflow.yaml
       dry/workflow.yaml
+      code-smells/workflow.yaml
+      frontmatter/workflow.yaml
+  gates/solid-gate-on-write/workflow.yaml
+  refactor/solid-refactor/workflow.yaml
 ```
 
 - The public IDs are `solid-review`, `solid-gate-on-write`, and `solid-refactor`.
-- Internal principle packages are reusable implementation details and still have explicit IDs for validated composition.
+- Review bundles and rule packages are reusable implementation details and still have explicit IDs for validated composition.
+- `review/rules` and `review/bundles` are organizational paths only. Catalog enrollment comes from the root `rule:` marker and execution remains explicit.
+- The ordinary review profile runs SRP, OCP, LSP, ISP, and DRY. The code/write profile additionally preserves the existing code-smells and frontmatter checks through typed workflow conditions.
 - Public callers never address installed package paths.
 
 ## Gate Execution Sequence

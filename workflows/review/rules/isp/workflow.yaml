@@ -1,0 +1,110 @@
+id: isp
+name: Interface Segregation Principle Review
+description: Measures protocol width, conformer coverage, and cohesion groups and reports deterministic ISP severity.
+max_turns: 10
+
+rule:
+  category: solid
+  match:
+    unit_kinds:
+      included: [protocol]
+
+steps:
+  - id: width
+    type: metric
+    metric_id: ISP-1
+    prompt: |
+      1. **List every method and property** declared in the protocol (including associated types)
+      2. **Count total requirements** (methods + properties + associated types)
+      3. **Exclude inherited requirements** — only count what THIS protocol declares, not parent protocols
+
+      Return the total requirement count.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      minor:
+        operator: greater_than_or_equal
+        value: 6
+      severe:
+        operator: greater_than_or_equal
+        value: 9
+
+  - id: min_coverage
+    type: metric
+    metric_id: ISP-2
+    prompt: |
+      1. **Find all conformers** of the protocol in the project
+      2. **For each conformer, classify each required method/property as:**
+         - MEANINGFUL — contains real logic (more than a single return statement with a default value)
+         - EMPTY — empty body `{}`
+         - STUB — returns a hardcoded default, throws `fatalError`, or has a trivial passthrough that ignores the intent
+         - DELEGATED — forwards to another object (still counts as meaningful)
+      3. **Calculate coverage** = meaningful / total requirements
+
+      Apply these authored ISP-2 adjustments before returning the minimum coverage:
+      - If only one conformer exists in the project, coverage is trivially 100%. Record "unable to verify ISP — single conformer" in `additional_info`.
+      - If every non-meaningful requirement has a default implementation through a protocol extension and the conformer does not override it, that default satisfies ISP and must not reduce coverage.
+
+      Return the minimum meaningful implementation coverage across all conformers as an integer percentage from 0 through 100.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+      maximum: 100
+    scoring:
+      minor:
+        operator: less_than
+        value: 80
+      severe:
+        operator: less_than
+        value: 60
+
+  - id: cohesion_groups
+    type: metric
+    metric_id: ISP-3
+    prompt: |
+      1. **Build a usage matrix**: for each conformer, which methods are MEANINGFUL
+      2. **Identify groups of methods** that are always used together across conformers
+      3. **Count groups** — if methods cluster into 2+ disjoint usage groups, the protocol mixes responsibilities
+
+      Return the number of disjoint method-usage groups.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 2
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      Decide whether the entire supplied protocol is exempt from ISP review. Non-protocol applicability is enforced before this workflow starts. Single-conformer and default-implementation criteria adjust only ISP-2 and do not exempt ISP-1 or ISP-3. Apply the remaining whole-rule exceptions from this complete authored list:
+
+      1. **Non-protocol units** — ISP applies ONLY to protocol/interface declarations. Classes, structs, enums, extensions, and standalone functions that do not declare a protocol are outside ISP scope — do NOT include them in the ISP section of the submission. Omit these units from ISP metrics entirely. Conformers are examined only as evidence during ISP-2 (coverage analysis) of the protocol they conform to, not as ISP review targets themselves.
+      2. **Marker protocols** — protocols with zero requirements used for type discrimination (e.g., `Sendable`, `Identifiable`). Width = 0 is always COMPLIANT.
+      3. **Single-conformer protocols** — if only one conformer exists in the project, coverage is trivially 100%. Not a violation, but flag as "unable to verify ISP — single conformer." The protocol may still be too wide, but there is no evidence from usage.
+      4. **Composition protocols** — protocols defined as `protocol P: A, B {}` (or `typealias P = A & B`) where A and B are already narrow. The composition itself is not a violation if each component protocol is compliant. **Prefer `protocol P: A, B {}` over `typealias`** — a typealias cannot be conformed to directly (you cannot write `class Decorator: MyTypealias`), which breaks the decorator pattern and other composition patterns that need a single nominal type to conform to.
+      5. **@objc protocols** — Objective-C interop protocols may require specific method sets dictated by the framework. Flag as "framework-constrained" rather than violation.
+      6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
+      7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```

@@ -23,8 +23,19 @@ Completed:
 - Typed `metric` and `exception` steps generate and validate the required scalar/boolean plus reasoning/evidence response contracts.
 - MCP deterministically scores validated metric observations, applies exception classification, and publishes typed metric, exception, and rule-result audit events plus normalized artifacts beneath `results/review/`.
 - Direct rule runs publish a typed aggregate and an identified per-rule projection beneath `results/review/<workflow-id>/<rule-instance-id>/`; the same layout supports future composite rule instances.
-- The bundled `solid-srp-review` package replaces the flat SRP POC's model-scoring step with three metric steps, one exception step, and MCP finalization.
+- The bundled `workflows/review/rules/srp` package is authored from the SRP `rule.md` detection and exception blocks and replaces the flat SRP POC with three typed metric steps, one distinct exception step, and MCP finalization; no executable flat SRP flow remains.
 - The locked SRP fixture passes the same exact metric/result assertions through both Codex and Claude live profiles without reading `rule.md` for execution.
+- The bundled `workflows/review/rules/ocp` package preserves the OCP-1/OCP-2 detection blocks, the complete exception block, and all three legacy scalar observations. `testable_direct_count` uses `OCP-3`, matching the legacy review output schema's explicit identifier and resolving the contradictory OCP-2 frontmatter nesting without dropping the observation.
+- The locked OCP violation fixture passes exact OCP-1/OCP-2/OCP-3 values, exception classification, MCP severity, events, and persisted-result assertions through both Codex and Claude live profiles.
+- SRP and OCP live tests share one backend-neutral executable-rule assertion base; rule tests supply scenario data without duplicating model runners, event checks, result checks, or artifact validation.
+- SRP and OCP deterministic flow tests share one typed scenario-driven contract for canonical instruction parity, generated response rejection, MCP scoring, compliant-by-exception behavior, and persisted result assertions. Subsequent rules add only typed metric/source expectations.
+- The bundled `workflows/review/rules/lsp` package preserves all three authored LSP detection procedures, the complete NoOp exception, and all four legacy scalar observations. `fatal_error_methods` uses `LSP-3` and `empty_methods` uses `LSP-4`, giving the two independently scored observations their proper stable policy coordinates.
+- The locked LSP violation fixture passes exact `0 / 0 / 1 / 0` observations, exception classification, MCP severity, events, and persisted-result assertions through both Codex and Claude live profiles.
+- SRP, OCP, and LSP now use the same typed deterministic and backend-neutral live contracts; adding a rule supplies scenario data rather than another test runner.
+- The bundled `workflows/review/rules/isp` package preserves the ISP-1/ISP-2/ISP-3 detection blocks, all three scalar schemas and bands, the complete exception criteria, and protocol-only applicability. Non-protocol units are filtered by typed applicability; single-conformer and default-implementation criteria adjust only ISP-2 instead of incorrectly waiving ISP-1 or ISP-3.
+- The locked ISP violation fixture passes exact `10 / 50 / 2` observations, exception classification, MCP severity, events, and persisted-result assertions through both Codex and Claude live profiles.
+- A paired non-protocol ISP fixture executes through an isolated `rules: all` bundle and proves every ISP child step is audibly skipped, no model session starts, the empty rule set completes, and no ISP result is published.
+- SRP, OCP, LSP, and ISP share the same typed deterministic and backend-neutral live contracts, including a reusable unit-kind applicability assertion.
 - One backend-neutral live workflow contract accepts typed scenarios, recursively preserves the complete canonical run, and organizes model evidence by backend, domain, and scenario.
 - The explicit `include: { rules: all }` source expands marked catalog rules in stable workflow-ID order without auto-running ordinary workflows.
 - Included rule identity survives qualification, runtime materialization, durable workflow snapshots, and replay; composite validation evaluates each child rule's real metric and exception steps under its own workflow ID.
@@ -32,12 +43,14 @@ Completed:
 
 Remaining:
 
+- Port the remaining runtime rule corpus into bundled packages beneath `workflows/review/rules/`: DRY, code-smells, and frontmatter.
+- Port DRY next, preserving its detection, exception, observation, schema, scoring, applicability, and audit contracts before beginning code-smells.
 - Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
 - Consume normalized review targets from SPEC-041 and exact extension, typed unit kind, and auditable tags/evidence from SPEC-040; the review-domain matcher materializes ordered rule/unit instances internally.
 - Replace the remaining legacy flat rule-tag callers with the typed `match` declaration.
 - Integrate the effective policy with `rules: all` materialization so policy disablement and scoring overrides are applied before child sessions start.
 - Complete replay projection and idempotent result publication from snapshots/events, including skipped-rule and retry audit identities.
-- Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders.
+- Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders after parity evidence exists for every migrated rule.
 
 ## Description
 
@@ -139,7 +152,55 @@ As a maintainer, I want to explain exactly what the model observed and what MCP 
 - Workflow or policy changes after a run starts affect only new runs.
 - Failure to persist a required snapshot or event fails the run and cannot produce an allow decision for gate-on-write.
 
+### US-5: Port the existing rule corpus without semantic drift
+
+As a maintainer, I want each existing runtime rule migrated into an executable workflow independently so changing the execution mechanism does not silently change what the model detects or how MCP scores it.
+
+**Acceptance Criteria:**
+
+- The migration inventory is exactly SRP, OCP, LSP, ISP, DRY, code-smells, and frontmatter. A rule is removed from the inventory only by an explicit product decision, never because its legacy format is inconvenient to translate.
+- Bundled rule packages live beneath `workflows/review/rules/<rule-id>/workflow.yaml`. Built-in rule IDs are `srp`, `ocp`, `lsp`, `isp`, `dry`, `code-smells`, and `frontmatter`; they do not repeat the plugin or review name. The folder is organizational; the root `rule:` marker remains the only enrollment mechanism.
+- Rules migrate one at a time in this order: align SRP, then OCP, LSP, ISP, DRY, code-smells, and frontmatter. Each rule passes its focused parsing, scoring, exception, fixture, and audit tests before the next rule is changed.
+- Migration preserves the authored detection procedure, exception criteria, metric observations, scalar constraints, and severity-band semantics from the current `references/principles/<rule>/rule.md` and review output schema.
+- Detection and exception instruction bodies are moved without editorial rewriting. Only transport-specific text that tells the model to choose severity, assemble the legacy aggregate envelope, or load another runtime instruction file is removed because the flow engine and MCP now own those operations.
+- Every independently scored scalar observation becomes a typed `metric` step using the current generated response contract: `value` plus required `additional_info.reasoning` and `additional_info.evidence`.
+- Every rule has one distinct `exception` step containing that rule's complete authored exception criteria. The model classifies the supplied unit and returns only `is_exception`, reasoning, and evidence; MCP applies the classification after all required metric observations are present.
+- Migrated prompts receive the same normalized `review_unit` value and do not reread source files, fetch current workflow files, or depend on `rule.md` at execution time.
+- Existing activation scope is preserved. SRP, OCP, LSP, ISP, and DRY remain review rules; code-smells and frontmatter retain their current code/write profile restriction through an authored workflow condition and a typed review invocation profile, not through folder naming.
+- Existing rule-specific applicability is preserved. For example, ISP remains limited to protocol/interface units and metric-specific triggers such as LSP inheritance analysis remain auditable rather than being treated as zero without explanation.
+- If a legacy rule uses inconsistent or ambiguous metric identifiers, observation names, schema descriptions, or bands, migration of that rule stops and records the conflict for an explicit decision. The port does not silently rename, merge, split, drop, or reinterpret it.
+- LSP explicitly resolves one such legacy identity conflict: the current source groups `fatal_error_methods` and `empty_methods` under LSP-3 even though they are independently scored metrics. The executable rule uses the corrected coordinates `LSP-3` and `LSP-4`; migration evidence still identifies the shared authored detection block from which both measurement prompts were ported.
+- A migrated rule's result uses the normalized `RuleReviewResult` contract. Compatibility assertions compare the canonical observation values, exception decision, and deterministic severity rather than preserving the obsolete legacy aggregate JSON envelope.
+- After all seven packages have parity evidence and all review/gate callers use them, runtime loading of `references/**/rule.md`, legacy review instructions, legacy review output schemas, and `.solid-coder/severity-bands.yml` is removed. Reference examples and fix guidance remain until their owning refactor workflows migrate.
+
 ## Technical Requirements
+
+### Bundled rule migration contract
+
+```text
+workflows/
+└── review/
+    ├── rules/
+    │   ├── srp/workflow.yaml
+    │   ├── ocp/workflow.yaml
+    │   ├── lsp/workflow.yaml
+    │   ├── isp/workflow.yaml
+    │   ├── dry/workflow.yaml
+    │   ├── code-smells/workflow.yaml
+    │   └── frontmatter/workflow.yaml
+    └── bundles/
+        ├── solid-unit-review/workflow.yaml
+        ├── solid-file-review/workflow.yaml
+        ├── solid-files-review/workflow.yaml
+        └── solid-review/workflow.yaml
+```
+
+- Every package has one stable workflow ID matching its directory name; directory placement itself has no selection semantics.
+- `srp` is reconstructed from `references/principles/SRP/rule.md` at the final package location. The adapted workflow POC is not treated as the instruction source, and the discarded flat `.solid-coder/harness/flows/srp_validation.yaml` format is not retained as a second implementation.
+- A migration comparison records, for every rule, its source detection blocks, exception block, observation keys and scalar schemas, authored bands, applicability/profile constraints, destination steps, and parity tests.
+- Engine-generated response instructions may be appended to model prompts, but materialization never rewrites the authored detection or exception text.
+- Metric steps and the exception step may execute independently when their authored logic is independent. A dependency is declared only when the exception or metric procedure actually consumes an earlier typed observation.
+- MCP finalization waits for every enabled, applicable metric and the exception classification. A skipped metric-specific trigger is represented by a typed, audited applicability outcome; it is not fabricated as a measured zero.
 
 ### Rule workflow contract
 
@@ -174,7 +235,7 @@ rule:
 Metric and exception steps are first-class typed workflow entries. A compact SRP rule is:
 
 ```yaml
-id: solid-srp-review
+id: srp
 name: Single Responsibility Review
 description: Measures responsibility signals and reports deterministic SRP severity.
 max_turns: 10
@@ -291,7 +352,7 @@ rules:
     enabled: false
     reason: This check is enforced by the compiler configuration.
 
-  - workflow_id: solid-srp-review
+  - workflow_id: srp
     metrics:
       - id: SRP-3
         enabled: false
@@ -404,10 +465,10 @@ Rule-set expansion and child-workflow materialization are internal review-domain
 └── results/
     └── review/
         ├── result.json         # ordered aggregate review projection
-        ├── solid-srp-review/
+        ├── srp/
         │   └── <rule-instance-id>/
         │       └── result.json
-        └── solid-ocp-review/
+        └── ocp/
             └── <rule-instance-id>/
                 └── result.json
 ```
@@ -488,7 +549,14 @@ flowchart TD
 
 ### Integration and E2E
 
-- The SRP fixture runs through `solid-srp-review`; MCP obtains SRP-1/2/3 values and exception evidence, applies the YAML bands, and matches the locked health-check baseline without reading `rule.md`.
+- The SRP fixture runs through `srp`; MCP obtains SRP-1/2/3 values and exception evidence, applies the YAML bands, and matches the locked health-check baseline without reading `rule.md` at execution time.
+- The LSP violation fixture runs through `lsp`; MCP obtains all four scalar observations and exception evidence, applies the independently addressable LSP-3 and LSP-4 bands, and produces the locked severe result without reading `rule.md` at execution time.
+- The ISP violation fixture runs through `isp`; typed applicability admits protocol units only, MCP obtains width, minimum coverage, cohesion-group, and exception evidence, and local scoring produces the locked severe result without reading `rule.md` at execution time.
+- An ISP fixture containing only non-protocol units produces no ISP observations or result; `rules: all` records the failed unit-kind condition for every skipped ISP child and starts no agent session.
+- Each migrated rule has a focused fixture that locks its canonical observations, exception decision, deterministic severity, and emitted audit identities before the next rule is ported.
+- A source-to-workflow parity test asserts that every legacy detection block, exception block, scalar observation, band, applicability constraint, and code-only profile restriction is represented exactly once in the migration comparison; missing and duplicated mappings fail.
+- SRP no longer executes through `.solid-coder/harness/flows/srp_validation.yaml`; its focused and live tests resolve the bundled `workflows/review/rules/srp/workflow.yaml` package by workflow ID.
+- Code-smells and frontmatter run for the code/write invocation profile and are skipped with auditable evidence for ordinary review invocations; the skip records the decisive profile condition.
 - Repeating the same SRP run through Codex and Claude preserves the same step/output contract and deterministic scoring; model observations, elapsed time, and token usage remain comparison data.
 - One-file and multi-file inputs use the same `for_each` path; rule/unit instances are independent and aggregate in stable order.
 - Git-change preparation includes staged, unstaged, and untracked files, extracts changed ranges and normalized units, and produces the same typed review input consumed by explicit file/files/folder/buffer requests.
@@ -515,6 +583,9 @@ flowchart TD
 - [ ] Effective plans and events preserve source hashes, observations, exceptions, scoring, overrides, skips, retries, and publication.
 - [ ] Replay uses only run snapshots/events and never rereads current workflow or policy state.
 - [ ] Bundled SRP executes from YAML and can be compared with the current health-check fixture on accuracy, time, and token usage.
+- [ ] SRP, OCP, LSP, ISP, DRY, code-smells, and frontmatter each execute from one bundled rule workflow with preserved detection, exception, observation, schema, band, and activation semantics.
+- [ ] Every rule migration has focused parity evidence before the next rule begins, and ambiguous legacy contracts are resolved explicitly rather than normalized silently.
+- [ ] The temporary flat SRP POC is removed after its tests resolve the bundled SRP package.
 - [ ] Gate and refactor reuse the same review workflow/results.
 - [ ] Legacy `rule.md` and severity-band runtime readers are removed after all callers migrate.
 - [ ] Focused, full non-live, and Codex/Claude flow-engine E2E tests pass.

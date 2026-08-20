@@ -1,8 +1,8 @@
 """
-solid-name: test_srp_validation_flow
+solid-name: test_isp_validation_flow
 solid-category: integration-test
 solid-spec: [SPEC-039]
-solid-description: Verifies packaged SRP observation, validation, scoring, and audit behavior through the flow engine.
+solid-description: Verifies canonical ISP instructions, protocol applicability, typed observations, exception handling, scoring, and audit behavior.
 """
 
 from __future__ import annotations
@@ -18,45 +18,46 @@ from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E4
 from rule_validation_scenario import RuleValidationScenario  # noqa: E402
 
 
-class TestSRPValidationFlow(RuleValidationFlowContract):
+class TestISPValidationFlow(RuleValidationFlowContract):
     __test__ = True
     PROJECT_ROOT = _PROJECT_ROOT
     SCENARIO = RuleValidationScenario(
-        workflow_id="srp",
-        rule_path=_PROJECT_ROOT / "references" / "principles" / "SRP" / "rule.md",
+        workflow_id="isp",
+        rule_path=_PROJECT_ROOT / "references" / "principles" / "ISP" / "rule.md",
         fixture_path=(
             _PROJECT_ROOT
             / "tests"
             / "principles"
-            / "SRP"
+            / "ISP"
             / "fixtures"
             / "fixture-1.swift"
         ),
         metrics=[
             RuleMetricExpectation(
-                step_id="verb_count",
-                metric_id="SRP-1",
-                detection_id="SRP-1",
-                detection_name="Verb Count",
-                value=6,
+                step_id="width",
+                metric_id="ISP-1",
+                detection_id="ISP-1",
+                detection_name="Protocol Width",
+                value=10,
+                severity="SEVERE",
+            ),
+            RuleMetricExpectation(
+                step_id="min_coverage",
+                metric_id="ISP-2",
+                detection_id="ISP-2",
+                detection_name="Conformer Coverage",
+                value=50,
                 severity="SEVERE",
             ),
             RuleMetricExpectation(
                 step_id="cohesion_groups",
-                metric_id="SRP-2",
-                detection_id="SRP-2",
-                detection_name="Cohesion Groups",
-                value=2,
-                severity="SEVERE",
-            ),
-            RuleMetricExpectation(
-                step_id="stakeholder_count",
-                metric_id="SRP-3",
-                detection_id="SRP-3",
-                detection_name="Stakeholder Count",
+                metric_id="ISP-3",
+                detection_id="ISP-3",
+                detection_name="Protocol Cohesion Groups",
                 value=2,
                 severity="SEVERE",
             ),
         ],
         final_severity="SEVERE",
+        included_unit_kinds=["protocol"],
     )

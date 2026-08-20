@@ -1,0 +1,114 @@
+id: ocp
+name: Open Closed Principle Review
+description: Measures sealed variation points and testability signals and reports deterministic OCP severity.
+max_turns: 10
+
+rule:
+  category: solid
+
+steps:
+  - id: sealed_variation_points
+    type: metric
+    metric_id: OCP-1
+    prompt: |
+      1. **List every dependency** the class uses (properties, parameters, method calls to external types)
+      2. **Classify each as** 
+         - ABSTRACT (protocol-typed and injected) 
+         - DIRECT (passed in construction methods or used directly in class) 
+           - INJECTED (concrete class, singleton, static) passed into construction of the object (init, factory methods, convenience inits)
+             - construction methods (init, create type factory methods, convenience methods) can have defatult arguments -> consider INJECTED
+           - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
+         - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
+      3. **Check OCP exceptions** — apply only the `<exceptions principle="OCP">` block below. Exclude every matching unit or dependency from the OCP count before calculating sealed variation points.
+      4. **Count concrete dependencies DIRECT NON-INJECTED**
+      5. **Exclude from the count of DIRECT NON-INJECTED** the dependencies that fit the exception for **Pure Data Structures**
+      6. **Sum** = total sealed variation points
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: untestable_dependencies
+    type: metric
+    metric_id: OCP-2
+    prompt: |
+      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
+      - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
+       - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
+
+      *Note* we can subclass any class that is not final.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: testable_direct_count
+    type: metric
+    metric_id: OCP-3
+    prompt: |
+      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
+      - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
+       - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
+
+      *Note* we can subclass any class that is not final.
+
+      Return the count of DIRECT INJECTED concrete dependencies that are testable because they can be subclassed.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      minor:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      Decide whether the entire supplied unit is exempt from OCP review under these authored exceptions:
+
+      1. **Factories/Builders** — a class whose primary responsibility is constructing or composing other objects (name ends in Factory, Builder, Assembler, or Configurator; or its primary output is a fully configured object graph). The ENTIRE class is exempt from OCP-1 and OCP-2: constructing, holding, and wiring concrete dependencies is inherently its job. Do NOT flag individual instantiations inside a Factory/Builder as sealed variation points.
+      2. **Dependency-free units** — units with no dependencies and no hardcoded behavior-selection logic are exempt.
+      3. **Pure data structures** — immutable or mutable data carriers with no business logic, runtime collaborators, or side effects are exempt.
+      4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
+      5. **Pure Views UI elements** - UI elements that don't have any business logic dependencies.
+      6. **Test code** — unit tests, UI tests, integration tests, mocks, stubs, fakes, and test helpers are exempt. Test code intentionally uses concrete types and is not subject to OCP review.
+          When encountering a `.shared` / `.default` / static access, **inspect the returned type** before deciding:
+
+          | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |
+          |---------------|---------------------------|--------|-------------------|
+          | Concrete class (non-final) | Yes — can subclass | Protocol extension conformance + inject the instance | **No** |
+          | Concrete final class | Yes — can instantiate | Protocol extension conformance + inject the instance | **No** |
+          | Protocol / interface | Already abstract | Depend on the protocol directly | **No** |
+          | Enum with static members only | No | Wrap in adapter struct | **Yes** |
+          | Global function / constant | No | Wrap in adapter struct | **Yes** |
+
+          Boundary Adapter Recognition Conditions (ALL must hold):
+          - API is not owned by dev (search in project/local packages/local framework files)
+          - API doesn't support instantiation: enums with only static members, global constants, static global functions
+          - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
