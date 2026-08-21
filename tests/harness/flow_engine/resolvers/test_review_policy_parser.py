@@ -30,7 +30,6 @@ class TestReviewPolicyParser(unittest.TestCase):
         self.sut = ReviewPolicyParser(
             decoder=PydanticModelDecoder(
                 model_type=ReviewPolicy,
-                error_factory=error_factory,
             ),
             validators=[
                 ReviewPolicyIdentityValidator(

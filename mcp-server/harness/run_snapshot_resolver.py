@@ -11,6 +11,7 @@ from harness.models import FlowDef
 from harness.run_context_building import RunContextBuilding
 from harness.run_snapshot import RunSnapshot
 from harness.run_snapshot_resolving import RunSnapshotResolving
+from harness.workflow_results_context_building import WorkflowResultsContextBuilding
 
 
 """
@@ -26,11 +27,13 @@ class RunSnapshotResolver(RunSnapshotResolving):
         event_replayer: EventReplaying,
         context_builder: RunContextBuilding,
         step_resolver: DynamicWorkflowStepsResolving,
+        results_context_builder: WorkflowResultsContextBuilding,
         dag_runner: DAGRunning,
     ) -> None:
         self._event_replayer = event_replayer
         self._context_builder = context_builder
         self._step_resolver = step_resolver
+        self._results_context_builder = results_context_builder
         self._dag_runner = dag_runner
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
@@ -39,6 +42,14 @@ class RunSnapshotResolver(RunSnapshotResolving):
         executable_flow = replace(
             flow_def,
             steps=self._step_resolver.resolve(flow_def, run_state, context),
+        )
+        context = replace(
+            context,
+            workflows=self._results_context_builder.build(
+                executable_flow,
+                run_state,
+                context,
+            ),
         )
         ready = self._dag_runner.ready_steps(executable_flow, run_state, context)
         return RunSnapshot(

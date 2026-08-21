@@ -19,6 +19,11 @@ Completed:
 - File and in-memory text sources are sealed input variants.
 - Swift analysis uses parser output rather than line-oriented declaration regular expressions and returns typed units plus recoverable diagnostics.
 - Engine-owned `type: operation` steps resolve logical operation names, validate inputs/outputs, drain without a model turn, and participate in fan-out, conditions, retries, events, and replay.
+- Internal `source.search` and `source.read_candidates` operations accept immutable typed Pydantic contracts, share repository traversal with legacy health search, preserve stable query/match provenance, exclude reviewed source identities, validate candidate paths against the canonical root, detect changed content through the shared SHA-256 capability, and persist bounded exact comparison content for replay.
+- Focused source and workflow tests prove deterministic ranking, current-file and `.solid-coder` artifact exclusion, bounded reads, escaped-root and changed-source outcomes, operation engine ownership, and replay without search or filesystem rereads.
+- `source.prepare_search_targets` and `source.prepare_search_query` keep source slicing, target/query identities, deterministic terms, exclusions, and query assembly MCP-owned.
+- The bundled DRY workflow fans out one reusable target-search workflow per MCP-owned unit. The model supplies only semantic terms and per-candidate `classification`, `reasoning`, and `evidence`; MCP performs query assembly, repository search, and bounded candidate loading.
+- Nested candidate fan-out preserves the parent target input and the inner candidate item, records conditional skips with their item evidence, publishes ordered target result envelopes, and emits an empty classification collection when every candidate is unavailable or ineligible.
 
 Remaining:
 
@@ -32,7 +37,7 @@ Remaining:
 
 Add a dedicated `source` MCP namespace for deterministic source-code and working-tree analysis. It supplies general capabilities used by review, gate-on-write, refactor, test, and client-authored workflows without placing review-specific behavior in the flow engine.
 
-The namespace collects Git changes or an immutable Git range and analyzes one file or text buffer into typed source units plus auditable tags. Exact file extension and typed unit kind remain first-class matcher inputs rather than being flattened into tags. The same application services are registered as internal workflow operations, allowing YAML to use stable names such as `source.analyze` without embedding generated MCP transport names or executable paths.
+The namespace collects Git changes or an immutable Git range, analyzes one file or text buffer into typed source units plus auditable tags, and searches project-owned source through typed queries whose candidates can be loaded for deterministic comparison. Exact file extension and typed unit kind remain first-class matcher inputs rather than being flattened into tags. The same application services are registered as internal workflow operations, allowing YAML to use stable names such as `source.analyze` without embedding generated MCP transport names or executable paths.
 
 This work extracts useful behavior from the legacy pipeline `prepare_review_input` path. It does not preserve a second implementation or leave the legacy tool registered after its callers migrate.
 
@@ -40,8 +45,8 @@ This work extracts useful behavior from the legacy pipeline `prepare_review_inpu
 
 | | Detail |
 |---|---|
-| Input | Current project working tree, immutable base/head Git refs, one accessible file, or one supplied text buffer with optional virtual path/extension; optional validated project tag-detector configuration |
-| Output | Typed ordered change records or a typed source analysis containing exact file extension, units, normalized tags, and source evidence |
+| Input | Current project working tree, immutable base/head Git refs, one accessible file, one supplied text buffer with optional virtual path/extension, or typed repository-search queries and candidate identities; optional validated project tag-detector configuration |
+| Output | Typed ordered change records, typed search candidates and bounded candidate sources, or a typed source analysis containing exact file extension, units, normalized tags, and source evidence |
 | Consumers | Flow-engine operation steps, SPEC-039 rule activation, `solid-review`, `solid-gate-on-write`, `solid-refactor`, tests, and client workflows |
 
 ## User Stories
@@ -54,7 +59,7 @@ As an agent or workflow, I want source analysis separated from pipeline and flow
 
 - The plugin registers one MCP server named `source`; it does not repeat the plugin name in the server name.
 - The server entrypoint lives beneath `mcp-server/source/` and is exposed by both Codex and Claude plugin manifests.
-- The initial model-facing tools are `collect_changes`, `collect_range`, and `analyze`.
+- The initial model-facing tools are `collect_changes`, `collect_range`, `analyze`, `search`, and `read_candidates`.
 - The namespace contains no review scoring, rule selection, flow lifecycle, build, or documentation operations.
 - Application logic consumes and returns typed models. Raw mappings exist only at the MCP JSON boundary and are decoded immediately.
 - Tool descriptions state that analysis is deterministic and MCP-owned; the model does not supply detected tags as facts.
@@ -178,6 +183,42 @@ As a review workflow, I want a deterministic base/head diff so pull-request revi
 - Missing, ambiguous, or non-commit refs fail explicitly before producing a change collection.
 - Pull-request URL/number lookup is an adapter concern owned by the review-target boundary; source collection receives resolved repository/ref input and does not call a hosting provider.
 
+### US-8: Search and load source candidates for comparison
+
+As a file-scoped rule workflow, I want MCP-owned repository search and candidate loading so the model can classify concrete reuse and duplication evidence without choosing paths or parsing formatted search output.
+
+**Acceptance Criteria:**
+
+- `source.search` accepts a typed ordered collection of queries. Every query has a stable identity and one or more normalized, non-empty search terms; raw query mappings are decoded at the MCP boundary and are not passed through application logic.
+- Each search term is one explicit term, not a shell fragment, regular expression, or delimiter-encoded list. Duplicate terms within a query are rejected or normalized deterministically before search.
+- The project root comes from the resolved run or MCP request context. A bundled workflow does not allow the model to substitute another search root.
+- Search reuses the repository search service shared with existing health-check behavior, while the flow operation returns typed results and never writes or consumes a health-check completion marker.
+- Search considers structured frontmatter plus exact filename, symbol, import, and source-content evidence. Every returned candidate identifies the originating query, canonical project-relative source identity, matched terms, match kinds, and stable rank/order.
+- The reviewed source identities are supplied as typed exclusions and are removed before results are published. A current file can still be analyzed for local duplication, but it cannot appear as its own external reuse candidate.
+- Candidate identities are deduplicated and ordered deterministically. Search limits are explicit typed inputs with bounded defaults rather than prompt conventions.
+- `source.read_candidates` accepts typed candidate identities produced by search, verifies that every resolved path remains within the canonical project root, and returns bounded ordered source records with canonical identity, content, and truncation metadata.
+- Missing, unreadable, escaped-root, oversized, or changed candidate sources produce typed per-candidate outcomes; they do not silently disappear or cause unrelated candidates to lose their results.
+- Search results and loaded candidate sources are ordinary typed operation outputs. Completion events persist the effective queries, exclusions, provenance, source identities, bounded content, and failures required for audit and replay.
+- Replay reconstructs both operation outputs from persisted run evidence and does not search the repository or reread candidate files.
+
+### US-9: Prepare model-ready source-search tasks deterministically
+
+As a workflow author, I want MCP to prepare immutable search targets and assemble validated queries so model steps provide only semantic synonyms and candidate classifications for code already present in their context.
+
+**Acceptance Criteria:**
+
+- `source.prepare_search_targets` accepts one typed file or text source plus a typed `file | unit` granularity and reuses `source.analyze`; it does not implement a second parser or source-discovery path.
+- File granularity returns one target containing the complete supplied source. Unit granularity returns one target per ordered analyzed unit containing the exact source slice identified by its parser offsets.
+- Every target carries an MCP-owned stable identity, canonical source identity, exact code, name, unit kind, source span, deterministic name/symbol/tag terms, and the reviewed source identities that external search must exclude.
+- The model never discovers files, reads paths, chooses source spans, creates target/query identities, or reports detected tags. A model step receives the already-scoped target code and returns only a non-empty array of dynamically generated individual synonyms or alternative names.
+- `source.prepare_search_query` accepts one MCP-owned target and the corresponding model-generated term array. It validates single-term values, normalizes and deduplicates them with deterministic target terms, preserves the target identity as the query identity, and returns the typed query plus reviewed-source exclusions accepted by `source.search`.
+- A bundled workflow uses one nested search workflow per target. Existing `for_each` instance identity and ordered fan-in associate generated terms with their target without asking the model to echo an identity.
+- After `source.read_candidates`, candidate classification fans out over the typed read results. Each agent request contains both the immutable reviewed target code and bounded candidate code; the model does not inspect files or call search/read tools.
+- Each candidate-classification instance requires exactly `classification`, non-empty `reasoning`, and non-empty `evidence`. Target and candidate identities come from the engine-owned instance input rather than model output.
+- Empty candidate collections complete through existing empty fan-in behavior and remain auditable through the persisted search output; the model is not asked to fabricate a no-candidate assessment.
+- Step completion and nested fan-in persist generated terms, effective queries, search evidence, bounded candidate content, and classifications for downstream metrics and replay. Replay performs no source analysis, repository search, file read, or model call for completed instances.
+- Prompt wording is replaceable workflow content. Stable correctness comes from typed MCP preparation, operation validation, instance association, output schemas, and persisted events rather than relying on a prompt to preserve identities or claim coverage.
+
 ## Technical Requirements
 
 ### Namespace boundary
@@ -207,6 +248,8 @@ The boundary models include, at minimum:
 - A tag detection with normalized tag, scope, detector identity, and evidence.
 - A source evidence record identifying the parsed fact and source span.
 - A typed detector catalog and project detector declarations.
+- A typed repository-search request containing stable query identities, normalized terms, exclusions, and bounded limits.
+- Typed search candidates carrying project-relative source identity and match provenance, plus typed candidate-source read results carrying bounded content or a typed failure.
 
 Models must not drag unrelated optional fields across source variants. File and text inputs are distinct variants under one discriminated boundary.
 
@@ -228,6 +271,26 @@ SPEC-039 applies included/excluded file-extension, unit-kind, and tag matchers
 
 The source namespace does not discover or execute rule workflows. It publishes typed evidence that other domains consume.
 
+File-scoped rules may add repository comparison after analysis without changing that boundary:
+
+```text
+source.prepare_search_targets normalized file or units
+        ↓
+flow-engine for_each target
+        ↓
+agent generates semantic synonyms from supplied target code
+        ↓
+source.prepare_search_query
+        ↓
+source.search typed queries, excluding the normalized file
+        ↓
+source.read_candidates typed candidate identities
+        ↓
+flow-engine for_each loaded candidate
+        ↓
+agent classifies supplied target/candidate code
+```
+
 ### Audit and replay
 
 - Direct MCP calls return typed JSON responses and do not mutate source files.
@@ -235,6 +298,7 @@ The source namespace does not discover or execute rule workflows. It publishes t
 - Replay reconstructs completed operation outputs from persisted run evidence and does not rerun Git or source analysis.
 - Configuration or source changes after operation completion affect new runs only.
 - Raw source content is not duplicated into every event; persisted snapshots retain the minimum canonical input needed by the owning run contract.
+- Candidate content is bounded once by `source.read_candidates` and persisted with that completed operation output, so downstream audit and replay observe the exact compared bytes without rereading the working tree.
 
 ## Connects To
 
@@ -270,9 +334,18 @@ The source namespace does not discover or execute rule workflows. It publishes t
 - Unknown rule tags fail plan preparation rather than silently skipping forever.
 - Git-range fixtures resolve authored refs to commits and produce the same normalized change records as an equivalent working-tree diff.
 
+### Repository search and candidate loading
+
+- Multiple typed queries retain their query identities through stable candidate ordering and deduplication.
+- Search proves exact filename, symbol/import, frontmatter, and source-content matches while rejecting regex, shell, empty-term, and escaped-root inputs.
+- The current reviewed file is excluded from external candidates without preventing the rule from receiving its complete local source snapshot.
+- Candidate loading rejects paths outside the canonical project root and returns typed outcomes for missing, unreadable, changed, oversized, and successfully loaded files.
+- A DRY fixture containing only same-file duplication still produces local evidence when search returns no candidates.
+- Replay returns the persisted candidates and exact bounded candidate content after repository files change, and the search/read services are not invoked again.
+
 ### Workflow integration
 
-- A workflow loads `source.collect_changes` and `source.analyze` by logical operation name.
+- A workflow loads `source.collect_changes`, `source.analyze`, `source.search`, and `source.read_candidates` by logical operation name.
 - The engine rejects transport-qualified MCP names and unknown logical operations.
 - A `for_each` operation step analyzes multiple files, drains internally, publishes outputs in source order, and returns only downstream agent work.
 - Replay uses persisted operation outputs and does not recollect Git changes or reparse source.
@@ -282,11 +355,12 @@ The source namespace does not discover or execute rule workflows. It publishes t
 
 - [ ] The `source` MCP namespace is registered for Codex and Claude with typed `collect_changes` and `analyze` tools.
 - [ ] Git changes are collected deterministically without mutation.
+- [x] Repository search and bounded candidate loading use typed inputs/outputs, stable provenance, self-exclusion, canonical-root validation, audit, and replay.
 - [ ] File/text analysis produces exact extension, typed code/document units, normalized tags, and evidence.
 - [ ] Built-in Swift detection covers SwiftUI, UIKit, TCA, structured concurrency, and GCD.
 - [ ] Typed `[source]` configuration supports safe additional detectors and rejects bundled collisions or executable/regex definitions.
-- [ ] Workflows invoke source services through internal logical operation names without MCP loopback or full transport paths.
-- [ ] Operation steps support validation, conditions, fan-out, retries, audit, and replay through the existing engine.
+- [x] Workflows invoke source services through internal logical operation names without MCP loopback or full transport paths.
+- [x] Operation steps support validation, conditions, fan-out, retries, audit, and replay through the existing engine.
 - [ ] SPEC-039 receives file extension, unit kind, tags, and evidence for deterministic included/excluded rule applicability.
 - [ ] The legacy pipeline `prepare_review_input` registration and duplicate implementation are removed after migration.
 - [ ] Focused, full non-live, and Codex/Claude flow-engine E2E tests pass.

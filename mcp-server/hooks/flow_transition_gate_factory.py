@@ -56,8 +56,9 @@ class FlowTransitionGateFactory:
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
         from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
         from harness.static_session_id_reader import StaticSessionIdReader
-        from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+        from harness.workflow_catalog_factory import WorkflowCatalogFactory
         from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
+        from harness.workflow_results_context_builder_factory import WorkflowResultsContextBuilderFactory
         from pending_step_failure_recorder import PendingStepFailureRecorder
 
         active_run = ActiveRunPointerStore(
@@ -66,7 +67,7 @@ class FlowTransitionGateFactory:
         run_locator = ActiveRunLocator(
             base_dir_resolver=self._base_dir_resolver or RunsBaseDirResolver(), active_run=active_run
         )
-        workflow_catalog = make_workflow_catalog_resolver()
+        workflow_catalog = WorkflowCatalogFactory().make()
         assembly = FlowEngineAssemblyFactory().build(
             workflow_catalog_resolver=workflow_catalog,
         )
@@ -100,6 +101,9 @@ class FlowTransitionGateFactory:
                     values_mapper=WorkflowContextValuesMapper()
                 ),
                 step_resolver=assembly.dynamic_step_resolver,
+                results_context_builder=WorkflowResultsContextBuilderFactory().make(
+                    assembly.schema_validator
+                ),
                 dag_runner=assembly.dag_runner,
             ),
             condition_serializer=make_condition_serializer(),

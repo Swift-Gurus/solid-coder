@@ -43,10 +43,10 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
 
         for_each = raw.get("for_each")
         if for_each is not None and (
-            not isinstance(for_each, str) or not for_each
+            not isinstance(for_each, (str, Mapping)) or not for_each
         ):
             raise self._error_factory.create(
-                "Workflow include 'for_each' must be a non-empty string"
+                "Workflow include 'for_each' must be a non-empty expression or reference"
             )
 
         raw_bindings = raw.get("with") or {}
@@ -71,7 +71,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             depends_on=list(depends_on),
             for_each=(
                 self._for_each_parser.parse("workflow include", for_each)
-                if isinstance(for_each, str)
+                if isinstance(for_each, (str, Mapping))
                 else None
             ),
             input_bindings=[

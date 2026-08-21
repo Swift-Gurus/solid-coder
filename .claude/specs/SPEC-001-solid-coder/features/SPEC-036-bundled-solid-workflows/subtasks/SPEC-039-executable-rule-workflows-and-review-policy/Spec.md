@@ -14,11 +14,11 @@ blocking: [SPEC-036]
 
 Completed:
 
-- `rule: {}` plus optional `category` and typed `match` selectors is parsed and validated; exact file-extension, typed unit-kind, and tag included/excluded selectors compile into reusable workflow conditions.
+- `rule: {}` plus optional typed `scope` and `match` selectors is parsed and validated; exact file-extension, typed unit-kind, and tag included/excluded selectors compile into reusable workflow conditions.
 - Rule discovery reuses the recursive project/plugin workflow catalog, its stable workflow IDs, provenance, and collision rejection.
 - Rule enrollment is explicit to the review domain. Catalog discovery does not automatically run workflows.
 - The singular `{project}/.solid-coder/policies/review.yaml` is loaded as typed policy data. An absent file produces an explicit default resolution; malformed policy fails with its source path.
-- A stable effective plan records workflow origin, path, hash, category, authored applicability, enablement, policy path/hash, and the authored/requested/effective enablement decision.
+- A stable effective plan records workflow origin, path, hash, authored applicability, enablement, policy path/hash, and the authored/requested/effective enablement decision.
 - Unknown rule IDs fail plan construction. The effective plan and verbatim authored policy are persisted before execution.
 - Typed `metric` and `exception` steps generate and validate the required scalar/boolean plus reasoning/evidence response contracts.
 - MCP deterministically scores validated metric observations, applies exception classification, and publishes typed metric, exception, and rule-result audit events plus normalized artifacts beneath `results/review/`.
@@ -40,11 +40,13 @@ Completed:
 - The explicit `include: { rules: all }` source expands marked catalog rules in stable workflow-ID order without auto-running ordinary workflows.
 - Included rule identity survives qualification, runtime materialization, durable workflow snapshots, and replay; composite validation evaluates each child rule's real metric and exception steps under its own workflow ID.
 - Composite rule runs deterministically finalize and persist each materialized rule instance, then publish one ordered aggregate review result with worst-severity selection.
+- `rule.scope` is the typed `unit | file` execution granularity and defaults to `unit`. `rules: all` preserves unit fan-out while materializing file-scoped rules once for the normalized file under the same nested identity, snapshot, replay, and result machinery.
+- The bundled `workflows/review/rules/dry` package preserves the DRY-1/DRY-2/DRY-3 detection blocks and complete exception block. It inventories one immutable file, retains an independent same-file duplication lane, uses typed MCP-owned `source.search` and `source.read_candidates` operations for external evidence, asks the model only to classify supplied evidence, and leaves scoring to MCP.
+- Deterministic DRY flow coverage proves ordered agent/operation transitions, current-file exclusion, search/read engine ownership and audit events, canonical instruction parity, exact MCP scoring, and continued DRY-2 evidence when external search returns no candidates.
 
 Remaining:
 
-- Port the remaining runtime rule corpus into bundled packages beneath `workflows/review/rules/`: DRY, code-smells, and frontmatter.
-- Port DRY next, preserving its detection, exception, observation, schema, scoring, applicability, and audit contracts before beginning code-smells.
+- Lock the DRY fixture observations through both Codex and Claude live profiles, then port code-smells and frontmatter beneath `workflows/review/rules/`.
 - Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
 - Consume normalized review targets from SPEC-041 and exact extension, typed unit kind, and auditable tags/evidence from SPEC-040; the review-domain matcher materializes ordered rule/unit instances internally.
 - Replace the remaining legacy flat rule-tag callers with the typed `match` declaration.
@@ -78,7 +80,8 @@ As a workflow author, I want to express measurement prompts and simple severity 
 
 - A workflow is enrolled as a review rule only when its root declares `rule`.
 - `rule: {}` means enabled by default and applicable to every normalized review unit.
-- The only optional rule metadata fields are `category` and `match`; unknown or duplicated identity fields are rejected.
+- The only optional rule metadata fields are `scope` and `match`; unknown or duplicated identity fields are rejected.
+- `scope` is the typed enum `unit | file` and defaults to `unit`. A unit-scoped rule receives one normalized unit; a file-scoped rule receives one normalized file containing its complete snapshotted content and ordered units.
 - `match` may select exact file extensions, unit kinds, and MCP-detected tags through the same `included`/`excluded` structure.
 - Missing `match` or a missing matcher dimension means everything in that dimension is included except explicitly excluded values.
 - Exclusion always wins. A value authored in both `included` and `excluded` is rejected before execution.
@@ -113,7 +116,8 @@ As a review caller, I want one explicit review operation to select applicable ru
 - `solid-unit-review` declares one explicit `include: { rules: all }` extension point. It resolves every workflow marked with `rule:` from the snapshotted catalog; folder names do not enroll or activate workflows.
 - The rule-set include accepts the same runtime controls as an included workflow group and supplies the standard typed `review_unit` input to every enrolled rule.
 - `solid-review` normalizes one or many files into one ordered collection and uses the same `solid-file-review` `for_each` path for both cases.
-- MCP rejects file-inapplicable rules before unit fan-out, then materializes every enabled and unit-applicable rule independently for each remaining unit using the existing nested-workflow, retry, replay, and fan-in machinery.
+- MCP materializes every enabled file-scoped rule exactly once per applicable file before unit fan-out. It rejects file-inapplicable rules before either scope starts, then materializes every enabled and unit-applicable unit-scoped rule independently for each remaining unit using the existing nested-workflow, retry, replay, and fan-in machinery.
+- File-scoped rules receive the complete immutable normalized file snapshot, not a reread path. A prospective buffer therefore analyzes the candidate content, and a multi-file review exposes each normalized file to its own file-scoped rule instance.
 - A policy-disabled or matcher-inapplicable rule starts no agent session and consumes no model turn.
 - Results are ordered by file, unit, and stable workflow ID, independent of completion order.
 - Empty file/unit/rule collections complete through the existing empty fan-in behavior.
@@ -127,7 +131,7 @@ As a client, I want one small review policy to disable checks or tune thresholds
 - The only policy location is `{project}/.solid-coder/policies/review.yaml`.
 - Omitting the policy preserves workflow defaults.
 - A policy may enable/disable a rule, enable/disable a declared metric, or replace declared severity bands by workflow ID and metric ID.
-- Policy cannot change workflow identity, category, match declaration, prompts, steps, value schemas, resources, or outputs.
+- Policy cannot change workflow identity, match declaration, prompts, steps, value schemas, resources, or outputs.
 - Unknown workflow IDs, metric IDs, severities, operators, or unsupported value types fail before any model call.
 - Workflow defaults are applied first and the project policy second; project values take precedence only at explicitly authored override coordinates.
 - Disabling a metric is valid only if at least one metric remains enabled. A rule with no effective metrics is rejected before execution.
@@ -142,7 +146,7 @@ As a maintainer, I want to explain exactly what the model observed and what MCP 
 **Acceptance Criteria:**
 
 - Before the first rule executes, the run persists the resolved workflow snapshot, normalized review input, effective rule plan, optional verbatim review policy, and run metadata.
-- The effective plan includes workflow/resource hashes, origin, category/match declaration, effective metrics/bands, and every override decision.
+- The effective plan includes workflow/resource hashes, origin, match declaration, effective metrics/bands, and every override decision.
 - Append-only events record enrollment, file-extension matching, unit-kind matching, tag matching, policy disablement, metric completion/failure, exception classification, scoring decisions, retries, and publication with file/unit/rule/step identities.
 - Metric events retain the validated value, reasoning, evidence, effective matching band, and resulting severity.
 - Exception events retain `is_exception`, reasoning, evidence, and the classification step identity.
@@ -168,6 +172,11 @@ As a maintainer, I want each existing runtime rule migrated into an executable w
 - Migrated prompts receive the same normalized `review_unit` value and do not reread source files, fetch current workflow files, or depend on `rule.md` at execution time.
 - Existing activation scope is preserved. SRP, OCP, LSP, ISP, and DRY remain review rules; code-smells and frontmatter retain their current code/write profile restriction through an authored workflow condition and a typed review invocation profile, not through folder naming.
 - Existing rule-specific applicability is preserved. For example, ISP remains limited to protocol/interface units and metric-specific triggers such as LSP inheritance analysis remain auditable rather than being treated as zero without explanation.
+- DRY remains file-scoped for scoring and retains an independent local-duplication lane over the complete immutable normalized file, so same-file duplication remains detectable after external search excludes the reviewed source.
+- DRY external search is composed from the MCP-owned typed operations in SPEC-040. MCP prepares stable file or unit targets and deterministic terms, while a replaceable agent prompt returns only runtime synonyms or alternative names for code already supplied in its context.
+- One unmarked nested DRY search workflow executes per prepared target. It assembles the effective query through MCP, searches and loads candidates through MCP, then fans out classification over supplied target/candidate code without allowing the model to discover files, choose roots, create identities, or call search/read tools.
+- Candidate classifications require a closed classification value plus non-empty reasoning and evidence. Target/candidate association and complete coverage come from workflow instance identity and `for_each` completion rather than model-authored IDs or coverage claims.
+- DRY supports file-target and unit-target search experiments by changing MCP target granularity while reusing the same nested target workflow, classification contract, local-duplication lane, metrics, and scoring.
 - If a legacy rule uses inconsistent or ambiguous metric identifiers, observation names, schema descriptions, or bands, migration of that rule stops and records the conflict for an explicit decision. The port does not silently rename, merge, split, drop, or reinterpret it.
 - LSP explicitly resolves one such legacy identity conflict: the current source groups `fatal_error_methods` and `empty_methods` under LSP-3 even though they are independently scored metrics. The executable rule uses the corrected coordinates `LSP-3` and `LSP-4`; migration evidence still identifies the shared authored detection block from which both measurement prompts were ported.
 - A migrated rule's result uses the normalized `RuleReviewResult` contract. Compatibility assertions compare the canonical observation values, exception decision, and deterministic severity rather than preserving the obsolete legacy aggregate JSON envelope.
@@ -185,7 +194,9 @@ workflows/
     │   ├── ocp/workflow.yaml
     │   ├── lsp/workflow.yaml
     │   ├── isp/workflow.yaml
-    │   ├── dry/workflow.yaml
+    │   ├── dry/
+    │   │   ├── workflow.yaml
+    │   │   └── search-target/workflow.yaml
     │   ├── code-smells/workflow.yaml
     │   └── frontmatter/workflow.yaml
     └── bundles/
@@ -196,6 +207,8 @@ workflows/
 ```
 
 - Every package has one stable workflow ID matching its directory name; directory placement itself has no selection semantics.
+- `rule.scope` controls only materialization granularity. It does not change catalog enrollment, match semantics, policy coordinates, or result ownership.
+- Unit-scoped results are ordered by file, unit, and workflow ID. File-scoped results are ordered by file and workflow ID and do not invent a synthetic unit identity.
 - `srp` is reconstructed from `references/principles/SRP/rule.md` at the final package location. The adapted workflow POC is not treated as the instruction source, and the discarded flat `.solid-coder/harness/flows/srp_validation.yaml` format is not retained as a second implementation.
 - A migration comparison records, for every rule, its source detection blocks, exception block, observation keys and scalar schemas, authored bands, applicability/profile constraints, destination steps, and parity tests.
 - Engine-generated response instructions may be appended to model prompts, but materialization never rewrites the authored detection or exception text.
@@ -208,7 +221,7 @@ The rule marker provides applicability metadata only:
 
 ```yaml
 rule:
-  category: solid
+  scope: unit
   match:
     file_extensions:
       included: [".swift"]
@@ -220,7 +233,7 @@ rule:
       excluded: [test, generated]
 ```
 
-- `category` is optional reporting metadata.
+- `scope` is optional materialization metadata and defaults to `unit`; `file` is the only other supported value.
 - `match` is optional applicability metadata. Its only fields are `file_extensions`, `unit_kinds`, and `tags`.
 - Each matcher dimension uses the same optional `included` and `excluded` fields. Missing `included` means all values minus `excluded`; missing `excluded` means no exclusions.
 - File extensions are normalized lowercase exact suffixes with a leading dot. They are not inferred language names.
@@ -240,8 +253,7 @@ name: Single Responsibility Review
 description: Measures responsibility signals and reports deterministic SRP severity.
 max_turns: 10
 
-rule:
-  category: solid
+rule: {}
 
 steps:
   - id: verb_count
@@ -521,7 +533,8 @@ flowchart TD
 
 - An ordinary workflow without `rule` retains unchanged behavior and is not enrolled.
 - `rule: {}` parses as always applicable, but executable review validation requires metric and exception steps.
-- Category and extension/unit/tag match selectors decode into typed values; unknown fields, duplicates, malformed extensions, and include/exclude intersections fail at the source field.
+- Extension/unit/tag match selectors decode into typed values; unknown fields, duplicates, malformed extensions, and include/exclude intersections fail at the source field.
+- Rule scope decodes into the closed `unit | file` enum; missing scope resolves to `unit`, and unknown scope fails before execution.
 - Metric and exception entries decode into distinct typed step models rather than generic application maps.
 - Missing/duplicate metric IDs, zero metric steps, zero/multiple exception steps, unsupported scalar schemas, empty scoring, invalid operators, incompatible comparison values, and unknown fields fail before execution.
 - Generated metric/exception response schemas require non-empty reasoning/evidence and reject model-supplied severity/applicability fields.
@@ -559,6 +572,9 @@ flowchart TD
 - Code-smells and frontmatter run for the code/write invocation profile and are skipped with auditable evidence for ordinary review invocations; the skip records the decisive profile condition.
 - Repeating the same SRP run through Codex and Claude preserves the same step/output contract and deterministic scoring; model observations, elapsed time, and token usage remain comparison data.
 - One-file and multi-file inputs use the same `for_each` path; rule/unit instances are independent and aggregate in stable order.
+- A mixed file proves a file-scoped rule sees sibling declarations in one model input while a unit-scoped rule still receives independent unit instances.
+- A file containing internal duplicated logic produces DRY-2 evidence even when `source.search` returns no external candidates.
+- DRY search excludes the current normalized file from external reuse candidates, includes other normalized or repository files, and does not lose same-file duplication evidence produced by its local lane.
 - Git-change preparation includes staged, unstaged, and untracked files, extracts changed ranges and normalized units, and produces the same typed review input consumed by explicit file/files/folder/buffer requests.
 - Both Codex and Claude plugin manifests expose the `source` namespace; the broad pipeline server no longer registers `prepare_review_input` after SPEC-040 migration.
 - Candidate tags are derived from the snapshotted effective rule plan, and unit tag decisions retain their detection evidence; neither a caller nor model output can activate an undeclared tag.
@@ -579,6 +595,7 @@ flowchart TD
 - [ ] Discovery reuses the existing catalog and never auto-runs workflows outside explicit review selection.
 - [ ] `solid-unit-review` explicitly expands all and only catalog workflows marked with `rule:` through `include: { rules: all }` without assigning runtime semantics to folder names.
 - [ ] Review applies exact-extension, typed-unit-kind, MCP-owned-tag, and project-precedence policy before materializing independent rule/unit instances.
+- [x] Typed rule scope materializes unit rules once per unit and file rules once per normalized file with stable audit identities.
 - [ ] One optional review policy controls only rule/metric enablement and complete metric band replacement.
 - [ ] Effective plans and events preserve source hashes, observations, exceptions, scoring, overrides, skips, retries, and publication.
 - [ ] Replay uses only run snapshots/events and never rereads current workflow or policy state.

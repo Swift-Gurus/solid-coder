@@ -8,11 +8,11 @@ from typing import Optional, Protocol
 
 
 class JsonSerializing(Protocol):
-    def serialize(self, doc: dict, indent: Optional[int] = None) -> str: ...
+    def serialize(self, doc: object, indent: Optional[int] = None) -> str: ...
 
 
 class JsonSerializer:
     """Boundary adapter: wraps json.dumps for injection into writers."""
 
-    def serialize(self, doc: dict, indent: Optional[int] = None) -> str:
+    def serialize(self, doc: object, indent: Optional[int] = None) -> str:
         return json.dumps(doc, indent=indent)

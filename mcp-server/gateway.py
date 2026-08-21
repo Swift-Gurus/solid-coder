@@ -84,7 +84,10 @@ validate_findings = _pt['validate_findings']
 generate_report = _pt['generate_report']
 validate_architecture = _pt['validate_architecture']
 split_implementation_plan = _pt['split_implementation_plan']
-from search.codebase_searcher import search_raw as search_codebase  # noqa: E402 — raw JSON for CLI
+from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory  # noqa: E402
+
+_raw_codebase_searcher = RawCodebaseSearcherFactory().make()
+search_codebase = _raw_codebase_searcher.search_raw
 prepare_review_input = _pt['prepare_review_input']
 
 # Spec tools — mcp-server/specs/server.py

@@ -8,11 +8,21 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from search.codebase_searcher import iter_source_files
+from source.default_repository_source_exclusions import (
+    DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
+)
+from source.filtered_repository_source_files_discoverer import (
+    FilteredRepositorySourceFilesDiscoverer,
+)
+from source.os_directory_tree_walker import OsDirectoryTreeWalker
 
 _SOURCE_EXTS = {".swift", ".kt", ".java", ".py", ".ts", ".js"}
 _DECL_PATTERN = re.compile(
     r'\b(class|struct|protocol|enum|actor|extension|typealias)\s+{name}\b'
+)
+_SOURCE_FILES = FilteredRepositorySourceFilesDiscoverer(
+    tree=OsDirectoryTreeWalker(),
+    excluded_directories=DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
 )
 
 
@@ -32,7 +42,7 @@ def grep_by_name(name: str, directory: Optional[str] = None) -> str:
     )
 
     results = []
-    for filepath in iter_source_files(root):
+    for filepath in _SOURCE_FILES.discover(root):
         if filepath.suffix not in _SOURCE_EXTS:
             continue
         try:
@@ -62,7 +72,11 @@ def glob_by_name(pattern: str, directory: Optional[str] = None) -> str:
     if not root.is_dir():
         return f"Error: directory not found: {root}"
 
-    matches = [str(p) for p in iter_source_files(root) if root.rglob(pattern) and p.match(pattern)]
+    matches = [
+        str(path)
+        for path in _SOURCE_FILES.discover(root)
+        if root.rglob(pattern) and path.match(pattern)
+    ]
 
     if not matches:
         return f"No files matching '{pattern}' found."

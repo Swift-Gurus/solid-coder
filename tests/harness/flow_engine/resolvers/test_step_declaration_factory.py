@@ -55,7 +55,6 @@ class TestStepDeclarationFactory(unittest.TestCase):
             rule_step_contract_resolver=RuleStepContractResolver(
                 metric_decoder=PydanticModelDecoder(
                     model_type=MetricDeclaration,
-                    error_factory=error_factory,
                 ),
                 error_factory=error_factory,
             ),

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from harness.models import StepDef, StepInstance
+from harness.condition_declaration import ConditionDeclaration
+from harness.models import StepInstance
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -17,7 +18,8 @@ solid-description: Contract for applying a workflow condition decision to one ex
 class StepConditionApplying(Protocol):
     def apply(
         self,
-        step: StepDef,
         instance: StepInstance,
+        condition: ConditionDeclaration,
+        item: object,
         context: WorkflowRunContext,
     ) -> StepInstance: ...

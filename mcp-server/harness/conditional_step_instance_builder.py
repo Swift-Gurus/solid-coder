@@ -33,30 +33,37 @@ class ConditionalStepInstanceBuilder:
         iteration_index: int | None = None,
     ) -> StepInstance:
         workflow_instance = step.workflow_instance
-        source_item = (
-            workflow_instance.source_item
-            if workflow_instance is not None
-            else item
-        )
         unrendered = StepInstance(
             step_id=step.id,
             instance_id=instance_id,
-            item=source_item,
+            item=item,
             prompt="",
             iteration_index=iteration_index,
             workflow_instance=workflow_instance,
         )
-        conditioned = self._condition_applier.apply(
-            step,
-            unrendered,
-            context,
-        )
-        if conditioned.skip is not None:
-            return conditioned
+        conditioned = unrendered
+        if workflow_instance is not None and workflow_instance.condition is not None:
+            conditioned = self._condition_applier.apply(
+                conditioned,
+                workflow_instance.condition,
+                workflow_instance.source_item,
+                context,
+            )
+            if conditioned.skip is not None:
+                return conditioned
+        if step.condition is not None:
+            conditioned = self._condition_applier.apply(
+                conditioned,
+                step.condition,
+                item,
+                context,
+            )
+            if conditioned.skip is not None:
+                return conditioned
         return self._delegate.build(
             step,
             context,
-            source_item,
+            item,
             instance_id,
             iteration_index,
         )

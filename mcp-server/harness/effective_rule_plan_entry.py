@@ -25,7 +25,6 @@ class EffectiveRulePlanEntry(BaseModel):
     origin: RuleWorkflowOrigin
     source_path: Path
     workflow_hash: str
-    category: str = ""
     match: RuleMatchDeclaration = Field(default_factory=RuleMatchDeclaration)
     enablement: Union[
         WorkflowDefaultRuleDecision,

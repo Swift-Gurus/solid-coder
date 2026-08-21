@@ -10,6 +10,7 @@ from harness.safe_yaml_dumper import SafeYamlDumper
 from harness.rule_step_snapshot_rewriter import RuleStepSnapshotRewriter
 from harness.workflow_persisting import WorkflowPersisting
 from harness.workflow_expression_serializer import WorkflowExpressionSerializer
+from harness.workflow_output_snapshot_serializer import WorkflowOutputSnapshotSerializer
 from harness.workflow_yaml_serializer import WorkflowYamlSerializer
 from harness.yaml_workflow_persister import YamlWorkflowPersister
 
@@ -27,6 +28,7 @@ def make_workflow_persister() -> WorkflowPersisting:
                     WorkflowExpressionSerializer()
                 ),
             ],
+            output_serializer=WorkflowOutputSnapshotSerializer(),
             yaml_dumper=SafeYamlDumper(),
         )
     )

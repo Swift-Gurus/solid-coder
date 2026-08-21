@@ -4,7 +4,6 @@ description: Measures protocol width, conformer coverage, and cohesion groups an
 max_turns: 10
 
 rule:
-  category: solid
   match:
     unit_kinds:
       included: [protocol]

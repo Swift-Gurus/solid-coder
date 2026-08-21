@@ -6,7 +6,7 @@ from harness.effective_rule_plan import EffectiveRulePlan
 from harness.effective_rule_plan_building import EffectiveRulePlanBuilding
 from harness.review_plan_artifact_persisting import ReviewPlanArtifactPersisting
 from harness.review_policy_loading import ReviewPolicyLoading
-from harness.workflow_catalog_building import WorkflowCatalogBuilding
+from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 
 
 """
@@ -20,12 +20,12 @@ class ReviewRulePlanPreparer:
     def __init__(
         self,
         policy_loader: ReviewPolicyLoading,
-        catalog_builder: WorkflowCatalogBuilding,
+        catalog_resolver: WorkflowCatalogResolving,
         plan_builder: EffectiveRulePlanBuilding,
         artifact_persister: ReviewPlanArtifactPersisting,
     ) -> None:
         self._policy_loader = policy_loader
-        self._catalog_builder = catalog_builder
+        self._catalog_resolver = catalog_resolver
         self._plan_builder = plan_builder
         self._artifact_persister = artifact_persister
 
@@ -35,7 +35,9 @@ class ReviewRulePlanPreparer:
         workflow_roots: list[Path],
     ) -> EffectiveRulePlan:
         policy_resolution = self._policy_loader.load()
-        catalog = self._catalog_builder.build(workflow_roots)
+        catalog = self._catalog_resolver.catalog(
+            [str(workflow_root) for workflow_root in workflow_roots]
+        )
         plan = self._plan_builder.build(catalog, policy_resolution)
         self._artifact_persister.persist(run_dir, plan, policy_resolution)
         return plan

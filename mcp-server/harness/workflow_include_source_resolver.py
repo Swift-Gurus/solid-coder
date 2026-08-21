@@ -8,6 +8,7 @@ from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
+from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
 from scoring.yaml_config_file_loader import ConfigFileLoading
 
 
@@ -25,12 +26,14 @@ class WorkflowIncludeSourceResolver:
         catalog_resolver: WorkflowCatalogResolving,
         source_annotator: StepSourceAnnotating,
         runtime_parser: WorkflowIncludeRuntimeParsing,
+        output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._file_loader = file_loader
         self._catalog_resolver = catalog_resolver
         self._source_annotator = source_annotator
         self._runtime_parser = runtime_parser
+        self._output_parser = output_parser
         self._error_factory = error_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
@@ -71,4 +74,5 @@ class WorkflowIncludeSourceResolver:
                 if source.rule is not None
                 else None
             ),
+            outputs=self._output_parser.parse(raw.get("outputs"), source_path),
         )

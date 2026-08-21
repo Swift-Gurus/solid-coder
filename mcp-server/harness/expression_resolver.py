@@ -44,6 +44,12 @@ class ExpressionResolver(ExpressionEvaluating):
                 expr,
                 context.attempts_used,
             )
+        if parts[0] == "workflows":
+            return self._resolve_named_value(
+                parts,
+                expr,
+                context.workflows,
+            )
         if parts[0] == "item" and context.item.present:
             return self._nested_values.resolve(
                 context.item.value,

@@ -48,6 +48,11 @@ class UnusedConditionParser:
         raise AssertionError("Static include tests do not declare conditions")
 
 
+class EmptyWorkflowOutputParser:
+    def parse(self, raw_outputs, declaring_file):
+        return []
+
+
 class StubFileLoader:
     def __init__(self, files: dict[str, dict]) -> None:
         self._files = files
@@ -85,6 +90,7 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
                 reference_factory=reference_factory,
                 source_annotator=source_annotator,
                 runtime_parser=runtime_parser,
+                output_parser=EmptyWorkflowOutputParser(),
                 error_factory=error_factory,
             ),
             InlineGroupSourceResolver(source_annotator, error_factory),

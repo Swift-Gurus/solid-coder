@@ -36,7 +36,6 @@ class TestRuleWorkflowLoading(unittest.TestCase):
                 name: Single Responsibility Review
                 max_turns: 10
                 rule:
-                  category: solid
                   match:
                     file_extensions:
                       included: [.swift]
@@ -68,7 +67,6 @@ class TestRuleWorkflowLoading(unittest.TestCase):
         self.assertEqual(
             flow.rule,
             RuleDeclaration(
-                category="solid",
                 match=RuleMatchDeclaration(
                     file_extensions=RuleSelection(included=[".swift"]),
                     tags=RuleSelection(included=["ui"]),

@@ -16,6 +16,7 @@ from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_input_binding_snapshot_parsing import (
     WorkflowInputBindingSnapshotParsing,
 )
+from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
 
 
 """
@@ -32,12 +33,14 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         condition_parser: ConditionParsing,
         for_each_parser: IncludeAliasGroupForEachParsing,
         rule_workflow_decoder: StructuredModelDecoding[IncludedRuleWorkflow],
+        output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._binding_parser = binding_parser
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._rule_workflow_decoder = rule_workflow_decoder
+        self._output_parser = output_parser
         self._error_factory = error_factory
 
     def parse(self, raw: object) -> IncludeAliasGroup:
@@ -91,5 +94,9 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
                 )
                 if raw.get("rule_workflow") is not None
                 else None
+            ),
+            outputs=self._output_parser.parse(
+                raw.get("outputs"),
+                "<workflow-snapshot>",
             ),
         )

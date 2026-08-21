@@ -21,6 +21,7 @@ from harness.filter_resolver import FilterResolver
 from harness.for_each_items_resolver import ForEachItemsResolver
 from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
+from harness.scalar_template_value_renderer import ScalarTemplateValueRenderer
 from harness.models import FlowDef, OutputSpec, RunState, StepDef, StepOutputs
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
@@ -84,8 +85,12 @@ def _make_runner() -> DAGRunner:
                     error_factory
                 ),
             ),
+            context_resolver=WorkflowStepContextResolver(),
             instance_builder=StepInstanceBuilder(
-                renderer=Interpolator(evaluator=resolver),
+                renderer=Interpolator(
+                    evaluator=resolver,
+                    value_renderer=ScalarTemplateValueRenderer(),
+                ),
                 context_resolver=WorkflowStepContextResolver(),
                 operation_inputs_resolver=UnexpectedOperationInputsResolver(),
             ),

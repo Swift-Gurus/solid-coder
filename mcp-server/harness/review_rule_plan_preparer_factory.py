@@ -22,48 +22,58 @@ from harness.rule_plan_entry_builder import RulePlanEntryBuilder
 from harness.rule_workflow_origin_resolver import RuleWorkflowOriginResolver
 from harness.sha256_content_hasher import Sha256ContentHasher
 from harness.unique_string_validator import UniqueStringValidator
-from harness.workflow_catalog_factory import make_workflow_catalog_builder
+from harness.workflow_catalog_factory import WorkflowCatalogFactory
 from scoring.yaml_loader import PyYamlLoader
 
 
-def make_review_rule_plan_preparer(
-    project_directory: Callable[[], Path],
-) -> ReviewRulePlanPreparer:
-    error_factory = FlowValidationErrorFactory()
-    content_hasher = Sha256ContentHasher()
-    return ReviewRulePlanPreparer(
-        policy_loader=ReviewPolicyLoader(
-            project_directory=project_directory,
-            yaml_loader=PyYamlLoader(),
-            parser=ReviewPolicyParser(
-                decoder=PydanticModelDecoder(
-                    model_type=ReviewPolicy,
-                    error_factory=error_factory,
+"""
+solid-name: ReviewRulePlanPreparerFactory
+solid-category: factory
+solid-spec: [SPEC-039]
+solid-description: Provides a production review rule plan preparer.
+"""
+class ReviewRulePlanPreparerFactory:
+
+    def __init__(self, project_directory: Callable[[], Path]) -> None:
+        self._project_directory = project_directory
+
+    def make(self) -> ReviewRulePlanPreparer:
+        error_factory = FlowValidationErrorFactory()
+        content_hasher = Sha256ContentHasher()
+        return ReviewRulePlanPreparer(
+            policy_loader=ReviewPolicyLoader(
+                project_directory=self._project_directory,
+                yaml_loader=PyYamlLoader(),
+                parser=ReviewPolicyParser(
+                    decoder=PydanticModelDecoder(
+                        model_type=ReviewPolicy,
+                    ),
+                    validators=[
+                        ReviewPolicyIdentityValidator(
+                            UniqueStringValidator(error_factory)
+                        )
+                    ],
                 ),
-                validators=[
-                    ReviewPolicyIdentityValidator(
-                        UniqueStringValidator(error_factory)
-                    )
-                ],
-            ),
-            content_hasher=content_hasher,
-            error_factory=error_factory,
-        ),
-        catalog_builder=make_workflow_catalog_builder(),
-        plan_builder=EffectiveRulePlanBuilder(
-            target_validator=ReviewPolicyTargetValidator(error_factory),
-            entry_builder=RulePlanEntryBuilder(
                 content_hasher=content_hasher,
-                enablement_resolver=RuleEnablementResolver(),
-                origin_resolver=RuleWorkflowOriginResolver(project_directory),
-                metric_plan_resolver=EffectiveMetricPlanResolver(
-                    override_applier=MetricOverrideApplier(),
-                    error_factory=error_factory,
-                ),
                 error_factory=error_factory,
             ),
-            flow_loader=FlowEngineAssemblyFactory().build().flow_loader,
-            search_path_collector=OrderedStringCollector(),
-        ),
-        artifact_persister=ReviewPlanArtifactPersister(),
-    )
+            catalog_resolver=WorkflowCatalogFactory().make(),
+            plan_builder=EffectiveRulePlanBuilder(
+                target_validator=ReviewPolicyTargetValidator(error_factory),
+                entry_builder=RulePlanEntryBuilder(
+                    content_hasher=content_hasher,
+                    enablement_resolver=RuleEnablementResolver(),
+                    origin_resolver=RuleWorkflowOriginResolver(
+                        self._project_directory
+                    ),
+                    metric_plan_resolver=EffectiveMetricPlanResolver(
+                        override_applier=MetricOverrideApplier(),
+                        error_factory=error_factory,
+                    ),
+                    error_factory=error_factory,
+                ),
+                flow_loader=FlowEngineAssemblyFactory().build().flow_loader,
+                search_path_collector=OrderedStringCollector(),
+            ),
+            artifact_persister=ReviewPlanArtifactPersister(),
+        )

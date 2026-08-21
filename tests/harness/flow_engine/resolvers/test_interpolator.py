@@ -23,6 +23,7 @@ from harness.nested_path_resolver import NestedPathResolver
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.run_context_builder import RunContextBuilder
 from harness.run_state import RunState
+from harness.scalar_template_value_renderer import ScalarTemplateValueRenderer
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_output_reference_resolver import StepOutputReferenceResolver
@@ -56,7 +57,8 @@ class TestInterpolator(unittest.TestCase):
             evaluator=FilteredExpressionEvaluator(
                 expression_evaluator=expression_resolver,
                 filter_resolver=FilterResolver(),
-            )
+            ),
+            value_renderer=ScalarTemplateValueRenderer(),
         )
         self.context_builder = RunContextBuilder(
             values_mapper=WorkflowContextValuesMapper()

@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.for_each_collection_validator import ForEachCollectionValidator
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.for_each_reference_validator import ForEachReferenceValidator
+from harness.for_each_source_identity_resolver import ForEachSourceIdentityResolver
 from harness.models import FlowValidationError, OutputSpec, StepDef
 from harness.step_dependency_reachability_checker import StepDependencyReachabilityChecker
 from harness.step_output_reference import StepOutputReference
@@ -28,6 +29,7 @@ class TestForEachReferenceValidator(unittest.TestCase):
             target_validator=ForEachReferenceValidator(
                 reachability_checker=StepDependencyReachabilityChecker(),
             ),
+            source_identity_resolver=ForEachSourceIdentityResolver(),
         )
 
     def test_accepts_array_output_from_a_transitive_dependency(self) -> None:

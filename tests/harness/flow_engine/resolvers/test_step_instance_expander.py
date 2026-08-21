@@ -95,6 +95,7 @@ class TestStepInstanceExpander(unittest.TestCase):
         )
         sut = StepInstanceExpander(
             items_resolver=StubItemsResolver(),
+            context_resolver=WorkflowStepContextResolver(),
             instance_builder=StepInstanceBuilder(
                 renderer=StubRenderer(),
                 context_resolver=WorkflowStepContextResolver(),

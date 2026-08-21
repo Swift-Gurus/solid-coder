@@ -1,10 +1,4 @@
-"""Characterization tests for search.codebase_searcher.
-
-Proves the performance rework (dir pruning, binary sniff, single-pass scan)
-preserves matching behaviour: same files match, spec matches still bypass
-min_matches, import hits still count per-occurrence, and skip-dirs/binaries
-are excluded from results.
-"""
+"""Characterization tests for typed codebase-search compatibility adapters."""
 
 import sys
 import unittest
@@ -13,7 +7,10 @@ from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
 
-from search.codebase_searcher import search_raw  # noqa: E402
+from search.codebase_searcher_factory import CodebaseSearcherFactory  # noqa: E402
+from search.raw_codebase_searcher_factory import (  # noqa: E402
+    RawCodebaseSearcherFactory,
+)
 
 
 def _write(root: Path, rel: str, content: str) -> Path:
@@ -24,6 +21,10 @@ def _write(root: Path, rel: str, content: str) -> Path:
 
 
 class CodebaseSearcherTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.sut = CodebaseSearcherFactory().make()
+        self.raw_sut = RawCodebaseSearcherFactory().make()
+
     def _tree(self, root: Path):
         _write(root, "Fetcher.swift",
                "// solid-description: fetch user data from remote\n"
@@ -55,7 +56,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             # description words {fetch,user,data,remote} + tags {networking,user}
             # + imports {foundation,combine}. tags_lower below hits: desc(fetch,user,data)
             # =3, tags(networking,user)=2, import(foundation)=1 → 6 >= 3.
-            res = search_raw(sources_dir=str(root),
+            res = self.raw_sut.search_raw(sources_dir=str(root),
                              tags=["fetch", "user", "data", "networking", "foundation"],
                              min_matches=3)
             self.assertIn("Fetcher.swift", self._paths(res))
@@ -65,14 +66,14 @@ class CodebaseSearcherTests(unittest.TestCase):
         with TemporaryDirectory() as d:
             root = Path(d)
             self._tree(root)
-            res = search_raw(sources_dir=str(root), tags=["fetch"], min_matches=3)
+            res = self.raw_sut.search_raw(sources_dir=str(root), tags=["fetch"], min_matches=3)
             self.assertNotIn("Fetcher.swift", self._paths(res))
 
     def test_spec_match_bypasses_min_matches(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             self._tree(root)
-            res = search_raw(sources_dir=str(root), spec_numbers=["SPEC-042"], min_matches=99)
+            res = self.raw_sut.search_raw(sources_dir=str(root), spec_numbers=["SPEC-042"], min_matches=99)
             self.assertIn("SpecFile.swift", self._paths(res))
             match = next(m for m in res["matches"] if Path(m["path"]).name == "SpecFile.swift")
             self.assertEqual(match["matched_specs"], ["SPEC-042"])
@@ -81,7 +82,7 @@ class CodebaseSearcherTests(unittest.TestCase):
         with TemporaryDirectory() as d:
             root = Path(d)
             self._tree(root)
-            res = search_raw(sources_dir=str(root),
+            res = self.raw_sut.search_raw(sources_dir=str(root),
                              tags=["fetch", "user", "data", "networking", "foundation"],
                              min_matches=3)
             self.assertNotIn("Vendor.swift", self._paths(res))
@@ -97,7 +98,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             for skip in (".derivedData/SourcePackages/Dep.swift", ".gradle/Cached.swift"):
                 _write(root, skip,
                        "// solid-description: fetch user data\nimport Foundation\nstruct D {}\n")
-            res = search_raw(sources_dir=str(root),
+            res = self.raw_sut.search_raw(sources_dir=str(root),
                              tags=["fetch", "user", "data", "foundation"], min_matches=2)
             self.assertEqual(self._paths(res), {"Mine.swift"})
             self.assertEqual(res["summary"]["total_files_scanned"], 1)
@@ -107,24 +108,21 @@ class CodebaseSearcherTests(unittest.TestCase):
             root = Path(d)
             (root / "blob.swift").write_bytes(
                 b"// solid-description: fetch user data networking\x00\x00binary")
-            res = search_raw(sources_dir=str(root),
+            res = self.raw_sut.search_raw(sources_dir=str(root),
                              tags=["fetch", "user", "data", "networking"],
                              min_matches=1)
             self.assertEqual(res["matches"], [])
-            # Still iterated (counted), just not matched.
-            self.assertEqual(res["summary"]["total_files_scanned"], 1)
+            self.assertEqual(res["summary"]["total_files_scanned"], 0)
 
-    def test_import_hits_count_per_occurrence(self):
-        # Import hits only count for files that have solid- frontmatter.
-        # Use frontmatter so the file is eligible; alpha imports add to hit count.
+    def test_repeated_imports_count_as_one_distinct_query_match(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             _write(root, "Multi.swift",
                    "// solid-description: Alpha consumer\n"
                    "import Alpha\nimport Alpha\nimport Alpha\nstruct X {}\n")
-            res = search_raw(sources_dir=str(root), tags=["alpha"], min_matches=3)
+            res = self.raw_sut.search_raw(sources_dir=str(root), tags=["alpha"], min_matches=1)
             self.assertIn("Multi.swift", self._paths(res))
-            res2 = search_raw(sources_dir=str(root), tags=["alpha"], min_matches=5)
+            res2 = self.raw_sut.search_raw(sources_dir=str(root), tags=["alpha"], min_matches=2)
             self.assertNotIn("Multi.swift", self._paths(res2))
 
     def test_multiple_frontmatter_blocks_aggregate(self):
@@ -142,22 +140,58 @@ class CodebaseSearcherTests(unittest.TestCase):
                    "// solid-tags: [beta]\n"
                    "struct Second {}\n")
             # Tag from the SECOND block (far past any plausible cap) still matches.
-            res = search_raw(sources_dir=str(root), tags=["beta"], min_matches=1)
+            res = self.raw_sut.search_raw(sources_dir=str(root), tags=["beta"], min_matches=1)
             self.assertIn("TwoTypes.swift", self._paths(res))
             # Spec from the second block still matches.
-            res_spec = search_raw(sources_dir=str(root), spec_numbers=["SPEC-777"], min_matches=99)
+            res_spec = self.raw_sut.search_raw(sources_dir=str(root), spec_numbers=["SPEC-777"], min_matches=99)
             self.assertIn("TwoTypes.swift", self._paths(res_spec))
 
-    def test_import_prefilter_does_not_misread_identifiers(self):
-        # `importantData` starts with "import" but is not an import declaration;
-        # the prefilter fast path must not count it as a hit.
+    def test_exact_symbols_match_without_frontmatter(self):
         with TemporaryDirectory() as d:
             root = Path(d)
             _write(root, "Tricky.swift",
                    "let importantData = 5\nlet imported = importantData\nstruct Z {}\n")
-            res = search_raw(sources_dir=str(root), tags=["importantdata", "imported"],
+            res = self.raw_sut.search_raw(sources_dir=str(root), tags=["importantdata", "imported"],
                              min_matches=1)
-            self.assertNotIn("Tricky.swift", self._paths(res))
+            self.assertIn("Tricky.swift", self._paths(res))
+            match = res["matches"][0]
+            self.assertEqual(
+                match["description"],
+                "No solid-description frontmatter.",
+            )
+
+    def test_search_renders_unit_description_and_absolute_inspection_path(self):
+        with TemporaryDirectory() as d:
+            root = Path(d)
+            documented = _write(
+                root,
+                "Fetcher.swift",
+                "// solid-name: Fetcher\n"
+                "// solid-description: Fetches remote user data.\n"
+                "struct Fetcher {}\n",
+            )
+            undocumented = _write(
+                root,
+                "Cache.swift",
+                "struct UserCache {}\n",
+            )
+
+            result = self.sut.search(
+                sources_dir=str(root),
+                tags=["Fetcher", "UserCache"],
+                min_matches=1,
+            )
+
+            self.assertIn("Here is what we found:", result)
+            self.assertIn("unit: Fetcher", result)
+            self.assertIn("description: Fetches remote user data.", result)
+            self.assertIn(f"path: {documented.resolve()}", result)
+            self.assertIn("unit: Cache.swift", result)
+            self.assertIn(
+                "description: No solid-description frontmatter.",
+                result,
+            )
+            self.assertIn(f"path: {undocumented.resolve()}", result)
 
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
-from harness.review_rule_plan_preparer_factory import make_review_rule_plan_preparer
+from harness.review_rule_plan_preparer_factory import ReviewRulePlanPreparerFactory
 
 
 class TestEffectiveMetricPlanResolution(unittest.TestCase):
@@ -35,8 +35,7 @@ class TestEffectiveMetricPlanResolution(unittest.TestCase):
                 id: solid-srp-review
                 name: Single Responsibility Review
                 max_turns: 10
-                rule:
-                  category: solid
+                rule: {}
                 steps:
                   - id: verb_count
                     type: metric
@@ -105,9 +104,9 @@ class TestEffectiveMetricPlanResolution(unittest.TestCase):
             self._prepare()
 
     def _prepare(self):
-        return make_review_rule_plan_preparer(
+        return ReviewRulePlanPreparerFactory(
             project_directory=lambda: self.project_root
-        ).prepare(
+        ).make().prepare(
             run_dir=self.run_directory,
             workflow_roots=[self.workflow_root],
         )

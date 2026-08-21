@@ -42,7 +42,6 @@ class TestReviewPolicyLoader(unittest.TestCase):
             parser=ReviewPolicyParser(
                 decoder=PydanticModelDecoder(
                     model_type=ReviewPolicy,
-                    error_factory=error_factory,
                 ),
                 validators=[
                     ReviewPolicyIdentityValidator(

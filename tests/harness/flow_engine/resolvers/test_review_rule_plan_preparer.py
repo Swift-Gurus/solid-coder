@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
-from harness.review_rule_plan_preparer_factory import make_review_rule_plan_preparer
+from harness.review_rule_plan_preparer_factory import ReviewRulePlanPreparerFactory
 
 
 class TestReviewRulePlanPreparer(unittest.TestCase):
@@ -58,15 +58,17 @@ class TestReviewRulePlanPreparer(unittest.TestCase):
                 "    prompt: Classify the supplied unit.\n"
             )
 
-            plan = make_review_rule_plan_preparer(
-                lambda: project_root
-            ).prepare(run_dir, [workflow_root])
+            plan = ReviewRulePlanPreparerFactory(
+                project_directory=lambda: project_root
+            ).make().prepare(run_dir, [workflow_root])
 
             decision = plan.rules[0].enablement
             self.assertIsInstance(decision, ProjectPolicyRuleDecision)
             self.assertFalse(decision.effective)
             self.assertEqual(decision.reason, "Project-owned review policy.")
-            self.assertTrue((run_dir / "effective-rule-plan.json").is_file())
+            plan_path = run_dir / "effective-rule-plan.json"
+            self.assertTrue(plan_path.is_file())
+            self.assertNotIn('"category"', plan_path.read_text())
             self.assertEqual(
                 (run_dir / "review-policy.yaml").read_text(),
                 policy_path.read_text(),

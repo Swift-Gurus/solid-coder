@@ -65,6 +65,11 @@ class StubDynamicWorkflowStepsResolver:
         return self._steps
 
 
+class EmptyWorkflowResultsContextBuilder:
+    def build(self, flow_def, run_state, context):
+        return WorkflowContextValues()
+
+
 class TestRunSnapshotResolver(unittest.TestCase):
 
     def test_resolves_run_state_and_ready_steps_from_events_path(self):
@@ -85,6 +90,7 @@ class TestRunSnapshotResolver(unittest.TestCase):
             event_replayer=replayer,
             context_builder=context_builder,
             step_resolver=step_resolver,
+            results_context_builder=EmptyWorkflowResultsContextBuilder(),
             dag_runner=dag_runner,
         )
 

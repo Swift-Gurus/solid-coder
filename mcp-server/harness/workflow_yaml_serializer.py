@@ -7,6 +7,9 @@ from harness.flow_def import FlowDef
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
 from harness.workflow_snapshot_converting import WorkflowSnapshotConverting
 from harness.workflow_yaml_serializing import WorkflowYamlSerializing
+from harness.workflow_output_snapshot_serializing import (
+    WorkflowOutputSnapshotSerializing,
+)
 from harness.yaml_dumping import YamlDumping
 
 
@@ -23,11 +26,13 @@ class WorkflowYamlSerializer(WorkflowYamlSerializing):
         snapshot_converter: WorkflowSnapshotConverting,
         condition_field_rewriter: ConditionFieldRewriting,
         step_rewriters: list[StepSnapshotRewriting],
+        output_serializer: WorkflowOutputSnapshotSerializing,
         yaml_dumper: YamlDumping,
     ) -> None:
         self._snapshot_converter = snapshot_converter
         self._condition_field_rewriter = condition_field_rewriter
         self._step_rewriters = step_rewriters
+        self._output_serializer = output_serializer
         self._yaml_dumper = yaml_dumper
 
     def serialize(self, flow_def: FlowDef) -> str:
@@ -48,6 +53,9 @@ class WorkflowYamlSerializer(WorkflowYamlSerializing):
 
         serialized_groups = snapshot["alias_groups"]
         for index in range(len(flow_def.alias_groups)):
+            serialized_groups[index]["outputs"] = self._output_serializer.serialize(
+                flow_def.alias_groups[index].outputs
+            )
             self._condition_field_rewriter.rewrite(
                 serialized_groups[index],
                 flow_def.alias_groups[index].condition,

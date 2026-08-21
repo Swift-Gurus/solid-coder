@@ -63,6 +63,7 @@ As the flow engine, I want to route classified review units through every matchi
 - Event replay restores the original completed/skipped decisions, their typed condition evidence, and branch output ordering without re-evaluating conditions or re-running completed workflow instances. Events created before evidence persistence restore explicit `unavailable` evidence rather than inventing operands or silently using `None` in runtime state.
 - `flow_status` distinguishes pending, running, completed, and skipped branch instances and reports the condition summary for skipped instances.
 - A conditional ordinary step that is skipped has no outputs. Existing interpolation failure behavior applies if a downstream step incorrectly references those absent outputs; optional branch aggregation uses the include alias's zero-or-one `results` collection.
+- When a declared workflow output selects an iterated internal step and every iteration is conditionally skipped, the step output remains absent but workflow-result publication supplies `[]` for that declared output and validates it against the authored schema. Skip events remain the audit authority; no synthetic completion event is recorded.
 
 ## Technical Requirements
 
@@ -317,6 +318,7 @@ sequenceDiagram
 - When an `in` comparison does not provide an array or a composition node is empty, workflow loading fails before a run is created.
 - When a referenced value is absent versus present with null, `exists` distinguishes the two states.
 - When a `for_each` item is available, the condition evaluates separately for each item without leaking another item's context.
+- When `for_each` is declared inside a dynamically included workflow, its typed local step-output reference resolves against that workflow instance's completed child steps, while its prompt and step-level condition receive the inner iteration item and retain access to mapped parent inputs.
 - When a workflow-level condition references parent state or an internal step, workflow loading rejects the invalid namespace.
 - When a step-level condition references a valid transitive dependency, it is accepted and evaluated only after that dependency completes.
 
@@ -401,18 +403,26 @@ These tests are written and passing before conditional execution code is changed
 - Both configured live backends reach `run_completed` without retries or failures for this isolated dynamic-include contract.
 - Before temporary inputs or isolated runtimes are removed, every live run preserves the effective workflow package, exact flow event log, final output, and backend-native execution logs under `.solid-coder/.artifacts/test/<backend>/e2e/live-session/<run-id>/`; Codex runs additionally retain rollout transcripts and state databases. Assertion failures and backend failures identify this directory for later inspection.
 
+### Health-gate review notes
+
+The implementation accepted gate findings that identified real mixed responsibilities or duplicated lookup logic. The following rejected findings were inspected and determined to be false positives; no production exception was added:
+
+- `OutputSchemaDeclarationValidator` was reported as duplicating an existing implementation, but repository search confirmed it was the only implementation of `OutputSchemaDeclarationValidating`. The workflow-output boundary instead moved structural YAML validation to Pydantic and retained the established step-schema validator unchanged.
+- `IncludedWorkflowStepCompletion` was reported as duplicating `StepCompletedEvent`. The event is a raw persistence-boundary model carrying JSON-shaped output, while the completion is typed replayed runtime state carrying `StepOutputs`; merging them would leak boundary dictionaries into workflow logic. No alias parsing or compatibility field was added.
+- `FlowRunOrchestratorFactory` was reported as duplicating `FlowRunCreator`. `FlowRunCreator` reads production TOML/MCP transport policy and delegates to the configurable factory; the factory is the shared construction root used by production, tests, and injected session runners. Collapsing them would mix configuration policy with orchestration assembly.
+
 ## Definition of Done
 
 - [ ] Flow definitions accept and validate the same declarative `when` grammar at workflow, include-invocation, and step scopes.
 - [ ] Workflow-level conditions evaluate against validated declared inputs and can skip a complete top-level or included workflow instance.
-- [ ] Step-level conditions evaluate after dependencies and per-instance `for_each` expansion, skipping only the addressed step instance.
-- [ ] Conditional workflow includes support dependency waiting and per-item fan-out without executing false branches.
+- [x] Step-level conditions evaluate after dependencies and per-instance `for_each` expansion, skipping only the addressed step instance.
+- [x] Conditional workflow includes support dependency waiting and per-item fan-out without executing false branches.
 - [ ] Each transition uses one executable runtime snapshot for dynamic readiness, execution, validation, retries, dependency release, replay, and completion.
 - [ ] Workflow inputs and include `with` mappings provide explicit, schema-validated child values without ambient parent-context access.
-- [ ] Skipped outcomes are durable, replayable, terminal for dependency joins, and visible through flow status.
-- [ ] Workflow packages can declare schema-validated outputs exposed through stable alias result collections.
-- [ ] Downstream aggregation steps receive deterministic results from every completed matching branch and no results from skipped branches.
-- [ ] Existing unconditional workflows remain backward compatible.
+- [x] Skipped outcomes are durable, replayable, terminal for dependency joins, and visible through flow status.
+- [x] Workflow packages can declare schema-validated outputs exposed through stable alias result collections.
+- [x] Downstream aggregation steps receive deterministic results from every completed matching branch and no results from skipped branches.
+- [x] Existing unconditional workflows remain backward compatible.
 - [ ] The health-check integration proves SwiftUI routing by language and unit kind followed by normalized result aggregation.
 - [ ] Shared Codex and Claude live E2E tests prove that prompt-file content can be swapped without changing workflow YAML or exposing test expectations in the launch prompt, and that model-produced categories deterministically select the matching conditional branch.
 - [ ] A live E2E fan-out case proves per-item `for_each` condition evaluation with mixed categories, completed matching instances, and durable non-matching skips.
@@ -422,4 +432,4 @@ These tests are written and passing before conditional execution code is changed
 - [x] Live Codex and Claude flow-engine runs preserve the effective workflow, flow events, final response, and backend-native evidence before cleanup and report the artifact directory.
 - [x] Typed local output references, readiness-time child prompt rendering, explicit child event identities, and replay restoration avoid runtime execution-ID parsing.
 - [ ] Unit and integration tests cover validation, execution, failure, ordering, status, and resume behavior.
-- [ ] Existing `for_each` characterization tests pass unchanged before and after conditional routing is added.
+- [x] Existing `for_each` characterization behavior passes before and after conditional routing is added.

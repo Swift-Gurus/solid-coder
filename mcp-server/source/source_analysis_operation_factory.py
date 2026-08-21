@@ -1,49 +1,8 @@
 """Composes deterministic source-analysis operation dependencies."""
 
-import tempfile
-from pathlib import Path
-
-from common.callable_temporary_directory_provider import (
-    CallableTemporaryDirectoryProvider,
-)
-from findings.review_unit_kind_parser import ReviewUnitKindParser
-from findings.utf8_text_file_writer import Utf8TextFileWriter
-from gate.dict_extension_lookup import DictExtensionLookup
-from harness.json_loading import JsonLoader
-from harness.path_builder import PathBuilder
-from harness.path_canonicalizer import PathCanonicalizer
-from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
-from hook_utils import SubprocessAdapter
-from hooks.pathlib_extractor import PathlibExtractor
-from source.analysis_source_dispatch_visitor import AnalysisSourceDispatchVisitor
-from source.analysis_source_resolver import AnalysisSourceResolver
-from source.file_analysis_source_resolver import FileAnalysisSourceResolver
-from source.language_source_analyzer_registration import (
-    LanguageSourceAnalyzerRegistration,
-)
-from source.language_source_analyzer_resolver import (
-    LanguageSourceAnalyzerResolver,
-)
+from source.analysis_source_resolver_factory import AnalysisSourceResolverFactory
+from source.resolved_source_analyzer_factory import ResolvedSourceAnalyzerFactory
 from source.source_analysis_operation import SourceAnalysisOperation
-from source.source_evidence_resolver import SourceEvidenceResolver
-from source.source_language_detector import SourceLanguageDetector
-from source.swift_import_tag_detector import SwiftImportTagDetector
-from source.swift_import_tag_registration import SwiftImportTagRegistration
-from source.swift_ast_unit_decoder import SwiftASTUnitDecoder
-from source.swift_ast_item_decoder import SwiftASTItemDecoder
-from source.swift_ast_items_loader import SwiftASTItemsLoader
-from source.swift_ast_unit_kind_resolver import SwiftASTUnitKindResolver
-from source.swift_ast_unit_name_resolver import SwiftASTUnitNameResolver
-from source.swift_parse_diagnostics_resolver import SwiftParseDiagnosticsResolver
-from source.swift_parser_runner import SwiftParserRunner
-from source.swift_source_analyzer import SwiftSourceAnalyzer
-from source.swift_tag_detector import SwiftTagDetector
-from source.swift_view_declaration_qualifier import SwiftViewDeclarationQualifier
-from source.swift_view_tag_detector import SwiftViewTagDetector
-from source.text_analysis_source_resolver import TextAnalysisSourceResolver
-from source.utf8_source_offset_line_resolver import UTF8SourceOffsetLineResolver
-from source.whole_document_unit_resolver import WholeDocumentUnitResolver
-from utils.prompt_builder import PlainTextFileReader
 
 
 """
@@ -54,90 +13,7 @@ solid-description: Composes deterministic file and text source-analysis capabili
 """
 class SourceAnalysisOperationFactory:
     def make(self) -> SourceAnalysisOperation:
-        process_runner = ProcessExecutionRunnerAdapter(SubprocessAdapter())
-        extension_extractor = PathlibExtractor(
-            lambda path: Path(path).suffix.lower()
-        )
-        json_loader = JsonLoader()
-        items_loader = SwiftASTItemsLoader(json_loader)
-        name_resolver = SwiftASTUnitNameResolver()
-        line_resolver = UTF8SourceOffsetLineResolver()
-        evidence_resolver = SourceEvidenceResolver(line_resolver)
-        swift_analyzer = SwiftSourceAnalyzer(
-            parser=SwiftParserRunner(
-                directories=CallableTemporaryDirectoryProvider(
-                    tempfile.TemporaryDirectory
-                ),
-                writer=Utf8TextFileWriter(),
-                process_runner=process_runner,
-            ),
-            units=SwiftASTUnitDecoder(
-                items_loader=items_loader,
-                item_decoder=SwiftASTItemDecoder(
-                    kind_resolver=SwiftASTUnitKindResolver(
-                        ReviewUnitKindParser()
-                    ),
-                    name_resolver=name_resolver,
-                    line_resolver=line_resolver,
-                ),
-            ),
-            diagnostics=SwiftParseDiagnosticsResolver(),
-            tag_detector=SwiftTagDetector([
-                SwiftImportTagDetector(
-                    json_loader=json_loader,
-                    evidence_resolver=evidence_resolver,
-                    registrations=[
-                        SwiftImportTagRegistration(
-                            module="SwiftUI",
-                            tags=["ui", "swiftui"],
-                        ),
-                        SwiftImportTagRegistration(
-                            module="UIKit",
-                            tags=["ui", "uikit"],
-                        ),
-                        SwiftImportTagRegistration(
-                            module="ComposableArchitecture",
-                            tags=["tca"],
-                        ),
-                        SwiftImportTagRegistration(
-                            module="Dispatch",
-                            tags=["concurrency", "gcd"],
-                        ),
-                    ],
-                ),
-                SwiftViewTagDetector(
-                    items_loader=items_loader,
-                    declaration_qualifier=SwiftViewDeclarationQualifier(
-                        name_resolver
-                    ),
-                    evidence_resolver=evidence_resolver,
-                ),
-            ]),
-        )
         return SourceAnalysisOperation(
-            source_resolver=AnalysisSourceResolver(
-                AnalysisSourceDispatchVisitor(
-                    file_resolver=FileAnalysisSourceResolver(
-                        reader=PlainTextFileReader(),
-                        extension_extractor=extension_extractor,
-                    ),
-                    text_resolver=TextAnalysisSourceResolver(
-                        path_canonicalizer=PathCanonicalizer(PathBuilder()),
-                        extension_extractor=extension_extractor,
-                    ),
-                )
-            ),
-            language_detector=SourceLanguageDetector(
-                extension_lookup=DictExtensionLookup({
-                    ".swift": "swift",
-                    ".py": "python",
-                }),
-            ),
-            analyzer_resolver=LanguageSourceAnalyzerResolver([
-                LanguageSourceAnalyzerRegistration(
-                    language="swift",
-                    analyzer=swift_analyzer,
-                )
-            ]),
-            document_unit_resolver=WholeDocumentUnitResolver(),
+            source_resolver=AnalysisSourceResolverFactory().make(),
+            analyzer=ResolvedSourceAnalyzerFactory().make(),
         )

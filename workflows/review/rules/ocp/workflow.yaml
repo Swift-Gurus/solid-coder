@@ -3,8 +3,7 @@ name: Open Closed Principle Review
 description: Measures sealed variation points and testability signals and reports deterministic OCP severity.
 max_turns: 10
 
-rule:
-  category: solid
+rule: {}
 
 steps:
   - id: sealed_variation_points

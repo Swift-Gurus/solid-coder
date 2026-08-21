@@ -20,6 +20,7 @@ from pipeline.interfaces import ReviewResultsCollecting
 from pipeline.output_path_factory import OutputPathFactory
 from pipeline.output_validating import OutputValidating
 from pipeline.pipeline_tool_callables_assembler import PipelineToolCallablesAssembler
+from search.codebase_searcher_factory import CodebaseSearcherFactory
 from pipeline.pipeline_tool_callables_creating import PipelineToolCallablesCreating
 from pipeline.server import ApplicationBootstrapper
 from pipeline.skill_runner import ResultFormatting, SkillRunning, SkillResultFormatter, SkillRunner
@@ -93,7 +94,7 @@ class ApplicationBootstrapperFactory(
         severity = self._check_severity or importlib.import_module("check-severity")
         context = self._context_loader or importlib.import_module("load-context")
         validator = self._output_validator or importlib.import_module("validate-output")
-        search = self._search or importlib.import_module("search.codebase_searcher")
+        search = self._search or CodebaseSearcherFactory().make()
         return PipelineToolCallablesAssembler(
             runner=runner,
             formatter=formatter,

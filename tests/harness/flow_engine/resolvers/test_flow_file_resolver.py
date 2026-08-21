@@ -20,7 +20,7 @@ from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.models import FlowValidationError
 from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
-from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+from harness.workflow_catalog_factory import WorkflowCatalogFactory
 
 
 class TestFlowFileResolver(unittest.TestCase):
@@ -33,7 +33,7 @@ class TestFlowFileResolver(unittest.TestCase):
         self.plugin_dir.mkdir(parents=True)
         self.sut = FlowFileResolver(
             path_checker=_RealPathChecker(),
-            catalog_resolver=make_workflow_catalog_resolver(),
+            catalog_resolver=WorkflowCatalogFactory().make(),
         )
 
     def test_resolves_package_id_in_first_search_dir(self):

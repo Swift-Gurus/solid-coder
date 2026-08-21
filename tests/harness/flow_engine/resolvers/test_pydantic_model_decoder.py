@@ -14,7 +14,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
@@ -26,7 +25,6 @@ class TestPydanticModelDecoder(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = PydanticModelDecoder(
             model_type=RuleDeclaration,
-            error_factory=FlowValidationErrorFactory(),
         )
 
     def test_decodes_the_configured_model_type(self):

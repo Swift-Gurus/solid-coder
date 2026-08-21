@@ -22,6 +22,7 @@ class RunContextBuilder(RunContextBuilding):
         return WorkflowRunContext(
             parameters=self._values_mapper.map(params),
             completed_steps=self._values_mapper.map(run_state.completed),
+            skipped_steps=self._values_mapper.map(run_state.skipped),
             rejection_reasons=self._values_mapper.map(
                 run_state.rejection_reasons
             ),

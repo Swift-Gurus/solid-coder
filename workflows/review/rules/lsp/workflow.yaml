@@ -3,8 +3,7 @@ name: Liskov Substitution Principle Review
 description: Measures type checks, inheritance contract violations, and unsupported protocol behavior and reports deterministic LSP severity.
 max_turns: 12
 
-rule:
-  category: solid
+rule: {}
 
 steps:
   - id: type_checks

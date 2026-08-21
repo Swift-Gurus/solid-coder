@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from harness.flow_validation_error import FlowValidationError
 from harness.for_each_target_validating import ForEachTargetValidating
+from harness.for_each_validation_target import ForEachValidationTarget
 from harness.models import StepDef
-from harness.step_output_reference import StepOutputReference
 from harness.step_dependency_reachability_checking import (
     StepDependencyReachabilityChecking,
 )
@@ -26,45 +26,46 @@ class ForEachReferenceValidator(ForEachTargetValidating):
 
     def validate(
         self,
-        target_id: str,
-        for_each: StepOutputReference | None,
-        dependency_ids: list[str],
+        target: ForEachValidationTarget,
         steps: list[StepDef],
     ) -> None:
-        if for_each is None:
-            return
         source_step = next(
-            (candidate for candidate in steps if candidate.id == for_each.step_id),
+            (
+                candidate
+                for candidate in steps
+                if candidate.id == target.source_step_id
+            ),
             None,
         )
         if source_step is None:
             raise FlowValidationError(
-                f"Step '{target_id}' for_each references unknown step "
-                f"'{for_each.step_id}'"
+                f"Step '{target.target_id}' for_each references unknown step "
+                f"'{target.source_reference.step_id}'"
             )
         source_output = next(
             (
                 output
                 for output in source_step.outputs
-                if output.name == for_each.output_name
+                if output.name == target.source_reference.output_name
             ),
             None,
         )
         if source_output is None:
             raise FlowValidationError(
-                f"Step '{target_id}' for_each references unknown output "
-                f"'{for_each.output_name}' on step '{for_each.step_id}'"
+                f"Step '{target.target_id}' for_each references unknown output "
+                f"'{target.source_reference.output_name}' on step "
+                f"'{target.source_reference.step_id}'"
             )
         if not self._reachability_checker.is_dependency(
-            for_each.step_id,
-            dependency_ids,
+            target.source_step_id,
+            target.dependency_ids,
             steps,
         ):
             raise FlowValidationError(
-                f"Step '{target_id}' for_each must reference a transitive dependency"
+                f"Step '{target.target_id}' for_each must reference a transitive dependency"
             )
         if source_output.schema is None or source_output.schema.get("type") != "array":
             raise FlowValidationError(
-                f"Step '{target_id}' for_each source output "
-                f"'{for_each.output_name}' must declare an array schema"
+                f"Step '{target.target_id}' for_each source output "
+                f"'{target.source_reference.output_name}' must declare an array schema"
             )

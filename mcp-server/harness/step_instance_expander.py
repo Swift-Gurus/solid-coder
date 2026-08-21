@@ -14,6 +14,7 @@ from harness.models import RunState, StepDef, StepInstance, StepOutputs
 from harness.step_instance_building import StepInstanceBuilding
 from harness.step_instance_expanding import StepInstanceExpanding
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
 """
@@ -27,9 +28,11 @@ class StepInstanceExpander(StepInstanceExpanding):
         self,
         items_resolver: ForEachItemsResolving,
         instance_builder: StepInstanceBuilding,
+        context_resolver: WorkflowStepContextResolving,
     ) -> None:
         self._items_resolver = items_resolver
         self._instance_builder = instance_builder
+        self._context_resolver = context_resolver
 
     def expand(
         self,
@@ -52,10 +55,20 @@ class StepInstanceExpander(StepInstanceExpanding):
                 )
             ]
 
+        source_item = (
+            step.workflow_instance.source_item
+            if step.workflow_instance is not None
+            else None
+        )
+        step_context = self._context_resolver.resolve(
+            context,
+            step.workflow_instance,
+            source_item,
+        )
         items = self._items_resolver.resolve(
             step.id,
             step.for_each,
-            context,
+            step_context,
         )
         if not items:
             return [

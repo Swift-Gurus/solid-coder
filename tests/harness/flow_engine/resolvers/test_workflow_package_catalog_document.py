@@ -14,7 +14,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.workflow_package_catalog_document import WorkflowPackageCatalogDocument
 
@@ -24,14 +23,12 @@ class TestWorkflowPackageCatalogDocument(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = PydanticModelDecoder(
             model_type=WorkflowPackageCatalogDocument,
-            error_factory=FlowValidationErrorFactory(),
         )
 
-    def test_decodes_empty_rule_marker_and_optional_metadata(self):
+    def test_decodes_empty_rule_marker_and_optional_match_metadata(self):
         document = self.sut.decode(
             self._workflow(
                 rule={
-                    "category": "quality",
                     "match": {
                         "tags": {"included": ["ui"]},
                     },
@@ -41,8 +38,14 @@ class TestWorkflowPackageCatalogDocument(unittest.TestCase):
         )
 
         self.assertEqual(document.id, "acme-review")
-        self.assertEqual(document.rule.category, "quality")
         self.assertEqual(document.rule.match.tags.included, ["ui"])
+
+    def test_category_is_rejected_as_unknown_rule_metadata(self):
+        with self.assertRaisesRegex(FlowValidationError, "Invalid workflow package"):
+            self.sut.decode(
+                self._workflow(rule={"category": "quality"}),
+                "workflow package",
+            )
 
     def test_omitted_rule_marker_remains_an_ordinary_workflow(self):
         document = self.sut.decode(self._workflow(), "workflow package")

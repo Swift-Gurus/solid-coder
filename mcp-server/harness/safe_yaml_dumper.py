@@ -15,4 +15,8 @@ solid-description: Converts serializable values into safely formatted YAML text 
 """
 class SafeYamlDumper(YamlDumping):
     def dump(self, value: object) -> str:
-        return yaml.safe_dump(value, default_flow_style=False)
+        return yaml.safe_dump(
+            value,
+            default_flow_style=False,
+            sort_keys=False,
+        )

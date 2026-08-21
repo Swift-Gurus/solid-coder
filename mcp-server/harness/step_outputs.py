@@ -19,5 +19,8 @@ class StepOutputs:
     def get(self, name: str) -> Any:
         return self.values.get(name)
 
+    def contains(self, name: str) -> bool:
+        return name in self.values
+
     def to_dict(self) -> dict[str, Any]:
         return dict(self.values)

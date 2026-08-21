@@ -61,6 +61,9 @@ from harness.run_metadata_store import RunMetadataStore
 from harness.run_provisioner import RunProvisioner
 from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
 from harness.run_snapshot_resolver import RunSnapshotResolver
+from harness.workflow_results_context_builder_factory import (
+    WorkflowResultsContextBuilderFactory,
+)
 from harness.run_started_event_recorder import RunStartedEventRecorder
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 from harness.runs_base_dir_resolving import RunsBaseDirResolving
@@ -89,7 +92,7 @@ from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRun
 from harness.successful_validation_result_provider import SuccessfulValidationResultProvider
 from harness.turn_advancer import TurnAdvancer
 from harness.thread_pool_executor_factory import ThreadPoolExecutorFactory
-from harness.workflow_catalog_factory import make_workflow_catalog_resolver
+from harness.workflow_catalog_factory import WorkflowCatalogFactory
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
@@ -103,9 +106,9 @@ _DELEGATE_SESSION_MAX_WORKERS = 4
 
 """
 solid-name: FlowRunOrchestratorFactory
-solid-category: service
+solid-category: factory
 solid-spec: [SPEC-027]
-solid-description: Prepares flow-run orchestration for workflow execution.
+solid-description: Assembles configured flow-run orchestration from injected storage, session, execution, and operation policies.
 """
 class FlowRunOrchestratorFactory:
 
@@ -128,7 +131,7 @@ class FlowRunOrchestratorFactory:
         self._operation_registrations = operation_registrations or []
 
     def build(self) -> FlowRunOrchestrator:
-        workflow_catalog = make_workflow_catalog_resolver()
+        workflow_catalog = WorkflowCatalogFactory().make()
         path_checker = PathChecker()
         error_factory = FlowValidationErrorFactory()
         operation_registry = OperationRegistry(
@@ -162,6 +165,9 @@ class FlowRunOrchestratorFactory:
             event_replayer=assembly.event_replayer,
             context_builder=run_context_builder,
             step_resolver=assembly.dynamic_step_resolver,
+            results_context_builder=WorkflowResultsContextBuilderFactory().make(
+                assembly.schema_validator
+            ),
             dag_runner=assembly.dag_runner,
         )
         output_recorder = OutputRecorder(event_appender=assembly.event_appender)
