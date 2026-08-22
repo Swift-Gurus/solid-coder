@@ -4,6 +4,7 @@ from typing import Protocol
 
 from hook_handling import HookHandling
 from patch_file_simulation import PatchFileSimulation
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -17,4 +18,5 @@ class PatchFileHandlerCreating(Protocol):
         self,
         simulation: PatchFileSimulation,
         language: str,
+        context: PatchReviewContext,
     ) -> HookHandling: ...

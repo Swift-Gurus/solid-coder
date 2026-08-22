@@ -29,8 +29,15 @@ from text_based_output_handler import TextBasedOutputHandler  # noqa: F401
 from llm_reviewer import LLMReviewing, LLMReviewer  # noqa: F401
 from output_path_resolver import OutputPathResolving, SessionOutputPathResolver  # noqa: F401
 from health_check_context_writing import HealthCheckContextWriting  # noqa: F401
+from patch_review_context import PatchReviewContext  # noqa: F401
 
 
+"""
+solid-name: HealthChecking
+solid-category: abstraction
+solid-description: Contract for validating prospective source content within its request-scoped context.
+solid-tags: [hook]
+"""
 class HealthChecking(Protocol):
     def check(
         self,
@@ -39,9 +46,16 @@ class HealthChecking(Protocol):
         language: str,
         parent_session_id: str,
         cwd: str = "",
+        patch_context: Optional[PatchReviewContext] = None,
     ) -> Optional[list]: ...
 
 
+"""
+solid-name: LLMHealthChecker
+solid-category: service
+solid-description: Coordinates prospective source health reviews and their isolated audit context.
+solid-tags: [hook]
+"""
 class LLMHealthChecker:
     """Facade coordinating principle loading, prompt building, and LLM review."""
 
@@ -66,6 +80,7 @@ class LLMHealthChecker:
         path: str,
         language: str,
         parent_session_id: str,
+        patch_context: Optional[PatchReviewContext] = None,
     ) -> Optional[list]:
         principles = self._loader.load(content, path)
         if principles is None:
@@ -74,7 +89,13 @@ class LLMHealthChecker:
             return []
         output_dir = self._path_resolver.resolve(parent_session_id)
         if self._context_writer is not None:
-            self._context_writer.write(output_dir, path, language, content)
+            self._context_writer.write(
+                output_dir,
+                path,
+                language,
+                content,
+                patch_context,
+            )
         prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
         try:
             return self._reviewer.review(prompt, path, output_dir=output_dir)

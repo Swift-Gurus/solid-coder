@@ -19,4 +19,3 @@ class PrepareSearchQueryInput(BaseModel):
 
     target: SourceSearchTarget
     generated_terms: Annotated[list[SearchTerm], Field(min_length=1)]
-    excluded_source_identities: list[str] = Field(default_factory=list)

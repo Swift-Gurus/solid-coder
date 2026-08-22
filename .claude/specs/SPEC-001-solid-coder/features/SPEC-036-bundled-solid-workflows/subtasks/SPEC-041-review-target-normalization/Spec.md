@@ -72,6 +72,8 @@ As a gate or conversational caller, I want in-memory content reviewed without fi
 **Acceptance Criteria:**
 
 - `buffer` requires prospective content and its target project-relative path. Gate-on-write always uses this variant.
+- One multi-file `apply_patch` is normalized as one immutable proposed-source context before per-file review fan-out. Every isolated file review retains the same ordered proposed file collection; it does not receive only its own buffer.
+- Source comparison treats every proposed path as authoritative, searches units prepared from those in-memory revisions, and omits stale disk snapshots for the same paths. This permits DRY comparison between files introduced or changed together before any write is authorized.
 - The target path supplies exact extension and file/path tag evidence while the supplied content is the only content analyzed.
 - `code_block` requires content and may declare either a virtual path or an exact extension derived from an explicit fenced-code identity.
 - A code block without virtual path or extension remains valid, produces an empty extension, and receives a whole-document unit.
@@ -100,6 +102,7 @@ As a workflow, I want all target variants to converge before rule selection so d
 - Every accepted current-content file is analyzed through `source.analyze`.
 - The normalized file records canonical path or virtual identity, exact extension, selected ranges, file tags/evidence, and ordered units.
 - Every unit records typed unit kind, span, content/reference required by review prompts, inherited file tags, unit tags, and tag evidence.
+- Unit-scoped rule materialization retains the complete immutable proposed-source context inside the engine. Repository-comparison operations search its sibling and cross-file units while excluding only the exact target unit; proposed paths never fall back to stale on-disk revisions, and agent prompts receive only selected candidates rather than the complete context.
 - Readable content without a registered parser produces one `document` unit rather than disappearing.
 - Results preserve stable target order: authored order for `files`, canonical path order for folders and Git collections, and single identity for file/text targets.
 - The normalizer neither discovers review rules nor applies policy. SPEC-039 consumes its result.

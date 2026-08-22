@@ -40,6 +40,7 @@ class SourceUnitSearchTargetBuilder(SourceUnitSearchTargetBuilding):
         return SourceSearchTarget(
             identity=f"{source.identity}#{unit.identity}",
             source_identity=source.identity,
+            unit_identity=unit.identity,
             name=unit.name,
             kind=unit.kind,
             span=unit.span,

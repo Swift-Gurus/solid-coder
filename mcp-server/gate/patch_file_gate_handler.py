@@ -5,6 +5,7 @@ from decision_gate_creating import DecisionGateCreating
 from hook_decision import HookDecision
 from logging_protocol import Logging
 from patch_file_simulation import PatchFileSimulation
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -18,12 +19,14 @@ class PatchFileGateHandler:
         self,
         simulation: PatchFileSimulation,
         language: str,
+        context: PatchReviewContext,
         coordinator_maker: CoordinatorMaking,
         gate_factory: DecisionGateCreating,
         logger: Logging,
     ) -> None:
         self._simulation = simulation
         self._language = language
+        self._context = context
         self._coordinator_maker = coordinator_maker
         self._gate_factory = gate_factory
         self._logger = logger
@@ -33,7 +36,7 @@ class PatchFileGateHandler:
 
     def handle(self, event: dict) -> HookDecision:
         gate = self._gate_factory.create(self._logger)
-        self._coordinator_maker.make_coordinator(gate).run(
+        self._coordinator_maker.make_coordinator(gate, self._context).run(
             tool_name="Write",
             tool_input={
                 "file_path": self._simulation.file_path,

@@ -6,6 +6,7 @@ from hook_handling import HookHandling
 from logging_protocol import Logging
 from patch_file_gate_handler import PatchFileGateHandler
 from patch_file_simulation import PatchFileSimulation
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -29,10 +30,12 @@ class PatchFileHandlerFactory:
         self,
         simulation: PatchFileSimulation,
         language: str,
+        context: PatchReviewContext,
     ) -> HookHandling:
         return PatchFileGateHandler(
             simulation=simulation,
             language=language,
+            context=context,
             coordinator_maker=self._coordinator_maker,
             gate_factory=self._gate_factory,
             logger=self._logger,

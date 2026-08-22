@@ -48,24 +48,23 @@ steps:
     with:
       target: "{{params.target}}"
       generated_terms: "{{steps.generate_terms.outputs.generated_terms}}"
-      excluded_source_identities: "{{params.excluded_source_identities}}"
 
   - id: search_repository
     type: operation
     operation: source.search
     depends_on: [prepare_query]
     with:
-      project_root: "{{params.project_root}}"
       queries: "{{steps.prepare_query.outputs.queries}}"
-      excluded_source_identities: "{{steps.prepare_query.outputs.excluded_source_identities}}"
+      excluded_units: "{{steps.prepare_query.outputs.excluded_units}}"
+      context: "{{params.context}}"
 
   - id: read_candidates
     type: operation
     operation: source.read_candidates
     depends_on: [search_repository]
     with:
-      project_root: "{{params.project_root}}"
       candidates: "{{steps.search_repository.outputs.candidates}}"
+      context: "{{params.context}}"
 
   - id: classify_candidate
     depends_on: [read_candidates]

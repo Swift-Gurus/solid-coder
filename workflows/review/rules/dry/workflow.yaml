@@ -3,58 +3,14 @@ name: Don't Repeat Yourself Review
 description: Measures reuse misses, duplicated source sites, and missing abstractions from local and repository evidence.
 max_turns: 60
 
-rule:
-  scope: file
+rule: {}
 
 steps:
-  - id: prepare_targets
-    type: operation
-    operation: source.prepare_search_targets
-    with:
-      source: "{{params.review_source}}"
-      granularity: "{{params.search_granularity}}"
-
-  - id: internal_duplications
-    depends_on: [prepare_targets]
-    prompt: |
-      Compare the MCP-owned source targets inside this one immutable file. This local lane is independent of repository search.
-
-      Classify each comparison as:
-      - IDENTICAL — same logic and types with names or locations changed only.
-      - STRUCTURAL — same algorithm or control flow with different concrete types.
-      - SIMILAR — overlap with meaningful semantic differences; not a violation.
-
-      Record one finding for each compared group, list every physical participating source location, and explain the classification. Do not count or score the findings.
-
-      Source targets:
-      {{steps.prepare_targets.outputs.targets}}
-    outputs:
-      - name: local_duplicate_sites
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [classification, evidence, locations]
-            properties:
-              classification:
-                type: string
-                enum: [IDENTICAL, STRUCTURAL, SIMILAR]
-              evidence: {type: string, minLength: 1}
-              locations:
-                type: array
-                minItems: 2
-                items: {type: string, minLength: 1}
-
   - include: target-search/workflow.yaml
     as: target_search
-    depends_on: [prepare_targets]
-    for_each: "{{steps.prepare_targets.outputs.targets}}"
     with:
-      project_root: "{{params.project_root}}"
-      target: "{{item}}"
-      excluded_source_identities: "{{steps.prepare_targets.outputs.excluded_source_identities}}"
+      target: "{{params.review_unit}}"
+      context: "{{params.source_context}}"
 
   - id: reuse_misses
     type: metric
@@ -80,7 +36,7 @@ steps:
 
       Use the completed inventory and repository classifications below. Return the count only through the metric output schema.
 
-      MCP-owned source targets: {{steps.prepare_targets.outputs.targets}}
+      MCP-owned source target: {{params.review_unit}}
       Repository classifications: {{workflows.target_search.results}}
     value:
       type: integer
@@ -93,7 +49,7 @@ steps:
   - id: duplicate_sites
     type: metric
     metric_id: DRY-2
-    depends_on: [internal_duplications, target_search]
+    depends_on: [target_search]
     prompt: |
       1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
       2. **Search other units in the same module/target** for methods with the same logical sequence:
@@ -106,9 +62,12 @@ steps:
          - SIMILAR — overlapping logic with meaningful differences (not a violation)
       4. **Count** IDENTICAL and STRUCTURAL matches = inlined duplications
 
-      Count physical source locations participating in IDENTICAL or STRUCTURAL groups after deduplicating the same location across local and repository evidence. Do not count pairs or SIMILAR findings. Return the count only through the metric output schema.
+      Count physical source locations participating in IDENTICAL or STRUCTURAL groups after deduplicating the same comparison across repository evidence. Do not count pairs or SIMILAR findings. Return the count only through the metric output schema.
 
-      Local classifications: {{steps.internal_duplications.outputs.local_duplicate_sites}}
+      Reviewed unit:
+      ```
+      {{params.review_unit.code}}
+      ```
       Repository classifications: {{workflows.target_search.results}}
     value:
       type: integer
@@ -121,7 +80,7 @@ steps:
   - id: missing_abstractions
     type: metric
     metric_id: DRY-3
-    depends_on: [internal_duplications, target_search]
+    depends_on: [target_search]
     prompt: |
       1. **Identify the domain** of the type under review — what business concept does it represent?
       2. **Identify generic patterns** within the type — behavior, layout, or creation logic that is not specific to the domain:
@@ -136,8 +95,7 @@ steps:
 
       Use both completed analysis lanes. Return the count only through the metric output schema.
 
-      MCP-owned source targets: {{steps.prepare_targets.outputs.targets}}
-      Local classifications: {{steps.internal_duplications.outputs.local_duplicate_sites}}
+      MCP-owned source target: {{params.review_unit}}
       Repository classifications: {{workflows.target_search.results}}
     value:
       type: integer
@@ -149,14 +107,13 @@ steps:
 
   - id: classify_exception
     type: exception
-    depends_on: [internal_duplications, target_search]
+    depends_on: [target_search]
     prompt: |
-      Decide whether all apparent DRY findings in the supplied file are exempt under these authored exceptions. Candidate-level exceptions must be excluded from metric evidence before counting. Mark the entire file as an exception only when every apparent finding is exempt.
+      Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Candidate-level exceptions must be excluded from metric evidence before counting. Mark the entire unit as an exception only when every apparent finding is exempt.
 
       1. **Intentionally specialized** — same shape but genuinely different domain semantics (e.g., two validation functions that happen to have similar structure but validate different business rules)
       2. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
       3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
 
-      Source targets: {{steps.prepare_targets.outputs.targets}}
-      Local classifications: {{steps.internal_duplications.outputs.local_duplicate_sites}}
+      Source target: {{params.review_unit}}
       Repository classifications: {{workflows.target_search.results}}

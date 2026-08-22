@@ -29,7 +29,9 @@ class TestCollectChangesWorkflow(unittest.TestCase):
         self.git.run("commit", "-m", "initial")
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,
-            registrations=SourceOperationRegistrationsFactory().make(),
+            registrations=SourceOperationRegistrationsFactory(
+                project_directory=lambda: self.project_root,
+            ).make(),
         )
 
     def test_collects_changes_before_returning_the_dependent_agent_step(self) -> None:

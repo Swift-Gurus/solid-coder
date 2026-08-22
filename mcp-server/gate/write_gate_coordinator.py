@@ -4,18 +4,21 @@ solid-category: service
 solid-tags: [hook]
 """
 
-import re
-from pathlib import Path
-
 from gate_protocols import ContentSimulating, FrontmatterGateApplying, HealthGateChecking
+from file_name_resolving import FileNameResolving
+from frontmatter_description_detecting import FrontmatterDescriptionDetecting
 from hook_utils import GateHandling
 from tool_input_updating import ToolInputUpdating
 
 
+"""
+solid-name: WriteGateCoordinator
+solid-category: service
+solid-description: Sequences prospective source health and metadata authorization for write operations.
+solid-tags: [hook]
+"""
 class WriteGateCoordinator:
     """Facade: coordinates health check and frontmatter correction via injected protocol-typed subsystems."""
-
-    _FM_KEY = "solid-" + "description:"
 
     def __init__(
         self,
@@ -24,18 +27,23 @@ class WriteGateCoordinator:
         simulator: ContentSimulating,
         gate: GateHandling,
         input_updater: ToolInputUpdating,
+        file_name_resolver: FileNameResolving,
+        frontmatter_detector: FrontmatterDescriptionDetecting,
     ) -> None:
         self._health_gate = health_gate
         self._frontmatter_gate = frontmatter_gate
         self._simulator = simulator
         self._gate = gate
         self._input_updater = input_updater
+        self._file_name_resolver = file_name_resolver
+        self._frontmatter_detector = frontmatter_detector
 
     def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str, cwd: str = "") -> None:
-        content, existing, low_risk = self._simulator.simulate(tool_name, tool_input)
-        file_name = Path(file_path).name
-        run_health = not low_risk
-        run_frontmatter = bool(re.search(r'^\s*' + self._FM_KEY + r'\s*\S', content, re.MULTILINE))
+        simulation = self._simulator.simulate(tool_name, tool_input)
+        content = simulation.content
+        file_name = self._file_name_resolver.resolve(file_path)
+        run_health = not simulation.low_risk
+        run_frontmatter = self._frontmatter_detector.detects(content)
         if not run_health and not run_frontmatter:
             self._gate.allow()
             return
@@ -47,7 +55,12 @@ class WriteGateCoordinator:
             if corrected is not None and corrected != content:
                 self._gate.log(f"CORRECTED {file_name}: frontmatter updated")
                 if tool_name in ("Write", "Edit"):
-                    updated_input = self._input_updater.build(tool_name, tool_input, corrected, existing)
+                    updated_input = self._input_updater.build(
+                        tool_name,
+                        tool_input,
+                        corrected,
+                        simulation.existing_content,
+                    )
                     self._gate.allow(updated_input=updated_input)
                 else:
                     self._gate.allow()

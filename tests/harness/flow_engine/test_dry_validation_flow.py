@@ -1,4 +1,4 @@
-"""Tests the file-scoped DRY workflow and MCP-owned repository comparison."""
+"""Tests the unit-scoped DRY workflow and MCP-owned source comparison."""
 
 import json
 import sys
@@ -13,6 +13,13 @@ from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from rule_instruction_block_reader import RuleInstructionBlockReader
+from source.file_analysis_source import FileAnalysisSource
+from source.text_analysis_source import TextAnalysisSource
+from source.prepare_search_targets_input import PrepareSearchTargetsInput
+from source.prepare_search_targets_operation_factory import (
+    PrepareSearchTargetsOperationFactory,
+)
+from source.search_target_granularity import SearchTargetGranularity
 from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
@@ -48,7 +55,9 @@ class TestDryValidationFlow(unittest.TestCase):
             ),
             plugin_root=_PROJECT_ROOT,
             session_reader=StaticSessionIdReader("dry-flow-test"),
-            operation_registrations=SourceOperationRegistrationsFactory().make(),
+            operation_registrations=SourceOperationRegistrationsFactory(
+                project_directory=lambda: self.project_root,
+            ).make(),
         ).build()
 
     def test_executes_local_and_external_lanes_before_mcp_scoring(self) -> None:
@@ -57,7 +66,7 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertIsNone(started.error, started.error)
         self.assertEqual(
             {step.step_id for step in started.steps},
-            {"internal_duplications", "target_search-1.generate_terms"},
+            {"target_search-1.generate_terms"},
         )
         classified = self.engine.flow_next({
             step.instance_id: self._initial_output(
@@ -130,7 +139,7 @@ class TestDryValidationFlow(unittest.TestCase):
         )
         self.assertIn(reader.exceptions(rule), prompts["classify_exception"])
 
-    def test_keeps_local_duplication_lane_when_repository_search_is_empty(self) -> None:
+    def test_dry2_receives_reviewed_code_when_source_search_is_empty(self) -> None:
         (self.project_root / "SharedTaxFormatter.swift").unlink()
         started = self.engine.flow_start("dry", self._parameters())
         measured = self.engine.flow_next({
@@ -147,16 +156,77 @@ class TestDryValidationFlow(unittest.TestCase):
             for step in measured.steps
             if step.step_id == "duplicate_sites"
         )
-        self.assertIn("first and second contain the same sequence", duplicate_prompt)
+        self.assertIn("func grossWages", duplicate_prompt)
+        self.assertIn("func reimbursements", duplicate_prompt)
+
+    def test_classifies_proposed_sibling_and_cross_file_candidates(self) -> None:
+        current = PrepareSearchTargetsOperationFactory().make().execute(
+            PrepareSearchTargetsInput(
+                source=TextAnalysisSource(
+                    text=(
+                        "struct FirstFormatter { func formatProfile() {} }\n"
+                        "struct SiblingFormatter { func formatProfile() {} }"
+                    ),
+                    virtual_path=str(self.current_path),
+                ),
+                granularity=SearchTargetGranularity.UNIT,
+            )
+        )
+        proposed_path = self.project_root / "ProposedFormatter.swift"
+        proposed_path.write_text(
+            "struct StaleFormatter { func unrelated() {} }",
+            encoding="utf-8",
+        )
+        proposed = PrepareSearchTargetsOperationFactory().make().execute(
+            PrepareSearchTargetsInput(
+                source=TextAnalysisSource(
+                    text=(
+                        "struct ProposedFormatter { "
+                        "func formatProfile() {} }"
+                    ),
+                    virtual_path=str(proposed_path),
+                ),
+                granularity=SearchTargetGranularity.UNIT,
+            )
+        )
+        reviewed = next(
+            target for target in current.targets
+            if target.name == "FirstFormatter"
+        )
+        started = self.engine.flow_start("dry", {
+            "review_unit": reviewed.model_dump(mode="json"),
+            "source_context": {
+                "sources": [
+                    current.snapshot.model_dump(mode="json"),
+                    proposed.snapshot.model_dump(mode="json"),
+                ],
+            },
+        })
+
+        classified = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "generated_terms": ["formatProfile"],
+            }
+        })
+
+        self.assertEqual(len(classified.steps), 2)
+        prompts = "\n".join(step.prompt for step in classified.steps)
+        self.assertIn("struct SiblingFormatter", prompts)
+        self.assertIn("struct ProposedFormatter", prompts)
+        self.assertNotIn("struct StaleFormatter", prompts)
 
     def _parameters(self) -> dict[str, object]:
+        prepared = PrepareSearchTargetsOperationFactory().make().execute(
+            PrepareSearchTargetsInput(
+                source=FileAnalysisSource(path=self.current_path),
+                granularity=SearchTargetGranularity.UNIT,
+            )
+        )
+        self.assertEqual(len(prepared.targets), 1)
         return {
-            "project_root": str(self.project_root),
-            "search_granularity": "unit",
-            "review_source": {
-                "kind": "text",
-                "text": self.current_content,
-                "virtual_path": str(self.current_path.resolve()),
+            "review_unit": prepared.targets[0].model_dump(mode="json"),
+            "source_context": {
+                "sources": [prepared.snapshot.model_dump(mode="json")],
             },
         }
 
@@ -165,16 +235,6 @@ class TestDryValidationFlow(unittest.TestCase):
         step_id: str,
         generated_term: str,
     ) -> dict[str, object]:
-        if step_id == "internal_duplications":
-            return {
-                "local_duplicate_sites": [
-                    {
-                        "classification": "IDENTICAL",
-                        "evidence": "first and second contain the same sequence",
-                        "locations": ["line 2", "line 3"],
-                    }
-                ]
-            }
         return {"generated_terms": [generated_term]}
 
     @staticmethod

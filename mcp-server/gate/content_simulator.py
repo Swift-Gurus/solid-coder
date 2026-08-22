@@ -4,21 +4,36 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Protocol
+from content_simulating import ContentSimulating
+from content_simulator_registration import ContentSimulatorRegistration
+from simulated_write import SimulatedWrite
 
 
-class ToolHandling(Protocol):
-    def simulate(self, tool_input: dict) -> tuple: ...
-
-
+"""
+solid-name: ContentSimulator
+solid-description: Routes supported write operations through their prospective-content simulation policy.
+solid-category: service
+solid-tags: [hook]
+"""
 class ContentSimulator:
     """Facade: dispatches simulate() calls to the matching per-tool handler."""
 
-    def __init__(self, handlers: dict) -> None:
-        self._handlers = handlers
+    def __init__(self, registrations: list[ContentSimulatorRegistration]) -> None:
+        self._registrations = registrations
 
-    def simulate(self, tool_name: str, tool_input: dict) -> tuple:
-        handler = self._handlers.get(tool_name)
-        if handler is None:
-            return "", "", True
-        return handler.simulate(tool_input)
+    def simulate(self, tool_name: str, tool_input: dict) -> SimulatedWrite:
+        registration = next(
+            (
+                candidate
+                for candidate in self._registrations
+                if candidate.tool_name == tool_name
+            ),
+            None,
+        )
+        if registration is None:
+            return SimulatedWrite(
+                content="",
+                existing_content="",
+                low_risk=True,
+            )
+        return registration.simulator.simulate(tool_name, tool_input)

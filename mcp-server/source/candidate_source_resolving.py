@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Protocol
 
 from source.read_source_candidates_output import CandidateSourceReadResult
+from source.source_search_context import SourceSearchContext
 from source.source_search_candidate import SourceSearchCandidate
 
 
@@ -19,4 +20,5 @@ class CandidateSourceResolving(Protocol):
         project_root: Path,
         candidate: SourceSearchCandidate,
         maximum_bytes: int,
+        context: SourceSearchContext,
     ) -> CandidateSourceReadResult: ...

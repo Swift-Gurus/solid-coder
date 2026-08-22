@@ -15,11 +15,13 @@ from source.read_source_candidates_operation_factory import (
     ReadSourceCandidatesOperationFactory,
 )
 from source.source_search_candidate import SourceSearchCandidate
+from source.source_candidate_origin import SourceCandidateOrigin
 from source.source_search_input import SourceSearchInput
 from source.source_search_match import SourceSearchMatch
 from source.source_search_match_kind import SourceSearchMatchKind
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
+from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -39,17 +41,20 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             "struct TaxRule { let invoice: String }\n",
             encoding="utf-8",
         )
-        self.candidate = SourceSearchOperationFactory().make().execute(
+        self.candidate = SourceSearchOperationFactory().make(
+            lambda: self.project_root,
+            SearchTargetGranularity.UNIT,
+        ).execute(
             SourceSearchInput(
-                project_root=self.project_root,
                 queries=[SourceSearchQuery(id="tax", terms=["TaxRule"])],
             )
         ).candidates[0]
-        self.operation = ReadSourceCandidatesOperationFactory().make()
+        self.operation = ReadSourceCandidatesOperationFactory(
+            lambda: self.project_root
+        ).make()
 
     def test_loads_bounded_content_with_the_search_candidate_provenance(self) -> None:
         result = self.operation.execute(ReadSourceCandidatesInput(
-            project_root=self.project_root,
             candidates=[self.candidate],
             max_bytes_per_candidate=12,
         ))
@@ -64,7 +69,6 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
         self.candidate_path.write_text("struct Changed {}\n", encoding="utf-8")
 
         result = self.operation.execute(ReadSourceCandidatesInput(
-            project_root=self.project_root,
             candidates=[self.candidate],
         ))
 
@@ -73,10 +77,14 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
     def test_reports_an_escaped_root_candidate_as_a_typed_outcome(self) -> None:
         escaped = SourceSearchCandidate(
             unit="Outside.swift",
+            unit_identity="document:Outside.swift:1",
             description="No solid-description frontmatter.",
             path=(self.project_root.parent / "Outside.swift").resolve(),
             source_identity="../Outside.swift",
+            start_offset=0,
+            end_offset=1,
             content_sha256="0" * 64,
+            origin=SourceCandidateOrigin.REPOSITORY,
             matches=[SourceSearchMatch(
                 query_id="outside",
                 term="Outside",
@@ -85,7 +93,6 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
         )
 
         result = self.operation.execute(ReadSourceCandidatesInput(
-            project_root=self.project_root,
             candidates=[escaped],
         ))
 

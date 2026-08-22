@@ -6,6 +6,7 @@ from file_extension_extracting import FileExtensionExtracting
 from hook_handling import HookHandling
 from patch_file_handler_creating import PatchFileHandlerCreating
 from patch_files_simulating import PatchFilesSimulating
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -31,11 +32,15 @@ class PatchHandlerPlanner:
 
     def plan(self, tool_input: dict) -> list[HookHandling]:
         handlers: list[HookHandling] = []
-        for simulation in self._simulator.simulate_all(tool_input):
+        simulations = self._simulator.simulate_all(tool_input)
+        context = PatchReviewContext(proposed_files=simulations)
+        for simulation in simulations:
             language = self._extension_lookup.language_for(
                 self._extension_extractor.suffix_of(simulation.file_path)
             )
             if language is None or self._exclusion_checker.is_excluded(simulation.file_path):
                 continue
-            handlers.append(self._handler_factory.create(simulation, language))
+            handlers.append(
+                self._handler_factory.create(simulation, language, context)
+            )
         return handlers

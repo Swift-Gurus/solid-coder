@@ -10,6 +10,7 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
 from _gate_fixtures import HC, call_main
+from patch_review_context import PatchReviewContext
 from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
 
@@ -38,7 +39,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
     def test_later_file_denial_blocks_after_all_files_run_concurrently(self):
         rendezvous = threading.Barrier(2)
 
-        def check(content, file_path, language, session_id, cwd):
+        def check(content, file_path, language, session_id, cwd, patch_context):
             rendezvous.wait(timeout=2)
             if file_path.endswith("Second.py"):
                 return [{"principle": "SRP", "issue": "Second concern.", "fix": "Extract it."}]
@@ -58,7 +59,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertIn("/src/Second.py", result["permissionDecisionReason"])
 
     def test_multiple_denials_are_aggregated_into_one_response(self):
-        def check(content, file_path, language, session_id, cwd):
+        def check(content, file_path, language, session_id, cwd, patch_context):
             name = Path(file_path).name
             return [{"principle": "SRP", "issue": f"{name} concern.", "fix": "Extract it."}]
 
@@ -100,6 +101,31 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(output, "")
         self.assertEqual(health.call_count, 2)
+
+    def test_every_file_review_receives_the_complete_proposed_patch_context(self):
+        observed_contexts: list[PatchReviewContext] = []
+        observation_lock = threading.Lock()
+
+        def check(content, file_path, language, session_id, cwd, patch_context):
+            with observation_lock:
+                observed_contexts.append(patch_context)
+            return []
+
+        request = _patch_event([
+            ("/src/First.py", "class First:\n    pass"),
+            ("/src/Second.py", "class Second:\n    pass"),
+        ])
+        with patch(HC, side_effect=check):
+            code, output = call_main(request)
+
+        self.assertEqual(code, 0)
+        self.assertEqual(output, "")
+        self.assertEqual(len(observed_contexts), 2)
+        self.assertIs(observed_contexts[0], observed_contexts[1])
+        self.assertEqual(
+            [source.file_path for source in observed_contexts[0].proposed_files],
+            ["/src/First.py", "/src/Second.py"],
+        )
 
 
 if __name__ == "__main__":

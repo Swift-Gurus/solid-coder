@@ -1,23 +1,24 @@
 """Defines typed input for repository source search."""
 
-from pathlib import Path
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from source.source_search_query import SourceSearchQuery
+from source.source_unit_identity import SourceUnitIdentity
+from source.source_search_context import SourceSearchContext
 
 
 """
 solid-name: SourceSearchInput
 solid-category: model
 solid-spec: [SPEC-040]
-solid-description: Selects one project, typed queries, source exclusions, and a bounded candidate limit.
+solid-description: Defines a validated source-search request for deterministic repository comparison.
 """
 class SourceSearchInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    project_root: Path
     queries: Annotated[list[SourceSearchQuery], Field(min_length=1)]
-    excluded_source_identities: list[str] = Field(default_factory=list)
+    excluded_units: list[SourceUnitIdentity] = Field(default_factory=list)
+    context: SourceSearchContext = Field(default_factory=SourceSearchContext)
     max_candidates: int = Field(default=20, ge=1, le=100)

@@ -10,10 +10,10 @@ if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
 from edit_classifier import EditClassifier
-from diff_chunker import DiffChunker as _DiffChunker
+from diff_chunker_factory import DiffChunkerFactory
 
 def _diff_chunks(old, new):
-    return _DiffChunker().chunk(old, new)
+    return DiffChunkerFactory().make().chunk(old, new)
 
 
 class TestIsFrontmatterOnly(unittest.TestCase):
@@ -84,19 +84,19 @@ class TestDiffChunks(unittest.TestCase):
     def test_extracts_changed_lines_only(self):
         old = "line1\nline2\nline3"
         new = "line1\nLINE2_CHANGED\nline3"
-        old_chunk, new_chunk = _diff_chunks(old, new)
-        self.assertEqual(old_chunk, "line2")
-        self.assertEqual(new_chunk, "LINE2_CHANGED")
+        changed = _diff_chunks(old, new)
+        self.assertEqual(changed.previous, "line2")
+        self.assertEqual(changed.prospective, "LINE2_CHANGED")
 
     def test_identical_content_returns_empty(self):
         content = "func foo() {}"
-        old_chunk, new_chunk = _diff_chunks(content, content)
-        self.assertEqual(old_chunk, "")
-        self.assertEqual(new_chunk, "")
+        changed = _diff_chunks(content, content)
+        self.assertEqual(changed.previous, "")
+        self.assertEqual(changed.prospective, "")
 
     def test_new_file_returns_all_as_new(self):
-        old_chunk, new_chunk = _diff_chunks("", "func foo() {}")
-        self.assertEqual(new_chunk, "func foo() {}")
+        changed = _diff_chunks("", "func foo() {}")
+        self.assertEqual(changed.prospective, "func foo() {}")
 
 
 class TestIsLowRiskEdit(unittest.TestCase):
@@ -142,19 +142,28 @@ class TestWriteDiffIntegration(unittest.TestCase):
     def test_rename_write_is_low_risk(self):
         original = "func oldName(a: Int) -> Bool { return true }\n"
         updated  = "func newName(a: Int) -> Bool { return true }\n"
-        old_chunk, new_chunk = _diff_chunks(original, updated)
-        self.assertTrue(self.c.is_low_risk(old_chunk, new_chunk))
+        changed = _diff_chunks(original, updated)
+        self.assertTrue(self.c.is_low_risk(
+            changed.previous,
+            changed.prospective,
+        ))
 
     def test_new_method_write_is_not_low_risk(self):
         original = "func foo() {}\n"
         updated  = "func foo() {}\nfunc bar() { doSomethingNew() }\n"
-        old_chunk, new_chunk = _diff_chunks(original, updated)
-        self.assertFalse(self.c.is_low_risk(old_chunk, new_chunk))
+        changed = _diff_chunks(original, updated)
+        self.assertFalse(self.c.is_low_risk(
+            changed.previous,
+            changed.prospective,
+        ))
 
     def test_new_file_has_no_diff(self):
         """New file — OSError on read → low_risk stays False → full health check."""
-        old_chunk, new_chunk = _diff_chunks("", "func foo() {}")
-        self.assertFalse(self.c.is_low_risk(old_chunk, new_chunk))
+        changed = _diff_chunks("", "func foo() {}")
+        self.assertFalse(self.c.is_low_risk(
+            changed.previous,
+            changed.prospective,
+        ))
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ from harness.flow_run_orchestrating import FlowRunOrchestrating
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from hc_config_schema import load_config
+from hook_utils import _resolve_project_root
 from message_transport_running import MessageTransportRunning
 from pipeline.flow_run_creating import FlowRunCreating
 from solid_coder_config import SolidCoderConfig
@@ -44,5 +45,7 @@ class FlowRunCreator(FlowRunCreating):
             session_delegate_max_workers=(
                 flow_engine_config.max_parallel_sessions
             ),
-            operation_registrations=SourceOperationRegistrationsFactory().make(),
+            operation_registrations=SourceOperationRegistrationsFactory(
+                project_directory=_resolve_project_root,
+            ).make(),
         ).build()

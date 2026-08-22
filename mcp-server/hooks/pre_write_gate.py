@@ -27,7 +27,6 @@ for _d in (
 
 from apply_patch_content_simulator_factory import ApplyPatchContentSimulatorFactory
 from apply_patch_reviewer_factory import ApplyPatchReviewerFactory
-from default_coordinator_factory import DefaultCoordinatorFactory
 from default_exclusion_checker_factory import DefaultExclusionCheckerFactory
 from default_guard_factory import DefaultGuardFactory
 from gate_orchestrator_factory import GateOrchestratorFactory
@@ -37,16 +36,16 @@ from write_gate_coordinator_factory import WriteGateCoordinatorFactory
 
 _GATE = HookGateFactory().build()
 _PATCH_SIMULATOR_FACTORY = ApplyPatchContentSimulatorFactory()
-_COORDINATOR_FACTORY = DefaultCoordinatorFactory(
-    coordinator_factory=WriteGateCoordinatorFactory(_PATCH_SIMULATOR_FACTORY),
-    orchestrator_factory=GateOrchestratorFactory(
-        guard_factory=DefaultGuardFactory(),
-        exclusion_checker_factory=DefaultExclusionCheckerFactory(),
-        patch_simulator_factory=_PATCH_SIMULATOR_FACTORY,
-        patch_reviewer_factory=ApplyPatchReviewerFactory(),
-    ),
+_COORDINATOR_FACTORY = WriteGateCoordinatorFactory()
+_ORCHESTRATOR = GateOrchestratorFactory(
+    guard_factory=DefaultGuardFactory(),
+    exclusion_checker_factory=DefaultExclusionCheckerFactory(),
+    patch_simulator_factory=_PATCH_SIMULATOR_FACTORY,
+    patch_reviewer_factory=ApplyPatchReviewerFactory(),
+).create(
+    _GATE,
+    _COORDINATOR_FACTORY,
 )
-_ORCHESTRATOR = _COORDINATOR_FACTORY.make_orchestrator(_GATE)
 
 
 def main() -> None:

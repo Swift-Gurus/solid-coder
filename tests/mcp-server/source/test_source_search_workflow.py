@@ -23,6 +23,7 @@ from source.read_source_candidates_output import ReadSourceCandidatesOutput
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
+from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -42,8 +43,13 @@ class TestSourceSearchWorkflow(unittest.TestCase):
             "struct TaxRule { let invoice: String }\n",
             encoding="utf-8",
         )
-        self.search = Mock(wraps=SourceSearchOperationFactory().make())
-        self.reader = Mock(wraps=ReadSourceCandidatesOperationFactory().make())
+        self.search = Mock(wraps=SourceSearchOperationFactory().make(
+            lambda: self.project_root,
+            SearchTargetGranularity.UNIT,
+        ))
+        self.reader = Mock(wraps=ReadSourceCandidatesOperationFactory(
+            lambda: self.project_root
+        ).make())
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,
             registrations=[
@@ -70,14 +76,12 @@ class TestSourceSearchWorkflow(unittest.TestCase):
                 type: operation
                 operation: source.search
                 with:
-                  project_root: "{{params.project_root}}"
                   queries: "{{params.queries}}"
               - id: read
                 type: operation
                 operation: source.read_candidates
                 depends_on: [search]
                 with:
-                  project_root: "{{params.project_root}}"
                   candidates: "{{steps.search.outputs.candidates}}"
               - id: report
                 depends_on: [read]
@@ -87,7 +91,6 @@ class TestSourceSearchWorkflow(unittest.TestCase):
 
     def test_replays_exact_candidate_content_without_searching_or_reading_again(self) -> None:
         started = self.driver.start(params={
-            "project_root": str(self.project_root),
             "queries": [{"id": "tax", "terms": ["TaxRule"]}],
         })
 

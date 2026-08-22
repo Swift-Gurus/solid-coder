@@ -61,8 +61,8 @@ class ExactSourceSearchMatchKindResolver(SourceSearchMatchKindResolving):
             return SourceSearchMatchKind.FRONTMATTER
         if unit.frontmatter.name:
             return None
-        if normalized_term in self._tokens.resolve(unit.file_content):
+        if normalized_term in self._tokens.resolve(unit.content):
             return SourceSearchMatchKind.SYMBOL
-        if normalized_term in unit.file_content.casefold():
+        if normalized_term in unit.content.casefold():
             return SourceSearchMatchKind.CONTENT
         return None

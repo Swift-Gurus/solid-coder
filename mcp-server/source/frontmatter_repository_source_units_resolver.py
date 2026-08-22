@@ -1,4 +1,4 @@
-"""Resolves searchable units from solid frontmatter blocks."""
+"""Resolves whole-file searchable units from solid frontmatter."""
 
 from source.repository_source_snapshot import RepositorySourceSnapshot
 from source.repository_source_unit import RepositorySourceUnit
@@ -7,15 +7,16 @@ from source.repository_source_units_resolving import (
 )
 from source.source_frontmatter import SourceFrontmatter
 from source.source_frontmatter_reading import SourceFrontmatterReading
-
-_MISSING_DESCRIPTION = "No solid-description frontmatter."
+from source.whole_file_repository_source_unit_building import (
+    WholeFileRepositorySourceUnitBuilding,
+)
 
 
 """
 solid-name: FrontmatterRepositorySourceUnitsResolver
 solid-category: service
 solid-spec: [SPEC-040]
-solid-description: Resolves searchable repository units from typed solid frontmatter metadata.
+solid-description: Resolves whole-file repository search entries from authored frontmatter.
 """
 class FrontmatterRepositorySourceUnitsResolver(
     RepositorySourceUnitsResolving
@@ -23,8 +24,10 @@ class FrontmatterRepositorySourceUnitsResolver(
     def __init__(
         self,
         frontmatter_reader: SourceFrontmatterReading,
+        unit_builder: WholeFileRepositorySourceUnitBuilding,
     ) -> None:
         self._frontmatter_reader = frontmatter_reader
+        self._unit_builder = unit_builder
 
     def resolve(
         self,
@@ -32,25 +35,8 @@ class FrontmatterRepositorySourceUnitsResolver(
     ) -> list[RepositorySourceUnit]:
         frontmatters = self._frontmatter_reader.read(snapshot.content)
         if not frontmatters:
-            return [RepositorySourceUnit(
-                unit=snapshot.path.name,
-                description=_MISSING_DESCRIPTION,
-                path=snapshot.path,
-                source_identity=snapshot.source_identity,
-                frontmatter=SourceFrontmatter(),
-                file_content=snapshot.content,
-                content_sha256=snapshot.content_sha256,
-            )]
-
+            frontmatters = [SourceFrontmatter()]
         return [
-            RepositorySourceUnit(
-                unit=frontmatter.name or snapshot.path.name,
-                description=frontmatter.description or _MISSING_DESCRIPTION,
-                path=snapshot.path,
-                source_identity=snapshot.source_identity,
-                frontmatter=frontmatter,
-                file_content=snapshot.content,
-                content_sha256=snapshot.content_sha256,
-            )
-            for frontmatter in frontmatters
+            self._unit_builder.build(snapshot, frontmatter, index)
+            for index, frontmatter in enumerate(frontmatters)
         ]

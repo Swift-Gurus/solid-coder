@@ -33,6 +33,7 @@ class FileSourceSearchTargetsBuilder(SourceSearchTargetsBuilding):
         return [SourceSearchTarget(
             identity=f"{source.identity}#document",
             source_identity=source.identity,
+            unit_identity=f"{source.identity}#document",
             name=name,
             kind=ReviewUnitKind.DOCUMENT,
             span=SourceLineRange(

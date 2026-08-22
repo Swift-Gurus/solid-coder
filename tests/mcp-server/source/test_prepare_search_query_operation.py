@@ -29,6 +29,7 @@ class TestPrepareSearchQueryOperation(unittest.TestCase):
         self.target = SourceSearchTarget(
             identity="struct:UserLoader:1",
             source_identity="Sources/UserLoader.swift",
+            unit_identity="struct:UserLoader:1",
             name="UserLoader",
             kind=ReviewUnitKind.STRUCT,
             span=SourceLineRange(start=1, end=3),
@@ -40,7 +41,6 @@ class TestPrepareSearchQueryOperation(unittest.TestCase):
         result = self.operation.execute(PrepareSearchQueryInput(
             target=self.target,
             generated_terms=["Fetcher", "userloader", "Retriever", "fetcher"],
-            excluded_source_identities=["Sources/UserLoader.swift"],
         ))
 
         self.assertEqual(len(result.queries), 1)
@@ -51,8 +51,12 @@ class TestPrepareSearchQueryOperation(unittest.TestCase):
             ["userloader", "swiftui", "fetcher", "retriever"],
         )
         self.assertEqual(
-            result.excluded_source_identities,
-            ["Sources/UserLoader.swift"],
+            result.excluded_units[0].source_identity,
+            "Sources/UserLoader.swift",
+        )
+        self.assertEqual(
+            result.excluded_units[0].unit_identity,
+            "struct:UserLoader:1",
         )
 
     def test_rejects_delimiter_encoded_or_whitespace_terms_at_input(self) -> None:

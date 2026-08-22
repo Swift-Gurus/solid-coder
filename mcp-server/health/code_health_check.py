@@ -15,19 +15,41 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
         sys.path.insert(0, str(_d))
 
 from hook_utils import PLUGIN_ROOT  # noqa: E402
+from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
+from code_health_check_request_checking import CodeHealthCheckRequestChecking  # noqa: E402
+from code_health_check_service import CodeHealthCheckService  # noqa: E402
 from hc_checker_factory import make_health_checker  # noqa: E402
 from hc_runner_factory import select_strategy  # noqa: E402
 from mcp_config_builder import build_mcp_config  # noqa: E402
+from patch_review_context import PatchReviewContext  # noqa: E402
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
     ".py": "Python",
 }
 
+_SERVICE = CodeHealthCheckService(
+    strategy_selector=lambda: select_strategy(),
+    mcp_config_builder=lambda root: build_mcp_config(root),
+    checker_factory=lambda **arguments: make_health_checker(**arguments),
+    plugin_root=PLUGIN_ROOT,
+)
 
-def _check(content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> Optional[list]:
-    strategy = select_strategy()
-    strategy.apply_env()
-    mcp_config = build_mcp_config(PLUGIN_ROOT)
-    checker = make_health_checker(mcp_config=mcp_config, session_id=parent_session_id, file_path=path, cwd=cwd)
-    return checker.check(content, path, language, parent_session_id)
+
+def _check(
+    content: str,
+    path: str,
+    language: str,
+    parent_session_id: str,
+    cwd: str = "",
+    patch_context: Optional[PatchReviewContext] = None,
+    service: CodeHealthCheckRequestChecking = _SERVICE,
+) -> Optional[list]:
+    return service.check(CodeHealthCheckRequest(
+        content=content,
+        path=path,
+        language=language,
+        parent_session_id=parent_session_id,
+        cwd=cwd,
+        patch_context=patch_context,
+    ))

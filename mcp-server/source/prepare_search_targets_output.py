@@ -1,8 +1,9 @@
 """Defines deterministic source-search target preparation output."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from source.source_search_target import SourceSearchTarget
+from source.repository_source_snapshot import RepositorySourceSnapshot
 
 
 """
@@ -15,4 +16,4 @@ class PrepareSearchTargetsOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     targets: list[SourceSearchTarget]
-    excluded_source_identities: list[str] = Field(min_length=1)
+    snapshot: RepositorySourceSnapshot

@@ -22,9 +22,11 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
         self,
         current_directory: Callable[[], Path],
         terms: CodebaseSearchTermsResolving,
+        query_kinds: type[CodebaseSearchQueryKind],
     ) -> None:
         self._current_directory = current_directory
         self._terms = terms
+        self._query_kinds = query_kinds
 
     def build(
         self,
@@ -48,21 +50,21 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
         queries: list[SourceSearchQuery] = []
         if resolved_terms.terms:
             queries.append(SourceSearchQuery(
-                id=CodebaseSearchQueryKind.TERMS.value,
+                id=self._query_kinds.TERMS.value,
                 terms=resolved_terms.terms,
             ))
         if resolved_terms.specifications:
             queries.append(SourceSearchQuery(
-                id=CodebaseSearchQueryKind.SPECIFICATIONS.value,
+                id=self._query_kinds.SPECIFICATIONS.value,
                 terms=resolved_terms.specifications,
             ))
         if not queries:
             raise ValueError("provide plan_path, tags, or spec_numbers to search.")
         return CodebaseSearchInputResolution(
             operation_input=SourceSearchInput(
-                project_root=project_root,
                 queries=queries,
                 max_candidates=100,
             ),
+            project_root=project_root.resolve(),
             minimum_matches=min_matches,
         )

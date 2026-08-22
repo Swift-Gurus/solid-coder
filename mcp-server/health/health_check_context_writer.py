@@ -8,11 +8,12 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable
+from typing import Callable, Optional
 
 from health_check_context_writing import HealthCheckContextWriting
 from health_check_input_writing import HealthCheckInputWriting
 from active_health_check_pointer_storing import ActiveHealthCheckPointerStoring
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -41,8 +42,21 @@ class HealthCheckContextWriter(HealthCheckContextWriting):
         self._input_writer = input_writer
         self._pointer_store = pointer_store
 
-    def write(self, output_dir: str, file_path: str, language: str, content: str = "") -> None:
-        self._input_writer.write(output_dir, file_path, language, content)
+    def write(
+        self,
+        output_dir: str,
+        file_path: str,
+        language: str,
+        content: str = "",
+        patch_context: Optional[PatchReviewContext] = None,
+    ) -> None:
+        self._input_writer.write(
+            output_dir,
+            file_path,
+            language,
+            content,
+            patch_context,
+        )
         self._pointer_store.write(self._project_dir_fn(), Path(output_dir).name)
 
     def clear(self) -> None:

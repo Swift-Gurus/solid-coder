@@ -3,6 +3,8 @@
 from unittest.mock import MagicMock
 
 from health.health_check_input_writer import HealthCheckInputWriter
+from patch_file_simulation import PatchFileSimulation
+from patch_review_context import PatchReviewContext
 
 
 """
@@ -34,3 +36,34 @@ class TestHealthCheckInputWriter:
         )
 
         self.completion.clear.assert_called_once_with("/health/reused")
+
+    def test_write_persists_every_proposed_patch_source_for_mcp_context(self) -> None:
+        self.extractor.extract.return_value = ["First"]
+        context = PatchReviewContext(proposed_files=[
+            PatchFileSimulation(
+                file_path="/src/First.swift",
+                content="struct First {}",
+                existing_content="",
+                low_risk=False,
+            ),
+            PatchFileSimulation(
+                file_path="/src/Second.swift",
+                content="struct Second {}",
+                existing_content="",
+                low_risk=False,
+            ),
+        ])
+
+        self.input_writer.write(
+            output_dir="/health/patch",
+            file_path="/src/First.swift",
+            language="Swift",
+            content="struct First {}",
+            patch_context=context,
+        )
+
+        persisted = self.writer.write.call_args.args[1]
+        assert persisted["proposed_files"] == [
+            {"file_path": "/src/First.swift", "content": "struct First {}"},
+            {"file_path": "/src/Second.swift", "content": "struct Second {}"},
+        ]

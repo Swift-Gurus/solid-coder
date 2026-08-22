@@ -14,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
+from source.source_unit_identity import SourceUnitIdentity
+from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -46,18 +48,23 @@ class TestSourceSearchOperation(unittest.TestCase):
             "Sources/TaxReport.swift",
             "struct TaxReport { let invoice: String }\n",
         )
-        self.operation = SourceSearchOperationFactory().make()
+        self.operation = SourceSearchOperationFactory().make(
+            lambda: self.project_root,
+            SearchTargetGranularity.UNIT,
+        )
 
     def test_returns_stable_candidates_with_query_and_match_provenance(self) -> None:
         result = self.operation.execute(SourceSearchInput(
-            project_root=self.project_root,
             queries=[
                 SourceSearchQuery(
                     id="invoice-tax",
                     terms=["InvoiceTaxCalculator", "Foundation", "invoice"],
                 )
             ],
-            excluded_source_identities=["Sources/Current.swift"],
+            excluded_units=[SourceUnitIdentity(
+                source_identity="Sources/Current.swift",
+                unit_identity="struct:InvoiceTaxCalculator:1",
+            )],
         ))
 
         self.assertEqual(
@@ -78,7 +85,7 @@ class TestSourceSearchOperation(unittest.TestCase):
             (self.project_root / "Sources/InvoiceTaxCalculator.swift").resolve(),
         )
         undocumented = result.candidates[1]
-        self.assertEqual(undocumented.unit, "TaxReport.swift")
+        self.assertEqual(undocumented.unit, "TaxReport")
         self.assertEqual(
             undocumented.description,
             "No solid-description frontmatter.",
@@ -117,7 +124,6 @@ class TestSourceSearchOperation(unittest.TestCase):
         )
 
         result = self.operation.execute(SourceSearchInput(
-            project_root=self.project_root,
             queries=[SourceSearchQuery(id="payment", terms=["PaymentAuthorizer"])],
         ))
 
@@ -141,7 +147,6 @@ class TestSourceSearchOperation(unittest.TestCase):
         (self.project_root / "Escaped.swift").symlink_to(outside_path)
 
         result = self.operation.execute(SourceSearchInput(
-            project_root=self.project_root,
             queries=[SourceSearchQuery(id="escaped", terms=["Escaped"])],
         ))
 

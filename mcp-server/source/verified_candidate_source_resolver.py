@@ -7,6 +7,7 @@ from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.candidate_source_resolving import CandidateSourceResolving
 from source.loaded_candidate_source import LoadedCandidateSource
 from source.read_source_candidates_output import CandidateSourceReadResult
+from source.source_search_context import SourceSearchContext
 from source.source_bytes_reading import SourceBytesReading
 from source.source_search_candidate import SourceSearchCandidate
 from source.unavailable_candidate_source import UnavailableCandidateSource
@@ -16,7 +17,7 @@ from source.unavailable_candidate_source import UnavailableCandidateSource
 solid-name: VerifiedCandidateSourceResolver
 solid-category: service
 solid-spec: [SPEC-040]
-solid-description: Resolves root-confined candidate bytes, verifies their search-time hash, and bounds returned content.
+solid-description: Resolves and verifies bounded source content for repository candidates.
 """
 class VerifiedCandidateSourceResolver(CandidateSourceResolving):
     def __init__(
@@ -32,6 +33,7 @@ class VerifiedCandidateSourceResolver(CandidateSourceResolving):
         project_root: Path,
         candidate: SourceSearchCandidate,
         maximum_bytes: int,
+        context: SourceSearchContext,
     ) -> CandidateSourceReadResult:
         path = (project_root / candidate.source_identity).resolve()
         try:
@@ -62,10 +64,13 @@ class VerifiedCandidateSourceResolver(CandidateSourceResolving):
                 candidate=candidate,
                 detail="candidate content changed after repository search",
             )
-        bounded = content_bytes[:maximum_bytes]
+        unit_bytes = content_bytes[
+            candidate.start_offset:candidate.end_offset + 1
+        ]
+        bounded = unit_bytes[:maximum_bytes]
         return LoadedCandidateSource(
             candidate=candidate,
             content=bounded.decode("utf-8", errors="replace"),
-            original_bytes=len(content_bytes),
-            truncated=len(content_bytes) > maximum_bytes,
+            original_bytes=len(unit_bytes),
+            truncated=len(unit_bytes) > maximum_bytes,
         )

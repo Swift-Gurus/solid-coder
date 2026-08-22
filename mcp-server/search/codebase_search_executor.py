@@ -6,7 +6,8 @@ from search.codebase_search_executing import CodebaseSearchExecuting
 from search.codebase_search_execution import CodebaseSearchExecution
 from search.codebase_search_input_building import CodebaseSearchInputBuilding
 from search.source_search_output_filtering import SourceSearchOutputFiltering
-from source.source_search_operation import SourceSearchOperation
+from source.source_search_operation_factory import SourceSearchOperationFactory
+from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -20,11 +21,11 @@ class CodebaseSearchExecutor(CodebaseSearchExecuting):
     def __init__(
         self,
         input_builder: CodebaseSearchInputBuilding,
-        operation: SourceSearchOperation,
+        operation_factory: SourceSearchOperationFactory,
         output_filter: SourceSearchOutputFiltering,
     ) -> None:
         self._input_builder = input_builder
-        self._operation = operation
+        self._operation_factory = operation_factory
         self._output_filter = output_filter
 
     def execute(
@@ -42,11 +43,15 @@ class CodebaseSearchExecutor(CodebaseSearchExecuting):
             spec_numbers,
             min_matches,
         )
-        output = self._operation.execute(resolution.operation_input)
+        operation = self._operation_factory.make(
+            lambda: resolution.project_root,
+            SearchTargetGranularity.FILE,
+        )
+        output = operation.execute(resolution.operation_input)
         return CodebaseSearchExecution(
             output=self._output_filter.filter(
                 output,
                 resolution.minimum_matches,
             ),
-            project_root=resolution.operation_input.project_root.resolve(),
+            project_root=resolution.project_root,
         )

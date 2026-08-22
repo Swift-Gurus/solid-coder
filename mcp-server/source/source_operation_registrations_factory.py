@@ -1,5 +1,8 @@
 """Composes logical source-operation registrations."""
 
+from pathlib import Path
+from typing import Callable
+
 from harness.operation_registration import OperationRegistration
 from source.analyze_source_input import AnalyzeSourceInput
 from source.collect_changes_input import CollectChangesInput
@@ -23,6 +26,7 @@ from source.source_analysis_operation_factory import SourceAnalysisOperationFact
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
+from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -32,6 +36,9 @@ solid-spec: [SPEC-040]
 solid-description: Composes typed logical operation registrations for deterministic source services.
 """
 class SourceOperationRegistrationsFactory:
+    def __init__(self, project_directory: Callable[[], Path]) -> None:
+        self._project_directory = project_directory
+
     def make(self) -> list[OperationRegistration]:
         return [
             OperationRegistration(
@@ -62,12 +69,17 @@ class SourceOperationRegistrationsFactory:
                 name="source.search",
                 input_model=SourceSearchInput,
                 output_model=SourceSearchOutput,
-                handler=SourceSearchOperationFactory().make(),
+                handler=SourceSearchOperationFactory().make(
+                    self._project_directory,
+                    SearchTargetGranularity.UNIT,
+                ),
             ),
             OperationRegistration(
                 name="source.read_candidates",
                 input_model=ReadSourceCandidatesInput,
                 output_model=ReadSourceCandidatesOutput,
-                handler=ReadSourceCandidatesOperationFactory().make(),
+                handler=ReadSourceCandidatesOperationFactory(
+                    self._project_directory
+                ).make(),
             ),
         ]

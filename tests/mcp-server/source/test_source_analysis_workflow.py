@@ -27,7 +27,9 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
         self.second_path.write_text("actor Second {}\n", encoding="utf-8")
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,
-            registrations=SourceOperationRegistrationsFactory().make(),
+            registrations=SourceOperationRegistrationsFactory(
+                project_directory=lambda: self.project_root,
+            ).make(),
         )
 
     def test_fans_out_analysis_and_fans_in_units_in_source_order(self) -> None:

@@ -4,17 +4,16 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Protocol
+from simulated_write import SimulatedWrite
+from write_content_simulator import EditClassifying, FileReading
 
 
-class FileReading(Protocol):
-    def read_text(self, path: object, encoding: str = "utf-8") -> str: ...
-
-
-class EditClassifying(Protocol):
-    def is_low_risk(self, old: str, new: str) -> bool: ...
-
-
+"""
+solid-name: EditContentSimulator
+solid-description: Simulates prospective file content and review risk for a targeted edit request.
+solid-category: service
+solid-tags: [hook]
+"""
 class EditContentSimulator:
     """Simulates the resulting file content and low-risk status for an Edit tool event."""
 
@@ -22,7 +21,7 @@ class EditContentSimulator:
         self._reader = file_reader
         self._classifier = classifier
 
-    def simulate(self, tool_input: dict) -> tuple:
+    def simulate(self, tool_name: str, tool_input: dict) -> SimulatedWrite:
         file_path = tool_input.get("file_path", "")
         old_string = tool_input.get("old_string", "")
         new_string = tool_input.get("new_string", "")
@@ -35,4 +34,8 @@ class EditContentSimulator:
                       else existing.replace(old_string, new_string, 1)
         except OSError:
             content = new_string
-        return content, existing, low_risk
+        return SimulatedWrite(
+            content=content,
+            existing_content=existing,
+            low_risk=low_risk,
+        )

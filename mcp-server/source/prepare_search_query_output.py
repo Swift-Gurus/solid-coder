@@ -3,6 +3,7 @@
 from pydantic import BaseModel, ConfigDict
 
 from source.source_search_query import SourceSearchQuery
+from source.source_unit_identity import SourceUnitIdentity
 
 
 """
@@ -15,4 +16,4 @@ class PrepareSearchQueryOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     queries: list[SourceSearchQuery]
-    excluded_source_identities: list[str]
+    excluded_units: list[SourceUnitIdentity]

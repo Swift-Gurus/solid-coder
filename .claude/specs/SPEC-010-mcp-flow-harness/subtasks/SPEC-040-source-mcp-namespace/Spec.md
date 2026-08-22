@@ -19,10 +19,10 @@ Completed:
 - File and in-memory text sources are sealed input variants.
 - Swift analysis uses parser output rather than line-oriented declaration regular expressions and returns typed units plus recoverable diagnostics.
 - Engine-owned `type: operation` steps resolve logical operation names, validate inputs/outputs, drain without a model turn, and participate in fan-out, conditions, retries, events, and replay.
-- Internal `source.search` and `source.read_candidates` operations accept immutable typed Pydantic contracts, share repository traversal with legacy health search, preserve stable query/match provenance, exclude reviewed source identities, validate candidate paths against the canonical root, detect changed content through the shared SHA-256 capability, and persist bounded exact comparison content for replay.
-- Focused source and workflow tests prove deterministic ranking, current-file and `.solid-coder` artifact exclusion, bounded reads, escaped-root and changed-source outcomes, operation engine ownership, and replay without search or filesystem rereads.
-- `source.prepare_search_targets` and `source.prepare_search_query` keep source slicing, target/query identities, deterministic terms, exclusions, and query assembly MCP-owned.
-- The bundled DRY workflow fans out one reusable target-search workflow per MCP-owned unit. The model supplies only semantic terms and per-candidate `classification`, `reasoning`, and `evidence`; MCP performs query assembly, repository search, and bounded candidate loading.
+- Internal `source.search` and `source.read_candidates` operations accept immutable typed Pydantic contracts, share repository traversal with legacy health search, preserve stable query/match provenance, exclude exact reviewed-unit identities, prefer complete proposed-source context over stale disk paths, validate candidate paths against the engine-owned canonical root, detect changed content through the shared SHA-256 capability, and persist bounded exact unit content plus candidate origin for replay.
+- Focused source and workflow tests prove deterministic ranking, exact-unit exclusion, same-file sibling retention, prospective-buffer self-exclusion, `.solid-coder` artifact exclusion, exact bounded unit reads, escaped-root and changed-source outcomes, operation engine ownership, and replay without search or filesystem rereads.
+- `source.prepare_search_targets` and `source.prepare_search_query` keep source slicing, target/query/unit identities, deterministic terms, exact self-exclusion, and query assembly MCP-owned.
+- The bundled unit-scoped DRY workflow invokes one reusable target-search workflow for its normalized review unit. The model supplies only semantic terms and per-candidate `classification`, `reasoning`, and `evidence`; MCP performs query assembly, sibling/external repository search, and exact candidate-unit loading.
 - Nested candidate fan-out preserves the parent target input and the inner candidate item, records conditional skips with their item evidence, publishes ordered target result envelopes, and emits an empty classification collection when every candidate is unavailable or ineligible.
 
 Remaining:
@@ -185,7 +185,7 @@ As a review workflow, I want a deterministic base/head diff so pull-request revi
 
 ### US-8: Search and load source candidates for comparison
 
-As a file-scoped rule workflow, I want MCP-owned repository search and candidate loading so the model can classify concrete reuse and duplication evidence without choosing paths or parsing formatted search output.
+As a unit-scoped rule workflow, I want MCP-owned repository search and candidate loading so the model can classify concrete reuse and duplication evidence without choosing paths or parsing formatted search output.
 
 **Acceptance Criteria:**
 
@@ -194,9 +194,9 @@ As a file-scoped rule workflow, I want MCP-owned repository search and candidate
 - The project root comes from the resolved run or MCP request context. A bundled workflow does not allow the model to substitute another search root.
 - Search reuses the repository search service shared with existing health-check behavior, while the flow operation returns typed results and never writes or consumes a health-check completion marker.
 - Search considers structured frontmatter plus exact filename, symbol, import, and source-content evidence. Every returned candidate identifies the originating query, canonical project-relative source identity, matched terms, match kinds, and stable rank/order.
-- The reviewed source identities are supplied as typed exclusions and are removed before results are published. A current file can still be analyzed for local duplication, but it cannot appear as its own external reuse candidate.
+- Exact reviewed-unit identities are derived from MCP-owned targets and removed before results are published. Sibling units in the same source remain eligible; an agent cannot author or widen exclusions.
 - Candidate identities are deduplicated and ordered deterministically. Search limits are explicit typed inputs with bounded defaults rather than prompt conventions.
-- `source.read_candidates` accepts typed candidate identities produced by search, verifies that every resolved path remains within the canonical project root, and returns bounded ordered source records with canonical identity, content, and truncation metadata.
+- `source.read_candidates` accepts typed candidate identities produced by search, verifies that every resolved path remains within the canonical project root, verifies the search-time file hash, and returns the exact bounded candidate-unit slice with canonical unit/source identity and truncation metadata.
 - Missing, unreadable, escaped-root, oversized, or changed candidate sources produce typed per-candidate outcomes; they do not silently disappear or cause unrelated candidates to lose their results.
 - Search results and loaded candidate sources are ordinary typed operation outputs. Completion events persist the effective queries, exclusions, provenance, source identities, bounded content, and failures required for audit and replay.
 - Replay reconstructs both operation outputs from persisted run evidence and does not search the repository or reread candidate files.
@@ -209,10 +209,10 @@ As a workflow author, I want MCP to prepare immutable search targets and assembl
 
 - `source.prepare_search_targets` accepts one typed file or text source plus a typed `file | unit` granularity and reuses `source.analyze`; it does not implement a second parser or source-discovery path.
 - File granularity returns one target containing the complete supplied source. Unit granularity returns one target per ordered analyzed unit containing the exact source slice identified by its parser offsets.
-- Every target carries an MCP-owned stable identity, canonical source identity, exact code, name, unit kind, source span, deterministic name/symbol/tag terms, and the reviewed source identities that external search must exclude.
+- Every target carries an MCP-owned stable identity, canonical source identity, local unit identity, exact code, name, unit kind, source span, and deterministic name/symbol/tag terms.
 - The model never discovers files, reads paths, chooses source spans, creates target/query identities, or reports detected tags. A model step receives the already-scoped target code and returns only a non-empty array of dynamically generated individual synonyms or alternative names.
-- `source.prepare_search_query` accepts one MCP-owned target and the corresponding model-generated term array. It validates single-term values, normalizes and deduplicates them with deterministic target terms, preserves the target identity as the query identity, and returns the typed query plus reviewed-source exclusions accepted by `source.search`.
-- A bundled workflow uses one nested search workflow per target. Existing `for_each` instance identity and ordered fan-in associate generated terms with their target without asking the model to echo an identity.
+- `source.prepare_search_query` accepts one MCP-owned target and the corresponding model-generated term array. It validates single-term values, normalizes and deduplicates them with deterministic target terms, preserves the target identity as the query identity, and derives the exact typed unit exclusion accepted by `source.search`.
+- A unit-scoped rule invokes one nested search workflow for its normalized target. Candidate `for_each` identity and ordered fan-in associate every classification with that target without asking the model to echo an identity.
 - After `source.read_candidates`, candidate classification fans out over the typed read results. Each agent request contains both the immutable reviewed target code and bounded candidate code; the model does not inspect files or call search/read tools.
 - Each candidate-classification instance requires exactly `classification`, non-empty `reasoning`, and non-empty `evidence`. Target and candidate identities come from the engine-owned instance input rather than model output.
 - Empty candidate collections complete through existing empty fan-in behavior and remain auditable through the persisted search output; the model is not asked to fabricate a no-candidate assessment.
@@ -271,18 +271,16 @@ SPEC-039 applies included/excluded file-extension, unit-kind, and tag matchers
 
 The source namespace does not discover or execute rule workflows. It publishes typed evidence that other domains consume.
 
-File-scoped rules may add repository comparison after analysis without changing that boundary:
+Unit-scoped rules may add repository comparison after analysis without changing that boundary:
 
 ```text
-source.prepare_search_targets normalized file or units
-        ↓
-flow-engine for_each target
+normalized review unit
         ↓
 agent generates semantic synonyms from supplied target code
         ↓
 source.prepare_search_query
         ↓
-source.search typed queries, excluding the normalized file
+source.search typed queries, excluding only the reviewed unit
         ↓
 source.read_candidates typed candidate identities
         ↓
@@ -338,9 +336,10 @@ agent classifies supplied target/candidate code
 
 - Multiple typed queries retain their query identities through stable candidate ordering and deduplication.
 - Search proves exact filename, symbol/import, frontmatter, and source-content matches while rejecting regex, shell, empty-term, and escaped-root inputs.
-- The current reviewed file is excluded from external candidates without preventing the rule from receiving its complete local source snapshot.
+- The exact reviewed unit is excluded without removing sibling units in the same source; absolute buffer identities and project-relative repository identities resolve to the same canonical source.
+- Proposed sibling units and units from another file in the same multi-file patch replace stale repository snapshots, remain searchable before write authorization, and load their exact in-memory content with `proposed` provenance.
 - Candidate loading rejects paths outside the canonical project root and returns typed outcomes for missing, unreadable, changed, oversized, and successfully loaded files.
-- A DRY fixture containing only same-file duplication still produces local evidence when search returns no candidates.
+- A DRY fixture containing only within-unit duplication still produces local evidence when search returns no candidates.
 - Replay returns the persisted candidates and exact bounded candidate content after repository files change, and the search/read services are not invoked again.
 
 ### Workflow integration

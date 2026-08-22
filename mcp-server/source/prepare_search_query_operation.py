@@ -3,6 +3,7 @@
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_output import PrepareSearchQueryOutput
 from source.source_search_query import SourceSearchQuery
+from source.source_unit_identity import SourceUnitIdentity
 
 
 """
@@ -24,14 +25,13 @@ class PrepareSearchQueryOperation:
             normalized = term.casefold()
             if normalized not in terms:
                 terms.append(normalized)
-        exclusions: list[str] = []
-        for identity in operation_input.excluded_source_identities:
-            if identity not in exclusions:
-                exclusions.append(identity)
         return PrepareSearchQueryOutput(
             queries=[SourceSearchQuery(
                 id=operation_input.target.identity,
                 terms=terms,
             )],
-            excluded_source_identities=exclusions,
+            excluded_units=[SourceUnitIdentity(
+                source_identity=operation_input.target.source_identity,
+                unit_identity=operation_input.target.unit_identity,
+            )],
         )

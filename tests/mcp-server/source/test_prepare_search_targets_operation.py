@@ -76,13 +76,13 @@ class TestPrepareSearchTargetsOperation(unittest.TestCase):
                 f"{Path('Sources/Feature.swift').resolve()}#struct:DashboardView:7",
             ],
         )
+        self.assertEqual(
+            [target.unit_identity for target in result.targets],
+            ["struct:UserLoader:3", "struct:DashboardView:7"],
+        )
         self.assertIn("userloader", result.targets[0].deterministic_terms)
         self.assertIn("swiftui", result.targets[0].deterministic_terms)
         self.assertIn("view", result.targets[1].deterministic_terms)
-        self.assertEqual(
-            result.excluded_source_identities,
-            [str(Path("Sources/Feature.swift").resolve())],
-        )
 
     def test_file_granularity_returns_one_complete_document_target(self) -> None:
         result = self.operation.execute(PrepareSearchTargetsInput(
