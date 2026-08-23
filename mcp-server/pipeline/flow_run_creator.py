@@ -11,6 +11,9 @@ from hc_config_schema import load_config
 from hook_utils import _resolve_project_root
 from message_transport_running import MessageTransportRunning
 from pipeline.flow_run_creating import FlowRunCreating
+from review.review_operation_registrations_factory import (
+    ReviewOperationRegistrationsFactory,
+)
 from solid_coder_config import SolidCoderConfig
 from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
@@ -45,7 +48,10 @@ class FlowRunCreator(FlowRunCreating):
             session_delegate_max_workers=(
                 flow_engine_config.max_parallel_sessions
             ),
-            operation_registrations=SourceOperationRegistrationsFactory(
-                project_directory=_resolve_project_root,
-            ).make(),
+            operation_registrations=[
+                *SourceOperationRegistrationsFactory(
+                    project_directory=_resolve_project_root,
+                ).make(),
+                *ReviewOperationRegistrationsFactory().make(),
+            ],
         ).build()

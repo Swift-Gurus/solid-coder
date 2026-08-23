@@ -17,14 +17,22 @@ class StepOutputReferenceParser(StepOutputReferenceParsing):
     def parse(self, expression: str) -> StepOutputReference:
         components = expression.split(".")
         if (
-            len(components) != 4
+            len(components) < 4
             or components[0] != "steps"
-            or not components[1]
-            or components[2] != "outputs"
-            or not components[3]
+            or any(not component for component in components[1:-2])
+            or any(
+                self._is_runtime_identity_component(component)
+                for component in components[1:-2]
+            )
+            or components[-2] != "outputs"
+            or not components[-1]
         ):
             raise StepOutputReferenceSyntaxError(expression)
         return StepOutputReference(
-            step_id=components[1],
-            output_name=components[3],
+            step_id=".".join(components[1:-2]),
+            output_name=components[-1],
         )
+
+    def _is_runtime_identity_component(self, component: str) -> bool:
+        prefix, separator, source_index = component.rpartition("-")
+        return bool(prefix and separator and source_index.isdigit())

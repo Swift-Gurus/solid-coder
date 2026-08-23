@@ -1,0 +1,16 @@
+{
+  "metrics": [
+    {"metric_id": "SUI-1", "observation_id": "body_nesting_depth", "value": 3, "severity": "SEVERE"},
+    {"metric_id": "SUI-1", "observation_id": "view_expression_count", "value": 8, "severity": "SEVERE"},
+    {"metric_id": "SUI-2", "observation_id": "value", "value": 1, "severity": "SEVERE"},
+    {"metric_id": "SUI-3", "observation_id": "value", "value": 2, "severity": "SEVERE"},
+    {"metric_id": "SUI-4", "observation_id": "value", "value": "concrete", "severity": "SEVERE"},
+    {"metric_id": "SUI-5", "observation_id": "value", "value": 1, "severity": "SEVERE"},
+    {"metric_id": "SUI-6", "observation_id": "value", "value": 2, "severity": "SEVERE"},
+    {"metric_id": "SUI-7", "observation_id": "value", "value": 1, "severity": "SEVERE"},
+    {"metric_id": "SUI-8", "observation_id": "value", "value": 1, "severity": "SEVERE"},
+    {"metric_id": "SUI-9", "observation_id": "value", "value": 1, "severity": "SEVERE"}
+  ],
+  "is_exception": false,
+  "severity": "SEVERE"
+}

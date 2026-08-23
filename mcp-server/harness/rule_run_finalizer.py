@@ -42,6 +42,7 @@ class RuleRunFinalizer(RuleExecutionFinalizing):
         result = self._result_builder.build(
             instance.workflow.workflow_id,
             instance.instance_id,
+            instance.provenance,
             observations,
         )
         self._result_persister.persist(run_directory, result)

@@ -27,6 +27,12 @@ from harness.data_output_validator import DataOutputValidator
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.directed_graph_factory import DirectedGraphFactory
 from harness.dynamic_workflow_steps_resolver import DynamicWorkflowStepsResolver
+from harness.dynamic_include_alias_groups_assembler import (
+    DynamicIncludeAliasGroupsAssembler,
+)
+from harness.dynamic_include_alias_groups_selector import (
+    DynamicIncludeAliasGroupsSelector,
+)
 from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
@@ -59,6 +65,12 @@ from harness.include_group_membership_resolver import IncludeGroupMembershipReso
 from harness.include_group_dynamic_checker import IncludeGroupDynamicChecker
 from harness.include_group_opacity_validator import IncludeGroupOpacityValidator
 from harness.include_group_readiness_checker import IncludeGroupReadinessChecker
+from harness.include_alias_group_for_each_normalizer import (
+    IncludeAliasGroupForEachNormalizer,
+)
+from harness.include_alias_group_input_bindings_normalizer import (
+    IncludeAliasGroupInputBindingsNormalizer,
+)
 from harness.include_resolver_factory import IncludeResolverFactory
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.interpolation_error_factory import InterpolationErrorFactory
@@ -76,6 +88,7 @@ from harness.json_loading import JsonLoader
 from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.metric_declaration import MetricDeclaration
+from harness.metric_declaration_decoder import MetricDeclarationDecoder
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
@@ -110,6 +123,9 @@ from harness.resolved_step_resources_applier import ResolvedStepResourcesApplier
 from harness.resolved_step_resources_factory import ResolvedStepResourcesFactory
 from harness.run_state_reconstructor_factory import make_run_state_reconstructor
 from harness.rule_declaration import RuleDeclaration
+from harness.rule_additional_info_output_provider import (
+    RuleAdditionalInfoOutputProvider,
+)
 from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.rule_validating_flow_definition_validator import (
     RuleValidatingFlowDefinitionValidator,
@@ -154,6 +170,9 @@ from harness.step_status_checker import StepStatusChecker
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_output_reference_resolver import StepOutputReferenceResolver
+from harness.step_output_workflow_input_binding_normalizer import (
+    StepOutputWorkflowInputBindingNormalizer,
+)
 from harness.strict_collection_value_matcher import StrictCollectionValueMatcher
 from harness.strict_value_comparator import StrictValueComparator
 from harness.uses_resolver import UsesResolver
@@ -449,9 +468,12 @@ class FlowEngineAssemblyFactory:
                     condition_parser=condition_parser,
                     for_each_parser=for_each_reference_parser,
                     rule_step_contract_resolver=RuleStepContractResolver(
-                        metric_decoder=PydanticModelDecoder(
-                            model_type=MetricDeclaration,
+                        metric_decoder=MetricDeclarationDecoder(
+                            PydanticModelDecoder(
+                                model_type=MetricDeclaration,
+                            )
                         ),
+                        additional_info_output=RuleAdditionalInfoOutputProvider(),
                         error_factory=error_factory,
                     ),
                     operation_step_contract_resolver=OperationStepContractResolver(
@@ -529,6 +551,20 @@ class FlowEngineAssemblyFactory:
             definition_assembler=FlowDefinitionAssembler(
                 group_dependency_expander=group_dependency_expander,
                 dynamic_group_checker=dynamic_group_checker,
+                dynamic_groups=DynamicIncludeAliasGroupsAssembler(
+                    selector=DynamicIncludeAliasGroupsSelector(
+                        dynamic_group_checker
+                    ),
+                    for_each=IncludeAliasGroupForEachNormalizer(
+                        ForEachSourceIdentityResolver()
+                    ),
+                    input_bindings=IncludeAliasGroupInputBindingsNormalizer(
+                        binding=StepOutputWorkflowInputBindingNormalizer(
+                            reference_parser=step_output_reference_parser,
+                            source_identity=ForEachSourceIdentityResolver(),
+                        )
+                    ),
+                ),
                 step_builder=StepBuilder(),
             ),
             error_factory=error_factory,

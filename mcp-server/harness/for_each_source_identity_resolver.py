@@ -24,6 +24,7 @@ class ForEachSourceIdentityResolver(ForEachSourceIdentityResolving):
             group
             for group in groups
             if group.alias not in scope.excluded_aliases
+            and f"{group.alias}.{local_source_id}" in group.member_ids
             and all(
                 member_id in group.member_ids
                 for member_id in scope.member_ids

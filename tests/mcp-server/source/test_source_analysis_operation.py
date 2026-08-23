@@ -100,7 +100,10 @@ class TestSourceAnalysisOperation(unittest.TestCase):
             for detection in result.detections
             if detection.scope is TechnologyDetectionScope.FILE
         ]
-        self.assertEqual(file_tags, ["ui", "swiftui"])
+        self.assertEqual(
+            file_tags,
+            ["ui", "swiftui", "concurrency", "structured-concurrency"],
+        )
         view_detection = next(
             detection
             for detection in result.detections

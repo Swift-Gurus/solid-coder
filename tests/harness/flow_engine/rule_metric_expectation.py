@@ -17,6 +17,7 @@ class RuleMetricExpectation(BaseModel):
 
     step_id: str = Field(min_length=1)
     metric_id: str = Field(min_length=1)
+    observation_id: str = Field(default="value", min_length=1)
     detection_id: str = Field(min_length=1)
     detection_name: str = Field(min_length=1)
     value: MetricComparisonValue

@@ -27,12 +27,14 @@ class MetricOverrideApplier(MetricOverrideApplying):
         if override is None:
             return EffectiveMetricPlanEntry(
                 metric_id=metric.metric_id,
+                observation_id=metric.observation_id,
                 effective_enabled=True,
                 authored_scoring=metric.scoring,
                 effective_scoring=metric.scoring,
             )
         return EffectiveMetricPlanEntry(
             metric_id=metric.metric_id,
+            observation_id=metric.observation_id,
             effective_enabled=(
                 override.enabled if override.enabled is not None else True
             ),

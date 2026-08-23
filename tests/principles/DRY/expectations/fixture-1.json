@@ -4,6 +4,11 @@
       "unit_name": "PayrollLedger",
       "metric_id": "DRY-2",
       "severity": "SEVERE"
+    },
+    {
+      "unit_name": "PayrollLedger",
+      "metric_id": "DRY-3",
+      "severity": "SEVERE"
     }
   ]
 }

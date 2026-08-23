@@ -1,0 +1,147 @@
+id: frontmatter
+name: Frontmatter Review
+description: Measures required solid-frontmatter presence and metadata correctness for one normalized source file.
+max_turns: 12
+
+rule:
+  scope: file
+
+steps:
+  - id: missing_frontmatter_count
+    type: metric
+    metric_id: FM-1
+    prompt: |
+      For each top-level class, struct, protocol, enum, or member-adding extension declaration,
+      check the comment immediately preceding it for a solid-frontmatter block. Count each
+      declaration missing one. Do not count private/fileprivate helper types under 10 lines,
+      or extensions that only add protocol conformance with no new members.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: name_mismatch_count
+    type: metric
+    metric_id: FM-2
+    prompt: |
+      For each type with an existing frontmatter block, compare `solid-name` against the
+      actual declared type/class/struct/protocol/enum name. Count each mismatch.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: invalid_category_count
+    type: metric
+    metric_id: FM-3
+    prompt: |
+      For each type with an existing frontmatter block, check `solid-category` against the
+      vocabulary above. A category outside this list is acceptable only if it clearly names
+      a distinct domain role by the same convention (lowercase, hyphenated, noun-like).
+      Blank, placeholder ("TODO"), or vague values ("misc", "other", "stuff") count as
+      violations. Count each violation.
+
+      The fixed vocabulary is: `abstraction`, `network`, `viewmodel`, `model`,
+      `view-component`, `screen`, `modifier`, `crud`, `utility`, `navigation`, `service`,
+      `unit-test`, and `ui-test`.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: incorrect_stack_count
+    type: metric
+    metric_id: FM-4
+    prompt: |
+      For each type with an existing frontmatter block, compare `solid-stack` against the
+      type's actual imports/usages. Flag: a listed entry the code doesn't import/use, or a
+      clear dependency on one of the fixed-vocabulary technologies that is missing from the
+      list. Do not flag omission of `solid-stack` entirely when the type has no framework
+      dependency — that is correct, not a violation. Count each violation.
+
+      The fixed vocabulary is: `swiftui`, `uikit`, `appkit`, `combine`,
+      `structured-concurrency`, `gcd`, `tca`, `core-data`, `swift-data`, and `grdb`.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: bad_description_count
+    type: metric
+    metric_id: FM-5
+    prompt: |
+      For each type with an existing frontmatter block, check `solid-description`:
+      - Must describe the CAPABILITY at the interface level — ask "would this sentence still
+        be true if the implementation changed entirely?" If not, it's implementation, not capability.
+      - Must NOT name any concrete implementation thing: types, variables, APIs, values,
+        colors, layout details, composition steps, wiring to other components.
+      - Must NOT be vague: "A view", "A service", "Handles data" with no substance.
+      - For `abstraction` category: MUST start with "Contract for..." or "Contract that defines...".
+      Count each frontmatter block whose description fails any of the above.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      This rule has no rule-wide exception categories. Metric-specific exclusions are already
+      authored in FM-1 through FM-5 and must be applied while measuring those metrics. Return
+      `is_exception: false` with reasoning and evidence confirming that no separate rule-wide
+      exception was applied.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```

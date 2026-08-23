@@ -6,16 +6,14 @@ max_turns: 10
 rule: {}
 
 steps:
-  - id: sealed_variation_points
-    type: metric
-    metric_id: OCP-1
+  - id: analyze_dependencies
     prompt: |
       1. **List every dependency** the class uses (properties, parameters, method calls to external types)
       2. **Classify each as** 
          - ABSTRACT (protocol-typed and injected) 
          - DIRECT (passed in construction methods or used directly in class) 
            - INJECTED (concrete class, singleton, static) passed into construction of the object (init, factory methods, convenience inits)
-             - construction methods (init, create type factory methods, convenience methods) can have defatult arguments -> consider INJECTED
+             - construction methods (init, create type factory methods, convenience methods) can have default arguments -> consider INJECTED
            - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
          - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
       3. **Check OCP exceptions** — apply only the `<exceptions principle="OCP">` block below. Exclude every matching unit or dependency from the OCP count before calculating sealed variation points.
@@ -23,10 +21,46 @@ steps:
       5. **Exclude from the count of DIRECT NON-INJECTED** the dependencies that fit the exception for **Pure Data Structures**
       6. **Sum** = total sealed variation points
 
+      Analyze every dependency once. Preserve whether it is excepted, whether its concrete type can be instantiated or subclassed, and the source evidence supporting each decision. Also record whether the unit contains hardcoded behavior-selection logic.
+
       Unit:
       ```
       {{params.review_unit}}
       ```
+    outputs:
+      - name: analysis
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [dependencies, has_hardcoded_behavior_selection]
+          properties:
+            dependencies:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [name, classification, is_exception, can_instantiate, can_subclass, reasoning, evidence]
+                properties:
+                  name: {type: string, minLength: 1}
+                  classification:
+                    type: string
+                    enum: [ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, INDIRECT]
+                  is_exception: {type: boolean}
+                  can_instantiate: {type: boolean}
+                  can_subclass: {type: boolean}
+                  reasoning: {type: string, minLength: 1}
+                  evidence: {type: string, minLength: 1}
+            has_hardcoded_behavior_selection: {type: boolean}
+
+  - id: sealed_variation_points
+    type: metric
+    metric_id: OCP-1
+    depends_on: [analyze_dependencies]
+    prompt: |
+      Count dependencies classified as DIRECT_NON_INJECTED that are not exceptions. This count is the total sealed variation points. Do not rediscover or reclassify dependencies.
+
+      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
     value:
       type: integer
       minimum: 0
@@ -35,20 +69,44 @@ steps:
         operator: greater_than_or_equal
         value: 1
 
+  - id: analyze_testability
+    depends_on: [analyze_dependencies]
+    prompt: |
+      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
+      - For every dependency classified DIRECT INJECTED or INDIRECT, reuse its OCP-1 classification and substitution evidence.
+      - Classify the dependency as UNTESTABLE only when it is concrete, is not already behind an abstraction, and its type can neither be substituted nor subclassed. Otherwise classify it as TESTABLE.
+
+      *Note*: any class that is not final can be subclassed.
+
+      Do not rediscover dependencies. Return one testability classification for every DIRECT_INJECTED or INDIRECT dependency from the shared analysis. Use NOT_APPLICABLE for every other dependency retained as supporting evidence.
+
+      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+    outputs:
+      - name: testability
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, classification, reasoning, evidence]
+            properties:
+              name: {type: string, minLength: 1}
+              classification:
+                type: string
+                enum: [TESTABLE, UNTESTABLE, NOT_APPLICABLE]
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
   - id: untestable_dependencies
     type: metric
     metric_id: OCP-2
+    depends_on: [analyze_testability]
     prompt: |
-      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
-      - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
-       - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
+      Count UNTESTABLE decisions from the shared testability analysis. Do not rediscover dependencies or revise the classifications.
 
-      *Note* we can subclass any class that is not final.
-
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
+      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+      Shared testability analysis: {{steps.analyze_testability.outputs.testability}}
     value:
       type: integer
       minimum: 0
@@ -60,19 +118,12 @@ steps:
   - id: testable_direct_count
     type: metric
     metric_id: OCP-3
+    depends_on: [analyze_testability]
     prompt: |
-      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
-      - For every DIRECT INJECTED AND INDIRECT dependency perform OCP-1 analysis. 
-       - If the DIRECT INJECTED and INDIRECT is not compliant with OCP-1, and we cannot subclass it mark it - UNTESTABLE
+      Count dependencies classified as DIRECT_INJECTED in the shared dependency analysis that are not exceptions and whose corresponding testability decision is TESTABLE. Pure-data dependencies and every other typed exception remain excluded. Do not rediscover dependencies or revise the classifications.
 
-      *Note* we can subclass any class that is not final.
-
-      Return the count of DIRECT INJECTED concrete dependencies that are testable because they can be subclassed.
-
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
+      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+      Shared testability analysis: {{steps.analyze_testability.outputs.testability}}
     value:
       type: integer
       minimum: 0
@@ -83,6 +134,7 @@ steps:
 
   - id: classify_exception
     type: exception
+    depends_on: [analyze_dependencies]
     prompt: |
       Decide whether the entire supplied unit is exempt from OCP review under these authored exceptions:
 
@@ -107,7 +159,13 @@ steps:
           - API doesn't support instantiation: enums with only static members, global constants, static global functions
           - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
 
+      Apply whole-unit exceptions literally against the shared dependency analysis. "Dependency-free" requires that the typed dependency array is literally empty; dependencies marked as dependency-level exceptions are still dependencies. A protocol, class, or other behavior declaration that merely uses pure-data dependencies is not itself a data carrier, so that usage does not make the reviewed unit itself a pure data structure.
+
+      Mandatory first branch: when the shared dependency analysis has an empty `dependencies` array and `has_hardcoded_behavior_selection` is false, the dependency-free exception is satisfied and you MUST return `is_exception: true`. Evaluate the remaining exceptions only when that branch does not match.
+
       Unit:
       ```
       {{params.review_unit}}
       ```
+
+      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}

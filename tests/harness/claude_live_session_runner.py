@@ -27,7 +27,7 @@ class ClaudeLiveSessionRunner(LiveSessionRunning):
 
     def run(self, request: LiveSessionRequest) -> LiveSessionResult:
         artifact_directory = self._artifact_directory_creator.create(
-            request.project_root,
+            request.plugin_root,
             "claude",
             request.artifact_scope,
         )

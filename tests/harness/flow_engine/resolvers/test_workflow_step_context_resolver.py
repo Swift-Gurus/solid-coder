@@ -11,7 +11,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
+from harness.step_skip import StepSkip
 from harness.step_outputs import StepOutputs
+from harness.unavailable_condition_evidence import UnavailableConditionEvidence
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
@@ -77,6 +82,44 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
         )
         self.assertEqual(first.parameters.find("review_unit").value, "Alpha")
         self.assertEqual(second.parameters.find("review_unit").value, "Beta")
+
+    def test_maps_skipped_child_steps_to_their_local_identity(self) -> None:
+        condition = ComparisonCondition(
+            reference=WorkflowExpression(value="params.enabled"),
+            operator=ConditionOperator.EQUALS,
+            expected=True,
+        )
+        skip = StepSkip(
+            step_id="opaque-alpha-completion",
+            instance_id="opaque-alpha-completion-1",
+            condition=condition,
+            evidence=UnavailableConditionEvidence(matched=False),
+        )
+        context = WorkflowRunContext(
+            skipped_steps=WorkflowContextValues(
+                entries=[
+                    WorkflowContextValue(
+                        name="opaque-alpha-completion",
+                        value=skip,
+                    )
+                ]
+            )
+        )
+
+        resolved = WorkflowStepContextResolver().resolve(
+            context,
+            self._workflow_instance(
+                index=1,
+                source_item="Alpha",
+                execution_step_id="opaque-alpha-completion",
+            ),
+            item="Alpha",
+        )
+
+        self.assertEqual(resolved.skipped_steps.find("inspect").value, skip)
+        self.assertFalse(
+            resolved.skipped_steps.find("opaque-alpha-completion").present
+        )
 
     def _workflow_instance(
         self,

@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+from harness.include_alias_group_qualifying import IncludeAliasGroupQualifying
 from harness.include_resolution import IncludeResolution
 from harness.nested_include_qualifying import NestedIncludeQualifying
 from harness.step_qualifying import StepQualifying
@@ -18,8 +19,10 @@ class NestedIncludeQualifier(NestedIncludeQualifying):
     def __init__(
         self,
         step_qualifier: StepQualifying,
+        group_qualifier: IncludeAliasGroupQualifying,
     ) -> None:
         self._step_qualifier = step_qualifier
+        self._group_qualifier = group_qualifier
 
     def qualify(self, alias: str, nested: IncludeResolution) -> IncludeResolution:
         local_dependency_ids = {
@@ -30,10 +33,10 @@ class NestedIncludeQualifier(NestedIncludeQualifying):
             for step in nested.steps
         ]
         qualified_groups = [
-            replace(
+            self._group_qualifier.qualify(
+                alias,
                 group,
-                alias=f"{alias}.{group.alias}",
-                member_ids=[f"{alias}.{member}" for member in group.member_ids],
+                local_dependency_ids,
             )
             for group in nested.alias_groups
         ]

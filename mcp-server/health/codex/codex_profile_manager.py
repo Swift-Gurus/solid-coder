@@ -14,16 +14,21 @@ for _d in (_MCP_DIR, _HEALTH_DIR / "config", _MODULE_DIR):
         sys.path.insert(0, str(_d))
 
 import os
-from pathlib import Path
 from typing import Callable
 
 import hc_config
+from findings.text_file_writing import TextFileWriting
+from findings.utf8_text_file_writer import Utf8TextFileWriter
+from harness.path_builder import PathBuilder
+from harness.path_building import PathBuilding
 from hook_utils import PLUGIN_ROOT as _DEFAULT_PLUGIN_ROOT
 
 _PROFILE_NAME = "solid-coder-health"
 
 _PROFILE_TEMPLATE = """\
 # solid-coder health-check MCP profile — auto-generated, do not edit.
+
+tool_output_token_limit = 262144
 
 [mcp_servers.pipeline]
 command = "python3"
@@ -59,6 +64,11 @@ timeout = {hook_timeout}
 """
 
 
+"""
+solid-name: CodexProfileManager
+solid-category: service
+solid-description: Generates and persists the Codex configuration profile used by health-check sessions.
+"""
 class CodexProfileManager:
     """Writes the solid-coder-health Codex profile into the active CODEX_HOME directory."""
 
@@ -68,17 +78,21 @@ class CodexProfileManager:
         plugin_root: Path = _DEFAULT_PLUGIN_ROOT,
         home_resolver: Callable[[], str] = lambda: os.environ.get("CODEX_HOME", str(Path.home() / ".codex")),
         config_loader: Callable = hc_config.load_config,
+        path_builder: PathBuilding = PathBuilder(),
+        writer: TextFileWriting = Utf8TextFileWriter(),
     ) -> None:
         self._codex_home = codex_home or home_resolver()
         self._plugin_root = plugin_root
         self._config_loader = config_loader
+        self._path_builder = path_builder
+        self._writer = writer
 
     def ensure_profile(self) -> str:
         """Write the profile file and return the profile name for use in CLI invocations."""
-        home = Path(self._codex_home)
-        home.mkdir(parents=True, exist_ok=True)
+        home = self._path_builder.build(self._codex_home)
         hooks_dir = self._plugin_root / "mcp-server" / "hooks"
-        (home / f"{_PROFILE_NAME}.config.toml").write_text(
+        self._writer.write(
+            home / f"{_PROFILE_NAME}.config.toml",
             _PROFILE_TEMPLATE.format(
                 pipeline_server=str(self._plugin_root / "mcp-server" / "pipeline" / "server.py"),
                 docs_server=str(self._plugin_root / "mcp-server" / "docs" / "server.py"),
@@ -87,6 +101,5 @@ class CodexProfileManager:
                 on_stop=str(hooks_dir / "on_stop.py"),
                 hook_timeout=self._config_loader().llm.timeout,
             ),
-            encoding="utf-8",
         )
         return _PROFILE_NAME

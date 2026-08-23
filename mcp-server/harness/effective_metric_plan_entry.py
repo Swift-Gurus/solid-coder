@@ -18,6 +18,7 @@ class EffectiveMetricPlanEntry(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     metric_id: str
+    observation_id: str = "value"
     authored_enabled: bool = True
     effective_enabled: bool
     authored_scoring: MetricScoringDeclaration

@@ -77,11 +77,24 @@ class TestRuleWorkflowScopeLoading(unittest.TestCase):
             RuleScope.FILE,
         )
         self.assertIsNone(groups["file-rule"].for_each)
+        file_bindings = {
+            binding.name: binding.expression.value
+            for binding in groups["file-rule"].input_bindings
+        }
+        self.assertEqual(
+            file_bindings["review_unit"],
+            "steps.prepare.outputs.review_file",
+        )
         self.assertEqual(
             groups["unit-rule"].rule_workflow.declaration.scope,
             RuleScope.UNIT,
         )
         self.assertIsNotNone(groups["unit-rule"].for_each)
+        unit_bindings = {
+            binding.name: binding.expression.value
+            for binding in groups["unit-rule"].input_bindings
+        }
+        self.assertEqual(unit_bindings["review_unit"], "item")
 
     def test_rejects_an_unknown_rule_scope(self) -> None:
         path = self._write_rule("invalid-scope", "scope: project")

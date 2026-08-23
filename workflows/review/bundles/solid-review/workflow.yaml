@@ -1,0 +1,9 @@
+id: solid-review
+name: SOLID Review
+description: Applies the reusable file-review workflow to one explicit prospective review target.
+max_turns: 1000
+
+steps:
+  - include:
+      workflow: solid-file-review
+    as: file_review

@@ -328,6 +328,54 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             "Duplicate metric_id in rule workflow duplicate-metric: 'TEST-1'",
         )
 
+    def test_allows_distinct_observations_for_one_metric_id(self) -> None:
+        flow = self.loader.load(
+            self._write(
+                """
+                id: composite-metric
+                name: Composite Metric
+                max_turns: 5
+                rule: {}
+                steps:
+                  - id: nesting
+                    type: metric
+                    metric_id: SUI-1
+                    observation_id: body_nesting_depth
+                    prompt: Measure nesting.
+                    value: {type: integer, minimum: 0}
+                    scoring:
+                      severe: {operator: greater_than_or_equal, value: 2}
+                  - id: expressions
+                    type: metric
+                    metric_id: SUI-1
+                    observation_id: view_expression_count
+                    prompt: Measure expressions.
+                    value: {type: integer, minimum: 0}
+                    scoring:
+                      severe: {operator: greater_than_or_equal, value: 5}
+                  - id: classify_exception
+                    type: exception
+                    prompt: Classify the exception.
+                """
+            ),
+            [],
+        )
+
+        self.assertEqual(
+            [step.metric.observation_id for step in flow.steps if step.metric],
+            ["body_nesting_depth", "view_expression_count"],
+        )
+        run_directory = self.directory / "composite-metric-run"
+        run_directory.mkdir()
+        make_workflow_persister().persist(run_directory, flow)
+
+        reloaded = self.loader.load(str(run_directory / "workflow.yaml"), [])
+
+        self.assertEqual(
+            [step.metric.observation_id for step in reloaded.steps if step.metric],
+            ["body_nesting_depth", "view_expression_count"],
+        )
+
     def test_rejects_non_scalar_metric_value_schema(self) -> None:
         self._assert_invalid(
             """

@@ -1,0 +1,265 @@
+id: swiftui
+name: SwiftUI Best Practices Review
+description: Measures SwiftUI view complexity, purity, composition, testability, previews, accessibility, sizing, and isolation.
+max_turns: 24
+
+rule:
+  match:
+    file_extensions:
+      included: [.swift]
+    unit_kinds:
+      included: [struct]
+    tags:
+      included: [swiftui, view]
+
+steps:
+  - id: body_nesting_depth
+    type: metric
+    metric_id: SUI-1
+    observation_id: body_nesting_depth
+    prompt: |
+      1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
+      2. **For each view-returning property, measure:**
+         - Max nesting depth of view builder expressions (each View/container that takes a `@ViewBuilder` closure adds one level)
+         - Count of distinct view expressions (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
+      3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
+      4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
+
+      Return the maximum nesting depth as the metric value with reasoning and precise evidence. Do not return the expression count from this step.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 2}
+
+  - id: view_expression_count
+    type: metric
+    metric_id: SUI-1
+    observation_id: view_expression_count
+    prompt: |
+      1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
+      2. **For each view-returning property, measure:**
+         - Max nesting depth of view builder expressions (each View/container that takes a `@ViewBuilder` closure adds one level)
+         - Count of distinct view expressions (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
+      3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
+      4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
+
+      Return the maximum expression count as the metric value with reasoning and precise evidence. Do not return the nesting depth from this step.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 5}
+
+  - id: impure_count
+    type: metric
+    metric_id: SUI-2
+    prompt: |
+      1. **List every method and computed property** in the view struct (excluding `body`)
+      2. **Classify each as:**
+         - PURE_VIEW — returns `some View`, configures view appearance, or toggles simple UI state (`showSheet = true`, `isExpanded.toggle()`)
+         - IMPURE — any of the following:
+           - DATA_FETCH — network calls, database reads, file I/O
+           - TRANSFORM — sorting, filtering, mapping, grouping collections with business logic
+           - FORMAT — string formatting, date formatting, number formatting (beyond inline `Text(value, format:)`)
+           - VALIDATE — input validation, business rule checking
+           - COMPUTE — calculations, state machine transitions, derived business state
+      3. **Count IMPURE methods/properties**
+
+      Return the count with reasoning and precise evidence.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: max_modifier_chain
+    type: metric
+    metric_id: SUI-3
+    prompt: |
+      1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
+      2. **For each child view expression** inside that closure (not the outermost container)
+      3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
+      4. **Flag** if modifier count >= 2
+
+      Return the maximum nested-child modifier count with reasoning and precise evidence.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 2}
+
+  - id: vm_injection_style
+    type: metric
+    metric_id: SUI-4
+    prompt: |
+      1. **Identify the ViewModel property** — the stored property that serves as
+         the view's logic/data source (typically @Observable class, ObservableObject,
+         or any type providing business state + actions)
+      2. **Check injection style:**
+          - Concrete class type → VIOLATION
+          - Protocol that extends `Observable` → must use generic constraint
+            (SwiftUI's observation tracking needs the concrete type at compile time).
+            Generic constrained to protocol(s) → COMPLIANT.
+            Plain protocol property → VIOLATION (observation won't work)
+          - Protocol that does NOT extend `Observable` → plain protocol-typed
+            property is COMPLIANT. No generic needed.
+      3. **Not in scope:** plain value properties (String, Bool, structs),
+         closures/actions, nested child views, style/configuration types
+
+      Return `protocol`, `concrete`, or `none` with reasoning and precise evidence.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: string}
+    scoring:
+      severe: {operator: equals, value: concrete}
+
+  - id: preview_only_count
+    type: metric
+    metric_id: SUI-5
+    prompt: |
+      1. **Identify file-scope view structs** — list every `struct` conforming to `View` declared at file scope (not nested inside `#Preview`, `PreviewProvider`, or another type)
+      2. **Identify file-scope helper types** — list every `struct`, `class`, or `enum` at file scope that does NOT conform to `View` but is only referenced by a preview-only view (support models, mock data, factory types)
+      3. **For each file-scope view, check caller sites:**
+         - Search the file and codebase for references to this view outside of `#Preview` blocks and `PreviewProvider` structs
+         - If the view is referenced ONLY inside `#Preview` or `PreviewProvider` → mark as **PREVIEW_ONLY**
+         - If the view is referenced in production code (other views, app entry point, navigation) → mark as **PRODUCTION** — not a violation
+         - If the view has ZERO references anywhere (orphan) → mark as **PREVIEW_ONLY** (dead code)
+      4. **For each PREVIEW_ONLY view**, also flag its helper types (step 2) as PREVIEW_ONLY
+      5. **Score:**
+         - All file-scope views are PRODUCTION → COMPLIANT
+         - Any file-scope view is PREVIEW_ONLY → SEVERE
+
+      Return the preview-only count with reasoning and precise evidence. Use only the supplied MCP-owned repository evidence; do not inspect files or invent callers.
+
+      View unit: {{params.review_unit}}
+      Repository evidence: No MCP-owned repository evidence was supplied.
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: views_without_preview_count
+    type: metric
+    metric_id: SUI-6
+    prompt: |
+      1. **Identify file-scope View structs** — list every `struct` conforming to `View` declared at file scope
+      2. **Search for preview instantiation** — for each View struct, search:
+         - The same file for `#Preview` blocks or `PreviewProvider` structs that instantiate it
+         - Other files in the module for `#Preview` blocks or `PreviewProvider` structs that instantiate it (e.g., dedicated preview files)
+      3. **Score:**
+         - View is instantiated in at least one preview → COMPLIANT
+         - View has no preview instantiation anywhere → SEVERE
+
+      Return the count with reasoning and precise evidence. Use only the supplied MCP-owned repository evidence; do not inspect files or invent previews.
+
+      View unit: {{params.review_unit}}
+      Repository evidence: No MCP-owned repository evidence was supplied.
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: bad_accessibility_count
+    type: metric
+    metric_id: SUI-7
+    prompt: |
+      1. **Identify container views** — any `HStack`, `VStack`, `ZStack`, `LazyVStack`, `LazyHStack`, `LazyVGrid`, `LazyHGrid`, `List`, `ScrollView`, `Form`, or `Group` expression
+      2. **For each container view with `.accessibilityIdentifier(...)`:**
+         - Check if `.accessibilityElement(children:)` appears in the modifier chain **before** `.accessibilityIdentifier(...)`
+         - If missing → VIOLATION
+         - If present → COMPLIANT
+      3. **Containers without `.accessibilityIdentifier(...)`** are not in scope — no finding
+
+      Return the count with reasoning and precise evidence.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: fixed_frame_count
+    type: metric
+    metric_id: SUI-8
+    prompt: |
+      1. **Find all `.frame()` calls with literal numeric width/height values** — hardcoded point values anywhere in view code
+      2. **Every literal numeric frame is a violation** — regardless of where it appears:
+         - A view hardcoding its own external size → should let its parent decide
+         - A parent hardcoding a child's size → should use proportional sizing
+         - A view hardcoding an internal element's size → remove frame, let element adapt to parent-given space or use proportional sizing
+      3. **Count** fixed-frame violations
+
+      Return the count with reasoning and precise evidence.
+
+      View unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: over_isolated_count
+    type: metric
+    metric_id: SUI-9
+    prompt: |
+      1. **Find all `@MainActor` annotations on type declarations** — `@MainActor class`, `@MainActor struct`, `@MainActor protocol`, `@MainActor extension`
+      2. **For each annotated class/struct, analyze members:**
+         - List all methods and properties
+         - Classify each as:
+           - NEEDS_MAIN — members that **directly drive UI updates**: `@Published` or `@Observable`-tracked properties read by a View, methods whose sole purpose is mutating those properties, direct UIKit/AppKit main-thread API calls
+           - BACKGROUND_SAFE — everything else: network/API calls, parsing, decoding, computation, filtering, sorting, file I/O, database access, caching. Methods that fetch-then-assign are BACKGROUND_SAFE — only the final state mutation needs main, not the whole method.
+         - Count BACKGROUND_SAFE members
+      3. **Check for `nonisolated` escape hatches** — any `nonisolated` keyword on members within a `@MainActor` type
+      4. **Check protocols — conformer analysis required:**
+         - For each `@MainActor protocol`, find all production conformers (exclude preview-only and test doubles)
+         - If ALL production conformers are `@MainActor` (e.g., the protocol abstracts a facade or UI coordinator) → COMPLIANT. Protocol-level `@MainActor` correctly reflects conformer reality and avoids Swift 6 crossing errors.
+         - If ANY production conformer has background-safe work (needs to run requirements off main) → SEVERE. The protocol forces that conformer onto main thread unnecessarily.
+         - If the protocol has NO production conformers yet (only preview/test) → COMPLIANT. Default to protocol-level until a real conformer needs otherwise.
+      5. **Score:**
+         - All type members genuinely need main thread AND no `nonisolated` present AND protocol conformers are all `@MainActor` → COMPLIANT
+         - Any BACKGROUND_SAFE member on a type OR any `nonisolated` escape hatch OR protocol forcing a conformer off main → SEVERE
+
+      Return the count with reasoning and precise evidence. Use supplied repository evidence for conformer analysis.
+
+      View unit: {{params.review_unit}}
+      Repository evidence: No MCP-owned repository evidence was supplied.
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
+      2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
+      3. **Inline format specifiers** — `Text(price, format: .currency(code: "USD"))` and similar SwiftUI-native format APIs used directly in `body` are idiomatic, not impurity.
+      4. **Simple action forwarding** — A method that only calls one ViewModel method with no additional logic (e.g., `func retry() { viewModel.retry() }`) is PURE_VIEW.
+      5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
+      6. **Custom container wrappers** — If a custom view wraps a container internally and applies `.accessibilityElement(children:)` inside its own `body`, callers adding `.accessibilityIdentifier(...)` externally are COMPLIANT — the element is already in the hierarchy.
+      7. **Frame Constraints** - `frame(minWidth:)`, `frame(maxWidth:)`, `frame(idealWidth:)` and height equivalents — constraints, not fixed sizes
+      8. **Flexible Modifier** - `frame(maxWidth: .infinity)` and height equivalents — explicit flexible fill
+      9. **Proportional Modifier** - `containerRelativeFrame` — proportional by definition
+      10. **Geometry Reader** - `GeometryReader`-based calculations — adaptive by definition
+      11. **Explicit in instructions** - if prompt, instructions says to use explicit size.
+      12. **View structs** — SwiftUI `View` structs are value types that only live during `body` evaluation. `@MainActor` on a View struct is harmless and often compiler-inferred — not a SUI-9 violation.
+      13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
+
+      View unit: {{params.review_unit}}
+      Repository evidence: No MCP-owned repository evidence was supplied.

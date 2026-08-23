@@ -29,4 +29,6 @@ class ForEachItemsResolver(ForEachItemsResolving):
         reference: StepOutputReference,
         context: WorkflowRunContext,
     ) -> list[Any]:
+        if context.skipped_steps.find(reference.step_id).present:
+            return []
         return self._reference_resolver.resolve(reference, context)

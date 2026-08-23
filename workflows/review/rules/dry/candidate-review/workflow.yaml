@@ -1,0 +1,113 @@
+id: dry-candidate-review
+name: DRY Candidate Review
+description: Reads and classifies one validated DRY repository candidate against one immutable review target.
+max_turns: 5
+
+outputs:
+  - name: assessment
+    type: data
+    value: "{{steps.classify_candidate.outputs.assessment}}"
+    schema:
+      type: object
+      additionalProperties: false
+      required: [reuse, duplication]
+      properties:
+        reuse:
+          type: object
+          additionalProperties: false
+          required: [classification, reasoning, evidence]
+          properties:
+            classification:
+              type: string
+              enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+        duplication:
+          type: object
+          additionalProperties: false
+          required: [classification, reasoning, evidence]
+          properties:
+            classification:
+              type: string
+              enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
+steps:
+  - id: inspect_candidate
+    prompt: |
+      Read the selected file at `{{params.candidate.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.unit}}` with identity `{{params.candidate.unit_identity}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
+
+      Return concise reasoning about what the inspected declaration actually implements and evidence quoting or precisely citing its relevant executable statements. If it contains only declarations or signatures, state that explicitly in both reasoning and evidence. Evidence must identify the inspected candidate path.
+    outputs:
+      - name: inspection
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reasoning, evidence]
+          properties:
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
+  - id: classify_candidate
+    depends_on: [inspect_candidate]
+    prompt: |
+      Classify the validated candidate using only the completed source inspection and immutable reviewed target below. Do not read another file, search again, count findings, or decide severity.
+
+      Make two independent classifications. A candidate may be directly reusable without duplicating any implemented logic.
+
+      Reuse classification — choose exactly one:
+      - EXACT — the candidate covers the complete responsibility and can be reused directly.
+      - EXTENSIBLE — the candidate covers the core responsibility and can be extended by configuration, overload, or protocol extension.
+      - PARTIAL — the overlap has meaningful semantic differences and direct reuse is inappropriate.
+      - NOT_SUITABLE — source inspection disproves the summary-level match and the candidate is not suitable for reuse.
+
+      Implementation-duplication classification — choose exactly one:
+      - IDENTICAL — the same logic and concrete types appear with names or locations changed only.
+      - STRUCTURAL — the same algorithm or control flow appears with different concrete types.
+      - SIMILAR — there is overlap, but meaningful differences mean it is not a duplication violation.
+      - NOT_DUPLICATE — source inspection establishes no duplicated implemented logic.
+
+      Choose IDENTICAL or STRUCTURAL only when the completed inspection cites executable statements from concrete implementation bodies in both the reviewed target and candidate. If either side has no implementation body, duplication MUST be NOT_DUPLICATE. Similar names, responsibilities, declarations, or signatures are never implementation duplication.
+
+      A conformer is not a reusable replacement for its protocol: when the reviewed target is a protocol or interface and the candidate merely implements that contract, classify reuse as NOT_SUITABLE. Classify a protocol/conformer relationship without duplicated implementation as NOT_DUPLICATE even when their contracts or responsibilities are equivalent. Do not let either classification determine the other. Supply separate reasoning and evidence for both decisions, grounded in the completed inspection.
+
+      Target:
+      ```
+      {{params.target.code}}
+      ```
+
+      Candidate identity: {{params.candidate.unit_identity}}
+      Candidate path: {{params.candidate.path}}
+      Candidate frontmatter description: {{params.candidate.description}}
+      Candidate match provenance: {{params.candidate.matches}}
+      Completed source inspection: {{steps.inspect_candidate.outputs.inspection}}
+    outputs:
+      - name: assessment
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reuse, duplication]
+          properties:
+            reuse:
+              type: object
+              additionalProperties: false
+              required: [classification, reasoning, evidence]
+              properties:
+                classification:
+                  type: string
+                  enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+            duplication:
+              type: object
+              additionalProperties: false
+              required: [classification, reasoning, evidence]
+              properties:
+                classification:
+                  type: string
+                  enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}

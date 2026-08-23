@@ -45,7 +45,7 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
                 patch(
                     "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
                     return_value=artifact_directory,
-                ),
+                ) as artifact_creator,
                 patch(
                     "claude_live_session_runner.subprocess.run",
                     return_value=completed,
@@ -53,6 +53,11 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
             ):
                 result = ClaudeLiveSessionRunner().run(self._request())
 
+            artifact_creator.assert_called_once_with(
+                Path("/plugin"),
+                "claude",
+                self._request().artifact_scope,
+            )
             self.assertEqual(result.session_id, "claude-child")
             self.assertEqual(result.final_output, "completed")
             self.assertEqual(result.artifact_directory, artifact_directory)

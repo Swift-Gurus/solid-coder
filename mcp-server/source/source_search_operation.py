@@ -44,16 +44,28 @@ class SourceSearchOperation:
             snapshot.path.resolve()
             for snapshot in operation_input.context.sources
         }
+        proposed_snapshots = [
+            snapshot
+            for snapshot in operation_input.context.sources
+            if not operation_input.included_file_extensions
+            or snapshot.path.suffix.casefold()
+            in operation_input.included_file_extensions
+        ]
         repository_snapshots = [
             snapshot
             for snapshot in self._snapshots.collect(root)
             if snapshot.path.resolve() not in proposed_paths
+            and (
+                not operation_input.included_file_extensions
+                or snapshot.path.suffix.casefold()
+                in operation_input.included_file_extensions
+            )
         ]
         candidates: list[SourceSearchCandidate] = []
         for snapshot, origin in [
             *[
                 (snapshot, SourceCandidateOrigin.PROPOSED)
-                for snapshot in operation_input.context.sources
+                for snapshot in proposed_snapshots
             ],
             *[
                 (snapshot, SourceCandidateOrigin.REPOSITORY)
@@ -92,7 +104,7 @@ class SourceSearchOperation:
         return SourceSearchOutput(
             candidates=ordered[:operation_input.max_candidates],
             files_scanned=(
-                len(operation_input.context.sources)
+                len(proposed_snapshots)
                 + len(repository_snapshots)
             ),
         )

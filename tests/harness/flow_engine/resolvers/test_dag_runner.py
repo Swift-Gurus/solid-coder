@@ -164,6 +164,47 @@ class TestDAGRunner(unittest.TestCase):
 
         self.assertEqual(ids, {"b"})
 
+    def test_skipped_for_each_source_produces_empty_completion(self):
+        condition = ComparisonCondition(
+            reference=WorkflowExpression(value="params.enabled"),
+            operator=ConditionOperator.EQUALS,
+            expected=True,
+        )
+        skip = StepSkip(
+            step_id="load",
+            instance_id="load-1",
+            condition=condition,
+            evidence=UnavailableConditionEvidence(matched=False),
+        )
+        state = RunState(
+            completed={},
+            skipped={"load": skip},
+            skipped_instances={"load-1": skip},
+            running=[],
+            turn_count=0,
+            status="in_progress",
+        )
+        review = StepDef(
+            id="review",
+            prompt="Review {{item}}",
+            depends_on=["load"],
+            for_each=self._for_each("load", "principles"),
+            outputs=[OutputSpec(name="finding", type="data")],
+        )
+
+        instances = self.runner.ready_steps(
+            self._flow(self._step("load"), review),
+            state,
+            _CONTEXT_BUILDER.build({}, state),
+        )
+
+        self.assertEqual(len(instances), 1)
+        self.assertEqual(instances[0].instance_id, "review-0")
+        self.assertEqual(
+            instances[0].automatic_outputs,
+            StepOutputs(values={"finding": []}),
+        )
+
     def test_for_each_expands_into_n_instances(self):
         step = self._step(
             "review",

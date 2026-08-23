@@ -24,7 +24,7 @@ sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
 from message_transport_running import MessageTransportRunning
 from pipeline.tool_registry import ToolRegistering, ToolRegistry
-from common.mcp_meta import LARGE_OUTPUT
+from common.mcp_meta import COMPLETE_FLOW_OUTPUT, LARGE_OUTPUT
 from pipeline.flow_tool_callables_assembler import FlowToolCallablesAssembler
 from pipeline.tool_callables_building import ToolCallablesBuilding
 
@@ -306,6 +306,7 @@ class ApplicationBootstrapper:
                 "required": ["flow"],
             },
             flow_tools["flow_start"],
+            meta=COMPLETE_FLOW_OUTPUT,
         )
 
         reg.register(
@@ -342,6 +343,7 @@ class ApplicationBootstrapper:
                 },
             },
             flow_tools["flow_next"],
+            meta=COMPLETE_FLOW_OUTPUT,
         )
 
         reg.register(

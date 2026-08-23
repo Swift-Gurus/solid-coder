@@ -17,6 +17,7 @@ class RuleMetricDecision(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     metric_id: str
+    observation_id: str = "value"
     value: MetricComparisonValue
     severity: ReviewSeverity
     additional_info: MetricAdditionalInfo

@@ -13,3 +13,4 @@ class ReviewUnitWorkflowParameters(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     review_unit: str
+    repository_evidence: str = "No MCP-owned repository evidence was supplied."

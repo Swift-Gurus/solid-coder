@@ -15,6 +15,9 @@ from source.read_source_candidates_operation_factory import (
 )
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_operation import PrepareSearchQueryOperation
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.prepare_search_targets_input import PrepareSearchTargetsInput
 from source.prepare_search_targets_operation_factory import (
     PrepareSearchTargetsOperationFactory,
@@ -25,6 +28,7 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_context import SourceSearchContext
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.text_analysis_source import TextAnalysisSource
+from hooks.pathlib_extractor import PathlibExtractor
 
 
 """
@@ -51,6 +55,12 @@ struct SiblingCalculator {
 """,
             encoding="utf-8",
         )
+        self.query_preparer = PrepareSearchQueryOperation(
+            tokens=ExactSourceTokensResolverFactory().make(),
+            extension=PathlibExtractor(
+                lambda path: Path(path).suffix.lower()
+            ),
+        )
 
     def test_excludes_only_reviewed_unit_and_loads_exact_sibling_source(self) -> None:
         prospective_buffer = self.source_path.read_text(encoding="utf-8").replace(
@@ -69,7 +79,7 @@ struct SiblingCalculator {
         reviewed = next(
             target for target in targets if target.name == "PrimaryCalculator"
         )
-        query = PrepareSearchQueryOperation().execute(
+        query = self.query_preparer.execute(
             PrepareSearchQueryInput(
                 target=reviewed,
                 generated_terms=["sharedCalculation"],
@@ -129,7 +139,7 @@ struct SiblingCalculator {
             target for target in prepared.targets
             if target.name == "PrimaryCalculator"
         )
-        query = PrepareSearchQueryOperation().execute(
+        query = self.query_preparer.execute(
             PrepareSearchQueryInput(
                 target=reviewed,
                 generated_terms=["sharedCalculation"],
@@ -183,7 +193,7 @@ struct SiblingCalculator {
                 granularity=SearchTargetGranularity.UNIT,
             )
         )
-        query = PrepareSearchQueryOperation().execute(
+        query = self.query_preparer.execute(
             PrepareSearchQueryInput(
                 target=first.targets[0],
                 generated_terms=["formatProfile"],

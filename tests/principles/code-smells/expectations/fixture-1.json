@@ -1,0 +1,9 @@
+{
+  "metrics": {
+    "CS-1": {"value": 1, "severity": "SEVERE"},
+    "CS-2": {"value": 2, "severity": "SEVERE"},
+    "CS-3": {"value": 1, "severity": "SEVERE"}
+  },
+  "is_exception": false,
+  "severity": "SEVERE"
+}

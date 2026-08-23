@@ -12,7 +12,11 @@ from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_step_appender import IncludeStepAppender
 from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
+from harness.local_nested_identity_qualifier import LocalNestedIdentityQualifier
 from harness.nested_include_qualifier import NestedIncludeQualifier
+from harness.nested_include_alias_group_qualifier import (
+    NestedIncludeAliasGroupQualifier,
+)
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_building import PathBuilding
@@ -25,6 +29,9 @@ from harness.rule_set_include_reference import RuleSetIncludeReference
 from harness.rule_set_include_reference_parser import RuleSetIncludeReferenceParser
 from harness.rule_set_include_source_resolver import RuleSetIncludeSourceResolver
 from harness.rule_set_member_serializer import RuleSetMemberSerializer
+from harness.rule_scope_runtime_adapter_resolver_factory import (
+    RuleScopeRuntimeAdapterResolverFactory,
+)
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
 from harness.step_source_annotating import StepSourceAnnotating
@@ -94,6 +101,9 @@ class IncludeResolverFactory:
                                     RuleSelectionConditionCompiler()
                                 ),
                                 condition_conjoiner=ConditionConjoiner(),
+                                runtime_adapters=(
+                                    RuleScopeRuntimeAdapterResolverFactory().make()
+                                ),
                             ),
                             member_serializer=RuleSetMemberSerializer(
                                 make_condition_serializer()
@@ -130,6 +140,9 @@ class IncludeResolverFactory:
                 ),
                 nested_qualifier=NestedIncludeQualifier(
                     step_qualifier=StepQualifier(),
+                    group_qualifier=NestedIncludeAliasGroupQualifier(
+                        identity=LocalNestedIdentityQualifier()
+                    ),
                 ),
                 resolution_merger=resolution_merger,
             ),

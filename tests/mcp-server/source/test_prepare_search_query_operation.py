@@ -11,10 +11,13 @@ from pydantic import ValidationError
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from findings.review_unit_kind import ReviewUnitKind
+from source.camel_case_identifier_segmenter import CamelCaseIdentifierSegmenter
+from source.exact_source_tokens_resolver import ExactSourceTokensResolver
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_operation import PrepareSearchQueryOperation
 from source.source_line_range import SourceLineRange
 from source.source_search_target import SourceSearchTarget
+from hooks.pathlib_extractor import PathlibExtractor
 
 
 """
@@ -25,7 +28,14 @@ solid-description: Verifies model-generated terms are validated and deterministi
 """
 class TestPrepareSearchQueryOperation(unittest.TestCase):
     def setUp(self) -> None:
-        self.operation = PrepareSearchQueryOperation()
+        self.operation = PrepareSearchQueryOperation(
+            tokens=ExactSourceTokensResolver(
+                identifier_segmenter=CamelCaseIdentifierSegmenter()
+            ),
+            extension=PathlibExtractor(
+                lambda path: Path(path).suffix.lower()
+            ),
+        )
         self.target = SourceSearchTarget(
             identity="struct:UserLoader:1",
             source_identity="Sources/UserLoader.swift",
@@ -58,6 +68,7 @@ class TestPrepareSearchQueryOperation(unittest.TestCase):
             result.excluded_units[0].unit_identity,
             "struct:UserLoader:1",
         )
+        self.assertEqual(result.included_file_extensions, [".swift"])
 
     def test_rejects_delimiter_encoded_or_whitespace_terms_at_input(self) -> None:
         for invalid_term in ["remote loader", "loader,fetcher", "loader;fetcher"]:
@@ -67,6 +78,24 @@ class TestPrepareSearchQueryOperation(unittest.TestCase):
                         target=self.target,
                         generated_terms=[invalid_term],
                     )
+
+    def test_expands_compound_generated_names_into_exact_search_tokens(self) -> None:
+        result = self.operation.execute(PrepareSearchQueryInput(
+            target=self.target,
+            generated_terms=["RemoteResourceLoader"],
+        ))
+
+        self.assertEqual(
+            result.queries[0].terms,
+            [
+                "userloader",
+                "swiftui",
+                "remoteresourceloader",
+                "loader",
+                "remote",
+                "resource",
+            ],
+        )
 
     def test_preserves_stable_target_identity_when_project_path_has_spaces(self) -> None:
         target = self.target.model_copy(update={

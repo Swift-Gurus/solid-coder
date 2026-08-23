@@ -67,6 +67,16 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no child thread ID"):
             self._run_with_output(runner, '{"type":"turn.started"}\n', "completed")
 
+    def test_generated_config_preserves_complete_flow_tool_responses(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            codex_home = Path(directory)
+
+            runner._write_config(codex_home, Path("/plugin"))
+
+            config = (codex_home / "config.toml").read_text(encoding="utf-8")
+            self.assertIn("tool_output_token_limit = 262144", config)
+
     def _run_with_output(
         self,
         runner: CodexLiveSessionRunner,
@@ -93,7 +103,7 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
                 patch(
                     "codex_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
                     return_value=artifact_directory,
-                ),
+                ) as artifact_creator,
                 patch.object(runner, "_write_config"),
                 patch.object(runner, "_link_auth"),
                 patch.object(runner, "_install_plugin"),
@@ -101,6 +111,11 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
             ):
                 result = runner.run(self._request())
 
+            artifact_creator.assert_called_once_with(
+                Path("/plugin"),
+                "codex",
+                self._request().artifact_scope,
+            )
             self.assertEqual(result.artifact_directory, artifact_directory)
             self.assertTrue(
                 (artifact_directory / "codex-runtime" / "sessions" / "rollout.jsonl").exists()

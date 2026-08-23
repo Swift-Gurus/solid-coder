@@ -30,7 +30,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
 
     def run(self, request: LiveSessionRequest) -> LiveSessionResult:
         artifact_directory = self._artifact_directory_creator.create(
-            request.project_root,
+            request.plugin_root,
             "codex",
             request.artifact_scope,
         )
@@ -74,6 +74,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
 
     def _write_config(self, codex_home: Path, plugin_root: Path) -> None:
         (codex_home / "config.toml").write_text(
+            "tool_output_token_limit = 262144\n\n"
             "[features]\n"
             "plugins = true\n\n"
             "[marketplaces.solid-coder]\n"

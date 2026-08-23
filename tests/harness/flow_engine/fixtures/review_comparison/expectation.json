@@ -1,0 +1,107 @@
+[
+  {
+    "workflow_id": "code-smells",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "static_logic_count", "metric_id": "CS-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "class_struct_count", "metric_id": "CS-2", "value": 1, "severity": "COMPLIANT"},
+      {"step_id": "inline_type_count", "metric_id": "CS-3", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "COMPLIANT"
+  },
+  {
+    "workflow_id": "dry",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "reuse_misses", "metric_id": "DRY-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "duplicate_sites", "metric_id": "DRY-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "COMPLIANT"
+  },
+  {
+    "workflow_id": "dry",
+    "source_index": 1,
+    "metrics": [
+      {"step_id": "reuse_misses", "metric_id": "DRY-1", "value": 1, "severity": "SEVERE"},
+      {"step_id": "duplicate_sites", "metric_id": "DRY-2", "value": 1, "severity": "COMPLIANT"},
+      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "SEVERE"
+  },
+  {
+    "workflow_id": "frontmatter",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "missing_frontmatter_count", "metric_id": "FM-1", "value": 2, "severity": "SEVERE"},
+      {"step_id": "name_mismatch_count", "metric_id": "FM-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "invalid_category_count", "metric_id": "FM-3", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "incorrect_stack_count", "metric_id": "FM-4", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "bad_description_count", "metric_id": "FM-5", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "SEVERE"
+  },
+  {
+    "workflow_id": "isp",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "width", "metric_id": "ISP-1", "value": 6, "severity": "MINOR"},
+      {"step_id": "min_coverage", "metric_id": "ISP-2", "value": 83, "severity": "COMPLIANT"},
+      {"step_id": "cohesion_groups", "metric_id": "ISP-3", "value": 2, "severity": "SEVERE"}
+    ],
+    "final_severity": "SEVERE"
+  },
+  {
+    "workflow_id": "lsp",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "type_checks", "metric_id": "LSP-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "contract_violations", "metric_id": "LSP-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "fatal_error_methods", "metric_id": "LSP-3", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "empty_methods", "metric_id": "LSP-4", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "COMPLIANT"
+  },
+  {
+    "workflow_id": "lsp",
+    "source_index": 1,
+    "metrics": [
+      {"step_id": "type_checks", "metric_id": "LSP-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "contract_violations", "metric_id": "LSP-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "fatal_error_methods", "metric_id": "LSP-3", "value": 1, "severity": "SEVERE"},
+      {"step_id": "empty_methods", "metric_id": "LSP-4", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "SEVERE"
+  },
+  {
+    "workflow_id": "ocp",
+    "source_index": 0,
+    "metrics": [
+      {"step_id": "sealed_variation_points", "metric_id": "OCP-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "untestable_dependencies", "metric_id": "OCP-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "testable_direct_count", "metric_id": "OCP-3", "value": 0, "severity": "COMPLIANT"}
+    ],
+    "final_severity": "COMPLIANT",
+    "is_exception": true
+  },
+  {
+    "workflow_id": "ocp",
+    "source_index": 1,
+    "metrics": [
+      {"step_id": "sealed_variation_points", "metric_id": "OCP-1", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "untestable_dependencies", "metric_id": "OCP-2", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "testable_direct_count", "metric_id": "OCP-3", "value": 3, "severity": "MINOR"}
+    ],
+    "final_severity": "MINOR"
+  },
+  {
+    "workflow_id": "srp",
+    "source_index": 1,
+    "metrics": [
+      {"step_id": "verb_count", "metric_id": "SRP-1", "value": 6, "severity": "SEVERE"},
+      {"step_id": "cohesion_groups", "metric_id": "SRP-2", "value": 3, "severity": "SEVERE"},
+      {"step_id": "stakeholder_count", "metric_id": "SRP-3", "value": 3, "severity": "SEVERE"}
+    ],
+    "final_severity": "SEVERE"
+  }
+]

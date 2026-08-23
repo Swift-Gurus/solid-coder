@@ -51,6 +51,19 @@ class TestSourceFrontmatterReader(unittest.TestCase):
     def test_returns_empty_collection_when_source_has_no_frontmatter(self) -> None:
         self.assertEqual(self.reader.read("struct UserCache {}\n"), [])
 
+    def test_returns_empty_collection_when_frontmatter_yaml_is_malformed(self) -> None:
+        frontmatter = self.reader.read(
+            """
+            # solid-name: FindingComparerTests
+            # solid-category: unit-test
+            # solid-description: Covers these cases: exact and missing findings.
+            class FindingComparerTests:
+                pass
+            """
+        )
+
+        self.assertEqual(frontmatter, [])
+
     def test_ignores_solid_prefixed_source_text_that_is_not_frontmatter(self) -> None:
         frontmatter = self.reader.read(
             '''

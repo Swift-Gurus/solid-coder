@@ -1,0 +1,11 @@
+{
+  "metrics": {
+    "UITEST-1": {"value": 2, "severity": "SEVERE"},
+    "UITEST-2": {"value": 1, "severity": "SEVERE"},
+    "UITEST-3": {"value": 1, "severity": "SEVERE"},
+    "UITEST-4": {"value": 9, "severity": "SEVERE"},
+    "UITEST-5": {"value": 8, "severity": "SEVERE"}
+  },
+  "is_exception": false,
+  "severity": "SEVERE"
+}

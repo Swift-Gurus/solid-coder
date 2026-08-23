@@ -3,6 +3,7 @@
 from typing import Protocol
 
 from harness.rule_observations import RuleObservations
+from harness.rule_review_provenance import RuleReviewProvenance
 from harness.rule_review_result import RuleReviewResult
 
 
@@ -17,5 +18,6 @@ class RuleReviewResultBuilding(Protocol):
         self,
         workflow_id: str,
         rule_instance_id: str,
+        provenance: RuleReviewProvenance,
         observations: RuleObservations,
     ) -> RuleReviewResult: ...

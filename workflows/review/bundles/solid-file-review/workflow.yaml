@@ -1,0 +1,21 @@
+id: solid-file-review
+name: SOLID File Review
+description: Applies every eligible review rule to one normalized file and its ordered units.
+max_turns: 500
+
+steps:
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    with:
+      target: "{{params.target}}"
+
+  - include:
+      rules: all
+    as: rule_reviews
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      review_unit: "{{item}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"

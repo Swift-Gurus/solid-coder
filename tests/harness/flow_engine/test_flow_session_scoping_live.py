@@ -2,11 +2,11 @@
 solid-name: test_flow_session_scoping_live
 solid-category: integration-test
 solid-spec: [SPEC-031]
-solid-description: Applies the shared child-session pointer contract to Codex and Claude model-profile test bases.
+solid-description: Applies the shared child-session run-state ownership contract to Codex and Claude model-profile test bases.
 
 Run one backend explicitly:
-    python3 -m pytest tests/harness/flow_engine/test_flow_session_scoping_live.py::TestCodexFlowSessionScopingLive -v
-    python3 -m pytest tests/harness/flow_engine/test_flow_session_scoping_live.py::TestClaudeFlowSessionScopingLive -v
+    python3 -m pytest tests/harness/flow_engine/test_flow_session_scoping_live.py::TestCodexFlowSessionScopingLive::test_run_state_matches_child_session_id -v
+    python3 -m pytest tests/harness/flow_engine/test_flow_session_scoping_live.py::TestClaudeFlowSessionScopingLive::test_run_state_matches_child_session_id -v
 """
 
 from __future__ import annotations

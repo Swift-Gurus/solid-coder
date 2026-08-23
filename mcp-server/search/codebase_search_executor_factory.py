@@ -12,7 +12,9 @@ from search.codebase_search_query_kind import CodebaseSearchQueryKind
 from search.codebase_search_terms_resolver import CodebaseSearchTermsResolver
 from search.search_plan_document import SearchPlanDocument
 from search.source_search_output_filter import SourceSearchOutputFilter
-from source.exact_source_tokens_resolver import ExactSourceTokensResolver
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.source_search_operation_factory import SourceSearchOperationFactory
 
 
@@ -32,7 +34,7 @@ class CodebaseSearchExecutorFactory:
                     plan_decoder=PydanticModelDecoder(
                         model_type=SearchPlanDocument,
                     ),
-                    tokens=ExactSourceTokensResolver(),
+                    tokens=ExactSourceTokensResolverFactory().make(),
                     strings=OrderedStringCollector(),
                 ),
                 query_kinds=CodebaseSearchQueryKind,

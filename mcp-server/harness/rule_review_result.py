@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from findings.review_severity import ReviewSeverity
 from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_decision import RuleMetricDecision
+from harness.rule_review_provenance import RuleReviewProvenance
 
 
 """
@@ -20,6 +21,7 @@ class RuleReviewResult(BaseModel):
 
     workflow_id: str
     rule_instance_id: str
+    provenance: RuleReviewProvenance
     severity: ReviewSeverity
     scoring_authority: Literal["mcp"] = "mcp"
     exception: RuleExceptionDecision

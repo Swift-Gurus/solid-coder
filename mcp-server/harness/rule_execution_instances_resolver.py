@@ -11,6 +11,7 @@ from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_execution_instances_resolving import (
     RuleExecutionInstancesResolving,
 )
+from harness.rule_review_provenance import RuleReviewProvenance
 from harness.run_state import RunState
 
 
@@ -18,7 +19,7 @@ from harness.run_state import RunState
 solid-name: RuleExecutionInstancesResolver
 solid-category: service
 solid-spec: [SPEC-039]
-solid-description: Resolves completed root and included rule executions with stable workflow, instance, and step ownership.
+solid-description: Identifies completed review-rule executions eligible for deterministic finalization.
 """
 class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
     def __init__(
@@ -41,6 +42,11 @@ class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
                     declaration=flow_def.rule,
                 ),
                 instance_id=root_instance_id,
+                provenance=RuleReviewProvenance(
+                    kind="root",
+                    scope_identity=flow_def.workflow_id,
+                    source_index=0,
+                ),
                 steps=[
                     step
                     for step in flow_def.steps
@@ -71,6 +77,11 @@ class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
                 instances.append(RuleExecutionInstance(
                     workflow=workflow_instance.rule_workflow,
                     instance_id=workflow_instance.instance_id,
+                    provenance=RuleReviewProvenance(
+                        kind="included",
+                        scope_identity=workflow_instance.alias,
+                        source_index=workflow_instance.source_index,
+                    ),
                     steps=[step],
                 ))
             else:

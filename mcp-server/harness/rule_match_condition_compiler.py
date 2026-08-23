@@ -19,9 +19,9 @@ solid-spec: [SPEC-039]
 solid-description: Compiles exact extension, unit-kind, and tag selectors into auditable workflow conditions.
 """
 class RuleMatchConditionCompiler(RuleMatchConditionCompiling):
-    _UNIT_REFERENCE = "params.review_unit.unit_kind"
-    _EXTENSION_REFERENCE = "params.review_unit.file_extension"
-    _TAGS_REFERENCE = "params.review_unit.tags"
+    _UNIT_REFERENCE = "params.review_unit.applicability.unit_kind"
+    _EXTENSION_REFERENCE = "params.review_unit.applicability.file_extension"
+    _TAGS_REFERENCE = "params.review_unit.applicability.tags"
 
     def __init__(
         self,

@@ -1,5 +1,8 @@
 """Reads comment-wrapped solid frontmatter through the YAML boundary."""
 
+import yaml
+
+from harness.flow_validation_error import FlowValidationError
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.yaml_support import YamlParsing
 from source.source_frontmatter import SourceFrontmatter
@@ -21,7 +24,7 @@ _COMMENT_WRAPPER_CHARACTERS = frozenset(" \t/#*<!-;")
 solid-name: SourceFrontmatterReader
 solid-category: boundary-adapter
 solid-spec: [SPEC-040]
-solid-description: Reads comment-wrapped solid YAML blocks and maps them directly into typed source frontmatter models.
+solid-description: Discovers structured metadata declared in comment-wrapped source content.
 """
 class SourceFrontmatterReader(SourceFrontmatterReading):
     def __init__(
@@ -58,10 +61,13 @@ class SourceFrontmatterReader(SourceFrontmatterReading):
             current.append(yaml_line)
         if current:
             blocks.append(current)
-        return [
-            self._model_decoder.decode(
-                self._yaml_parser.parse("\n".join(block)),
-                "source frontmatter",
-            )
-            for block in blocks
-        ]
+        frontmatters: list[SourceFrontmatter] = []
+        for block in blocks:
+            try:
+                frontmatters.append(self._model_decoder.decode(
+                    self._yaml_parser.parse("\n".join(block)),
+                    "source frontmatter",
+                ))
+            except (yaml.YAMLError, FlowValidationError):
+                continue
+        return frontmatters

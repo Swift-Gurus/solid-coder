@@ -4,10 +4,14 @@ from pathlib import Path
 from typing import Callable
 
 from harness.operation_registration import OperationRegistration
+from hooks.pathlib_extractor import PathlibExtractor
 from source.analyze_source_input import AnalyzeSourceInput
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.collect_changes_output import CollectChangesOutput
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_operation import PrepareSearchQueryOperation
 from source.prepare_search_query_output import PrepareSearchQueryOutput
@@ -27,6 +31,15 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
 from source.search_target_granularity import SearchTargetGranularity
+from source.validate_candidate_selection_input import (
+    ValidateCandidateSelectionInput,
+)
+from source.validate_candidate_selection_operation import (
+    ValidateCandidateSelectionOperation,
+)
+from source.validate_candidate_selection_output import (
+    ValidateCandidateSelectionOutput,
+)
 
 
 """
@@ -63,7 +76,12 @@ class SourceOperationRegistrationsFactory:
                 name="source.prepare_search_query",
                 input_model=PrepareSearchQueryInput,
                 output_model=PrepareSearchQueryOutput,
-                handler=PrepareSearchQueryOperation(),
+                handler=PrepareSearchQueryOperation(
+                    tokens=ExactSourceTokensResolverFactory().make(),
+                    extension=PathlibExtractor(
+                        lambda path: Path(path).suffix.lower()
+                    ),
+                ),
             ),
             OperationRegistration(
                 name="source.search",
@@ -73,6 +91,12 @@ class SourceOperationRegistrationsFactory:
                     self._project_directory,
                     SearchTargetGranularity.UNIT,
                 ),
+            ),
+            OperationRegistration(
+                name="source.validate_candidate_selection",
+                input_model=ValidateCandidateSelectionInput,
+                output_model=ValidateCandidateSelectionOutput,
+                handler=ValidateCandidateSelectionOperation(),
             ),
             OperationRegistration(
                 name="source.read_candidates",

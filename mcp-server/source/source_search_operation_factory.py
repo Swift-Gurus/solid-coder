@@ -17,7 +17,9 @@ from source.exact_source_search_match_kind_resolver import (
 from source.exact_source_search_matches_resolver import (
     ExactSourceSearchMatchesResolver,
 )
-from source.exact_source_tokens_resolver import ExactSourceTokensResolver
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.filtered_repository_source_files_discoverer import (
     FilteredRepositorySourceFilesDiscoverer,
 )
@@ -81,7 +83,7 @@ class SourceSearchOperationFactory:
             units=units,
             matches=ExactSourceSearchMatchesResolver(
                 kind=ExactSourceSearchMatchKindResolver(
-                    tokens=ExactSourceTokensResolver()
+                    tokens=ExactSourceTokensResolverFactory().make()
                 )
             ),
             exclusion=SourceUnitExclusionChecker(PathBuilder()),

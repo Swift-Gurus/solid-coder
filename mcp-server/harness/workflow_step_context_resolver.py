@@ -33,6 +33,7 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
             )
 
         local_completions = []
+        local_skips = []
         for identity in workflow_instance.steps.entries:
             completed = context.completed_steps.find(identity.execution_step_id)
             if completed.present and completed.value is not None:
@@ -42,9 +43,18 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
                         value=completed.value,
                     )
                 )
+            skipped = context.skipped_steps.find(identity.execution_step_id)
+            if skipped.present and skipped.value is not None:
+                local_skips.append(
+                    WorkflowContextValue(
+                        name=identity.local_step_id,
+                        value=skipped.value,
+                    )
+                )
         return replace(
             context,
             parameters=workflow_instance.inputs,
             completed_steps=WorkflowContextValues(entries=local_completions),
+            skipped_steps=WorkflowContextValues(entries=local_skips),
             item=ResolvedWorkflowContextValue(present=True, value=item),
         )

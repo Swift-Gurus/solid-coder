@@ -52,42 +52,42 @@ class TestRuleMatchConditionCompiler(unittest.TestCase):
             result,
             AllCondition(conditions=(
                 self._comparison(
-                    "params.review_unit.file_extension",
+                    "params.review_unit.applicability.file_extension",
                     ConditionOperator.IN,
                     [".swift", ".py"],
                 ),
                 self._comparison(
-                    "params.review_unit.file_extension",
+                    "params.review_unit.applicability.file_extension",
                     ConditionOperator.NOT_IN,
                     [".md"],
                 ),
                 self._comparison(
-                    "params.review_unit.unit_kind",
+                    "params.review_unit.applicability.unit_kind",
                     ConditionOperator.IN,
                     ["class", "struct"],
                 ),
                 self._comparison(
-                    "params.review_unit.unit_kind",
+                    "params.review_unit.applicability.unit_kind",
                     ConditionOperator.NOT_IN,
                     ["function"],
                 ),
                 self._comparison(
-                    "params.review_unit.tags",
+                    "params.review_unit.applicability.tags",
                     ConditionOperator.CONTAINS,
                     "ui",
                 ),
                 self._comparison(
-                    "params.review_unit.tags",
+                    "params.review_unit.applicability.tags",
                     ConditionOperator.CONTAINS,
                     "swiftui",
                 ),
                 self._comparison(
-                    "params.review_unit.tags",
+                    "params.review_unit.applicability.tags",
                     ConditionOperator.NOT_CONTAINS,
                     "test",
                 ),
                 self._comparison(
-                    "params.review_unit.tags",
+                    "params.review_unit.applicability.tags",
                     ConditionOperator.NOT_CONTAINS,
                     "generated",
                 ),

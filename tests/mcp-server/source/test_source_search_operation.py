@@ -139,6 +139,39 @@ class TestSourceSearchOperation(unittest.TestCase):
             "Authorizes invoice payments.",
         )
 
+    def test_limits_candidates_to_requested_source_extensions_and_directories(self) -> None:
+        excluded_files = [
+            ".claude/specs/InvoiceTaxCalculator.md",
+            ".pytest_cache/v/cache/InvoiceTaxCalculator.swift",
+            "references/principles/InvoiceTaxCalculator.swift",
+            "skills/example/InvoiceTaxCalculator.swift",
+            "workflows/review/InvoiceTaxCalculator.swift",
+        ]
+        for relative_path in excluded_files:
+            self._write(relative_path, "struct InvoiceTaxCalculator {}\n")
+        self._write(
+            "Sources/InvoiceTaxCalculator.md",
+            "InvoiceTaxCalculator documentation",
+        )
+
+        result = self.operation.execute(SourceSearchInput(
+            queries=[
+                SourceSearchQuery(
+                    id="invoice-tax",
+                    terms=["InvoiceTaxCalculator"],
+                )
+            ],
+            included_file_extensions=[".swift"],
+        ))
+
+        self.assertEqual(
+            [candidate.source_identity for candidate in result.candidates],
+            [
+                "Sources/Current.swift",
+                "Sources/InvoiceTaxCalculator.swift",
+            ],
+        )
+
     def test_does_not_publish_a_symlink_that_resolves_outside_the_project(self) -> None:
         outside = tempfile.TemporaryDirectory()
         self.addCleanup(outside.cleanup)

@@ -36,7 +36,7 @@ class TestDrySearchCoordinator:
             plan_path=None,
             tags=["Batch", "handler", "routing"],
             spec_numbers=None,
-            min_matches=3,
+            min_matches=1,
         )
 
     def test_aggregated_query_inside_tags_is_rejected_without_search(self) -> None:

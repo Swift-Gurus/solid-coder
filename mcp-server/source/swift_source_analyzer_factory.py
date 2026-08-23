@@ -10,6 +10,9 @@ from findings.utf8_text_file_writer import Utf8TextFileWriter
 from harness.json_loading import JsonLoader
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
 from hook_utils import SubprocessAdapter
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.source_evidence_resolver import SourceEvidenceResolver
 from source.swift_ast_item_decoder import SwiftASTItemDecoder
 from source.swift_ast_items_loader import SwiftASTItemsLoader
@@ -21,6 +24,12 @@ from source.swift_import_tag_registration import SwiftImportTagRegistration
 from source.swift_parse_diagnostics_resolver import SwiftParseDiagnosticsResolver
 from source.swift_parser_runner import SwiftParserRunner
 from source.swift_source_analyzer import SwiftSourceAnalyzer
+from source.swift_file_tag_detection_creator import SwiftFileTagDetectionCreator
+from source.swift_syntax_registration_matcher import (
+    SwiftSyntaxRegistrationMatcher,
+)
+from source.swift_syntax_tag_detector import SwiftSyntaxTagDetector
+from source.swift_syntax_tag_registration import SwiftSyntaxTagRegistration
 from source.swift_tag_detector import SwiftTagDetector
 from source.swift_view_declaration_qualifier import SwiftViewDeclarationQualifier
 from source.swift_view_tag_detector import SwiftViewTagDetector
@@ -90,6 +99,41 @@ class SwiftSourceAnalyzerFactory:
                         name_resolver
                     ),
                     evidence_resolver=evidence_resolver,
+                ),
+                SwiftSyntaxTagDetector(
+                    matcher=SwiftSyntaxRegistrationMatcher(
+                        ExactSourceTokensResolverFactory().make()
+                    ),
+                    detection_creator=SwiftFileTagDetectionCreator(
+                        evidence_resolver
+                    ),
+                    registrations=[
+                        SwiftSyntaxTagRegistration(
+                            signals=[
+                                "async",
+                                "await",
+                                "actor",
+                                "Task",
+                                "Sendable",
+                                "MainActor",
+                                "nonisolated",
+                            ],
+                            tags=["concurrency", "structured-concurrency"],
+                        ),
+                        SwiftSyntaxTagRegistration(
+                            signals=["Testing"],
+                            tags=["testing", "unit-test"],
+                        ),
+                        SwiftSyntaxTagRegistration(
+                            signals=["XCTest"],
+                            excluded_signals=["XCUIApplication"],
+                            tags=["testing", "xctest", "unit-test"],
+                        ),
+                        SwiftSyntaxTagRegistration(
+                            signals=["XCUIApplication"],
+                            tags=["testing", "xctest", "ui-test"],
+                        ),
+                    ],
                 ),
             ]),
         )

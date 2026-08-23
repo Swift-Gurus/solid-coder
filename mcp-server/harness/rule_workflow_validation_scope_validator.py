@@ -53,7 +53,11 @@ class RuleWorkflowValidationScopeValidator(
             )
         self._identity_validator.validate(
             [
-                step.metric.metric_id
+                (
+                    step.metric.metric_id
+                    if step.metric.observation_id == "value"
+                    else f"{step.metric.metric_id}.{step.metric.observation_id}"
+                )
                 for step in metric_steps
                 if step.metric is not None
             ],

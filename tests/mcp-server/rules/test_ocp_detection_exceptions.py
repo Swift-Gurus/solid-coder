@@ -37,6 +37,24 @@ class TestOCPDetectionExceptions(unittest.TestCase):
         self.assertIn("**Dependency-free units**", prompt)
         self.assertIn("**Pure data structures**", prompt)
 
+    def test_health_prompt_states_the_testability_decision_unambiguously(self):
+        principle = make_handler().load_detection_rules(
+            principle="ocp"
+        )["principles"][0]
+
+        prompt = HealthPromptBuilder().build(
+            principles=[principle],
+            content="class SourceAnnotator: pass",
+            path="/tmp/source_annotator.py",
+            parent_session_id="test-session",
+        )
+
+        self.assertIn(
+            "For every dependency classified DIRECT INJECTED or INDIRECT",
+            prompt,
+        )
+        self.assertNotIn("If the DIRECT INJECTED and INDIRECT", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

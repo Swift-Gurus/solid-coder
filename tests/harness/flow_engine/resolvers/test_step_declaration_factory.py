@@ -20,8 +20,12 @@ from harness.condition_parser import ConditionParser
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_declaration import MetricDeclaration
+from harness.metric_declaration_decoder import MetricDeclarationDecoder
 from harness.operation_step_contract import OperationStepContract
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.rule_additional_info_output_provider import (
+    RuleAdditionalInfoOutputProvider,
+)
 from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.step_declaration_factory import StepDeclarationFactory
 from harness.step_output_reference import StepOutputReference
@@ -53,9 +57,12 @@ class TestStepDeclarationFactory(unittest.TestCase):
                 reference_parser=StepOutputReferenceParser(),
             ),
             rule_step_contract_resolver=RuleStepContractResolver(
-                metric_decoder=PydanticModelDecoder(
-                    model_type=MetricDeclaration,
+                metric_decoder=MetricDeclarationDecoder(
+                    PydanticModelDecoder(
+                        model_type=MetricDeclaration,
+                    )
                 ),
+                additional_info_output=RuleAdditionalInfoOutputProvider(),
                 error_factory=error_factory,
             ),
             operation_step_contract_resolver=EmptyOperationStepContractResolver(),

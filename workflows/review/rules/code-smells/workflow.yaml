@@ -1,0 +1,81 @@
+id: code-smells
+name: Code Smells Review
+description: Measures write-time structural anti-patterns for one normalized source file.
+max_turns: 10
+
+rule:
+  scope: file
+
+steps:
+  - id: static_logic_count
+    type: metric
+    metric_id: CS-1
+    prompt: |
+      Count static or class methods that contain business logic (branching, construction,
+      transformation). Exclude pure constants and build-system DSL files.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: class_struct_count
+    type: metric
+    metric_id: CS-2
+    prompt: |
+      Count top-level class and struct declarations in the file. Private extensions
+      scoped to the file's primary type do not count as separate types.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 2
+
+  - id: inline_type_count
+    type: metric
+    metric_id: CS-3
+    prompt: |
+      Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
+      Count each such declaration. Anonymous functions/lambdas do not count.
+
+      Return the count with reasoning and precise source evidence.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      This rule has no rule-wide exception categories. Metric-specific exclusions are already authored in CS-1, CS-2, and CS-3 and must be applied while measuring those metrics. Return `is_exception: false` with reasoning and evidence confirming that no separate rule-wide exception was applied.
+
+      File:
+      ```
+      {{params.review_unit}}
+      ```

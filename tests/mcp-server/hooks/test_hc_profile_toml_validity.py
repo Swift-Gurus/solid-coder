@@ -37,6 +37,12 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
         content = self._generated_content()
         self._load_toml(content)  # raises on invalid TOML
 
+    def test_generated_profile_preserves_complete_tool_responses(self):
+        content = self._generated_content()
+        data = self._load_toml(content)
+
+        self.assertEqual(data["tool_output_token_limit"], 262144)
+
     def test_hook_commands_contain_absolute_python3_path(self):
         content = self._generated_content()
         data = self._load_toml(content)

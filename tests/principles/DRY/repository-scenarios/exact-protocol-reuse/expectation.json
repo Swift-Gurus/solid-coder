@@ -1,0 +1,27 @@
+{
+  "candidate_name": "RemoteContentLoading",
+  "reuse_classification": "EXACT",
+  "duplication_classification": "NOT_DUPLICATE",
+  "metrics": [
+    {
+      "step_id": "reuse_misses",
+      "metric_id": "DRY-1",
+      "value": 1,
+      "severity": "SEVERE"
+    },
+    {
+      "step_id": "duplicate_sites",
+      "metric_id": "DRY-2",
+      "value": 0,
+      "severity": "COMPLIANT"
+    },
+    {
+      "step_id": "missing_abstractions",
+      "metric_id": "DRY-3",
+      "value": 0,
+      "severity": "COMPLIANT"
+    }
+  ],
+  "is_exception": false,
+  "severity": "SEVERE"
+}

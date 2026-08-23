@@ -145,6 +145,8 @@ sequenceDiagram
 
 ## Test Plan
 
+Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for one prospective buffer target. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
+
 - Validate every bundled package and every workflow-ID include without starting an LLM.
 - Normalize and run working-tree, file, files, folder, Git-range/PR, buffer, and code-block targets through the same `solid-review` package.
 - Run `solid-review` against the established SRP fixture and assert every step/output pair plus final score.
@@ -159,6 +161,27 @@ sequenceDiagram
 - Attempt to publish a client package under each bundled public ID and prove catalog construction rejects every collision.
 - Run `solid-refactor` and assert both initial and verification review groups resolve from `solid-review`.
 - Repeat the same fixed fixture/model profile through gate and review workflows; compare metric accuracy, tokens, and elapsed time from complete runs.
+- Persist every comparison run under the established test artifact root with model profile, target hash, effective workflow/rule hashes, expected and observed metrics, applicability and exception decisions, retry/error state, elapsed time, token usage, reported cost availability/value, transcript, flow events, and normalized review results.
+
+### Invalid Comparison Evidence Requiring a Controlled Rerun
+
+The August 22 workflow smoke run `20260822T231121Z-319dca59` and legacy smoke run `20260822T232230Z-6b4f0b78` are invalid benchmark evidence and must not support accuracy, token, cost, or speed conclusions. Their reviewed fixture remained inside this repository, so DRY searched the solid-coder working tree instead of a controlled comparison project. The workflow run additionally returned 40 DRY candidate-classification instances in one oversized response; the Codex tool wrapper truncated that response and the model fabricated uniform classifications for candidates it had not inspected. The legacy run also searched the solid-coder working tree, although it used the legacy single-search path rather than the workflow's candidate-per-instance fan-out.
+
+Before rerunning the comparison:
+
+- Create one controlled temporary project outside the solid-coder source corpus, place the reviewed target under its production-source folder, and seed only the intended DRY candidate files.
+- Pass that same project root, exact source buffer, model/profile, rule set, and expected observations to the real legacy health-check entry point and the real bundled review workflow.
+- Capture and hash the actual model-facing legacy prompt from the transcript; do not substitute a test-constructed prompt or raw rule-file hashes.
+- Make `flow_start` and `flow_next` preserve one complete, untruncated ready-step response. Do not hide oversized responses through pagination or candidate chunking.
+- Ensure generated Codex live-test configuration carries the same output limit required by the complete `flow_start` and `flow_next` response contract.
+- Restrict DRY discovery to eligible source/code units; documentation, specifications, caches, authored rules, workflow definitions, and skill instructions must not become reuse candidates.
+- Present DRY search candidates to the LLM as stable IDs, descriptions, and absolute inspection paths. The LLM selects promising IDs from those summaries, reads the selected files with its own file-reading tool, and submits one evidenced reuse and duplication classification for every selected ID. MCP must not load candidate source into the prompt. It validates exact selected-candidate coverage and rejects missing, duplicate, unknown, or fabricated classifications.
+- Preserve `NOT_SUITABLE` and `NOT_DUPLICATE` outcomes for selected candidates whose source disproves the summary-level match, and prevent protocol/conformer relationships without duplicated implementation from being counted as duplication.
+- Keep the 20-candidate search policy unchanged until candidate eligibility and classification semantics are corrected.
+- Carry prerequisite analysis through typed step outputs: OCP dependency analysis must feed every dependent OCP metric, ISP conformer evidence must feed coverage/cohesion metrics, and LSP trigger plus SRP applicability decisions must feed their dependent steps instead of being independently re-inferred.
+- Repair the malformed legacy OCP prompt separately from the workflow comparison so legacy prompt defects remain visible and attributable.
+- Assert the exact searched project root, discovered file count, candidate paths, candidate count, classification count, and final normalized observations for both paths.
+- Report review-only and full gate/fix costs separately, with per-turn token and duration breakdowns, so unlike stages are not compared. Run one valid smoke before repeated measurements and lock expected results before calculating accuracy.
 
 ## Definition of Done
 

@@ -74,6 +74,12 @@ class TestRuleWorkflowExecution(unittest.TestCase):
         aggregate_result = self._aggregate_result(run_directory)
         self.assertEqual(review_result.workflow_id, "executable-rule")
         self.assertEqual(review_result.rule_instance_id, started.run_id)
+        self.assertEqual(review_result.provenance.kind, "root")
+        self.assertEqual(
+            review_result.provenance.scope_identity,
+            "executable-rule",
+        )
+        self.assertEqual(review_result.provenance.source_index, 0)
         self.assertEqual(review_result.severity, "SEVERE")
         self.assertEqual(review_result.scoring_authority, "mcp")
         self.assertFalse(review_result.exception.is_exception)

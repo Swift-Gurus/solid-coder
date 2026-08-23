@@ -102,7 +102,7 @@ As a workflow, I want all target variants to converge before rule selection so d
 - Every accepted current-content file is analyzed through `source.analyze`.
 - The normalized file records canonical path or virtual identity, exact extension, selected ranges, file tags/evidence, and ordered units.
 - Every unit records typed unit kind, span, content/reference required by review prompts, inherited file tags, unit tags, and tag evidence.
-- Unit-scoped rule materialization retains the complete immutable proposed-source context inside the engine. Repository-comparison operations search its sibling and cross-file units while excluding only the exact target unit; proposed paths never fall back to stale on-disk revisions, and agent prompts receive only selected candidates rather than the complete context.
+- Unit-scoped rule materialization retains the complete immutable proposed-source context inside the engine. Repository-comparison operations search its sibling and cross-file units while excluding only the exact target unit; proposed paths never fall back to stale on-disk revisions. Search prompts expose candidate IDs, descriptions, and inspection paths only. The LLM selects candidates from those summaries and reads selected files with its own file-reading tool; MCP does not inject candidate source into the prompt.
 - Readable content without a registered parser produces one `document` unit rather than disappearing.
 - Results preserve stable target order: authored order for `files`, canonical path order for folders and Git collections, and single identity for file/text targets.
 - The normalizer neither discovers review rules nor applies policy. SPEC-039 consumes its result.
@@ -193,6 +193,14 @@ Review normalization is a review-domain operation used internally by bundled wor
 
 `solid-review` accepts one target and starts with normalization. `solid-gate-on-write` constructs a buffer target. `solid-refactor` accepts the same target and reuses its snapshotted normalized input for initial review, changes only the modified files during verification, and never translates back into the legacy `source_type` mapping.
 
+### Implementation progress
+
+- The prospective `buffer` slice is implemented through the internal `review.prepare` flow operation. It requires an exact path and content, analyzes only the supplied content, and returns one typed normalized file, ordered normalized units, applicability, tag evidence, and shared prospective source context.
+- Buffer normalization composes the existing SPEC-040 source resolver, analyzer, file/unit target builders, applicability resolver, and technology detections. It does not introduce a second parser or a model-authored classification step.
+- Focused tests prove stale disk content is ignored and the same analysis supplies exact unit code, extension, tags, evidence, and the authoritative source snapshot.
+- The remaining target variants and ordered multi-file collection are not implemented. In particular, nested dynamic workflow fan-out still needs parent-instance context before `solid-review` can fan out multiple normalized files through nested `solid-file-review` instances without flattening or duplicating prospective content.
+- Until that hierarchy is completed, the bundled review path intentionally accepts the implemented single prospective buffer target. It must fail validation for unsupported target shapes rather than guess or silently fall back to disk.
+
 ## Connects To
 
 | Direction | Target | Relationship |
@@ -212,6 +220,8 @@ Review normalization is a review-domain operation used internally by bundled wor
 - Normalize a base/head range and an equivalent resolved pull request and assert identical change/unit results plus immutable commit audit.
 - Normalize Markdown, YAML, unknown text, and unpathed code blocks into whole-document units.
 - Assert gate buffer preparation never reads stale on-disk content and fails closed on invalid input.
+- Run one locked multi-principle buffer fixture through both the legacy health checker and `solid-review` under the same Terra profile; preserve exact expected observations, applicability, exception decisions, elapsed time, token usage, reported cost when available, retries, transcripts, events, and normalized review artifacts.
+- Execute one smoke run per path before the repeated comparison, then run ten complete legacy and ten complete workflow reviews only after the smoke artifacts prove the compared target, rule set, and model profile are identical.
 - Replay every target variant after mutating files/refs/provider state and prove no external reread occurs.
 - Run the same normalized target through Codex and Claude composite review workflows and assert backend-independent preparation artifacts.
 

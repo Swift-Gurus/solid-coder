@@ -4,7 +4,9 @@ from dataclasses import replace
 
 from harness.condition_conjoining import ConditionConjoining
 from harness.rule_match_condition_compiling import RuleMatchConditionCompiling
-from harness.rule_scope import RuleScope
+from harness.rule_scope_runtime_adapting_resolving import (
+    RuleScopeRuntimeAdaptingResolving,
+)
 from harness.rule_set_member_include import RuleSetMemberInclude
 from harness.rule_set_members_resolving import RuleSetMembersResolving
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
@@ -23,10 +25,12 @@ class CatalogRuleSetMembersResolver(RuleSetMembersResolving):
         catalog_resolver: WorkflowCatalogResolving,
         match_compiler: RuleMatchConditionCompiling,
         condition_conjoiner: ConditionConjoining,
+        runtime_adapters: RuleScopeRuntimeAdaptingResolving,
     ) -> None:
         self._catalog_resolver = catalog_resolver
         self._match_compiler = match_compiler
         self._condition_conjoiner = condition_conjoiner
+        self._runtime_adapters = runtime_adapters
 
     def resolve(
         self,
@@ -38,10 +42,10 @@ class CatalogRuleSetMembersResolver(RuleSetMembersResolving):
             RuleSetMemberInclude(
                 workflow_id=source.id,
                 alias=source.id,
-                runtime=(
-                    replace(member_runtime, for_each=None)
-                    if source.rule.scope is RuleScope.FILE
-                    else member_runtime
+                runtime=self._runtime_adapters.resolve(
+                    source.rule.scope
+                ).adapt(
+                    member_runtime
                 ),
                 condition=self._condition_conjoiner.conjoin([
                     runtime.condition,

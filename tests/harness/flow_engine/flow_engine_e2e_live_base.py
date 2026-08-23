@@ -279,12 +279,19 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual(completed_sequence[-1], "summarize", event_types)
         self.assertEqual(completed_sequence.count("prepare_units"), 1, event_types)
         self.assertEqual(len(delegated_sessions), 2, event_types)
+        ordered_delegated_sessions = sorted(
+            delegated_sessions,
+            key=lambda event: event["iteration_index"],
+        )
         self.assertEqual(
-            [event["iteration_index"] for event in delegated_sessions],
+            [event["iteration_index"] for event in ordered_delegated_sessions],
             [0, 1],
         )
         self.assertEqual(
-            [event["outputs"]["child_value"] for event in delegated_sessions],
+            [
+                event["outputs"]["child_value"]
+                for event in ordered_delegated_sessions
+            ],
             [42, 42],
         )
         self.assertEqual(

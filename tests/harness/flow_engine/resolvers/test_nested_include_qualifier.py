@@ -12,6 +12,12 @@ from harness.comparison_condition import ComparisonCondition  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
 from harness.include_alias_group import IncludeAliasGroup  # noqa: E402
 from harness.include_resolution import IncludeResolution  # noqa: E402
+from harness.local_nested_identity_qualifier import (  # noqa: E402
+    LocalNestedIdentityQualifier,
+)
+from harness.nested_include_alias_group_qualifier import (  # noqa: E402
+    NestedIncludeAliasGroupQualifier,
+)
 from harness.nested_include_qualifier import NestedIncludeQualifier  # noqa: E402
 from harness.step_output_reference import StepOutputReference  # noqa: E402
 from harness.step_qualifier import StepQualifier  # noqa: E402
@@ -39,12 +45,20 @@ class TestNestedIncludeQualifier(unittest.TestCase):
             ],
             condition=condition,
         )
-        sut = NestedIncludeQualifier(step_qualifier=StepQualifier())
+        sut = NestedIncludeQualifier(
+            step_qualifier=StepQualifier(),
+            group_qualifier=NestedIncludeAliasGroupQualifier(
+                identity=LocalNestedIdentityQualifier()
+            ),
+        )
 
         result = sut.qualify(
             "review",
             IncludeResolution(
-                steps=[{"id": "rule.measure", "prompt": "Measure"}],
+                steps=[
+                    {"id": "prepare", "prompt": "Prepare"},
+                    {"id": "rule.measure", "prompt": "Measure"},
+                ],
                 alias_groups=[group],
             ),
         )
@@ -55,7 +69,7 @@ class TestNestedIncludeQualifier(unittest.TestCase):
                 IncludeAliasGroup(
                     alias="review.rule",
                     member_ids=["review.rule.measure"],
-                    depends_on=group.depends_on,
+                    depends_on=["review.prepare"],
                     for_each=group.for_each,
                     input_bindings=group.input_bindings,
                     condition=condition,

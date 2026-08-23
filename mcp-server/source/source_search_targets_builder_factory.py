@@ -2,7 +2,9 @@
 
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.sha256_content_hasher import Sha256ContentHasher
-from source.exact_source_tokens_resolver import ExactSourceTokensResolver
+from source.exact_source_tokens_resolver_factory import (
+    ExactSourceTokensResolverFactory,
+)
 from source.file_source_search_targets_builder import (
     FileSourceSearchTargetsBuilder,
 )
@@ -40,7 +42,7 @@ solid-description: Provides registered complete-file and parsed-unit search-targ
 class SourceSearchTargetsBuilderFactory:
     def make(self) -> SourceSearchTargetsBuilder:
         terms = SourceSearchTargetTermsResolver(
-            tokens=ExactSourceTokensResolver(),
+            tokens=ExactSourceTokensResolverFactory().make(),
             strings=OrderedStringCollector(),
         )
         return SourceSearchTargetsBuilder(

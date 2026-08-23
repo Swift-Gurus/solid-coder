@@ -34,7 +34,7 @@ _ALLOWED_TOOLS = (
 solid-name: FlowSessionScopingE2ELiveBase
 solid-category: test-support
 solid-spec: [SPEC-031]
-solid-description: Starts one live flow and verifies its active pointer is scoped to the child session reported by the selected backend adapter.
+solid-description: Starts one live flow and verifies its active pointer or completed events are scoped to the child session reported by the selected backend adapter.
 """
 class FlowSessionScopingE2ELiveBase(unittest.TestCase, ABC):
 
@@ -57,7 +57,9 @@ class FlowSessionScopingE2ELiveBase(unittest.TestCase, ABC):
     def tearDown(self) -> None:
         self._clear_active_pointers()
 
-    def test_active_pointer_matches_child_session_id(self) -> None:
+    def test_run_state_matches_child_session_id(self) -> None:
+        runs_directory = self._runs_dir()
+        event_logs_before = set(runs_directory.glob("*/events.jsonl"))
         profile = ModelProfileLoader(
             project_root=_PROJECT_ROOT,
             toml_loader=HookUtilsTomlLoader(),
@@ -82,13 +84,28 @@ class FlowSessionScopingE2ELiveBase(unittest.TestCase, ABC):
         with model_profile_environment(profile.profile_path):
             session_result = self.live_session_runner().run(request)
 
-        expected_pointer = self._runs_dir() / f"active-{session_result.session_id}.json"
-        self.assertTrue(
-            expected_pointer.exists(),
-            "No active pointer matched the child session ID. "
+        expected_pointer = runs_directory / f"active-{session_result.session_id}.json"
+        self.assertFalse((runs_directory / "active.json").exists())
+        if expected_pointer.exists():
+            return
+
+        new_event_logs = set(runs_directory.glob("*/events.jsonl")) - event_logs_before
+        child_session_marker = f'"session_id": "{session_result.session_id}"'
+        child_owned_logs = [
+            path
+            for path in new_event_logs
+            if child_session_marker in path.read_text(encoding="utf-8")
+        ]
+        self.assertEqual(
+            len(child_owned_logs),
+            1,
+            "No active pointer or completed run events matched the child session ID. "
             f"Child: {session_result.session_id}; output: {session_result.final_output}",
         )
-        self.assertFalse((self._runs_dir() / "active.json").exists())
+        self.assertIn(
+            '"event": "run_completed"',
+            child_owned_logs[0].read_text(encoding="utf-8"),
+        )
 
     def _runs_dir(self) -> Path:
         return solid_coder_project_dir(_PROJECT_ROOT) / "runs"

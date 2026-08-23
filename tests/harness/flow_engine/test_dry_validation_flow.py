@@ -9,10 +9,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.rule_applicability_context import RuleApplicabilityContext
 from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from rule_instruction_block_reader import RuleInstructionBlockReader
+from review.normalized_review_unit import NormalizedReviewUnit
 from source.file_analysis_source import FileAnalysisSource
 from source.text_analysis_source import TextAnalysisSource
 from source.prepare_search_targets_input import PrepareSearchTargetsInput
@@ -20,6 +22,7 @@ from source.prepare_search_targets_operation_factory import (
     PrepareSearchTargetsOperationFactory,
 )
 from source.search_target_granularity import SearchTargetGranularity
+from source.source_search_target import SourceSearchTarget
 from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
@@ -66,9 +69,9 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertIsNone(started.error, started.error)
         self.assertEqual(
             {step.step_id for step in started.steps},
-            {"target_search-1.generate_terms"},
+            {"generate_terms"},
         )
-        classified = self.engine.flow_next({
+        selection = self.engine.flow_next({
             step.instance_id: self._initial_output(
                 step.step_id,
                 "SharedTaxFormatter",
@@ -76,9 +79,17 @@ class TestDryValidationFlow(unittest.TestCase):
             for step in started.steps
         })
 
+        self.assertEqual(len(selection.steps), 1)
+        selection_prompt = selection.steps[0].prompt
+        self.assertIn("SharedTaxFormatter", selection_prompt)
+        self.assertNotIn("struct SharedTaxFormatter", selection_prompt)
+        classified = self.engine.flow_next({
+            selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
         self.assertEqual(len(classified.steps), 1)
         candidate_prompt = classified.steps[0].prompt
-        self.assertIn("struct SharedTaxFormatter", candidate_prompt)
+        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), candidate_prompt)
+        self.assertNotIn("struct SharedTaxFormatter", candidate_prompt)
         self.assertIn("struct PayrollLedger", candidate_prompt)
         self.assertEqual(
             candidate_prompt.count("Return only one JSON object matching this schema"),
@@ -111,12 +122,15 @@ class TestDryValidationFlow(unittest.TestCase):
 
     def test_embeds_canonical_detection_and_exception_instructions(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
-        classified = self.engine.flow_next({
+        selection = self.engine.flow_next({
             step.instance_id: self._initial_output(
                 step.step_id,
                 "SharedTaxFormatter",
             )
             for step in started.steps
+        })
+        classified = self.engine.flow_next({
+            selection.steps[0].instance_id: self._shared_formatter_selection()
         })
         measured = self.engine.flow_next({
             classified.steps[0].instance_id: self._candidate_assessment()
@@ -142,12 +156,15 @@ class TestDryValidationFlow(unittest.TestCase):
     def test_dry2_receives_reviewed_code_when_source_search_is_empty(self) -> None:
         (self.project_root / "SharedTaxFormatter.swift").unlink()
         started = self.engine.flow_start("dry", self._parameters())
-        measured = self.engine.flow_next({
+        selection = self.engine.flow_next({
             step.instance_id: self._initial_output(
                 step.step_id,
                 "NoRepositoryCandidate",
             )
             for step in started.steps
+        })
+        measured = self.engine.flow_next({
+            selection.steps[0].instance_id: {"selections": []}
         })
 
         self.assertIsNone(measured.error, measured.error)
@@ -158,8 +175,179 @@ class TestDryValidationFlow(unittest.TestCase):
         )
         self.assertIn("func grossWages", duplicate_prompt)
         self.assertIn("func reimbursements", duplicate_prompt)
+        self.assertIn(
+            "independently inspect the reviewed unit",
+            duplicate_prompt.lower(),
+        )
+        self.assertNotIn(
+            "Use only each repository candidate",
+            duplicate_prompt,
+        )
+
+    def test_term_generation_requires_individual_lexical_words(self) -> None:
+        started = self.engine.flow_start("dry", self._parameters())
+
+        self.assertEqual(len(started.steps), 1)
+        self.assertIn("exactly one lexical word", started.steps[0].prompt)
+        self.assertIn(
+            "return `remote`, `resource`, and `loader`",
+            started.steps[0].prompt,
+        )
+
+    def test_search_requires_summary_selection_before_source_inspection(self) -> None:
+        started = self.engine.flow_start("dry", self._parameters())
+
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "generated_terms": ["SharedTaxFormatter"],
+            }
+        })
+
+        self.assertEqual([step.step_id for step in selection.steps], ["select_candidates"])
+        prompt = selection.steps[0].prompt
+        self.assertIn("SharedTaxFormatter", prompt)
+        self.assertIn("No solid-description frontmatter.", prompt)
+        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), prompt)
+        self.assertNotIn("struct SharedTaxFormatter", prompt)
+        self.assertIn("Select only repository candidates", prompt)
+
+    def test_classifies_only_candidates_selected_for_llm_file_inspection(self) -> None:
+        started = self.engine.flow_start("dry", self._parameters())
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "generated_terms": ["SharedTaxFormatter"],
+            }
+        })
+
+        classification = self.engine.flow_next({
+            selection.steps[0].instance_id: {
+                "selections": [
+                    {
+                        "source_identity": "SharedTaxFormatter.swift",
+                        "unit_identity": "struct:SharedTaxFormatter:1",
+                        "reasoning": "The description indicates shared formatting behavior.",
+                    }
+                ]
+            }
+        })
+
+        self.assertEqual(len(classification.steps), 1)
+        prompt = classification.steps[0].prompt
+        self.assertEqual(classification.steps[0].step_id, "classify_candidate")
+        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), prompt)
+        self.assertIn("read the selected file", prompt.lower())
+        self.assertNotIn("struct SharedTaxFormatter", prompt)
+        self.assertIn("NOT_SUITABLE", prompt)
+        self.assertIn("NOT_DUPLICATE", prompt)
+        self.assertIn(
+            "A conformer is not a reusable replacement for its protocol",
+            prompt,
+        )
+        self.assertIn(
+            "Choose IDENTICAL or STRUCTURAL only when the evidence cites executable statements",
+            prompt,
+        )
+        self.assertIn(
+            "Similar names, responsibilities, declarations, or signatures are never implementation duplication",
+            prompt,
+        )
+
+    def test_inspects_each_selected_candidate_before_classification(self) -> None:
+        started = self.engine.flow_start("dry", self._parameters())
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "generated_terms": ["SharedTaxFormatter"],
+            }
+        })
+
+        inspection = self.engine.flow_next({
+            selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
+
+        self.assertEqual(len(inspection.steps), 1)
+        self.assertTrue(inspection.steps[0].step_id.endswith("inspect_candidate"))
+        self.assertIn(
+            str(self.project_root / "SharedTaxFormatter.swift"),
+            inspection.steps[0].prompt,
+        )
+        self.assertIn("normal file-reading tool", inspection.steps[0].prompt)
+
+        classification = self.engine.flow_next({
+            inspection.steps[0].instance_id: {
+                "inspection": {
+                    "reasoning": "The candidate contains shared formatting behavior.",
+                    "evidence": "SharedTaxFormatter.swift contains formatTax().",
+                }
+            }
+        })
+
+        self.assertEqual(len(classification.steps), 1)
+        self.assertTrue(classification.steps[0].step_id.endswith("classify_candidate"))
+        self.assertIn("completed source inspection", classification.steps[0].prompt)
+        self.assertIn("SharedTaxFormatter.swift contains formatTax()", classification.steps[0].prompt)
+
+    def test_compliant_fixture_publishes_zero_metrics(self) -> None:
+        self.current_content = (
+            _PROJECT_ROOT / "tests/principles/DRY/fixtures/fixture-2.swift"
+        ).read_text(encoding="utf-8")
+        self.current_path.write_text(self.current_content, encoding="utf-8")
+        (self.project_root / "SharedTaxFormatter.swift").unlink()
+        started = self.engine.flow_start("dry", self._parameters())
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: self._initial_output(
+                started.steps[0].step_id,
+                "NoRepositoryCandidate",
+            )
+        })
+        measured = self.engine.flow_next({
+            selection.steps[0].instance_id: {"selections": []}
+        })
+
+        completed = self.engine.flow_next({
+            step.instance_id: self._zero_measurement_output(step.step_id)
+            for step in measured.steps
+        })
+
+        self.assertEqual(completed.status, "done")
+        result = self._result(started.run_id)
+        self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0])
+        self.assertEqual(result.severity, "COMPLIANT")
+        self.assertFalse(result.exception.is_exception)
+
+    def test_exception_preserves_observations_and_makes_result_compliant(self) -> None:
+        started = self.engine.flow_start("dry", self._parameters())
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: self._initial_output(
+                started.steps[0].step_id,
+                "SharedTaxFormatter",
+            )
+        })
+        classified = self.engine.flow_next({
+            selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
+        measured = self.engine.flow_next({
+            classified.steps[0].instance_id: self._candidate_assessment()
+        })
+        completed = self.engine.flow_next({
+            step.instance_id: self._measurement_output(
+                step.step_id,
+                is_exception=True,
+            )
+            for step in measured.steps
+        })
+
+        self.assertEqual(completed.status, "done")
+        result = self._result(started.run_id)
+        self.assertTrue(result.exception.is_exception)
+        self.assertEqual([metric.value for metric in result.metrics], [1, 2, 1])
+        self.assertEqual(
+            [metric.severity for metric in result.metrics],
+            ["COMPLIANT", "COMPLIANT", "COMPLIANT"],
+        )
+        self.assertEqual(result.severity, "COMPLIANT")
 
     def test_classifies_proposed_sibling_and_cross_file_candidates(self) -> None:
+        (self.project_root / "SharedTaxFormatter.swift").unlink()
         current = PrepareSearchTargetsOperationFactory().make().execute(
             PrepareSearchTargetsInput(
                 source=TextAnalysisSource(
@@ -194,7 +382,9 @@ class TestDryValidationFlow(unittest.TestCase):
             if target.name == "FirstFormatter"
         )
         started = self.engine.flow_start("dry", {
-            "review_unit": reviewed.model_dump(mode="json"),
+            "review_unit": self._normalized_unit(reviewed).model_dump(
+                mode="json"
+            ),
             "source_context": {
                 "sources": [
                     current.snapshot.model_dump(mode="json"),
@@ -203,17 +393,100 @@ class TestDryValidationFlow(unittest.TestCase):
             },
         })
 
-        classified = self.engine.flow_next({
+        selection = self.engine.flow_next({
             started.steps[0].instance_id: {
                 "generated_terms": ["formatProfile"],
             }
         })
 
+        self.assertEqual(len(selection.steps), 1)
+        self.assertIn("SiblingFormatter", selection.steps[0].prompt)
+        self.assertIn("ProposedFormatter", selection.steps[0].prompt)
+        self.assertNotIn("struct SiblingFormatter", selection.steps[0].prompt)
+        sibling = next(
+            target for target in current.targets
+            if target.name == "SiblingFormatter"
+        )
+        proposed_target = proposed.targets[0]
+        classified = self.engine.flow_next({
+            selection.steps[0].instance_id: {
+                "selections": [
+                    self._selection_for(sibling),
+                    self._selection_for(proposed_target),
+                ]
+            }
+        })
+
         self.assertEqual(len(classified.steps), 2)
         prompts = "\n".join(step.prompt for step in classified.steps)
-        self.assertIn("struct SiblingFormatter", prompts)
-        self.assertIn("struct ProposedFormatter", prompts)
+        self.assertIn(str(self.current_path), prompts)
+        self.assertIn(str(proposed_path), prompts)
+        self.assertNotIn("struct SiblingFormatter", prompts)
+        self.assertNotIn("struct ProposedFormatter", prompts)
         self.assertNotIn("struct StaleFormatter", prompts)
+
+    def test_differently_named_existing_protocol_produces_reuse_miss(self) -> None:
+        scenario = (
+            _PROJECT_ROOT
+            / "tests"
+            / "principles"
+            / "DRY"
+            / "repository-scenarios"
+            / "exact-protocol-reuse"
+        )
+        self.current_content = (scenario / "reviewed.swift").read_text(
+            encoding="utf-8"
+        )
+        self.current_path.write_text(self.current_content, encoding="utf-8")
+        (self.project_root / "SharedTaxFormatter.swift").unlink()
+        (self.project_root / "RemoteContentLoading.swift").write_text(
+            (scenario / "existing.swift").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        started = self.engine.flow_start("dry", self._parameters())
+        selection = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "generated_terms": ["resource"],
+            }
+        })
+
+        self.assertEqual(len(selection.steps), 1)
+        self.assertIn("RemoteContentLoading", selection.steps[0].prompt)
+        self.assertNotIn("protocol RemoteContentLoading", selection.steps[0].prompt)
+        classified = self.engine.flow_next({
+            selection.steps[0].instance_id: {
+                "selections": [
+                    {
+                        "source_identity": "RemoteContentLoading.swift",
+                        "unit_identity": "protocol:RemoteContentLoading:6",
+                        "reasoning": "The description identifies equivalent remote loading behavior.",
+                    }
+                ]
+            }
+        })
+        self.assertEqual(len(classified.steps), 1)
+        self.assertIn("protocol NetworkResourceFetching", classified.steps[0].prompt)
+        self.assertIn(
+            str(self.project_root / "RemoteContentLoading.swift"),
+            classified.steps[0].prompt,
+        )
+        self.assertNotIn("protocol RemoteContentLoading", classified.steps[0].prompt)
+        measured = self.engine.flow_next({
+            classified.steps[0].instance_id: self._candidate_assessment()
+        })
+        completed = self.engine.flow_next({
+            step.instance_id: self._repository_reuse_output(step.step_id)
+            for step in measured.steps
+        })
+
+        self.assertEqual(completed.status, "done")
+        result = self._result(started.run_id)
+        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 0])
+        self.assertEqual(
+            [metric.severity for metric in result.metrics],
+            ["SEVERE", "COMPLIANT", "COMPLIANT"],
+        )
+        self.assertEqual(result.severity, "SEVERE")
 
     def _parameters(self) -> dict[str, object]:
         prepared = PrepareSearchTargetsOperationFactory().make().execute(
@@ -224,11 +497,27 @@ class TestDryValidationFlow(unittest.TestCase):
         )
         self.assertEqual(len(prepared.targets), 1)
         return {
-            "review_unit": prepared.targets[0].model_dump(mode="json"),
+            "review_unit": self._normalized_unit(
+                prepared.targets[0]
+            ).model_dump(mode="json"),
             "source_context": {
                 "sources": [prepared.snapshot.model_dump(mode="json")],
             },
         }
+
+    @staticmethod
+    def _normalized_unit(
+        target: SourceSearchTarget,
+    ) -> NormalizedReviewUnit:
+        return NormalizedReviewUnit(
+            target=target,
+            applicability=RuleApplicabilityContext(
+                file_extension=".swift",
+                unit_kind=target.kind,
+                tags=[],
+            ),
+            tag_evidence=[],
+        )
 
     @staticmethod
     def _initial_output(
@@ -241,21 +530,51 @@ class TestDryValidationFlow(unittest.TestCase):
     def _candidate_assessment() -> dict[str, object]:
         return {
             "assessment": {
-                "classification": "EXACT",
-                "reasoning": "The candidate covers the same formatting responsibility.",
-                "evidence": "Both units implement the same formatter behavior.",
+                "reuse": {
+                    "classification": "EXACT",
+                    "reasoning": "The candidate covers the complete responsibility.",
+                    "evidence": "Both units expose the same responsibility.",
+                },
+                "duplication": {
+                    "classification": "SIMILAR",
+                    "reasoning": "No duplicated implemented sequence is established.",
+                    "evidence": "The comparison alone does not prove copied logic.",
+                },
             }
         }
 
     @staticmethod
-    def _measurement_output(step_id: str) -> dict[str, object]:
+    def _shared_formatter_selection() -> dict[str, object]:
+        return {
+            "selections": [
+                {
+                    "source_identity": "SharedTaxFormatter.swift",
+                    "unit_identity": "struct:SharedTaxFormatter:1",
+                    "reasoning": "The summary identifies shared formatting behavior.",
+                }
+            ]
+        }
+
+    @staticmethod
+    def _selection_for(target: SourceSearchTarget) -> dict[str, str]:
+        return {
+            "source_identity": target.source_identity,
+            "unit_identity": target.unit_identity,
+            "reasoning": "The summary indicates equivalent formatting behavior.",
+        }
+
+    @staticmethod
+    def _measurement_output(
+        step_id: str,
+        is_exception: bool = False,
+    ) -> dict[str, object]:
         additional_info = {
             "reasoning": f"Measured {step_id} from both DRY analysis lanes.",
             "evidence": "Current.swift lines 2-3 and SharedTaxFormatter.swift",
         }
         if step_id == "classify_exception":
             return {
-                "is_exception": False,
+                "is_exception": is_exception,
                 "additional_info": additional_info,
             }
         values = {
@@ -264,6 +583,35 @@ class TestDryValidationFlow(unittest.TestCase):
             "missing_abstractions": 1,
         }
         return {"value": values[step_id], "additional_info": additional_info}
+
+    @staticmethod
+    def _zero_measurement_output(step_id: str) -> dict[str, object]:
+        additional_info = {
+            "reasoning": f"Measured {step_id} from the compliant source.",
+            "evidence": "PayrollLedger uses one shared accumulation implementation.",
+        }
+        if step_id == "classify_exception":
+            return {
+                "is_exception": False,
+                "additional_info": additional_info,
+            }
+        return {"value": 0, "additional_info": additional_info}
+
+    @staticmethod
+    def _repository_reuse_output(step_id: str) -> dict[str, object]:
+        additional_info = {
+            "reasoning": f"Measured {step_id} from the exact protocol candidate.",
+            "evidence": "NetworkResourceFetching and RemoteContentLoading expose the same capability.",
+        }
+        if step_id == "classify_exception":
+            return {
+                "is_exception": False,
+                "additional_info": additional_info,
+            }
+        return {
+            "value": 1 if step_id == "reuse_misses" else 0,
+            "additional_info": additional_info,
+        }
 
     def _result(self, run_id: str) -> RuleReviewResult:
         return RuleReviewResult.model_validate_json(
@@ -292,7 +640,7 @@ class TestDryValidationFlow(unittest.TestCase):
             for event in events
             if event["event"] == "step_completed"
             and event["step_id"].endswith(
-                ("search_repository", "read_candidates")
+                ("search_repository", "validate_selection")
             )
         }
         self.assertEqual(len(completions), 2)

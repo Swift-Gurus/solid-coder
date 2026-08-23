@@ -36,11 +36,18 @@ class TestStepOutputReferenceParser(unittest.TestCase):
             ),
         )
 
-    def test_rejects_compound_runtime_step_identity(self) -> None:
-        with self.assertRaises(StepOutputReferenceSyntaxError):
-            StepOutputReferenceParser().parse(
-                "steps.review-1.inspect.outputs.finding"
-            )
+    def test_parses_qualified_declaration_step_identity(self) -> None:
+        reference = StepOutputReferenceParser().parse(
+            "steps.file_review.prepare.outputs.finding"
+        )
+
+        self.assertEqual(
+            reference,
+            StepOutputReference(
+                step_id="file_review.prepare",
+                output_name="finding",
+            ),
+        )
 
     def test_rejects_incomplete_reference(self) -> None:
         with self.assertRaises(StepOutputReferenceSyntaxError):

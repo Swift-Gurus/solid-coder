@@ -13,6 +13,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
+from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
 from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
 from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
 from rule_validation_scenario import RuleValidationScenario  # noqa: E402
@@ -32,6 +33,39 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
             / "fixtures"
             / "fixture-1.swift"
         ),
+        analysis=[
+            RuleAnalysisExpectation(
+                step_id="analyze_responsibilities",
+                output={
+                    "analysis": {
+                        "actions": [
+                            {
+                                "method": "save",
+                                "action": "persist",
+                                "reasoning": "The method stores catalog data.",
+                                "evidence": "SRP_SHARED_ANALYSIS_EVIDENCE",
+                            }
+                        ],
+                        "cohesion_groups": [
+                            {
+                                "methods": ["save", "load"],
+                                "variables": ["storage", "cache"],
+                                "reasoning": "The methods share data-access state.",
+                                "evidence": "SRP_SHARED_ANALYSIS_EVIDENCE",
+                            }
+                        ],
+                        "stakeholders": [
+                            {
+                                "name": "data-access",
+                                "methods": ["save", "load"],
+                                "reasoning": "Persistence changes drive these methods.",
+                                "evidence": "SRP_SHARED_ANALYSIS_EVIDENCE",
+                            }
+                        ],
+                    }
+                },
+            )
+        ],
         metrics=[
             RuleMetricExpectation(
                 step_id="verb_count",
@@ -59,4 +93,31 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
             ),
         ],
         final_severity="SEVERE",
+        included_unit_kinds=[
+            "class",
+            "struct",
+            "enum",
+            "extension",
+            "actor",
+            "function",
+        ],
     )
+
+    def test_responsibility_analysis_is_shared_by_every_srp_metric(self) -> None:
+        started = self._start()
+
+        self.assertEqual(
+            [step.step_id for step in started.steps],
+            ["analyze_responsibilities"],
+        )
+        measured = self.sut.flow_next({
+            started.steps[0].instance_id: self.SCENARIO.analysis[0].output
+        })
+
+        self.assertEqual(
+            {step.step_id for step in measured.steps},
+            {"verb_count", "cohesion_groups", "stakeholder_count", "classify_exception"},
+        )
+        self.assertTrue(
+            all("SRP_SHARED_ANALYSIS_EVIDENCE" in step.prompt for step in measured.steps)
+        )

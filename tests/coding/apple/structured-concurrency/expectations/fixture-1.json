@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "SC-1": {"value": 1, "severity": "SEVERE"},
+    "SC-2": {"value": 1, "severity": "SEVERE"},
+    "SC-3": {"value": 1, "severity": "SEVERE"},
+    "SC-4": {"value": 3, "severity": "SEVERE"},
+    "SC-5": {"value": 1, "severity": "SEVERE"},
+    "SC-6": {"value": 1, "severity": "SEVERE"}
+  },
+  "is_exception": false,
+  "severity": "SEVERE"
+}

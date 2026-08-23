@@ -23,7 +23,11 @@ from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_step_appender import IncludeStepAppender
 from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
+from harness.local_nested_identity_qualifier import LocalNestedIdentityQualifier
 from harness.nested_include_qualifier import NestedIncludeQualifier
+from harness.nested_include_alias_group_qualifier import (
+    NestedIncludeAliasGroupQualifier,
+)
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_builder import PathBuilder
@@ -112,6 +116,9 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
             ),
             nested_qualifier=NestedIncludeQualifier(
                 step_qualifier=StepQualifier(),
+                group_qualifier=NestedIncludeAliasGroupQualifier(
+                    identity=LocalNestedIdentityQualifier()
+                ),
             ),
             resolution_merger=resolution_merger,
         ),

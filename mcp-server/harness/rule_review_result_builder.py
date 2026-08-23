@@ -5,6 +5,7 @@ from harness.metric_scoring_evaluating import MetricScoringEvaluating
 from harness.review_severity_selecting import ReviewSeveritySelecting
 from harness.rule_metric_decision import RuleMetricDecision
 from harness.rule_observations import RuleObservations
+from harness.rule_review_provenance import RuleReviewProvenance
 from harness.rule_review_result import RuleReviewResult
 from harness.rule_review_result_building import RuleReviewResultBuilding
 
@@ -28,11 +29,13 @@ class RuleReviewResultBuilder(RuleReviewResultBuilding):
         self,
         workflow_id: str,
         rule_instance_id: str,
+        provenance: RuleReviewProvenance,
         observations: RuleObservations,
     ) -> RuleReviewResult:
         decisions = [
             RuleMetricDecision(
                 metric_id=observation.declaration.metric_id,
+                observation_id=observation.declaration.observation_id,
                 value=observation.value,
                 severity=(
                     ReviewSeverity.COMPLIANT
@@ -49,6 +52,7 @@ class RuleReviewResultBuilder(RuleReviewResultBuilding):
         return RuleReviewResult(
             workflow_id=workflow_id,
             rule_instance_id=rule_instance_id,
+            provenance=provenance,
             severity=self._severity_selector.select(decisions),
             exception=observations.exception,
             metrics=decisions,

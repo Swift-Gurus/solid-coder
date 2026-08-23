@@ -10,6 +10,10 @@ from harness.scoring_comparison_operator import ScoringComparisonOperator
 
 
 MetricId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+MetricObservationId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1),
+]
 
 
 """
@@ -22,6 +26,7 @@ class MetricDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     metric_id: MetricId
+    observation_id: MetricObservationId = "value"
     value: MetricValueDeclaration
     scoring: MetricScoringDeclaration
 

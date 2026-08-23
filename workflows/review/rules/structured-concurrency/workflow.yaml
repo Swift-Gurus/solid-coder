@@ -1,0 +1,141 @@
+id: structured-concurrency
+name: Structured Concurrency Review
+description: Measures concurrency-model consistency, task ownership, safety, parallelism, bridging, and duration usage.
+max_turns: 16
+
+rule:
+  match:
+    file_extensions:
+      included: [.swift]
+    tags:
+      included: [structured-concurrency]
+
+steps:
+  - id: model_mixing
+    type: metric
+    metric_id: SC-1
+    prompt: |
+      1. Count `async` functions/methods in the type
+      2. Count GCD calls in the same type: `DispatchQueue.main.async`, `DispatchQueue.global().async`, `.async {`, `.sync {`
+      3. Count completion handler patterns in the same type: closures as last parameter with `@escaping` that are called asynchronously
+
+      **Scoring:**
+      - If async count > 0 AND (GCD count > 0 OR completion handler count > 0) → the type mixes models
+
+      Return `1` when the type mixes models, otherwise `0`, with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: orphaned_tasks
+    type: metric
+    metric_id: SC-2
+    prompt: |
+      1. Count `Task {` and `Task.detached {` occurrences in the type
+      2. For each, check:
+         - Is the return value stored in a property? (e.g., `let task = Task { }`)
+         - Is there a `task.cancel()` call in `deinit`, `onDisappear`, or a cleanup method?
+      3. Count tasks without stored handle = orphaned tasks
+      4. Count tasks with stored handle but no cancel call = leaked tasks
+
+      Return the combined orphaned-or-leaked task count with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: safety_bypasses
+    type: metric
+    metric_id: SC-3
+    prompt: |
+      1. Count `@unchecked Sendable` on any type — bypasses compiler Sendable verification entirely, regardless of whether properties are `let` or `var`
+      2. Count `nonisolated(unsafe)` usages — bypasses actor isolation checking
+
+      Return the combined safety-bypass count with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: independent_sequential_awaits
+    type: metric
+    metric_id: SC-4
+    prompt: |
+      1. Find sequences of `await` calls within the same scope (function body, closure)
+      2. For each pair of sequential awaits: are they independent? (second doesn't use result of first)
+      3. Count independent sequential awaits that could be `async let` or `TaskGroup`
+
+      Return the count with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 3}
+
+  - id: blocking_bridges
+    type: metric
+    metric_id: SC-5
+    prompt: |
+      1. Count synchronous functions that use blocking mechanisms to wait for async results:
+         - `DispatchSemaphore` + `.wait()` around async code
+         - `DispatchGroup` + `.wait()` around async code  
+         - `RunLoop.current.run` to wait for completion
+      2. Count `withCheckedContinuation` / `withUnsafeContinuation` usages:
+         - Is there a native async API available for what's being wrapped?
+         - Does every code path resume exactly once?
+
+      Return the blocking-bridge violation count with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: raw_duration_count
+    type: metric
+    metric_id: SC-6
+    prompt: |
+      1. Count usages of `Task.sleep(nanoseconds:)` — should be `Task.sleep(for: .seconds(N))`
+      2. Count raw integer literals used as time durations (nanoseconds, milliseconds) where `.seconds()`, `.milliseconds()`, `.minutes()` should be used
+      3. Applies to: timeouts, delays, intervals, any time duration parameter
+
+      Return the count with reasoning and precise evidence.
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```
+    value: {type: integer, minimum: 0}
+    scoring:
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: classify_exception
+    type: exception
+    prompt: |
+      1. **Legacy bridge code** — `withCheckedContinuation` wrapping completion-handler APIs (e.g., `URLSession` delegate methods, CoreLocation callbacks, `NotificationCenter` observers) that Apple has not yet provided an `async` alternative for. If an `async` version of the API exists in the SDK, using continuation instead of the async version IS a violation.
+      2. **SwiftUI `.task` modifier** — framework manages Task cancellation automatically, no need to store handle
+      3. **Test code** — unit tests are exempt from lifecycle checks (Task { } in tests is acceptable)
+
+      Unit:
+      ```
+      {{params.review_unit}}
+      ```

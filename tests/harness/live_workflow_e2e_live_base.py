@@ -70,6 +70,10 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
     def assert_workflow(self, run: PreservedLiveWorkflowRun) -> None:
         raise NotImplementedError
 
+    @property
+    def execution_project_root(self) -> Path:
+        return self.PROJECT_ROOT
+
     def setUp(self) -> None:
         runs_directory = self._runs_directory()
         if runs_directory.exists():
@@ -77,7 +81,12 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
                 pointer.unlink(missing_ok=True)
 
     def test_workflow_satisfies_its_live_contract(self) -> None:
-        scenario = self.scenario
+        self.assert_workflow(self._run_scenario(self.scenario))
+
+    def _run_scenario(
+        self,
+        scenario: LiveWorkflowScenario,
+    ) -> PreservedLiveWorkflowRun:
         runs_directory = self._runs_directory()
         before = (
             set(runs_directory.glob("*/events.jsonl"))
@@ -91,7 +100,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
         request = LiveSessionRequest(
             prompt=self._prompt(scenario),
             artifact_scope=scenario.artifact_scope,
-            project_root=self.PROJECT_ROOT,
+            project_root=self.execution_project_root,
             plugin_root=self.PROJECT_ROOT,
             model=profile.llm["model"],
             timeout=profile.llm["timeout"],
@@ -121,7 +130,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
             run_directory=preserved_run_directory,
         )
         self._assert_session_ownership(preserved_run)
-        self.assert_workflow(preserved_run)
+        return preserved_run
 
     def _prompt(self, scenario: LiveWorkflowScenario) -> str:
         return (
@@ -133,7 +142,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
         )
 
     def _runs_directory(self) -> Path:
-        return solid_coder_project_dir(self.PROJECT_ROOT) / "runs"
+        return solid_coder_project_dir(self.execution_project_root) / "runs"
 
     def _assert_session_ownership(self, run: PreservedLiveWorkflowRun) -> None:
         events = [

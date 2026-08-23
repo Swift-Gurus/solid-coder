@@ -63,6 +63,12 @@ class TestCompositeRuleWorkflowExecution(unittest.TestCase):
         )
         self.assertEqual(aggregate.severity, "SEVERE")
         for result in aggregate.rule_results:
+            self.assertEqual(result.provenance.kind, "included")
+            self.assertEqual(
+                result.provenance.scope_identity,
+                f"rule_reviews.{result.workflow_id}",
+            )
+            self.assertEqual(result.provenance.source_index, 0)
             result_path = (
                 run_directory
                 / "results"

@@ -17,3 +17,4 @@ class PrepareSearchQueryOutput(BaseModel):
 
     queries: list[SourceSearchQuery]
     excluded_units: list[SourceUnitIdentity]
+    included_file_extensions: list[str]

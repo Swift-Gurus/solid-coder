@@ -21,6 +21,9 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
+from source.source_operation_registrations_factory import (  # noqa: E402
+    SourceOperationRegistrationsFactory,
+)
 
 
 class TestISPApplicabilityFlow(unittest.TestCase):
@@ -45,6 +48,9 @@ class TestISPApplicabilityFlow(unittest.TestCase):
             ),
             plugin_root=self.plugin_root,
             session_reader=StaticSessionIdReader("spec-039-isp-skip-test"),
+            operation_registrations=SourceOperationRegistrationsFactory(
+                project_directory=lambda: self.run_root,
+            ).make(),
         ).build()
 
     def test_non_protocol_fixture_skips_isp_without_starting_a_session(self) -> None:
@@ -67,6 +73,9 @@ class TestISPApplicabilityFlow(unittest.TestCase):
         self.assertEqual(
             [event["local_step_id"] for event in skipped],
             [
+                "prepare_conformer_query",
+                "search_conformers",
+                "analyze_protocol",
                 "width",
                 "min_coverage",
                 "cohesion_groups",
@@ -79,7 +88,8 @@ class TestISPApplicabilityFlow(unittest.TestCase):
         self.assertTrue(all(not event["evidence"]["matched"] for event in skipped))
         self.assertTrue(
             all(
-                "params.review_unit.unit_kind" in json.dumps(event["condition"])
+                "params.review_unit.applicability.unit_kind"
+                in json.dumps(event["condition"])
                 for event in skipped
             )
         )

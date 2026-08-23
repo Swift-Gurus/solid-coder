@@ -9,9 +9,15 @@ solid-description: Extracts authored detection and exception bodies for workflow
 """
 class RuleInstructionBlockReader:
     def detection(self, content: str, metric_id: str, name: str) -> str:
+        named_opening = f'<detection id="{metric_id}" name="{name}">'
+        opening = (
+            named_opening
+            if named_opening in content
+            else f'<detection id="{metric_id}">'
+        )
         return self._body(
             content,
-            f'<detection id="{metric_id}" name="{name}">',
+            opening,
             "detection",
         )
 

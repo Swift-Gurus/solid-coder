@@ -31,7 +31,7 @@ class DrySearchCoordinator(DrySearchCoordinating):
         query: Optional[str] = None,
         tags: Optional[list[str]] = None,
         spec_numbers: Optional[list[str]] = None,
-        min_matches: int = 3,
+        min_matches: int = 1,
         output_dir: Optional[str] = None,
     ) -> str:
         try:

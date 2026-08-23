@@ -1,0 +1,12 @@
+{
+  "metrics": {
+    "TEST-1": {"value": 1, "severity": "SEVERE"},
+    "TEST-2": {"value": 2, "severity": "SEVERE"},
+    "TEST-3": {"value": 3, "severity": "SEVERE"},
+    "TEST-4": {"value": 1, "severity": "SEVERE"},
+    "TEST-5": {"value": 1, "severity": "SEVERE"},
+    "TEST-6": {"value": 1, "severity": "SEVERE"}
+  },
+  "is_exception": false,
+  "severity": "SEVERE"
+}
