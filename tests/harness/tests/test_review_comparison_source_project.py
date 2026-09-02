@@ -39,6 +39,25 @@ class TestReviewComparisonSourceProject(unittest.TestCase):
             project.root / "Sources" / "ReviewTarget.swift",
         )
 
+    def test_replaces_review_target_with_declared_principle_fixture(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parents[2]
+            / "principles"
+            / "SRP"
+            / "fixtures"
+            / "fixture-1.swift"
+        )
+
+        project = ReviewComparisonSourceProject.create(
+            review_target_source=fixture,
+        )
+        self.addCleanup(project.cleanup)
+
+        self.assertEqual(
+            project.review_target.read_text(encoding="utf-8"),
+            fixture.read_text(encoding="utf-8"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

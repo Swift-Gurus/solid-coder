@@ -125,6 +125,7 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             if target.kind == "protocol"
         )
         self.review_unit = "protocol DocumentService {"
+        self.review_unit_name = protocol.name
         self._parameters = ISPRuleWorkflowParameters(
             review_unit=NormalizedReviewUnit(
                 target=protocol,
@@ -154,7 +155,7 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             self._parameters.model_dump(mode="json"),
         )
 
-    def test_protocol_analysis_is_shared_by_every_isp_metric(self) -> None:
+    def test_protocol_analysis_is_reused_without_prompt_reserialization(self) -> None:
         started = self._start()
 
         self.assertEqual([step.step_id for step in started.steps], ["analyze_protocol"])
@@ -184,9 +185,15 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             {step.step_id for step in measured.steps},
             {"width", "min_coverage", "cohesion_groups", "classify_exception"},
         )
-        self.assertTrue(
-            all("ISP_SHARED_ANALYSIS_EVIDENCE" in step.prompt for step in measured.steps)
-        )
+        self.assertTrue(all(
+            "ISP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
+            for step in measured.steps
+        ))
+        self.assertTrue(all(
+            "previously submitted" in step.prompt
+            for step in measured.steps
+            if step.step_id != "classify_exception"
+        ))
         cohesion = next(
             step for step in measured.steps
             if step.step_id == "cohesion_groups"

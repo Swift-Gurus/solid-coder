@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
+from harness.for_each_declaration import ForEachDeclaration
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 from harness.step_output_reference import StepOutputReference
@@ -36,7 +37,12 @@ class TestDynamicWorkflowIncludeLoading(unittest.TestCase):
         self.assertEqual(group.depends_on, ["prepare"])
         self.assertEqual(
             group.for_each,
-            StepOutputReference(step_id="prepare", output_name="units"),
+            ForEachDeclaration(
+                source=StepOutputReference(
+                    step_id="prepare",
+                    output_name="units",
+                ),
+            ),
         )
         self.assertEqual(
             [(binding.name, binding.expression) for binding in group.input_bindings],

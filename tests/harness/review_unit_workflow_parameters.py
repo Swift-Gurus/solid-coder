@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, ConfigDict
 
+from review_unit_workflow_context import ReviewUnitWorkflowContext
+
 
 """
 solid-name: ReviewUnitWorkflowParameters
@@ -12,5 +14,5 @@ solid-description: Carries one normalized source unit into a directly invoked ex
 class ReviewUnitWorkflowParameters(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    review_unit: str
+    review_unit: ReviewUnitWorkflowContext
     repository_evidence: str = "No MCP-owned repository evidence was supplied."

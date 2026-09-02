@@ -13,6 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.batch_step_renderer import BatchStepRenderer
+from harness.batch_step_item_renderer import BatchStepItemRenderer
+from harness.first_ready_step_selector import FirstReadyStepSelector
+from harness.sibling_batch_step_selector import SiblingBatchStepSelector
+from harness.single_step_renderer import SingleStepRenderer
 from harness.step_renderer import StepRenderer
 from harness.step_result import StepResult
 
@@ -39,9 +44,9 @@ class StubStepFormatter:
 
 class TestStepRenderer(unittest.TestCase):
 
-    def test_joins_multiple_rendered_steps_with_a_separator(self):
+    def test_renders_only_the_first_ready_step(self):
         formatter = StubStepFormatter("FORMATTED")
-        sut = StepRenderer(subagent_delegator=StubSubagentDelegator(), step_formatter=formatter)
+        sut = self._renderer(StubSubagentDelegator(), formatter)
         steps = [
             StepResult(step_id="a", instance_id="a-1", prompt="Step A.", execution={"mode": "inline"}),
             StepResult(step_id="b", instance_id="b-1", prompt="Step B.", execution={"mode": "inline"}),
@@ -49,17 +54,18 @@ class TestStepRenderer(unittest.TestCase):
 
         result = sut.render_steps(steps)
 
-        self.assertEqual(result, "FORMATTED\n\n---\n\nFORMATTED")
+        self.assertEqual(result, "FORMATTED")
+        self.assertEqual(formatter.calls, [("a-1", "Step A.", None)])
 
     def test_returns_empty_string_for_no_steps(self):
-        sut = StepRenderer(subagent_delegator=StubSubagentDelegator(), step_formatter=StubStepFormatter("x"))
+        sut = self._renderer(StubSubagentDelegator(), StubStepFormatter("x"))
 
         self.assertEqual(sut.render_steps([]), "")
 
     def test_passes_the_delegators_wrapped_body_to_the_formatter(self):
         delegator = StubSubagentDelegator(wrapped="WRAPPED")
         formatter = StubStepFormatter("FORMATTED")
-        sut = StepRenderer(subagent_delegator=delegator, step_formatter=formatter)
+        sut = self._renderer(delegator, formatter)
         step = StepResult(step_id="a", instance_id="a-1", prompt="Do it.", execution={"mode": "subagent"})
 
         sut.render_steps([step])
@@ -69,7 +75,7 @@ class TestStepRenderer(unittest.TestCase):
 
     def test_passes_the_rejection_reason_to_the_formatter(self):
         formatter = StubStepFormatter("FORMATTED")
-        sut = StepRenderer(subagent_delegator=StubSubagentDelegator(), step_formatter=formatter)
+        sut = self._renderer(StubSubagentDelegator(), formatter)
         step = StepResult(
             step_id="a", instance_id="a-1", prompt="Do it.", execution={"mode": "inline"},
             rejection_reason="bad value",
@@ -78,6 +84,23 @@ class TestStepRenderer(unittest.TestCase):
         sut.render_steps([step])
 
         self.assertEqual(formatter.calls, [("a-1", "Do it.", "bad value")])
+
+    @staticmethod
+    def _renderer(
+        delegator: StubSubagentDelegator,
+        formatter: StubStepFormatter,
+    ) -> StepRenderer:
+        return StepRenderer(
+            ready_step_selector=FirstReadyStepSelector(),
+            sibling_batch_selector=SiblingBatchStepSelector(),
+            single_step_renderer=SingleStepRenderer(
+                subagent_delegator=delegator,
+                step_formatter=formatter,
+            ),
+            batch_step_renderer=BatchStepRenderer(
+                item_renderer=BatchStepItemRenderer()
+            ),
+        )
 
 
 if __name__ == "__main__":

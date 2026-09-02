@@ -4,7 +4,7 @@ from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
-from harness.for_each_reference_parsing import ForEachReferenceParsing
+from harness.for_each_declaration_parsing import ForEachDeclarationParsing
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_input_binding import WorkflowInputBinding
@@ -22,7 +22,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
     def __init__(
         self,
         condition_parser: ConditionParsing,
-        for_each_parser: ForEachReferenceParsing,
+        for_each_parser: ForEachDeclarationParsing,
         expression_parser: WorkflowExpressionParsing,
         error_factory: FlowValidationErrorCreating,
     ) -> None:

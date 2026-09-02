@@ -67,7 +67,7 @@ class StepInstanceExpander(StepInstanceExpanding):
         )
         items = self._items_resolver.resolve(
             step.id,
-            step.for_each,
+            step.for_each.source,
             step_context,
         )
         if not items:

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Optional, Union, cast
 
+from harness.for_each_declaration import ForEachDeclaration
 from harness.output_spec import OutputSpec
 from harness.step_declaration import StepDeclaration
 from harness.step_def import StepDef
-from harness.step_output_reference import StepOutputReference
 
 
 """
@@ -23,7 +23,7 @@ class StepBuilder:
             prompt=cast(str, declaration.prompt or ""),
             depends_on=cast(list[str], declaration.depends_on or []),
             outputs=cast(list[OutputSpec], declaration.outputs or []),
-            for_each=cast(Optional[StepOutputReference], declaration.for_each),
+            for_each=cast(Optional[ForEachDeclaration], declaration.for_each),
             condition=declaration.condition,
             type=cast(str, declaration.type),
             mode=cast(Optional[str], declaration.mode),

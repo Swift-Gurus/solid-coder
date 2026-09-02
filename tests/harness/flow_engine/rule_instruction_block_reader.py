@@ -1,5 +1,7 @@
 """Reads canonical instruction blocks for rule-migration parity tests."""
 
+from __future__ import annotations
+
 
 """
 solid-name: RuleInstructionBlockReader
@@ -8,6 +10,26 @@ solid-spec: [SPEC-039]
 solid-description: Extracts authored detection and exception bodies for workflow migration parity assertions.
 """
 class RuleInstructionBlockReader:
+    def definition(
+        self,
+        content: str,
+        metric_id: str,
+        name: str,
+    ) -> str | None:
+        named_opening = f'<definition id="{metric_id}" name="{name}">'
+        unnamed_opening = f'<definition id="{metric_id}">'
+        if named_opening in content:
+            opening = named_opening
+        elif unnamed_opening in content:
+            opening = unnamed_opening
+        else:
+            return None
+        return self._body(
+            content,
+            opening,
+            "definition",
+        )
+
     def detection(self, content: str, metric_id: str, name: str) -> str:
         named_opening = f'<detection id="{metric_id}" name="{name}">'
         opening = (

@@ -40,8 +40,6 @@ class ClaudeLiveSessionRunner(LiveSessionRunning):
                 "json",
                 "--model",
                 request.model,
-                "--mcp-config",
-                request.mcp_config,
                 "--allowedTools",
                 request.allowed_tools,
                 "--plugin-dir",

@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
+from harness.dynamic_workflow_materialization import DynamicWorkflowMaterialization
 from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
-from harness.for_each_items_resolving import ForEachItemsResolving
+from harness.dynamic_workflow_materializing import DynamicWorkflowMaterializing
 from harness.group_dependency_expanding import GroupDependencyExpanding
-from harness.include_alias_group import IncludeAliasGroup
-from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
-from harness.include_group_readiness_checking import IncludeGroupReadinessChecking
-from harness.included_workflow_steps_resolving import IncludedWorkflowStepsResolving
-from harness.models import FlowDef, RunState, StepDef
+from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -25,16 +20,10 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
 
     def __init__(
         self,
-        dynamic_checker: IncludeGroupDynamicChecking,
-        readiness_checker: IncludeGroupReadinessChecking,
-        items_resolver: ForEachItemsResolving,
-        included_steps_resolver: IncludedWorkflowStepsResolving,
+        materializer: DynamicWorkflowMaterializing,
         group_dependency_expander: GroupDependencyExpanding,
     ) -> None:
-        self._dynamic_checker = dynamic_checker
-        self._readiness_checker = readiness_checker
-        self._items_resolver = items_resolver
-        self._included_steps_resolver = included_steps_resolver
+        self._materializer = materializer
         self._group_dependency_expander = group_dependency_expander
 
     def resolve(
@@ -42,53 +31,28 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
         flow: FlowDef,
         run_state: RunState,
         context: WorkflowRunContext,
-    ) -> list[StepDef]:
-        dynamic_groups = [
-            group
-            for group in flow.alias_groups
-            if self._dynamic_checker.is_dynamic(group)
-        ]
-        dynamic_member_ids = {
-            member_id
-            for group in dynamic_groups
-            for member_id in group.member_ids
-        }
+    ) -> DynamicWorkflowMaterialization:
+        materialization = self._materializer.materialize(
+            flow,
+            run_state,
+            context,
+        )
         resolved_steps = [
-            step for step in flow.steps if step.id not in dynamic_member_ids
+            step
+            for step in flow.steps
+            if step.id not in materialization.authored_member_ids
         ]
-        materialized_groups: list[IncludeAliasGroup] = []
-        for group in dynamic_groups:
-            if not self._readiness_checker.is_ready(group, run_state):
-                continue
-            templates = [
-                step for step in flow.steps if step.id in group.member_ids
-            ]
-            items = (
-                self._items_resolver.resolve(
-                    group.alias,
-                    group.for_each,
-                    context,
-                )
-                if group.for_each is not None
-                else [None]
-            )
-            materialized_steps: list[StepDef] = []
-            for iteration_index, item in enumerate(items):
-                materialized_steps.extend(
-                    self._included_steps_resolver.resolve(
-                        group,
-                        templates,
-                        iteration_index,
-                        item,
-                        context,
-                    )
-                )
-            resolved_steps.extend(materialized_steps)
-            materialized_groups.append(replace(
-                group,
-                member_ids=[step.id for step in materialized_steps],
-            ))
-        return self._group_dependency_expander.expand(
-            resolved_steps,
-            materialized_groups,
+        resolved_steps.extend(materialization.steps)
+        return DynamicWorkflowMaterialization(
+            steps=self._group_dependency_expander.expand(
+                resolved_steps,
+                materialization.groups,
+            ),
+            groups=[
+                group
+                for group in flow.alias_groups
+                if group.alias not in materialization.authored_group_aliases
+            ] + materialization.groups,
+            authored_group_aliases=materialization.authored_group_aliases,
+            authored_member_ids=materialization.authored_member_ids,
         )

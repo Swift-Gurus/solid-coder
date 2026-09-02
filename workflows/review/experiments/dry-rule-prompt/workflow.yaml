@@ -1,0 +1,135 @@
+id: dry-rule-prompt
+name: DRY Rule Prompt Experiment
+description: Uses deterministic repository search and two model-facing steps for all DRY classifications, observations, and exceptions.
+max_turns: 8
+
+steps:
+  - id: generate_terms
+    prompt: |
+      Generate semantic search terms for reviewed unit `{{params.review_unit.target.name}}` from its source already visible in this session. Return individual one-word synonyms or name components that may identify existing code with the same responsibility. Do not inspect files, invent paths, classify candidates, count findings, or decide severity.
+    outputs:
+      - name: generated_terms
+        type: data
+        schema:
+          type: array
+          minItems: 1
+          items: {type: string, minLength: 1, pattern: "^[^\\s,;]+$"}
+
+  - id: prepare_query
+    type: operation
+    operation: source.prepare_search_query
+    depends_on: [generate_terms]
+    with:
+      target: "{{params.review_unit.target}}"
+      generated_terms: "{{steps.generate_terms.outputs.generated_terms}}"
+
+  - id: search_repository
+    type: operation
+    operation: source.search
+    depends_on: [prepare_query]
+    with:
+      queries: "{{steps.prepare_query.outputs.queries}}"
+      excluded_units: "{{steps.prepare_query.outputs.excluded_units}}"
+      context: "{{params.source_context}}"
+      included_file_extensions: "{{steps.prepare_query.outputs.included_file_extensions}}"
+
+  - id: present_candidates
+    type: operation
+    operation: source.present_search
+    depends_on: [search_repository]
+    with:
+      candidates: "{{steps.search_repository.outputs.candidates}}"
+      files_scanned: "{{steps.search_repository.outputs.files_scanned}}"
+
+  - id: assess_dry
+    depends_on: [present_candidates]
+    prompt: |
+      Complete every DRY candidate classification, all three measurements, and the exception decision for unit `{{params.review_unit.target.name}}`. Its source is already visible in this session. Return every field required by the output schema.
+
+      Select only promising summaries below. Read every selected path with your normal file-reading tool before classifying it. Return an empty `candidate_assessments` array when no summary warrants inspection. Never classify a candidate you did not read.
+
+      For every inspected candidate make two independent decisions:
+      - Reuse: EXACT, EXTENSIBLE, PARTIAL, or NOT_SUITABLE.
+      - Duplication: IDENTICAL, STRUCTURAL, SIMILAR, or NOT_DUPLICATE.
+
+      IDENTICAL or STRUCTURAL requires cited executable statements from concrete implementation bodies on both sides. Similar names, responsibilities, declarations, signatures, and protocol/conformer relationships are not implementation duplication. A conformer is not a reusable replacement for its protocol.
+
+      DRY-1 `reuse_misses`: count candidate reuse decisions classified EXACT or EXTENSIBLE that were not reused.
+      DRY-2 `duplicate_sites`: count every within-unit implementation location participating in an IDENTICAL or STRUCTURAL repeated logical sequence, plus deduplicated candidate locations classified IDENTICAL or STRUCTURAL. Do not count pairs, declarations, signatures, SIMILAR results, or infer duplication from reuse.
+      DRY-3 `missing_abstractions`: count reusable behavioral, construction, UI-composition, or data-flow patterns that remain embedded in domain code and could reasonably serve another part of the codebase.
+
+      Exclude intentionally specialized domain behavior, intentionally independent configuration/constants, and protocol default implementations. Mark the entire unit as an exception only when every apparent DRY finding is exempt.
+
+      Candidate summaries:
+      {{steps.present_candidates.outputs.text}}
+    outputs:
+      - name: candidate_assessments
+        type: data
+        schema:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [path, unit, reuse, duplication]
+            properties:
+              path: {type: string, minLength: 1}
+              unit: {type: string, minLength: 1}
+              reuse:
+                type: object
+                additionalProperties: false
+                required: [classification, reasoning, evidence]
+                properties:
+                  classification: {type: string, enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]}
+                  reasoning: {type: string, minLength: 1}
+                  evidence: {type: string, minLength: 1}
+              duplication:
+                type: object
+                additionalProperties: false
+                required: [classification, reasoning, evidence]
+                properties:
+                  classification: {type: string, enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]}
+                  reasoning: {type: string, minLength: 1}
+                  evidence: {type: string, minLength: 1}
+      - name: reuse_misses
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: &audit
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: duplicate_sites
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: *audit
+      - name: missing_abstractions
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: *audit
+      - name: exception
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_exception, additional_info]
+          properties:
+            is_exception: {type: boolean}
+            additional_info: *audit

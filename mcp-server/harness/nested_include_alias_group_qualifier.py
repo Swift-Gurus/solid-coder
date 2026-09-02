@@ -29,6 +29,11 @@ class NestedIncludeAliasGroupQualifier(IncludeAliasGroupQualifying):
         return replace(
             group,
             alias=f"{alias}.{group.alias}",
+            owner_alias=(
+                f"{alias}.{group.owner_alias}"
+                if group.owner_alias is not None
+                else None
+            ),
             member_ids=[f"{alias}.{member}" for member in group.member_ids],
             depends_on=[
                 self._identity.qualify(

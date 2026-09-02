@@ -1,0 +1,63 @@
+id: research
+name: Brainstorm with user
+description: Workflow to research something.
+max_turns: 3
+
+
+steps:
+  - id: spec-description
+    prompt: |
+      Ask user of the spec workflow, work back and force to create a proper description
+      Problem statement
+      Context
+    outputs:
+      - name: description
+        type: data
+        schema:
+          type: string
+      - name: problem
+        type: data
+        schema:
+          type: string
+      - name: context
+        type: data
+        schema:
+          type: string
+
+  - id: ask-user-stories
+    prompt: |
+      Work with the user back and forth to create independently actionable user
+      stories for spec-driven development, represented as Jira tickets.
+      Write every story as "As a <role>, I want to <capability>, so that <benefit>."
+      Express every acceptance criterion as a concrete Given/When/Then scenario.
+    outputs:
+      - name: jira-tickets
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [issue-type, summary, user-story, acceptance-criteria]
+            properties:
+              issue-type:
+                type: string
+                const: Story
+              summary:
+                type: string
+                minLength: 1
+              user-story:
+                type: string
+                pattern: '^As a .+, I want to .+, so that .+\.$'
+              acceptance-criteria:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [scenario, given, when, then]
+                  properties:
+                    scenario: {type: string, minLength: 1}
+                    given: {type: string, minLength: 1}
+                    when: {type: string, minLength: 1}
+                    then: {type: string, minLength: 1}

@@ -1,0 +1,144 @@
+id: isp-single-prompt
+name: ISP Single Prompt Experiment
+description: Uses deterministic conformer discovery and one model-facing step for every ISP observation and exception decision.
+max_turns: 6
+
+steps:
+  - id: prepare_conformer_query
+    type: operation
+    operation: source.prepare_search_query
+    with:
+      target: "{{params.review_unit.target}}"
+      generated_terms: "{{params.review_unit.target.deterministic_terms}}"
+
+  - id: search_conformers
+    type: operation
+    operation: source.search
+    depends_on: [prepare_conformer_query]
+    with:
+      queries: "{{steps.prepare_conformer_query.outputs.queries}}"
+      excluded_units: "{{steps.prepare_conformer_query.outputs.excluded_units}}"
+      context: "{{params.source_context}}"
+      included_file_extensions: "{{steps.prepare_conformer_query.outputs.included_file_extensions}}"
+
+  - id: present_conformers
+    type: operation
+    operation: source.present_search
+    depends_on: [search_conformers]
+    with:
+      candidates: "{{steps.search_conformers.outputs.candidates}}"
+      files_scanned: "{{steps.search_conformers.outputs.files_scanned}}"
+
+  - id: assess_isp
+    depends_on: [present_conformers]
+    prompt: |
+      Review protocol `{{params.review_unit.target.name}}` from the source already visible in this session. Complete the protocol inventory, inspected conformer assessments, all three ISP measurements, and exception decision before responding. Return every field required by the output schema.
+
+      1. List only requirements declared directly by this protocol, including methods, properties, and associated types. Record visible protocol-extension defaults separately.
+      2. Use the candidate summaries below to choose plausible conformers or default providers. Read every selected path with your normal file-reading tool before classifying it. Do not invent candidates or source.
+      3. Classify an inspected candidate as CONFORMER, DEFAULT_PROVIDER, or NOT_RELEVANT. For every CONFORMER, return one MEANINGFUL, EMPTY, STUB, DELEGATED, or MISSING implementation record for every declared requirement.
+      4. ISP-1 `width`: number of directly declared requirements.
+      5. ISP-2 `min_coverage`: minimum integer percentage of MEANINGFUL or DELEGATED requirements across conformers. One conformer means 100% with an unable-to-verify note. A default implementation satisfies a requirement when the conformer does not override it.
+      6. ISP-3 `cohesion_groups`: build a binary implementation vector per requirement in declared order, using 1 for MEANINGFUL or DELEGATED and 0 otherwise. Requirements with identical vectors form one group; return the number of distinct vectors.
+
+      Whole-rule exceptions include non-protocol units, zero-requirement marker protocols, compliant compositions of narrow protocols, framework-constrained @objc protocols, and test-only protocols. Single-conformer and default-implementation rules adjust ISP-2 but do not exempt ISP-1 or ISP-3.
+
+      Candidate summaries:
+      {{steps.present_conformers.outputs.text}}
+    outputs:
+      - name: requirements
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, evidence]
+            properties:
+              name: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: default_implementations
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [requirement, evidence]
+            properties:
+              requirement: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: candidate_assessments
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [path, classification, name, implementations, default_implementations, evidence]
+            properties:
+              path: {type: string, minLength: 1}
+              classification: {type: string, enum: [CONFORMER, DEFAULT_PROVIDER, NOT_RELEVANT]}
+              name: {type: string, minLength: 1}
+              implementations:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [requirement, classification, evidence]
+                  properties:
+                    requirement: {type: string, minLength: 1}
+                    classification: {type: string, enum: [MEANINGFUL, EMPTY, STUB, DELEGATED, MISSING]}
+                    evidence: {type: string, minLength: 1}
+              default_implementations:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [requirement, evidence]
+                  properties:
+                    requirement: {type: string, minLength: 1}
+                    evidence: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: width
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: &audit
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: min_coverage
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0, maximum: 100}
+            additional_info: *audit
+      - name: cohesion_groups
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: *audit
+      - name: exception
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_exception, additional_info]
+          properties:
+            is_exception: {type: boolean}
+            additional_info: *audit

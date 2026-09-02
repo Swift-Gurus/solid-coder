@@ -11,15 +11,15 @@ steps:
     type: metric
     metric_id: CS-1
     prompt: |
+      Static functions, class methods, or module-level functions used to hold or split
+      business logic across a type — not constants, not a build-system DSL.
+
       Count static or class methods that contain business logic (branching, construction,
       transformation). Exclude pure constants and build-system DSL files.
 
       Return the count with reasoning and precise source evidence.
 
-      File:
-      ```
-      {{params.review_unit}}
-      ```
+      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -32,15 +32,15 @@ steps:
     type: metric
     metric_id: CS-2
     prompt: |
+      Count of distinct class or struct definitions in a single source file, excluding
+      private extensions that exist solely to support the file's primary type.
+
       Count top-level class and struct declarations in the file. Private extensions
       scoped to the file's primary type do not count as separate types.
 
       Return the count with reasoning and precise source evidence.
 
-      File:
-      ```
-      {{params.review_unit}}
-      ```
+      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -53,15 +53,14 @@ steps:
     type: metric
     metric_id: CS-3
     prompt: |
+      Count of class, struct, interface, or enum definitions declared inside a function or method body rather than at module/file scope.
+
       Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
       Count each such declaration. Anonymous functions/lambdas do not count.
 
       Return the count with reasoning and precise source evidence.
 
-      File:
-      ```
-      {{params.review_unit}}
-      ```
+      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -75,7 +74,4 @@ steps:
     prompt: |
       This rule has no rule-wide exception categories. Metric-specific exclusions are already authored in CS-1, CS-2, and CS-3 and must be applied while measuring those metrics. Return `is_exception: false` with reasoning and evidence confirming that no separate rule-wide exception was applied.
 
-      File:
-      ```
-      {{params.review_unit}}
-      ```
+      Apply this exception decision to file `{{params.review_unit.target.name}}`, whose source and preceding measurements are already visible in the current model session.

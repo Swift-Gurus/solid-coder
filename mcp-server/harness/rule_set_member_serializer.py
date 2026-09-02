@@ -24,10 +24,18 @@ class RuleSetMemberSerializer(RuleSetMemberSerializing):
         if runtime.depends_on:
             result["depends_on"] = list(runtime.depends_on)
         if runtime.for_each is not None:
-            result["for_each"] = {
-                "step_id": runtime.for_each.step_id,
-                "output_name": runtime.for_each.output_name,
+            for_each: dict[str, object] = {
+                "source": {
+                    "step_id": runtime.for_each.source.step_id,
+                    "output_name": runtime.for_each.source.output_name,
+                },
+                "mode": runtime.for_each.mode.value,
             }
+            if runtime.for_each.label is not None:
+                for_each["label"] = {
+                    "value": runtime.for_each.label.value,
+                }
+            result["for_each"] = for_each
         if runtime.input_bindings:
             result["with"] = {
                 binding.name: f"{{{{{binding.expression.value}}}}}"

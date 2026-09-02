@@ -1,0 +1,134 @@
+id: ocp-single-prompt
+name: OCP Single Prompt Experiment
+description: Collects every OCP analysis, metric observation, and exception decision in one model-facing step.
+max_turns: 3
+
+steps:
+  - id: assess_ocp
+    prompt: |
+      Review every supplied unit from the source already visible in this session. For each listed unit, complete the dependency inventory, testability analysis, all three OCP measurements, and the exception decision before responding. Return every field required by the output schema.
+
+      Dependency analysis:
+      1. List every behavioral dependency used through properties, parameters, or calls to external types. Data carriers used only as inputs or outputs are not behavioral dependencies.
+      2. Classify each dependency as ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, or INDIRECT.
+      3. Record whether each dependency matches an authored exception, whether its concrete type can be instantiated or subclassed, and precise reasoning and evidence.
+      4. Record whether the reviewed unit contains hardcoded behavior-selection logic.
+
+      OCP-1 — sealed variation points:
+      Count DIRECT_NON_INJECTED dependencies that are not exceptions. A sealed variation point is a place where adding behavior or swapping an implementation requires modifying the reviewed unit rather than extending it.
+
+      Testability analysis:
+      For every DIRECT_INJECTED or INDIRECT dependency, classify it as UNTESTABLE only when it is concrete, is not already behind an abstraction, and its type can neither be substituted nor subclassed. Otherwise classify it as TESTABLE. Any non-final class can be subclassed. Use NOT_APPLICABLE for every other dependency retained as supporting evidence.
+
+      OCP-2 — untestable dependencies:
+      Count UNTESTABLE decisions from the testability analysis.
+
+      OCP-3 — testable direct dependencies:
+      Count DIRECT_INJECTED dependencies that are not exceptions and whose testability decision is TESTABLE.
+
+      Whole-unit exceptions:
+      1. Factories or builders whose primary responsibility is constructing or composing an object graph.
+      2. Dependency-free units with no hardcoded behavior-selection logic.
+      3. Pure data structures with no business logic, runtime collaborators, or side effects.
+      4. Boundary adapters wrapping truly static-only external APIs that cannot be instantiated or subclassed.
+      5. Pure UI views without business-logic dependencies.
+      6. Test code, mocks, stubs, fakes, fixtures, and test helpers.
+
+      A dependency-level exception does not make the entire reviewed unit a pure data structure. When the dependency list is empty and hardcoded behavior-selection is false, the dependency-free exception is satisfied and `exception.is_exception` MUST be true.
+    outputs:
+      - name: dependencies
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, classification, is_exception, can_instantiate, can_subclass, reasoning, evidence]
+            properties:
+              name: {type: string, minLength: 1}
+              classification:
+                type: string
+                enum: [ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, INDIRECT]
+              is_exception: {type: boolean}
+              can_instantiate: {type: boolean}
+              can_subclass: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: has_hardcoded_behavior_selection
+        type: data
+        schema: {type: boolean}
+      - name: testability
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, classification, reasoning, evidence]
+            properties:
+              name: {type: string, minLength: 1}
+              classification:
+                type: string
+                enum: [TESTABLE, UNTESTABLE, NOT_APPLICABLE]
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: sealed_variation_points
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: untestable_dependencies
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: testable_direct_count
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: exception
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_exception, additional_info]
+          properties:
+            is_exception: {type: boolean}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}

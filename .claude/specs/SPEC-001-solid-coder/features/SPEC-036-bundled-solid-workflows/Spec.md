@@ -4,7 +4,7 @@ feature: bundled-solid-workflows
 type: feature
 status: in-progress
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042]
 blocking: []
 ---
 
@@ -33,6 +33,9 @@ As a developer, I want one stable `solid-review` workflow so review behavior is 
 - It accepts the sealed review-target contract from SPEC-041 and normalizes every variant into one review-input model before rule selection.
 - It reviews SRP, OCP, LSP, ISP, and DRY using explicit metric procedures and schema-validated outputs; server-side scoring remains authoritative.
 - Each required metric is represented by an independently completable/validatable step or subflow output, so a model cannot silently omit a metric in a single holistic response.
+- The reviewed source is supplied to the configured model once as session context before workflow execution. Normalized files, units, source snapshots, applicability data, tags, and evidence remain MCP-owned execution state used for deterministic rule selection and validation.
+- Model-facing rule prompts contain authored detection instructions, a stable file or unit identity, and the required output contract. They must not serialize normalized review objects or repeat source text already present in the model session.
+- Dependent rule steps may instruct the model to use analysis it previously submitted, while MCP resolves and validates the typed dependency internally. Prior typed outputs must not be rendered back into later model prompts.
 - Per-principle results are aggregated only after every required principle output is present and valid.
 - A client package declaring `id: solid-review` is rejected as a catalog collision; bundled workflow behavior cannot be replaced implicitly.
 
@@ -145,7 +148,7 @@ sequenceDiagram
 
 ## Test Plan
 
-Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for one prospective buffer target. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
+Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for prospective text and persisted file targets. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, applies the singular project review policy before rule materialization, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
 
 - Validate every bundled package and every workflow-ID include without starting an LLM.
 - Normalize and run working-tree, file, files, folder, Git-range/PR, buffer, and code-block targets through the same `solid-review` package.
@@ -154,13 +157,16 @@ Current implementation boundary: `solid-review` and reusable `solid-file-review`
 - Run `solid-gate-on-write` through the real pre-write hook for compliant and violating buffers; assert allow/deny, run completion, and recorded evidence.
 - Run test-support, mock, fixture, and test-only composition buffers through `solid-gate-on-write`; assert deterministic test tags, applicable exceptions, and persisted reasoning/evidence before removing the temporary `tests/**` exclusion.
 - Assert the gate invokes no direct `HealthPromptBuilder` review path.
-- Assert prepared candidate code appears once in the bootstrap prompt and all subsequent instructions come from flow results.
+- Assert prepared candidate code appears exactly once in the initial model message and never appears in `flow_start` or `flow_next` results.
+- Assert every model-facing rule step identifies its selected file/unit without rendering normalized review objects, applicability metadata, tags, source snapshots, or prior typed outputs.
 - Force malformed output, timeout, and runner failure; assert fail-closed behavior and preserved run diagnostics.
 - Assert model-facing gate tools expose no persistence-path parameter, every generated search/finding/fix artifact remains beneath the engine-owned run directory, and no artifact is written beneath the repository working directory.
 - Run two gate workflows concurrently and assert each MCP operation resolves only its bound run context; missing, stale, and cross-run context identifiers are rejected without writing artifacts.
 - Attempt to publish a client package under each bundled public ID and prove catalog construction rejects every collision.
 - Run `solid-refactor` and assert both initial and verification review groups resolve from `solid-review`.
 - Repeat the same fixed fixture/model profile through gate and review workflows; compare metric accuracy, tokens, and elapsed time from complete runs.
+- Every accuracy, token, cost, and elapsed-time comparison must enter through the real public review boundary used in production. Workflow measurements start `solid-review`, supply a normalized target, and select the tested rule through project policy; legacy measurements call the real principle-scoped health checker. Direct child-rule starts and directly addressed experimental workflows are protocol diagnostics only and are invalid as end-to-end comparison evidence.
+- Defer the one-principle phased-versus-aggregated prompt-shape experiment until both prompt shapes can be selected behind the same `solid-review` entry chain with identical normalization, policy, MCP registration, output limits, artifact capture, and terminal scoring. Both arms must use the same isolated fixture, locked observations, model profile, and scoring authority.
 - Persist every comparison run under the established test artifact root with model profile, target hash, effective workflow/rule hashes, expected and observed metrics, applicability and exception decisions, retry/error state, elapsed time, token usage, reported cost availability/value, transcript, flow events, and normalized review results.
 
 ### Invalid Comparison Evidence Requiring a Controlled Rerun

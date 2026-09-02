@@ -23,10 +23,7 @@ steps:
 
       Analyze every dependency once. Preserve whether it is excepted, whether its concrete type can be instantiated or subclassed, and the source evidence supporting each decision. Also record whether the unit contains hardcoded behavior-selection logic.
 
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
+      Apply this analysis to unit `{{params.review_unit.target.name}}`. Its source is already visible in the current model session.
     outputs:
       - name: analysis
         type: data
@@ -58,9 +55,11 @@ steps:
     metric_id: OCP-1
     depends_on: [analyze_dependencies]
     prompt: |
+      A "sealed variation point" is a place where adding a new behavior or swapping an implementation requires modifying this class instead of extending it.
+
       Count dependencies classified as DIRECT_NON_INJECTED that are not exceptions. This count is the total sealed variation points. Do not rediscover or reclassify dependencies.
 
-      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+      Use the dependency analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
@@ -80,7 +79,7 @@ steps:
 
       Do not rediscover dependencies. Return one testability classification for every DIRECT_INJECTED or INDIRECT dependency from the shared analysis. Use NOT_APPLICABLE for every other dependency retained as supporting evidence.
 
-      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+      Use the dependency analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     outputs:
       - name: testability
         type: data
@@ -103,10 +102,11 @@ steps:
     metric_id: OCP-2
     depends_on: [analyze_testability]
     prompt: |
+      A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+
       Count UNTESTABLE decisions from the shared testability analysis. Do not rediscover dependencies or revise the classifications.
 
-      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
-      Shared testability analysis: {{steps.analyze_testability.outputs.testability}}
+      Use the dependency and testability analyses you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
@@ -120,10 +120,11 @@ steps:
     metric_id: OCP-3
     depends_on: [analyze_testability]
     prompt: |
+      A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+
       Count dependencies classified as DIRECT_INJECTED in the shared dependency analysis that are not exceptions and whose corresponding testability decision is TESTABLE. Pure-data dependencies and every other typed exception remain excluded. Do not rediscover dependencies or revise the classifications.
 
-      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
-      Shared testability analysis: {{steps.analyze_testability.outputs.testability}}
+      Use the dependency and testability analyses you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
@@ -163,9 +164,4 @@ steps:
 
       Mandatory first branch: when the shared dependency analysis has an empty `dependencies` array and `has_hardcoded_behavior_selection` is false, the dependency-free exception is satisfied and you MUST return `is_exception: true`. Evaluate the remaining exceptions only when that branch does not match.
 
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
-
-      Shared dependency analysis: {{steps.analyze_dependencies.outputs.analysis}}
+      Classify unit `{{params.review_unit.target.name}}` using its source and the dependency analysis you previously submitted; do not rediscover or revise that analysis.

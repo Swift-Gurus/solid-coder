@@ -40,9 +40,9 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
             self._target_validator.validate(
                 target=ForEachValidationTarget(
                     target_id=step.id,
-                    source_reference=step.for_each,
+                    source_reference=step.for_each.source,
                     source_step_id=self._source_identity_resolver.resolve(
-                        step.for_each.step_id,
+                        step.for_each.source.step_id,
                         ForEachSourceIdentityScope(member_ids=[step.id]),
                         alias_groups or [],
                     ),
@@ -56,9 +56,9 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
             self._target_validator.validate(
                 target=ForEachValidationTarget(
                     target_id=group.alias,
-                    source_reference=group.for_each,
+                    source_reference=group.for_each.source,
                     source_step_id=self._source_identity_resolver.resolve(
-                        group.for_each.step_id,
+                        group.for_each.source.step_id,
                         ForEachSourceIdentityScope(
                             member_ids=group.member_ids,
                             excluded_aliases=[group.alias],

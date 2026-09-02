@@ -22,21 +22,21 @@ class ValidateCandidateSelectionInput(BaseModel):
     def validate_selected_identities(self) -> "ValidateCandidateSelectionInput":
         for selection_index, selection in enumerate(self.selections):
             if any(
-                accepted.source_identity == selection.source_identity
-                and accepted.unit_identity == selection.unit_identity
+                accepted.path == selection.path
+                and accepted.unit == selection.unit
                 for accepted in self.selections[:selection_index]
             ):
                 raise ValueError(
-                    "Candidate selection contains duplicate identity "
-                    f"'{selection.source_identity}#{selection.unit_identity}'"
+                    "Candidate selection contains duplicate reference "
+                    f"'{selection.path}#{selection.unit}'"
                 )
             if not any(
-                candidate.source_identity == selection.source_identity
-                and candidate.unit_identity == selection.unit_identity
+                str(candidate.path) == selection.path
+                and candidate.unit == selection.unit
                 for candidate in self.candidates
             ):
                 raise ValueError(
-                    "Candidate selection contains unknown identity "
-                    f"'{selection.source_identity}#{selection.unit_identity}'"
+                    "Candidate selection contains unknown reference "
+                    f"'{selection.path}#{selection.unit}'"
                 )
         return self

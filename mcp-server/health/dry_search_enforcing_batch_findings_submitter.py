@@ -26,7 +26,14 @@ class DrySearchEnforcingBatchFindingsSubmitter(BatchSubmissionHandling):
         parse_result: BatchSubmissionParseResult,
     ) -> dict:
         status = self._completion.status(output_dir)
-        if status is DrySearchCompletionStatus.MISSING:
+        requires_dry_search = any(
+            principle.label.casefold() == "dry"
+            for principle in parse_result.submission.principles
+        )
+        if (
+            requires_dry_search
+            and status is DrySearchCompletionStatus.MISSING
+        ):
             return {
                 "error": "dry_search_required",
                 "message": (

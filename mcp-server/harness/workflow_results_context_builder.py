@@ -50,6 +50,11 @@ class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
                     results.append(envelope.value)
             aliases.append(WorkflowContextValue(
                 name=group.alias,
-                value=WorkflowAliasResults(entries=results),
+                value=WorkflowAliasResults(
+                    authored_alias=group.authored_alias,
+                    owner_alias=group.owner_alias,
+                    runtime_owner_instance_id=group.runtime_owner_instance_id,
+                    entries=results,
+                ),
             ))
         return WorkflowContextValues(entries=aliases)

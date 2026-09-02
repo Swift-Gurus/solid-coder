@@ -16,6 +16,11 @@ class ClaudeTestBase(LiveTestBase):
 
     MODEL_PROFILE: ClassVar[str] = "claude"
     FLOW_START_TOOL: ClassVar[str] = "flow_start"
+    FLOW_NEXT_TOOL: ClassVar[str] = "flow_next"
+    ALLOWED_FLOW_TOOLS: ClassVar[str] = (
+        "mcp__plugin_solid-coder_flow-engine__flow_start,"
+        "mcp__plugin_solid-coder_flow-engine__flow_next"
+    )
 
     def live_session_runner(self) -> LiveSessionRunning:
         return ClaudeLiveSessionRunner()

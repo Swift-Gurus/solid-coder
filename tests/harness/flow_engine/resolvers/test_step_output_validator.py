@@ -67,7 +67,7 @@ class TestStepOutputValidator(unittest.TestCase):
 
         errors = sut.validate([_instance("greet")], {"greet-1": {"greeting": 123}}, flow_def)
 
-        self.assertEqual(errors, ["greet-1.greeting: not a string"])
+        self.assertEqual(errors, ["greeting: not a string"])
 
     def test_non_object_instance_outputs_reports_clean_shape_error_without_crashing(self):
         sut = _validator()
@@ -76,7 +76,7 @@ class TestStepOutputValidator(unittest.TestCase):
         errors = sut.validate([_instance("greet")], {"greet-1": "just a string"}, flow_def)
 
         self.assertEqual(len(errors), 1)
-        self.assertIn("greet-1", errors[0])
+        self.assertNotIn("greet-1", errors[0])
         self.assertIn("must be an object", errors[0])
 
     def test_missing_instance_id_defaults_to_empty_object(self):

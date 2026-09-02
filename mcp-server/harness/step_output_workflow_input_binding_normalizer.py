@@ -45,6 +45,20 @@ class StepOutputWorkflowInputBindingNormalizer(
             )
         except StepOutputReferenceSyntaxError:
             return binding
+        owner_group = next(
+            (
+                candidate
+                for candidate in all_groups
+                if candidate.alias == group.owner_alias
+            ),
+            None,
+        )
+        if (
+            owner_group is not None
+            and f"{owner_group.alias}.{reference.step_id}"
+            in owner_group.member_ids
+        ):
+            return binding
         source_id = self._source_identity.resolve(
             reference.step_id,
             ForEachSourceIdentityScope(

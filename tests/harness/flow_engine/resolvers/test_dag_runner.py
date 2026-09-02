@@ -12,12 +12,15 @@ from typing import List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.builtin_attribute_reader import BuiltinAttributeReader
+from harness.batch_step_presentation_builder import BatchStepPresentationBuilder
+from harness.batch_step_presentation_resolver import BatchStepPresentationResolver
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
 from harness.dag_runner import DAGRunner
 from harness.expression_resolver import ExpressionResolver
 from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.filter_resolver import FilterResolver
+from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_items_resolver import ForEachItemsResolver
 from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
@@ -30,6 +33,7 @@ from harness.step_dependency_checker import StepDependencyChecker
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_instance_builder import StepInstanceBuilder
 from harness.step_instance_expander import StepInstanceExpander
+from harness.step_for_each_declaration_resolver import StepForEachDeclarationResolver
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
@@ -42,6 +46,9 @@ from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import (
+    WorkflowResultsVisibilitySelector,
+)
 
 
 _CONTEXT_BUILDER = RunContextBuilder(
@@ -74,6 +81,9 @@ def _make_runner() -> DAGRunner:
         expression_evaluator=unfiltered_resolver,
         filter_resolver=FilterResolver(),
     )
+    context_resolver = WorkflowStepContextResolver(
+        WorkflowResultsVisibilitySelector()
+    )
     return DAGRunner(
         readiness_checker=StepReadinessChecker(
             status_checker=StepStatusChecker(),
@@ -85,14 +95,18 @@ def _make_runner() -> DAGRunner:
                     error_factory
                 ),
             ),
-            context_resolver=WorkflowStepContextResolver(),
+            context_resolver=context_resolver,
             instance_builder=StepInstanceBuilder(
                 renderer=Interpolator(
                     evaluator=resolver,
                     value_renderer=ScalarTemplateValueRenderer(),
                 ),
-                context_resolver=WorkflowStepContextResolver(),
+                context_resolver=context_resolver,
                 operation_inputs_resolver=UnexpectedOperationInputsResolver(),
+                batch_presentation_resolver=BatchStepPresentationResolver(
+                    declaration_resolver=StepForEachDeclarationResolver(),
+                    presentation_builder=BatchStepPresentationBuilder(resolver),
+                ),
             ),
         ),
     )
@@ -110,12 +124,17 @@ class TestDAGRunner(unittest.TestCase):
         self,
         sid: str,
         depends_on: Optional[List[str]] = None,
-        for_each: Optional[StepOutputReference] = None,
+        for_each: Optional[ForEachDeclaration] = None,
     ) -> StepDef:
         return StepDef(id=sid, prompt=f"Do {sid}", depends_on=depends_on or [], for_each=for_each)
 
-    def _for_each(self, step_id: str, output_name: str) -> StepOutputReference:
-        return StepOutputReference(step_id=step_id, output_name=output_name)
+    def _for_each(self, step_id: str, output_name: str) -> ForEachDeclaration:
+        return ForEachDeclaration(
+            source=StepOutputReference(
+                step_id=step_id,
+                output_name=output_name,
+            )
+        )
 
     def _state(self, completed: Optional[List[str]] = None, turn_count: int = 0) -> RunState:
         return RunState(

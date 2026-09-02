@@ -126,6 +126,7 @@ class TestOutputRecorder(unittest.TestCase):
             instance_id="workflow-instance-7",
             source_index=0,
             source_item="Alpha.swift",
+            owner_instance_id="parent-workflow-instance-3",
             steps=IncludedWorkflowStepIdentities(entries=[
                 IncludedWorkflowStepIdentity(
                     declaration_id="review.inspect",
@@ -151,6 +152,10 @@ class TestOutputRecorder(unittest.TestCase):
 
         completion = appender.events[0][2]
         self.assertEqual(completion["workflow_instance_id"], "workflow-instance-7")
+        self.assertEqual(
+            completion["parent_workflow_instance_id"],
+            "parent-workflow-instance-3",
+        )
         self.assertEqual(completion["local_step_id"], "inspect")
 
     def _for_each_instances(self) -> list[StepInstance]:

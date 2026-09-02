@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict
 
-from review.buffer_review_target import BufferReviewTarget
+from source.analyze_source_input import AnalysisSource
 
 
 """
@@ -14,4 +14,4 @@ solid-description: Selects the explicit target normalized before review-rule mat
 class PrepareReviewInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    target: BufferReviewTarget
+    target: AnalysisSource

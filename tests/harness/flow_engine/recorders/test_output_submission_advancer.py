@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.batch_step_output_submission_mapper import BatchStepOutputSubmissionMapper
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef, RunState, StepDef, StepInstance, ValidationResult
 from harness.output_submission_advancer import OutputSubmissionAdvancer
@@ -93,6 +94,7 @@ class OutputSubmissionAdvancerFactory:
             session_reader=self.session_reader,
             output_recorder=self.output_recorder,
             turn_advancer=self.turn_advancer,
+            submission_mapper=BatchStepOutputSubmissionMapper(),
         )
 
 
@@ -146,6 +148,32 @@ class TestOutputSubmissionAdvancer(unittest.TestCase):
         outcome = factory.make_sut().submit("events.jsonl", Path("/runs"), "run-1", [instance], {}, _flow_def())
 
         self.assertIsNone(outcome.run_state)
+        self.assertEqual(factory.output_recorder.calls, [])
+
+    def test_rejects_submitted_instance_that_is_not_currently_ready(self):
+        instance = StepInstance(step_id="a", instance_id="a-1", item=None, prompt="p")
+        factory = OutputSubmissionAdvancerFactory()
+
+        outcome = factory.make_sut().submit(
+            "events.jsonl",
+            Path("/runs"),
+            "run-1",
+            [instance],
+            {"future-1": {"value": 1}},
+            _flow_def(),
+        )
+
+        self.assertIsNone(outcome.run_state)
+        self.assertEqual(
+            outcome.terminal,
+            FlowNextResult(
+                status="ready",
+                error=(
+                    "Rejected: step instance 'future-1' is not currently ready. "
+                    "Submit only an id returned by the latest flow_start or flow_next response."
+                ),
+            ),
+        )
         self.assertEqual(factory.output_recorder.calls, [])
 
 

@@ -14,6 +14,13 @@
       ],
       "cwd": "."
     },
+    "solid-coder-flow-engine": {
+      "command": "python3",
+      "args": [
+        "mcp-server/flow_engine/server.py"
+      ],
+      "cwd": "."
+    },
     "solid-coder-specs": {
       "command": "python3",
       "args": [

@@ -13,7 +13,7 @@ from harness.step_output_submission_collecting import StepOutputSubmissionCollec
 solid-name: StepOutputValidator
 solid-category: service
 solid-spec: [SPEC-031, SPEC-039]
-solid-description: Coordinates output-container checking, named submission collection, and schema validation.
+solid-description: Validates submitted workflow-step outputs against their declared output shapes and schemas.
 """
 class StepOutputValidator:
 
@@ -45,12 +45,8 @@ class StepOutputValidator:
                 submission.value,
             )
             if not result.ok:
-                identity = (
-                    f"{submission.instance_id}."
-                    f"{submission.specification.name}"
-                )
                 errors.extend(
-                    f"{identity}: {error}"
+                    f"{submission.specification.name}: {error}"
                     for error in result.errors
                 )
         return errors

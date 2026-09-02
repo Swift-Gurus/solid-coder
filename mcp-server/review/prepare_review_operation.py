@@ -5,7 +5,6 @@ from source.analyze_source_input import AnalyzeSourceInput
 from source.resolved_source_analyzing import ResolvedSourceAnalyzing
 from source.search_target_granularity import SearchTargetGranularity
 from source.source_search_targets_builder import SourceSearchTargetsBuilder
-from source.text_analysis_source import TextAnalysisSource
 from review.normalized_review_file_builder import NormalizedReviewFileBuilder
 from review.normalized_review_input import NormalizedReviewInput
 from review.prepare_review_input import PrepareReviewInput
@@ -34,14 +33,8 @@ class PrepareReviewOperation:
         self,
         operation_input: PrepareReviewInput,
     ) -> NormalizedReviewInput:
-        target = operation_input.target
         source = self._source_resolver.resolve(
-            AnalyzeSourceInput(
-                source=TextAnalysisSource(
-                    text=target.content,
-                    virtual_path=str(target.path),
-                )
-            )
+            AnalyzeSourceInput(source=operation_input.target)
         )
         analysis = self._analyzer.analyze(source)
         file_targets = self._targets.build(

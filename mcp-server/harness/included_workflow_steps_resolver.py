@@ -68,10 +68,12 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             instance_id=instance_prefix,
             source_index=iteration_index,
             source_item=item,
+            owner_instance_id=group.runtime_owner_instance_id,
             condition=group.condition,
             inputs=child_inputs,
             steps=step_identities,
             rule_workflow=group.rule_workflow,
+            for_each=group.for_each,
         )
         return [
             replace(

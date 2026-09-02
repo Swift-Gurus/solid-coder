@@ -305,7 +305,7 @@ class TestHealthPromptBuilder(unittest.TestCase):
 
     def test_dry_search_instructions_include_query_and_output_directory(self):
         prompt = self.builder.build(
-            [],
+            [{"name": "dry"}],
             "code",
             "/src/Foo.swift",
             "",

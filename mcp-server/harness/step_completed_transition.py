@@ -34,6 +34,9 @@ class StepCompletedTransition:
             state.setdefault("included_workflow_completions", []).append(
                 IncludedWorkflowStepCompletion(
                     workflow_instance_id=completion_event.workflow_instance_id,
+                    parent_workflow_instance_id=(
+                        completion_event.parent_workflow_instance_id
+                    ),
                     local_step_id=completion_event.local_step_id,
                     execution_step_id=step_id,
                     instance_id=completion_event.instance_id,

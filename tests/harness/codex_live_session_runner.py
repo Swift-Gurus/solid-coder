@@ -7,12 +7,15 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
+from codex_transcript_token_usage_reader import CodexTranscriptTokenUsageReader
 from live_session_artifact_directory_creator import LiveSessionArtifactDirectoryCreator
 from live_session_request import LiveSessionRequest
 from live_session_result import LiveSessionResult
 from live_session_running import LiveSessionRunning
+from review_comparison_stage_evidence import ReviewComparisonStageEvidence
 
 
 """
@@ -36,18 +39,21 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         )
         codex_home = Path(tempfile.mkdtemp(prefix="solid-coder-live-codex-home-"))
         result_path = artifact_directory / "last-message.txt"
+        execution_elapsed_seconds: float | None = None
         try:
             self._write_config(codex_home, request.plugin_root)
             self._link_auth(codex_home)
             environment = os.environ.copy()
             environment["CODEX_HOME"] = str(codex_home)
             self._install_plugin(request, environment, artifact_directory)
+            execution_started = time.monotonic()
             event_stream = self._execute(
                 request,
                 environment,
                 result_path,
                 artifact_directory,
             )
+            execution_elapsed_seconds = time.monotonic() - execution_started
             if not result_path.exists():
                 raise RuntimeError("Codex session returned no final output")
             return LiveSessionResult(
@@ -61,6 +67,11 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             ) from error
         finally:
             self._preserve_runtime(codex_home, artifact_directory)
+            if execution_elapsed_seconds is not None:
+                self._write_execution_evidence(
+                    artifact_directory,
+                    execution_elapsed_seconds,
+                )
             shutil.rmtree(codex_home, ignore_errors=True)
 
     def _read_session_id(self, event_stream: str) -> str:
@@ -123,7 +134,6 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         result_path: Path,
         artifact_directory: Path,
     ) -> str:
-        pipeline_server = request.plugin_root / "mcp-server" / "pipeline" / "server.py"
         process = subprocess.run(
             [
                 "codex",
@@ -134,10 +144,6 @@ class CodexLiveSessionRunner(LiveSessionRunning):
                 "--skip-git-repo-check",
                 "--model",
                 request.model,
-                "-c",
-                'mcp_servers.pipeline.command="python3"',
-                "-c",
-                f"mcp_servers.pipeline.args=[{json.dumps(str(pipeline_server))}]",
                 "--output-last-message",
                 str(result_path),
                 "-",
@@ -173,3 +179,26 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         for database in codex_home.glob("state_*.sqlite*"):
             runtime_artifacts.mkdir(parents=True, exist_ok=True)
             shutil.copy2(database, runtime_artifacts / database.name)
+
+    def _write_execution_evidence(
+        self,
+        artifact_directory: Path,
+        elapsed_seconds: float,
+    ) -> None:
+        transcripts = sorted(
+            (
+                artifact_directory
+                / "codex-runtime"
+                / "sessions"
+            ).rglob("*.jsonl")
+        )
+        if not transcripts:
+            raise RuntimeError("Codex session preserved no rollout transcript")
+        evidence = ReviewComparisonStageEvidence(
+            elapsed_seconds=elapsed_seconds,
+            token_usage=CodexTranscriptTokenUsageReader().read(transcripts[-1]),
+        )
+        (artifact_directory / "full-run-evidence.json").write_text(
+            evidence.model_dump_json(indent=2),
+            encoding="utf-8",
+        )

@@ -19,6 +19,9 @@ from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import (
+    WorkflowResultsVisibilitySelector,
+)
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,11 @@ class StubRenderer:
 class UnexpectedOperationInputsResolver:
     def resolve(self, operation, context):
         raise AssertionError("This fixture does not declare an operation step")
+
+
+class NoBatchPresentationResolver:
+    def resolve(self, step, context):
+        return None
 
 
 """
@@ -93,13 +101,17 @@ class TestStepInstanceExpander(unittest.TestCase):
             ),
             workflow_instance=workflow_instance,
         )
+        context_resolver = WorkflowStepContextResolver(
+            WorkflowResultsVisibilitySelector()
+        )
         sut = StepInstanceExpander(
             items_resolver=StubItemsResolver(),
-            context_resolver=WorkflowStepContextResolver(),
+            context_resolver=context_resolver,
             instance_builder=StepInstanceBuilder(
                 renderer=StubRenderer(),
-                context_resolver=WorkflowStepContextResolver(),
+                context_resolver=context_resolver,
                 operation_inputs_resolver=UnexpectedOperationInputsResolver(),
+                batch_presentation_resolver=NoBatchPresentationResolver(),
             ),
         )
 

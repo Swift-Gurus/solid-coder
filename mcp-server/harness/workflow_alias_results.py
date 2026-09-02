@@ -15,6 +15,9 @@ solid-description: Provides one consistently shaped ordered results collection f
 """
 @dataclass(frozen=True)
 class WorkflowAliasResults:
+    authored_alias: str
+    owner_alias: str | None
+    runtime_owner_instance_id: str | None
     entries: list[WorkflowResultEnvelope] = field(default_factory=list)
 
     @property

@@ -24,6 +24,9 @@ from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import (
+    WorkflowResultsVisibilitySelector,
+)
 
 
 @dataclass
@@ -79,7 +82,7 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
             delegate=delegate,
             condition_applier=StepConditionApplier(
                 evaluator,
-                WorkflowStepContextResolver(),
+                WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
             ),
         )
         step = StepDef(
@@ -118,7 +121,7 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
             delegate=delegate,
             condition_applier=StepConditionApplier(
                 evaluator,
-                WorkflowStepContextResolver(),
+                WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
             ),
         )
         item = {"file_extension": ".swift"}

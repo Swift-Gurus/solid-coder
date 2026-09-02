@@ -5,10 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from harness.attempt_failure_handling import AttemptFailureHandling
+from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef, StepInstance
 from harness.output_recording import OutputRecording
 from harness.session_id_reading import SessionIdReading
 from harness.step_handler_resolving import StepHandlerResolving
+from harness.step_output_submission_mapping import StepOutputSubmissionMapping
 from harness.submission_outcome import SubmissionOutcome
 from harness.turn_advancing import TurnAdvancing
 
@@ -28,12 +30,14 @@ class OutputSubmissionAdvancer:
         session_reader: SessionIdReading,
         output_recorder: OutputRecording,
         turn_advancer: TurnAdvancing,
+        submission_mapper: StepOutputSubmissionMapping,
     ) -> None:
         self._step_handler_resolver = step_handler_resolver
         self._attempt_failure_handler = attempt_failure_handler
         self._session_reader = session_reader
         self._output_recorder = output_recorder
         self._turn_advancer = turn_advancer
+        self._submission_mapper = submission_mapper
 
     def submit(
         self,
@@ -44,6 +48,26 @@ class OutputSubmissionAdvancer:
         step_outputs: dict,
         flow_def: FlowDef,
     ) -> SubmissionOutcome:
+        mapping = self._submission_mapper.map(ready, step_outputs)
+        if mapping.error is not None:
+            return SubmissionOutcome(
+                terminal=FlowNextResult(status="ready", error=mapping.error)
+            )
+        step_outputs = mapping.outputs
+        ready_ids = {instance.instance_id for instance in ready}
+        non_current_ids = sorted(set(step_outputs) - ready_ids)
+        if non_current_ids:
+            submitted_id = non_current_ids[0]
+            return SubmissionOutcome(
+                terminal=FlowNextResult(
+                    status="ready",
+                    error=(
+                        f"Rejected: step instance '{submitted_id}' is not currently ready. "
+                        "Submit only an id returned by the latest flow_start or flow_next response."
+                    ),
+                )
+            )
+
         step_map = {step.id: step for step in flow_def.steps}
         addressed = [instance for instance in ready if instance.instance_id in step_outputs]
         valid_instances: list[StepInstance] = []

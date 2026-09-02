@@ -6,6 +6,8 @@ from typing import Optional
 
 from harness.agent_step_shape_validator import AgentStepShapeValidator
 from harness.authored_workflow_outputs import AuthoredWorkflowOutputs
+from harness.batch_step_presentation_builder import BatchStepPresentationBuilder
+from harness.batch_step_presentation_resolver import BatchStepPresentationResolver
 from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.command_allowlist_resolving import CommandAllowlistResolving
@@ -27,6 +29,12 @@ from harness.data_output_validator import DataOutputValidator
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.directed_graph_factory import DirectedGraphFactory
 from harness.dynamic_workflow_steps_resolver import DynamicWorkflowStepsResolver
+from harness.dynamic_include_group_hierarchy_resolver import (
+    DynamicIncludeGroupHierarchyResolver,
+)
+from harness.dynamic_workflow_materialization_builder import (
+    DynamicWorkflowMaterializationBuilder,
+)
 from harness.dynamic_include_alias_groups_assembler import (
     DynamicIncludeAliasGroupsAssembler,
 )
@@ -48,6 +56,7 @@ from harness.flow_engine_assembly import FlowEngineAssembly
 from harness.flow_loader import FlowLoader
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.for_each_collection_validator import ForEachCollectionValidator
+from harness.for_each_declaration_parser import ForEachDeclarationParser
 from harness.for_each_items_resolver import ForEachItemsResolver
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.for_each_reference_validator import ForEachReferenceValidator
@@ -65,6 +74,7 @@ from harness.include_group_membership_resolver import IncludeGroupMembershipReso
 from harness.include_group_dynamic_checker import IncludeGroupDynamicChecker
 from harness.include_group_opacity_validator import IncludeGroupOpacityValidator
 from harness.include_group_readiness_checker import IncludeGroupReadinessChecker
+from harness.include_group_templates_selector import IncludeGroupTemplatesSelector
 from harness.include_alias_group_for_each_normalizer import (
     IncludeAliasGroupForEachNormalizer,
 )
@@ -75,6 +85,9 @@ from harness.include_resolver_factory import IncludeResolverFactory
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
+from harness.hierarchical_dynamic_workflow_materializer import (
+    HierarchicalDynamicWorkflowMaterializer,
+)
 from harness.incoming_edge_checker import IncomingEdgeChecker
 from harness.included_workflow_dependencies_resolver import (
     IncludedWorkflowDependenciesResolver,
@@ -89,6 +102,9 @@ from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_declaration_decoder import MetricDeclarationDecoder
+from harness.materialized_workflow_instances_collector import (
+    MaterializedWorkflowInstancesCollector,
+)
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
@@ -105,6 +121,9 @@ from harness.output_schema_prompt_annotator import OutputSchemaPromptAnnotator
 from harness.output_schema_reference_resolver import OutputSchemaReferenceResolver
 from harness.output_schema_resolver import OutputSchemaResolver
 from harness.output_validating import OutputValidating
+from harness.owned_include_dependencies_rebaser import (
+    OwnedIncludeDependenciesRebaser,
+)
 from harness.path_builder import PathBuilder
 from harness.path_checking import PathChecker
 from harness.prompt_content_resolver import PromptContentResolver
@@ -112,6 +131,16 @@ from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
 from harness.registered_template_value_renderer import RegisteredTemplateValueRenderer
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.nested_include_group_runtime_rebaser import (
+    NestedIncludeGroupRuntimeRebaser,
+)
+from harness.recursive_dynamic_include_group_expander import (
+    RecursiveDynamicIncludeGroupExpander,
+)
+from harness.recursive_dynamic_include_group_materializer import (
+    RecursiveDynamicIncludeGroupMaterializer,
+)
+from harness.runtime_include_identity_qualifier import RuntimeIncludeIdentityQualifier
 from harness.pydantic_operation_output_specs_resolver import (
     PydanticOperationOutputSpecsResolver,
 )
@@ -141,6 +170,7 @@ from harness.rule_workflow_validation_scope_validator import (
     RuleWorkflowValidationScopeValidator,
 )
 from harness.rule_match_validator import RuleMatchValidator
+from harness.review_policy_loading import ReviewPolicyLoading
 from harness.schema_resolving import SchemaResolver
 from harness.schema_validator import SchemaValidator
 from harness.scalar_template_value_renderer import ScalarTemplateValueRenderer
@@ -161,6 +191,9 @@ from harness.step_graph_validator import StepGraphValidator
 from harness.step_identity_resolver import StepIdentityResolver
 from harness.step_instance_expander import StepInstanceExpander
 from harness.step_instance_builder import StepInstanceBuilder
+from harness.step_for_each_declaration_resolver import (
+    StepForEachDeclarationResolver,
+)
 from harness.step_prompt_augmenter import StepPromptAugmenter
 from harness.step_readiness_checker import StepReadinessChecker
 from harness.step_shape_validator import StepShapeValidator
@@ -201,6 +234,9 @@ from harness.workflow_resource_path_classifier import WorkflowResourcePathClassi
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import (
+    WorkflowResultsVisibilitySelector,
+)
 from scoring.yaml_config_file_loader import YamlConfigFileLoader
 from scoring.yaml_loader import PyYamlLoader
 from json_serializer import JsonSerializer
@@ -219,6 +255,7 @@ class FlowEngineAssemblyFactory:
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
         workflow_catalog_resolver: Optional[WorkflowCatalogResolving] = None,
         operation_registry: Optional[OperationRegistrationResolving] = None,
+        review_policy_loader: Optional[ReviewPolicyLoading] = None,
     ) -> FlowEngineAssembly:
         allowlist_resolver = command_allowlist_resolver or CommandAllowlistResolver()
         catalog_resolver = workflow_catalog_resolver or WorkflowCatalogFactory().make()
@@ -295,9 +332,13 @@ class FlowEngineAssemblyFactory:
             expression_parser=workflow_expression_parser,
             reference_parser=step_output_reference_parser,
         )
+        for_each_declaration_parser = ForEachDeclarationParser(
+            reference_parser=for_each_reference_parser,
+            expression_parser=workflow_expression_parser,
+        )
         include_runtime_parser = WorkflowIncludeRuntimeParser(
             condition_parser=condition_parser,
-            for_each_parser=for_each_reference_parser,
+            for_each_parser=for_each_declaration_parser,
             expression_parser=workflow_expression_parser,
             error_factory=error_factory,
         )
@@ -384,6 +425,7 @@ class FlowEngineAssemblyFactory:
             subflow_reference_factory=subflow_reference_factory,
             output_parser=workflow_output_parser,
             error_factory=error_factory,
+            review_policy_loader=review_policy_loader,
         ).make()
         step_resources_factory = ResolvedStepResourcesFactory()
         step_resources_applier = ResolvedStepResourcesApplier()
@@ -438,7 +480,7 @@ class FlowEngineAssemblyFactory:
                         ),
                         condition_parser=condition_parser,
                         for_each_parser=IncludeAliasGroupForEachParser(
-                            for_each_reference_parser
+                            for_each_declaration_parser
                         ),
                         rule_workflow_decoder=PydanticModelDecoder(
                             model_type=IncludedRuleWorkflow,
@@ -466,7 +508,7 @@ class FlowEngineAssemblyFactory:
                 ),
                 step_mapper=StepDeclarationFactory(
                     condition_parser=condition_parser,
-                    for_each_parser=for_each_reference_parser,
+                    for_each_parser=for_each_declaration_parser,
                     rule_step_contract_resolver=RuleStepContractResolver(
                         metric_decoder=MetricDeclarationDecoder(
                             PydanticModelDecoder(
@@ -609,18 +651,46 @@ class FlowEngineAssemblyFactory:
         input_bindings_resolver = WorkflowInputBindingsResolver(
             evaluator=expression_resolver,
         )
+        workflow_step_context_resolver = WorkflowStepContextResolver(
+            results_selector=WorkflowResultsVisibilitySelector()
+        )
+        included_step_identity_resolver = IncludedWorkflowStepIdentityResolver()
+        runtime_identity_qualifier = RuntimeIncludeIdentityQualifier(
+            included_step_identity_resolver
+        )
+        owned_dependency_rebaser = OwnedIncludeDependenciesRebaser(
+            runtime_identity_qualifier
+        )
         dynamic_step_resolver = DynamicWorkflowStepsResolver(
-            dynamic_checker=dynamic_group_checker,
-            readiness_checker=IncludeGroupReadinessChecker(dependency_checker),
-            items_resolver=items_resolver,
-            included_steps_resolver=IncludedWorkflowStepsResolver(
-                input_resolver=input_bindings_resolver,
-                identity_resolver=IncludedWorkflowStepIdentityResolver(),
-                dependency_resolver=IncludedWorkflowDependenciesResolver(),
+            materializer=HierarchicalDynamicWorkflowMaterializer(
+                hierarchy_resolver=DynamicIncludeGroupHierarchyResolver(
+                    dynamic_group_checker
+                ),
+                group_expander=RecursiveDynamicIncludeGroupExpander(
+                    group_materializer=RecursiveDynamicIncludeGroupMaterializer(
+                        readiness_checker=IncludeGroupReadinessChecker(
+                            dependency_checker
+                        ),
+                        items_resolver=items_resolver,
+                        included_steps_resolver=IncludedWorkflowStepsResolver(
+                            input_resolver=input_bindings_resolver,
+                            identity_resolver=included_step_identity_resolver,
+                            dependency_resolver=IncludedWorkflowDependenciesResolver(),
+                        ),
+                        runtime_rebaser=NestedIncludeGroupRuntimeRebaser(
+                            identity=runtime_identity_qualifier,
+                            dependency_rebaser=owned_dependency_rebaser,
+                        ),
+                        context_resolver=workflow_step_context_resolver,
+                        template_selector=IncludeGroupTemplatesSelector(),
+                        instance_collector=MaterializedWorkflowInstancesCollector(),
+                        dependency_rebaser=owned_dependency_rebaser,
+                    )
+                ),
+                result_builder=DynamicWorkflowMaterializationBuilder(),
             ),
             group_dependency_expander=group_dependency_expander,
         )
-        workflow_step_context_resolver = WorkflowStepContextResolver()
         return FlowEngineAssembly(
             flow_loader=flow_loader,
             event_appender=event_appender,
@@ -640,6 +710,18 @@ class FlowEngineAssemblyFactory:
                             context_resolver=workflow_step_context_resolver,
                             operation_inputs_resolver=OperationInputsResolver(
                                 input_bindings_resolver
+                            ),
+                            batch_presentation_resolver=(
+                                BatchStepPresentationResolver(
+                                    declaration_resolver=(
+                                        StepForEachDeclarationResolver()
+                                    ),
+                                    presentation_builder=(
+                                        BatchStepPresentationBuilder(
+                                            expression_resolver
+                                        )
+                                    ),
+                                )
                             ),
                         ),
                         condition_applier=StepConditionApplier(

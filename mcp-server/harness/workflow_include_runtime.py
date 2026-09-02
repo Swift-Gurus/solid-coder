@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
-from harness.step_output_reference import StepOutputReference
+from harness.for_each_declaration import ForEachDeclaration
 from harness.workflow_input_binding import WorkflowInputBinding
 
 
@@ -18,6 +18,6 @@ solid-description: Carries group-level dependencies, iteration, input bindings, 
 @dataclass(frozen=True)
 class WorkflowIncludeRuntime:
     depends_on: list[str] = field(default_factory=list)
-    for_each: StepOutputReference | None = None
+    for_each: ForEachDeclaration | None = None
     input_bindings: list[WorkflowInputBinding] = field(default_factory=list)
     condition: ConditionDeclaration | None = None

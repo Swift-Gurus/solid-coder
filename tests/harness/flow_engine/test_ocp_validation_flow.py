@@ -96,7 +96,7 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
         final_severity="SEVERE",
     )
 
-    def test_dependency_analysis_is_shared_by_every_ocp_metric(self) -> None:
+    def test_dependency_analysis_is_reused_without_prompt_reserialization(self) -> None:
         started = self._start()
 
         self.assertEqual(
@@ -130,12 +130,14 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
                 "classify_exception",
             },
         )
-        self.assertTrue(
-            all(
-                "OCP_SHARED_ANALYSIS_EVIDENCE" in step.prompt
-                for step in dependency_analysis.steps
-            )
-        )
+        self.assertTrue(all(
+            "OCP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
+            for step in dependency_analysis.steps
+        ))
+        self.assertTrue(all(
+            "previously submitted" in step.prompt
+            for step in dependency_analysis.steps
+        ))
         exception_step = next(
             step for step in dependency_analysis.steps
             if step.step_id == "classify_exception"
@@ -175,11 +177,11 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
         }
         self.assertIn("untestable_dependencies", downstream)
         self.assertIn("testable_direct_count", downstream)
-        self.assertIn(
+        self.assertNotIn(
             "OCP_SHARED_TESTABILITY_EVIDENCE",
             downstream["untestable_dependencies"],
         )
-        self.assertIn(
+        self.assertNotIn(
             "OCP_SHARED_TESTABILITY_EVIDENCE",
             downstream["testable_direct_count"],
         )

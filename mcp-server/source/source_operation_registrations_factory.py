@@ -5,6 +5,7 @@ from typing import Callable
 
 from harness.operation_registration import OperationRegistration
 from hooks.pathlib_extractor import PathlibExtractor
+from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
 from source.analyze_source_input import AnalyzeSourceInput
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
@@ -20,6 +21,7 @@ from source.prepare_search_targets_operation_factory import (
     PrepareSearchTargetsOperationFactory,
 )
 from source.prepare_search_targets_output import PrepareSearchTargetsOutput
+from source.present_source_search_operation import PresentSourceSearchOperation
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_operation_factory import (
     ReadSourceCandidatesOperationFactory,
@@ -30,6 +32,7 @@ from source.source_analysis_operation_factory import SourceAnalysisOperationFact
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
+from source.source_search_presentation import SourceSearchPresentation
 from source.search_target_granularity import SearchTargetGranularity
 from source.validate_candidate_selection_input import (
     ValidateCandidateSelectionInput,
@@ -90,6 +93,15 @@ class SourceOperationRegistrationsFactory:
                 handler=SourceSearchOperationFactory().make(
                     self._project_directory,
                     SearchTargetGranularity.UNIT,
+                ),
+            ),
+            OperationRegistration(
+                name="source.present_search",
+                input_model=SourceSearchOutput,
+                output_model=SourceSearchPresentation,
+                handler=PresentSourceSearchOperation(
+                    renderer=CodebaseSearchOutputRenderer(),
+                    project_directory=self._project_directory,
                 ),
             ),
             OperationRegistration(

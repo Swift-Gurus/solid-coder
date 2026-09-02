@@ -32,6 +32,12 @@ _HC_COMPLIANT_METRICS: dict = {
 }
 
 
+"""
+solid-name: PromptBuilding
+solid-category: abstraction
+solid-description: Contract for constructing one model-facing health-check prompt from selected principles and source context.
+solid-tags: [hook, llm]
+"""
 class PromptBuilding(Protocol):
     def build(
         self,
@@ -43,6 +49,12 @@ class PromptBuilding(Protocol):
     ) -> str: ...
 
 
+"""
+solid-name: HealthPromptBuilder
+solid-category: service
+solid-description: Assembles model-facing health-check instructions for the principles selected by a source request.
+solid-tags: [hook, llm]
+"""
 class HealthPromptBuilder(BasePromptBuilder):
     """Assembles the LLM health-check prompt from detection rules and file content."""
 
@@ -65,8 +77,22 @@ class HealthPromptBuilder(BasePromptBuilder):
             p["content"] for p in principles if p.get("content")
         )
         batch_example = self._make_batch_example(principles, output_dir)
+        has_dry = any(
+            principle.get("name", "").casefold() == "dry"
+            for principle in principles
+        )
+        dry_search_step = (
+            self._read("dry-search.md")
+            if has_dry
+            else ""
+        )
         workflow = (
             self._read("workflow.md")
+            .replace("{dry_search_step}", dry_search_step)
+            .replace(
+                "{submission_predecessor}",
+                "step 2" if has_dry else "step 1",
+            )
             .replace("{file_path}", path)
             .replace("{output_dir}", output_dir)
             .replace("{submit_batch_example}", batch_example)

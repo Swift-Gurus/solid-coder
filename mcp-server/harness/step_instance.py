@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
+from harness.batch_step_presentation import BatchStepPresentation
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.step_outputs import StepOutputs
 from harness.step_skip import StepSkip
@@ -26,6 +27,7 @@ class StepInstance:
     automatic_outputs: StepOutputs | None = None
     skip: StepSkip | None = None
     workflow_instance: IncludedWorkflowInstance | None = None
+    batch: Optional[BatchStepPresentation] = None
 
     @property
     def is_for_each(self) -> bool:

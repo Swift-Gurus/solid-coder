@@ -5,16 +5,23 @@ from typing import Callable
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.flow_run_orchestrating import FlowRunOrchestrating
+from harness.mcp_request_context_project_directory_reader import (
+    McpRequestContextProjectDirectoryReader,
+)
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from hc_config_schema import load_config
-from hook_utils import _resolve_project_root
+from hook_utils import solid_coder_project_dir
 from message_transport_running import MessageTransportRunning
 from pipeline.flow_run_creating import FlowRunCreating
 from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
 from solid_coder_config import SolidCoderConfig
+from session.session_project_context_path_resolver import (
+    SessionProjectContextPathResolver,
+)
+from session.session_project_directory_reader import SessionProjectDirectoryReader
 from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
@@ -39,18 +46,30 @@ class FlowRunCreator(FlowRunCreating):
 
     def create(self, transport: MessageTransportRunning) -> FlowRunOrchestrating:
         flow_engine_config = self._config_loader().flow_engine
+        session_reader = McpRequestContextSessionReader(
+            call_meta_provider=transport
+        )
+        project_directory_reader = McpRequestContextProjectDirectoryReader(
+            session_reader=session_reader,
+            session_project_directory=SessionProjectDirectoryReader(
+                SessionProjectContextPathResolver().resolve
+            ).read,
+        )
         return FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(),
-            plugin_root=self._plugin_root,
-            session_reader=McpRequestContextSessionReader(
-                call_meta_provider=transport
+            base_dir_resolver=RunsBaseDirResolver(
+                project_dir_fn=lambda: solid_coder_project_dir(
+                    project_directory_reader.read()
+                )
             ),
+            plugin_root=self._plugin_root,
+            project_directory=project_directory_reader.read,
+            session_reader=session_reader,
             session_delegate_max_workers=(
                 flow_engine_config.max_parallel_sessions
             ),
             operation_registrations=[
                 *SourceOperationRegistrationsFactory(
-                    project_directory=_resolve_project_root,
+                    project_directory=project_directory_reader.read,
                 ).make(),
                 *ReviewOperationRegistrationsFactory().make(),
             ],

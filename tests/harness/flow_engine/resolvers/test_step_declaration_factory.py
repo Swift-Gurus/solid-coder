@@ -17,6 +17,9 @@ from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
+from harness.for_each_declaration import ForEachDeclaration
+from harness.for_each_declaration_parser import ForEachDeclarationParser
+from harness.for_each_mode import ForEachMode
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_declaration import MetricDeclaration
@@ -52,9 +55,12 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     ),
                 ),
             ),
-            for_each_parser=ForEachReferenceParser(
+            for_each_parser=ForEachDeclarationParser(
+                reference_parser=ForEachReferenceParser(
+                    expression_parser=WorkflowExpressionParser(),
+                    reference_parser=StepOutputReferenceParser(),
+                ),
                 expression_parser=WorkflowExpressionParser(),
-                reference_parser=StepOutputReferenceParser(),
             ),
             rule_step_contract_resolver=RuleStepContractResolver(
                 metric_decoder=MetricDeclarationDecoder(
@@ -79,7 +85,31 @@ class TestStepDeclarationFactory(unittest.TestCase):
 
         self.assertEqual(
             declaration.for_each,
-            StepOutputReference(step_id="load", output_name="units"),
+            ForEachDeclaration(
+                source=StepOutputReference(
+                    step_id="load",
+                    output_name="units",
+                ),
+            ),
+        )
+
+    def test_maps_batch_for_each_to_a_typed_declaration(self):
+        declaration = self.sut.map(
+            {
+                "id": "review",
+                "prompt": "Review every supplied unit",
+                "for_each": {
+                    "source": "{{steps.load.outputs.units}}",
+                    "mode": "batch",
+                    "label": "{{item.target.name}}",
+                },
+            }
+        )
+
+        self.assertEqual(declaration.for_each.mode, ForEachMode.BATCH)
+        self.assertEqual(
+            declaration.for_each.label,
+            WorkflowExpression(value="item.target.name"),
         )
 
     def test_maps_when_to_a_typed_condition_declaration(self):

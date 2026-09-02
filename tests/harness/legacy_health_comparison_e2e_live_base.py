@@ -13,11 +13,14 @@ import unittest
 from pathlib import Path
 from typing import ClassVar
 
+from pydantic import TypeAdapter
+
 _HARNESS = Path(__file__).resolve().parent
+_FLOW_ENGINE = _HARNESS / "flow_engine"
 _PROJECT_ROOT = _HARNESS.parents[1]
 _MCP_SERVER = _PROJECT_ROOT / "mcp-server"
 _MCP_HEALTH = _MCP_SERVER / "health"
-for _directory in (_HARNESS, _MCP_SERVER, _MCP_HEALTH):
+for _directory in (_HARNESS, _FLOW_ENGINE, _MCP_SERVER, _MCP_HEALTH):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
@@ -38,6 +41,13 @@ from live_session_artifact_directory_creator import (  # noqa: E402
 )
 from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_test_base import LiveTestBase  # noqa: E402
+from live_rule_validation_expectation import (  # noqa: E402
+    LiveRuleValidationExpectation,
+)
+from findings.mcp_batch_submission_builder import (  # noqa: E402
+    McpBatchSubmissionBuilder,
+)
+from findings.review_violation import ReviewViolation  # noqa: E402
 from model_profile_environment import model_profile_environment  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from review_comparison_run_evidence import (  # noqa: E402
@@ -61,6 +71,10 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
     __test__ = False
 
     MODEL_PROFILE: ClassVar[str] = "codex"
+    ARTIFACT_SCENARIO: ClassVar[str] = "legacy-smoke"
+    FIXTURE: ClassVar[Path | None] = None
+    EXPECTED_RULE: ClassVar[LiveRuleValidationExpectation | None] = None
+    EXPECTED_UNIT_NAME: ClassVar[str] = ""
     EXPECTED_RULE_IDS: ClassVar[list[str]] = [
         "code-smells",
         "dry",
@@ -70,16 +84,27 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
         "ocp",
         "srp",
     ]
+    EXPECTED_PROMPT_MARKERS: ClassVar[list[str]] = [
+        "## CODE-SMELLS",
+        "## DRY",
+        "## FRONTMATTER",
+        "## ISP",
+        "## LSP",
+        "## OCP",
+        "## SRP",
+    ]
 
     def test_legacy_health_satisfies_its_live_contract(self) -> None:
-        source_project = ReviewComparisonSourceProject.create()
+        source_project = ReviewComparisonSourceProject.create(
+            review_target_source=self.FIXTURE,
+        )
         self.addCleanup(source_project.cleanup)
         artifact_directory = LiveSessionArtifactDirectoryCreator().create(
             _PROJECT_ROOT,
             "codex",
             LiveSessionArtifactScope(
                 domain="comparison",
-                scenario="legacy-smoke",
+                scenario=self.ARTIFACT_SCENARIO,
             ),
         )
         profile = ModelProfileLoader(
@@ -106,6 +131,7 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
                     "Swift",
                     self.parent_session_id,
                     cwd=str(source_project.root),
+                    principle_names=self.EXPECTED_RULE_IDS,
                 )
             elapsed_seconds = time.monotonic() - started
             self._preserve_runtime(codex_home, artifact_directory)
@@ -130,6 +156,7 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
             json.dumps(violations or [], indent=2),
             encoding="utf-8",
         )
+        self._assert_expected_rule_output(preserved_health)
 
         submissions = CodexHealthReviewTranscriptReader().read(
             artifact_directory / "codex-runtime" / "sessions"
@@ -142,6 +169,9 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
         )
         self.assertEqual(active_rule_ids, self.EXPECTED_RULE_IDS)
         transcript = submissions[-1].transcript_path
+        instruction_prompt = self._instruction_prompt(transcript)
+        for marker in self.EXPECTED_PROMPT_MARKERS:
+            self.assertIn(marker, instruction_prompt)
         usage = CodexTranscriptTokenUsageReader().read(transcript)
         self.assertTrue(usage.available)
         review_stage = CodexReviewStageEvidenceReader().read(
@@ -194,6 +224,11 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
 
     @staticmethod
     def _instruction_hash(transcript: Path) -> str:
+        prompt = LegacyHealthComparisonE2ELiveBase._instruction_prompt(transcript)
+        return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _instruction_prompt(transcript: Path) -> str:
         for line in transcript.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -208,9 +243,76 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
             for item in payload.get("content", []):
                 prompt = item.get("text", "")
                 if "You are a SOLID code quality gate" in prompt:
-                    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+                    return prompt
         raise RuntimeError("Legacy health transcript contains no review prompt")
 
     @staticmethod
     def _sha256(path: Path) -> str:
         return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def _assert_expected_rule_output(self, health_directory: Path) -> None:
+        expectation = self.EXPECTED_RULE
+        if expectation is None:
+            return
+        output_path = (
+            health_directory
+            / expectation.workflow_id
+            / "review-output.json"
+        )
+        self.assertTrue(output_path.is_file())
+        raw_output = json.loads(output_path.read_text(encoding="utf-8"))
+        submission = McpBatchSubmissionBuilder().build({
+            expectation.workflow_id: raw_output
+        })
+        self.assertEqual(len(submission.principles), 1)
+        reviewed_files = submission.principles[0].output.files
+        self.assertEqual(len(reviewed_files), 1)
+        reviewed_units = reviewed_files[0].units
+        if self.EXPECTED_UNIT_NAME:
+            unit = next(
+                candidate
+                for candidate in reviewed_units
+                if candidate.name == self.EXPECTED_UNIT_NAME
+            )
+        else:
+            self.assertEqual(len(reviewed_units), 1)
+            unit = reviewed_units[0]
+        raw_unit = next(
+            candidate
+            for candidate in raw_output["files"][0]["units"]
+            if candidate["unit_name"] == unit.name
+        )
+        violations = TypeAdapter(tuple[ReviewViolation, ...]).validate_python(
+            raw_unit.get("violations", [])
+        )
+        principle_metrics = next(
+            metrics
+            for metrics in unit.metrics
+            if metrics.principle == expectation.workflow_id
+        )
+        for expected_metric in expectation.metrics:
+            measurement = next(
+                value
+                for value in principle_metrics.values
+                if value.name == expected_metric.step_id
+            )
+            self.assertEqual(measurement.value, expected_metric.value)
+            self.assertEqual(
+                measurement.is_exception,
+                expectation.is_exception,
+            )
+            self.assertTrue(measurement.additional_info.reasoning)
+            self.assertTrue(measurement.additional_info.evidence)
+            violation = next(
+                (
+                    candidate
+                    for candidate in violations
+                    if candidate.rule_id == expected_metric.metric_id
+                ),
+                None,
+            )
+            if expected_metric.severity == "COMPLIANT":
+                self.assertIsNone(violation)
+            else:
+                self.assertIsNotNone(violation)
+                self.assertEqual(violation.severity, expected_metric.severity)

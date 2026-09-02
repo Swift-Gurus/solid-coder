@@ -22,6 +22,7 @@ class StepCompletedEvent(BaseModel):
     iteration_index: Optional[int] = None
     workflow_source_index: Optional[int] = None
     workflow_instance_id: Optional[str] = None
+    parent_workflow_instance_id: Optional[str] = None
     local_step_id: Optional[str] = None
     item: Any = None
     parent_completed: bool = True

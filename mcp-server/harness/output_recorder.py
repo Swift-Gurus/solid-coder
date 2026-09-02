@@ -63,6 +63,11 @@ class OutputRecorder(OutputRecording):
                     if workflow_instance is not None
                     else None
                 ),
+                "parent_workflow_instance_id": (
+                    workflow_instance.owner_instance_id
+                    if workflow_instance is not None
+                    else None
+                ),
                 "local_step_id": local_step_id,
                 "item": instance.item,
                 "parent_completed": completes_parent,

@@ -35,12 +35,20 @@ class ReviewComparisonSourceProject:
         self.review_target = root / "Sources" / "ReviewTarget.swift"
 
     @classmethod
-    def create(cls) -> ReviewComparisonSourceProject:
+    def create(
+        cls,
+        review_target_source: Path | None = None,
+    ) -> ReviewComparisonSourceProject:
         temporary_directory = tempfile.TemporaryDirectory(
             prefix="solid-coder-review-comparison-"
         )
         root = Path(temporary_directory.name)
         shutil.copytree(_TEMPLATE, root, dirs_exist_ok=True)
+        if review_target_source is not None:
+            shutil.copy2(
+                review_target_source,
+                root / "Sources" / "ReviewTarget.swift",
+            )
         return cls(temporary_directory, root)
 
     def cleanup(self) -> None:

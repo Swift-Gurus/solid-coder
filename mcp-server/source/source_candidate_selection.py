@@ -15,11 +15,11 @@ NonEmptyText = Annotated[
 solid-name: SourceCandidateSelection
 solid-category: model
 solid-spec: [SPEC-039, SPEC-040]
-solid-description: Represents a selected source candidate identity with its selection rationale.
+solid-description: Carries one source-candidate selection and its rationale for further inspection.
 """
 class SourceCandidateSelection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    source_identity: NonEmptyText
-    unit_identity: NonEmptyText
+    path: NonEmptyText
+    unit: NonEmptyText
     reasoning: NonEmptyText

@@ -1,9 +1,3 @@
-"""
-solid-name: MCPServerFactory
-solid-category: service
-solid-description: Creates MCPServer instances with built-in defaults and injectable dependencies.
-"""
-
 from typing import Optional
 
 from handler_store import HandlerStore
@@ -29,6 +23,11 @@ from tools_list_handler import ToolsListHandler
 from transport_format_detector import TransportFormatDetector
 
 
+"""
+solid-name: MCPServerFactory
+solid-category: service
+solid-description: Configures an MCP endpoint for tool registration and request handling.
+"""
 class MCPServerFactory:
 
     def __init__(
@@ -43,11 +42,16 @@ class MCPServerFactory:
         self._stdin = stdin or RawStdinSource()
         self._stdout = stdout or RawStdoutSink()
 
-    def build(self, name: str, version: str = "1.0.0") -> MCPServer:
+    def build(
+        self,
+        name: str,
+        version: str = "1.0.0",
+        instructions: Optional[str] = None,
+    ) -> MCPServer:
         format_detector = TransportFormatDetector()
         tools_call_handler = ToolsCallHandler(self._handlers, ToolResultFormatter())
         dispatcher = RpcDispatcher(
-            initialize_handler=InitializeHandler(name, version),
+            initialize_handler=InitializeHandler(name, version, instructions),
             tools_list_handler=ToolsListHandler(self._metadata),
             tools_call_handler=tools_call_handler,
             response_builder=JsonRpcResponseBuilder(),

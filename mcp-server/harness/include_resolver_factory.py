@@ -1,5 +1,7 @@
 """Composes production workflow include resolution."""
 
+from __future__ import annotations
+
 from harness.catalog_rule_set_members_resolver import CatalogRuleSetMembersResolver
 from harness.condition_conjoiner import ConditionConjoiner
 from harness.condition_serializer_factory import make_condition_serializer
@@ -7,6 +9,7 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_cycle_guard import IncludeCycleGuard
 from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
+from harness.include_group_dynamic_checker import IncludeGroupDynamicChecker
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_step_appender import IncludeStepAppender
@@ -22,7 +25,10 @@ from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_building import PathBuilding
 from harness.path_canonicalizer import PathCanonicalizer
 from harness.path_include_source_resolver import PathIncludeSourceResolver
+from harness.policy_rule_set_members_resolver import PolicyRuleSetMembersResolver
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.review_policy_loading import ReviewPolicyLoading
+from harness.rule_enablement_resolver import RuleEnablementResolver
 from harness.rule_match_condition_compiler import RuleMatchConditionCompiler
 from harness.rule_selection_condition_compiler import RuleSelectionConditionCompiler
 from harness.rule_set_include_reference import RuleSetIncludeReference
@@ -65,6 +71,7 @@ class IncludeResolverFactory:
         subflow_reference_factory: WorkflowResourceReferenceCreating,
         output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
+        review_policy_loader: ReviewPolicyLoading | None = None,
     ) -> None:
         self._file_loader = file_loader
         self._resource_loader = resource_loader
@@ -75,12 +82,31 @@ class IncludeResolverFactory:
         self._subflow_reference_factory = subflow_reference_factory
         self._output_parser = output_parser
         self._error_factory = error_factory
+        self._review_policy_loader = review_policy_loader
 
     def make(self) -> IncludeResolver:
+        catalog_rule_members = CatalogRuleSetMembersResolver(
+            catalog_resolver=self._catalog_resolver,
+            match_compiler=RuleMatchConditionCompiler(
+                RuleSelectionConditionCompiler()
+            ),
+            condition_conjoiner=ConditionConjoiner(),
+            runtime_adapters=RuleScopeRuntimeAdapterResolverFactory().make(),
+        )
+        rule_members = (
+            catalog_rule_members
+            if self._review_policy_loader is None
+            else PolicyRuleSetMembersResolver(
+                members=catalog_rule_members,
+                policy_loader=self._review_policy_loader,
+                enablement=RuleEnablementResolver(),
+            )
+        )
         resolution_merger = IncludeResolutionMerger(
             step_appender=IncludeStepAppender(),
             nested_merger=NestedIncludeResolutionMerger(
                 ordered_strings=OrderedStringCollector(),
+                dynamic_group_checker=IncludeGroupDynamicChecker(),
             ),
         )
         return IncludeResolver(
@@ -95,16 +121,7 @@ class IncludeResolverFactory:
                                 )
                             ),
                             runtime_parser=self._runtime_parser,
-                            members_resolver=CatalogRuleSetMembersResolver(
-                                catalog_resolver=self._catalog_resolver,
-                                match_compiler=RuleMatchConditionCompiler(
-                                    RuleSelectionConditionCompiler()
-                                ),
-                                condition_conjoiner=ConditionConjoiner(),
-                                runtime_adapters=(
-                                    RuleScopeRuntimeAdapterResolverFactory().make()
-                                ),
-                            ),
+                            members_resolver=rule_members,
                             member_serializer=RuleSetMemberSerializer(
                                 make_condition_serializer()
                             ),

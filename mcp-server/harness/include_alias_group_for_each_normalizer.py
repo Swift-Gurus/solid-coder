@@ -38,13 +38,16 @@ class IncludeAliasGroupForEachNormalizer(
             group,
             for_each=replace(
                 group.for_each,
-                step_id=self._source_identity.resolve(
-                    group.for_each.step_id,
-                    ForEachSourceIdentityScope(
-                        member_ids=group.member_ids,
-                        excluded_aliases=[group.alias],
+                source=replace(
+                    group.for_each.source,
+                    step_id=self._source_identity.resolve(
+                        group.for_each.source.step_id,
+                        ForEachSourceIdentityScope(
+                            member_ids=group.member_ids,
+                            excluded_aliases=[group.alias],
+                        ),
+                        all_groups,
                     ),
-                    all_groups,
                 ),
             ),
         )

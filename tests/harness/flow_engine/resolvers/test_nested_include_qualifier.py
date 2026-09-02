@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
+from harness.for_each_declaration import ForEachDeclaration  # noqa: E402
 from harness.include_alias_group import IncludeAliasGroup  # noqa: E402
 from harness.include_resolution import IncludeResolution  # noqa: E402
 from harness.local_nested_identity_qualifier import (  # noqa: E402
@@ -36,7 +37,9 @@ class TestNestedIncludeQualifier(unittest.TestCase):
             alias="rule",
             member_ids=["rule.measure"],
             depends_on=["prepare"],
-            for_each=StepOutputReference("prepare", "units"),
+            for_each=ForEachDeclaration(
+                source=StepOutputReference("prepare", "units"),
+            ),
             input_bindings=[
                 WorkflowInputBinding(
                     name="review_unit",
@@ -69,6 +72,7 @@ class TestNestedIncludeQualifier(unittest.TestCase):
                 IncludeAliasGroup(
                     alias="review.rule",
                     member_ids=["review.rule.measure"],
+                    authored_alias="rule",
                     depends_on=["review.prepare"],
                     for_each=group.for_each,
                     input_bindings=group.input_bindings,

@@ -16,6 +16,7 @@ solid-description: Carries explicit nested-workflow, local-step, execution, sour
 @dataclass(frozen=True)
 class IncludedWorkflowStepCompletion:
     workflow_instance_id: str
+    parent_workflow_instance_id: str | None
     local_step_id: str
     execution_step_id: str
     instance_id: str

@@ -301,6 +301,71 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             "report",
         )
 
+    def test_nested_dynamic_include_uses_each_parent_instance_context(self) -> None:
+        parent = self._write_nested_dynamic_workflows()
+
+        prepared = self.sut.flow_start(str(parent))
+        reviews = self.sut.flow_next({
+            prepared.steps[0].instance_id: {
+                "targets": [{"name": "Alpha"}, {"name": "Beta"}],
+            }
+        })
+
+        self.assertIsNone(reviews.error, reviews.error)
+        self.assertEqual(
+            [step.prompt.splitlines()[0] for step in reviews.steps],
+            ["Find candidates for Alpha.", "Find candidates for Beta."],
+        )
+        candidates = self.sut.flow_next({
+            reviews.steps[0].instance_id: {
+                "candidates": [{"name": "AlphaCache"}],
+            },
+            reviews.steps[1].instance_id: {
+                "candidates": [
+                    {"name": "BetaStore"},
+                    {"name": "BetaCache"},
+                ],
+            },
+        })
+
+        self.assertIsNone(candidates.error, candidates.error)
+        self.assertEqual(
+            [step.prompt.splitlines()[0] for step in candidates.steps],
+            [
+                "Compare Alpha with AlphaCache.",
+                "Compare Beta with BetaStore.",
+                "Compare Beta with BetaCache.",
+            ],
+        )
+        summaries = self.sut.flow_next({
+            step.instance_id: {"result": f"{step.step_id} complete"}
+            for step in candidates.steps
+        })
+
+        self.assertIsNone(summaries.error, summaries.error)
+        self.assertEqual(
+            [step.prompt.split(": ", 1)[0] for step in summaries.steps],
+            ["Summarize Alpha", "Summarize Beta"],
+        )
+        self.assertEqual(
+            [
+                [
+                    entry["outputs"]["result"]
+                    for entry in json.loads(step.prompt.split(": ", 1)[1])
+                ]
+                for step in summaries.steps
+            ],
+            [
+                [
+                    "target_reviews-1.candidate_reviews-1.compare complete"
+                ],
+                [
+                    "target_reviews-2.candidate_reviews-1.compare complete",
+                    "target_reviews-2.candidate_reviews-2.compare complete",
+                ],
+            ],
+        )
+
     def _start(self):
         result = self.sut.flow_start(str(self.flow_path))
         self.assertIsNone(result.error, result.error)
@@ -377,6 +442,81 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             encoding="utf-8",
         )
         return path
+
+    def _write_nested_dynamic_workflows(self) -> Path:
+        (self.project_root / "candidate.yaml").write_text(
+            textwrap.dedent(
+                """
+                id: candidate-review
+                name: candidate_review
+                outputs:
+                  - name: result
+                    type: data
+                    value: "{{steps.compare.outputs.result}}"
+                    schema: {type: string}
+                steps:
+                  - id: compare
+                    prompt: Compare {{params.target.name}} with {{params.candidate.name}}.
+                    outputs:
+                      - name: result
+                        type: data
+                        schema: {type: string}
+                """
+            ),
+            encoding="utf-8",
+        )
+        (self.project_root / "target.yaml").write_text(
+            textwrap.dedent(
+                """
+                id: target-review
+                name: target_review
+                steps:
+                  - id: find_candidates
+                    prompt: Find candidates for {{params.target.name}}.
+                    outputs:
+                      - name: candidates
+                        type: data
+                        schema: {type: array, items: {type: object}}
+                  - include: candidate.yaml
+                    as: candidate_reviews
+                    depends_on: [find_candidates]
+                    for_each: "{{steps.find_candidates.outputs.candidates}}"
+                    with:
+                      target: "{{params.target}}"
+                      candidate: "{{item}}"
+                  - id: summarize
+                    depends_on: [candidate_reviews]
+                    prompt: >-
+                      Summarize {{params.target.name}}:
+                      {{workflows.candidate_reviews.results}}
+                """
+            ),
+            encoding="utf-8",
+        )
+        parent = self.project_root / "nested-parent.yaml"
+        parent.write_text(
+            textwrap.dedent(
+                """
+                name: nested_parent
+                max_turns: 20
+                steps:
+                  - id: prepare
+                    prompt: Prepare targets.
+                    outputs:
+                      - name: targets
+                        type: data
+                        schema: {type: array, items: {type: object}}
+                  - include: target.yaml
+                    as: target_reviews
+                    depends_on: [prepare]
+                    for_each: "{{steps.prepare.outputs.targets}}"
+                    with:
+                      target: "{{item}}"
+                """
+            ),
+            encoding="utf-8",
+        )
+        return parent
 
 
 if __name__ == "__main__":

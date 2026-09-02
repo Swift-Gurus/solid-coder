@@ -1,0 +1,73 @@
+id: rule-prompt-file-review
+name: Rule Prompt File Review Experiment
+description: Normalizes one review target, runs file rules once, and runs one aggregate prompt per applicable rule instance.
+max_turns: 100
+
+steps:
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    with:
+      target: "{{params.target}}"
+
+  - include:
+      workflow: code-smells-single-prompt
+    as: code_smells
+    depends_on: [prepare_review]
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+
+  - include:
+      workflow: frontmatter-single-prompt
+    as: frontmatter
+    depends_on: [prepare_review]
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+
+  - include:
+      workflow: srp-single-prompt
+    as: srp
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+    when:
+      ref: "{{item.applicability.unit_kind}}"
+      in: [class, struct, enum, extension, actor, function]
+
+  - include:
+      workflow: ocp-single-prompt
+    as: ocp
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+
+  - include:
+      workflow: lsp-single-prompt
+    as: lsp
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+
+  - include:
+      workflow: isp-single-prompt
+    as: isp
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+    when:
+      ref: "{{item.applicability.unit_kind}}"
+      equals: protocol
+
+  - include:
+      workflow: dry-rule-prompt
+    as: dry
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"

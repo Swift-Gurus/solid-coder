@@ -51,6 +51,22 @@ class TestToolMetaRegistration(unittest.TestCase):
         self.assertEqual(tool["_meta"]["anthropic/maxResultSizeChars"], 200000)
 
 
+class TestServerInstructions(unittest.TestCase):
+    def test_initialize_payload_includes_server_instructions(self):
+        server = MCPServerFactory().build(
+            "flow-engine",
+            "1.0.0",
+            instructions="Use flow_start to begin workflows and flow_next to continue them.",
+        )
+
+        response = server._transport_runner._dispatcher.dispatch("initialize", 1, {})
+
+        self.assertEqual(
+            response["result"]["instructions"],
+            "Use flow_start to begin workflows and flow_next to continue them.",
+        )
+
+
 class TestLoadRulesAnnotation(unittest.TestCase):
     def test_load_rules_declares_max_result_size(self):
         """load_rules must carry anthropic/maxResultSizeChars so large rule sets

@@ -18,6 +18,7 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.include_cycle_guard import IncludeCycleGuard
 from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
+from harness.include_group_dynamic_checker import IncludeGroupDynamicChecker
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_step_appender import IncludeStepAppender
@@ -105,6 +106,7 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         step_appender=IncludeStepAppender(),
         nested_merger=NestedIncludeResolutionMerger(
             ordered_strings=OrderedStringCollector(),
+            dynamic_group_checker=IncludeGroupDynamicChecker(),
         ),
     )
     return IncludeResolver(

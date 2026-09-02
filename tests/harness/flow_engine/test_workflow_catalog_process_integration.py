@@ -8,13 +8,11 @@ solid-description: Verifies nested workflow packages execute process steps inter
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
@@ -51,6 +49,7 @@ class TestWorkflowCatalogProcessIntegration(unittest.TestCase):
                 project_dir_fn=lambda: self.project_root
             ),
             plugin_root=self.project_root,
+            project_directory=lambda: self.project_root,
             command_allowlist_resolver=_AllowlistResolver(),
             session_reader=_SessionReader(),
         ).build()
@@ -59,28 +58,27 @@ class TestWorkflowCatalogProcessIntegration(unittest.TestCase):
         self._temporary_project.cleanup()
 
     def test_nested_process_steps_are_engine_owned_and_only_agents_are_returned(self):
-        with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(self.project_root)}):
-            started = self.sut.flow_start("e2e-catalog-combined")
+        started = self.sut.flow_start("e2e-catalog-combined")
 
-            self.assertEqual(
-                [step.step_id for step in started.steps],
-                ["first.verify_existing", "second.verify_existing"],
-            )
-            after_shared_agents = self.sut.flow_next(
-                {
-                    step.instance_id: {"existing": True}
-                    for step in started.steps
-                }
-            )
-            self.assertEqual(
-                [step.step_id for step in after_shared_agents.steps],
-                ["confirm_combined"],
-            )
-            completed = self.sut.flow_next(
-                {
-                    after_shared_agents.steps[0].instance_id: {"combined": True}
-                }
-            )
+        self.assertEqual(
+            [step.step_id for step in started.steps],
+            ["first.verify_existing", "second.verify_existing"],
+        )
+        after_shared_agents = self.sut.flow_next(
+            {
+                step.instance_id: {"existing": True}
+                for step in started.steps
+            }
+        )
+        self.assertEqual(
+            [step.step_id for step in after_shared_agents.steps],
+            ["confirm_combined"],
+        )
+        completed = self.sut.flow_next(
+            {
+                after_shared_agents.steps[0].instance_id: {"combined": True}
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         events = self._events(started.run_id)

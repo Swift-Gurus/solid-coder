@@ -36,24 +36,27 @@ outputs:
 steps:
   - id: inspect_candidate
     prompt: |
-      Read the selected file at `{{params.candidate.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.unit}}` with identity `{{params.candidate.unit_identity}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
+      Read the selected file at `{{params.candidate.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.unit}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
 
       Return concise reasoning about what the inspected declaration actually implements and evidence quoting or precisely citing its relevant executable statements. If it contains only declarations or signatures, state that explicitly in both reasoning and evidence. Evidence must identify the inspected candidate path.
+
+      Candidate frontmatter description: {{params.candidate.description}}
     outputs:
-      - name: inspection
+      - name: reasoning
         type: data
         schema:
-          type: object
-          additionalProperties: false
-          required: [reasoning, evidence]
-          properties:
-            reasoning: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
+          type: string
+          minLength: 1
+      - name: evidence
+        type: data
+        schema:
+          type: string
+          minLength: 1
 
   - id: classify_candidate
     depends_on: [inspect_candidate]
     prompt: |
-      Classify the validated candidate using only the completed source inspection and immutable reviewed target below. Do not read another file, search again, count findings, or decide severity.
+      Classify the validated candidate using only the completed source inspection and the reviewed target already present in this session. Do not read another file, search again, count findings, or decide severity.
 
       Make two independent classifications. A candidate may be directly reusable without duplicating any implemented logic.
 
@@ -73,16 +76,7 @@ steps:
 
       A conformer is not a reusable replacement for its protocol: when the reviewed target is a protocol or interface and the candidate merely implements that contract, classify reuse as NOT_SUITABLE. Classify a protocol/conformer relationship without duplicated implementation as NOT_DUPLICATE even when their contracts or responsibilities are equivalent. Do not let either classification determine the other. Supply separate reasoning and evidence for both decisions, grounded in the completed inspection.
 
-      Target:
-      ```
-      {{params.target.code}}
-      ```
-
-      Candidate identity: {{params.candidate.unit_identity}}
-      Candidate path: {{params.candidate.path}}
-      Candidate frontmatter description: {{params.candidate.description}}
-      Candidate match provenance: {{params.candidate.matches}}
-      Completed source inspection: {{steps.inspect_candidate.outputs.inspection}}
+      Apply these classifications to candidate `{{params.candidate.unit}}` against reviewed unit `{{params.target.name}}`, using the source inspection you previously submitted. Do not restate or revise that inspection.
     outputs:
       - name: assessment
         type: data

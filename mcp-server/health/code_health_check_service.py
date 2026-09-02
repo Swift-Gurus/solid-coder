@@ -42,4 +42,5 @@ class CodeHealthCheckService:
             request.language,
             request.parent_session_id,
             patch_context=request.patch_context,
+            principle_names=request.principle_names,
         )

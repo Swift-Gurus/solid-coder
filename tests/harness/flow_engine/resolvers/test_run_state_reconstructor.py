@@ -44,6 +44,7 @@ class TestRunStateReconstructor(unittest.TestCase):
                 "step_id": "opaque-step-a7f4",
                 "instance_id": "opaque-step-a7f4-1",
                 "workflow_instance_id": "workflow-instance-7",
+                "parent_workflow_instance_id": "parent-workflow-instance-3",
                 "local_step_id": "inspect",
                 "workflow_source_index": 0,
                 "item": {"name": "Alpha"},
@@ -56,6 +57,7 @@ class TestRunStateReconstructor(unittest.TestCase):
             [
                 IncludedWorkflowStepCompletion(
                     workflow_instance_id="workflow-instance-7",
+                    parent_workflow_instance_id="parent-workflow-instance-3",
                     local_step_id="inspect",
                     execution_step_id="opaque-step-a7f4",
                     instance_id="opaque-step-a7f4-1",

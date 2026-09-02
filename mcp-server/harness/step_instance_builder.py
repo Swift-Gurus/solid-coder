@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from harness.batch_step_presentation_resolving import (
+    BatchStepPresentationResolving,
+)
 from harness.interpolator import TemplateRendering
 from harness.models import StepDef, StepInstance
 from harness.operation_inputs_resolving import OperationInputsResolving
@@ -23,10 +26,12 @@ class StepInstanceBuilder(StepInstanceBuilding):
         renderer: TemplateRendering,
         context_resolver: WorkflowStepContextResolving,
         operation_inputs_resolver: OperationInputsResolving,
+        batch_presentation_resolver: BatchStepPresentationResolving,
     ) -> None:
         self._renderer = renderer
         self._context_resolver = context_resolver
         self._operation_inputs_resolver = operation_inputs_resolver
+        self._batch_presentation_resolver = batch_presentation_resolver
 
     def build(
         self,
@@ -42,6 +47,7 @@ class StepInstanceBuilder(StepInstanceBuilding):
             item,
         )
         prompt = self._renderer.render(step.prompt, step_context)
+        batch = self._batch_presentation_resolver.resolve(step, step_context)
         if step.operation is None:
             return StepInstance(
                 step_id=step.id,
@@ -50,6 +56,7 @@ class StepInstanceBuilder(StepInstanceBuilding):
                 prompt=prompt,
                 iteration_index=iteration_index,
                 workflow_instance=step.workflow_instance,
+                batch=batch,
             )
         return OperationStepInstance(
             step_id=step.id,
@@ -58,6 +65,7 @@ class StepInstanceBuilder(StepInstanceBuilding):
             prompt=prompt,
             iteration_index=iteration_index,
             workflow_instance=step.workflow_instance,
+            batch=batch,
             inputs=self._operation_inputs_resolver.resolve(
                 step.operation,
                 step_context,

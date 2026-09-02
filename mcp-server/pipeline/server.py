@@ -250,9 +250,6 @@ class ApplicationBootstrapper:
                      }, "required": ["operation"]},
                      tools["get_output_path"])
 
-        if self._flow_callables is not None:
-            self._register_flow_tools()
-
     def _register_flow_tools(self) -> None:
         if self._flow_callables is None:
             return
@@ -264,8 +261,8 @@ class ApplicationBootstrapper:
             "TRIGGER when the user asks to run, start, or execute a workflow or flow by name (e.g. 'run "
             "workflow <name>', 'execute the <name> flow', 'start flow <name>') — this is how such requests are "
             "fulfilled, not by improvising the steps yourself. Start the DAG state machine for a flow: creates "
-            "a new run and returns the first ready step(s) as "
-            "plain text. Each returned block starts with 'id: <instance_id>' followed by the step's prompt; if "
+            "a new run and returns the next ready step as "
+            "plain text. The returned block starts with 'id: <instance_id>' followed by the step's prompt; if "
             "the step declares outputs, the exact JSON Schema each submitted value must match is stated in that "
             "prompt — follow it precisely, since a wrong-shaped submission is rejected and costs a retry "
             "attempt. A block starting with 'Launch a subagent with the following prompt:' means spawn a "
@@ -299,7 +296,7 @@ class ApplicationBootstrapper:
                             "Only pass true when a step's rendered instruction explicitly told you to. Starts "
                             "this run in its own isolated slot instead of the single main-session run, so it "
                             "doesn't collide with a run already in progress. The response will disclose a "
-                            "run_id — pass that same run_id to every later flow_next/flow_status call for this run."
+                            "run_id — pass that same run_id to every later flow_next call for this run."
                         ),
                     },
                 },
@@ -311,10 +308,10 @@ class ApplicationBootstrapper:
 
         reg.register(
             "flow_next",
-            "Submit your output values for the step(s) you were just instructed to complete, keyed by the "
-            "'id: <instance_id>' each one gave you — each value must match the schema stated in that step's "
+            "Submit your output values for the step you were just instructed to complete, keyed by the "
+            "'id: <instance_id>' it gave you — the value must match the schema stated in that step's "
             "prompt exactly, or the submission is rejected. Get it right the first time; a rejected submission "
-            "wastes a turn. The response is plain text: either the next step(s) to work on, a block starting "
+            "wastes a turn. The response is plain text: either the next step to work on, a block starting "
             "with 'Rejected:' explaining exactly what was wrong (retry the same step with a corrected value), "
             "or a terminal message ('Flow complete.', or 'Flow failed...'/'Flow timed out...' naming the step, "
             "why it failed, and the run log path). On a terminal failure/timeout: stop — do not retry or start "
@@ -327,10 +324,9 @@ class ApplicationBootstrapper:
                     "outputs": {
                         "type": "object",
                         "description": (
-                            "Map of instance_id (the value after 'id: ' on each block you were given by "
-                            "flow_start/flow_next) to that step's output values, keyed by output name as stated "
-                            "in that step's prompt. Omit a step's key, or pass '{}', if its prompt declares no "
-                            "outputs."
+                            "One entry keyed by the instance_id after 'id: ' in the current flow_start/flow_next "
+                            "response. Its value contains that step's outputs, keyed by output name as stated "
+                            "in the prompt. Pass an empty object for that instance if it declares no outputs."
                         ),
                     },
                     "run_id": {
@@ -345,48 +341,6 @@ class ApplicationBootstrapper:
             flow_tools["flow_next"],
             meta=COMPLETE_FLOW_OUTPUT,
         )
-
-        reg.register(
-            "flow_status",
-            "Read the state of a flow run without side effects. Returns the flow name, run id, status "
-            "('in_progress'/'done'/'timed_out'/'no_active_run'), completed/running/pending step ids, and turn "
-            "counts.",
-            {
-                "type": "object",
-                "properties": {
-                    "run_id": {
-                        "type": "string",
-                        "description": (
-                            "Only needed if flow_start disclosed a run_id (isolated=true was used to start this "
-                            "run). Omit entirely to read the single main-session run."
-                        ),
-                    },
-                },
-            },
-            flow_tools["flow_status"],
-        )
-
-        reg.register(
-            "flow_clear_lock",
-            "Clears a stuck run's lock so flow_start can proceed again. This is for the specific case "
-            "where flow_status shows a run left behind by a DIFFERENT, no-longer-running session — not "
-            "a workaround for a blocked flow_next in your own current run. If flow_next or the Stop hook "
-            "is telling you to keep going, do that instead; do not call this to escape a pending step. "
-            "Requires the exact run_id from flow_status to confirm you're clearing the run you intend "
-            "to. Does not delete the run's event log — only the lock.",
-            {
-                "type": "object",
-                "properties": {
-                    "run_id": {
-                        "type": "string",
-                        "description": "Exact run_id from a prior flow_status call.",
-                    },
-                },
-                "required": ["run_id"],
-            },
-            flow_tools["flow_clear_lock"],
-        )
-
 
 if __name__ == "__main__":
     from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory

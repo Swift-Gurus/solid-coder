@@ -1,0 +1,56 @@
+id: frontmatter-single-prompt
+name: Frontmatter Single Prompt Experiment
+description: Collects all file-scoped frontmatter observations and the exception decision in one model-facing step.
+max_turns: 3
+
+steps:
+  - id: assess_frontmatter
+    prompt: |
+      Review file `{{params.review_file.target.name}}` from the source already visible in this session. Complete every frontmatter measurement and the exception decision before responding.
+
+      Solid frontmatter is a structured documentation block immediately above each top-level type declaration. It contains `solid-name`, `solid-category`, optional `solid-stack` and `solid-spec`, and `solid-description`.
+
+      FM-1 `missing_frontmatter_count`: count each top-level class, struct, protocol, enum, or member-adding extension without frontmatter. Exclude private/fileprivate helpers under ten lines and extensions that add conformance without members.
+      FM-2 `name_mismatch_count`: count frontmatter blocks whose `solid-name` differs from the declaration immediately below.
+      FM-3 `invalid_category_count`: count blank, placeholder, vague, or malformed categories. Standard roles include abstraction, network, viewmodel, model, view-component, screen, modifier, crud, utility, navigation, service, unit-test, and ui-test. A distinct lowercase hyphenated noun-like domain role is also valid.
+      FM-4 `incorrect_stack_count`: count listed stack entries not used by the type and clear fixed-vocabulary dependencies omitted from its stack. Vocabulary: swiftui, uikit, appkit, combine, structured-concurrency, gcd, tca, core-data, swift-data, grdb. Omitting the field for pure-language code is valid.
+      FM-5 `bad_description_count`: count descriptions that fail to describe the capability at the interface level, name concrete implementation details, are vague, or fail to start with “Contract for...” or “Contract that defines...” for abstractions.
+
+      This rule has no rule-wide exceptions. Return `exception.is_exception: false` with audited reasoning and evidence.
+    outputs:
+      - name: missing_frontmatter_count
+        type: data
+        schema: &metric
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: &audit
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: name_mismatch_count
+        type: data
+        schema: *metric
+      - name: invalid_category_count
+        type: data
+        schema: *metric
+      - name: incorrect_stack_count
+        type: data
+        schema: *metric
+      - name: bad_description_count
+        type: data
+        schema: *metric
+      - name: exception
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_exception, additional_info]
+          properties:
+            is_exception: {type: boolean, const: false}
+            additional_info: *audit

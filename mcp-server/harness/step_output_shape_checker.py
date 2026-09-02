@@ -21,7 +21,7 @@ class StepOutputShapeChecker(StepOutputShapeChecking):
             instance_outputs = outputs.get(instance.instance_id, {})
             if not isinstance(instance_outputs, dict):
                 errors.append(
-                    f"outputs for '{instance.instance_id}' must be an object mapping output "
+                    "submitted outputs must be an object mapping output "
                     f"names to values, got {type(instance_outputs).__name__}"
                 )
         return errors

@@ -5,11 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.for_each_declaration import ForEachDeclaration
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.metric_declaration import MetricDeclaration
 from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
-from harness.step_output_reference import StepOutputReference
 
 
 """
@@ -24,7 +24,7 @@ class StepDef:
     prompt: str
     depends_on: list[str] = field(default_factory=list)
     outputs: list[OutputSpec] = field(default_factory=list)
-    for_each: StepOutputReference | None = None
+    for_each: ForEachDeclaration | None = None
     condition: ConditionDeclaration | None = None
     type: str = "agent"
     mode: str | None = None

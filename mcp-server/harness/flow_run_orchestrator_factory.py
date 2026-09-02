@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
@@ -13,6 +13,9 @@ from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
+from harness.batch_step_output_submission_mapper import (
+    BatchStepOutputSubmissionMapper,
+)
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.concurrent_session_delegate_batch_runner import ConcurrentSessionDelegateBatchRunner
 from harness.condition_serializer_factory import make_condition_serializer
@@ -48,6 +51,7 @@ from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from harness.ready_step_executor import ReadyStepExecutor
+from harness.review_policy_loader_factory import ReviewPolicyLoaderFactory
 from harness.process_execution_factory import ProcessExecutionFactory
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
 from harness.process_step_executor import ProcessStepExecutor
@@ -116,6 +120,7 @@ class FlowRunOrchestratorFactory:
         self,
         base_dir_resolver: RunsBaseDirResolving,
         plugin_root: Path,
+        project_directory: Callable[[], Path] = _resolve_project_root,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
         session_reader: Optional[SessionIdReading] = None,
         session_delegate_runner: Optional[SessionDelegateRunning] = None,
@@ -124,6 +129,7 @@ class FlowRunOrchestratorFactory:
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._plugin_root = plugin_root
+        self._project_directory = project_directory
         self._command_allowlist_resolver = command_allowlist_resolver
         self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
         self._session_delegate_runner = session_delegate_runner
@@ -143,6 +149,9 @@ class FlowRunOrchestratorFactory:
             command_allowlist_resolver=self._command_allowlist_resolver,
             workflow_catalog_resolver=workflow_catalog,
             operation_registry=operation_registry,
+            review_policy_loader=ReviewPolicyLoaderFactory(
+                self._project_directory
+            ).make(),
         )
         active_run = ActiveRunPointerStore(
             path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
@@ -299,7 +308,7 @@ class FlowRunOrchestratorFactory:
                 base_dir_resolver=self._base_dir_resolver,
                 search_paths=FlowSearchPathResolver(
                     sources=[
-                        ProjectWorkflowSearchPathResolver(_resolve_project_root),
+                        ProjectWorkflowSearchPathResolver(self._project_directory),
                         PluginWorkflowSearchPathResolver(self._plugin_root),
                     ],
                     path_filter=ExistingPathFilter(path_checker),
@@ -335,6 +344,7 @@ class FlowRunOrchestratorFactory:
                 session_reader=self._session_reader,
                 output_recorder=output_recorder,
                 turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
+                submission_mapper=BatchStepOutputSubmissionMapper(),
             ),
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
             interpolation_guard=interpolation_guard,

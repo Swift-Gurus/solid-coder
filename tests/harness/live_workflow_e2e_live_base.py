@@ -32,13 +32,6 @@ from model_profile_loader import ModelProfileLoader
 from preserved_live_workflow_run import PreservedLiveWorkflowRun
 
 
-_ALLOWED_TOOLS = (
-    "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
-    "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
-    "mcp__solid-coder-pipeline__flow_status"
-)
-
-
 """
 solid-name: LiveWorkflowE2ELiveBase
 solid-category: test-support
@@ -50,6 +43,8 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     FLOW_START_TOOL: ClassVar[str]
+    FLOW_NEXT_TOOL: ClassVar[str]
+    ALLOWED_FLOW_TOOLS: ClassVar[str]
     PROJECT_ROOT: ClassVar[Path]
 
     @property
@@ -64,6 +59,14 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
 
     @abstractmethod
     def live_session_runner(self) -> LiveSessionRunning:
+        raise NotImplementedError
+
+    @abstractmethod
+    def flow_execution_instruction(
+        self,
+        workflow_id: str,
+        parameters_json: str,
+    ) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -104,7 +107,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
             plugin_root=self.PROJECT_ROOT,
             model=profile.llm["model"],
             timeout=profile.llm["timeout"],
-            allowed_tools=_ALLOWED_TOOLS,
+            allowed_tools=self.ALLOWED_FLOW_TOOLS,
             mcp_config=build_mcp_config(self.PROJECT_ROOT),
         )
 
@@ -133,12 +136,18 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
         return preserved_run
 
     def _prompt(self, scenario: LiveWorkflowScenario) -> str:
+        model_context = (
+            f"{scenario.model_context}\n\n"
+            if scenario.model_context
+            else ""
+        )
         return (
             f"# spawned-by: {self.parent_session_id}\n\n"
-            f"Call {self.FLOW_START_TOOL} with flow={json.dumps(scenario.workflow_id)} "
-            f"and params equal to this JSON: {scenario.parameters.model_dump_json()}. "
-            "Drive every returned step with flow_next until the flow reaches done, "
-            "failed, or timed out. Do not edit files."
+            + model_context
+            + self.flow_execution_instruction(
+                workflow_id=scenario.workflow_id,
+                parameters_json=scenario.parameters.model_dump_json(),
+            )
         )
 
     def _runs_directory(self) -> Path:

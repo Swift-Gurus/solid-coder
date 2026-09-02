@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from harness.step_output_reference import StepOutputReference
+from harness.for_each_declaration import ForEachDeclaration
 
 
 """
@@ -18,4 +18,4 @@ class IncludeAliasGroupForEachParsing(Protocol):
         self,
         alias: str,
         raw: object,
-    ) -> StepOutputReference | None: ...
+    ) -> ForEachDeclaration | None: ...

@@ -50,16 +50,11 @@ steps:
 
       Analyze type-check ownership, inheritance applicability and overrides, and contract member implementations once. Preserve evidence for every entry so all LSP metrics reuse the same trigger and contract facts.
 
-      Scope every fact to the exact code inside the supplied `Unit` block. Do not borrow a subtype, conformer, method body, or violation from another ready step, another normalized unit, or earlier conversation context.
+      Scope every fact to unit `{{params.review_unit.target.name}}` as it appears in the current model session. Do not borrow a subtype, conformer, method body, or violation from another normalized unit.
 
       Protocol conformance is not concrete inheritance. Set `inheritance.has_trigger` to true only when this supplied unit inherits from a concrete base class and declares an override; otherwise set it to false with no relationships.
 
-      Only classify contract implementations whose method bodies are present inside the supplied Unit. Protocol requirements declared without bodies are not implementations, so a protocol-only unit must return an empty `contract_implementations` array. Never inspect or report a conformer merely because the supplied unit declares its protocol.
-
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
+      Only classify contract implementations whose method bodies are present inside unit `{{params.review_unit.target.name}}`. Protocol requirements declared without bodies are not implementations, so a protocol-only unit must return an empty `contract_implementations` array. Never inspect or report a conformer merely because the supplied unit declares its protocol.
     outputs:
       - name: type_checks
         type: data
@@ -127,9 +122,11 @@ steps:
     metric_id: LSP-1
     depends_on: [analyze_substitutability]
     prompt: |
+      - A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
+
       Count type checks classified as DEVELOPER in the shared analysis. EXTERNAL checks are exceptions and UNKNOWN checks must be reported as unable to verify rather than assumed violations. Do not rediscover ownership.
 
-      Shared type-check analysis: {{steps.analyze_substitutability.outputs.type_checks}}
+      Use the type-check analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
@@ -143,9 +140,13 @@ steps:
     metric_id: LSP-2
     depends_on: [analyze_substitutability]
     prompt: |
+      When a class inherits from another class and overrides methods, the subtype must honor the base contract: same or weaker preconditions, same or stronger postconditions, preserved invariants.
+
+      **Trigger:** This metric only applies when `override` methods are detected in class inheritance. For protocol conformance without class inheritance, LSP-2 does not apply.
+
       Use the shared inheritance trigger and relationships. When `has_trigger` is true, sum new guards, weakened postconditions, and invariant violations. When it is false, return zero and preserve the typed trigger evidence in `additional_info`. Do not rediscover inheritance.
 
-      Shared inheritance analysis: {{steps.analyze_substitutability.outputs.inheritance}}
+      Use the inheritance analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
@@ -159,9 +160,14 @@ steps:
     metric_id: LSP-3
     depends_on: [analyze_substitutability]
     prompt: |
+      - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
+      - Empty methods or vars. Meaning non implemented methods or var from the contract
+      - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
+        - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
+
       Count contract implementations classified as FATAL in the shared analysis. Do not rediscover or reclassify members.
 
-      Shared contract-implementation analysis: {{steps.analyze_substitutability.outputs.contract_implementations}}
+      Use the contract-implementation analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
@@ -175,9 +181,14 @@ steps:
     metric_id: LSP-4
     depends_on: [analyze_substitutability]
     prompt: |
+      - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
+      - Empty methods or vars. Meaning non implemented methods or var from the contract
+      - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
+        - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
+
       Count contract implementations classified as EMPTY in the shared analysis. Do not include FATAL implementations and do not rediscover or reclassify members.
 
-      Shared contract-implementation analysis: {{steps.analyze_substitutability.outputs.contract_implementations}}
+      Use the contract-implementation analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
@@ -195,11 +206,4 @@ steps:
       1. **NoOp objects** — objects that provide no-op default behaviour (turn-off for testing, or when not initialized)
          - consider NoOps object if the name states it and 100% of methods/var from the contract are empty, or resolved to default values
 
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
-
-      Shared type-check analysis: {{steps.analyze_substitutability.outputs.type_checks}}
-      Shared inheritance analysis: {{steps.analyze_substitutability.outputs.inheritance}}
-      Shared contract-implementation analysis: {{steps.analyze_substitutability.outputs.contract_implementations}}
+      Classify unit `{{params.review_unit.target.name}}` using the type-check, inheritance, and contract-implementation analyses you previously submitted; do not rediscover or revise them.

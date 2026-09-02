@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from harness.batch_step_presentation import BatchStepPresentation
+
 
 @dataclass(frozen=True)
 class StepResult:
@@ -17,3 +19,4 @@ class StepResult:
     prompt: str
     execution: dict
     rejection_reason: str | None = None
+    batch: BatchStepPresentation | None = None

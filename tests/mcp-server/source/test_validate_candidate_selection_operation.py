@@ -69,19 +69,19 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
     def test_rejects_duplicate_selected_identity(self) -> None:
         selection = self._selection(self.candidates[0])
 
-        with self.assertRaisesRegex(ValidationError, "duplicate identity"):
+        with self.assertRaisesRegex(ValidationError, "duplicate reference"):
             ValidateCandidateSelectionInput(
                 candidates=self.candidates,
                 selections=[selection, selection],
             )
 
     def test_rejects_identity_that_search_did_not_return(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "unknown identity"):
+        with self.assertRaisesRegex(ValidationError, "unknown reference"):
             ValidateCandidateSelectionInput(
                 candidates=self.candidates,
                 selections=[SourceCandidateSelection(
-                    source_identity="Missing.swift",
-                    unit_identity="struct:Missing:1",
+                    path="/missing/Missing.swift",
+                    unit="Missing",
                     reasoning="The summary appeared relevant.",
                 )],
             )
@@ -89,8 +89,8 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
     @staticmethod
     def _selection(candidate: SourceSearchCandidate) -> SourceCandidateSelection:
         return SourceCandidateSelection(
-            source_identity=candidate.source_identity,
-            unit_identity=candidate.unit_identity,
+            path=str(candidate.path),
+            unit=candidate.unit,
             reasoning="The summary identifies matching formatting behavior.",
         )
 

@@ -93,6 +93,32 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
                 completed.stdout,
             )
 
+    def test_run_relies_on_plugin_mcp_registration(self) -> None:
+        completed = self._completed_process(
+            json.dumps(
+                {
+                    "type": "result",
+                    "session_id": "claude-child",
+                    "result": "completed",
+                }
+            )
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            with (
+                patch(
+                    "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
+                    return_value=Path(directory),
+                ),
+                patch(
+                    "claude_live_session_runner.subprocess.run",
+                    return_value=completed,
+                ) as process,
+            ):
+                ClaudeLiveSessionRunner().run(self._request())
+
+        command = process.call_args.args[0]
+        self.assertNotIn("--mcp-config", command)
+
     def _request(self) -> LiveSessionRequest:
         return LiveSessionRequest(
             prompt="prompt",

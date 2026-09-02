@@ -43,6 +43,7 @@ def _check(
     parent_session_id: str,
     cwd: str = "",
     patch_context: Optional[PatchReviewContext] = None,
+    principle_names: Optional[list[str]] = None,
     service: CodeHealthCheckRequestChecking = _SERVICE,
 ) -> Optional[list]:
     return service.check(CodeHealthCheckRequest(
@@ -52,4 +53,5 @@ def _check(
         parent_session_id=parent_session_id,
         cwd=cwd,
         patch_context=patch_context,
+        principle_names=principle_names or [],
     ))

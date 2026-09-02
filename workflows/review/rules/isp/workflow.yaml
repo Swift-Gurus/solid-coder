@@ -41,7 +41,7 @@ steps:
          - DELEGATED — forwards to another object (still counts as meaningful)
       3. **Calculate coverage** = meaningful / total requirements
 
-      MCP has bounded "all conformers" to the discovered candidates below. Candidate inspection is executed separately after this step so every candidate receives exactly one auditable decision. In this step, analyze only the supplied protocol declaration: return its declared requirements and any default implementations visible inside the supplied unit. Do not classify candidates or invent conformers.
+      MCP has bounded "all conformers" deterministically. Candidate inspection is executed separately after this step so every candidate receives exactly one auditable decision. In this step, analyze only protocol `{{params.review_unit.target.name}}`: return its declared requirements and any default implementations visible in the source already present in the current model session. Do not classify candidates or invent conformers.
 
       1. **Build a usage matrix**: for each conformer, which methods are MEANINGFUL
       2. **Identify groups of methods** that are always used together across conformers
@@ -49,13 +49,6 @@ steps:
 
       Preserve evidence for every declared requirement and visible protocol-extension default so all later candidate and metric steps reuse this exact analysis.
 
-      MCP-discovered conformer candidates:
-      {{steps.search_conformers.outputs.candidates}}
-
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
     outputs:
       - name: analysis
         type: data
@@ -96,12 +89,8 @@ steps:
 
       For a CONFORMER, classify every required member as MEANINGFUL, EMPTY, STUB, DELEGATED, or MISSING. Do not omit an unsupported requirement. Evidence must cite the inspected path and relevant line or source excerpt.
 
-      Reviewed protocol:
-      ```
-      {{params.review_unit.target.code}}
-      ```
-
-      Shared protocol analysis: {{steps.analyze_protocol.outputs.analysis}}
+      Reviewed protocol: `{{params.review_unit.target.name}}`
+      Use the protocol analysis you previously submitted; do not rediscover or revise it.
       Candidate frontmatter description: {{item.description}}
       Candidate path: {{item.path}}
     outputs:
@@ -144,10 +133,11 @@ steps:
     metric_id: ISP-1
     depends_on: [analyze_protocol, classify_conformer]
     prompt: |
+      A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
+
       Return the number of declared requirements in the shared protocol analysis. Do not rediscover requirements.
 
-      Shared protocol analysis: {{steps.analyze_protocol.outputs.analysis}}
-      Shared candidate assessments: {{steps.classify_conformer.outputs.assessment}}
+      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
@@ -164,14 +154,15 @@ steps:
     metric_id: ISP-2
     depends_on: [analyze_protocol, classify_conformer]
     prompt: |
+      A conformer with low coverage is being forced to depend on methods it does not use. This is the direct ISP violation signal.
+
       Apply these authored ISP-2 adjustments before returning the minimum coverage:
       - If only one conformer exists in the project, coverage is trivially 100%. Record "unable to verify ISP — single conformer" in `additional_info`.
       - If every non-meaningful requirement has a default implementation through a protocol extension and the conformer does not override it, that default satisfies ISP and must not reduce coverage.
 
       Calculate the minimum meaningful implementation coverage across assessments classified CONFORMER and return an integer percentage from 0 through 100. MEANINGFUL and DELEGATED count as covered; EMPTY, STUB, and MISSING do not. Do not rediscover or reclassify conformers.
 
-      Shared protocol analysis: {{steps.analyze_protocol.outputs.analysis}}
-      Shared candidate assessments: {{steps.classify_conformer.outputs.assessment}}
+      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
@@ -189,10 +180,11 @@ steps:
     metric_id: ISP-3
     depends_on: [analyze_protocol, classify_conformer]
     prompt: |
+      Group protocol methods by which conformers actually use them together. Disjoint groups suggest the protocol should be split.
+
       Build one binary implementation vector per requirement in declared requirement order. Each vector has one position per conformer in the shared analysis: use `1` for MEANINGFUL or DELEGATED and `0` for EMPTY, STUB, or a missing implementation. Requirements with identical vectors belong to the same usage group. Return the number of distinct vectors; do not group by semantic topic, graph connectivity, or naming. Do not rediscover or reclassify conformers.
 
-      Shared protocol analysis: {{steps.analyze_protocol.outputs.analysis}}
-      Shared candidate assessments: {{steps.classify_conformer.outputs.assessment}}
+      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
@@ -215,10 +207,4 @@ steps:
       6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
       7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
 
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
-
-      Shared protocol analysis: {{steps.analyze_protocol.outputs.analysis}}
-      Shared candidate assessments: {{steps.classify_conformer.outputs.assessment}}
+      Classify protocol `{{params.review_unit.target.name}}` using its source, protocol analysis, and candidate assessments already visible in the current model session; do not rediscover or revise them.

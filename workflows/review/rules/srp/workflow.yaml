@@ -9,8 +9,12 @@ rule:
       included: [class, struct, enum, extension, actor, function]
 
 steps:
-  - id: analyze_responsibilities
+  - id: verb_count
+    type: metric
+    metric_id: SRP-1
     prompt: |
+      List every distinct action (verb) the class performs. Not method names — what it actually *does*
+
       Measure the distinct responsibilities expressed as action verbs by the supplied unit. Apply this procedure exactly:
 
       1. Ignore initializers, deinitializers, and factory methods.
@@ -22,87 +26,7 @@ steps:
 
       Example: a load method that checks a cache and falls back to storage performs the single action "load"; cache lookup and storage lookup are implementation details. A save method that invalidates its cache performs the single action "save" when invalidation is required to keep the saved result consistent.
 
-      Measure cohesion groups in the supplied unit. Apply this procedure exactly:
-
-      1. Ignore lifecycle methods and list which instance variables each remaining method directly uses.
-      2. Connect methods when they share an instance variable, including transitive connections, and form the resulting method groups.
-      3. Do not remove a method merely because it uses variables from both sides of a group. Remove it as an orchestrator only when it coordinates independently meaningful operations. A method that needs all of those variables to produce one cohesive result is not an orchestrator and keeps the group connected.
-      4. A cache and its backing storage belong to the same data-access group when the methods use them together to provide consistent save/load/invalidate behavior.
-      5. Formatting machinery and presentation templates belong to the same presentation group when methods combine them to produce rendered output.
-      6. Before submitting, build one evidence entry per group containing its methods, variables, and rationale. `cohesion_groups` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
-
-      Measure distinct stakeholders who could independently request changes to the supplied unit. Apply this procedure exactly:
-
-      1. Count change-driving concerns demonstrated by the unit's behavior, not every framework type, dependency, implementation mechanism, or hypothetical team.
-      2. Merge backing storage, caching, and cache consistency into one data-access stakeholder when they jointly implement retrieval and persistence behavior.
-      3. Merge templates, number formatting, string formatting, and collection layout into one presentation stakeholder when they jointly produce displayed output.
-      4. Count security, operations, product policy, validation, or other stakeholders only when code in the unit demonstrates independently changeable behavior for that concern. Do not infer them solely from a type name.
-      5. Before submitting, build one evidence entry per stakeholder containing the stakeholder, methods, and rationale. `stakeholder_count` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
-
-      Perform these three analyses once and preserve the exact action, cohesion-group, and stakeholder evidence so every SRP metric uses the same observations.
-
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
-    outputs:
-      - name: analysis
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [actions, cohesion_groups, stakeholders]
-          properties:
-            actions:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [method, action, reasoning, evidence]
-                properties:
-                  method: {type: string, minLength: 1}
-                  action: {type: string, minLength: 1}
-                  reasoning: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-            cohesion_groups:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [methods, variables, reasoning, evidence]
-                properties:
-                  methods:
-                    type: array
-                    minItems: 1
-                    items: {type: string, minLength: 1}
-                  variables:
-                    type: array
-                    items: {type: string, minLength: 1}
-                  reasoning: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-            stakeholders:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [name, methods, reasoning, evidence]
-                properties:
-                  name: {type: string, minLength: 1}
-                  methods:
-                    type: array
-                    minItems: 1
-                    items: {type: string, minLength: 1}
-                  reasoning: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-
-  - id: verb_count
-    type: metric
-    metric_id: SRP-1
-    depends_on: [analyze_responsibilities]
-    prompt: |
-      Return the number of actions in the shared responsibility analysis. Do not rediscover or relabel actions.
-
-      Shared responsibility analysis: {{steps.analyze_responsibilities.outputs.analysis}}
+      Apply this measurement to unit `{{params.review_unit.target.name}}`. The unit's source is already visible in the current model session; do not request or rediscover it.
     value:
       type: integer
       minimum: 0
@@ -117,11 +41,23 @@ steps:
   - id: cohesion_groups
     type: metric
     metric_id: SRP-2
-    depends_on: [analyze_responsibilities]
+    depends_on: [verb_count]
     prompt: |
-      Return the number of cohesion groups in the shared responsibility analysis. Do not rediscover or regroup methods.
+      A class is cohesive when its methods manipulate its variables. High cohesion = most methods use most variables.
 
-      Shared responsibility analysis: {{steps.analyze_responsibilities.outputs.analysis}}
+      **From Clean Code Chapter 10:**
+      > "In general the more variables a method manipulates the more cohesive that method is to its class. A class in which each variable is used by each method is maximally cohesive."
+
+      Measure cohesion groups in the supplied unit. Apply this procedure exactly:
+
+      1. Ignore lifecycle methods and list which instance variables each remaining method directly uses.
+      2. Connect methods when they share an instance variable, including transitive connections, and form the resulting method groups.
+      3. Do not remove a method merely because it uses variables from both sides of a group. Remove it as an orchestrator only when it coordinates independently meaningful operations. A method that needs all of those variables to produce one cohesive result is not an orchestrator and keeps the group connected.
+      4. A cache and its backing storage belong to the same data-access group when the methods use them together to provide consistent save/load/invalidate behavior.
+      5. Formatting machinery and presentation templates belong to the same presentation group when methods combine them to produce rendered output.
+      6. Before submitting, build one evidence entry per group containing its methods, variables, and rationale. `cohesion_groups` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
+
+      Apply this measurement to unit `{{params.review_unit.target.name}}` using the source already visible in the current model session and the verb measurement you previously submitted.
     value:
       type: integer
       minimum: 0
@@ -133,11 +69,19 @@ steps:
   - id: stakeholder_count
     type: metric
     metric_id: SRP-3
-    depends_on: [analyze_responsibilities]
+    depends_on: [cohesion_groups]
     prompt: |
-      Return the number of stakeholders in the shared responsibility analysis. Do not infer additional stakeholders.
+      A class/function/struct/module/instance should have one reason to change
 
-      Shared responsibility analysis: {{steps.analyze_responsibilities.outputs.analysis}}
+      Measure distinct stakeholders who could independently request changes to the supplied unit. Apply this procedure exactly:
+
+      1. Count change-driving concerns demonstrated by the unit's behavior, not every framework type, dependency, implementation mechanism, or hypothetical team.
+      2. Merge backing storage, caching, and cache consistency into one data-access stakeholder when they jointly implement retrieval and persistence behavior.
+      3. Merge templates, number formatting, string formatting, and collection layout into one presentation stakeholder when they jointly produce displayed output.
+      4. Count security, operations, product policy, validation, or other stakeholders only when code in the unit demonstrates independently changeable behavior for that concern. Do not infer them solely from a type name.
+      5. Before submitting, build one evidence entry per stakeholder containing the stakeholder, methods, and rationale. `stakeholder_count` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
+
+      Apply this measurement to unit `{{params.review_unit.target.name}}` using the source and preceding SRP measurements already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -148,7 +92,7 @@ steps:
 
   - id: classify_exception
     type: exception
-    depends_on: [analyze_responsibilities]
+    depends_on: [stakeholder_count]
     prompt: |
       1. **Facade / Coordinator** (see @facade.md)
          A class that only coordinates protocol-typed subsystems has one responsibility: coordination.
@@ -159,9 +103,4 @@ steps:
           3. Class creates no objects internally — all dependencies injected via init
          If ALL conditions hold: cohesion groups = 1 (coordination), final severity = COMPLIANT
 
-      Unit:
-      ```
-      {{params.review_unit}}
-      ```
-
-      Shared responsibility analysis: {{steps.analyze_responsibilities.outputs.analysis}}
+      Classify unit `{{params.review_unit.target.name}}` using the source and SRP measurements already visible in the current model session.

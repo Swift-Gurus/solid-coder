@@ -8,10 +8,10 @@ from typing import Annotated, ClassVar, Optional, Union
 from pydantic import AliasChoices, ConfigDict, Field
 
 from harness.condition_declaration import ConditionDeclaration
+from harness.for_each_declaration import ForEachDeclaration
 from harness.metric_declaration import MetricDeclaration
 from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
-from harness.step_output_reference import StepOutputReference
 
 
 """
@@ -32,7 +32,7 @@ class StepDeclaration:
     prompt: Optional[str] = None
     depends_on: Optional[list[str]] = None
     outputs: list[OutputSpec] = field(default_factory=list)
-    for_each: Optional[StepOutputReference] = None
+    for_each: Optional[ForEachDeclaration] = None
     condition: Optional[ConditionDeclaration] = None
     mode: Optional[str] = None
     prompt_file: Optional[str] = None

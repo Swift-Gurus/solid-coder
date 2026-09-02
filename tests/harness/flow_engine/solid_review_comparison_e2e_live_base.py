@@ -18,8 +18,8 @@ for _directory in (_HARNESS, _MCP_SERVER):
         sys.path.insert(0, str(_directory))
 
 from harness.review_result import ReviewResult  # noqa: E402
-from review.buffer_review_target import BufferReviewTarget  # noqa: E402
 from review.prepare_review_input import PrepareReviewInput  # noqa: E402
+from source.file_analysis_source import FileAnalysisSource  # noqa: E402
 from codex_review_stage_evidence_reader import (  # noqa: E402
     CodexReviewStageEvidenceReader,
 )
@@ -80,16 +80,19 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
         return LiveWorkflowScenario(
             workflow_id="solid-review",
             parameters=PrepareReviewInput(
-                target=BufferReviewTarget(
+                target=FileAnalysisSource(
                     path=self._source_project.review_target,
-                    content=self._source_project.review_target.read_text(
-                        encoding="utf-8"
-                    ),
                 )
             ),
             artifact_scope=LiveSessionArtifactScope(
                 domain="comparison",
                 scenario="workflow-smoke",
+            ),
+            model_context=(
+                "Source under review:\n"
+                "```swift\n"
+                f"{self._source_project.review_target.read_text(encoding='utf-8')}"
+                "\n```"
             ),
         )
 
@@ -192,15 +195,13 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
         ))
         for classification in classification_events:
             selected = any(
-                selection["source_identity"]
-                == classification["item"]["source_identity"]
-                and selection["unit_identity"]
-                == classification["item"]["unit_identity"]
+                selection["path"] == classification["item"]["path"]
+                and selection["unit"] == classification["item"]["unit"]
                 for event in events
                 if event.get("event") == "step_completed"
                 and event.get("local_step_id") == "select_candidates"
                 and event.get("workflow_instance_id")
-                == classification.get("workflow_instance_id")
+                == classification.get("parent_workflow_instance_id")
                 for selection in event["outputs"]["selections"]
             )
             self.assertTrue(selected)

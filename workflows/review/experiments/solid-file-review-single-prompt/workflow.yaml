@@ -1,0 +1,129 @@
+id: solid-file-review-single-prompt
+name: SOLID File Review (Single Prompt)
+description: >
+  Single-prompt-step-per-rule variant of solid-file-review. Batches SRP, OCP,
+  and LSP units into one model turn per rule, runs ISP and DRY per unit because
+  their prompts contain unit-specific search context, and runs file-scoped rules
+  once over the whole file. Built for cost, latency, and consistency comparison
+  against the granular solid-file-review bundle. Does not touch the production
+  bundle.
+max_turns: 200
+
+steps:
+  - id: capture_target
+    type: agent
+    prompt: |
+      Submit the review target identified in your prompt.
+      Use kind "file" with an absolute path, or kind "text" with the code.
+    outputs:
+      - name: target
+        type: data
+        schema:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [ kind, path ]
+              properties:
+                kind:
+                  const: file
+                path:
+                  type: string
+
+            - type: object
+              additionalProperties: false
+              required: [ kind, text ]
+              properties:
+                kind:
+                  const: text
+                text:
+                  type: string
+                virtual_path:
+                  type: string
+                file_extension:
+                  type: string
+
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    depends_on: [capture_target]
+    with:
+      target: "{{steps.capture_target.outputs.target}}"
+
+  # ---- File-scoped rules: one model call over the whole file (no for_each) ----
+  - include:
+      workflow: code-smells-single-prompt
+    as: code_smells_review
+    depends_on: [prepare_review]
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  - include:
+      workflow: frontmatter-single-prompt
+    as: frontmatter_review
+    depends_on: [prepare_review]
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  # ---- Unit-scoped rules with shared prompts: one batched model turn per rule ----
+  - include:
+      workflow: srp-single-prompt
+    as: srp_reviews
+    depends_on: [prepare_review]
+    for_each:
+      source: "{{steps.prepare_review.outputs.units}}"
+      mode: batch
+      label: "{{item.target.name}}"
+    with:
+      review_unit: "{{item}}"
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  - include:
+      workflow: ocp-single-prompt
+    as: ocp_reviews
+    depends_on: [prepare_review]
+    for_each:
+      source: "{{steps.prepare_review.outputs.units}}"
+      mode: batch
+      label: "{{item.target.name}}"
+    with:
+      review_unit: "{{item}}"
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  - include:
+      workflow: lsp-single-prompt
+    as: lsp_reviews
+    depends_on: [prepare_review]
+    for_each:
+      source: "{{steps.prepare_review.outputs.units}}"
+      mode: batch
+      label: "{{item.target.name}}"
+    with:
+      review_unit: "{{item}}"
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  # ---- Unit-scoped rules with per-unit search context: individual model turns ----
+
+  - include:
+      workflow: isp-single-prompt
+    as: isp_reviews
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"
+
+  - include:
+      workflow: dry-rule-prompt
+    as: dry_reviews
+    depends_on: [prepare_review]
+    for_each: "{{steps.prepare_review.outputs.units}}"
+    with:
+      review_unit: "{{item}}"
+      review_file: "{{steps.prepare_review.outputs.review_file}}"
+      source_context: "{{steps.prepare_review.outputs.source_context}}"

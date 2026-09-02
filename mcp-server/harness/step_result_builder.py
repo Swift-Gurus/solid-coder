@@ -43,5 +43,6 @@ class StepResultBuilder(StepResultBuilding):
                 prompt=instance.prompt,
                 execution=execution,
                 rejection_reason=rejection_reason,
+                batch=instance.batch,
             ))
         return results

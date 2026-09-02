@@ -22,6 +22,8 @@ from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from review_unit_workflow_parameters import ReviewUnitWorkflowParameters
+from review_unit_workflow_context import ReviewUnitWorkflowContext
+from review_unit_workflow_target import ReviewUnitWorkflowTarget
 from rule_instruction_block_reader import RuleInstructionBlockReader
 from rule_validation_scenario import RuleValidationScenario
 from rule_workflow_checkpoint import RuleWorkflowCheckpoint
@@ -47,6 +49,7 @@ class RuleValidationFlowContract(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.project_root = Path(temporary.name)
         self.review_unit = self.SCENARIO.fixture_path.read_text(encoding="utf-8")
+        self.review_unit_name = f"{self.SCENARIO.workflow_id}-fixture-unit"
         self.sut = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
                 project_dir_fn=lambda: self.project_root
@@ -58,18 +61,20 @@ class RuleValidationFlowContract(unittest.TestCase):
         ).build()
 
     def test_starts_metrics_and_one_exception_without_scoring_step(self) -> None:
-        checkpoint = self._advance_through_analysis()
-        started = checkpoint.result
+        checkpoint = self._complete_workflow()
 
         self.assertEqual(
-            {step.step_id for step in started.steps},
+            set(checkpoint.step_ids),
             {
+                *(analysis.step_id for analysis in self.SCENARIO.analysis),
                 *(metric.step_id for metric in self.SCENARIO.metrics),
                 "classify_exception",
             },
         )
-        self.assertNotIn("score_results", {step.step_id for step in started.steps})
-        self.assertIn(self.review_unit, "\n".join(checkpoint.prompts))
+        self.assertNotIn("score_results", checkpoint.step_ids)
+        prompts = "\n".join(checkpoint.prompts)
+        self.assertNotIn(self.review_unit, prompts)
+        self.assertIn(self.review_unit_name, prompts)
 
     def test_declares_expected_rule_applicability(self) -> None:
         operation_registry = OperationRegistry(
@@ -107,30 +112,42 @@ class RuleValidationFlowContract(unittest.TestCase):
         )
 
     def test_uses_canonical_rule_detection_and_exception_instructions(self) -> None:
-        checkpoint = self._advance_through_analysis()
-        started = checkpoint.result
+        checkpoint = self._complete_workflow()
         rule = self.SCENARIO.rule_path.read_text(encoding="utf-8")
         reader = RuleInstructionBlockReader()
 
         for metric in self.SCENARIO.metrics:
+            definition = reader.definition(
+                rule,
+                metric.detection_id,
+                metric.detection_name,
+            )
             detection = reader.detection(
                 rule,
                 metric.detection_id,
                 metric.detection_name,
             )
+            if definition is not None:
+                self.assertTrue(
+                    any(definition in prompt for prompt in checkpoint.prompts),
+                    f"Missing {metric.detection_id} definition",
+                )
             self.assertTrue(
                 any(detection in prompt for prompt in checkpoint.prompts),
                 f"Missing {metric.detection_id} instructions",
             )
-        exception_prompt = next(
-            step.prompt
-            for step in started.steps
-            if step.step_id == "classify_exception"
-        )
         if self.SCENARIO.has_authored_exceptions:
-            self.assertIn(reader.exceptions(rule), exception_prompt)
+            self.assertTrue(
+                any(
+                    reader.exceptions(rule) in prompt
+                    for prompt in checkpoint.prompts
+                )
+            )
         else:
-            self.assertIn("no rule-wide exception", exception_prompt.lower())
+            self.assertTrue(any(
+                "no rule-wide exception" in prompt.lower()
+                for prompt in checkpoint.prompts
+            ))
 
     def test_rejects_unaudited_measurement_before_scoring(self) -> None:
         started = self._advance_through_analysis().result
@@ -154,15 +171,8 @@ class RuleValidationFlowContract(unittest.TestCase):
         self.assertIn("additional_info", rejected_metric.rejection_reason)
 
     def test_mcp_scores_all_metrics_and_publishes_audited_result(self) -> None:
-        checkpoint = self._advance_through_analysis()
-        started = checkpoint.result
-
-        completed = self.sut.flow_next(
-            {
-                step.instance_id: self._output_for(step.step_id)
-                for step in started.steps
-            }
-        )
+        checkpoint = self._complete_workflow()
+        completed = checkpoint.result
 
         self.assertEqual(completed.status, "done")
         result = self._rule_result(checkpoint.run_id)
@@ -191,18 +201,8 @@ class RuleValidationFlowContract(unittest.TestCase):
         )
 
     def test_exception_makes_metric_decisions_compliant_without_hiding_evidence(self) -> None:
-        checkpoint = self._advance_through_analysis()
-        started = checkpoint.result
-
-        completed = self.sut.flow_next(
-            {
-                step.instance_id: self._output_for(
-                    step.step_id,
-                    is_exception=True,
-                )
-                for step in started.steps
-            }
-        )
+        checkpoint = self._complete_workflow(is_exception=True)
+        completed = checkpoint.result
 
         self.assertEqual(completed.status, "done")
         result = self._rule_result(checkpoint.run_id)
@@ -217,7 +217,11 @@ class RuleValidationFlowContract(unittest.TestCase):
         )
 
     def _start(self):
-        parameters = ReviewUnitWorkflowParameters(review_unit=self.review_unit)
+        parameters = ReviewUnitWorkflowParameters(
+            review_unit=ReviewUnitWorkflowContext(
+                target=ReviewUnitWorkflowTarget(name=self.review_unit_name)
+            )
+        )
         return self.sut.flow_start(
             self.SCENARIO.workflow_id,
             parameters.model_dump(),
@@ -227,6 +231,7 @@ class RuleValidationFlowContract(unittest.TestCase):
         current = self._start()
         run_id = current.run_id
         prompts = [step.prompt for step in current.steps]
+        step_ids = [step.step_id for step in current.steps]
         for expectation in self.SCENARIO.analysis:
             step = next(
                 ready_step
@@ -237,10 +242,38 @@ class RuleValidationFlowContract(unittest.TestCase):
                 step.instance_id: expectation.output,
             })
             prompts.extend(ready_step.prompt for ready_step in current.steps)
+            step_ids.extend(ready_step.step_id for ready_step in current.steps)
         return RuleWorkflowCheckpoint(
             run_id=run_id,
             result=current,
             prompts=prompts,
+            step_ids=step_ids,
+        )
+
+    def _complete_workflow(
+        self,
+        is_exception: bool = False,
+    ) -> RuleWorkflowCheckpoint:
+        checkpoint = self._advance_through_analysis()
+        current = checkpoint.result
+        prompts = list(checkpoint.prompts)
+        step_ids = list(checkpoint.step_ids)
+        while current.steps:
+            current = self.sut.flow_next({
+                step.instance_id: self._output_for(
+                    step.step_id,
+                    is_exception=is_exception,
+                )
+                for step in current.steps
+            })
+            prompts.extend(step.prompt for step in current.steps)
+            step_ids.extend(step.step_id for step in current.steps)
+        self.assertEqual(current.status, "done", current.error)
+        return RuleWorkflowCheckpoint(
+            run_id=checkpoint.run_id,
+            result=current,
+            prompts=prompts,
+            step_ids=step_ids,
         )
 
     def _output_for(

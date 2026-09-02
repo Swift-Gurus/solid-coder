@@ -5,6 +5,7 @@ from dataclasses import replace
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_resolution import IncludeResolution
 from harness.include_source import IncludeSource
+from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 from harness.nested_include_resolution_merging import NestedIncludeResolutionMerging
 from harness.ordered_string_collecting import OrderedStringCollecting
 
@@ -20,8 +21,10 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
     def __init__(
         self,
         ordered_strings: OrderedStringCollecting,
+        dynamic_group_checker: IncludeGroupDynamicChecking,
     ) -> None:
         self._ordered_strings = ordered_strings
+        self._dynamic_group_checker = dynamic_group_checker
 
     def merge(
         self,
@@ -29,9 +32,34 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
         source: IncludeSource,
         nested: IncludeResolution,
     ) -> IncludeResolution:
+        transparent_aliases = {
+            group.alias
+            for group in nested.alias_groups
+            if group.owner_alias is None
+            and not self._dynamic_group_checker.is_dynamic(group)
+        }
+        owned_groups = [
+            replace(group, owner_alias=source.alias)
+            if (
+                group.owner_alias is None
+                and self._dynamic_group_checker.is_dynamic(group)
+            )
+            or group.owner_alias in transparent_aliases
+            else group
+            for group in nested.alias_groups
+        ]
+        owned_member_ids = {
+            member_id
+            for group in owned_groups
+            for member_id in group.member_ids
+        }
         source_group = IncludeAliasGroup(
             alias=source.alias,
-            member_ids=[step["id"] for step in nested.steps],
+            member_ids=[
+                step["id"]
+                for step in nested.steps
+                if step["id"] not in owned_member_ids
+            ],
             depends_on=source.runtime.depends_on,
             for_each=source.runtime.for_each,
             input_bindings=source.runtime.input_bindings,
@@ -44,7 +72,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             for group in resolution.alias_groups
             if group.alias != source.alias
         ]
-        alias_groups.extend([source_group, *nested.alias_groups])
+        alias_groups.extend([source_group, *owned_groups])
         source_paths = [source.source_path] if source.source_path else []
         workflow_ids = [source.workflow_id] if source.workflow_id else []
         return replace(

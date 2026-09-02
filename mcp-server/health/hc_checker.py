@@ -47,6 +47,7 @@ class HealthChecking(Protocol):
         parent_session_id: str,
         cwd: str = "",
         patch_context: Optional[PatchReviewContext] = None,
+        principle_names: Optional[list[str]] = None,
     ) -> Optional[list]: ...
 
 
@@ -81,8 +82,9 @@ class LLMHealthChecker:
         language: str,
         parent_session_id: str,
         patch_context: Optional[PatchReviewContext] = None,
+        principle_names: Optional[list[str]] = None,
     ) -> Optional[list]:
-        principles = self._loader.load(content, path)
+        principles = self._loader.load(content, path, principle_names)
         if principles is None:
             return None
         if not principles:

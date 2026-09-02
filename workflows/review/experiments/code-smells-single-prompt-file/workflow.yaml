@@ -1,0 +1,50 @@
+id: code-smells-single-prompt-file
+name: Code Smells Single-Prompt File Review
+max_turns: 5
+
+steps:
+  - id: capture_target
+    type: agent
+    prompt: |
+      Submit the review target identified in your prompt.
+      Use kind "file" with an absolute path, or kind "text" with the code.
+    outputs:
+      - name: target
+        type: data
+        schema:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [kind, path]
+              properties:
+                kind:
+                  const: file
+                path:
+                  type: string
+
+            - type: object
+              additionalProperties: false
+              required: [kind, text]
+              properties:
+                kind:
+                  const: text
+                text:
+                  type: string
+                virtual_path:
+                  type: string
+                file_extension:
+                  type: string
+
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    depends_on: [capture_target]
+    with:
+      target: "{{steps.capture_target.outputs.target}}"
+
+  - include:
+      workflow: code-smells-single-prompt
+    as: code_smells
+    depends_on: [prepare_review]
+    with:
+      review_file: "{{steps.prepare_review.outputs.review_file}}"

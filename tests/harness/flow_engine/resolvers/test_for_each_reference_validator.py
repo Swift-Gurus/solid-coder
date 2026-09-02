@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.for_each_collection_validator import ForEachCollectionValidator
+from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.for_each_reference_validator import ForEachReferenceValidator
 from harness.for_each_source_identity_resolver import ForEachSourceIdentityResolver
@@ -40,7 +41,7 @@ class TestForEachReferenceValidator(unittest.TestCase):
                 id="review",
                 prompt="Review {{item}}",
                 depends_on=["middle"],
-                for_each=self._reference("load", "files"),
+                for_each=self._declaration("load", "files"),
             ),
         ]
 
@@ -54,7 +55,7 @@ class TestForEachReferenceValidator(unittest.TestCase):
                 id="review",
                 prompt="Review {{item}}",
                 depends_on=["other"],
-                for_each=self._reference("load", "files"),
+                for_each=self._declaration("load", "files"),
             ),
         ]
 
@@ -78,7 +79,7 @@ class TestForEachReferenceValidator(unittest.TestCase):
             id="review",
             prompt="Review {{item}}",
             depends_on=["load"],
-            for_each=self._reference("load", "files"),
+            for_each=self._declaration("load", "files"),
         )
 
         with self.assertRaisesRegex(
@@ -114,6 +115,13 @@ class TestForEachReferenceValidator(unittest.TestCase):
 
     def _reference(self, step_id: str, output_name: str) -> StepOutputReference:
         return StepOutputReference(step_id=step_id, output_name=output_name)
+
+    def _declaration(
+        self,
+        step_id: str,
+        output_name: str,
+    ) -> ForEachDeclaration:
+        return ForEachDeclaration(source=self._reference(step_id, output_name))
 
     def _source(self) -> StepDef:
         return StepDef(

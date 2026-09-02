@@ -9,6 +9,9 @@ from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_results_visibility_selecting import (
+    WorkflowResultsVisibilitySelecting,
+)
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
@@ -20,6 +23,12 @@ solid-description: Resolves root or included-workflow parameters, completed outp
 """
 class WorkflowStepContextResolver(WorkflowStepContextResolving):
 
+    def __init__(
+        self,
+        results_selector: WorkflowResultsVisibilitySelecting,
+    ) -> None:
+        self._results_selector = results_selector
+
     def resolve(
         self,
         context: WorkflowRunContext,
@@ -30,6 +39,10 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
             return replace(
                 context,
                 item=ResolvedWorkflowContextValue(present=True, value=item),
+                workflows=self._results_selector.select(
+                    context.workflows,
+                    None,
+                ),
             )
 
         local_completions = []
@@ -56,5 +69,9 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
             parameters=workflow_instance.inputs,
             completed_steps=WorkflowContextValues(entries=local_completions),
             skipped_steps=WorkflowContextValues(entries=local_skips),
+            workflows=self._results_selector.select(
+                context.workflows,
+                workflow_instance,
+            ),
             item=ResolvedWorkflowContextValue(present=True, value=item),
         )

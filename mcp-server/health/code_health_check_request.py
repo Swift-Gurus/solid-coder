@@ -22,3 +22,4 @@ class CodeHealthCheckRequest(BaseModel):
     parent_session_id: str
     cwd: str = ""
     patch_context: Optional[PatchReviewContext] = None
+    principle_names: list[str] = Field(default_factory=list)

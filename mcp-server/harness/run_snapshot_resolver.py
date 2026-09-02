@@ -39,9 +39,15 @@ class RunSnapshotResolver(RunSnapshotResolving):
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
         run_state = self._event_replayer.replay(events_path)
         context = self._context_builder.build(params, run_state)
+        materialization = self._step_resolver.resolve(
+            flow_def,
+            run_state,
+            context,
+        )
         executable_flow = replace(
             flow_def,
-            steps=self._step_resolver.resolve(flow_def, run_state, context),
+            steps=materialization.steps,
+            alias_groups=materialization.groups,
         )
         context = replace(
             context,

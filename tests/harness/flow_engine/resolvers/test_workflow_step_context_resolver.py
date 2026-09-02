@@ -21,6 +21,9 @@ from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import (
+    WorkflowResultsVisibilitySelector,
+)
 
 
 """
@@ -30,6 +33,11 @@ solid-spec: [SPEC-037]
 solid-description: Verifies child workflow contexts expose only their own inputs, source item, and local step outputs.
 """
 class TestWorkflowStepContextResolver(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.sut = WorkflowStepContextResolver(
+            WorkflowResultsVisibilitySelector()
+        )
 
     def test_isolates_local_step_outputs_between_child_instances(self) -> None:
         context = WorkflowRunContext(
@@ -47,7 +55,7 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
             )
         )
 
-        first = WorkflowStepContextResolver().resolve(
+        first = self.sut.resolve(
             context,
             self._workflow_instance(
                 index=1,
@@ -56,7 +64,7 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
             ),
             item="Alpha",
         )
-        second = WorkflowStepContextResolver().resolve(
+        second = self.sut.resolve(
             context,
             self._workflow_instance(
                 index=2,
@@ -106,7 +114,7 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
             )
         )
 
-        resolved = WorkflowStepContextResolver().resolve(
+        resolved = self.sut.resolve(
             context,
             self._workflow_instance(
                 index=1,

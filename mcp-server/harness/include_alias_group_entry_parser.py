@@ -49,12 +49,32 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
                 "Workflow snapshot alias group must be an object"
             )
         alias = raw.get("alias")
+        authored_alias = raw.get("authored_alias")
+        owner_alias = raw.get("owner_alias")
+        runtime_owner_instance_id = raw.get("runtime_owner_instance_id")
         member_ids = raw.get("member_ids")
         depends_on = raw.get("depends_on") or []
         bindings = raw.get("input_bindings") or []
         if not isinstance(alias, str) or not alias:
             raise self._error_factory.create(
                 "Workflow snapshot alias group requires an alias"
+            )
+        if not isinstance(authored_alias, str) or not authored_alias:
+            raise self._error_factory.create(
+                f"Workflow snapshot alias group '{alias}' requires an authored alias"
+            )
+        if owner_alias is not None and (
+            not isinstance(owner_alias, str) or not owner_alias
+        ):
+            raise self._error_factory.create(
+                f"Workflow snapshot alias group '{alias}' has an invalid owner alias"
+            )
+        if runtime_owner_instance_id is not None and (
+            not isinstance(runtime_owner_instance_id, str)
+            or not runtime_owner_instance_id
+        ):
+            raise self._error_factory.create(
+                f"Workflow snapshot alias group '{alias}' has an invalid runtime owner"
             )
         if not isinstance(member_ids, list) or not all(
             isinstance(member_id, str) for member_id in member_ids
@@ -77,6 +97,9 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         return IncludeAliasGroup(
             alias=alias,
             member_ids=member_ids,
+            authored_alias=authored_alias,
+            owner_alias=owner_alias,
+            runtime_owner_instance_id=runtime_owner_instance_id,
             depends_on=depends_on,
             for_each=self._for_each_parser.parse(alias, raw_for_each),
             input_bindings=[

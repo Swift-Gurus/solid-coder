@@ -83,14 +83,23 @@ class TestDryValidationFlow(unittest.TestCase):
         selection_prompt = selection.steps[0].prompt
         self.assertIn("SharedTaxFormatter", selection_prompt)
         self.assertNotIn("struct SharedTaxFormatter", selection_prompt)
-        classified = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
+        self.assertEqual(len(inspection.steps), 1)
+        inspection_prompt = inspection.steps[0].prompt
+        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), inspection_prompt)
+        self.assertNotIn("struct SharedTaxFormatter", inspection_prompt)
+        self.assertNotIn("struct PayrollLedger", inspection_prompt)
+        classified = self.engine.flow_next({
+            inspection.steps[0].instance_id: self._inspection_output()
         })
         self.assertEqual(len(classified.steps), 1)
         candidate_prompt = classified.steps[0].prompt
-        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), candidate_prompt)
+        self.assertIn("PayrollLedger", candidate_prompt)
+        self.assertIn("completed source inspection", candidate_prompt)
         self.assertNotIn("struct SharedTaxFormatter", candidate_prompt)
-        self.assertIn("struct PayrollLedger", candidate_prompt)
+        self.assertNotIn("struct PayrollLedger", candidate_prompt)
         self.assertEqual(
             candidate_prompt.count("Return only one JSON object matching this schema"),
             1,
@@ -129,8 +138,11 @@ class TestDryValidationFlow(unittest.TestCase):
             )
             for step in started.steps
         })
-        classified = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
+        classified = self.engine.flow_next({
+            inspection.steps[0].instance_id: self._inspection_output()
         })
         measured = self.engine.flow_next({
             classified.steps[0].instance_id: self._candidate_assessment()
@@ -153,7 +165,7 @@ class TestDryValidationFlow(unittest.TestCase):
         )
         self.assertIn(reader.exceptions(rule), prompts["classify_exception"])
 
-    def test_dry2_receives_reviewed_code_when_source_search_is_empty(self) -> None:
+    def test_dry2_uses_visible_source_without_reserializing_it(self) -> None:
         (self.project_root / "SharedTaxFormatter.swift").unlink()
         started = self.engine.flow_start("dry", self._parameters())
         selection = self.engine.flow_next({
@@ -173,8 +185,10 @@ class TestDryValidationFlow(unittest.TestCase):
             for step in measured.steps
             if step.step_id == "duplicate_sites"
         )
-        self.assertIn("func grossWages", duplicate_prompt)
-        self.assertIn("func reimbursements", duplicate_prompt)
+        self.assertIn("PayrollLedger", duplicate_prompt)
+        self.assertNotIn("func grossWages", duplicate_prompt)
+        self.assertNotIn("'code':", duplicate_prompt)
+        self.assertNotIn("func reimbursements", duplicate_prompt)
         self.assertIn(
             "independently inspect the reviewed unit",
             duplicate_prompt.lower(),
@@ -210,6 +224,13 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), prompt)
         self.assertNotIn("struct SharedTaxFormatter", prompt)
         self.assertIn("Select only repository candidates", prompt)
+        self.assertIn("Here is what we found:", prompt)
+        self.assertIn("unit: SharedTaxFormatter", prompt)
+        self.assertIn("description: No solid-description frontmatter.", prompt)
+        self.assertNotIn("source_identity", prompt)
+        self.assertNotIn("unit_identity", prompt)
+        self.assertNotIn("content_sha256", prompt)
+        self.assertNotIn("matches", prompt)
 
     def test_classifies_only_candidates_selected_for_llm_file_inspection(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
@@ -219,24 +240,33 @@ class TestDryValidationFlow(unittest.TestCase):
             }
         })
 
-        classification = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: {
                 "selections": [
                     {
-                        "source_identity": "SharedTaxFormatter.swift",
-                        "unit_identity": "struct:SharedTaxFormatter:1",
+                        "path": str(
+                            (self.project_root / "SharedTaxFormatter.swift").resolve()
+                        ),
+                        "unit": "SharedTaxFormatter",
                         "reasoning": "The description indicates shared formatting behavior.",
                     }
                 ]
             }
         })
 
+        self.assertEqual(len(inspection.steps), 1)
+        self.assertTrue(inspection.steps[0].step_id.endswith("inspect_candidate"))
+        inspection_prompt = inspection.steps[0].prompt
+        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), inspection_prompt)
+        self.assertIn("read the selected file", inspection_prompt.lower())
+        self.assertNotIn("struct SharedTaxFormatter", inspection_prompt)
+        classification = self.engine.flow_next({
+            inspection.steps[0].instance_id: self._inspection_output()
+        })
+
         self.assertEqual(len(classification.steps), 1)
         prompt = classification.steps[0].prompt
-        self.assertEqual(classification.steps[0].step_id, "classify_candidate")
-        self.assertIn(str(self.project_root / "SharedTaxFormatter.swift"), prompt)
-        self.assertIn("read the selected file", prompt.lower())
-        self.assertNotIn("struct SharedTaxFormatter", prompt)
+        self.assertTrue(classification.steps[0].step_id.endswith("classify_candidate"))
         self.assertIn("NOT_SUITABLE", prompt)
         self.assertIn("NOT_DUPLICATE", prompt)
         self.assertIn(
@@ -244,7 +274,7 @@ class TestDryValidationFlow(unittest.TestCase):
             prompt,
         )
         self.assertIn(
-            "Choose IDENTICAL or STRUCTURAL only when the evidence cites executable statements",
+            "Choose IDENTICAL or STRUCTURAL only when the completed inspection cites executable statements",
             prompt,
         )
         self.assertIn(
@@ -274,17 +304,20 @@ class TestDryValidationFlow(unittest.TestCase):
 
         classification = self.engine.flow_next({
             inspection.steps[0].instance_id: {
-                "inspection": {
-                    "reasoning": "The candidate contains shared formatting behavior.",
-                    "evidence": "SharedTaxFormatter.swift contains formatTax().",
-                }
+                "reasoning": "The candidate contains shared formatting behavior.",
+                "evidence": "SharedTaxFormatter.swift contains formatTax().",
             }
         })
 
         self.assertEqual(len(classification.steps), 1)
         self.assertTrue(classification.steps[0].step_id.endswith("classify_candidate"))
         self.assertIn("completed source inspection", classification.steps[0].prompt)
-        self.assertIn("SharedTaxFormatter.swift contains formatTax()", classification.steps[0].prompt)
+        self.assertIn("SharedTaxFormatter", classification.steps[0].prompt)
+        self.assertNotIn(
+            "SharedTaxFormatter.swift contains formatTax()",
+            classification.steps[0].prompt,
+        )
+        self.assertIn("previously submitted", classification.steps[0].prompt)
 
     def test_compliant_fixture_publishes_zero_metrics(self) -> None:
         self.current_content = (
@@ -322,8 +355,11 @@ class TestDryValidationFlow(unittest.TestCase):
                 "SharedTaxFormatter",
             )
         })
-        classified = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: self._shared_formatter_selection()
+        })
+        classified = self.engine.flow_next({
+            inspection.steps[0].instance_id: self._inspection_output()
         })
         measured = self.engine.flow_next({
             classified.steps[0].instance_id: self._candidate_assessment()
@@ -408,7 +444,7 @@ class TestDryValidationFlow(unittest.TestCase):
             if target.name == "SiblingFormatter"
         )
         proposed_target = proposed.targets[0]
-        classified = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: {
                 "selections": [
                     self._selection_for(sibling),
@@ -417,8 +453,8 @@ class TestDryValidationFlow(unittest.TestCase):
             }
         })
 
-        self.assertEqual(len(classified.steps), 2)
-        prompts = "\n".join(step.prompt for step in classified.steps)
+        self.assertEqual(len(inspection.steps), 2)
+        prompts = "\n".join(step.prompt for step in inspection.steps)
         self.assertIn(str(self.current_path), prompts)
         self.assertIn(str(proposed_path), prompts)
         self.assertNotIn("struct SiblingFormatter", prompts)
@@ -453,23 +489,31 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertEqual(len(selection.steps), 1)
         self.assertIn("RemoteContentLoading", selection.steps[0].prompt)
         self.assertNotIn("protocol RemoteContentLoading", selection.steps[0].prompt)
-        classified = self.engine.flow_next({
+        inspection = self.engine.flow_next({
             selection.steps[0].instance_id: {
                 "selections": [
                     {
-                        "source_identity": "RemoteContentLoading.swift",
-                        "unit_identity": "protocol:RemoteContentLoading:6",
+                        "path": str(
+                            (self.project_root / "RemoteContentLoading.swift").resolve()
+                        ),
+                        "unit": "RemoteContentLoading",
                         "reasoning": "The description identifies equivalent remote loading behavior.",
                     }
                 ]
             }
         })
-        self.assertEqual(len(classified.steps), 1)
-        self.assertIn("protocol NetworkResourceFetching", classified.steps[0].prompt)
+        self.assertEqual(len(inspection.steps), 1)
         self.assertIn(
             str(self.project_root / "RemoteContentLoading.swift"),
-            classified.steps[0].prompt,
+            inspection.steps[0].prompt,
         )
+        self.assertNotIn("protocol RemoteContentLoading", inspection.steps[0].prompt)
+        classified = self.engine.flow_next({
+            inspection.steps[0].instance_id: self._inspection_output()
+        })
+        self.assertEqual(len(classified.steps), 1)
+        self.assertIn("NetworkResourceFetching", classified.steps[0].prompt)
+        self.assertNotIn("protocol NetworkResourceFetching", classified.steps[0].prompt)
         self.assertNotIn("protocol RemoteContentLoading", classified.steps[0].prompt)
         measured = self.engine.flow_next({
             classified.steps[0].instance_id: self._candidate_assessment()
@@ -544,12 +588,20 @@ class TestDryValidationFlow(unittest.TestCase):
         }
 
     @staticmethod
-    def _shared_formatter_selection() -> dict[str, object]:
+    def _inspection_output() -> dict[str, str]:
+        return {
+            "reasoning": "The candidate contains the described behavior.",
+            "evidence": "The inspected candidate contains relevant executable statements.",
+        }
+
+    def _shared_formatter_selection(self) -> dict[str, object]:
         return {
             "selections": [
                 {
-                    "source_identity": "SharedTaxFormatter.swift",
-                    "unit_identity": "struct:SharedTaxFormatter:1",
+                    "path": str(
+                        (self.project_root / "SharedTaxFormatter.swift").resolve()
+                    ),
+                    "unit": "SharedTaxFormatter",
                     "reasoning": "The summary identifies shared formatting behavior.",
                 }
             ]
@@ -558,8 +610,8 @@ class TestDryValidationFlow(unittest.TestCase):
     @staticmethod
     def _selection_for(target: SourceSearchTarget) -> dict[str, str]:
         return {
-            "source_identity": target.source_identity,
-            "unit_identity": target.unit_identity,
+            "path": str(Path(target.source_identity).resolve()),
+            "unit": target.name,
             "reasoning": "The summary indicates equivalent formatting behavior.",
         }
 

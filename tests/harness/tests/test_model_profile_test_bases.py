@@ -25,17 +25,73 @@ from local_test_base import LocalTestBase  # noqa: E402
 
 class TestModelProfileTestBases(unittest.TestCase):
 
+    def test_live_backends_use_callable_flow_lifecycle_names(self) -> None:
+        self.assertEqual(
+            CodexTestBase.FLOW_START_TOOL,
+            "mcp__solid_coder_flow_engine__flow_start",
+        )
+        self.assertEqual(
+            CodexTestBase.FLOW_NEXT_TOOL,
+            "mcp__solid_coder_flow_engine__flow_next",
+        )
+        self.assertEqual(ClaudeTestBase.FLOW_START_TOOL, "flow_start")
+        self.assertEqual(ClaudeTestBase.FLOW_NEXT_TOOL, "flow_next")
+        self.assertEqual(
+            CodexTestBase.ALLOWED_FLOW_TOOLS,
+            (
+                "mcp__solid-coder-flow-engine__flow_start,"
+                "mcp__solid-coder-flow-engine__flow_next"
+            ),
+        )
+        self.assertEqual(
+            ClaudeTestBase.ALLOWED_FLOW_TOOLS,
+            (
+                "mcp__plugin_solid-coder_flow-engine__flow_start,"
+                "mcp__plugin_solid-coder_flow-engine__flow_next"
+            ),
+        )
+
     def test_codex_base_selects_profile_and_runner(self) -> None:
         base = CodexTestBase()
 
         self.assertEqual(base.MODEL_PROFILE, "codex")
         self.assertIsInstance(base.live_session_runner(), CodexLiveSessionRunner)
 
+    def test_codex_flow_instruction_calls_deferred_tools_without_discovery(self) -> None:
+        instruction = CodexTestBase().flow_execution_instruction(
+            workflow_id="solid-review",
+            parameters_json='{"target":{"kind":"file","path":"/project/A.swift"}}',
+        )
+
+        self.assertIn("Inside functions.exec", instruction)
+        self.assertIn(
+            "tools.mcp__solid_coder_flow_engine__flow_start",
+            instruction,
+        )
+        self.assertIn(
+            "tools.mcp__solid_coder_flow_engine__flow_next",
+            instruction,
+        )
+        self.assertIn(
+            'flow_next({outputs: {"<returned-step-id>": <JSON output>}})',
+            instruction,
+        )
+        self.assertIn("Do not inspect ALL_TOOLS", instruction)
+
     def test_claude_base_selects_profile_and_runner(self) -> None:
         base = ClaudeTestBase()
 
         self.assertEqual(base.MODEL_PROFILE, "claude")
         self.assertIsInstance(base.live_session_runner(), ClaudeLiveSessionRunner)
+
+    def test_claude_flow_instruction_uses_native_tool_names(self) -> None:
+        instruction = ClaudeTestBase().flow_execution_instruction(
+            workflow_id="solid-review",
+            parameters_json='{"target":{"kind":"file","path":"/project/A.swift"}}',
+        )
+
+        self.assertIn("Call flow_start", instruction)
+        self.assertIn("with flow_next", instruction)
 
     def test_live_base_prefers_claude_parent_session(self) -> None:
         with patch.dict(

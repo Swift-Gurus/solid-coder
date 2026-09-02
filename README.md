@@ -410,6 +410,7 @@ Feature / subtask specs usually include:
 
 ## Documentation
 
+- [Workflow YAML reference](.claude/docs/workflow-yaml-reference.md)
 - [Architecture overview](docs/architecture-overview.md)
 - [Spec format](docs/spec-format.md)
 - [Build spec](docs/build-spec.md)

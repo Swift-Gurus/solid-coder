@@ -8,16 +8,12 @@ rule: {}
 steps:
   - id: generate_terms
     prompt: |
-      Generate semantic search terms for the immutable target code already supplied below.
+      Generate semantic search terms for reviewed unit `{{params.review_unit.target.name}}` using its source already visible in the current model session.
 
       Return only individual synonyms or name components that may identify existing code with the same responsibility or logical behavior. Do not inspect files, invent paths, create an ID, repeat deterministic names, classify candidates, count findings, or decide severity. Each term must be exactly one lexical word without whitespace, commas, semicolons, regular expressions, or shell syntax. Do not return compound type or method names: for `RemoteResourceLoader`, return `remote`, `resource`, and `loader`; never return the compound name.
 
       Target name: {{params.review_unit.target.name}}
       Target kind: {{params.review_unit.target.kind}}
-      Target code:
-      ```
-      {{params.review_unit.target.code}}
-      ```
     outputs:
       - name: generated_terms
         type: data
@@ -45,15 +41,15 @@ steps:
       included_file_extensions: "{{steps.prepare_query.outputs.included_file_extensions}}"
 
   - id: select_candidates
-    depends_on: [search_repository]
+    depends_on: [present_candidates]
     prompt: |
       Select only repository candidates whose names and descriptions indicate that their source may implement the same responsibility or logical sequence as the reviewed target. Do not classify candidates or claim a finding yet. Return an empty selection when none of the summaries is promising.
 
-      For each selected candidate, copy its `source_identity` and `unit_identity` exactly and explain briefly why its summary warrants source inspection. You will read and classify the selected files in the next step.
+      For each selected candidate, copy its `path` and `unit` exactly and explain briefly why its summary warrants source inspection. You will read and classify the selected files in the next step.
 
       Reviewed target name: {{params.review_unit.target.name}}
       Reviewed target kind: {{params.review_unit.target.kind}}
-      Candidate summaries: {{steps.search_repository.outputs.candidates}}
+      {{steps.present_candidates.outputs.text}}
     outputs:
       - name: selections
         type: data
@@ -63,11 +59,19 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [source_identity, unit_identity, reasoning]
+            required: [path, unit, reasoning]
             properties:
-              source_identity: {type: string, minLength: 1}
-              unit_identity: {type: string, minLength: 1}
+              path: {type: string, minLength: 1}
+              unit: {type: string, minLength: 1}
               reasoning: {type: string, minLength: 1}
+
+  - id: present_candidates
+    type: operation
+    operation: source.present_search
+    depends_on: [search_repository]
+    with:
+      candidates: "{{steps.search_repository.outputs.candidates}}"
+      files_scanned: "{{steps.search_repository.outputs.files_scanned}}"
 
   - id: validate_selection
     type: operation
@@ -77,71 +81,19 @@ steps:
       candidates: "{{steps.search_repository.outputs.candidates}}"
       selections: "{{steps.select_candidates.outputs.selections}}"
 
-  - id: classify_candidate
+  - include:
+      workflow: dry-candidate-review
+    as: candidate_reviews
     depends_on: [validate_selection]
     for_each: "{{steps.validate_selection.outputs.selected_candidates}}"
-    prompt: |
-      Read the selected file at `{{item.path}}` with your normal file-reading tool and inspect the declaration named `{{item.unit}}` with identity `{{item.unit_identity}}`. Compare that source with the immutable reviewed target below. Do not ask MCP to load the candidate, search again, count findings, or decide severity.
-
-      Make two independent classifications. A candidate may be directly reusable without duplicating any implemented logic.
-
-      Reuse classification — choose exactly one:
-      - EXACT — the candidate covers the complete responsibility and can be reused directly.
-      - EXTENSIBLE — the candidate covers the core responsibility and can be extended by configuration, overload, or protocol extension.
-      - PARTIAL — the overlap has meaningful semantic differences and direct reuse is inappropriate.
-      - NOT_SUITABLE — source inspection disproves the summary-level match and the candidate is not suitable for reuse.
-
-      Implementation-duplication classification — choose exactly one:
-      - IDENTICAL — the same logic and concrete types appear with names or locations changed only.
-      - STRUCTURAL — the same algorithm or control flow appears with different concrete types.
-      - SIMILAR — there is overlap, but meaningful differences mean it is not a duplication violation.
-      - NOT_DUPLICATE — source inspection establishes no duplicated implemented logic.
-
-      Choose IDENTICAL or STRUCTURAL only when the evidence cites executable statements from concrete implementation bodies in both the reviewed target and the inspected candidate. If either side has no implementation body, duplication MUST be NOT_DUPLICATE. Similar names, responsibilities, declarations, or signatures are never implementation duplication.
-
-      A conformer is not a reusable replacement for its protocol: when the reviewed target is a protocol or interface and the candidate merely implements that contract, classify reuse as NOT_SUITABLE. Classify a protocol/conformer relationship without duplicated implementation as NOT_DUPLICATE even when their contracts or responsibilities are equivalent. Do not let either classification determine the other. Supply separate reasoning and evidence for both decisions. Evidence must identify the inspected candidate path and cite the relevant lines or source excerpt.
-
-      Target:
-      ```
-      {{params.review_unit.target.code}}
-      ```
-
-      Candidate path: {{item.path}}
-      Candidate frontmatter description: {{item.description}}
-      Candidate match provenance: {{item.matches}}
-    outputs:
-      - name: assessment
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [reuse, duplication]
-          properties:
-            reuse:
-              type: object
-              additionalProperties: false
-              required: [classification, reasoning, evidence]
-              properties:
-                classification:
-                  type: string
-                  enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-            duplication:
-              type: object
-              additionalProperties: false
-              required: [classification, reasoning, evidence]
-              properties:
-                classification:
-                  type: string
-                  enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
+    with:
+      target: "{{params.review_unit.target}}"
+      candidate: "{{item}}"
 
   - id: reuse_misses
     type: metric
     metric_id: DRY-1
-    depends_on: [classify_candidate]
+    depends_on: [candidate_reviews]
     prompt: |
       1. **Identify the responsibility** of each new or modified code unit — what does it do? What problem does it solve? This includes:
          - A new type or function (any access level)
@@ -162,8 +114,7 @@ steps:
 
       Use only each repository candidate's `reuse` classification for this metric. Count EXACT and EXTENSIBLE reuse decisions; do not infer reuse from the independent `duplication` classification. Return the count only through the metric output schema.
 
-      MCP-owned source target: {{params.review_unit}}
-      Repository classifications: {{steps.classify_candidate.outputs.assessment}}
+      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -175,7 +126,7 @@ steps:
   - id: duplicate_sites
     type: metric
     metric_id: DRY-2
-    depends_on: [classify_candidate]
+    depends_on: [candidate_reviews]
     prompt: |
       1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
       2. **Search other units in the same module/target** for methods with the same logical sequence:
@@ -192,11 +143,7 @@ steps:
 
       Also consume each selected repository candidate's independent `duplication` classification. Count each candidate source location classified IDENTICAL or STRUCTURAL once, after deduplicating the same location across repository evidence. Do not infer duplication from the independent `reuse` classification, and do not count pairs, SIMILAR findings, declarations, signatures, or protocol requirements without implemented logic. Return the combined within-unit and repository location count only through the metric output schema.
 
-      Reviewed unit:
-      ```
-      {{params.review_unit.target.code}}
-      ```
-      Repository classifications: {{steps.classify_candidate.outputs.assessment}}
+      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -208,7 +155,7 @@ steps:
   - id: missing_abstractions
     type: metric
     metric_id: DRY-3
-    depends_on: [classify_candidate]
+    depends_on: [candidate_reviews]
     prompt: |
       1. **Identify the domain** of the type under review — what business concept does it represent?
       2. **Identify generic patterns** within the type — behavior, layout, or creation logic that is not specific to the domain:
@@ -223,8 +170,7 @@ steps:
 
       Use both completed analysis lanes. Return the count only through the metric output schema.
 
-      MCP-owned source target: {{params.review_unit}}
-      Repository classifications: {{steps.classify_candidate.outputs.assessment}}
+      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
     value:
       type: integer
       minimum: 0
@@ -235,7 +181,7 @@ steps:
 
   - id: classify_exception
     type: exception
-    depends_on: [classify_candidate]
+    depends_on: [candidate_reviews]
     prompt: |
       Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Candidate-level exceptions must be excluded from metric evidence before counting. Mark the entire unit as an exception only when every apparent finding is exempt.
 
@@ -243,5 +189,4 @@ steps:
       2. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
       3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
 
-      Source target: {{params.review_unit}}
-      Repository classifications: {{steps.classify_candidate.outputs.assessment}}
+      Classify unit `{{params.review_unit.target.name}}` using the source, within-unit analysis, and repository classifications already visible in the current model session.

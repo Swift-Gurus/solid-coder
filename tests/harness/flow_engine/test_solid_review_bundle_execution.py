@@ -7,10 +7,13 @@ import sys
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
+_TEST_HARNESS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
+sys.path.insert(0, str(_TEST_HARNESS_ROOT))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from bundled_review_rule_policy_writer import BundledReviewRulePolicyWriter
 from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
@@ -55,26 +58,27 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
                 project_dir_fn=lambda: self.run_root
             ),
             plugin_root=_PROJECT_ROOT,
+            project_directory=lambda: self.run_root,
             operation_registrations=registrations,
         ).build()
 
-    def test_buffer_reaches_every_applicable_file_and_unit_rule(self) -> None:
-        started = self.sut.flow_start(
-            "solid-review",
-            params={
-                "target": {
-                    "kind": "buffer",
-                    "path": str(self.target_path),
-                    "content": self.source,
-                }
-            },
-        )
+    def test_prospective_text_selects_rules_without_entering_model_prompts(self) -> None:
+        started = self._start_review({
+            "kind": "text",
+            "text": self.source,
+            "virtual_path": str(self.target_path),
+        })
 
         self.assertIsNone(started.error, started.error)
         self.assertTrue(started.steps)
         prompts = [step.prompt for step in started.steps]
         self.assertTrue(any("ProfileView" in prompt for prompt in prompts))
         self.assertTrue(any("ProfileStore" in prompt for prompt in prompts))
+        self.assertFalse(any("var body: some View" in prompt for prompt in prompts))
+        self.assertFalse(any("func load() async" in prompt for prompt in prompts))
+        self.assertFalse(any("'code':" in prompt for prompt in prompts))
+        self.assertFalse(any("'applicability':" in prompt for prompt in prompts))
+        self.assertFalse(any("'tag_evidence':" in prompt for prompt in prompts))
         identities = [step.step_id for step in started.steps]
         self.assertTrue(any("code-smells" in identity for identity in identities))
         self.assertTrue(any("frontmatter" in identity for identity in identities))
@@ -97,6 +101,41 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
             self._rule_step_count(identities, "structured-concurrency"),
             14,
         )
+
+    def test_file_review_applies_project_policy_before_rule_materialization(self) -> None:
+        self.target_path.write_text(self.source, encoding="utf-8")
+        BundledReviewRulePolicyWriter(
+            plugin_root=_PROJECT_ROOT,
+            project_root=self.run_root,
+        ).write_only("srp")
+
+        started = self._start_review({
+            "kind": "file",
+            "path": str(self.target_path),
+        })
+
+        self.assertIsNone(started.error, started.error)
+        identities = [step.step_id for step in started.steps]
+        rule_identities = [
+            identity for identity in identities if ".rule_reviews." in identity
+        ]
+        self.assertTrue(rule_identities)
+        self.assertTrue(all(".rule_reviews.srp-" in item for item in rule_identities))
+        self.assertEqual(self._rule_step_count(rule_identities, "srp"), 2)
+        prompts = [step.prompt for step in started.steps]
+        self.assertTrue(any("ProfileView" in prompt for prompt in prompts))
+        self.assertTrue(any("ProfileStore" in prompt for prompt in prompts))
+        self.assertFalse(any("var body: some View" in prompt for prompt in prompts))
+        self.assertFalse(any("func load() async" in prompt for prompt in prompts))
+        self.assertFalse(any("'code':" in prompt for prompt in prompts))
+
+    def _start_review(self, target: dict):
+        started = self.sut.flow_start("solid-review")
+        self.assertIsNone(started.error, started.error)
+        self.assertEqual(len(started.steps), 1)
+        return self.sut.flow_next({
+            started.steps[0].instance_id: {"target": target}
+        })
 
     @staticmethod
     def _rule_step_count(identities: list[str], rule_id: str) -> int:

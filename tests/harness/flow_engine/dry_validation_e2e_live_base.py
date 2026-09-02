@@ -150,6 +150,12 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
                 domain="review",
                 scenario="dry-exact-protocol-reuse",
             ),
+            model_context=(
+                "Source under review:\n"
+                "```swift\n"
+                f"{self._reviewed_source.read_text(encoding='utf-8')}"
+                "\n```"
+            ),
         ))
 
         self.assert_rule_workflow(

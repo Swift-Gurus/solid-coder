@@ -1,0 +1,58 @@
+id: code-smells-single-prompt
+name: Code Smells Single Prompt Experiment
+description: Collects all file-scoped code-smell observations and the exception decision in one model-facing step.
+max_turns: 3
+
+steps:
+  - id: assess_code_smells
+    prompt: |
+      Review file `{{params.review_file.target.name}}` from the source already visible in this session. Complete every measurement and the exception decision before responding.
+
+      CS-1 `static_logic_count`: count static functions, class methods, or module-level functions containing business logic such as branching, construction, or transformation. Exclude constants and build-system DSL files.
+      CS-2 `class_struct_count`: count distinct top-level class or struct definitions. Exclude private extensions that only support the primary type.
+      CS-3 `inline_type_count`: count class, struct, enum, interface, or protocol declarations inside a function or method body. Anonymous functions do not count.
+
+      This rule has no rule-wide exceptions. Return `exception.is_exception: false` with audited reasoning and evidence.
+    outputs:
+      - name: static_logic_count
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: &audit
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: class_struct_count
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: *audit
+      - name: inline_type_count
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [value, additional_info]
+          properties:
+            value: {type: integer, minimum: 0}
+            additional_info: *audit
+      - name: exception
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_exception, additional_info]
+          properties:
+            is_exception: {type: boolean, const: false}
+            additional_info: *audit

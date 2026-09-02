@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from harness.condition_parsing import ConditionParsing
-from harness.for_each_reference_parsing import ForEachReferenceParsing
+from harness.for_each_declaration_parsing import ForEachDeclarationParsing
 from harness.operation_step_contract_resolving import (
     OperationStepContractResolving,
 )
@@ -22,7 +22,7 @@ class StepDeclarationFactory(StepDeclarationMapping):
     def __init__(
         self,
         condition_parser: ConditionParsing,
-        for_each_parser: ForEachReferenceParsing,
+        for_each_parser: ForEachDeclarationParsing,
         rule_step_contract_resolver: RuleStepContractResolving,
         operation_step_contract_resolver: OperationStepContractResolving,
     ) -> None:

@@ -20,7 +20,7 @@ class ValidateCandidateSelectionOperation:
                 candidate
                 for selection in operation_input.selections
                 for candidate in operation_input.candidates
-                if candidate.source_identity == selection.source_identity
-                and candidate.unit_identity == selection.unit_identity
+                if str(candidate.path) == selection.path
+                and candidate.unit == selection.unit
             ],
         )

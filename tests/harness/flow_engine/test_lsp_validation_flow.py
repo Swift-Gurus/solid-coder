@@ -97,7 +97,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
         final_severity="SEVERE",
     )
 
-    def test_trigger_and_contract_analysis_is_shared_by_every_lsp_metric(self) -> None:
+    def test_trigger_and_contract_analysis_is_reused_without_reserialization(self) -> None:
         started = self._start()
 
         self.assertEqual(
@@ -105,7 +105,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
             ["analyze_substitutability"],
         )
         self.assertIn(
-            "Only classify contract implementations whose method bodies are present inside the supplied Unit",
+            "Only classify contract implementations whose method bodies are present inside unit `lsp-fixture-unit`",
             started.steps[0].prompt,
         )
         self.assertIn(
@@ -130,9 +130,14 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                 "classify_exception",
             },
         )
-        self.assertTrue(
-            all("LSP_SHARED_ANALYSIS_EVIDENCE" in step.prompt for step in measured.steps)
-        )
+        self.assertTrue(all(
+            "LSP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
+            for step in measured.steps
+        ))
+        self.assertTrue(all(
+            "previously submitted" in step.prompt
+            for step in measured.steps
+        ))
         contract_prompt = next(
             step.prompt for step in measured.steps
             if step.step_id == "contract_violations"

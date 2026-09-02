@@ -17,3 +17,4 @@ class LiveWorkflowScenario:
     workflow_id: str
     parameters: BaseModel
     artifact_scope: LiveSessionArtifactScope
+    model_context: str = ""

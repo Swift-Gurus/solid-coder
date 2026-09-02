@@ -4,6 +4,41 @@ description: Applies the reusable file-review workflow to one explicit prospecti
 max_turns: 1000
 
 steps:
+  - id: capture_target
+    type: agent
+    prompt: |
+      Submit the review target identified in your prompt.
+      Use kind "file" with an absolute path, or kind "text" with the code.
+    outputs:
+      - name: target
+        type: data
+        schema:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [ kind, path ]
+              properties:
+                kind:
+                  const: file
+                path:
+                  type: string
+
+            - type: object
+              additionalProperties: false
+              required: [ kind, text ]
+              properties:
+                kind:
+                  const: text
+                text:
+                  type: string
+                virtual_path:
+                  type: string
+                file_extension:
+                  type: string
+
   - include:
       workflow: solid-file-review
     as: file_review
+    depends_on: [capture_target]
+    with:
+      target: "{{steps.capture_target.outputs.target}}"
