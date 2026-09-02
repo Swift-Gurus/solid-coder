@@ -203,13 +203,20 @@
       "Read(//Users/crowea/.solid-coder/**)",
       "Read(//Users/crowea/**)",
       "Bash(xargs -I{} echo \"--- {} ---\")",
-      "Bash(sort -t- -k2 -n -u)"
+      "Bash(sort -t- -k2 -n -u)",
+      "mcp__plugin_solid-coder_flow-engine__flow_start",
+      "mcp__plugin_solid-coder_flow-engine__flow_next",
+      "mcp__plugin_solid-coder_pipeline__flow_status",
+      "mcp__plugin_solid-coder_pipeline__flow_start",
+      "mcp__plugin_solid-coder_pipeline__submit_batch_findings"
     ]
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "solid-coder-apple-build",
     "solid-coder-docs",
     "solid-coder-specs",
-    "solid-coder-pipeline"
+    "solid-coder-pipeline",
+    "solid-coder-flow-engine"
   ]
 }
