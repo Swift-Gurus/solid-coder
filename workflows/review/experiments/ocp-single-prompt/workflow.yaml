@@ -3,6 +3,9 @@ name: OCP Single Prompt Experiment
 description: Collects every OCP analysis, metric observation, and exception decision in one model-facing step.
 max_turns: 3
 
+rule:
+  auto_include: false
+
 steps:
   - id: assess_ocp
     prompt: |
@@ -35,100 +38,58 @@ steps:
       6. Test code, mocks, stubs, fakes, fixtures, and test helpers.
 
       A dependency-level exception does not make the entire reviewed unit a pure data structure. When the dependency list is empty and hardcoded behavior-selection is false, the dependency-free exception is satisfied and `exception.is_exception` MUST be true.
-    outputs:
-      - name: dependencies
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [name, classification, is_exception, can_instantiate, can_subclass, reasoning, evidence]
-            properties:
-              name: {type: string, minLength: 1}
-              classification:
-                type: string
-                enum: [ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, INDIRECT]
-              is_exception: {type: boolean}
-              can_instantiate: {type: boolean}
-              can_subclass: {type: boolean}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-      - name: has_hardcoded_behavior_selection
-        type: data
-        schema: {type: boolean}
-      - name: testability
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [name, classification, reasoning, evidence]
-            properties:
-              name: {type: string, minLength: 1}
-              classification:
-                type: string
-                enum: [TESTABLE, UNTESTABLE, NOT_APPLICABLE]
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-      - name: sealed_variation_points
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
+    assessment:
+      supporting_outputs:
+        - name: dependencies
+          type: data
+          schema:
+            type: array
+            items:
               type: object
               additionalProperties: false
-              required: [reasoning, evidence]
+              required: [name, classification, is_exception, can_instantiate, can_subclass, reasoning, evidence]
               properties:
+                name: {type: string, minLength: 1}
+                classification:
+                  type: string
+                  enum: [ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, INDIRECT]
+                is_exception: {type: boolean}
+                can_instantiate: {type: boolean}
+                can_subclass: {type: boolean}
                 reasoning: {type: string, minLength: 1}
                 evidence: {type: string, minLength: 1}
-      - name: untestable_dependencies
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
+        - name: has_hardcoded_behavior_selection
+          type: data
+          schema: {type: boolean}
+        - name: testability
+          type: data
+          schema:
+            type: array
+            items:
               type: object
               additionalProperties: false
-              required: [reasoning, evidence]
+              required: [name, classification, reasoning, evidence]
               properties:
+                name: {type: string, minLength: 1}
+                classification:
+                  type: string
+                  enum: [TESTABLE, UNTESTABLE, NOT_APPLICABLE]
                 reasoning: {type: string, minLength: 1}
                 evidence: {type: string, minLength: 1}
-      - name: testable_direct_count
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
-              type: object
-              additionalProperties: false
-              required: [reasoning, evidence]
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-      - name: exception
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [is_exception, additional_info]
-          properties:
-            is_exception: {type: boolean}
-            additional_info:
-              type: object
-              additionalProperties: false
-              required: [reasoning, evidence]
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
+      metrics:
+        - metric_id: OCP-1
+          observation_id: sealed_variation_points
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 1}
+        - metric_id: OCP-2
+          observation_id: untestable_dependencies
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 1}
+        - metric_id: OCP-3
+          observation_id: testable_direct_count
+          value: {type: integer, minimum: 0}
+          scoring:
+            minor: {operator: greater_than_or_equal, value: 1}
+      exception_observation_id: exception

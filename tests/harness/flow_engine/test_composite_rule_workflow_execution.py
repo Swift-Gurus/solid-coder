@@ -91,6 +91,7 @@ class TestCompositeRuleWorkflowExecution(unittest.TestCase):
     def _write_workflows(self) -> Path:
         self._write_rule("z-rule", "Z-1")
         self._write_rule("a-rule", "A-1")
+        self._write_rule("explicit-rule", "EXPLICIT-1", auto_include=False)
         parent = self.workflow_root / "composite"
         parent.mkdir(parents=True)
         path = parent / "workflow.yaml"
@@ -112,29 +113,35 @@ class TestCompositeRuleWorkflowExecution(unittest.TestCase):
         )
         return path
 
-    def _write_rule(self, workflow_id: str, metric_id: str) -> None:
+    def _write_rule(
+        self,
+        workflow_id: str,
+        metric_id: str,
+        auto_include: bool = True,
+    ) -> None:
         package = self.workflow_root / workflow_id
         package.mkdir(parents=True)
+        rule_declaration = (
+            "rule: {}\n"
+            if auto_include
+            else "rule:\n  auto_include: false\n"
+        )
         (package / "workflow.yaml").write_text(
-            textwrap.dedent(
-                f"""
-                id: {workflow_id}
-                name: {workflow_id}
-                max_turns: 5
-                rule: {{}}
-                steps:
-                  - id: measure
-                    type: metric
-                    metric_id: {metric_id}
-                    prompt: Measure the unit.
-                    value: {{type: boolean}}
-                    scoring:
-                      severe: {{operator: equals, value: true}}
-                  - id: classify_exception
-                    type: exception
-                    prompt: Classify the exception.
-                """
-            ),
+            f"id: {workflow_id}\n"
+            f"name: {workflow_id}\n"
+            "max_turns: 5\n"
+            + rule_declaration
+            + "steps:\n"
+            + "  - id: measure\n"
+            + "    type: metric\n"
+            + f"    metric_id: {metric_id}\n"
+            + "    prompt: Measure the unit.\n"
+            + "    value: {type: boolean}\n"
+            + "    scoring:\n"
+            + "      severe: {operator: equals, value: true}\n"
+            + "  - id: classify_exception\n"
+            + "    type: exception\n"
+            + "    prompt: Classify the exception.\n",
             encoding="utf-8",
         )
 

@@ -68,5 +68,6 @@ class StepDeclarationFactory(StepDeclarationMapping):
             max_attempts=raw.get("max_attempts", 3),
             source_file=raw.get("__source_file"),
             metric=rule_contract.metric,
+            assessment=rule_contract.assessment,
             operation=operation_contract.step,
         )

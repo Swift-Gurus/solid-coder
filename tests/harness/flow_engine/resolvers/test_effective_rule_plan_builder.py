@@ -232,12 +232,56 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
         with self.assertRaisesRegex(FlowValidationError, "at least one enabled metric"):
             self.sut.build(WorkflowCatalog([source]), resolution)
 
+    def test_project_policy_resolves_metric_declared_by_aggregate_assessment(self):
+        source = self._source(
+            root=self.plugin_root,
+            workflow_id="solid-srp-review",
+            content="id: solid-srp-review\nrule: {}\n",
+            steps=(
+                "steps:\n"
+                "  - id: assess\n"
+                "    prompt: Assess the unit.\n"
+                "    assessment:\n"
+                "      metrics:\n"
+                "        - metric_id: TEST-1\n"
+                "          observation_id: verb_count\n"
+                "          value: {type: integer}\n"
+                "          scoring:\n"
+                "            severe: {operator: greater_than, value: 1}\n"
+            ),
+        )
+        resolution = ProjectReviewPolicyResolution(
+            policy=ReviewPolicy(
+                version=1,
+                rules=[
+                    ReviewPolicyRuleOverride(
+                        workflow_id="solid-srp-review",
+                        metrics=[
+                            ReviewPolicyMetricOverride(
+                                id="TEST-1",
+                                enabled=False,
+                            )
+                        ],
+                    )
+                ],
+            ),
+            audit=ProjectReviewPolicyAudit(
+                source_path=(self.project_root / ".solid-coder/policies/review.yaml"),
+                content_hash="policy-hash",
+            ),
+            authored_content="version: 1\n",
+        )
+
+        with self.assertRaisesRegex(FlowValidationError, "at least one enabled metric"):
+            self.sut.build(WorkflowCatalog([source]), resolution)
+
     def _source(
         self,
         root: Path,
         workflow_id: str,
         content: str,
         rule: RuleDeclaration | None = None,
+        steps: str | None = None,
     ) -> WorkflowSource:
         package_root = root / workflow_id
         package_root.mkdir(parents=True)
@@ -246,17 +290,20 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
             content
             + "name: Test Rule\n"
             + "max_turns: 5\n"
-            + "steps:\n"
-            + "  - id: measure\n"
-            + "    type: metric\n"
-            + "    metric_id: TEST-1\n"
-            + "    prompt: Measure the unit.\n"
-            + "    value: {type: integer}\n"
-            + "    scoring:\n"
-            + "      severe: {operator: greater_than, value: 1}\n"
-            + "  - id: classify_exception\n"
-            + "    type: exception\n"
-            + "    prompt: Classify the exception.\n"
+            + (
+                steps
+                or "steps:\n"
+                + "  - id: measure\n"
+                + "    type: metric\n"
+                + "    metric_id: TEST-1\n"
+                + "    prompt: Measure the unit.\n"
+                + "    value: {type: integer}\n"
+                + "    scoring:\n"
+                + "      severe: {operator: greater_than, value: 1}\n"
+                + "  - id: classify_exception\n"
+                + "    type: exception\n"
+                + "    prompt: Classify the exception.\n"
+            )
         )
         return WorkflowSource(
             id=workflow_id,

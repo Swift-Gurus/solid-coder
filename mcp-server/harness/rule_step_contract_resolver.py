@@ -6,8 +6,13 @@ from harness.output_spec import OutputSpec
 from harness.rule_additional_info_output_providing import (
     RuleAdditionalInfoOutputProviding,
 )
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
+from harness.rule_assessment_output_providing import (
+    RuleAssessmentOutputProviding,
+)
 from harness.rule_step_contract import RuleStepContract
 from harness.rule_step_contract_resolving import RuleStepContractResolving
+from harness.structured_model_decoding import StructuredModelDecoding
 
 
 """
@@ -21,14 +26,38 @@ class RuleStepContractResolver(RuleStepContractResolving):
         self,
         metric_decoder: MetricDeclarationDecoding,
         additional_info_output: RuleAdditionalInfoOutputProviding,
+        assessment_decoder: StructuredModelDecoding[RuleAssessmentDeclaration],
+        assessment_outputs: RuleAssessmentOutputProviding,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._metric_decoder = metric_decoder
         self._additional_info_output = additional_info_output
+        self._assessment_decoder = assessment_decoder
+        self._assessment_outputs = assessment_outputs
         self._error_factory = error_factory
 
     def resolve(self, raw: dict) -> RuleStepContract:
         step_type = raw.get("type", "agent")
+        raw_assessment = raw.get("assessment")
+        if raw_assessment is not None:
+            step_id = raw.get("id") or "<unknown>"
+            if raw.get("outputs") is not None:
+                raise self._error_factory.create(
+                    f"Rule assessment step '{step_id}' has an engine-generated "
+                    "output contract and must not declare outputs"
+                )
+            if step_type != "agent":
+                raise self._error_factory.create(
+                    f"Rule assessment step '{step_id}' must be type 'agent'"
+                )
+            assessment = self._assessment_decoder.decode(
+                raw_assessment,
+                f"rule assessment step '{step_id}'",
+            )
+            return RuleStepContract(
+                outputs=self._assessment_outputs.provide(assessment),
+                assessment=assessment,
+            )
         if step_type in {"metric", "exception"} and raw.get("outputs") is not None:
             step_id = raw.get("id") or "<unknown>"
             raise self._error_factory.create(

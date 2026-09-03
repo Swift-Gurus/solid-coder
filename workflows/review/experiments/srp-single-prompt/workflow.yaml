@@ -3,6 +3,12 @@ name: SRP Single Prompt Experiment
 description: Measures every SRP observation and exception decision in one model-facing step for prompt-shape comparison.
 max_turns: 3
 
+rule:
+  auto_include: false
+  match:
+    unit_kinds:
+      included: [class, struct, enum, extension, actor, function]
+
 steps:
   - id: assess_srp
     prompt: |
@@ -57,64 +63,22 @@ steps:
          If ALL conditions hold: cohesion groups = 1 (coordination), final severity = COMPLIANT
 
       Apply the complete assessment to the supplied review unit. Its source is already visible in this session.
-    outputs:
-      - name: verb_count
-        type: data
-        schema:
-          type: object
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
-              type: object
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-              required: [reasoning, evidence]
-              additionalProperties: false
-          required: [value, additional_info]
-          additionalProperties: false
-      - name: cohesion_groups
-        type: data
-        schema:
-          type: object
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
-              type: object
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-              required: [reasoning, evidence]
-              additionalProperties: false
-          required: [value, additional_info]
-          additionalProperties: false
-      - name: stakeholder_count
-        type: data
-        schema:
-          type: object
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info:
-              type: object
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-              required: [reasoning, evidence]
-              additionalProperties: false
-          required: [value, additional_info]
-          additionalProperties: false
-      - name: exception
-        type: data
-        schema:
-          type: object
-          properties:
-            is_exception: {type: boolean}
-            additional_info:
-              type: object
-              properties:
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-              required: [reasoning, evidence]
-              additionalProperties: false
-          required: [is_exception, additional_info]
-          additionalProperties: false
+    assessment:
+      metrics:
+        - metric_id: SRP-1
+          observation_id: verb_count
+          value: {type: integer, minimum: 0}
+          scoring:
+            minor: {operator: greater_than_or_equal, value: 3}
+            severe: {operator: greater_than, value: 5}
+        - metric_id: SRP-2
+          observation_id: cohesion_groups
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 2}
+        - metric_id: SRP-3
+          observation_id: stakeholder_count
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 2}
+      exception_observation_id: exception

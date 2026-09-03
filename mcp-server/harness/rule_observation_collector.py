@@ -3,6 +3,9 @@
 from harness.completed_step_outputs_resolving import CompletedStepOutputsResolving
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.rule_execution_instance import RuleExecutionInstance
+from harness.rule_assessment_observations_decoding import (
+    RuleAssessmentObservationsDecoding,
+)
 from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_observation import RuleMetricObservation
 from harness.rule_observation_collecting import RuleObservationCollecting
@@ -20,9 +23,11 @@ class RuleObservationCollector(RuleObservationCollecting):
     def __init__(
         self,
         outputs_resolver: CompletedStepOutputsResolving,
+        assessment_decoder: RuleAssessmentObservationsDecoding,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._outputs_resolver = outputs_resolver
+        self._assessment_decoder = assessment_decoder
         self._error_factory = error_factory
 
     def collect(
@@ -30,6 +35,20 @@ class RuleObservationCollector(RuleObservationCollecting):
         instance: RuleExecutionInstance,
         run_state: RunState,
     ) -> RuleObservations:
+        assessment_step = next(
+            (
+                step
+                for step in instance.steps
+                if step.assessment is not None
+            ),
+            None,
+        )
+        if assessment_step is not None and assessment_step.assessment is not None:
+            return self._assessment_decoder.decode(
+                assessment_step.assessment,
+                self._outputs_resolver.resolve(assessment_step.id, run_state),
+            )
+
         metrics: list[RuleMetricObservation] = []
         exception: RuleExceptionDecision | None = None
 

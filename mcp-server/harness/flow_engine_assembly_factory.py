@@ -159,6 +159,9 @@ from harness.rule_declaration import RuleDeclaration
 from harness.rule_additional_info_output_provider import (
     RuleAdditionalInfoOutputProvider,
 )
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
+from harness.rule_assessment_output_provider import RuleAssessmentOutputProvider
+from harness.rule_metric_identity_validator import RuleMetricIdentityValidator
 from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.rule_validating_flow_definition_validator import (
     RuleValidatingFlowDefinitionValidator,
@@ -173,6 +176,7 @@ from harness.rule_workflow_validation_planner import (
 from harness.rule_workflow_validation_scope_validator import (
     RuleWorkflowValidationScopeValidator,
 )
+from harness.rule_workflow_structure_validator import RuleWorkflowStructureValidator
 from harness.rule_match_validator import RuleMatchValidator
 from harness.review_policy_loading import ReviewPolicyLoading
 from harness.schema_resolving import SchemaResolver
@@ -528,6 +532,12 @@ class FlowEngineAssemblyFactory:
                             )
                         ),
                         additional_info_output=RuleAdditionalInfoOutputProvider(),
+                        assessment_decoder=PydanticModelDecoder(
+                            model_type=RuleAssessmentDeclaration,
+                        ),
+                        assessment_outputs=RuleAssessmentOutputProvider(
+                            RuleAdditionalInfoOutputProvider()
+                        ),
                         error_factory=error_factory,
                     ),
                     operation_step_contract_resolver=OperationStepContractResolver(
@@ -595,8 +605,12 @@ class FlowEngineAssemblyFactory:
                     plan_validator=RuleWorkflowValidationPlanValidator(
                         scope_validator=RuleWorkflowValidationScopeValidator(
                             match_validator=RuleMatchValidator(error_factory),
-                            identity_validator=UniqueStringValidator(error_factory),
-                            error_factory=error_factory,
+                            structure_validator=RuleWorkflowStructureValidator(
+                                error_factory
+                            ),
+                            metric_identity_validator=RuleMetricIdentityValidator(
+                                UniqueStringValidator(error_factory)
+                            ),
                         ),
                         error_factory=error_factory,
                     ),

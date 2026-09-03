@@ -55,5 +55,5 @@ class CatalogRuleSetMembersResolver(RuleSetMembersResolving):
             for source in self._catalog_resolver.catalog(
                 search_paths
             ).rule_sources()
-            if source.rule is not None
+            if source.rule is not None and source.rule.auto_include
         ]

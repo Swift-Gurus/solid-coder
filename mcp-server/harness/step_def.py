@@ -10,6 +10,7 @@ from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.metric_declaration import MetricDeclaration
 from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
 
 
 """
@@ -37,4 +38,5 @@ class StepDef:
     max_attempts: int = 3
     workflow_instance: IncludedWorkflowInstance | None = None
     metric: MetricDeclaration | None = None
+    assessment: RuleAssessmentDeclaration | None = None
     operation: OperationStep | None = None

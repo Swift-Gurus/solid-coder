@@ -12,6 +12,7 @@ from harness.for_each_declaration import ForEachDeclaration
 from harness.metric_declaration import MetricDeclaration
 from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
 
 
 """
@@ -48,4 +49,5 @@ class StepDeclaration:
     max_attempts: int = 3
     source_file: Optional[str] = None
     metric: Optional[MetricDeclaration] = None
+    assessment: Optional[RuleAssessmentDeclaration] = None
     operation: Optional[OperationStep] = None

@@ -5,6 +5,7 @@ from harness.event_appender import EventAppending
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_band_matcher import MetricBandMatcher
 from harness.metric_scoring_evaluator import MetricScoringEvaluator
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_result_builder import ReviewResultBuilder
 from harness.review_result_persister import ReviewResultPersister
 from harness.review_run_finalizer import ReviewRunFinalizer
@@ -14,6 +15,11 @@ from harness.rule_execution_completion_evaluator import (
 from harness.rule_execution_instances_resolver import (
     RuleExecutionInstancesResolver,
 )
+from harness.rule_assessment_observations_decoder import (
+    RuleAssessmentObservationsDecoder,
+)
+from harness.rule_exception_decision import RuleExceptionDecision
+from harness.rule_metric_submission import RuleMetricSubmission
 from harness.rule_observation_collector import RuleObservationCollector
 from harness.rule_result_event_publisher import RuleResultEventPublisher
 from harness.rule_review_result_builder import RuleReviewResultBuilder
@@ -26,7 +32,7 @@ from harness.worst_review_severity_selector import WorstReviewSeveritySelector
 """
 solid-name: RuleRunFinalizerFactory
 solid-category: factory
-solid-spec: [SPEC-039]
+solid-spec: [SPEC-039, SPEC-044]
 solid-description: Composes the deterministic scoring, persistence, and audit collaborators for rule-run completion.
 """
 class RuleRunFinalizerFactory:
@@ -39,6 +45,14 @@ class RuleRunFinalizerFactory:
         rule_finalizer = RuleRunFinalizer(
             observation_collector=RuleObservationCollector(
                 outputs_resolver=CompletedStepOutputsResolver(error_factory),
+                assessment_decoder=RuleAssessmentObservationsDecoder(
+                    metric_submission_decoder=PydanticModelDecoder(
+                        model_type=RuleMetricSubmission,
+                    ),
+                    exception_decoder=PydanticModelDecoder(
+                        model_type=RuleExceptionDecision,
+                    ),
+                ),
                 error_factory=error_factory,
             ),
             result_builder=RuleReviewResultBuilder(

@@ -29,6 +29,8 @@ from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.rule_additional_info_output_provider import (
     RuleAdditionalInfoOutputProvider,
 )
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
+from harness.rule_assessment_output_provider import RuleAssessmentOutputProvider
 from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.step_declaration_factory import StepDeclarationFactory
 from harness.step_output_reference import StepOutputReference
@@ -69,6 +71,12 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     )
                 ),
                 additional_info_output=RuleAdditionalInfoOutputProvider(),
+                assessment_decoder=PydanticModelDecoder(
+                    model_type=RuleAssessmentDeclaration,
+                ),
+                assessment_outputs=RuleAssessmentOutputProvider(
+                    additional_info=RuleAdditionalInfoOutputProvider(),
+                ),
                 error_factory=error_factory,
             ),
             operation_step_contract_resolver=EmptyOperationStepContractResolver(),

@@ -3,6 +3,9 @@ name: LSP Single Prompt Experiment
 description: Collects every LSP analysis, metric observation, and exception decision in one model-facing step.
 max_turns: 3
 
+rule:
+  auto_include: false
+
 steps:
   - id: assess_lsp
     prompt: |
@@ -19,111 +22,83 @@ steps:
       LSP-4: count contract implementations classified EMPTY. Do not include FATAL implementations.
 
       Whole-unit exception: a deliberately named NoOp object is exempt when 100% of its contract methods and values are empty or return documented defaults.
-    outputs:
-      - name: type_check_analysis
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [expression, ownership, evidence]
-            properties:
-              expression: {type: string, minLength: 1}
-              ownership: {type: string, enum: [DEVELOPER, EXTERNAL, UNKNOWN]}
-              evidence: {type: string, minLength: 1}
-      - name: inheritance_analysis
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [has_trigger, relationships, reasoning, evidence]
-          properties:
-            has_trigger: {type: boolean}
-            relationships:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [base_type, source_available, evidence, overrides]
-                properties:
-                  base_type: {type: string, minLength: 1}
-                  source_available: {type: boolean}
-                  evidence: {type: string, minLength: 1}
-                  overrides:
-                    type: array
-                    items:
-                      type: object
-                      additionalProperties: false
-                      required: [member, new_guards, weakened_postconditions, invariant_violations, evidence]
-                      properties:
-                        member: {type: string, minLength: 1}
-                        new_guards: {type: integer, minimum: 0}
-                        weakened_postconditions: {type: integer, minimum: 0}
-                        invariant_violations: {type: integer, minimum: 0}
-                        evidence: {type: string, minLength: 1}
-            reasoning: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
-      - name: contract_implementations
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [member, classification, evidence]
-            properties:
-              member: {type: string, minLength: 1}
-              classification: {type: string, enum: [MEANINGFUL, EMPTY, FATAL]}
-              evidence: {type: string, minLength: 1}
-      - name: type_checks
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info: &audit
+    assessment:
+      supporting_outputs:
+        - name: type_check_analysis
+          type: data
+          schema:
+            type: array
+            items:
               type: object
               additionalProperties: false
-              required: [reasoning, evidence]
+              required: [expression, ownership, evidence]
               properties:
-                reasoning: {type: string, minLength: 1}
+                expression: {type: string, minLength: 1}
+                ownership: {type: string, enum: [DEVELOPER, EXTERNAL, UNKNOWN]}
                 evidence: {type: string, minLength: 1}
-      - name: contract_violations
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info: *audit
-      - name: fatal_error_methods
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info: *audit
-      - name: empty_methods
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info: *audit
-      - name: exception
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [is_exception, additional_info]
-          properties:
-            is_exception: {type: boolean}
-            additional_info: *audit
+        - name: inheritance_analysis
+          type: data
+          schema:
+            type: object
+            additionalProperties: false
+            required: [has_trigger, relationships, reasoning, evidence]
+            properties:
+              has_trigger: {type: boolean}
+              relationships:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [base_type, source_available, evidence, overrides]
+                  properties:
+                    base_type: {type: string, minLength: 1}
+                    source_available: {type: boolean}
+                    evidence: {type: string, minLength: 1}
+                    overrides:
+                      type: array
+                      items:
+                        type: object
+                        additionalProperties: false
+                        required: [member, new_guards, weakened_postconditions, invariant_violations, evidence]
+                        properties:
+                          member: {type: string, minLength: 1}
+                          new_guards: {type: integer, minimum: 0}
+                          weakened_postconditions: {type: integer, minimum: 0}
+                          invariant_violations: {type: integer, minimum: 0}
+                          evidence: {type: string, minLength: 1}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+        - name: contract_implementations
+          type: data
+          schema:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [member, classification, evidence]
+              properties:
+                member: {type: string, minLength: 1}
+                classification: {type: string, enum: [MEANINGFUL, EMPTY, FATAL]}
+                evidence: {type: string, minLength: 1}
+      metrics:
+        - metric_id: LSP-1
+          observation_id: type_checks
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 1}
+        - metric_id: LSP-2
+          observation_id: contract_violations
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 1}
+        - metric_id: LSP-3
+          observation_id: fatal_error_methods
+          value: {type: integer, minimum: 0}
+          scoring:
+            severe: {operator: greater_than_or_equal, value: 1}
+        - metric_id: LSP-4
+          observation_id: empty_methods
+          value: {type: integer, minimum: 0}
+          scoring:
+            minor: {operator: greater_than_or_equal, value: 1}
+      exception_observation_id: exception

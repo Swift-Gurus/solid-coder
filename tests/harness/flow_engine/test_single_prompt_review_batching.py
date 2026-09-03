@@ -14,6 +14,8 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 from harness.batch_step_presentation_mode import BatchStepPresentationMode  # noqa: E402
 from harness.batch_step_renderer_factory import BatchStepRendererFactory  # noqa: E402
 from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E402
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory  # noqa: E402
+from harness.flow_loading import FlowLoading  # noqa: E402
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.sibling_batch_step_selector_factory import (  # noqa: E402
@@ -114,6 +116,73 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
         dry_steps = [step for step in ready.steps if step.step_id.endswith("generate_terms")]
         self.assertEqual(len(dry_steps), 2)
         self.assertTrue(all(step.batch is None for step in dry_steps))
+
+    def test_single_prompt_rule_contracts_preserve_authored_metrics(self) -> None:
+        loader = FlowEngineAssemblyFactory().build().flow_loader
+
+        self._assert_rule_contract(
+            loader,
+            "srp-single-prompt",
+            ["SRP-1", "SRP-2", "SRP-3"],
+            ["verb_count", "cohesion_groups", "stakeholder_count", "exception"],
+        )
+        self._assert_rule_contract(
+            loader,
+            "ocp-single-prompt",
+            ["OCP-1", "OCP-2", "OCP-3"],
+            [
+                "dependencies",
+                "has_hardcoded_behavior_selection",
+                "testability",
+                "sealed_variation_points",
+                "untestable_dependencies",
+                "testable_direct_count",
+                "exception",
+            ],
+        )
+        self._assert_rule_contract(
+            loader,
+            "lsp-single-prompt",
+            ["LSP-1", "LSP-2", "LSP-3", "LSP-4"],
+            [
+                "type_check_analysis",
+                "inheritance_analysis",
+                "contract_implementations",
+                "type_checks",
+                "contract_violations",
+                "fatal_error_methods",
+                "empty_methods",
+                "exception",
+            ],
+        )
+
+    def _assert_rule_contract(
+        self,
+        loader: FlowLoading,
+        workflow_id: str,
+        metric_ids: list[str],
+        output_names: list[str],
+    ) -> None:
+        path = (
+            _PROJECT_ROOT
+            / "workflows"
+            / "review"
+            / "experiments"
+            / workflow_id
+            / "workflow.yaml"
+        )
+        flow = loader.load(str(path), [str(_PROJECT_ROOT / "workflows")])
+        assessment = flow.steps[0].assessment
+
+        self.assertIsNotNone(assessment)
+        self.assertEqual(
+            [metric.metric_id for metric in assessment.metrics],
+            metric_ids,
+        )
+        self.assertEqual(
+            [output.name for output in flow.steps[0].outputs],
+            output_names,
+        )
 
 
 if __name__ == "__main__":

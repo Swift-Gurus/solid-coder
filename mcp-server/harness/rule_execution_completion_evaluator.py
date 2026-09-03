@@ -23,4 +23,5 @@ class RuleExecutionCompletionEvaluator(RuleExecutionCompletionEvaluating):
             step.id in run_state.completed
             for step in instance.steps
             if step.type in {"metric", "exception"}
+            or step.assessment is not None
         )

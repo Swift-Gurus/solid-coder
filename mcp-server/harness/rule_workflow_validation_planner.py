@@ -59,7 +59,10 @@ class RuleWorkflowValidationPlanner(RuleWorkflowValidationPlanning):
                 else [
                     step
                     for step in root_steps
-                    if step.type in {"metric", "exception"}
+                    if (
+                        step.type in {"metric", "exception"}
+                        or step.assessment is not None
+                    )
                 ]
             ),
         )

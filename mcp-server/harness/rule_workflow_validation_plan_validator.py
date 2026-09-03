@@ -28,7 +28,8 @@ class RuleWorkflowValidationPlanValidator(RuleWorkflowValidationPlanValidating):
     def validate(self, plan: RuleWorkflowValidationPlan) -> None:
         if plan.unowned_steps:
             raise self._error_factory.create(
-                "Metric and exception steps require an owning rule declaration"
+                "Metric, exception, and aggregate assessment steps require "
+                "an owning rule declaration"
             )
         for scope in plan.scopes:
             self._scope_validator.validate(scope)

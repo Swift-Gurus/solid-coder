@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from harness.metric_declaration import MetricDeclaration
 from harness.output_spec import OutputSpec
+from harness.rule_assessment_declaration import RuleAssessmentDeclaration
 
 
 """
@@ -18,3 +19,4 @@ solid-description: Carries typed metric metadata and the output contract resolve
 class RuleStepContract:
     outputs: list[OutputSpec] = field(default_factory=list)
     metric: MetricDeclaration | None = None
+    assessment: RuleAssessmentDeclaration | None = None

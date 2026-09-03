@@ -13,6 +13,14 @@ solid-description: Normalizes rule-step snapshots for their public workflow repr
 class RuleStepSnapshotRewriter(StepSnapshotRewriting):
     def rewrite(self, snapshot: dict, step: StepDef) -> None:
         snapshot.pop("metric", None)
+        if step.assessment is not None:
+            snapshot.pop("outputs", None)
+            snapshot["assessment"] = step.assessment.model_dump(
+                mode="json",
+                exclude_none=True,
+                by_alias=True,
+            )
+            return
         if step.type not in {"metric", "exception"}:
             return
         snapshot.pop("outputs", None)

@@ -38,7 +38,13 @@ class EffectiveMetricPlanResolver(EffectiveMetricPlanResolving):
         )
         metric_overrides = rule_override.metrics if rule_override is not None else []
         declared_metrics = [
-            step.metric for step in workflow.steps if step.metric is not None
+            metric
+            for step in workflow.steps
+            for metric in (
+                step.assessment.metrics
+                if step.assessment is not None
+                else [step.metric] if step.metric is not None else []
+            )
         ]
         declared_ids = {metric.metric_id for metric in declared_metrics}
         for override in metric_overrides:

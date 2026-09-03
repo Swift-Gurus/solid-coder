@@ -17,6 +17,7 @@ from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E4
 from harness.flow_validation_error import FlowValidationError  # noqa: E402
 from harness.flow_run_orchestrator import FlowRunOrchestrator  # noqa: E402
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
+from harness.review_result import ReviewResult  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.sibling_batch_step_selector_factory import (  # noqa: E402
     SiblingBatchStepSelectorFactory,
@@ -68,11 +69,11 @@ class TestCombinedRulePresentation(unittest.TestCase):
 
         result = self.sut.flow_next({
             "AlphaType": {
-                "alpha": {"finding": "Alpha finding"},
+                "alpha": self._rule_outputs(1),
             },
             "BetaProtocol": {
-                "alpha": {"finding": "Beta alpha finding"},
-                "protocol_only": {"finding": "Beta protocol finding"},
+                "alpha": self._rule_outputs(1),
+                "protocol_only": self._rule_outputs(1),
             },
         })
 
@@ -86,15 +87,45 @@ class TestCombinedRulePresentation(unittest.TestCase):
         ]
         self.assertEqual(len(completed), 3)
 
+    def test_completed_combined_rules_publish_independent_scored_results(self) -> None:
+        started, _ = self._start_combined_review_with_run()
+
+        completed = self.sut.flow_next({
+            "AlphaType": {
+                "alpha": self._rule_outputs(1),
+            },
+            "BetaProtocol": {
+                "alpha": self._rule_outputs(1),
+                "protocol_only": self._rule_outputs(1),
+            },
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        result = ReviewResult.model_validate_json(
+            (
+                self.project_root
+                / "runs"
+                / started.run_id
+                / "results"
+                / "review"
+                / "result.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(len(result.rule_results), 3)
+        self.assertEqual(
+            [rule.workflow_id for rule in result.rule_results],
+            ["alpha-rule", "alpha-rule", "protocol-rule"],
+        )
+
     def test_partial_submission_and_replay_return_only_missing_pairs(self) -> None:
         self._start_combined_review_with_run()
 
         partial = self.sut.flow_next({
             "AlphaType": {
-                "alpha": {"finding": "Alpha finding"},
+                "alpha": self._rule_outputs(1),
             },
             "BetaProtocol": {
-                "protocol_only": {"finding": "Beta protocol finding"},
+                "protocol_only": self._rule_outputs(1),
             },
         })
         replayed = self._orchestrator().flow_next()
@@ -119,11 +150,11 @@ class TestCombinedRulePresentation(unittest.TestCase):
 
         retried = self.sut.flow_next({
             "AlphaType": {
-                "alpha": {"finding": "Alpha finding"},
+                "alpha": self._rule_outputs(1),
             },
             "BetaProtocol": {
-                "alpha": {"finding": 123},
-                "protocol_only": {"finding": "Beta protocol finding"},
+                "alpha": self._rule_outputs("invalid"),
+                "protocol_only": self._rule_outputs(1),
             },
         })
         rendered = self.renderer.render_steps(retried.steps)
@@ -132,7 +163,7 @@ class TestCombinedRulePresentation(unittest.TestCase):
         self.assertEqual([step.instance_id for step in retried.steps], [beta_alpha.instance_id])
         self.assertIn("BetaProtocol", rendered)
         self.assertIn("alpha", rendered)
-        self.assertIn("not of type 'string'", rendered)
+        self.assertIn("not of type 'integer'", rendered)
         self.assertNotIn(beta_alpha.instance_id, rendered)
 
     def test_unknown_rule_alias_is_rejected_without_completing_work(self) -> None:
@@ -140,7 +171,7 @@ class TestCombinedRulePresentation(unittest.TestCase):
 
         rejected = self.sut.flow_next({
             "AlphaType": {
-                "invented": {"finding": "Invented finding"},
+                "invented": self._rule_outputs(1),
             }
         })
         still_ready = self.sut.flow_next()
@@ -157,7 +188,7 @@ class TestCombinedRulePresentation(unittest.TestCase):
 
         rejected = self.sut.flow_next({
             "InventedType": {
-                "alpha": {"finding": "Invented finding"},
+                "alpha": self._rule_outputs(1),
             }
         })
         still_ready = self.sut.flow_next()
@@ -203,7 +234,8 @@ class TestCombinedRulePresentation(unittest.TestCase):
                     presentation:
                       mode: combined
                     steps:
-                      - include: alpha-rule.yaml
+                      - include:
+                          workflow: alpha-rule
                         as: alpha
                 """
             ),
@@ -234,8 +266,8 @@ class TestCombinedRulePresentation(unittest.TestCase):
         return started, ready
 
     def _write_workflows(self) -> Path:
-        self._write_rule("alpha-rule.yaml", "Apply the alpha rule.")
-        self._write_rule("protocol-rule.yaml", "Apply the protocol rule.")
+        self._write_rule("alpha-rule", "Apply the alpha rule.")
+        self._write_rule("protocol-rule", "Apply the protocol rule.")
         workflow_path = self.project_root / "combined.yaml"
         workflow_path.write_text(
             textwrap.dedent(
@@ -263,7 +295,8 @@ class TestCombinedRulePresentation(unittest.TestCase):
                     presentation:
                       mode: combined
                     steps:
-                      - include: alpha-rule.yaml
+                      - include:
+                          workflow: alpha-rule
                         as: alpha
                         depends_on: [prepare]
                         for_each:
@@ -273,7 +306,8 @@ class TestCombinedRulePresentation(unittest.TestCase):
                         with:
                           review_unit: "{{item}}"
 
-                      - include: protocol-rule.yaml
+                      - include:
+                          workflow: protocol-rule
                         as: protocol_only
                         depends_on: [prepare]
                         for_each:
@@ -291,24 +325,44 @@ class TestCombinedRulePresentation(unittest.TestCase):
         )
         return workflow_path
 
-    def _write_rule(self, filename: str, prompt: str) -> None:
-        (self.project_root / filename).write_text(
+    def _write_rule(self, workflow_id: str, prompt: str) -> None:
+        directory = self.project_root / "workflows" / workflow_id
+        directory.mkdir(parents=True)
+        (directory / "workflow.yaml").write_text(
             textwrap.dedent(
                 f"""
-                id: {Path(filename).stem}
-                name: {Path(filename).stem}
+                id: {workflow_id}
+                name: {workflow_id}
                 max_turns: 3
+                rule: {{}}
                 steps:
                   - id: assess
                     prompt: {prompt}
-                    outputs:
-                      - name: finding
-                        type: data
-                        schema: {{type: string}}
+                    assessment:
+                      metrics:
+                        - metric_id: PRESENTATION-1
+                          observation_id: count
+                          value: {{type: integer, minimum: 0}}
+                          scoring:
+                            severe: {{operator: greater_than_or_equal, value: 1}}
                 """
             ),
             encoding="utf-8",
         )
+
+    @staticmethod
+    def _rule_outputs(value: object) -> dict[str, object]:
+        audit = {
+            "reasoning": "The supplied unit supports this observation.",
+            "evidence": "unit declaration",
+        }
+        return {
+            "count": {"value": value, "additional_info": audit},
+            "exception": {
+                "is_exception": False,
+                "additional_info": audit,
+            },
+        }
 
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
