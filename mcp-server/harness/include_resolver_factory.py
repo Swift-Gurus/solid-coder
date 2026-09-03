@@ -147,6 +147,7 @@ class IncludeResolverFactory:
                         ),
                         InlineGroupSourceResolver(
                             self._source_annotator,
+                            self._runtime_parser,
                             self._error_factory,
                         ),
                     ],

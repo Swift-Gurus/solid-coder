@@ -2,12 +2,14 @@
 
 from dataclasses import replace
 
+from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_resolution import IncludeResolution
 from harness.include_source import IncludeSource
 from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 from harness.nested_include_resolution_merging import NestedIncludeResolutionMerging
 from harness.ordered_string_collecting import OrderedStringCollecting
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -39,13 +41,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             and not self._dynamic_group_checker.is_dynamic(group)
         }
         owned_groups = [
-            replace(group, owner_alias=source.alias)
-            if (
-                group.owner_alias is None
-                and self._dynamic_group_checker.is_dynamic(group)
-            )
-            or group.owner_alias in transparent_aliases
-            else group
+            self._merge_child_group(group, source, transparent_aliases)
             for group in nested.alias_groups
         ]
         owned_member_ids = {
@@ -87,5 +83,35 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             ),
             workflow_ids=self._ordered_strings.collect(
                 [resolution.workflow_ids, workflow_ids, nested.workflow_ids]
+            ),
+        )
+
+    def _merge_child_group(
+        self,
+        group: IncludeAliasGroup,
+        source: IncludeSource,
+        transparent_aliases: set[str],
+    ) -> IncludeAliasGroup:
+        owns_group = (
+            group.owner_alias is None
+            and self._dynamic_group_checker.is_dynamic(group)
+        ) or group.owner_alias in transparent_aliases
+        presents_group = (
+            group.owner_alias is None
+            and source.runtime.presentation is WorkflowPresentationMode.COMBINED
+        )
+        if not owns_group and not presents_group:
+            return group
+        return replace(
+            group,
+            owner_alias=source.alias if owns_group else group.owner_alias,
+            combined_presentation=(
+                CombinedRulePresentation(
+                    group_alias=source.alias,
+                    rule_alias=group.authored_alias,
+                )
+                if presents_group or owns_group
+                and source.runtime.presentation is WorkflowPresentationMode.COMBINED
+                else group.combined_presentation
             ),
         )

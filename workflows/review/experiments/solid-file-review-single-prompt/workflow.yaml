@@ -1,12 +1,12 @@
 id: solid-file-review-single-prompt
 name: SOLID File Review (Single Prompt)
 description: >
-  Single-prompt-step-per-rule variant of solid-file-review. Batches SRP, OCP,
-  and LSP units into one model turn per rule, runs ISP and DRY per unit because
-  their prompts contain unit-specific search context, and runs file-scoped rules
-  once over the whole file. Built for cost, latency, and consistency comparison
-  against the granular solid-file-review bundle. Does not touch the production
-  bundle.
+  Combined single-prompt variant of solid-file-review. Presents SRP, OCP, and
+  LSP together in one model turn across their applicable units, runs ISP and DRY
+  per unit because their prompts contain unit-specific search context, and runs
+  file-scoped rules once over the whole file. Built for cost, latency, and
+  consistency comparison against the granular solid-file-review bundle. Does
+  not touch the production bundle.
 max_turns: 200
 
 steps:
@@ -66,45 +66,49 @@ steps:
       review_file: "{{steps.prepare_review.outputs.review_file}}"
       source_context: "{{steps.prepare_review.outputs.source_context}}"
 
-  # ---- Unit-scoped rules with shared prompts: one batched model turn per rule ----
-  - include:
-      workflow: srp-single-prompt
-    as: srp_reviews
-    depends_on: [prepare_review]
-    for_each:
-      source: "{{steps.prepare_review.outputs.units}}"
-      mode: batch
-      label: "{{item.target.name}}"
-    with:
-      review_unit: "{{item}}"
-      review_file: "{{steps.prepare_review.outputs.review_file}}"
-      source_context: "{{steps.prepare_review.outputs.source_context}}"
+  # ---- Compatible unit rules: one combined model turn across rules and units ----
+  - group: combined_unit_reviews
+    presentation:
+      mode: combined
+    steps:
+      - include:
+          workflow: srp-single-prompt
+        as: srp_reviews
+        depends_on: [prepare_review]
+        for_each:
+          source: "{{steps.prepare_review.outputs.units}}"
+          mode: batch
+          label: "{{item.target.name}}"
+        with:
+          review_unit: "{{item}}"
+          review_file: "{{steps.prepare_review.outputs.review_file}}"
+          source_context: "{{steps.prepare_review.outputs.source_context}}"
 
-  - include:
-      workflow: ocp-single-prompt
-    as: ocp_reviews
-    depends_on: [prepare_review]
-    for_each:
-      source: "{{steps.prepare_review.outputs.units}}"
-      mode: batch
-      label: "{{item.target.name}}"
-    with:
-      review_unit: "{{item}}"
-      review_file: "{{steps.prepare_review.outputs.review_file}}"
-      source_context: "{{steps.prepare_review.outputs.source_context}}"
+      - include:
+          workflow: ocp-single-prompt
+        as: ocp_reviews
+        depends_on: [prepare_review]
+        for_each:
+          source: "{{steps.prepare_review.outputs.units}}"
+          mode: batch
+          label: "{{item.target.name}}"
+        with:
+          review_unit: "{{item}}"
+          review_file: "{{steps.prepare_review.outputs.review_file}}"
+          source_context: "{{steps.prepare_review.outputs.source_context}}"
 
-  - include:
-      workflow: lsp-single-prompt
-    as: lsp_reviews
-    depends_on: [prepare_review]
-    for_each:
-      source: "{{steps.prepare_review.outputs.units}}"
-      mode: batch
-      label: "{{item.target.name}}"
-    with:
-      review_unit: "{{item}}"
-      review_file: "{{steps.prepare_review.outputs.review_file}}"
-      source_context: "{{steps.prepare_review.outputs.source_context}}"
+      - include:
+          workflow: lsp-single-prompt
+        as: lsp_reviews
+        depends_on: [prepare_review]
+        for_each:
+          source: "{{steps.prepare_review.outputs.units}}"
+          mode: batch
+          label: "{{item.target.name}}"
+        with:
+          review_unit: "{{item}}"
+          review_file: "{{steps.prepare_review.outputs.review_file}}"
+          source_context: "{{steps.prepare_review.outputs.source_context}}"
 
   # ---- Unit-scoped rules with per-unit search context: individual model turns ----
 

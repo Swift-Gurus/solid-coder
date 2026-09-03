@@ -4,7 +4,7 @@ feature: bundled-solid-workflows
 type: feature
 status: in-progress
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-043]
 blocking: []
 ---
 
@@ -148,7 +148,7 @@ sequenceDiagram
 
 ## Test Plan
 
-Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for prospective text and persisted file targets. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, applies the singular project review policy before rule materialization, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
+Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for prospective text and persisted file targets. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, applies the singular project review policy before rule materialization, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. The experimental single-prompt bundle combines compatible SRP, OCP, and LSP batch presentations while preserving their ordinary per-rule and per-unit execution state; ISP and DRY remain on their existing individual paths until their preparation context can move to file scope. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
 
 - Validate every bundled package and every workflow-ID include without starting an LLM.
 - Normalize and run working-tree, file, files, folder, Git-range/PR, buffer, and code-block targets through the same `solid-review` package.

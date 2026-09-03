@@ -34,12 +34,14 @@ from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_builder import PathBuilder
 from harness.path_canonicalizer import PathCanonicalizer
 from harness.path_include_source_resolver import PathIncludeSourceResolver
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_source_annotator import StepSourceAnnotator
 from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
@@ -85,6 +87,9 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
             reference_parser=StepOutputReferenceParser(),
         ),
         expression_parser=WorkflowExpressionParser(),
+        presentation_decoder=PydanticModelDecoder(
+            model_type=WorkflowPresentationDeclaration,
+        ),
         error_factory=error_factory,
     )
     source_resolver = IncludeSourceResolver(
@@ -98,7 +103,11 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
                 output_parser=EmptyWorkflowOutputParser(),
                 error_factory=error_factory,
             ),
-            InlineGroupSourceResolver(source_annotator, error_factory),
+            InlineGroupSourceResolver(
+                source_annotator,
+                runtime_parser,
+                error_factory,
+            ),
         ],
         error_factory=error_factory,
     )

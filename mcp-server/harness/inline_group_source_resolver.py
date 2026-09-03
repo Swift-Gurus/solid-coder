@@ -5,6 +5,7 @@ from __future__ import annotations
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_source import IncludeSource
 from harness.step_source_annotating import StepSourceAnnotating
+from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 
 
 """
@@ -18,9 +19,11 @@ class InlineGroupSourceResolver:
     def __init__(
         self,
         source_annotator: StepSourceAnnotating,
+        runtime_parser: WorkflowIncludeRuntimeParsing,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._source_annotator = source_annotator
+        self._runtime_parser = runtime_parser
         self._error_factory = error_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
@@ -37,4 +40,5 @@ class InlineGroupSourceResolver:
             alias=alias,
             steps=self._source_annotator.annotate(steps, source_path),
             flow_path=source_path,
+            runtime=self._runtime_parser.parse(entry),
         )

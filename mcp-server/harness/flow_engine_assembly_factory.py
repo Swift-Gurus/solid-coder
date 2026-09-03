@@ -14,8 +14,12 @@ from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.command_step_shape_validator import CommandStepShapeValidator
 from harness.command_step_value_validator import CommandStepValueValidator
+from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.comparison_condition_parser import ComparisonConditionParser
 from harness.comparison_operation_parser import ComparisonOperationParser
+from harness.combined_presentation_group_validator import (
+    CombinedPresentationGroupValidator,
+)
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_comparator import ConditionComparator
 from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
@@ -229,6 +233,7 @@ from harness.workflow_alias_results_template_value_renderer import (
 from harness.workflow_result_envelope_serializer import WorkflowResultEnvelopeSerializer
 from harness.template_value_renderer_registration import TemplateValueRendererRegistration
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
@@ -340,6 +345,9 @@ class FlowEngineAssemblyFactory:
             condition_parser=condition_parser,
             for_each_parser=for_each_declaration_parser,
             expression_parser=workflow_expression_parser,
+            presentation_decoder=PydanticModelDecoder(
+                model_type=WorkflowPresentationDeclaration,
+            ),
             error_factory=error_factory,
         )
         step_output_reference_resolver = StepOutputReferenceResolver[object](
@@ -406,6 +414,7 @@ class FlowEngineAssemblyFactory:
                 cycle_detector=cycle_detector,
                 error_factory=error_factory,
             ),
+            combined_presentation_validator=CombinedPresentationGroupValidator(),
         )
 
         uses_resolver = UsesResolver(
@@ -484,6 +493,9 @@ class FlowEngineAssemblyFactory:
                         ),
                         rule_workflow_decoder=PydanticModelDecoder(
                             model_type=IncludedRuleWorkflow,
+                        ),
+                        combined_presentation_decoder=PydanticModelDecoder(
+                            model_type=CombinedRulePresentation,
                         ),
                         output_parser=workflow_output_parser,
                         error_factory=error_factory,

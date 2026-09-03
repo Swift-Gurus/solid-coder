@@ -11,15 +11,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.batch_step_renderer import BatchStepRenderer
-from harness.batch_step_item_renderer import BatchStepItemRenderer
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.delegate_instruction_builder import build_delegate_instruction
 from harness.first_ready_step_selector import FirstReadyStepSelector
 from harness.flow_next_result import FlowNextResult
 from harness.flow_result_renderer import FlowResultRenderer
 from harness.flow_start_result import FlowStartResult
 from harness.single_step_renderer import SingleStepRenderer
-from harness.sibling_batch_step_selector import SiblingBatchStepSelector
+from harness.sibling_batch_step_selector_factory import (
+    SiblingBatchStepSelectorFactory,
+)
 from harness.step_formatter import StepFormatter
 from harness.step_renderer import StepRenderer
 from harness.step_result import StepResult
@@ -33,14 +34,12 @@ class TestFlowResultRenderer(unittest.TestCase):
         self.sut = FlowResultRenderer(
             step_renderer=StepRenderer(
                 ready_step_selector=FirstReadyStepSelector(),
-                sibling_batch_selector=SiblingBatchStepSelector(),
+                sibling_batch_selector=SiblingBatchStepSelectorFactory().make(),
                 single_step_renderer=SingleStepRenderer(
                     subagent_delegator=SubagentDelegator(),
                     step_formatter=StepFormatter(),
                 ),
-                batch_step_renderer=BatchStepRenderer(
-                    item_renderer=BatchStepItemRenderer()
-                ),
+                batch_step_renderer=BatchStepRendererFactory().make(),
             ),
             terminal_message_resolver=TerminalMessageResolver(),
         )
@@ -165,14 +164,12 @@ class TestFlowResultRenderer(unittest.TestCase):
     def test_render_next_uses_the_injected_delegate_instruction_builder(self):
         sut = FlowResultRenderer(step_renderer=StepRenderer(
             ready_step_selector=FirstReadyStepSelector(),
-            sibling_batch_selector=SiblingBatchStepSelector(),
+            sibling_batch_selector=SiblingBatchStepSelectorFactory().make(),
             single_step_renderer=SingleStepRenderer(
                 subagent_delegator=StubSubagentDelegator(),
                 step_formatter=StepFormatter(),
             ),
-            batch_step_renderer=BatchStepRenderer(
-                item_renderer=BatchStepItemRenderer()
-            ),
+            batch_step_renderer=BatchStepRendererFactory().make(),
         ), terminal_message_resolver=TerminalMessageResolver())
         result = FlowNextResult(
             status="ready",

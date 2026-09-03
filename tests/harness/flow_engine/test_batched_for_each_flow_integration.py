@@ -10,13 +10,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.batch_step_renderer import BatchStepRenderer
-from harness.batch_step_item_renderer import BatchStepItemRenderer
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.first_ready_step_selector import FirstReadyStepSelector
 from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
-from harness.sibling_batch_step_selector import SiblingBatchStepSelector
+from harness.sibling_batch_step_selector_factory import (
+    SiblingBatchStepSelectorFactory,
+)
 from harness.single_step_renderer import SingleStepRenderer
 from harness.step_formatter import StepFormatter
 from harness.step_renderer import StepRenderer
@@ -76,14 +77,12 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
         self.sut = self._orchestrator()
         self.renderer = StepRenderer(
             ready_step_selector=FirstReadyStepSelector(),
-            sibling_batch_selector=SiblingBatchStepSelector(),
+            sibling_batch_selector=SiblingBatchStepSelectorFactory().make(),
             single_step_renderer=SingleStepRenderer(
                 subagent_delegator=SubagentDelegator(),
                 step_formatter=StepFormatter(),
             ),
-            batch_step_renderer=BatchStepRenderer(
-                item_renderer=BatchStepItemRenderer()
-            ),
+            batch_step_renderer=BatchStepRendererFactory().make(),
         )
 
     def test_renders_shared_prompt_once_with_domain_labels_only(self) -> None:

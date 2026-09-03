@@ -74,6 +74,7 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             steps=step_identities,
             rule_workflow=group.rule_workflow,
             for_each=group.for_each,
+            combined_presentation=group.combined_presentation,
         )
         return [
             replace(

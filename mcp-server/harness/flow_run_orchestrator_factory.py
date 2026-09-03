@@ -13,8 +13,8 @@ from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
-from harness.batch_step_output_submission_mapper import (
-    BatchStepOutputSubmissionMapper,
+from harness.batch_step_output_submission_mapper_factory import (
+    BatchStepOutputSubmissionMapperFactory,
 )
 from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.concurrent_session_delegate_batch_runner import ConcurrentSessionDelegateBatchRunner
@@ -108,13 +108,13 @@ _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
 _DELEGATE_SESSION_MAX_WORKERS = 4
 
 
-"""
-solid-name: FlowRunOrchestratorFactory
-solid-category: factory
-solid-spec: [SPEC-027]
-solid-description: Assembles configured flow-run orchestration from injected storage, session, execution, and operation policies.
-"""
 class FlowRunOrchestratorFactory:
+    """
+    solid-name: FlowRunOrchestratorFactory
+    solid-category: service
+    solid-spec: [SPEC-027, SPEC-043]
+    solid-description: Provides flow-run lifecycle orchestration for executable workflows.
+    """
 
     def __init__(
         self,
@@ -344,7 +344,7 @@ class FlowRunOrchestratorFactory:
                 session_reader=self._session_reader,
                 output_recorder=output_recorder,
                 turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
-                submission_mapper=BatchStepOutputSubmissionMapper(),
+                submission_mapper=BatchStepOutputSubmissionMapperFactory().make(),
             ),
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
             interpolation_guard=interpolation_guard,

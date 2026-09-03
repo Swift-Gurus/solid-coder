@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
+from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
 from harness.included_rule_workflow import IncludedRuleWorkflow
@@ -34,3 +35,4 @@ class IncludedWorkflowInstance:
     )
     rule_workflow: IncludedRuleWorkflow | None = None
     for_each: Optional[ForEachDeclaration] = None
+    combined_presentation: CombinedRulePresentation | None = None

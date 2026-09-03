@@ -149,6 +149,50 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             ["a-rule", "z-rule"],
         )
 
+    def test_preserves_combined_presentation_across_rules_all_expansion(self) -> None:
+        self._write_package(
+            "srp",
+            self._rule_source("srp", ".swift", "service"),
+        )
+
+        with self.assertRaisesRegex(
+            FlowValidationError,
+            "Combined presentation rule 'srp' must contain exactly one agent step",
+        ):
+            self.loader.load(
+                self._write_package(
+                    "combined-review",
+                    """
+                    id: combined-review
+                    name: Combined Review
+                    max_turns: 20
+                    steps:
+                      - id: prepare
+                        prompt: Prepare review units.
+                        outputs:
+                          - name: units
+                            type: data
+                            schema:
+                              type: array
+                              items:
+                                type: object
+                      - include:
+                          rules: all
+                        as: rule_reviews
+                        depends_on: [prepare]
+                        presentation:
+                          mode: combined
+                        for_each:
+                          source: "{{steps.prepare.outputs.units}}"
+                          mode: batch
+                          label: "{{item.target.name}}"
+                        with:
+                          review_unit: "{{item}}"
+                    """,
+                ),
+                [str(self.directory)],
+            )
+
     def test_rejects_invalid_included_rule_under_its_own_identity(self) -> None:
         self._write_package(
             "invalid-rule",

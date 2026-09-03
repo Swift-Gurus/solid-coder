@@ -12,6 +12,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.directed_graph_factory import DirectedGraphFactory
+from harness.combined_presentation_group_validator import (
+    CombinedPresentationGroupValidator,
+)
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.include_alias_collision_validator import IncludeAliasCollisionValidator
 from harness.include_alias_group import IncludeAliasGroup
@@ -39,6 +42,7 @@ class TestIncludeStructureValidator(unittest.TestCase):
                 cycle_detector=KahnCycleDetector(IncomingEdgeChecker()),
                 error_factory=error_factory,
             ),
+            combined_presentation_validator=CombinedPresentationGroupValidator(),
         )
 
     def test_raises_when_alias_collides_with_existing_step_id(self):

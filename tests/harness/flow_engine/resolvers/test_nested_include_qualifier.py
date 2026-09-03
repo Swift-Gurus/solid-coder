@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition  # noqa: E402
+from harness.combined_rule_presentation import CombinedRulePresentation  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
 from harness.for_each_declaration import ForEachDeclaration  # noqa: E402
 from harness.include_alias_group import IncludeAliasGroup  # noqa: E402
@@ -47,6 +48,10 @@ class TestNestedIncludeQualifier(unittest.TestCase):
                 )
             ],
             condition=condition,
+            combined_presentation=CombinedRulePresentation(
+                group_alias="combined_reviews",
+                rule_alias="srp",
+            ),
         )
         sut = NestedIncludeQualifier(
             step_qualifier=StepQualifier(),
@@ -77,6 +82,10 @@ class TestNestedIncludeQualifier(unittest.TestCase):
                     for_each=group.for_each,
                     input_bindings=group.input_bindings,
                     condition=condition,
+                    combined_presentation=CombinedRulePresentation(
+                        group_alias="review.combined_reviews",
+                        rule_alias="srp",
+                    ),
                 )
             ],
         )

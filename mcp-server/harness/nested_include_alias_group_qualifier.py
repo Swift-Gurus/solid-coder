@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_qualifying import IncludeAliasGroupQualifying
 from harness.nested_identity_qualifying import NestedIdentityQualifying
@@ -43,4 +44,14 @@ class NestedIncludeAliasGroupQualifier(IncludeAliasGroupQualifying):
                 )
                 for dependency in group.depends_on
             ],
+            combined_presentation=(
+                CombinedRulePresentation(
+                    group_alias=(
+                        f"{alias}.{group.combined_presentation.group_alias}"
+                    ),
+                    rule_alias=group.combined_presentation.rule_alias,
+                )
+                if group.combined_presentation is not None
+                else None
+            ),
         )

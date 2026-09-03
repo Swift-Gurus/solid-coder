@@ -5,10 +5,12 @@ from collections.abc import Mapping
 from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.for_each_declaration_parsing import ForEachDeclarationParsing
+from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
+from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 
 
 """
@@ -24,11 +26,13 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
         condition_parser: ConditionParsing,
         for_each_parser: ForEachDeclarationParsing,
         expression_parser: WorkflowExpressionParsing,
+        presentation_decoder: StructuredModelDecoding[WorkflowPresentationDeclaration],
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._expression_parser = expression_parser
+        self._presentation_decoder = presentation_decoder
         self._error_factory = error_factory
 
     def parse(self, raw: Mapping[str, object]) -> WorkflowIncludeRuntime:
@@ -67,6 +71,10 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             if raw_condition is not None
             else None
         )
+        presentation = self._presentation_decoder.decode(
+            raw.get("presentation") or {},
+            "workflow include presentation",
+        )
         return WorkflowIncludeRuntime(
             depends_on=list(depends_on),
             for_each=(
@@ -82,4 +90,5 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
                 for name, expression in raw_bindings.items()
             ],
             condition=condition,
+            presentation=presentation.mode,
         )

@@ -13,10 +13,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.batch_step_renderer import BatchStepRenderer
-from harness.batch_step_item_renderer import BatchStepItemRenderer
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.first_ready_step_selector import FirstReadyStepSelector
-from harness.sibling_batch_step_selector import SiblingBatchStepSelector
+from harness.sibling_batch_step_selector_factory import (
+    SiblingBatchStepSelectorFactory,
+)
 from harness.single_step_renderer import SingleStepRenderer
 from harness.step_renderer import StepRenderer
 from harness.step_result import StepResult
@@ -92,14 +93,12 @@ class TestStepRenderer(unittest.TestCase):
     ) -> StepRenderer:
         return StepRenderer(
             ready_step_selector=FirstReadyStepSelector(),
-            sibling_batch_selector=SiblingBatchStepSelector(),
+            sibling_batch_selector=SiblingBatchStepSelectorFactory().make(),
             single_step_renderer=SingleStepRenderer(
                 subagent_delegator=delegator,
                 step_formatter=formatter,
             ),
-            batch_step_renderer=BatchStepRenderer(
-                item_renderer=BatchStepItemRenderer()
-            ),
+            batch_step_renderer=BatchStepRendererFactory().make(),
         )
 
 

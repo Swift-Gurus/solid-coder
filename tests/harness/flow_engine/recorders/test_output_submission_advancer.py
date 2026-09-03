@@ -11,7 +11,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.batch_step_output_submission_mapper import BatchStepOutputSubmissionMapper
+from harness.batch_step_output_submission_mapper_factory import (
+    BatchStepOutputSubmissionMapperFactory,
+)
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef, RunState, StepDef, StepInstance, ValidationResult
 from harness.output_submission_advancer import OutputSubmissionAdvancer
@@ -94,7 +96,7 @@ class OutputSubmissionAdvancerFactory:
             session_reader=self.session_reader,
             output_recorder=self.output_recorder,
             turn_advancer=self.turn_advancer,
-            submission_mapper=BatchStepOutputSubmissionMapper(),
+            submission_mapper=BatchStepOutputSubmissionMapperFactory().make(),
         )
 
 

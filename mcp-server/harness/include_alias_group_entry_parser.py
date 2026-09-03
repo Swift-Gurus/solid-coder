@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
+from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_entry_parsing import IncludeAliasGroupEntryParsing
@@ -33,6 +34,7 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         condition_parser: ConditionParsing,
         for_each_parser: IncludeAliasGroupForEachParsing,
         rule_workflow_decoder: StructuredModelDecoding[IncludedRuleWorkflow],
+        combined_presentation_decoder: StructuredModelDecoding[CombinedRulePresentation],
         output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
@@ -40,6 +42,7 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._rule_workflow_decoder = rule_workflow_decoder
+        self._combined_presentation_decoder = combined_presentation_decoder
         self._output_parser = output_parser
         self._error_factory = error_factory
 
@@ -121,5 +124,13 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
             outputs=self._output_parser.parse(
                 raw.get("outputs"),
                 "<workflow-snapshot>",
+            ),
+            combined_presentation=(
+                self._combined_presentation_decoder.decode(
+                    raw["combined_presentation"],
+                    f"workflow snapshot alias group '{alias}' combined presentation",
+                )
+                if raw.get("combined_presentation") is not None
+                else None
             ),
         )

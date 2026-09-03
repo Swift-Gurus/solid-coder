@@ -8,6 +8,7 @@ from harness.rule_set_include_reference_parsing import (
 )
 from harness.rule_set_member_serializing import RuleSetMemberSerializing
 from harness.rule_set_members_resolving import RuleSetMembersResolving
+from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 
 
@@ -49,6 +50,9 @@ class RuleSetIncludeSourceResolver:
                 for member in members
             ],
             flow_path=flow_file_path,
+            runtime=WorkflowIncludeRuntime(
+                presentation=runtime.presentation,
+            ),
             identity="rules:all",
             label="rules:all",
         )

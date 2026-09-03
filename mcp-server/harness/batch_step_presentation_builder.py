@@ -3,6 +3,12 @@
 from harness.batch_step_group_identity import BatchStepGroupIdentity
 from harness.batch_step_presentation import BatchStepPresentation
 from harness.batch_step_presentation_building import BatchStepPresentationBuilding
+from harness.combined_rule_batch_step_group_identity import (
+    CombinedRuleBatchStepGroupIdentity,
+)
+from harness.combined_rule_batch_step_presentation import (
+    CombinedRuleBatchStepPresentation,
+)
 from harness.expression_evaluating import ExpressionEvaluating
 from harness.flow_validation_error import FlowValidationError
 from harness.for_each_declaration import ForEachDeclaration
@@ -42,6 +48,15 @@ class BatchStepPresentationBuilder(BatchStepPresentationBuilding):
         workflow_instance = step.workflow_instance
         if workflow_instance is None:
             group = BatchStepGroupIdentity(None, step.id)
+        elif workflow_instance.combined_presentation is not None:
+            combined = workflow_instance.combined_presentation
+            return CombinedRuleBatchStepPresentation(
+                group=CombinedRuleBatchStepGroupIdentity(
+                    combined.group_alias
+                ),
+                label=label,
+                rule_alias=combined.rule_alias,
+            )
         else:
             group = BatchStepGroupIdentity(
                 workflow_instance.alias,

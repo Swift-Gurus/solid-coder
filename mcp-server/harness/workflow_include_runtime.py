@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
 from harness.workflow_input_binding import WorkflowInputBinding
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -21,3 +22,4 @@ class WorkflowIncludeRuntime:
     for_each: ForEachDeclaration | None = None
     input_bindings: list[WorkflowInputBinding] = field(default_factory=list)
     condition: ConditionDeclaration | None = None
+    presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
