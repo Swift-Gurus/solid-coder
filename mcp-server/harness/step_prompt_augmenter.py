@@ -23,7 +23,18 @@ class StepPromptAugmenter(StepPromptAugmenting):
         prompt = step.prompt
         if not isinstance(prompt, str) or not prompt:
             return step
+        if not requirements:
+            return step
+        authored_prompt = step.authored_prompt or prompt
         additions = [requirement for requirement in requirements if requirement not in prompt]
         if not additions:
-            return step
-        return replace(step, prompt="\n\n".join([prompt, *additions]))
+            return (
+                step
+                if step.authored_prompt is not None
+                else replace(step, authored_prompt=authored_prompt)
+            )
+        return replace(
+            step,
+            prompt="\n\n".join([prompt, *additions]),
+            authored_prompt=authored_prompt,
+        )

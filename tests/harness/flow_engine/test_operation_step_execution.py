@@ -90,6 +90,61 @@ class TestOperationStepExecution(unittest.TestCase):
         self.assertEqual(resumed.status, "done")
         self.assertEqual(self.operation.calls, 1)
 
+    def test_aggregate_execution_splits_around_operation_and_replays_its_output(self) -> None:
+        self.driver.write_workflow(
+            textwrap.dedent(
+                """
+                id: aggregate-operation
+                name: aggregate-operation
+                max_turns: 5
+                execution:
+                  mode: aggregate
+                steps:
+                  - id: inspect
+                    prompt: Inspect.
+                    outputs:
+                      - name: value
+                        type: data
+                        schema: {type: string}
+                  - id: echo
+                    type: operation
+                    operation: test.echo
+                    depends_on: [inspect]
+                    with:
+                      value: "{{steps.inspect.outputs.value}}"
+                  - id: report
+                    depends_on: [echo]
+                    prompt: Report {{steps.echo.outputs.echoed}}.
+                """
+            )
+        )
+
+        started = self.driver.start()
+        self.assertEqual([step.step_id for step in started.steps], ["inspect"])
+
+        report = self.driver.advance({
+            "aggregate-operation": {
+                "aggregate-operation": {
+                    "inspect": {"value": "hello"},
+                }
+            }
+        })
+
+        self.assertEqual(self.operation.calls, 1)
+        self.assertEqual([step.step_id for step in report.steps], ["report"])
+        self.assertIn("hello", report.steps[0].prompt)
+
+        completed = self.driver.advance({
+            "aggregate-operation": {
+                "aggregate-operation": {
+                    "report": {},
+                }
+            }
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        self.assertEqual(self.operation.calls, 1)
+
     def test_for_each_executes_every_operation_and_aggregates_in_source_order(self) -> None:
         self.driver.write_workflow(
             textwrap.dedent(
@@ -134,6 +189,85 @@ class TestOperationStepExecution(unittest.TestCase):
         self.assertIn("first", result.steps[0].prompt)
         self.assertIn("second", result.steps[0].prompt)
         self.assertIn("third", result.steps[0].prompt)
+
+    def test_nested_aggregate_child_runs_operation_once_without_absorbing_parent(self) -> None:
+        (self.project_root / "child.yaml").write_text(
+            textwrap.dedent(
+                """
+                id: aggregate-child
+                name: Aggregate Child
+                max_turns: 5
+                execution:
+                  mode: aggregate
+                presentation:
+                  mode: combined
+                steps:
+                  - id: echo
+                    type: operation
+                    operation: test.echo
+                    with:
+                      value: "{{params.message}}"
+                  - id: inspect
+                    prompt: Inspect {{steps.echo.outputs.echoed}}.
+                    depends_on: [echo]
+                    outputs:
+                      - name: analysis
+                        type: data
+                        schema: {type: string}
+                  - id: decide
+                    prompt: Decide.
+                    depends_on: [inspect]
+                    outputs:
+                      - name: result
+                        type: data
+                        schema: {type: boolean}
+                """
+            ),
+            encoding="utf-8",
+        )
+        self.driver.write_workflow(
+            textwrap.dedent(
+                """
+                id: aggregate-parent
+                name: Aggregate Parent
+                max_turns: 10
+                steps:
+                  - include: ./child.yaml
+                    as: child
+                    with:
+                      message: "{{params.message}}"
+                  - id: sibling
+                    prompt: Remain separate.
+                """
+            )
+        )
+
+        started = self.driver.start(params={"message": "hello"})
+
+        self.assertEqual(self.operation.calls, 1)
+        self.assertEqual(
+            [step.step_id for step in started.steps],
+            ["sibling", "child-1.inspect", "child-1.decide"],
+        )
+        self.assertIn("hello", started.steps[1].prompt)
+
+        child = self.driver.advance({started.steps[0].instance_id: {}})
+        self.assertEqual(
+            [step.step_id for step in child.steps],
+            ["child-1.inspect", "child-1.decide"],
+        )
+
+        completed = self.driver.advance({
+            "child-1": {
+                "child": {
+                    "inspect": {"analysis": "Inspected"},
+                    "decide": {"result": True},
+                }
+            }
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        self.assertEqual(self.operation.calls, 1)
 
     def test_rejects_unknown_logical_operation_before_execution(self) -> None:
         self._write_workflow("source.missing")

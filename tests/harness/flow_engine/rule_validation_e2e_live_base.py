@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import ClassVar
 
+from pydantic import ValidationError
+
 _HARNESS_DIR = Path(__file__).resolve().parents[1]
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 for _directory in (_HARNESS_DIR, _MCP_SERVER):
@@ -20,6 +22,7 @@ from source.file_analysis_source import FileAnalysisSource  # noqa: E402
 from bundled_review_rule_policy_writer import (  # noqa: E402
     BundledReviewRulePolicyWriter,
 )
+from codex_transcript_prompt_event import CodexTranscriptPromptEvent  # noqa: E402
 from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_rule_validation_expectation import (  # noqa: E402
     LiveRuleValidationExpectation,
@@ -53,6 +56,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     EXPECTED_VALUES: ClassVar[list[int | float | str | bool]]
     EXPECTED_METRIC_SEVERITIES: ClassVar[list[str]]
     EXPECTED_FINAL_SEVERITY: ClassVar[str]
+    REVIEW_WORKFLOW_ID: ClassVar[str] = "solid-review"
     EXPECTED_EXCEPTION: ClassVar[bool] = False
     ALLOW_AUXILIARY_STEPS: ClassVar[bool] = False
 
@@ -80,7 +84,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     @property
     def scenario(self) -> LiveWorkflowScenario:
         return LiveWorkflowScenario(
-            workflow_id="solid-review",
+            workflow_id=self.REVIEW_WORKFLOW_ID,
             parameters=self.workflow_parameters,
             artifact_scope=LiveSessionArtifactScope(
                 domain="review",
@@ -178,7 +182,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         aggregate = ReviewResult.model_validate_json(
             (review_directory / "result.json").read_text()
         )
-        self.assertEqual(aggregate.workflow_id, "solid-review")
+        self.assertEqual(aggregate.workflow_id, self.REVIEW_WORKFLOW_ID)
         self.assertEqual(aggregate.severity, expectation.final_severity)
         self.assertEqual(len(aggregate.rule_results), 1)
 
@@ -236,12 +240,14 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             if event.get("type") == "response_item"
             and event.get("payload", {}).get("type") == "custom_tool_call"
         ]
-        user_messages = [
-            event["payload"].get("message", "")
-            for event in events
-            if event.get("type") == "event_msg"
-            and event.get("payload", {}).get("type") == "user_message"
-        ]
+        user_messages: list[str] = []
+        for line in transcript.splitlines():
+            try:
+                user_messages.append(
+                    CodexTranscriptPromptEvent.model_validate_json(line).prompt
+                )
+            except ValidationError:
+                continue
         tool_outputs = [
             json.dumps(event["payload"].get("output", ""))
             for event in events

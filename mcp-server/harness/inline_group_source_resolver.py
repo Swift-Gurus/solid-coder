@@ -41,4 +41,5 @@ class InlineGroupSourceResolver:
             steps=self._source_annotator.annotate(steps, source_path),
             flow_path=source_path,
             runtime=self._runtime_parser.parse(entry),
+            propagates_policy=True,
         )

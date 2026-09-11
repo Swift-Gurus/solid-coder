@@ -1,0 +1,30 @@
+id: solid-file-review-aggregate
+name: SOLID File Review Aggregate Experiment
+description: Reuses canonical review rules while aggregating compatible model steps and presentations.
+max_turns: 500
+
+steps:
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    with:
+      target: "{{params.target}}"
+
+  - group: aggregate_rule_reviews
+    execution:
+      mode: aggregate
+    presentation:
+      mode: combined
+    steps:
+      - include:
+          rules: all
+        as: rule_reviews
+        depends_on: [prepare_review]
+        for_each:
+          source: "{{steps.prepare_review.outputs.units}}"
+          mode: batch
+          label: "{{item.target.name}}"
+        with:
+          review_file: "{{steps.prepare_review.outputs.review_file}}"
+          review_unit: "{{item}}"
+          source_context: "{{steps.prepare_review.outputs.source_context}}"

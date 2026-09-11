@@ -30,7 +30,8 @@ class CombinedRuleBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
         targets = [
             BatchSubmissionTarget(
                 label=presentation.label,
-                rule_alias=presentation.rule_alias,
+                workflow_alias=presentation.rule_alias,
+                step_id=instance.step_id,
                 instance_id=instance.instance_id,
             )
             for instance in ready
@@ -42,7 +43,7 @@ class CombinedRuleBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
         for index, target in enumerate(targets):
             if any(
                 candidate.label == target.label
-                and candidate.rule_alias == target.rule_alias
+                and candidate.workflow_alias == target.workflow_alias
                 for candidate in targets[index + 1:]
             ):
                 return StepOutputSubmissionMappingResult(
@@ -73,7 +74,7 @@ class CombinedRuleBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
                         candidate
                         for candidate in targets
                         if candidate.label == label
-                        and candidate.rule_alias == rule_alias
+                        and candidate.workflow_alias == rule_alias
                     ),
                     None,
                 )

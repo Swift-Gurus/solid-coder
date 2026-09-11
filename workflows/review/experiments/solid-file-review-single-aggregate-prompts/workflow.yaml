@@ -1,0 +1,67 @@
+id: solid-file-review-single-aggregate-prompts
+name: SOLID File Review (Single Aggregate Prompts)
+description: >
+  Aggregate-prompt counterpart to solid-file-review-single-prompt. Captures the
+  review target through a model-owned step, prepares it through MCP, discovers
+  every applicable canonical review rule, and presents compatible rule steps
+  and review units through aggregate execution and combined presentation.
+max_turns: 500
+
+steps:
+  - id: capture_target
+    type: agent
+    prompt: |
+      Submit the review target identified in your prompt.
+      Use kind "file" with an absolute path, or kind "text" with the code.
+    outputs:
+      - name: target
+        type: data
+        schema:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [ kind, path ]
+              properties:
+                kind:
+                  const: file
+                path:
+                  type: string
+
+            - type: object
+              additionalProperties: false
+              required: [ kind, text ]
+              properties:
+                kind:
+                  const: text
+                text:
+                  type: string
+                virtual_path:
+                  type: string
+                file_extension:
+                  type: string
+
+  - id: prepare_review
+    type: operation
+    operation: review.prepare
+    depends_on: [capture_target]
+    with:
+      target: "{{steps.capture_target.outputs.target}}"
+
+  - group: aggregate_rule_reviews
+    execution:
+      mode: aggregate
+    presentation:
+      mode: combined
+    steps:
+      - include:
+          rules: all
+        as: rule_reviews
+        depends_on: [prepare_review]
+        for_each:
+          source: "{{steps.prepare_review.outputs.units}}"
+          mode: batch
+          label: "{{item.target.name}}"
+        with:
+          review_file: "{{steps.prepare_review.outputs.review_file}}"
+          review_unit: "{{item}}"
+          source_context: "{{steps.prepare_review.outputs.source_context}}"

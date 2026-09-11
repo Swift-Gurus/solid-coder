@@ -9,6 +9,9 @@ from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
 from harness.active_run_lock_clearer import ActiveRunLockClearer
 from harness.active_run_pointer_store import ActiveRunPointerStore
+from harness.aggregate_ready_step_expander_factory import (
+    AggregateReadyStepExpanderFactory,
+)
 from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
@@ -178,6 +181,7 @@ class FlowRunOrchestratorFactory:
                 assembly.schema_validator
             ),
             dag_runner=assembly.dag_runner,
+            aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(),
         )
         output_recorder = OutputRecorder(event_appender=assembly.event_appender)
         completion_checker = RunCompletionChecker(

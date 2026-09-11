@@ -137,6 +137,75 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         self.assertEqual(blocked.steps, [])
         self.assertIn("output 'review_results' is invalid", blocked.error)
 
+    def test_aggregate_child_publishes_declared_output_after_all_steps_complete(self) -> None:
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        project_root = Path(temporary_directory.name)
+        (project_root / "child.yaml").write_text(
+            textwrap.dedent(
+                """
+                id: aggregate-child
+                name: Aggregate Child
+                max_turns: 5
+                execution:
+                  mode: aggregate
+                presentation:
+                  mode: combined
+                outputs:
+                  - name: final_result
+                    type: data
+                    value: "{{steps.decide.outputs.result}}"
+                    schema: {type: string}
+                steps:
+                  - id: inspect
+                    prompt: Inspect.
+                    outputs:
+                      - name: analysis
+                        type: data
+                        schema: {type: string}
+                  - id: decide
+                    prompt: Decide.
+                    depends_on: [inspect]
+                    outputs:
+                      - name: result
+                        type: data
+                        schema: {type: string}
+                """
+            ),
+            encoding="utf-8",
+        )
+        parent = project_root / "parent.yaml"
+        parent.write_text(
+            textwrap.dedent(
+                """
+                id: aggregate-parent
+                name: Aggregate Parent
+                max_turns: 5
+                steps:
+                  - include: child.yaml
+                    as: child
+                  - id: report
+                    depends_on: [child]
+                    prompt: Report {{workflows.child.results}}.
+                """
+            ),
+            encoding="utf-8",
+        )
+        orchestrator = self._make_orchestrator(project_root)
+
+        child = orchestrator.flow_start(str(parent))
+        report = orchestrator.flow_next({
+            "child-1": {
+                "child": {
+                    "inspect": {"analysis": "Inspected"},
+                    "decide": {"result": "Accepted"},
+                }
+            }
+        })
+
+        self.assertEqual([step.step_id for step in report.steps], ["report"])
+        self.assertIn("Accepted", report.steps[0].prompt)
+
     def _make_orchestrator(self, project_root: Path):
         return FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(

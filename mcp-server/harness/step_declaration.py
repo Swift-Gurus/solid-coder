@@ -31,6 +31,7 @@ class StepDeclaration:
     id: Optional[str] = None
     type: str = "agent"
     prompt: Optional[str] = None
+    authored_prompt: Optional[str] = None
     depends_on: Optional[list[str]] = None
     outputs: list[OutputSpec] = field(default_factory=list)
     for_each: Optional[ForEachDeclaration] = None

@@ -44,6 +44,8 @@ class FlowDefinitionAssembler:
             name=definition.name,
             max_turns=definition.max_turns,
             condition=definition.condition,
+            execution=definition.execution,
+            presentation=definition.presentation,
             steps=[self._step_builder.build(step) for step in expanded_steps],
             alias_groups=self._dynamic_groups.assemble(
                 definition.alias_groups

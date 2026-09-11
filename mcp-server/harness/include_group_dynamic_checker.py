@@ -2,6 +2,8 @@
 
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -19,4 +21,6 @@ class IncludeGroupDynamicChecker(IncludeGroupDynamicChecking):
             or group.condition is not None
             or group.rule_workflow is not None
             or group.outputs
+            or group.execution is not WorkflowExecutionMode.GRANULAR
+            or group.presentation is not WorkflowPresentationMode.INDIVIDUAL
         )

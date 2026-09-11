@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_source import IncludeSource
+from harness.path_include_entry_reading import PathIncludeEntryReading
 from harness.step_declaring_file_resolving import StepDeclaringFileResolving
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
@@ -16,12 +17,13 @@ from harness.workflow_output_declaration_parser import WorkflowOutputDeclaration
 solid-name: PathIncludeSourceResolver
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
-solid-description: Loads a package-contained subflow relative to the workflow file declaring its include entry.
+solid-description: Resolves a declaring-file-relative workflow include into an annotated include source.
 """
 class PathIncludeSourceResolver:
 
     def __init__(
         self,
+        entry_reader: PathIncludeEntryReading,
         declaring_file_resolver: StepDeclaringFileResolving,
         resource_loader: WorkflowConfigResourceLoading,
         reference_factory: WorkflowResourceReferenceCreating,
@@ -30,6 +32,7 @@ class PathIncludeSourceResolver:
         output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
+        self._entry_reader = entry_reader
         self._declaring_file_resolver = declaring_file_resolver
         self._resource_loader = resource_loader
         self._reference_factory = reference_factory
@@ -39,28 +42,28 @@ class PathIncludeSourceResolver:
         self._error_factory = error_factory
 
     def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
-        include_path = entry.get("include")
-        if not isinstance(include_path, str):
+        path_entry = self._entry_reader.read(entry)
+        if path_entry is None:
             return None
 
         declaring_file = self._declaring_file_resolver.resolve(
-            entry.get("__source_file"),
+            path_entry.source_file,
             flow_file_path,
         )
         resource = self._resource_loader.load(
             declaring_file,
-            self._reference_factory.create(include_path),
+            self._reference_factory.create(path_entry.path),
         )
         if resource is None:
             raise self._error_factory.create(
-                f"Unresolvable include: '{include_path}' not found relative to '{declaring_file}'"
+                f"Unresolvable include: '{path_entry.path}' not found relative to '{declaring_file}'"
             )
         source_path = str(resource.path)
         return IncludeSource(
-            alias=entry["as"],
+            alias=path_entry.alias,
             steps=self._source_annotator.annotate(resource.content.get("steps") or [], source_path),
             flow_path=source_path,
-            runtime=self._runtime_parser.parse(entry),
+            runtime=self._runtime_parser.parse(entry, resource.content),
             identity=source_path,
             label=source_path,
             source_path=source_path,

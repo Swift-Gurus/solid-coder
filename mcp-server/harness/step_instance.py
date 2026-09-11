@@ -28,6 +28,7 @@ class StepInstance:
     skip: StepSkip | None = None
     workflow_instance: IncludedWorkflowInstance | None = None
     batch: Optional[BatchStepPresentation] = None
+    authored_prompt: str | None = None
 
     @property
     def is_for_each(self) -> bool:

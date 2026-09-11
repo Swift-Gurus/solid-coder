@@ -7,6 +7,7 @@ from harness.flow_validation_error import FlowValidationError
 from harness.for_each_mode import ForEachMode
 from harness.include_alias_group import IncludeAliasGroup
 from harness.step_declaration import StepDeclaration
+from harness.workflow_execution_mode import WorkflowExecutionMode
 
 
 """
@@ -23,6 +24,8 @@ class CombinedPresentationGroupValidator(CombinedPresentationGroupValidating):
     ) -> None:
         for group in groups:
             if group.combined_presentation is None:
+                continue
+            if group.execution is WorkflowExecutionMode.AGGREGATE:
                 continue
             if group.for_each is None or group.for_each.mode is not ForEachMode.BATCH:
                 raise FlowValidationError(

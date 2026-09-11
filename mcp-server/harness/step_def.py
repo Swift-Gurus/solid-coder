@@ -23,6 +23,7 @@ solid-description: Represents a validated workflow step with its execution, depe
 class StepDef:
     id: str
     prompt: str
+    authored_prompt: str = ""
     depends_on: list[str] = field(default_factory=list)
     outputs: list[OutputSpec] = field(default_factory=list)
     for_each: ForEachDeclaration | None = None

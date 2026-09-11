@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from harness.aggregate_ready_step_expanding import AggregateReadyStepExpanding
 from harness.dag_running import DAGRunning
 from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
 from harness.event_replaying import EventReplaying
@@ -29,12 +30,14 @@ class RunSnapshotResolver(RunSnapshotResolving):
         step_resolver: DynamicWorkflowStepsResolving,
         results_context_builder: WorkflowResultsContextBuilding,
         dag_runner: DAGRunning,
+        aggregate_ready_steps: AggregateReadyStepExpanding,
     ) -> None:
         self._event_replayer = event_replayer
         self._context_builder = context_builder
         self._step_resolver = step_resolver
         self._results_context_builder = results_context_builder
         self._dag_runner = dag_runner
+        self._aggregate_ready_steps = aggregate_ready_steps
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
         run_state = self._event_replayer.replay(events_path)
@@ -57,7 +60,11 @@ class RunSnapshotResolver(RunSnapshotResolving):
                 context,
             ),
         )
-        ready = self._dag_runner.ready_steps(executable_flow, run_state, context)
+        ready = self._aggregate_ready_steps.expand(
+            executable_flow,
+            run_state,
+            self._dag_runner.ready_steps(executable_flow, run_state, context),
+        )
         return RunSnapshot(
             run_state=run_state,
             flow_def=executable_flow,

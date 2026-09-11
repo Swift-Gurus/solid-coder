@@ -30,6 +30,20 @@ _TWO_STEP_FLOW_YAML = textwrap.dedent("""
         depends_on: [step_one]
 """)
 
+_AGGREGATE_FLOW_YAML = textwrap.dedent("""
+    id: aggregate-stop
+    name: aggregate_stop
+    max_turns: 10
+    execution:
+      mode: aggregate
+    steps:
+      - id: inspect
+        prompt: Inspect.
+      - id: decide
+        prompt: Decide.
+        depends_on: [inspect]
+""")
+
 
 class TestFlowTransitionHandlerIntegration(unittest.TestCase):
     """Drives a real FlowRunOrchestrator against real files on disk — no stubs, no live LLM."""
@@ -94,6 +108,24 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
 
         self.assertTrue(allow)
         self.assertEqual(reason, "")
+
+    def test_aggregate_partial_submission_blocks_on_original_missing_step(self):
+        aggregate_flow = Path(self._tmpdir) / "aggregate.yaml"
+        aggregate_flow.write_text(_AGGREGATE_FLOW_YAML, encoding="utf-8")
+        self.orchestrator.flow_start(str(aggregate_flow))
+        self.orchestrator.flow_next({
+            "aggregate-stop": {
+                "aggregate-stop": {
+                    "inspect": {},
+                }
+            }
+        })
+
+        allow, reason = self._evaluate()
+
+        self.assertFalse(allow)
+        self.assertIn("decide", reason)
+        self.assertNotIn("inspect", reason)
 
 
 if __name__ == "__main__":

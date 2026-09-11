@@ -129,6 +129,32 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("func load() async" in prompt for prompt in prompts))
         self.assertFalse(any("'code':" in prompt for prompt in prompts))
 
+    def test_aggregate_experiment_reuses_every_canonical_rule_step(self) -> None:
+        self.target_path.write_text(self.source, encoding="utf-8")
+        BundledReviewRulePolicyWriter(
+            plugin_root=_PROJECT_ROOT,
+            project_root=self.run_root,
+        ).write_only("srp")
+
+        started = self.sut.flow_start(
+            "solid-file-review-aggregate",
+            params={
+                "target": {
+                    "kind": "file",
+                    "path": str(self.target_path),
+                }
+            },
+        )
+
+        self.assertIsNone(started.error, started.error)
+        identities = [step.step_id for step in started.steps]
+        self.assertEqual(self._rule_step_count(identities, "srp"), 8)
+        self.assertTrue(all(step.batch is not None for step in started.steps))
+        self.assertEqual(
+            {step.batch.mode.value for step in started.steps},
+            {"aggregate"},
+        )
+
     def _start_review(self, target: dict):
         started = self.sut.flow_start("solid-review")
         self.assertIsNone(started.error, started.error)

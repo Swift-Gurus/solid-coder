@@ -11,6 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.combined_rule_presentation_factory import (
+    CombinedRulePresentationFactory,
+)
+from harness.dataclass_include_alias_group_replacer import (
+    DataclassIncludeAliasGroupReplacer,
+)
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.for_each_reference_parser import ForEachReferenceParser
@@ -29,18 +35,27 @@ from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_alias_group_qualifier import (
     NestedIncludeAliasGroupQualifier,
 )
+from harness.nested_include_child_group_policy_selector import (
+    NestedIncludeChildGroupPolicySelector,
+)
+from harness.nested_include_child_group_transformer import (
+    NestedIncludeChildGroupTransformer,
+)
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_builder import PathBuilder
 from harness.path_canonicalizer import PathCanonicalizer
+from harness.path_include_entry_reader import PathIncludeEntryReader
 from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_source_annotator import StepSourceAnnotator
+from harness.structured_mode_resolver import StructuredModeResolver
 from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
@@ -87,14 +102,26 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
             reference_parser=StepOutputReferenceParser(),
         ),
         expression_parser=WorkflowExpressionParser(),
-        presentation_decoder=PydanticModelDecoder(
-            model_type=WorkflowPresentationDeclaration,
+        execution_resolver=StructuredModeResolver(
+            decoder=PydanticModelDecoder(
+                model_type=WorkflowExecutionDeclaration,
+            ),
+            field="execution",
+            description="workflow include execution",
+        ),
+        presentation_resolver=StructuredModeResolver(
+            decoder=PydanticModelDecoder(
+                model_type=WorkflowPresentationDeclaration,
+            ),
+            field="presentation",
+            description="workflow include presentation",
         ),
         error_factory=error_factory,
     )
     source_resolver = IncludeSourceResolver(
         resolvers=[
             PathIncludeSourceResolver(
+                entry_reader=PathIncludeEntryReader(error_factory),
                 declaring_file_resolver=StepDeclaringFileResolver(PathBuilder()),
                 resource_loader=resource_loader,
                 reference_factory=reference_factory,
@@ -116,6 +143,11 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
         nested_merger=NestedIncludeResolutionMerger(
             ordered_strings=OrderedStringCollector(),
             dynamic_group_checker=IncludeGroupDynamicChecker(),
+            child_group_transformer=NestedIncludeChildGroupTransformer(
+                policy_selector=NestedIncludeChildGroupPolicySelector(),
+                presentation_factory=CombinedRulePresentationFactory(),
+                group_replacer=DataclassIncludeAliasGroupReplacer(),
+            ),
         ),
     )
     return IncludeResolver(

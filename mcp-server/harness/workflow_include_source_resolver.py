@@ -61,7 +61,7 @@ class WorkflowIncludeSourceResolver:
             alias=entry["as"],
             steps=self._source_annotator.annotate(raw.get("steps") or [], source_path),
             flow_path=source_path,
-            runtime=self._runtime_parser.parse(entry),
+            runtime=self._runtime_parser.parse(entry, raw),
             identity=source_path,
             label=workflow_id,
             source_path=source_path,

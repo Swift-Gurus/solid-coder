@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from harness.aggregate_batch_step_group_identity import (
+    AggregateBatchStepGroupIdentity,
+)
 from harness.batch_step_group_identity import BatchStepGroupIdentity
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
 from harness.combined_rule_batch_step_group_identity import (
@@ -18,7 +21,11 @@ solid-description: Represents one domain-labelled model-facing batch-step presen
 """
 @dataclass(frozen=True)
 class BatchStepPresentation:
-    group: BatchStepGroupIdentity | CombinedRuleBatchStepGroupIdentity
+    group: (
+        BatchStepGroupIdentity
+        | CombinedRuleBatchStepGroupIdentity
+        | AggregateBatchStepGroupIdentity
+    )
     label: str
 
     @property

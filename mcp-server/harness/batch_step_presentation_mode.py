@@ -12,3 +12,4 @@ solid-description: Identifies the validation and rendering contract of a model-f
 class BatchStepPresentationMode(str, Enum):
     ORDINARY = "ordinary"
     COMBINED_RULES = "combined_rules"
+    AGGREGATE = "aggregate"

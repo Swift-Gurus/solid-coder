@@ -14,10 +14,15 @@ from harness.include_alias_group_for_each_parsing import (
 )
 from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.structured_model_decoding import StructuredModelDecoding
+from harness.structured_mode_resolver import StructuredModeResolver
+from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
+from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_input_binding_snapshot_parsing import (
     WorkflowInputBindingSnapshotParsing,
 )
 from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
+from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -35,6 +40,14 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         for_each_parser: IncludeAliasGroupForEachParsing,
         rule_workflow_decoder: StructuredModelDecoding[IncludedRuleWorkflow],
         combined_presentation_decoder: StructuredModelDecoding[CombinedRulePresentation],
+        execution_resolver: StructuredModeResolver[
+            WorkflowExecutionDeclaration,
+            WorkflowExecutionMode,
+        ],
+        presentation_resolver: StructuredModeResolver[
+            WorkflowPresentationDeclaration,
+            WorkflowPresentationMode,
+        ],
         output_parser: WorkflowOutputDeclarationParser,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
@@ -43,6 +56,8 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
         self._for_each_parser = for_each_parser
         self._rule_workflow_decoder = rule_workflow_decoder
         self._combined_presentation_decoder = combined_presentation_decoder
+        self._execution_resolver = execution_resolver
+        self._presentation_resolver = presentation_resolver
         self._output_parser = output_parser
         self._error_factory = error_factory
 
@@ -124,6 +139,14 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
             outputs=self._output_parser.parse(
                 raw.get("outputs"),
                 "<workflow-snapshot>",
+            ),
+            execution=self._execution_resolver.resolve(
+                raw,
+                WorkflowExecutionMode.GRANULAR,
+            ),
+            presentation=self._presentation_resolver.resolve(
+                raw,
+                WorkflowPresentationMode.INDIVIDUAL,
             ),
             combined_presentation=(
                 self._combined_presentation_decoder.decode(

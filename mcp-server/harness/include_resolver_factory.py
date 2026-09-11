@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 from harness.catalog_rule_set_members_resolver import CatalogRuleSetMembersResolver
+from harness.combined_rule_presentation_factory import (
+    CombinedRulePresentationFactory,
+)
 from harness.condition_conjoiner import ConditionConjoiner
 from harness.condition_serializer_factory import make_condition_serializer
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_cycle_guard import IncludeCycleGuard
+from harness.dataclass_include_alias_group_replacer import (
+    DataclassIncludeAliasGroupReplacer,
+)
 from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
-from harness.include_group_dynamic_checker import IncludeGroupDynamicChecker
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
 from harness.include_source_resolver import IncludeSourceResolver
 from harness.include_step_appender import IncludeStepAppender
@@ -20,10 +25,17 @@ from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_alias_group_qualifier import (
     NestedIncludeAliasGroupQualifier,
 )
+from harness.nested_include_child_group_policy_selector import (
+    NestedIncludeChildGroupPolicySelector,
+)
+from harness.nested_include_child_group_transformer import (
+    NestedIncludeChildGroupTransformer,
+)
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_building import PathBuilding
 from harness.path_canonicalizer import PathCanonicalizer
+from harness.path_include_entry_reader import PathIncludeEntryReader
 from harness.path_include_source_resolver import PathIncludeSourceResolver
 from harness.policy_rule_set_members_resolver import PolicyRuleSetMembersResolver
 from harness.pydantic_model_decoder import PydanticModelDecoder
@@ -37,6 +49,9 @@ from harness.rule_set_include_source_resolver import RuleSetIncludeSourceResolve
 from harness.rule_set_member_serializer import RuleSetMemberSerializer
 from harness.rule_scope_runtime_adapter_resolver_factory import (
     RuleScopeRuntimeAdapterResolverFactory,
+)
+from harness.runtime_include_group_dynamic_checker import (
+    RuntimeIncludeGroupDynamicChecker,
 )
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
@@ -106,7 +121,12 @@ class IncludeResolverFactory:
             step_appender=IncludeStepAppender(),
             nested_merger=NestedIncludeResolutionMerger(
                 ordered_strings=OrderedStringCollector(),
-                dynamic_group_checker=IncludeGroupDynamicChecker(),
+                dynamic_group_checker=RuntimeIncludeGroupDynamicChecker(),
+                child_group_transformer=NestedIncludeChildGroupTransformer(
+                    policy_selector=NestedIncludeChildGroupPolicySelector(),
+                    presentation_factory=CombinedRulePresentationFactory(),
+                    group_replacer=DataclassIncludeAliasGroupReplacer(),
+                ),
             ),
         )
         return IncludeResolver(
@@ -135,6 +155,9 @@ class IncludeResolverFactory:
                             error_factory=self._error_factory,
                         ),
                         PathIncludeSourceResolver(
+                            entry_reader=PathIncludeEntryReader(
+                                self._error_factory
+                            ),
                             declaring_file_resolver=StepDeclaringFileResolver(
                                 self._path_builder
                             ),

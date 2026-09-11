@@ -21,6 +21,10 @@ class StepBuilder:
         return StepDef(
             id=cast(str, declaration.id),
             prompt=cast(str, declaration.prompt or ""),
+            authored_prompt=cast(
+                str,
+                declaration.authored_prompt or declaration.prompt or "",
+            ),
             depends_on=cast(list[str], declaration.depends_on or []),
             outputs=cast(list[OutputSpec], declaration.outputs or []),
             for_each=cast(Optional[ForEachDeclaration], declaration.for_each),

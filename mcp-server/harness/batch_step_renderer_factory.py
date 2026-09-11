@@ -1,5 +1,8 @@
 """Assembles batch rendering for every presentation mode."""
 
+from harness.aggregate_batch_step_renderer_factory import (
+    AggregateBatchStepRendererFactory,
+)
 from harness.batch_step_item_renderer import BatchStepItemRenderer
 from harness.batch_presentation_capability_registration import (
     BatchPresentationCapabilityRegistration,
@@ -40,6 +43,10 @@ class BatchStepRendererFactory:
                             sections=CombinedRuleBatchSectionsBuilder(),
                             item_renderer=item_renderer,
                         ),
+                    ),
+                    BatchPresentationCapabilityRegistration(
+                        mode=BatchStepPresentationMode.AGGREGATE,
+                        capability=AggregateBatchStepRendererFactory().make(),
                     ),
                 ]
             )

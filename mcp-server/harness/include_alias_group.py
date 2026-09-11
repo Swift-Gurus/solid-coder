@@ -8,8 +8,10 @@ from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
 from harness.included_rule_workflow import IncludedRuleWorkflow
+from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_output_declaration import WorkflowOutputDeclaration
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -31,6 +33,8 @@ class IncludeAliasGroup:
     condition: ConditionDeclaration | None = None
     rule_workflow: IncludedRuleWorkflow | None = None
     outputs: list[WorkflowOutputDeclaration] = field(default_factory=list)
+    execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR
+    presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
     combined_presentation: CombinedRulePresentation | None = None
 
     def __post_init__(self) -> None:

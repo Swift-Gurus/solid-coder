@@ -38,6 +38,7 @@ class StepDeclarationFactory(StepDeclarationMapping):
             id=raw.get("id"),
             type=raw.get("type", "agent"),
             prompt=raw.get("prompt"),
+            authored_prompt=raw.get("authored_prompt"),
             depends_on=raw.get("depends_on"),
             outputs=(
                 operation_contract.outputs

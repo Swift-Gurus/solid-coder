@@ -11,6 +11,8 @@ from harness.for_each_declaration import ForEachDeclaration
 from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.workflow_context_values import WorkflowContextValues
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -35,4 +37,6 @@ class IncludedWorkflowInstance:
     )
     rule_workflow: IncludedRuleWorkflow | None = None
     for_each: Optional[ForEachDeclaration] = None
+    execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR
+    presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
     combined_presentation: CombinedRulePresentation | None = None

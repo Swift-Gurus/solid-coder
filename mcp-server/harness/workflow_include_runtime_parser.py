@@ -1,16 +1,21 @@
 """Parses runtime controls declared on a workflow include."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 
 from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.for_each_declaration_parsing import ForEachDeclarationParsing
-from harness.structured_model_decoding import StructuredModelDecoding
+from harness.structured_mode_resolver import StructuredModeResolver
+from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
+from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -26,16 +31,28 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
         condition_parser: ConditionParsing,
         for_each_parser: ForEachDeclarationParsing,
         expression_parser: WorkflowExpressionParsing,
-        presentation_decoder: StructuredModelDecoding[WorkflowPresentationDeclaration],
+        execution_resolver: StructuredModeResolver[
+            WorkflowExecutionDeclaration,
+            WorkflowExecutionMode,
+        ],
+        presentation_resolver: StructuredModeResolver[
+            WorkflowPresentationDeclaration,
+            WorkflowPresentationMode,
+        ],
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._expression_parser = expression_parser
-        self._presentation_decoder = presentation_decoder
+        self._execution_resolver = execution_resolver
+        self._presentation_resolver = presentation_resolver
         self._error_factory = error_factory
 
-    def parse(self, raw: Mapping[str, object]) -> WorkflowIncludeRuntime:
+    def parse(
+        self,
+        raw: Mapping[str, object],
+        policy_source: Mapping[str, object] | None = None,
+    ) -> WorkflowIncludeRuntime:
         depends_on = raw.get("depends_on") or []
         if not isinstance(depends_on, list) or not all(
             isinstance(dependency, str) and dependency
@@ -71,10 +88,18 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             if raw_condition is not None
             else None
         )
-        presentation = self._presentation_decoder.decode(
-            raw.get("presentation") or {},
-            "workflow include presentation",
-        )
+        defaults = WorkflowIncludeRuntime()
+        if policy_source is not None:
+            defaults = WorkflowIncludeRuntime(
+                execution=self._execution_resolver.resolve(
+                    policy_source,
+                    defaults.execution,
+                ),
+                presentation=self._presentation_resolver.resolve(
+                    policy_source,
+                    defaults.presentation,
+                ),
+            )
         return WorkflowIncludeRuntime(
             depends_on=list(depends_on),
             for_each=(
@@ -90,5 +115,9 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
                 for name, expression in raw_bindings.items()
             ],
             condition=condition,
-            presentation=presentation.mode,
+            execution=self._execution_resolver.resolve(raw, defaults.execution),
+            presentation=self._presentation_resolver.resolve(
+                raw,
+                defaults.presentation,
+            ),
         )

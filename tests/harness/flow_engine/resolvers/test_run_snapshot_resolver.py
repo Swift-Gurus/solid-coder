@@ -21,6 +21,15 @@ from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 
 
+class StubAggregateReadyStepExpander:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def expand(self, flow, state, ready):
+        self.calls.append((flow, state, ready))
+        return ready
+
+
 class StubEventReplayer:
     def __init__(self, run_state: RunState) -> None:
         self._run_state = run_state
@@ -94,12 +103,14 @@ class TestRunSnapshotResolver(unittest.TestCase):
                 authored_member_ids=set(),
             )
         )
+        aggregate_ready_steps = StubAggregateReadyStepExpander()
         sut = RunSnapshotResolver(
             event_replayer=replayer,
             context_builder=context_builder,
             step_resolver=step_resolver,
             results_context_builder=EmptyWorkflowResultsContextBuilder(),
             dag_runner=dag_runner,
+            aggregate_ready_steps=aggregate_ready_steps,
         )
 
         snapshot = sut.resolve("/run/events.jsonl", flow_def, {"key": "value"})
@@ -116,6 +127,10 @@ class TestRunSnapshotResolver(unittest.TestCase):
         self.assertEqual(
             dag_runner.calls,
             [(snapshot.flow_def, run_state, context)],
+        )
+        self.assertEqual(
+            aggregate_ready_steps.calls,
+            [(snapshot.flow_def, run_state, [instance])],
         )
 
 

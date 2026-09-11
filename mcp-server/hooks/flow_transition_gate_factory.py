@@ -39,6 +39,7 @@ class FlowTransitionGateFactory:
     def build(self) -> FlowTransitionGate:
         from harness.active_run_locator import ActiveRunLocator
         from harness.active_run_pointer_store import ActiveRunPointerStore
+        from harness.aggregate_ready_step_expander_factory import AggregateReadyStepExpanderFactory
         from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
         from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
         from harness.attempt_failure_handler import AttemptFailureHandler
@@ -105,6 +106,7 @@ class FlowTransitionGateFactory:
                     assembly.schema_validator
                 ),
                 dag_runner=assembly.dag_runner,
+                aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(),
             ),
             condition_serializer=make_condition_serializer(),
         )

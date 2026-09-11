@@ -1,5 +1,8 @@
 """Assembles batch sibling selection for every presentation mode."""
 
+from harness.aggregate_batch_step_group_validator import (
+    AggregateBatchStepGroupValidator,
+)
 from harness.batch_presentation_capability_registration import (
     BatchPresentationCapabilityRegistration,
 )
@@ -34,6 +37,10 @@ class SiblingBatchStepSelectorFactory:
                     BatchPresentationCapabilityRegistration(
                         mode=BatchStepPresentationMode.COMBINED_RULES,
                         capability=CombinedRuleBatchStepGroupValidator(),
+                    ),
+                    BatchPresentationCapabilityRegistration(
+                        mode=BatchStepPresentationMode.AGGREGATE,
+                        capability=AggregateBatchStepGroupValidator(),
                     ),
                 ]
             )

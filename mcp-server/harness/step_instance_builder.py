@@ -47,6 +47,10 @@ class StepInstanceBuilder(StepInstanceBuilding):
             item,
         )
         prompt = self._renderer.render(step.prompt, step_context)
+        authored_prompt = self._renderer.render(
+            step.authored_prompt or step.prompt,
+            step_context,
+        )
         batch = self._batch_presentation_resolver.resolve(step, step_context)
         if step.operation is None:
             return StepInstance(
@@ -57,6 +61,7 @@ class StepInstanceBuilder(StepInstanceBuilding):
                 iteration_index=iteration_index,
                 workflow_instance=step.workflow_instance,
                 batch=batch,
+                authored_prompt=authored_prompt,
             )
         return OperationStepInstance(
             step_id=step.id,
@@ -66,6 +71,7 @@ class StepInstanceBuilder(StepInstanceBuilding):
             iteration_index=iteration_index,
             workflow_instance=step.workflow_instance,
             batch=batch,
+            authored_prompt=authored_prompt,
             inputs=self._operation_inputs_resolver.resolve(
                 step.operation,
                 step_context,

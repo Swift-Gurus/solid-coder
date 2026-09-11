@@ -27,3 +27,4 @@ class IncludeSource:
     workflow_id: str | None = None
     rule_workflow: IncludedRuleWorkflow | None = None
     outputs: list[WorkflowOutputDeclaration] = field(default_factory=list)
+    propagates_policy: bool = False

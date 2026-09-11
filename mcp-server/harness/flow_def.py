@@ -9,6 +9,8 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.rule_declaration import RuleDeclaration
 from harness.step_declaration import StepDeclaration
 from harness.step_def import StepDef
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -23,6 +25,8 @@ class FlowDef:
     max_turns: int
     steps: list[StepDef]
     condition: ConditionDeclaration | None = None
+    execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR
+    presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
     id: str = ""
     source_path: str = ""
     sources: list[str] = field(default_factory=list)

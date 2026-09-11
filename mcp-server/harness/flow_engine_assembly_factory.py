@@ -176,6 +176,9 @@ from harness.rule_workflow_validation_planner import (
 from harness.rule_workflow_validation_scope_validator import (
     RuleWorkflowValidationScopeValidator,
 )
+from harness.runtime_include_group_dynamic_checker import (
+    RuntimeIncludeGroupDynamicChecker,
+)
 from harness.rule_workflow_structure_validator import RuleWorkflowStructureValidator
 from harness.rule_match_validator import RuleMatchValidator
 from harness.review_policy_loading import ReviewPolicyLoading
@@ -216,6 +219,7 @@ from harness.step_output_workflow_input_binding_normalizer import (
 )
 from harness.strict_collection_value_matcher import StrictCollectionValueMatcher
 from harness.strict_value_comparator import StrictValueComparator
+from harness.structured_mode_resolver import StructuredModeResolver
 from harness.uses_resolver import UsesResolver
 from harness.unique_step_identity_validator import UniqueStepIdentityValidator
 from harness.unique_string_validator import UniqueStringValidator
@@ -237,6 +241,7 @@ from harness.workflow_alias_results_template_value_renderer import (
 from harness.workflow_result_envelope_serializer import WorkflowResultEnvelopeSerializer
 from harness.template_value_renderer_registration import TemplateValueRendererRegistration
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
+from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
@@ -349,8 +354,19 @@ class FlowEngineAssemblyFactory:
             condition_parser=condition_parser,
             for_each_parser=for_each_declaration_parser,
             expression_parser=workflow_expression_parser,
-            presentation_decoder=PydanticModelDecoder(
-                model_type=WorkflowPresentationDeclaration,
+            execution_resolver=StructuredModeResolver(
+                decoder=PydanticModelDecoder(
+                    model_type=WorkflowExecutionDeclaration,
+                ),
+                field="execution",
+                description="workflow include execution",
+            ),
+            presentation_resolver=StructuredModeResolver(
+                decoder=PydanticModelDecoder(
+                    model_type=WorkflowPresentationDeclaration,
+                ),
+                field="presentation",
+                description="workflow include presentation",
             ),
             error_factory=error_factory,
         )
@@ -501,6 +517,20 @@ class FlowEngineAssemblyFactory:
                         combined_presentation_decoder=PydanticModelDecoder(
                             model_type=CombinedRulePresentation,
                         ),
+                        execution_resolver=StructuredModeResolver(
+                            decoder=PydanticModelDecoder(
+                                model_type=WorkflowExecutionDeclaration,
+                            ),
+                            field="execution",
+                            description="workflow snapshot execution",
+                        ),
+                        presentation_resolver=StructuredModeResolver(
+                            decoder=PydanticModelDecoder(
+                                model_type=WorkflowPresentationDeclaration,
+                            ),
+                            field="presentation",
+                            description="workflow snapshot presentation",
+                        ),
                         output_parser=workflow_output_parser,
                         error_factory=error_factory,
                     )
@@ -551,6 +581,20 @@ class FlowEngineAssemblyFactory:
                 ),
                 rule_decoder=PydanticModelDecoder(
                     model_type=RuleDeclaration,
+                ),
+                execution_resolver=StructuredModeResolver(
+                    decoder=PydanticModelDecoder(
+                        model_type=WorkflowExecutionDeclaration,
+                    ),
+                    field="execution",
+                    description="workflow execution",
+                ),
+                presentation_resolver=StructuredModeResolver(
+                    decoder=PydanticModelDecoder(
+                        model_type=WorkflowPresentationDeclaration,
+                    ),
+                    field="presentation",
+                    description="workflow presentation",
                 ),
             ),
             definition_validator=RuleValidatingFlowDefinitionValidator(
@@ -690,7 +734,7 @@ class FlowEngineAssemblyFactory:
         dynamic_step_resolver = DynamicWorkflowStepsResolver(
             materializer=HierarchicalDynamicWorkflowMaterializer(
                 hierarchy_resolver=DynamicIncludeGroupHierarchyResolver(
-                    dynamic_group_checker
+                    RuntimeIncludeGroupDynamicChecker()
                 ),
                 group_expander=RecursiveDynamicIncludeGroupExpander(
                     group_materializer=RecursiveDynamicIncludeGroupMaterializer(

@@ -16,6 +16,11 @@ from harness.step_declaration_mapping import StepDeclarationMapping
 from harness.step_source_collecting import StepSourceCollecting
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.structured_model_decoding import StructuredModelDecoding
+from harness.structured_mode_resolver import StructuredModeResolver
+from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -42,6 +47,14 @@ class FlowDefinitionResolver:
         prompt_annotator: OutputSchemaPromptAnnotating,
         step_mapper: StepDeclarationMapping,
         rule_decoder: StructuredModelDecoding[RuleDeclaration],
+        execution_resolver: StructuredModeResolver[
+            WorkflowExecutionDeclaration,
+            WorkflowExecutionMode,
+        ],
+        presentation_resolver: StructuredModeResolver[
+            WorkflowPresentationDeclaration,
+            WorkflowPresentationMode,
+        ],
     ) -> None:
         self._config_extractor = config_extractor
         self._condition_parser = condition_parser
@@ -57,11 +70,21 @@ class FlowDefinitionResolver:
         self._prompt_annotator = prompt_annotator
         self._step_mapper = step_mapper
         self._rule_decoder = rule_decoder
+        self._execution_resolver = execution_resolver
+        self._presentation_resolver = presentation_resolver
 
     def resolve(self, raw: dict, path: str, search_paths: list[str]) -> FlowDef:
         resolved_source_path = self._path_builder.build(path)
         source_path = str(resolved_source_path)
         workflow_id = raw.get("id") or resolved_source_path.stem
+        execution = self._execution_resolver.resolve(
+            raw,
+            WorkflowExecutionMode.GRANULAR,
+        )
+        presentation = self._presentation_resolver.resolve(
+            raw,
+            WorkflowPresentationMode.INDIVIDUAL,
+        )
         condition = (
             self._condition_parser.parse(raw["when"])
             if raw.get("when") is not None
@@ -103,6 +126,8 @@ class FlowDefinitionResolver:
             max_turns=self._config_extractor.extract_max_turns(raw),
             steps=[],
             condition=condition,
+            execution=execution,
+            presentation=presentation,
             step_declarations=step_declarations,
             top_level_step_ids=top_level_step_ids,
             alias_groups=[*inclusion.alias_groups, *restored_alias_groups],
