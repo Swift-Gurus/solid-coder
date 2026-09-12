@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
 from harness.rule_applicability_context import RuleApplicabilityContext
 from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
@@ -42,6 +43,7 @@ class TestDryValidationFlow(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.project_root = Path(temporary.name)
+        self.project_directory = ProjectDirectory(path=self.project_root)
         self.run_root = self.project_root / ".solid-coder" / "runs"
         self.current_path = self.project_root / "Current.swift"
         self.current_content = (
@@ -59,7 +61,7 @@ class TestDryValidationFlow(unittest.TestCase):
             plugin_root=_PROJECT_ROOT,
             session_reader=StaticSessionIdReader("dry-flow-test"),
             operation_registrations=SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.project_root,
+                project_directory=self.project_directory,
             ).make(),
         ).build()
 

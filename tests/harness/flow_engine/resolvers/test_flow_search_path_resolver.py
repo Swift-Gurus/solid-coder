@@ -18,6 +18,7 @@ from harness.existing_path_filter import ExistingPathFilter
 from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
+from harness.project_context import ProjectDirectory
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from hook_utils import _resolve_project_root
 
@@ -38,7 +39,9 @@ class TestFlowSearchPathResolver(unittest.TestCase):
             )
             resolver = FlowSearchPathResolver(
                 sources=[
-                    ProjectWorkflowSearchPathResolver(lambda: resolved_project),
+                    ProjectWorkflowSearchPathResolver(
+                        ProjectDirectory(path=resolved_project)
+                    ),
                     PluginWorkflowSearchPathResolver(plugin_root),
                 ],
                 path_filter=ExistingPathFilter(PathChecker()),
@@ -55,7 +58,9 @@ class TestFlowSearchPathResolver(unittest.TestCase):
             legacy_root.mkdir(parents=True)
             resolver = FlowSearchPathResolver(
                 sources=[
-                    ProjectWorkflowSearchPathResolver(lambda: project_root),
+                    ProjectWorkflowSearchPathResolver(
+                        ProjectDirectory(path=project_root)
+                    ),
                     PluginWorkflowSearchPathResolver(project_root),
                 ],
                 path_filter=ExistingPathFilter(PathChecker()),

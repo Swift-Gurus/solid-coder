@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 _FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "workflow_catalog_e2e"
@@ -44,12 +45,13 @@ class TestWorkflowCatalogProcessIntegration(unittest.TestCase):
             self.project_root / ".solid-coder" / "workflows",
         )
         self.runs_dir = self.project_root / "runs"
+        project_directory = ProjectDirectory(path=self.project_root)
         self.sut = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
                 project_dir_fn=lambda: self.project_root
             ),
             plugin_root=self.project_root,
-            project_directory=lambda: self.project_root,
+            project_directory=project_directory,
             command_allowlist_resolver=_AllowlistResolver(),
             session_reader=_SessionReader(),
         ).build()

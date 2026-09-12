@@ -53,10 +53,10 @@ class TestFlowRunCreatorProjectContext(unittest.TestCase):
 
         context_path_type.assert_called_once_with()
         session_project_reader_type.assert_called_once_with(
-            context_path_type.return_value.resolve
+            context_path_type.return_value
         )
         project_reader_type.assert_called_once()
-        project_directory = project_reader_type.return_value.read
+        project_directory = project_reader_type.return_value
         self.assertIs(factory.call_args.kwargs["project_directory"], project_directory)
         source_operations.assert_called_once_with(
             project_directory=project_directory

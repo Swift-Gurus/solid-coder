@@ -19,6 +19,7 @@ from bundled_review_rule_policy_writer import (  # noqa: E402
 from harness.flow_run_orchestrator_factory import (  # noqa: E402
     FlowRunOrchestratorFactory,
 )
+from harness.project_context import ProjectDirectory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from review.review_operation_registrations_factory import (  # noqa: E402
     ReviewOperationRegistrationsFactory,
@@ -57,9 +58,10 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
             plugin_root=_PROJECT_ROOT,
             project_root=self.project_root,
         ).write_only("unit-testing")
+        project_directory = ProjectDirectory(path=self.project_root)
         registrations = [
             *SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.project_root,
+                project_directory=project_directory,
             ).make(),
             *ReviewOperationRegistrationsFactory().make(),
         ]
@@ -68,7 +70,7 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
                 project_dir_fn=lambda: self.project_root,
             ),
             plugin_root=_PROJECT_ROOT,
-            project_directory=lambda: self.project_root,
+            project_directory=project_directory,
             operation_registrations=registrations,
         ).build()
 

@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from harness.project_context import ProjectDirectory
 from search.codebase_search_executing import CodebaseSearchExecuting
 from search.codebase_search_execution import CodebaseSearchExecution
 from search.codebase_search_input_building import CodebaseSearchInputBuilding
@@ -44,7 +45,7 @@ class CodebaseSearchExecutor(CodebaseSearchExecuting):
             min_matches,
         )
         operation = self._operation_factory.make(
-            lambda: resolution.project_root,
+            ProjectDirectory(path=resolution.project_root),
             SearchTargetGranularity.FILE,
         )
         output = operation.execute(resolution.operation_input)

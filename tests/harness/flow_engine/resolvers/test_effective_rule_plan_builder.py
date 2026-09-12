@@ -25,6 +25,7 @@ from harness.project_review_policy_audit import ProjectReviewPolicyAudit
 from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
 from harness.metric_override_applier import MetricOverrideApplier
 from harness.ordered_string_collector import OrderedStringCollector
+from harness.project_context import ProjectDirectory
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_metric_override import ReviewPolicyMetricOverride
 from harness.review_policy_rule_override import ReviewPolicyRuleOverride
@@ -58,7 +59,7 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
                 content_hasher=Sha256ContentHasher(),
                 enablement_resolver=RuleEnablementResolver(),
                 origin_resolver=RuleWorkflowOriginResolver(
-                    lambda: self.project_root
+                    ProjectDirectory(path=self.project_root)
                 ),
                 metric_plan_resolver=EffectiveMetricPlanResolver(
                     override_applier=MetricOverrideApplier(),

@@ -15,6 +15,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 from harness.flow_run_orchestrator_factory import (  # noqa: E402
     FlowRunOrchestratorFactory,
 )
+from harness.project_context import ProjectDirectory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
 
@@ -71,7 +72,7 @@ class TestIsolatedRunSessionHandoff(unittest.TestCase):
                 project_dir_fn=lambda: project_root,
             ),
             plugin_root=project_root,
-            project_directory=lambda: project_root,
+            project_directory=ProjectDirectory(path=project_root),
             session_reader=StaticSessionIdReader(session_id),
         ).build()
 

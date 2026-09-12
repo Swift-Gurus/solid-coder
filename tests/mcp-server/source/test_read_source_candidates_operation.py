@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.project_context import ProjectDirectory
 from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_operation_factory import (
@@ -41,8 +42,9 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             "struct TaxRule { let invoice: String }\n",
             encoding="utf-8",
         )
+        project_directory = ProjectDirectory(path=self.project_root)
         self.candidate = SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            project_directory,
             SearchTargetGranularity.UNIT,
         ).execute(
             SourceSearchInput(
@@ -50,7 +52,7 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             )
         ).candidates[0]
         self.operation = ReadSourceCandidatesOperationFactory(
-            lambda: self.project_root
+            project_directory
         ).make()
 
     def test_loads_bounded_content_with_the_search_candidate_provenance(self) -> None:

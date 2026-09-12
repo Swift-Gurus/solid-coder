@@ -13,6 +13,7 @@ sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
+from harness.project_context import ProjectDirectory
 from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
 
 
@@ -28,7 +29,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,
             registrations=SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.project_root,
+                project_directory=ProjectDirectory(path=self.project_root),
             ).make(),
         )
 

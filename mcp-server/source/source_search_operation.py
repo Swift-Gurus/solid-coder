@@ -1,8 +1,6 @@
 """Coordinates typed repository source search."""
 
-from pathlib import Path
-from typing import Callable
-
+from harness.project_context import ProjectDirectoryReading
 from source.repository_source_snapshots_collecting import (
     RepositorySourceSnapshotsCollecting,
 )
@@ -30,7 +28,7 @@ class SourceSearchOperation:
         units: RepositorySourceUnitsResolving,
         matches: SourceSearchMatchesResolving,
         exclusion: SourceUnitExclusionChecking,
-        project_directory: Callable[[], Path],
+        project_directory: ProjectDirectoryReading,
     ) -> None:
         self._snapshots = snapshots
         self._units = units
@@ -39,7 +37,7 @@ class SourceSearchOperation:
         self._project_directory = project_directory
 
     def execute(self, operation_input: SourceSearchInput) -> SourceSearchOutput:
-        root = self._project_directory().resolve()
+        root = self._project_directory.read().resolve()
         proposed_paths = {
             snapshot.path.resolve()
             for snapshot in operation_input.context.sources

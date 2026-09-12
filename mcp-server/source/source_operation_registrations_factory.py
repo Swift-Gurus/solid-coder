@@ -1,9 +1,9 @@
 """Composes logical source-operation registrations."""
 
 from pathlib import Path
-from typing import Callable
 
 from harness.operation_registration import OperationRegistration
+from harness.project_context import ProjectDirectoryReading
 from hooks.pathlib_extractor import PathlibExtractor
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
 from source.analyze_source_input import AnalyzeSourceInput
@@ -52,7 +52,7 @@ solid-spec: [SPEC-040]
 solid-description: Composes typed logical operation registrations for deterministic source services.
 """
 class SourceOperationRegistrationsFactory:
-    def __init__(self, project_directory: Callable[[], Path]) -> None:
+    def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
     def make(self) -> list[OperationRegistration]:

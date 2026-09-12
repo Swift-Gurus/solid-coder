@@ -108,13 +108,15 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
     def _run_check_with_backend(self, backend: str):
         checker_mock = MagicMock()
         checker_mock.check.return_value = []
+        checker_factory = MagicMock()
+        checker_factory.make.return_value = checker_mock
         codex_runner_mock = MagicMock()
         with patch("hc_config.load_config", return_value=_config(backend=backend)), \
              patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \
              patch("hc_codex_runner.make_codex_runner", return_value=codex_runner_mock):
             CodeHealthCheck(CodeHealthCheckService(
                 strategy_selector=select_strategy,
-                checker_factory=MagicMock(return_value=checker_mock),
+                checker_factory=checker_factory,
                 mcp_config="",
             )).check("content", "/f.swift", "Swift", "sid")
 

@@ -12,6 +12,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 sys.path.insert(0, str(_TEST_HARNESS_ROOT))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from bundled_review_rule_policy_writer import BundledReviewRulePolicyWriter
 from review.review_operation_registrations_factory import (
@@ -47,9 +48,10 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
             }
             """
         ).lstrip()
+        project_directory = ProjectDirectory(path=self.run_root)
         registrations = [
             *SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.run_root,
+                project_directory=project_directory,
             ).make(),
             *ReviewOperationRegistrationsFactory().make(),
         ]
@@ -58,7 +60,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
                 project_dir_fn=lambda: self.run_root
             ),
             plugin_root=_PROJECT_ROOT,
-            project_directory=lambda: self.run_root,
+            project_directory=project_directory,
             operation_registrations=registrations,
         ).build()
 

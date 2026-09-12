@@ -1,8 +1,6 @@
 """Loads ordered typed source-search candidates."""
 
-from pathlib import Path
-from typing import Callable
-
+from harness.project_context import ProjectDirectoryReading
 from source.candidate_source_resolving import CandidateSourceResolving
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_output import ReadSourceCandidatesOutput
@@ -20,7 +18,7 @@ class ReadSourceCandidatesOperation:
         self,
         repository_source: CandidateSourceResolving,
         proposed_source: CandidateSourceResolving,
-        project_directory: Callable[[], Path],
+        project_directory: ProjectDirectoryReading,
     ) -> None:
         self._repository_source = repository_source
         self._proposed_source = proposed_source
@@ -30,7 +28,7 @@ class ReadSourceCandidatesOperation:
         self,
         operation_input: ReadSourceCandidatesInput,
     ) -> ReadSourceCandidatesOutput:
-        root = self._project_directory().resolve()
+        root = self._project_directory.read().resolve()
         return ReadSourceCandidatesOutput(results=[
             (
                 self._proposed_source

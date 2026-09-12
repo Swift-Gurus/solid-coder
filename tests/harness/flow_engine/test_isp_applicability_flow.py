@@ -19,6 +19,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
+from harness.project_context import ProjectDirectory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
 from source.source_operation_registrations_factory import (  # noqa: E402
@@ -32,6 +33,7 @@ class TestISPApplicabilityFlow(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.temporary_root = Path(temporary.name)
         self.run_root = self.temporary_root / "project"
+        project_directory = ProjectDirectory(path=self.run_root)
         self.plugin_root = self.temporary_root / "plugin"
         self.workflow_path = self._prepare_isolated_catalog()
         self.fixture_path = (
@@ -47,9 +49,10 @@ class TestISPApplicabilityFlow(unittest.TestCase):
                 project_dir_fn=lambda: self.run_root
             ),
             plugin_root=self.plugin_root,
+            project_directory=project_directory,
             session_reader=StaticSessionIdReader("spec-039-isp-skip-test"),
             operation_registrations=SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.run_root,
+                project_directory=project_directory,
             ).make(),
         ).build()
 

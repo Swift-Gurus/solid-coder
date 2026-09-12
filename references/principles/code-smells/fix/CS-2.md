@@ -2,28 +2,32 @@
 
 <trigger>
 Two or more class or struct definitions found in a single source file, excluding
-private extensions that exist solely to support the file's primary type.
+private extensions that exist solely to support the file's primary type and one
+behavioral contract colocated with its first concrete implementation for the
+same cohesive capability.
 </trigger>
 
 <strategy severity="SEVERE">
 Move each additional class or struct into its own file named after the type.
-One file = one type. Private extensions supporting the primary type may remain.
+One file = one cohesive type boundary. Private extensions supporting the primary
+type may remain, as may one behavioral contract beside its first implementation.
 </strategy>
 
 <diagnosis>
 List every top-level class and struct in the file.
 Identify which is the primary type (the one the file is named after, or the most central one).
 Each remaining type is a candidate for extraction unless it is a private helper extension
-of the primary type.
+of the primary type or the first implementation's behavioral contract.
 </diagnosis>
 
 <todo>
 - [ ] List all top-level class/struct definitions in the file
 - [ ] Designate the primary type (keep in the original file)
-- [ ] For each secondary type: create a new file named `TypeName.swift` (or language equivalent)
+- [ ] Exempt one behavioral contract colocated with its first implementation
+- [ ] For each other secondary type: create a new file named after the type
 - [ ] Move the type definition and any directly associated private helpers into the new file
 - [ ] Update imports/access modifiers as needed
-- [ ] Verify: original file contains exactly one top-level class or struct
+- [ ] Verify: original file contains exactly one cohesive type boundary
 </todo>
 
 <suggested_fix_must_include>

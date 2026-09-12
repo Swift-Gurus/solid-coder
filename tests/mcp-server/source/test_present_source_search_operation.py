@@ -6,6 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.project_context import ProjectDirectory  # noqa: E402
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer  # noqa: E402
 from source.present_source_search_operation import PresentSourceSearchOperation  # noqa: E402
 from source.source_candidate_origin import SourceCandidateOrigin  # noqa: E402
@@ -26,7 +27,7 @@ class TestPresentSourceSearchOperation(unittest.TestCase):
         candidate_path = Path("/project/Sources/ExistingCatalog.swift")
         output = PresentSourceSearchOperation(
             renderer=CodebaseSearchOutputRenderer(),
-            project_directory=lambda: Path("/project"),
+            project_directory=ProjectDirectory(path=Path("/project")),
         ).execute(SourceSearchOutput(
             candidates=[SourceSearchCandidate(
                 unit="ExistingCatalog",

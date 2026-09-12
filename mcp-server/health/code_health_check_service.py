@@ -3,8 +3,8 @@
 from typing import Callable, Optional
 
 from code_health_check_request import CodeHealthCheckRequest
-from hc_checker import HealthChecking
 from runner_strategy_base import RunnerStrategyBase
+from workflow_health_checker_factory import HealthCheckerCreating
 
 
 """
@@ -17,7 +17,7 @@ class CodeHealthCheckService:
     def __init__(
         self,
         strategy_selector: Callable[[], RunnerStrategyBase],
-        checker_factory: Callable[..., HealthChecking],
+        checker_factory: HealthCheckerCreating,
         mcp_config: str,
     ) -> None:
         self._strategy_selector = strategy_selector
@@ -27,7 +27,7 @@ class CodeHealthCheckService:
     def check(self, request: CodeHealthCheckRequest) -> Optional[list]:
         strategy = self._strategy_selector()
         strategy.apply_env()
-        checker = self._checker_factory(
+        checker = self._checker_factory.make(
             mcp_config=self._mcp_config,
             session_id=request.parent_session_id,
             file_path=request.path,

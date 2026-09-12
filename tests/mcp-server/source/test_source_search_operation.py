@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.project_context import ProjectDirectory
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
@@ -49,7 +50,7 @@ class TestSourceSearchOperation(unittest.TestCase):
             "struct TaxReport { let invoice: String }\n",
         )
         self.operation = SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            ProjectDirectory(path=self.project_root),
             SearchTargetGranularity.UNIT,
         )
 

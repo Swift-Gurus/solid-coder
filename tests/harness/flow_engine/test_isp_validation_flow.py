@@ -145,7 +145,7 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             plugin_root=self.PROJECT_ROOT,
             session_reader=StaticSessionIdReader("spec-039-isp-test"),
             operation_registrations=SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.project_root,
+                project_directory=self.project_directory,
             ).make(),
         ).build()
 

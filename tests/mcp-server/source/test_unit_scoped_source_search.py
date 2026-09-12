@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.project_context import ProjectDirectory
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_operation_factory import (
     ReadSourceCandidatesOperationFactory,
@@ -42,6 +43,7 @@ class TestUnitScopedSourceSearch(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.project_root = Path(temporary.name)
+        self.project_directory = ProjectDirectory(path=self.project_root)
         self.source_path = self.project_root / "Sources" / "Calculators.swift"
         self.source_path.parent.mkdir(parents=True)
         self.source_path.write_text(
@@ -86,7 +88,7 @@ struct SiblingCalculator {
             )
         )
         searched = SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            self.project_directory,
             SearchTargetGranularity.UNIT,
         ).execute(
             SourceSearchInput(
@@ -107,7 +109,7 @@ struct SiblingCalculator {
         )
 
         loaded = ReadSourceCandidatesOperationFactory(
-            lambda: self.project_root
+            self.project_directory
         ).make().execute(
             ReadSourceCandidatesInput(
                 candidates=same_file,
@@ -146,7 +148,7 @@ struct SiblingCalculator {
             )
         )
         searched = SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            self.project_directory,
             SearchTargetGranularity.UNIT,
         ).execute(SourceSearchInput(
             queries=query.queries,
@@ -158,7 +160,7 @@ struct SiblingCalculator {
         candidate = searched.candidates[0]
         self.assertEqual(candidate.origin, SourceCandidateOrigin.PROPOSED)
         loaded = ReadSourceCandidatesOperationFactory(
-            lambda: self.project_root
+            self.project_directory
         ).make().execute(ReadSourceCandidatesInput(
             candidates=[candidate],
             context=SourceSearchContext(sources=[prepared.snapshot]),
@@ -201,7 +203,7 @@ struct SiblingCalculator {
         )
 
         searched = SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            self.project_directory,
             SearchTargetGranularity.UNIT,
         ).execute(SourceSearchInput(
             queries=query.queries,

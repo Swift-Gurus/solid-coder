@@ -32,6 +32,9 @@ Move it to its own file named after the type.
 
 <exceptions id="CS-2">
 - Private extensions that exist solely to support the file's primary type.
+- One behavioral contract may live with its first concrete implementation when
+  both define the same cohesive capability. Additional implementations remain
+  separate types in their own modules.
 </exceptions>
 
 ---

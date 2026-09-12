@@ -1,8 +1,6 @@
 """Presents typed source-search results for a workflow agent step."""
 
-from pathlib import Path
-from typing import Callable
-
+from harness.project_context import ProjectDirectoryReading
 from search.codebase_search_output_rendering import CodebaseSearchOutputRendering
 from source.source_search_output import SourceSearchOutput
 from source.source_search_presentation import SourceSearchPresentation
@@ -18,7 +16,7 @@ class PresentSourceSearchOperation:
     def __init__(
         self,
         renderer: CodebaseSearchOutputRendering,
-        project_directory: Callable[[], Path],
+        project_directory: ProjectDirectoryReading,
     ) -> None:
         self._renderer = renderer
         self._project_directory = project_directory
@@ -30,6 +28,6 @@ class PresentSourceSearchOperation:
         return SourceSearchPresentation(
             text=self._renderer.render(
                 operation_input,
-                self._project_directory().resolve(),
+                self._project_directory.read().resolve(),
             )
         )

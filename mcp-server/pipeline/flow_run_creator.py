@@ -5,7 +5,7 @@ from typing import Callable
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.flow_run_orchestrating import FlowRunOrchestrating
-from harness.mcp_request_context_project_directory_reader import (
+from harness.project_context import (
     McpRequestContextProjectDirectoryReader,
 )
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
@@ -18,10 +18,10 @@ from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
 from solid_coder_config import SolidCoderConfig
-from session.session_project_context_path_resolver import (
+from session.project_context import (
     SessionProjectContextPathResolver,
+    SessionProjectDirectoryReader,
 )
-from session.session_project_directory_reader import SessionProjectDirectoryReader
 from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
@@ -52,8 +52,8 @@ class FlowRunCreator(FlowRunCreating):
         project_directory_reader = McpRequestContextProjectDirectoryReader(
             session_reader=session_reader,
             session_project_directory=SessionProjectDirectoryReader(
-                SessionProjectContextPathResolver().resolve
-            ).read,
+                SessionProjectContextPathResolver()
+            ),
         )
         return FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
@@ -62,14 +62,14 @@ class FlowRunCreator(FlowRunCreating):
                 )
             ),
             plugin_root=self._plugin_root,
-            project_directory=project_directory_reader.read,
+            project_directory=project_directory_reader,
             session_reader=session_reader,
             session_delegate_max_workers=(
                 flow_engine_config.max_parallel_sessions
             ),
             operation_registrations=[
                 *SourceOperationRegistrationsFactory(
-                    project_directory=project_directory_reader.read,
+                    project_directory=project_directory_reader,
                 ).make(),
                 *ReviewOperationRegistrationsFactory().make(),
             ],

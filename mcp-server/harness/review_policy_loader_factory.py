@@ -1,9 +1,7 @@
 """Composes project review-policy loading."""
 
-from pathlib import Path
-from typing import Callable
-
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.project_context import ProjectDirectoryReading
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_identity_validator import ReviewPolicyIdentityValidator
@@ -22,7 +20,7 @@ solid-description: Supplies the configured project review-policy loading capabil
 """
 class ReviewPolicyLoaderFactory:
 
-    def __init__(self, project_directory: Callable[[], Path]) -> None:
+    def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
     def make(self) -> ReviewPolicyLoader:

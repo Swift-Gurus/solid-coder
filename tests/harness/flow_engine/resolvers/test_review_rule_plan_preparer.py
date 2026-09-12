@@ -14,6 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.project_context import ProjectDirectory
 from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
 from harness.review_rule_plan_preparer_factory import ReviewRulePlanPreparerFactory
 
@@ -59,7 +60,7 @@ class TestReviewRulePlanPreparer(unittest.TestCase):
             )
 
             plan = ReviewRulePlanPreparerFactory(
-                project_directory=lambda: project_root
+                project_directory=ProjectDirectory(path=project_root)
             ).make().prepare(run_dir, [workflow_root])
 
             decision = plan.rules[0].enablement

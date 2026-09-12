@@ -123,9 +123,11 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
         strategy = MagicMock()
         checker = MagicMock()
         checker.check.return_value = []
+        checker_factory = MagicMock()
+        checker_factory.make.return_value = checker
         service = CodeHealthCheckService(
             strategy_selector=MagicMock(return_value=strategy),
-            checker_factory=MagicMock(return_value=checker),
+            checker_factory=checker_factory,
             mcp_config="mcp-config",
         )
 

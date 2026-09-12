@@ -12,8 +12,9 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable, Optional
+from typing import Optional
 
+from hc_checker import HealthChecking
 from patch_review_context import PatchReviewContext
 
 
@@ -24,22 +25,22 @@ solid-category: service
 solid-tags: [hook]
 """
 class CodeHealthCheckAdapter:
-    """Boundary adapter: wraps the code_health_check module-level function for protocol-typed injection."""
+    """Binds one patch context while preserving the health-checking interface."""
 
     def __init__(
         self,
-        check_fn: Callable,
+        checker: HealthChecking,
         patch_context: Optional[PatchReviewContext] = None,
     ) -> None:
-        self._check = check_fn
+        self._checker = checker
         self._patch_context = patch_context
 
     def check(self, content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> Optional[list]:
-        return self._check(
+        return self._checker.check(
             content,
             path,
             language,
             parent_session_id,
             cwd,
-            self._patch_context,
+            patch_context=self._patch_context,
         )

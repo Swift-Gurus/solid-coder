@@ -14,6 +14,7 @@ sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 
 from harness.operation_registration import OperationRegistration
+from harness.project_context import ProjectDirectory
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_operation_factory import (
@@ -43,12 +44,13 @@ class TestSourceSearchWorkflow(unittest.TestCase):
             "struct TaxRule { let invoice: String }\n",
             encoding="utf-8",
         )
+        project_directory = ProjectDirectory(path=self.project_root)
         self.search = Mock(wraps=SourceSearchOperationFactory().make(
-            lambda: self.project_root,
+            project_directory,
             SearchTargetGranularity.UNIT,
         ))
         self.reader = Mock(wraps=ReadSourceCandidatesOperationFactory(
-            lambda: self.project_root
+            project_directory
         ).make())
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,

@@ -1,9 +1,9 @@
 """Composes typed repository source search."""
 
 from pathlib import Path
-from typing import Callable
 
 from harness.path_builder import PathBuilder
+from harness.project_context import ProjectDirectoryReading
 from harness.sha256_content_hasher import Sha256ContentHasher
 from source.analyzed_repository_source_units_resolver import (
     AnalyzedRepositorySourceUnitsResolver,
@@ -51,7 +51,7 @@ solid-description: Provides repository source search operations.
 class SourceSearchOperationFactory:
     def make(
         self,
-        project_directory: Callable[[], Path],
+        project_directory: ProjectDirectoryReading,
         granularity: SearchTargetGranularity,
     ) -> SourceSearchOperation:
         frontmatter_reader = SourceFrontmatterReaderFactory().make()

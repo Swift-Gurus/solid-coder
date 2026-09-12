@@ -64,7 +64,7 @@ class CodeHealthCheck:
 _CHECKER_FACTORY = WorkflowHealthCheckerFactory(PLUGIN_ROOT)
 CHECK = CodeHealthCheck(CodeHealthCheckService(
     strategy_selector=select_strategy,
-    checker_factory=_CHECKER_FACTORY.make,
+    checker_factory=_CHECKER_FACTORY,
     mcp_config=McpConfigBuilder(
         project_root=PLUGIN_ROOT,
         profile=McpConfigProfile.GATE_FLOW,

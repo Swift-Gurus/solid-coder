@@ -17,6 +17,7 @@ from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E4
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory  # noqa: E402
 from harness.flow_loading import FlowLoading  # noqa: E402
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
+from harness.project_context import ProjectDirectory  # noqa: E402
 from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
 from harness.sibling_batch_step_selector_factory import (  # noqa: E402
     SiblingBatchStepSelectorFactory,
@@ -44,9 +45,10 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.run_root = Path(temporary.name)
+        project_directory = ProjectDirectory(path=self.run_root)
         registrations = [
             *SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.run_root,
+                project_directory=project_directory,
             ).make(),
             *ReviewOperationRegistrationsFactory().make(),
         ]
@@ -55,7 +57,7 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
                 project_dir_fn=lambda: self.run_root,
             ),
             plugin_root=_PROJECT_ROOT,
-            project_directory=lambda: self.run_root,
+            project_directory=project_directory,
             operation_registrations=registrations,
         ).build()
         self.renderer = StepRenderer(

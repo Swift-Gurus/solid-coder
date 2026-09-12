@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.default_review_policy_resolution import DefaultReviewPolicyResolution
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.project_context import ProjectDirectory
 from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_policy import ReviewPolicy
@@ -37,7 +38,7 @@ class TestReviewPolicyLoader(unittest.TestCase):
         self.project_root = Path(temporary.name)
         error_factory = FlowValidationErrorFactory()
         self.sut = ReviewPolicyLoader(
-            project_directory=lambda: self.project_root,
+            project_directory=ProjectDirectory(path=self.project_root),
             yaml_loader=PyYamlLoader(),
             parser=ReviewPolicyParser(
                 decoder=PydanticModelDecoder(

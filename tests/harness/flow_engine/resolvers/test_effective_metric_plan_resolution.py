@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
+from harness.project_context import ProjectDirectory
 from harness.review_rule_plan_preparer_factory import ReviewRulePlanPreparerFactory
 
 
@@ -105,7 +106,7 @@ class TestEffectiveMetricPlanResolution(unittest.TestCase):
 
     def _prepare(self):
         return ReviewRulePlanPreparerFactory(
-            project_directory=lambda: self.project_root
+            project_directory=ProjectDirectory(path=self.project_root)
         ).make().prepare(
             run_dir=self.run_directory,
             workflow_roots=[self.workflow_root],

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
@@ -52,6 +52,10 @@ from harness.output_submission_advancer import OutputSubmissionAdvancer
 from harness.pass_through_step_submission_validator import PassThroughStepSubmissionValidator
 from harness.path_checking import PathChecker
 from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
+from harness.project_context import (
+    ProjectDirectory,
+    ProjectDirectoryReading,
+)
 from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
 from harness.ready_step_executor import ReadyStepExecutor
 from harness.review_policy_loader_factory import ReviewPolicyLoaderFactory
@@ -114,19 +118,18 @@ _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
 _DELEGATE_SESSION_MAX_WORKERS = 4
 
 
+"""
+solid-name: FlowRunOrchestratorFactory
+solid-category: service
+solid-spec: [SPEC-027, SPEC-043]
+solid-description: Provides flow-run lifecycle orchestration for executable workflows.
+"""
 class FlowRunOrchestratorFactory:
-    """
-    solid-name: FlowRunOrchestratorFactory
-    solid-category: service
-    solid-spec: [SPEC-027, SPEC-043]
-    solid-description: Provides flow-run lifecycle orchestration for executable workflows.
-    """
-
     def __init__(
         self,
         base_dir_resolver: RunsBaseDirResolving,
         plugin_root: Path,
-        project_directory: Callable[[], Path] = _resolve_project_root,
+        project_directory: Optional[ProjectDirectoryReading] = None,
         command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
         session_reader: Optional[SessionIdReading] = None,
         session_delegate_runner: Optional[SessionDelegateRunning] = None,
@@ -135,7 +138,10 @@ class FlowRunOrchestratorFactory:
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._plugin_root = plugin_root
-        self._project_directory = project_directory
+        self._project_directory = (
+            project_directory
+            or ProjectDirectory(path=_resolve_project_root())
+        )
         self._command_allowlist_resolver = command_allowlist_resolver
         self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
         self._session_delegate_runner = session_delegate_runner

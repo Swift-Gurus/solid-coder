@@ -1,8 +1,5 @@
 """Assembles production review-rule policy planning and audit persistence."""
 
-from pathlib import Path
-from typing import Callable
-
 from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
 from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
@@ -10,6 +7,7 @@ from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.metric_override_applier import MetricOverrideApplier
 from harness.ordered_string_collector import OrderedStringCollector
+from harness.project_context import ProjectDirectoryReading
 from harness.review_plan_artifact_persister import ReviewPlanArtifactPersister
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_identity_validator import ReviewPolicyIdentityValidator
@@ -34,7 +32,7 @@ solid-description: Provides a production review rule plan preparer.
 """
 class ReviewRulePlanPreparerFactory:
 
-    def __init__(self, project_directory: Callable[[], Path]) -> None:
+    def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
     def make(self) -> ReviewRulePlanPreparer:

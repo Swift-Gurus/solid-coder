@@ -16,7 +16,7 @@ for _directory in (
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness.mcp_request_context_project_directory_reader import (  # noqa: E402
+from harness.project_context import (  # noqa: E402
     McpRequestContextProjectDirectoryReader,
 )
 
@@ -73,7 +73,7 @@ class TestMcpRequestContextProjectDirectoryReader(unittest.TestCase):
             session_reader=StubSessionReader("session-1"),
             session_project_directory=StubProjectDirectoryReader(
                 session_project
-            ).read,
+            ),
             env=env,
             cwd_factory=lambda: Path("/plugin/cache"),
         )

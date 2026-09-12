@@ -65,7 +65,7 @@ class WriteGateCoordinatorFactory(CoordinatorMaking):
         return WriteGateCoordinator(
             health_gate=SafeHealthChecker(
                 checker=CodeHealthCheckAdapter(
-                    check_fn=health.CHECK.check,
+                    checker=health.CHECK,
                     patch_context=patch_context,
                 ),
                 formatter=HealthViolationBlockFormatter(),

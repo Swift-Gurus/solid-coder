@@ -1,8 +1,6 @@
 """Composes verified candidate-source loading."""
 
-from pathlib import Path
-from typing import Callable
-
+from harness.project_context import ProjectDirectoryReading
 from harness.sha256_content_hasher import Sha256ContentHasher
 from source.path_source_bytes_reader import PathSourceBytesReader
 from source.proposed_candidate_source_resolver import (
@@ -21,7 +19,7 @@ solid-spec: [SPEC-040]
 solid-description: Creates verified, bounded candidate-source loading operations for deterministic review workflows.
 """
 class ReadSourceCandidatesOperationFactory:
-    def __init__(self, project_directory: Callable[[], Path]) -> None:
+    def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
     def make(self) -> ReadSourceCandidatesOperation:

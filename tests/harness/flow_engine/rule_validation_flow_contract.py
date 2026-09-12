@@ -17,6 +17,7 @@ from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
 from harness.operation_registry import OperationRegistry
+from harness.project_context import ProjectDirectory
 from harness.review_result import ReviewResult
 from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
@@ -48,6 +49,7 @@ class RuleValidationFlowContract(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.project_root = Path(temporary.name)
+        self.project_directory = ProjectDirectory(path=self.project_root)
         self.review_unit = self.SCENARIO.fixture_path.read_text(encoding="utf-8")
         self.review_unit_name = f"{self.SCENARIO.workflow_id}-fixture-unit"
         self.sut = FlowRunOrchestratorFactory(
@@ -79,7 +81,7 @@ class RuleValidationFlowContract(unittest.TestCase):
     def test_declares_expected_rule_applicability(self) -> None:
         operation_registry = OperationRegistry(
             registrations=SourceOperationRegistrationsFactory(
-                project_directory=lambda: self.project_root,
+                project_directory=self.project_directory,
             ).make(),
             name_validator=LogicalOperationNameValidator(),
             error_factory=FlowValidationErrorFactory(),

@@ -1,6 +1,16 @@
-"""Resolves the durable project-context path for one session."""
+"""Resolves durable project-context paths for managed sessions."""
 
 from pathlib import Path
+from typing import Protocol
+
+
+"""
+solid-name: SessionProjectContextPathResolving
+solid-category: abstraction
+solid-description: Contract for session-scoped project-context path resolution.
+"""
+class SessionProjectContextPathResolving(Protocol):
+    def resolve(self, session_id: str) -> Path: ...
 
 
 """
@@ -8,7 +18,7 @@ solid-name: SessionProjectContextPathResolver
 solid-category: service
 solid-description: Validates session identities and resolves their project-context file paths.
 """
-class SessionProjectContextPathResolver:
+class SessionProjectContextPathResolver(SessionProjectContextPathResolving):
 
     def __init__(
         self,

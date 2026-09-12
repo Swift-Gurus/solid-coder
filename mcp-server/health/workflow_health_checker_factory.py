@@ -1,7 +1,7 @@
 """Composes flow-based source-health checking."""
 
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Protocol
 
 from codex_flow_continuation_instruction_builder import (
     CodexFlowContinuationInstructionBuilder,
@@ -10,6 +10,7 @@ from flow_review_result_reader import FlowReviewResultReader
 from gate_flow_prompt_builder import GateFlowPromptBuilder
 from gate_review_input_builder import GateReviewInputBuilder
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from hc_checker import HealthChecking
@@ -36,12 +37,28 @@ _ALLOWED_TOOLS = "Read,mcp__solid-coder-flow-engine__flow_next"
 
 
 """
+solid-name: HealthCheckerCreating
+solid-category: abstraction
+solid-spec: [SPEC-049]
+solid-description: Contract for creating request-scoped source-health checkers.
+"""
+class HealthCheckerCreating(Protocol):
+    def make(
+        self,
+        mcp_config: str,
+        session_id: str = "",
+        file_path: str = "",
+        cwd: str = "",
+    ) -> HealthChecking: ...
+
+
+"""
 solid-name: WorkflowHealthCheckerFactory
 solid-category: factory
 solid-spec: [SPEC-036, SPEC-039, SPEC-041]
 solid-description: Composes prospective source-health workflow execution for one project context.
 """
-class WorkflowHealthCheckerFactory:
+class WorkflowHealthCheckerFactory(HealthCheckerCreating):
     def __init__(
         self,
         plugin_root: Path,
@@ -58,6 +75,7 @@ class WorkflowHealthCheckerFactory:
         cwd: str = "",
     ) -> HealthChecking:
         project_root = Path(cwd).resolve() if cwd else _resolve_project_root()
+        project_directory = ProjectDirectory(path=project_root)
         config = self._config_loader(project_root)
         runs = RunsBaseDirResolver(
             project_dir_fn=lambda: solid_coder_project_dir(project_root)
@@ -65,14 +83,14 @@ class WorkflowHealthCheckerFactory:
         flow = FlowRunOrchestratorFactory(
             base_dir_resolver=runs,
             plugin_root=self._plugin_root,
-            project_directory=lambda: project_root,
+            project_directory=project_directory,
             session_reader=StaticSessionIdReader(session_id),
             session_delegate_max_workers=(
                 config.flow_engine.max_parallel_sessions
             ),
             operation_registrations=[
                 *SourceOperationRegistrationsFactory(
-                    project_directory=lambda: project_root,
+                    project_directory=project_directory,
                 ).make(),
                 *ReviewOperationRegistrationsFactory().make(),
             ],

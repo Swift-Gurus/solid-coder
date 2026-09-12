@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Union
+from typing import Union
 
 from harness.content_hashing import ContentHashing
 from harness.default_review_policy_resolution import DefaultReviewPolicyResolution
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.project_context import ProjectDirectoryReading
 from harness.project_review_policy_audit import ProjectReviewPolicyAudit
 from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
 from harness.review_policy_parser import ReviewPolicyParser
@@ -32,7 +33,7 @@ class ReviewPolicyLoader:
 
     def __init__(
         self,
-        project_directory: Callable[[], Path],
+        project_directory: ProjectDirectoryReading,
         yaml_loader: YamlLoading,
         parser: ReviewPolicyParser,
         content_hasher: ContentHashing,
@@ -45,7 +46,9 @@ class ReviewPolicyLoader:
         self._error_factory = error_factory
 
     def load(self) -> ReviewPolicyLoadResult:
-        source_path = (self._project_directory() / _POLICY_RELATIVE_PATH).resolve()
+        source_path = (
+            self._project_directory.read() / _POLICY_RELATIVE_PATH
+        ).resolve()
         if not source_path.exists():
             return DefaultReviewPolicyResolution()
         try:

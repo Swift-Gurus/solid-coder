@@ -47,12 +47,16 @@ transformation). Exclude pure constants and build-system DSL files.
 
 <definition id="CS-2" name="Multiple Types Per File">
 Count of distinct class or struct definitions in a single source file, excluding
-private extensions that exist solely to support the file's primary type.
+private extensions that exist solely to support the file's primary type and one
+behavioral contract colocated with its first concrete implementation for the
+same cohesive capability.
 </definition>
 
 <detection id="CS-2" name="Multiple Types Per File">
 Count top-level class and struct declarations in the file. Private extensions
-scoped to the file's primary type do not count as separate types.
+scoped to the file's primary type do not count as separate types. Treat one
+behavioral contract and its first concrete implementation as one cohesive type
+boundary; additional implementations count independently.
 </detection>
 
 ---
