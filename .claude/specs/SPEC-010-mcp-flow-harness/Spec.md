@@ -5,7 +5,7 @@ type: feature
 status: in-progress
 parent:
 blocked-by: []
-blocking: [SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-035, SPEC-037, SPEC-040, SPEC-042, SPEC-043]
+blocking: [SPEC-030, SPEC-031, SPEC-032, SPEC-033, SPEC-035, SPEC-037, SPEC-040, SPEC-042, SPEC-043, SPEC-045]
 ---
 
 # MCP-Driven Flow Orchestration (Harness)

@@ -25,7 +25,7 @@ from hook_utils import solid_coder_project_dir  # noqa: E402
 from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_session_request import LiveSessionRequest  # noqa: E402
 from live_session_running import LiveSessionRunning  # noqa: E402
-from mcp_config_builder import build_mcp_config  # noqa: E402
+from mcp_utils import McpConfigBuilder  # noqa: E402
 from model_profile_environment import model_profile_environment  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 
@@ -98,7 +98,7 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
             model=profile.llm["model"],
             timeout=profile.llm["timeout"],
             allowed_tools=_ALLOWED_TOOLS,
-            mcp_config=build_mcp_config(_PLUGIN_ROOT),
+            mcp_config=McpConfigBuilder().build(_PLUGIN_ROOT),
         )
 
         with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(self._project_root)}):

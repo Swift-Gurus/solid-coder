@@ -15,6 +15,7 @@ import code_health_check as hook
 import test_utils
 from test_utils import make_subprocess_mock
 from hc_violation_parser import ViolationParser
+from hc_checker_factory import make_health_checker
 from hc_tag_detector import TagDetector
 from hc_rule_loader import GatewayRuleLoader
 from hc_checker import (
@@ -318,7 +319,7 @@ class TestHealthPromptBuilder(unittest.TestCase):
 
 
 class TestCheck(unittest.TestCase):
-    """Tests for the full _check pipeline, always using the Claude backend."""
+    """Tests for the full legacy checker pipeline used by baseline comparisons."""
 
     def test_returns_violations_list_when_gateway_reports_findings(self):
         mock_violations = [
@@ -332,7 +333,11 @@ class TestCheck(unittest.TestCase):
         with _claude_backend_patch(), \
              patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=mock_violations):
-            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+            result = make_health_checker(
+                mcp_config='{"mcpServers": {}}',
+                session_id="test-session",
+                file_path="/src/Foo.swift",
+            ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0]["principle"], "SRP")
@@ -341,7 +346,11 @@ class TestCheck(unittest.TestCase):
         with _claude_backend_patch(), \
              patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=[]):
-            result = hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+            result = make_health_checker(
+                mcp_config='{"mcpServers": {}}',
+                session_id="test-session",
+                file_path="/src/Foo.swift",
+            ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
@@ -350,7 +359,11 @@ class TestCheck(unittest.TestCase):
         with _claude_backend_patch(), \
              patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
             with self.assertRaises(SubprocessError):
-                hook._check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+                make_health_checker(
+                    mcp_config='{"mcpServers": {}}',
+                    session_id="test-session",
+                    file_path="/src/Foo.swift",
+                ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
 
 
 class TestSupportedExtensions(unittest.TestCase):

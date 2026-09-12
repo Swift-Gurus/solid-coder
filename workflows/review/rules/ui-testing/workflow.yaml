@@ -4,6 +4,7 @@ description: Measures UI-test flow encapsulation, lifecycle, assertion grouping,
 max_turns: 14
 
 rule:
+  scope: file
   match:
     file_extensions:
       included: [.swift]

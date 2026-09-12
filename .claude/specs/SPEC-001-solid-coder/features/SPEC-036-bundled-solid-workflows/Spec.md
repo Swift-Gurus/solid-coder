@@ -4,7 +4,7 @@ feature: bundled-solid-workflows
 type: feature
 status: in-progress
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-044]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045]
 blocking: []
 ---
 
@@ -46,12 +46,15 @@ As a developer, when an agent proposes a source write, I want the existing write
 **Acceptance Criteria:**
 - The existing content simulator produces the exact prospective post-write content before any LLM call.
 - Deterministic preparation constructs the SPEC-041 `buffer` target using the exact target path and prospective content. Exact extension comes from the path; units and tags come from SPEC-040 source analysis.
+- A gate buffer always uses the text-backed target variant, including edits to existing files. Its absolute virtual path is required for identity and extension detection but is never read as the review source, so a destination that does not exist yet is reviewed without a temporary pre-write file.
+- A multi-file patch preserves every prospective post-patch file snapshot in one server-owned source context. Each file is reviewed from its own in-memory content, while DRY can search prospective siblings and cross-file candidates before any write is authorized.
 - The hook calls the same typed review-target normalization application service used by `solid-review`, directly rather than opening an MCP loopback connection.
 - The hook starts an isolated `solid-gate-on-write` run before starting the child LLM session.
 - The flow engine owns the isolated run's artifact directory under the project's user-level `.solid-coder` storage. The bootstrap prompt, workflow prompts, and model-facing MCP tool schemas neither expose nor accept an `output_dir` or other caller-selected persistence path.
 - Search, measurement, scoring, and fix artifacts resolve from server-owned run context and remain within that run's artifact tree. Missing, stale, or mismatched run context fails closed; it is never treated as a non-gate invocation and never falls back to the process working directory or repository root.
 - Concurrent gate runs bind their MCP operations to distinct run contexts, so one run cannot read, overwrite, or redirect another run's artifacts.
 - The child session's bootstrap prompt is a generic flow envelope containing the prepared code once, the `run_id`, and the initial ready-step instructions returned by the flow engine.
+- `solid-gate-on-write` composes the canonical `solid-file-review-aggregate` workflow. Applicable rule steps retain their individual identities, schemas, scoring, retries, replay, and audit events while the flow engine presents compatible ready work through aggregate execution and combined prompt presentation; the gate must not fall back to one child-model turn per granular metric step.
 - The child session advances only through `flow_next(run_id=...)`; every step output is schema-validated and recorded before the next instruction is returned.
 - The old `HealthPromptBuilder` detection/workflow prompt path is removed from gate execution; there is no direct-prompt fallback that can produce different review semantics.
 - `code_review_on_write_enabled = false` still bypasses the gate. When enabled, flow failure, timeout, malformed output, or an unfinished run fails closed with a diagnostic and leaves run evidence available.
@@ -87,6 +90,7 @@ As a maintainer, I want the gate and full review paths to share the same princip
       solid-review/workflow.yaml
       solid-files-review/workflow.yaml
       solid-file-review/workflow.yaml
+      solid-file-review-aggregate/workflow.yaml
       solid-unit-review/workflow.yaml
     rules/
       srp/workflow.yaml
@@ -148,13 +152,16 @@ sequenceDiagram
 
 ## Test Plan
 
-Current implementation boundary: `solid-review` and reusable `solid-file-review` are packaged and executable for prospective text and persisted file targets. `solid-review` statically composes `solid-file-review`; the file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, applies the singular project review policy before rule materialization, materializes file-scoped rules once, and automatically supplies the shared prospective source context required by DRY. The experimental single-prompt bundle combines compatible SRP, OCP, and LSP batch presentations while preserving their ordinary per-rule and per-unit execution state. Those three aggregate rule steps now produce the same MCP-scored and audited rule results as granular metric workflows without enrolling the experimental variants in `rules: all`; ISP and DRY remain on their existing individual paths until their preparation context can move to file scope. Multi-file target normalization, nested dynamic file fan-out, the locked legacy-vs-workflow benchmark fixture, and the gate/refactor packages remain open work.
+Current implementation boundary: `solid-review`, reusable `solid-file-review`, and `solid-gate-on-write` are packaged and executable. The production pre-write hook now starts the gate workflow instead of the legacy hand-built review prompt. Gate preparation always supplies the exact prospective text with an absolute virtual path, keeps new destinations absent, ignores stale destination content, and carries the complete ordered multi-file patch snapshot collection into each isolated per-file review. `solid-review` statically composes `solid-file-review`; the ordinary file workflow invokes internal `review.prepare`, fans out normalized units, expands `rules: all`, applies the singular project review policy before rule materialization, materializes file-scoped rules once, and supplies the source context required by DRY. `solid-gate-on-write` composes `solid-file-review-aggregate`, which performs the same preparation and canonical dynamic rule expansion while aggregating compatible ready rule steps into combined model-facing phases without changing their validation, scoring, retry, replay, or audit identities. The experimental single-prompt bundle remains available for controlled prompt-shape comparisons. General multi-file target normalization for conversational review, nested dynamic file fan-out, rule-authored fix guidance, `solid-refactor`, removal of the temporary test-path exclusion, and the locked legacy-vs-workflow benchmark remain open work.
 
 - Validate every bundled package and every workflow-ID include without starting an LLM.
 - Normalize and run working-tree, file, files, folder, Git-range/PR, buffer, and code-block targets through the same `solid-review` package.
 - Run `solid-review` against the established SRP fixture and assert every step/output pair plus final score.
 - Run a five-principle fixture through `solid-review` and prove no principle or required metric is missing.
 - Run `solid-gate-on-write` through the real pre-write hook for compliant and violating buffers; assert allow/deny, run completion, and recorded evidence.
+- Assert every model-facing rule step returned by `solid-gate-on-write` belongs to the aggregate execution boundary and that the rendered turn contains one combined submission contract for all compatible ready steps rather than one prompt per metric.
+- Run `solid-gate-on-write` against a new absolute destination path that does not exist and assert the exact supplied buffer is parsed, tagged, reviewed, and audited without creating or reading the destination before the gate allows it.
+- Run an edit whose on-disk file contains stale content and assert the gate reviews only the simulated prospective text; run a multi-file patch and assert every prospective snapshot is available to DRY while no file is modified before the aggregate allow decision.
 - Run test-support, mock, fixture, and test-only composition buffers through `solid-gate-on-write`; assert deterministic test tags, applicable exceptions, and persisted reasoning/evidence before removing the temporary `tests/**` exclusion.
 - Assert the gate invokes no direct `HealthPromptBuilder` review path.
 - Assert prepared candidate code appears exactly once in the initial model message and never appears in `flow_start` or `flow_next` results.
@@ -193,9 +200,11 @@ Before rerunning the comparison:
 
 - [ ] All three public workflow packages are shipped and start by stable ID.
 - [ ] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics.
-- [ ] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
-- [ ] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
-- [ ] Candidate-write preparation is deterministic and shared with the typed review-target boundary.
+- [x] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
+- [x] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
+- [x] Candidate-write preparation is deterministic and shared with the typed review-target boundary.
+- [x] New and existing destination paths are reviewed from prospective in-memory text with required virtual identity; gate preparation never rereads stale or nonexistent destination content and never creates a pre-write temporary source file.
+- [x] Multi-file patches preserve one immutable prospective snapshot collection across every isolated per-file review and produce one aggregate fail-closed gate decision before any write is authorized.
 - [ ] Test code is classified deterministically, test-specific exceptions are auditable, and the temporary blanket `tests/**` gate exclusion is narrowed or removed without excluding production code.
 - [ ] `solid-refactor` includes `solid-review` for both initial and verification analysis.
 - [ ] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.

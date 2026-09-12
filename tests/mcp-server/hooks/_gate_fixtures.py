@@ -5,6 +5,7 @@ solid-category: unit-test
 
 import pre_write_gate as gate
 import test_utils
+from health_violation import HealthViolation
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
@@ -19,7 +20,15 @@ CORRECTED_FRONTMATTER = (
     " solid-description: Coordinates asynchronous data retrieval.\n */\n"
     "final class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
 )
-VIOLATIONS = [{"principle": "SRP", "issue": "Two concerns.", "fix": "Extract."}]
+VIOLATIONS = [
+    HealthViolation(
+        principle="SRP",
+        metric_id="SRP-1",
+        issue="Two concerns.",
+        evidence="Foo.swift:1-40",
+        fix="Extract.",
+    )
+]
 
 PYTHON_CONTENT = (
     "class DataManager:\n"
@@ -34,10 +43,16 @@ PYTHON_CONTENT = (
 )
 
 SRP_VIOLATION_WITH_METRIC = [
-    {"principle": "SRP", "metric_id": "SRP-1", "issue": "Multiple responsibilities", "fix": "Extract concerns"}
+    HealthViolation(
+        principle="SRP",
+        metric_id="SRP-1",
+        issue="Multiple responsibilities",
+        evidence="Foo.swift:1-40",
+        fix="Extract concerns",
+    )
 ]
 
-HC = "code_health_check._check"
+HC = "code_health_check.CHECK.check"
 FM = "validate_swift_frontmatter.fix"
 
 event = test_utils.event

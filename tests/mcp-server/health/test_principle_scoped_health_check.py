@@ -42,13 +42,12 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
         service = MagicMock()
         service.check.return_value = []
 
-        code_health_check._check(
+        code_health_check.CodeHealthCheck(service).check(
             content="final class Example {}",
             path="/project/Example.swift",
             language="Swift",
             parent_session_id="comparison-session",
             principle_names=["SRP"],
-            service=service,
         )
 
         request = service.check.call_args.args[0]
@@ -126,9 +125,8 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
         checker.check.return_value = []
         service = CodeHealthCheckService(
             strategy_selector=MagicMock(return_value=strategy),
-            mcp_config_builder=MagicMock(return_value="mcp-config"),
             checker_factory=MagicMock(return_value=checker),
-            plugin_root=_PROJECT_ROOT,
+            mcp_config="mcp-config",
         )
 
         service.check(CodeHealthCheckRequest(

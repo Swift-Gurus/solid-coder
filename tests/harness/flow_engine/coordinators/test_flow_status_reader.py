@@ -19,6 +19,7 @@ from harness.condition_operator import ConditionOperator
 from harness.flow_status_reader import FlowStatusReader
 from harness.interpolation_error import InterpolationError
 from harness.models import FlowDef, RunState, StepInstance
+from harness.run_metadata import RunMetadata
 from harness.run_snapshot import RunSnapshot
 from harness.step_skip import StepSkip
 from harness.unavailable_condition_evidence import UnavailableConditionEvidence
@@ -59,11 +60,21 @@ class StubRunSnapshotResolver:
     def __init__(self, snapshot: RunSnapshot | None = None, error: InterpolationError | None = None) -> None:
         self._snapshot = snapshot
         self._error = error
+        self.params = None
 
     def resolve(self, events_path: str, flow_def: FlowDef, params: dict) -> RunSnapshot:
+        self.params = params
         if self._error is not None:
             raise self._error
         return self._snapshot
+
+
+class StubRunMetadataStore:
+    def __init__(self, params: dict | None = None) -> None:
+        self._metadata = RunMetadata(params=params or {})
+
+    def read(self, run_dir: Path) -> RunMetadata:
+        return self._metadata
 
 
 class TestFlowStatusReader(unittest.TestCase):
@@ -72,6 +83,7 @@ class TestFlowStatusReader(unittest.TestCase):
         flow_def = FlowDef(name="", max_turns=0, steps=[])
         sut = FlowStatusReader(
             run_locator=RaisingRunLocator(),
+            metadata_store=StubRunMetadataStore(),
             flow_loader=StubFlowLoader(flow_def),
             run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(
                 run_state=RunState(completed={}, running=[], turn_count=0, status="not_started"),
@@ -121,14 +133,16 @@ class TestFlowStatusReader(unittest.TestCase):
                 evidence=UnavailableConditionEvidence(matched=False),
             ),
         )
+        snapshot_resolver = StubRunSnapshotResolver(RunSnapshot(
+            run_state=run_state,
+            flow_def=flow_def,
+            ready=[instance],
+        ))
         sut = FlowStatusReader(
             run_locator=StubRunLocator(location),
+            metadata_store=StubRunMetadataStore({"target": {"kind": "text"}}),
             flow_loader=StubFlowLoader(flow_def),
-            run_snapshot_resolver=StubRunSnapshotResolver(RunSnapshot(
-                run_state=run_state,
-                flow_def=flow_def,
-                ready=[instance],
-            )),
+            run_snapshot_resolver=snapshot_resolver,
             condition_serializer=StubConditionSerializer(),
         )
 
@@ -147,6 +161,10 @@ class TestFlowStatusReader(unittest.TestCase):
         )
         self.assertEqual(result.running, ["step-b"])
         self.assertEqual(result.pending, ["step-b"])
+        self.assertEqual(
+            snapshot_resolver.params,
+            {"target": {"kind": "text"}},
+        )
         self.assertFalse(result.workflow_condition.matched)
         self.assertEqual(
             result.workflow_condition.condition,
@@ -161,6 +179,7 @@ class TestFlowStatusReader(unittest.TestCase):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
         sut = FlowStatusReader(
             run_locator=StubRunLocator(location),
+            metadata_store=StubRunMetadataStore(),
             flow_loader=StubFlowLoader(flow_def),
             run_snapshot_resolver=StubRunSnapshotResolver(error=InterpolationError("bad reference")),
             condition_serializer=StubConditionSerializer(),

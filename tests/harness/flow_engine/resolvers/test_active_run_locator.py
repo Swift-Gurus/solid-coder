@@ -83,6 +83,32 @@ class TestActiveRunLocator(unittest.TestCase):
             self.assertEqual(location.events_path, str(isolated_dir / "events.jsonl"))
             self.assertEqual(location.workflow_path, str(isolated_dir / "workflow.yaml"))
 
+    def test_explicit_isolated_run_is_visible_across_session_boundaries(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = Path(tmp)
+            isolated_dir = base_dir / "subagents" / "run-abc"
+            isolated_dir.mkdir(parents=True)
+            parent_pointer = ActiveRunPointerStore(
+                path_resolver=SessionScopedActivePathResolver(
+                    session_id_reader=StaticSessionIdReader("parent-session")
+                )
+            )
+            parent_pointer.write(isolated_dir, "run-abc")
+            child_pointer = ActiveRunPointerStore(
+                path_resolver=SessionScopedActivePathResolver(
+                    session_id_reader=StaticSessionIdReader("child-session")
+                )
+            )
+            sut = ActiveRunLocator(
+                base_dir_resolver=StubBaseDirResolver(base_dir),
+                active_run=child_pointer,
+            )
+
+            location = sut.locate("run-abc")
+
+            self.assertEqual(location.run_id, "run-abc")
+            self.assertEqual(location.run_dir, isolated_dir)
+
     def test_raises_file_not_found_when_isolated_run_does_not_exist(self):
         with tempfile.TemporaryDirectory() as tmp:
             base_dir = Path(tmp)

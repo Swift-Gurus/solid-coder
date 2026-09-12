@@ -142,7 +142,8 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
                 "target": {
                     "kind": "file",
                     "path": str(self.target_path),
-                }
+                },
+                "context_sources": [],
             },
         )
 
@@ -160,7 +161,10 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertIsNone(started.error, started.error)
         self.assertEqual(len(started.steps), 1)
         return self.sut.flow_next({
-            started.steps[0].instance_id: {"target": target}
+            started.steps[0].instance_id: {
+                "target": target,
+                "context_sources": [],
+            }
         })
 
     @staticmethod

@@ -9,6 +9,7 @@ steps:
     operation: review.prepare
     with:
       target: "{{params.target}}"
+      context_sources: "{{params.context_sources}}"
 
   - include:
       rules: all

@@ -105,6 +105,9 @@ from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
 from harness.workflow_persister_factory import make_workflow_persister
 from hook_utils import _resolve_project_root
+from json_serializer import JsonSerializer
+from mcp_config_builder import McpConfigBuilder
+from mcp_config_profile import McpConfigProfile
 from subprocess_adapter import SubprocessAdapter
 
 _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
@@ -229,7 +232,11 @@ class FlowRunOrchestratorFactory:
             ),
         )
         session_delegate_runner = self._session_delegate_runner or SessionDelegateRunner(
-            plugin_root=self._plugin_root,
+            mcp_config=McpConfigBuilder(
+                project_root=self._plugin_root,
+                profile=McpConfigProfile.LEGACY_HEALTH,
+                serializer=JsonSerializer(),
+            ).build(),
             timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
             output_loader=JsonLoader(),
         )
@@ -355,6 +362,7 @@ class FlowRunOrchestratorFactory:
         )
         status_reader = FlowStatusReader(
             run_locator=run_locator,
+            metadata_store=metadata_store,
             flow_loader=resolving_flow_loader,
             run_snapshot_resolver=run_snapshot_resolver,
             condition_serializer=condition_serializer,

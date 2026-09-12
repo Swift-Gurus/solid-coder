@@ -47,9 +47,26 @@ class PrepareReviewOperation:
             analysis,
             SearchTargetGranularity.UNIT,
         )
+        snapshots = [file_targets.snapshot]
+        known_paths = {file_targets.snapshot.path.resolve()}
+        for context_source in operation_input.context_sources:
+            resolved_context = self._source_resolver.resolve(
+                AnalyzeSourceInput(source=context_source)
+            )
+            context_analysis = self._analyzer.analyze(resolved_context)
+            context_targets = self._targets.build(
+                resolved_context,
+                context_analysis,
+                SearchTargetGranularity.FILE,
+            )
+            context_path = context_targets.snapshot.path.resolve()
+            if context_path in known_paths:
+                continue
+            known_paths.add(context_path)
+            snapshots.append(context_targets.snapshot)
         return self._review_file.build(
             analysis,
             file_targets.targets[0],
             unit_targets.targets,
-            file_targets.snapshot,
+            snapshots,
         )

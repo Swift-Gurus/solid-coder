@@ -36,12 +36,11 @@ class TestSessionDelegateRunner(unittest.TestCase):
             return runner
 
         sut = SessionDelegateRunner(
-            plugin_root=Path("/plugin"),
+            mcp_config="config-for:/plugin",
             timeout=120,
             output_loader=JsonLoader(),
             cwd_resolver=lambda: Path("/project"),
             runner_factory=runner_factory,
-            mcp_config_builder=lambda root: f"config-for:{root}",
         )
 
         outcome = sut.run("Call flow_start with flow=\"x\" and isolated=true.")
@@ -61,12 +60,11 @@ class TestSessionDelegateRunner(unittest.TestCase):
 
     def test_reports_rejection_when_runner_returns_none(self):
         sut = SessionDelegateRunner(
-            plugin_root=Path("/plugin"),
+            mcp_config="config",
             timeout=60,
             output_loader=JsonLoader(),
             cwd_resolver=lambda: Path("/project"),
             runner_factory=lambda **kwargs: StubRunner(None),
-            mcp_config_builder=lambda root: "config",
         )
 
         outcome = sut.run("prompt")
@@ -77,12 +75,11 @@ class TestSessionDelegateRunner(unittest.TestCase):
 
     def test_reports_rejection_when_runner_returns_malformed_json(self):
         sut = SessionDelegateRunner(
-            plugin_root=Path("/plugin"),
+            mcp_config="config",
             timeout=60,
             output_loader=JsonLoader(),
             cwd_resolver=lambda: Path("/project"),
             runner_factory=lambda **kwargs: StubRunner("not-json"),
-            mcp_config_builder=lambda root: "config",
         )
 
         outcome = sut.run("prompt")
@@ -96,14 +93,13 @@ class TestSessionDelegateRunner(unittest.TestCase):
 
     def test_rejects_one_json_object_wrapped_in_markdown_fences(self):
         sut = SessionDelegateRunner(
-            plugin_root=Path("/plugin"),
+            mcp_config="config",
             timeout=60,
             output_loader=JsonLoader(),
             cwd_resolver=lambda: Path("/project"),
             runner_factory=lambda **kwargs: StubRunner(
                 '```json\n{"finding": "complete"}\n```'
             ),
-            mcp_config_builder=lambda root: "config",
         )
 
         outcome = sut.run("prompt")

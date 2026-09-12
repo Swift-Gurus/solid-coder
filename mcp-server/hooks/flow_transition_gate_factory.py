@@ -51,6 +51,7 @@ class FlowTransitionGateFactory:
         from harness.path_checking import PathChecker
         from harness.run_completion_checker import RunCompletionChecker
         from harness.run_context_builder import RunContextBuilder
+        from harness.run_metadata_store import RunMetadataStore
         from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
         from harness.run_snapshot_resolver import RunSnapshotResolver
         from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
@@ -95,6 +96,7 @@ class FlowTransitionGateFactory:
         )
         status_reader = FlowStatusReader(
             run_locator=run_locator,
+            metadata_store=RunMetadataStore(),
             flow_loader=resolving_flow_loader,
             run_snapshot_resolver=RunSnapshotResolver(
                 event_replayer=assembly.event_replayer,

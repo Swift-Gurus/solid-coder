@@ -71,13 +71,13 @@ As a gate or conversational caller, I want in-memory content reviewed without fi
 
 **Acceptance Criteria:**
 
-- `buffer` requires prospective content and its target project-relative path. Gate-on-write always uses this variant.
+- `buffer` requires prospective content and an absolute virtual target path. Gate-on-write always uses this variant for both new files and edits; it never selects the file-backed variant from destination existence.
 - One multi-file `apply_patch` is normalized as one immutable proposed-source context before per-file review fan-out. Every isolated file review retains the same ordered proposed file collection; it does not receive only its own buffer.
 - Source comparison treats every proposed path as authoritative, searches units prepared from those in-memory revisions, and omits stale disk snapshots for the same paths. This permits DRY comparison between files introduced or changed together before any write is authorized.
-- The target path supplies exact extension and file/path tag evidence while the supplied content is the only content analyzed.
+- The virtual target path supplies identity, exact extension, and file/path tag evidence while the supplied content is the only content analyzed. The normalizer never opens that path, even when an older on-disk file exists there.
 - `code_block` requires content and may declare either a virtual path or an exact extension derived from an explicit fenced-code identity.
 - A code block without virtual path or extension remains valid, produces an empty extension, and receives a whole-document unit.
-- Text targets never create temporary repository files. Parser adapters may use engine-owned temporary storage that is removed after analysis.
+- Text targets never create temporary repository or engine-owned source files. Parser adapters consume the supplied buffer directly.
 - Equivalent file content and path-backed buffer content produce equivalent units and tags.
 
 ### US-5: Review an immutable Git range or pull request
@@ -197,7 +197,7 @@ Review normalization is a review-domain operation used internally by bundled wor
 
 - The prospective `buffer` slice is implemented through the internal `review.prepare` flow operation. It requires an exact path and content, analyzes only the supplied content, and returns one typed normalized file, ordered normalized units, applicability, tag evidence, and shared prospective source context.
 - Buffer normalization composes the existing SPEC-040 source resolver, analyzer, file/unit target builders, applicability resolver, and technology detections. It does not introduce a second parser or a model-authored classification step.
-- Focused tests prove stale disk content is ignored and the same analysis supplies exact unit code, extension, tags, evidence, and the authoritative source snapshot.
+- Focused tests prove nonexistent destinations remain nonexistent, stale disk content is ignored, and the same analysis supplies exact unit code, extension, tags, evidence, and the authoritative source snapshot.
 - The remaining target variants and ordered multi-file collection are not implemented. In particular, nested dynamic workflow fan-out still needs parent-instance context before `solid-review` can fan out multiple normalized files through nested `solid-file-review` instances without flattening or duplicating prospective content.
 - Until that hierarchy is completed, the bundled review path intentionally accepts the implemented single prospective buffer target. It must fail validation for unsupported target shapes rather than guess or silently fall back to disk.
 
@@ -219,7 +219,7 @@ Review normalization is a review-domain operation used internally by bundled wor
 - Normalize staged, unstaged, untracked, renamed, and deleted working-tree fixtures.
 - Normalize a base/head range and an equivalent resolved pull request and assert identical change/unit results plus immutable commit audit.
 - Normalize Markdown, YAML, unknown text, and unpathed code blocks into whole-document units.
-- Assert gate buffer preparation never reads stale on-disk content and fails closed on invalid input.
+- Assert gate buffer preparation leaves a nonexistent destination absent, never reads stale on-disk content for an edit, and fails closed on invalid input.
 - Run one locked multi-principle buffer fixture through both the legacy health checker and `solid-review` under the same Terra profile; preserve exact expected observations, applicability, exception decisions, elapsed time, token usage, reported cost when available, retries, transcripts, events, and normalized review artifacts.
 - Execute one smoke run per path before the repeated comparison, then run ten complete legacy and ten complete workflow reviews only after the smoke artifacts prove the compared target, rule set, and model profile are identical.
 - Replay every target variant after mutating files/refs/provider state and prove no external reread occurs.

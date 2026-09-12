@@ -1,6 +1,6 @@
 id: solid-file-review-aggregate
-name: SOLID File Review Aggregate Experiment
-description: Reuses canonical review rules while aggregating compatible model steps and presentations.
+name: SOLID File Review Aggregate
+description: Reuses canonical review rules while aggregating compatible model steps and presentations for latency-sensitive review consumers.
 max_turns: 500
 
 steps:
@@ -9,6 +9,7 @@ steps:
     operation: review.prepare
     with:
       target: "{{params.target}}"
+      context_sources: "{{params.context_sources}}"
 
   - group: aggregate_rule_reviews
     execution:

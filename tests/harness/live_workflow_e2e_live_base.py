@@ -26,7 +26,7 @@ from hook_utils import solid_coder_project_dir
 from live_session_request import LiveSessionRequest
 from live_session_running import LiveSessionRunning
 from live_workflow_scenario import LiveWorkflowScenario
-from mcp_config_builder import build_mcp_config
+from mcp_utils import McpConfigBuilder
 from model_profile_environment import model_profile_environment
 from model_profile_loader import ModelProfileLoader
 from preserved_live_workflow_run import PreservedLiveWorkflowRun
@@ -108,7 +108,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
             model=profile.llm["model"],
             timeout=profile.llm["timeout"],
             allowed_tools=self.ALLOWED_FLOW_TOOLS,
-            mcp_config=build_mcp_config(self.PROJECT_ROOT),
+            mcp_config=McpConfigBuilder().build(self.PROJECT_ROOT),
         )
 
         with model_profile_environment(profile.profile_path):

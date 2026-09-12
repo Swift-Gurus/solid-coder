@@ -10,6 +10,7 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
 from _gate_fixtures import HC, call_main
+from health_violation import HealthViolation
 from patch_review_context import PatchReviewContext
 from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
@@ -29,6 +30,16 @@ def _patch_event(files: list[tuple[str, str]]) -> dict:
     }
 
 
+def _violation(issue: str) -> HealthViolation:
+    return HealthViolation(
+        principle="SRP",
+        metric_id="SRP-1",
+        issue=issue,
+        evidence="The reviewed source contains the reported concern.",
+        fix="Extract it.",
+    )
+
+
 class TestApplyPatchGateFanout(unittest.TestCase):
     def setUp(self):
         config = SolidCoderConfig(code_review_on_write_enabled=True)
@@ -42,7 +53,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         def check(content, file_path, language, session_id, cwd, patch_context):
             rendezvous.wait(timeout=2)
             if file_path.endswith("Second.py"):
-                return [{"principle": "SRP", "issue": "Second concern.", "fix": "Extract it."}]
+                return [_violation("Second concern.")]
             return []
 
         request = _patch_event([
@@ -61,7 +72,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
     def test_multiple_denials_are_aggregated_into_one_response(self):
         def check(content, file_path, language, session_id, cwd, patch_context):
             name = Path(file_path).name
-            return [{"principle": "SRP", "issue": f"{name} concern.", "fix": "Extract it."}]
+            return [_violation(f"{name} concern.")]
 
         request = _patch_event([
             ("/src/First.py", "class First:\n    pass"),
@@ -81,7 +92,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
             ("/src/README.md", "documentation"),
             ("/src/Second.py", "class Second:\n    pass"),
         ])
-        violation = [{"principle": "SRP", "issue": "Second concern.", "fix": "Extract it."}]
+        violation = [_violation("Second concern.")]
         with patch(HC, return_value=violation) as health:
             _, output = call_main(request)
 

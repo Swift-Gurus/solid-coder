@@ -25,7 +25,7 @@ for _directory in (_HARNESS, _FLOW_ENGINE, _MCP_SERVER, _MCP_HEALTH):
         sys.path.insert(0, str(_directory))
 
 from harness_factory import HookUtilsTomlLoader  # noqa: E402
-import code_health_check  # noqa: E402
+from hc_checker_factory import make_health_checker  # noqa: E402
 from codex_health_review_transcript_reader import (  # noqa: E402
     CodexHealthReviewTranscriptReader,
 )
@@ -50,6 +50,7 @@ from findings.mcp_batch_submission_builder import (  # noqa: E402
 from findings.review_violation import ReviewViolation  # noqa: E402
 from model_profile_environment import model_profile_environment  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
+from mcp_utils import McpConfigBuilder  # noqa: E402
 from review_comparison_run_evidence import (  # noqa: E402
     ReviewComparisonRunEvidence,
 )
@@ -125,12 +126,16 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
             os.environ["CLAUDE_PROJECT_DIR"] = str(source_project.root)
             started = time.monotonic()
             with model_profile_environment(profile.profile_path):
-                violations = code_health_check._check(
+                violations = make_health_checker(
+                    mcp_config=McpConfigBuilder().build(_PROJECT_ROOT),
+                    session_id=self.parent_session_id,
+                    file_path=str(source_project.review_target),
+                    cwd=str(source_project.root),
+                ).check(
                     source_project.review_target.read_text(encoding="utf-8"),
                     str(source_project.review_target),
                     "Swift",
                     self.parent_session_id,
-                    cwd=str(source_project.root),
                     principle_names=self.EXPECTED_RULE_IDS,
                 )
             elapsed_seconds = time.monotonic() - started

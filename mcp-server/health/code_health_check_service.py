@@ -1,6 +1,5 @@
 """Coordinates one prospective code-health validation request."""
 
-from pathlib import Path
 from typing import Callable, Optional
 
 from code_health_check_request import CodeHealthCheckRequest
@@ -18,20 +17,18 @@ class CodeHealthCheckService:
     def __init__(
         self,
         strategy_selector: Callable[[], RunnerStrategyBase],
-        mcp_config_builder: Callable[[Path], str],
         checker_factory: Callable[..., HealthChecking],
-        plugin_root: Path,
+        mcp_config: str,
     ) -> None:
         self._strategy_selector = strategy_selector
-        self._mcp_config_builder = mcp_config_builder
         self._checker_factory = checker_factory
-        self._plugin_root = plugin_root
+        self._mcp_config = mcp_config
 
     def check(self, request: CodeHealthCheckRequest) -> Optional[list]:
         strategy = self._strategy_selector()
         strategy.apply_env()
         checker = self._checker_factory(
-            mcp_config=self._mcp_config_builder(self._plugin_root),
+            mcp_config=self._mcp_config,
             session_id=request.parent_session_id,
             file_path=request.path,
             cwd=request.cwd,

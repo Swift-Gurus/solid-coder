@@ -30,14 +30,18 @@ class ActiveRunLocator:
             resolved_run_id = self._active_run.read(base_dir)
             run_dir = base_dir / resolved_run_id
         else:
-            base_dir = self._base_dir_resolver.resolve() / ISOLATED_RUNS_DIRNAME / run_id
-            try:
-                resolved_run_id = self._active_run.read(base_dir)
-            except FileNotFoundError:
+            isolated_root = (
+                self._base_dir_resolver.resolve() / ISOLATED_RUNS_DIRNAME
+            )
+            run_dir = isolated_root / run_id
+            resolved_run_dir = run_dir.resolve()
+            if (
+                resolved_run_dir.parent != isolated_root.resolve()
+                or not resolved_run_dir.is_dir()
+            ):
                 raise FileNotFoundError(f"No isolated run found for run_id={run_id}") from None
-            if resolved_run_id != run_id:
-                raise FileNotFoundError(f"No isolated run found for run_id={run_id}")
-            run_dir = base_dir
+            resolved_run_id = run_id
+            base_dir = run_dir
         return ActiveRunLocation(
             run_id=resolved_run_id,
             base_dir=base_dir,

@@ -9,6 +9,8 @@ steps:
     prompt: |
       Submit the review target identified in your prompt.
       Use kind "file" with an absolute path, or kind "text" with the code.
+      Submit context_sources as an empty array; this entry point reviews one
+      explicit target rather than a prospective multi-file patch.
     outputs:
       - name: target
         type: data
@@ -35,6 +37,11 @@ steps:
                   type: string
                 file_extension:
                   type: string
+      - name: context_sources
+        type: data
+        schema:
+          type: array
+          maxItems: 0
 
   - include:
       workflow: solid-file-review
@@ -42,3 +49,4 @@ steps:
     depends_on: [capture_target]
     with:
       target: "{{steps.capture_target.outputs.target}}"
+      context_sources: "{{steps.capture_target.outputs.context_sources}}"

@@ -13,16 +13,23 @@ from _path_bootstrap import ensure_on_path
 
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from mcp_config_builder import build_mcp_config
+from json_serializer import JsonSerializer
+from mcp_config_builder import McpConfigBuilder
+from mcp_config_profile import McpConfigProfile
 
 
 class TestBuildMcpConfig(unittest.TestCase):
     def setUp(self) -> None:
         self._root = Path("/fake/project")
-        self._parsed = json.loads(build_mcp_config(self._root))
+        self._builder = McpConfigBuilder(
+            project_root=self._root,
+            profile=McpConfigProfile.LEGACY_HEALTH,
+            serializer=JsonSerializer(),
+        )
+        self._parsed = json.loads(self._builder.build())
 
     def test_returns_valid_json(self):
-        result = build_mcp_config(self._root)
+        result = self._builder.build()
         json.loads(result)
 
     def test_includes_docs_server(self):
@@ -46,7 +53,17 @@ class TestBuildMcpConfig(unittest.TestCase):
     def test_different_roots_produce_different_paths(self):
         root_a = Path("/proj/a")
         root_b = Path("/proj/b")
-        self.assertNotEqual(build_mcp_config(root_a), build_mcp_config(root_b))
+        config_a = McpConfigBuilder(
+            root_a,
+            McpConfigProfile.LEGACY_HEALTH,
+            JsonSerializer(),
+        ).build()
+        config_b = McpConfigBuilder(
+            root_b,
+            McpConfigProfile.LEGACY_HEALTH,
+            JsonSerializer(),
+        ).build()
+        self.assertNotEqual(config_a, config_b)
 
 
 if __name__ == "__main__":

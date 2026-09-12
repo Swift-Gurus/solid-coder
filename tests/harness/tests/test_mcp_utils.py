@@ -3,8 +3,8 @@ solid-name: TestMcpUtils
 solid-category: unit-test
 solid-spec: [SPEC-014]
 solid-description: Unit tests for McpConfigBuilder — verifies that the injectable
-McpConfigBuilding implementation delegates to build_mcp_config from hooks/mcp_config_builder
-and produces the same output as calling the canonical function directly.
+McpConfigBuilding implementation delegates to the canonical production builder
+and produces the same legacy health profile.
 """
 
 from __future__ import annotations
@@ -20,7 +20,9 @@ _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 ensure_on_path(_HARNESS_DIR, _HERE, _PROJECT_ROOT / "hooks", _PROJECT_ROOT / "mcp-server" / "health" / "config")
 
-from mcp_config_builder import build_mcp_config
+from json_serializer import JsonSerializer
+from mcp_config_builder import McpConfigBuilder as ProductionMcpConfigBuilder
+from mcp_config_profile import McpConfigProfile
 from mcp_utils import McpConfigBuilder
 
 
@@ -29,8 +31,13 @@ class TestMcpConfigBuilder(unittest.TestCase):
         self._builder = McpConfigBuilder()
         self._root = Path("/fake/project")
 
-    def test_build_delegates_to_canonical_build_mcp_config(self):
-        self.assertEqual(self._builder.build(self._root), build_mcp_config(self._root))
+    def test_build_delegates_to_canonical_production_builder(self):
+        expected = ProductionMcpConfigBuilder(
+            project_root=self._root,
+            profile=McpConfigProfile.LEGACY_HEALTH,
+            serializer=JsonSerializer(),
+        ).build()
+        self.assertEqual(self._builder.build(self._root), expected)
 
 
 if __name__ == "__main__":

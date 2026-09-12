@@ -8,6 +8,7 @@ from harness.flow_loading import FlowLoading
 from harness.flow_status_reading import FlowStatusReading
 from harness.flow_status_result import FlowStatusResult
 from harness.interpolation_error import InterpolationError
+from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
 from harness.step_skip_status import StepSkipStatus
 from harness.workflow_condition_status import WorkflowConditionStatus
@@ -24,11 +25,13 @@ class FlowStatusReader(FlowStatusReading):
     def __init__(
         self,
         run_locator: ActiveRunLocating,
+        metadata_store: RunMetadataPersisting,
         flow_loader: FlowLoading,
         run_snapshot_resolver: RunSnapshotResolving,
         condition_serializer: ConditionSerializing,
     ) -> None:
         self._run_locator = run_locator
+        self._metadata_store = metadata_store
         self._flow_loader = flow_loader
         self._run_snapshot_resolver = run_snapshot_resolver
         self._condition_serializer = condition_serializer
@@ -44,9 +47,14 @@ class FlowStatusReader(FlowStatusReading):
             )
 
         flow_def = self._flow_loader.load(location.workflow_path, [])
+        metadata = self._metadata_store.read(location.run_dir)
 
         try:
-            snapshot = self._run_snapshot_resolver.resolve(location.events_path, flow_def, {})
+            snapshot = self._run_snapshot_resolver.resolve(
+                location.events_path,
+                flow_def,
+                metadata.params,
+            )
         except InterpolationError as exc:
             return FlowStatusResult(
                 flow=flow_def.name, run_id=location.run_id, status="error",

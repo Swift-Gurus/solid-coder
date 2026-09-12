@@ -37,7 +37,7 @@ class NormalizedReviewFileBuilder:
         analysis: SourceAnalysis,
         file_target: SourceSearchTarget,
         unit_targets: list[SourceSearchTarget],
-        snapshot: RepositorySourceSnapshot,
+        snapshots: list[RepositorySourceSnapshot],
     ) -> NormalizedReviewInput:
         file_evidence = self._evidence.resolve(
             analysis.detections,
@@ -65,5 +65,5 @@ class NormalizedReviewFileBuilder:
                 tag_evidence=file_evidence,
             ),
             units=units,
-            source_context=SourceSearchContext(sources=[snapshot]),
+            source_context=SourceSearchContext(sources=snapshots),
         )

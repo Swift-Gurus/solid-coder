@@ -1,0 +1,12 @@
+id: solid-gate-on-write
+name: SOLID Gate on Write
+description: Reviews one exact prospective source buffer before its destination is written.
+max_turns: 500
+
+steps:
+  - include:
+      workflow: solid-file-review-aggregate
+    as: file_review
+    with:
+      target: "{{params.target}}"
+      context_sources: "{{params.context_sources}}"

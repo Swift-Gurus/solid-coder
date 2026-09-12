@@ -1,6 +1,6 @@
 """Defines the typed input to review-target normalization."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from source.analyze_source_input import AnalysisSource
 
@@ -15,3 +15,4 @@ class PrepareReviewInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     target: AnalysisSource
+    context_sources: list[AnalysisSource] = Field(default_factory=list)

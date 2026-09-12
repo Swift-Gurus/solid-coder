@@ -3,9 +3,8 @@ solid-name: mcp_utils
 solid-category: utility
 solid-spec: [SPEC-014]
 solid-description: Shared MCP server configuration utilities for the principle test harness.
-Provides McpConfigBuilder, the injectable implementation of McpConfigBuilding, and the
-build_mcp_config convenience function. Delegates MCP config construction to mcp_config_builder
-in hooks/, which owns the canonical implementation.
+Provides the injectable McpConfigBuilding adapter and delegates to the canonical
+production builder object.
 """
 
 from __future__ import annotations
@@ -22,9 +21,15 @@ for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR), str(_MCP_HEALTH_CONFIG)):
         sys.path.insert(0, _d)
 
 from interfaces import McpConfigBuilding  # noqa: E402
-from mcp_config_builder import build_mcp_config  # noqa: E402
+from json_serializer import JsonSerializer  # noqa: E402
+from mcp_config_builder import McpConfigBuilder as ProductionMcpConfigBuilder  # noqa: E402
+from mcp_config_profile import McpConfigProfile  # noqa: E402
 
 
 class McpConfigBuilder(McpConfigBuilding):
     def build(self, project_root: Path) -> str:
-        return build_mcp_config(project_root)
+        return ProductionMcpConfigBuilder(
+            project_root=project_root,
+            profile=McpConfigProfile.LEGACY_HEALTH,
+            serializer=JsonSerializer(),
+        ).build()

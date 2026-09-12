@@ -101,6 +101,35 @@ class TestPrepareReviewOperation(unittest.TestCase):
             self.target_path.resolve(),
         )
 
+    def test_preserves_authoritative_prospective_sibling_sources(self) -> None:
+        sibling_path = self.project_root / "Sibling.swift"
+        sibling_source = "struct ProspectiveSibling {}\n"
+
+        result = PrepareReviewOperationFactory().make().execute(
+            PrepareReviewInput(
+                target=TextAnalysisSource(
+                    text=self.prospective_source,
+                    virtual_path=str(self.target_path),
+                ),
+                context_sources=[
+                    TextAnalysisSource(
+                        text=sibling_source,
+                        virtual_path=str(sibling_path),
+                    )
+                ],
+            )
+        )
+
+        self.assertFalse(sibling_path.exists())
+        self.assertEqual(
+            [source.path for source in result.source_context.sources],
+            [self.target_path.resolve(), sibling_path.resolve()],
+        )
+        self.assertEqual(
+            result.source_context.sources[1].content,
+            sibling_source,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,15 +23,12 @@ for _d in (
 
 from hc_checker import ClaudeRunning  # noqa: E402
 from hc_runner_factory import make_llm_runner  # noqa: E402
-from mcp_config_builder import build_mcp_config  # noqa: E402
 
 from harness.json_loading import JsonLoading
 from harness.session_delegate_running import SessionDelegateRunning
 from harness.step_run_outcome import StepRunOutcome
 
 RunnerFactory = Callable[..., ClaudeRunning]
-McpConfigBuilding = Callable[[Path], str]
-
 _FLOW_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status"
 
 
@@ -45,23 +42,21 @@ class SessionDelegateRunner(SessionDelegateRunning):
 
     def __init__(
         self,
-        plugin_root: Path,
+        mcp_config: str,
         timeout: int,
         output_loader: JsonLoading,
         cwd_resolver: Callable[[], Path] = Path.cwd,
         runner_factory: RunnerFactory = make_llm_runner,
-        mcp_config_builder: McpConfigBuilding = build_mcp_config,
     ) -> None:
-        self._plugin_root = plugin_root
+        self._mcp_config = mcp_config
         self._timeout = timeout
         self._output_loader = output_loader
         self._cwd_resolver = cwd_resolver
         self._runner_factory = runner_factory
-        self._mcp_config_builder = mcp_config_builder
 
     def run(self, prompt: str) -> StepRunOutcome:
         runner = self._runner_factory(
-            mcp_config=self._mcp_config_builder(self._plugin_root),
+            mcp_config=self._mcp_config,
             allowed_tools=_FLOW_TOOLS,
             cwd=str(self._cwd_resolver()),
         )

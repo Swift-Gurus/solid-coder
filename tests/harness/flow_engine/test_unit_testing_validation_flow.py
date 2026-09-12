@@ -16,6 +16,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
 from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
 from rule_validation_scenario import RuleValidationScenario  # noqa: E402
+from harness.rule_scope import RuleScope  # noqa: E402
 
 
 class TestUnitTestingValidationFlow(RuleValidationFlowContract):
@@ -44,6 +45,7 @@ class TestUnitTestingValidationFlow(RuleValidationFlowContract):
             RuleMetricExpectation(step_id="framework_violations", metric_id="TEST-6", detection_id="TEST-6", detection_name="Testing Framework", value=1, severity="SEVERE"),
         ],
         final_severity="SEVERE",
+        rule_scope=RuleScope.FILE,
         included_file_extensions=[".swift"],
         included_tags=["unit-test"],
     )

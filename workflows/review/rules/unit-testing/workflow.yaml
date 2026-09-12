@@ -4,6 +4,7 @@ description: Measures Swift test isolation, structure, naming, doubles, setup, a
 max_turns: 16
 
 rule:
+  scope: file
   match:
     file_extensions:
       included: [.swift]

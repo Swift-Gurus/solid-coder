@@ -41,7 +41,7 @@ from finding_comparer import FindingComparer, FlowFindingNormalizer  # noqa: E40
 from fixture_discovery import FixtureDiscovery  # noqa: E402
 from health_flow_invoker import CheckResultWriter, HealthFlowInvoker, SupportedExtensionsProvider  # noqa: E402
 from interfaces import TimestampGenerating, TomlLoading  # noqa: E402
-from mcp_utils import McpConfigBuilder, build_mcp_config  # noqa: E402
+from mcp_utils import McpConfigBuilder  # noqa: E402
 from metric_prefix_resolver import MetricPrefixResolver  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from output_path_builder import OutputPathBuilder  # noqa: E402
@@ -63,16 +63,26 @@ class RunTimestampGenerator(TimestampGenerating):
 
 
 class DirectHealthChecker(HealthChecking):
-    """Calls code_health_check._check() on every invocation so it reads
-    hc_config (including SOLID_CODER_TEST_MODEL_PROFILE) at runtime rather
-    than baking in the backend at construction time.
-    """
+    """Constructs the legacy checker per call so model-profile overrides remain live."""
 
-    def __init__(self, checker_factory=None) -> None:
-        self._checker_factory = checker_factory or code_health_check._check
+    def __init__(self, project_root: Path, checker_factory=None) -> None:
+        self._project_root = project_root
+        self._checker_factory = checker_factory
 
     def check(self, content: str, path: str, language: str, parent_session_id: str):
-        return self._checker_factory(content, path, language, parent_session_id)
+        if self._checker_factory is not None:
+            return self._checker_factory(
+                content,
+                path,
+                language,
+                parent_session_id,
+            )
+        return make_health_checker(
+            mcp_config=McpConfigBuilder().build(self._project_root),
+            session_id=parent_session_id,
+            file_path=path,
+            cwd=str(self._project_root),
+        ).check(content, path, language, parent_session_id)
 
 
 class HarnessFactory:
@@ -93,7 +103,7 @@ class HarnessFactory:
         session_runner = ConfiguredReviewSessionRunner(project_root, mcp_config_builder)
         apply_invoker = ApplyFlowInvoker(principle_folder, artifact_handler, session_runner)
 
-        health_checker = DirectHealthChecker()
+        health_checker = DirectHealthChecker(project_root)
         health_invoker = HealthFlowInvoker(
             checker=health_checker,
             language_provider=SupportedExtensionsProvider(code_health_check.SUPPORTED_EXTENSIONS),

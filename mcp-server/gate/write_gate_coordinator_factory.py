@@ -38,7 +38,7 @@ class WriteGateCoordinatorFactory(CoordinatorMaking):
     ) -> CoordinatorRunning:
         import code_health_check as health
         import validate_swift_frontmatter as frontmatter
-        from hc_violation_parser import ViolationParser
+        from health_violation_block_formatter import HealthViolationBlockFormatter
         from safe_frontmatter_fixer import SafeFrontmatterFixer
         from safe_health_checker import SafeHealthChecker
         from tool_input_updater import ToolInputUpdater
@@ -65,10 +65,10 @@ class WriteGateCoordinatorFactory(CoordinatorMaking):
         return WriteGateCoordinator(
             health_gate=SafeHealthChecker(
                 checker=CodeHealthCheckAdapter(
-                    check_fn=health._check,
+                    check_fn=health.CHECK.check,
                     patch_context=patch_context,
                 ),
-                formatter=ViolationParser(),
+                formatter=HealthViolationBlockFormatter(),
             ),
             frontmatter_gate=SafeFrontmatterFixer(
                 fixer=FrontmatterAdapter(fix_fn=frontmatter.fix),
