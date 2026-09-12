@@ -41,24 +41,20 @@ Each migrated capability is organized by cohesive feature, not by one file per p
 session/
   project_context/
     __init__.py
-    contracts.py
-    path_resolver.py
-    directory_reader.py
-    directory_recorder.py
+    path.py
+    directory.py
 
 harness/
   project_context/
     __init__.py
-    contracts.py
-    request_reader.py
-    static_reader.py
+    directory.py
 ```
 
 The exact second-level package names may be adjusted when an existing cohesive package already owns the behavior. The following rules are mandatory:
 
 - `__init__.py` is the public feature facade.
-- Contracts may be grouped in the feature's `contracts.py`; do not create one module per protocol.
-- Implementations remain internally focused but consumers import the feature API rather than implementation-suffix modules.
+- A protocol lives in the cohesive module containing its first implementation; do not create standalone protocol files or generic `contracts.py` buckets.
+- Modules group one cohesive capability and may contain its protocol plus closely related implementations; consumers import the feature package API rather than implementation-suffix modules.
 - Do not add compatibility shims for internal imports. Update repository consumers in the same migration and remove obsolete modules.
 - Do not create factories solely to construct protocols, data carriers, or simple collaborators.
 
@@ -95,7 +91,7 @@ Every retained callable found by the audit must fit one of these categories; the
 
 ### AC-1: Feature packages expose cohesive APIs
 
-Given a migrated session or project-context consumer, when it imports the capability, then it imports from the cohesive feature package facade and does not import a standalone one-protocol module.
+Given a migrated session or project-context consumer, when it imports the capability, then it imports from the cohesive feature package facade, the protocol lives beside its first implementation, and no standalone one-protocol module or generic contracts bucket is introduced.
 
 ### AC-2: Session context preserves resolver objects
 
