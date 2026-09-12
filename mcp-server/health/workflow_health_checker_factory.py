@@ -77,10 +77,10 @@ class WorkflowHealthCheckerFactory:
                 *ReviewOperationRegistrationsFactory().make(),
             ],
         ).build()
-        continuation_instruction = (
-            CodexFlowContinuationInstructionBuilder().build
+        continuation_instruction_builder = (
+            CodexFlowContinuationInstructionBuilder()
             if config.llm.backend.lower() == "codex"
-            else NativeFlowContinuationInstructionBuilder().build
+            else NativeFlowContinuationInstructionBuilder()
         )
         return WorkflowHealthChecker(
             flow=flow,
@@ -95,6 +95,8 @@ class WorkflowHealthCheckerFactory:
             result_reader=FlowReviewResultReader(runs),
             violation_selector=ScoredReviewViolationSelector(),
             input_builder=GateReviewInputBuilder(),
-            prompt_builder=GateFlowPromptBuilder(continuation_instruction),
+            prompt_builder=GateFlowPromptBuilder(
+                continuation_instruction_builder
+            ),
             timeout_seconds=config.llm.timeout,
         )

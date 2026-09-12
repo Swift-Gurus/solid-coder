@@ -1,9 +1,8 @@
 """Builds the child-session prompt for an existing gate workflow run."""
 
-from typing import Callable
-
-
-ContinuationInstruction = Callable[[str], str]
+from flow_continuation_instruction_building import (
+    FlowContinuationInstructionBuilding,
+)
 
 
 """
@@ -15,9 +14,11 @@ solid-description: Builds a source-review bootstrap that continues one server-st
 class GateFlowPromptBuilder:
     def __init__(
         self,
-        continuation_instruction: ContinuationInstruction,
+        continuation_instruction_builder: FlowContinuationInstructionBuilding,
     ) -> None:
-        self._continuation_instruction = continuation_instruction
+        self._continuation_instruction_builder = (
+            continuation_instruction_builder
+        )
 
     def build(
         self,
@@ -39,5 +40,5 @@ class GateFlowPromptBuilder:
             "The server has already started the isolated review run. Complete "
             "the current instruction set exactly as rendered:\n\n"
             f"{first_step}\n\n"
-            f"{self._continuation_instruction(run_id)}"
+            f"{self._continuation_instruction_builder.build(run_id)}"
         )

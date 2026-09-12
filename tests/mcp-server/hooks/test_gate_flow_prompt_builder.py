@@ -30,8 +30,8 @@ class TestGateFlowPromptBuilder(unittest.TestCase):
         source = "struct PendingView { let marker = 7391 }"
 
         prompt = GateFlowPromptBuilder(
-            continuation_instruction=(
-                StubContinuationInstructionBuilder().build
+            continuation_instruction_builder=(
+                StubContinuationInstructionBuilder()
             ),
         ).build(
             content=source,
