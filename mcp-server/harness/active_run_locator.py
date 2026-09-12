@@ -41,7 +41,7 @@ class ActiveRunLocator:
             ):
                 raise FileNotFoundError(f"No isolated run found for run_id={run_id}") from None
             resolved_run_id = run_id
-            base_dir = run_dir
+            base_dir = isolated_root
         return ActiveRunLocation(
             run_id=resolved_run_id,
             base_dir=base_dir,

@@ -49,6 +49,9 @@ class TestIsolatedRunSessionHandoff(unittest.TestCase):
             child = self._orchestrator(project_root, "child-session")
 
             started = parent.flow_start(str(workflow), isolated=True)
+            run_directory = project_root / "subagents" / started.run_id
+            self.assertEqual(list(run_directory.glob("active*.json")), [])
+
             completed = child.flow_next(
                 {started.steps[0].instance_id: {"result": "reviewed"}},
                 run_id=started.run_id,
@@ -59,6 +62,8 @@ class TestIsolatedRunSessionHandoff(unittest.TestCase):
             self.assertEqual(completed.status, "done", repr(completed))
             self.assertEqual(status.status, "done")
             self.assertIsNone(status.error)
+            self.assertFalse((run_directory / started.run_id).exists())
+            self.assertEqual(list(run_directory.glob("active*.json")), [])
 
     def _orchestrator(self, project_root: Path, session_id: str):
         return FlowRunOrchestratorFactory(

@@ -78,7 +78,7 @@ class TestActiveRunLocator(unittest.TestCase):
             location = sut.locate("run-abc")
 
             self.assertEqual(location.run_id, "run-abc")
-            self.assertEqual(location.base_dir, isolated_dir)
+            self.assertEqual(location.base_dir, base_dir / "subagents")
             self.assertEqual(location.run_dir, isolated_dir)
             self.assertEqual(location.events_path, str(isolated_dir / "events.jsonl"))
             self.assertEqual(location.workflow_path, str(isolated_dir / "workflow.yaml"))

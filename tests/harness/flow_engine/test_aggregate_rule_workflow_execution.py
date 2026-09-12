@@ -118,6 +118,23 @@ class TestAggregateRuleWorkflowExecution(unittest.TestCase):
             ["COMPLIANT", "COMPLIANT"],
         )
 
+    def test_isolated_review_persists_result_in_canonical_run_directory(self) -> None:
+        started = self.sut.flow_start(str(self.workflow_path), isolated=True)
+
+        completed = self.sut.flow_next(
+            {started.steps[0].instance_id: self._outputs(is_exception=False)},
+            run_id=started.run_id,
+        )
+
+        run_directory = (
+            self.project_root / "runs" / "subagents" / started.run_id
+        )
+        self.assertEqual(completed.status, "done", completed.error)
+        self.assertTrue(
+            (run_directory / "results" / "review" / "result.json").is_file()
+        )
+        self.assertFalse((run_directory / started.run_id).exists())
+
     def test_rejects_incomplete_aggregate_audit_information(self) -> None:
         started = self.sut.flow_start(str(self.workflow_path))
         outputs = self._outputs(is_exception=False)

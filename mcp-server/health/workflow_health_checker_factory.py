@@ -3,6 +3,9 @@
 from pathlib import Path
 from typing import Callable
 
+from codex_flow_continuation_instruction_builder import (
+    CodexFlowContinuationInstructionBuilder,
+)
 from flow_review_result_reader import FlowReviewResultReader
 from gate_flow_prompt_builder import GateFlowPromptBuilder
 from gate_review_input_builder import GateReviewInputBuilder
@@ -13,6 +16,9 @@ from hc_checker import HealthChecking
 from hc_config_schema import load_config
 from hc_runner_factory import make_llm_runner
 from hook_utils import _resolve_project_root, solid_coder_project_dir
+from native_flow_continuation_instruction_builder import (
+    NativeFlowContinuationInstructionBuilder,
+)
 from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
 from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
@@ -71,6 +77,11 @@ class WorkflowHealthCheckerFactory:
                 *ReviewOperationRegistrationsFactory().make(),
             ],
         ).build()
+        continuation_instruction = (
+            CodexFlowContinuationInstructionBuilder().build
+            if config.llm.backend.lower() == "codex"
+            else NativeFlowContinuationInstructionBuilder().build
+        )
         return WorkflowHealthChecker(
             flow=flow,
             renderer=FlowResultRendererCreator().create(),
@@ -84,6 +95,6 @@ class WorkflowHealthCheckerFactory:
             result_reader=FlowReviewResultReader(runs),
             violation_selector=ScoredReviewViolationSelector(),
             input_builder=GateReviewInputBuilder(),
-            prompt_builder=GateFlowPromptBuilder(),
+            prompt_builder=GateFlowPromptBuilder(continuation_instruction),
             timeout_seconds=config.llm.timeout,
         )

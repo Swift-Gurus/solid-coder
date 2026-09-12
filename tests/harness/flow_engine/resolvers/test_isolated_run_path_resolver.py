@@ -37,18 +37,5 @@ class TestIsolatedRunPathResolver(unittest.TestCase):
 
         self.assertEqual(result, Path("/runs") / ISOLATED_RUNS_DIRNAME)
 
-    def test_effective_base_dir_is_the_base_dir_when_not_isolated(self):
-        result = self.sut.effective_base_dir(Path("/runs"), Path("/runs/run-1"), isolated=False)
-
-        self.assertEqual(result, Path("/runs"))
-
-    def test_effective_base_dir_is_the_run_dir_when_isolated(self):
-        result = self.sut.effective_base_dir(
-            Path("/runs/subagents"), Path("/runs/subagents/run-1"), isolated=True
-        )
-
-        self.assertEqual(result, Path("/runs/subagents/run-1"))
-
-
 if __name__ == "__main__":
     unittest.main()

@@ -49,19 +49,13 @@ class StubRunProvisioner:
 
 
 class StubPathResolver:
-    def __init__(self, provisioning_base_dir: Path, effective_base_dir: Path) -> None:
+    def __init__(self, provisioning_base_dir: Path) -> None:
         self._provisioning_base_dir = provisioning_base_dir
-        self._effective_base_dir = effective_base_dir
         self.provisioning_calls: list[tuple] = []
-        self.effective_calls: list[tuple] = []
 
     def provisioning_base_dir(self, startup: StartupContext, isolated: bool) -> Path:
         self.provisioning_calls.append((startup, isolated))
         return self._provisioning_base_dir
-
-    def effective_base_dir(self, base_dir: Path, run_dir: Path, isolated: bool) -> Path:
-        self.effective_calls.append((base_dir, run_dir, isolated))
-        return self._effective_base_dir
 
 
 class SpyLocationAssembler:
@@ -89,9 +83,7 @@ class FlowInitializerFactory:
         self.startup_context = StubStartupContext(StartupContext(base_dir=Path("/runs"), search_paths=["/flows"]))
         self.flow_loader = StubFlowLoader(FlowDef(name="code_review", max_turns=10, steps=[]))
         self.run_provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/run-1")))
-        self.path_resolver = StubPathResolver(
-            provisioning_base_dir=Path("/runs"), effective_base_dir=Path("/runs"),
-        )
+        self.path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs"))
         self.location = ActiveRunLocation(
             run_id="run-1", base_dir=Path("/runs"), run_dir=Path("/runs/run-1"),
             events_path="/runs/run-1/events.jsonl", workflow_path="/runs/run-1/workflow.yaml",
@@ -136,7 +128,7 @@ class TestFlowInitializer(unittest.TestCase):
     def test_provisions_the_run_under_the_path_resolvers_provisioning_base_dir(self):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
         provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/run-1")))
-        path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs/subagents"), effective_base_dir=Path("/x"))
+        path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs/subagents"))
         factory = FlowInitializerFactory().with_flow_loader(StubFlowLoader(flow_def)).with_run_provisioner(
             provisioner
         ).with_path_resolver(path_resolver)
@@ -145,14 +137,12 @@ class TestFlowInitializer(unittest.TestCase):
 
         self.assertEqual(provisioner.calls, [(Path("/runs/subagents"), flow_def, {"key": "value"}, True)])
 
-    def test_returns_the_effective_base_dir_from_the_path_resolver(self):
-        path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs"), effective_base_dir=Path("/runs/run-1"))
-        factory = FlowInitializerFactory().with_path_resolver(path_resolver)
+    def test_returns_the_assembled_location_base_as_the_execution_base(self):
+        factory = FlowInitializerFactory()
 
         result = factory.make_sut().initialize("code_review", {}, isolated=True)
 
-        self.assertEqual(result.effective_base_dir, Path("/runs/run-1"))
-        self.assertEqual(path_resolver.effective_calls, [(Path("/runs"), Path("/runs/run-1"), True)])
+        self.assertEqual(result.effective_base_dir, result.location.base_dir)
 
     def test_assembles_the_location_from_the_provisioned_run(self):
         run_init = RunInit(run_id="run-9", run_dir=Path("/runs/run-9"))

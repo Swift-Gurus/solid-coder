@@ -17,6 +17,12 @@ from harness.run_started_event_logging import RunStartedEventLogging
 from harness.startup_context_resolving import StartupContextResolving
 
 
+"""
+solid-name: FlowInitializer
+solid-category: service
+solid-spec: [SPEC-031, SPEC-047]
+solid-description: Initializes one workflow run and preserves its assembled canonical location.
+"""
 class FlowInitializer(FlowInitializing):
 
     def __init__(
@@ -41,9 +47,11 @@ class FlowInitializer(FlowInitializing):
 
         base_dir = self._path_resolver.provisioning_base_dir(startup, isolated)
         run_init = self._run_provisioner.provision(base_dir, flow_def, params, self_contained=isolated)
-        effective_base_dir = self._path_resolver.effective_base_dir(base_dir, run_init.run_dir, isolated)
-
         location = self._location_assembler.assemble(run_init.run_id, base_dir, run_init.run_dir)
         self._event_recorder.record(location.events_path, run_init.run_id, flow_def.name)
 
-        return FlowInit(location=location, effective_base_dir=effective_base_dir, flow_def=flow_def)
+        return FlowInit(
+            location=location,
+            effective_base_dir=location.base_dir,
+            flow_def=flow_def,
+        )
