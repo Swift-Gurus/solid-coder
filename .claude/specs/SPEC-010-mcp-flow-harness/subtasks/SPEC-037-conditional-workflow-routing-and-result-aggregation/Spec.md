@@ -4,7 +4,7 @@ feature: conditional-workflow-routing-and-result-aggregation
 type: subtask
 status: in-progress
 parent: SPEC-010
-blocked-by: [SPEC-030, SPEC-035]
+blocked-by: [SPEC-030, SPEC-035, SPEC-048]
 blocking: [SPEC-036, SPEC-033, SPEC-039]
 ---
 
