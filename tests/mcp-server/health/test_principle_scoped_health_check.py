@@ -120,15 +120,12 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
             )
 
     def test_service_passes_declared_principles_to_real_checker_contract(self) -> None:
-        strategy = MagicMock()
         checker = MagicMock()
         checker.check.return_value = []
         checker_factory = MagicMock()
         checker_factory.make.return_value = checker
         service = CodeHealthCheckService(
-            strategy_selector=MagicMock(return_value=strategy),
             checker_factory=checker_factory,
-            mcp_config="mcp-config",
         )
 
         service.check(CodeHealthCheckRequest(

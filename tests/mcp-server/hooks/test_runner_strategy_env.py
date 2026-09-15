@@ -21,6 +21,7 @@ from llm_config import LlmConfig  # noqa: E402
 from solid_coder_config import SolidCoderConfig  # noqa: E402
 from code_health_check import CodeHealthCheck  # noqa: E402
 from code_health_check_service import CodeHealthCheckService  # noqa: E402
+from configured_health_checker_factory import ConfiguredHealthCheckerFactory  # noqa: E402
 
 _ENV_KEY = "SOLID_CODER_SESSION_TYPE"
 _EXPECTED = "health_check"
@@ -106,18 +107,18 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
         _clear_env()
 
     def _run_check_with_backend(self, backend: str):
-        checker_mock = MagicMock()
-        checker_mock.check.return_value = []
-        checker_factory = MagicMock()
-        checker_factory.make.return_value = checker_mock
         codex_runner_mock = MagicMock()
         with patch("hc_config.load_config", return_value=_config(backend=backend)), \
+             patch("configured_health_checker_factory.load_config", return_value=_config(backend=backend)), \
+             patch("configured_health_checker_factory.WorkflowHealthCheckerFactory") as workflow_factory, \
+             patch("configured_health_checker_factory.GateLogger"), \
              patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \
              patch("hc_codex_runner.make_codex_runner", return_value=codex_runner_mock):
+            workflow_factory.return_value.make.return_value.check.return_value = []
             CodeHealthCheck(CodeHealthCheckService(
-                strategy_selector=select_strategy,
-                checker_factory=checker_factory,
-                mcp_config="",
+                checker_factory=ConfiguredHealthCheckerFactory(
+                    plugin_root=Path(__file__).resolve().parents[3],
+                ),
             )).check("content", "/f.swift", "Swift", "sid")
 
     def test_claude_backend_sets_session_type(self):

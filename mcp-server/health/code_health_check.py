@@ -18,12 +18,8 @@ from hook_utils import PLUGIN_ROOT  # noqa: E402
 from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
 from code_health_check_request_checking import CodeHealthCheckRequestChecking  # noqa: E402
 from code_health_check_service import CodeHealthCheckService  # noqa: E402
-from hc_runner_factory import select_strategy  # noqa: E402
-from json_serializer import JsonSerializer  # noqa: E402
-from mcp_config_builder import McpConfigBuilder  # noqa: E402
-from mcp_config_profile import McpConfigProfile  # noqa: E402
+from configured_health_checker_factory import ConfiguredHealthCheckerFactory  # noqa: E402
 from patch_review_context import PatchReviewContext  # noqa: E402
-from workflow_health_checker_factory import WorkflowHealthCheckerFactory  # noqa: E402
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
@@ -61,13 +57,7 @@ class CodeHealthCheck:
         ))
 
 
-_CHECKER_FACTORY = WorkflowHealthCheckerFactory(PLUGIN_ROOT)
+_CHECKER_FACTORY = ConfiguredHealthCheckerFactory(PLUGIN_ROOT)
 CHECK = CodeHealthCheck(CodeHealthCheckService(
-    strategy_selector=select_strategy,
     checker_factory=_CHECKER_FACTORY,
-    mcp_config=McpConfigBuilder(
-        project_root=PLUGIN_ROOT,
-        profile=McpConfigProfile.GATE_FLOW,
-        serializer=JsonSerializer(),
-    ).build(),
 ))

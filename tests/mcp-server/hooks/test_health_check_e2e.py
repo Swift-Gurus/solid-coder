@@ -15,7 +15,9 @@ from _path_bootstrap import ensure_on_path
 
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_checker_factory import make_health_checker  # noqa: E402
+from claude_runner_strategy import ClaudeRunnerStrategy  # noqa: E402
+from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
+from hc_checker_factory import LegacyHealthCheckerFactory  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -153,14 +155,28 @@ class _E2EBase(unittest.TestCase):
 
         results = []
         with (
-            patch("hc_config.load_config", return_value=stub_config),
             patch("hook_utils.subprocess.run", side_effect=side_effect),
+            patch(
+                "hc_checker_factory.solid_coder_project_dir",
+                return_value=self.solid_dir,
+            ),
             patch(
                 "health_check_context_writer_factory.solid_coder_project_dir",
                 return_value=self.solid_dir,
             ),
         ):
-            checker = make_health_checker(mcp_config=_MCP_CONFIG)
+            request = CodeHealthCheckRequest(
+                content=_SWIFT_CONTENT,
+                path=file_path,
+                language="Swift",
+                parent_session_id=session_id,
+            )
+            checker = LegacyHealthCheckerFactory(
+                project_root=self.solid_dir,
+                config=stub_config,
+                strategy=ClaudeRunnerStrategy(),
+                mcp_config=_MCP_CONFIG,
+            ).make(request)
             for _ in findings_sequence:
                 results.append(checker.check(_SWIFT_CONTENT, file_path, "Swift", session_id))
         return results
@@ -177,8 +193,8 @@ class TestViolationFlow(_E2EBase):
         violations = self._run_checks([{"srp": [_SRP_VIOLATION]}])[0]
         self.assertIsInstance(violations, list)
         self.assertEqual(len(violations), 1)
-        self.assertEqual(violations[0]["principle"], "SRP")
-        self.assertEqual(violations[0]["metric_id"], "SRP-1")
+        self.assertEqual(violations[0].principle, "SRP")
+        self.assertEqual(violations[0].metric_id, "SRP-1")
 
     def test_clean_file_returns_empty_list(self):
         result = self._run_checks([{"srp": [_SRP_CLEAN]}])[0]

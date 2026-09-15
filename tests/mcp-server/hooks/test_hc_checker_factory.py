@@ -4,40 +4,53 @@ solid-category: unit-test
 
 from __future__ import annotations
 
-import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from _path_bootstrap import ensure_on_path
 
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_checker_factory import make_health_checker
+from code_health_check_request import CodeHealthCheckRequest
+from hc_checker_factory import LegacyHealthCheckerFactory
 from llm_config import LlmConfig
 from solid_coder_config import SolidCoderConfig
 
 
-class TestMakeHealthChecker(unittest.TestCase):
-    def _make_checker(self, log_path: Path | None = None):
-        with patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(backend="claude"))), \
-             patch("hook_utils.subprocess.run") as sub:
-            sub.return_value = MagicMock(returncode=0, stdout='{"candidate_tags": []}')
-            return make_health_checker(mcp_config='{"mcpServers": {}}', log_path=log_path)
+class TestLegacyHealthCheckerFactory(unittest.TestCase):
+    def setUp(self):
+        self.project_root = Path("/project")
+        self.strategy = MagicMock()
+        self.factory = LegacyHealthCheckerFactory(
+            project_root=self.project_root,
+            config=SolidCoderConfig(llm=LlmConfig(backend="claude")),
+            strategy=self.strategy,
+            mcp_config='{"mcpServers": {}}',
+        )
+
+    def _make_checker(self):
+        return self.factory.make(CodeHealthCheckRequest(
+            content="class Example {}",
+            path="/project/Example.swift",
+            language="Swift",
+            parent_session_id="parent-123",
+        ))
 
     def test_returns_object_with_check_method(self):
         checker = self._make_checker()
         self.assertTrue(callable(getattr(checker, "check", None)))
 
-    def test_uses_default_log_path_when_none(self):
-        checker = self._make_checker(log_path=None)
-        self.assertIsNotNone(checker)
+    def test_passes_request_context_to_runner(self):
+        self._make_checker()
 
-    def test_uses_provided_log_path(self):
-        with tempfile.TemporaryDirectory() as d:
-            log_path = Path(d) / "test.log"
-            checker = self._make_checker(log_path=log_path)
-            self.assertIsNotNone(checker)
+        self.strategy.make_runner.assert_called_once_with(
+            mcp_config='{"mcpServers": {}}',
+            allowed_tools=unittest.mock.ANY,
+            session_id="parent-123",
+            file_path="/project/Example.swift",
+            cwd="/project",
+        )
 
     def test_different_calls_produce_independent_checkers(self):
         checker_a = self._make_checker()

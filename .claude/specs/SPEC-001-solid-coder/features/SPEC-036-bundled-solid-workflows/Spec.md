@@ -4,7 +4,7 @@ feature: bundled-solid-workflows
 type: feature
 status: in-progress
 parent: SPEC-001
-blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045]
+blocked-by: [SPEC-012, SPEC-027, SPEC-028, SPEC-029, SPEC-031, SPEC-034, SPEC-035, SPEC-037, SPEC-039, SPEC-040, SPEC-041, SPEC-042, SPEC-043, SPEC-044, SPEC-045, SPEC-050]
 blocking: []
 ---
 
@@ -56,7 +56,9 @@ As a developer, when an agent proposes a source write, I want the existing write
 - The child session's bootstrap prompt is a generic flow envelope containing the prepared code once, the `run_id`, and the initial ready-step instructions returned by the flow engine.
 - `solid-gate-on-write` composes the canonical `solid-file-review-aggregate` workflow. Applicable rule steps retain their individual identities, schemas, scoring, retries, replay, and audit events while the flow engine presents compatible ready work through aggregate execution and combined prompt presentation; the gate must not fall back to one child-model turn per granular metric step.
 - The child session advances only through `flow_next(run_id=...)`; every step output is schema-validated and recorded before the next instruction is returned.
-- The old `HealthPromptBuilder` detection/workflow prompt path is removed from gate execution; there is no direct-prompt fallback that can produce different review semantics.
+- Workflow mode does not execute the old `HealthPromptBuilder` path and never
+  falls back to it. SPEC-050 keeps that legacy path available only through an
+  explicit project TOML value for controlled A/B comparison.
 - `code_review_on_write_enabled = false` still bypasses the gate. When enabled, flow failure, timeout, malformed output, or an unfinished run fails closed with a diagnostic and leaves run evidence available.
 
 ### US-3: Reuse review from refactor
@@ -149,6 +151,7 @@ sequenceDiagram
 | Replaces | Direct pre-write health-check prompt assembly | Gate execution becomes a flow run |
 | Upstream | SPEC-040 Source MCP Namespace | Supplies deterministic change/range collection, exact extension, units, tags, and evidence |
 | Upstream | SPEC-041 Review Target Normalization | Converges working tree, file(s), folder, Git range/PR, buffer, and code-block requests |
+| Subtask | SPEC-050 Health Check Mode Selection | Provides an explicit legacy/workflow A/B selector while preserving workflow as the default |
 
 ## Test Plan
 
@@ -163,7 +166,9 @@ Current implementation boundary: `solid-review`, reusable `solid-file-review`, a
 - Run `solid-gate-on-write` against a new absolute destination path that does not exist and assert the exact supplied buffer is parsed, tagged, reviewed, and audited without creating or reading the destination before the gate allows it.
 - Run an edit whose on-disk file contains stale content and assert the gate reviews only the simulated prospective text; run a multi-file patch and assert every prospective snapshot is available to DRY while no file is modified before the aggregate allow decision.
 - Run test-support, mock, fixture, and test-only composition buffers through `solid-gate-on-write`; assert deterministic test tags, applicable exceptions, and persisted reasoning/evidence before removing the temporary `tests/**` exclusion.
-- Assert the gate invokes no direct `HealthPromptBuilder` review path.
+- Assert workflow mode invokes no direct `HealthPromptBuilder` review path and
+  never silently falls back; assert legacy mode is reachable only through the
+  explicit SPEC-050 selector.
 - Assert prepared candidate code appears exactly once in the initial model message and never appears in `flow_start` or `flow_next` results.
 - Assert every model-facing rule step identifies its selected file/unit without rendering normalized review objects, applicability metadata, tags, source snapshots, or prior typed outputs.
 - Force malformed output, timeout, and runner failure; assert fail-closed behavior and preserved run diagnostics.
@@ -200,7 +205,8 @@ Before rerunning the comparison:
 
 - [ ] All three public workflow packages are shipped and start by stable ID.
 - [ ] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics.
-- [x] Gate-on-write uses `solid-gate-on-write`; direct health-review prompt execution is removed.
+- [x] Gate-on-write defaults to `solid-gate-on-write`; direct health-review prompt
+  execution is available only through the explicit SPEC-050 comparison selector.
 - [x] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.
 - [x] Candidate-write preparation is deterministic and shared with the typed review-target boundary.
 - [x] New and existing destination paths are reviewed from prospective in-memory text with required virtual identity; gate preparation never rereads stale or nonexistent destination content and never creates a pre-write temporary source file.

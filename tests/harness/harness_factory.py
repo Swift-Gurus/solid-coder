@@ -32,8 +32,12 @@ for _d in (
         sys.path.insert(0, _d)
 
 import hook_utils  # noqa: E402
+from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
 from hc_checker import HealthChecking  # noqa: E402
-from hc_checker_factory import make_health_checker  # noqa: E402
+from hc_checker_factory import LegacyHealthCheckerFactory  # noqa: E402
+from hc_config_schema import load_config  # noqa: E402
+from hc_runner_factory import select_strategy  # noqa: E402
+from patch_review_context import PatchReviewContext  # noqa: E402
 
 from apply_flow_invoker import ApplyFlowInvoker, ConfiguredReviewSessionRunner, FindingsReader, ReasoningWriter, ReviewArtifactHandler, ReviewInputBuilder  # noqa: E402
 from expectation_loader import ExpectationLoader  # noqa: E402
@@ -65,24 +69,45 @@ class RunTimestampGenerator(TimestampGenerating):
 class DirectHealthChecker(HealthChecking):
     """Constructs the legacy checker per call so model-profile overrides remain live."""
 
-    def __init__(self, project_root: Path, checker_factory=None) -> None:
+    def __init__(self, plugin_root: Path, project_root: Path) -> None:
+        self._plugin_root = plugin_root
         self._project_root = project_root
-        self._checker_factory = checker_factory
 
-    def check(self, content: str, path: str, language: str, parent_session_id: str):
-        if self._checker_factory is not None:
-            return self._checker_factory(
-                content,
-                path,
-                language,
-                parent_session_id,
-            )
-        return make_health_checker(
-            mcp_config=McpConfigBuilder().build(self._project_root),
-            session_id=parent_session_id,
-            file_path=path,
-            cwd=str(self._project_root),
-        ).check(content, path, language, parent_session_id)
+    def check(
+        self,
+        content: str,
+        path: str,
+        language: str,
+        parent_session_id: str,
+        cwd: str = "",
+        patch_context: PatchReviewContext | None = None,
+        principle_names: list[str] | None = None,
+    ):
+        request = CodeHealthCheckRequest(
+            content=content,
+            path=path,
+            language=language,
+            parent_session_id=parent_session_id,
+            cwd=cwd or str(self._project_root),
+            patch_context=patch_context,
+            principle_names=principle_names or [],
+        )
+        config = load_config(self._project_root)
+        strategy = select_strategy(config_loader=lambda: config)
+        strategy.apply_env()
+        return LegacyHealthCheckerFactory(
+            project_root=self._project_root,
+            config=config,
+            strategy=strategy,
+            mcp_config=McpConfigBuilder().build(self._plugin_root),
+        ).make(request).check(
+            content,
+            path,
+            language,
+            parent_session_id,
+            patch_context=patch_context,
+            principle_names=principle_names,
+        )
 
 
 class HarnessFactory:
@@ -103,7 +128,10 @@ class HarnessFactory:
         session_runner = ConfiguredReviewSessionRunner(project_root, mcp_config_builder)
         apply_invoker = ApplyFlowInvoker(principle_folder, artifact_handler, session_runner)
 
-        health_checker = DirectHealthChecker(project_root)
+        health_checker = DirectHealthChecker(
+            plugin_root=project_root,
+            project_root=project_root,
+        )
         health_invoker = HealthFlowInvoker(
             checker=health_checker,
             language_provider=SupportedExtensionsProvider(code_health_check.SUPPORTED_EXTENSIONS),

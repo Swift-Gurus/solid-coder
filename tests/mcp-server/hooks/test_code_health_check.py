@@ -14,10 +14,15 @@ ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Pat
 import code_health_check as hook
 import test_utils
 from test_utils import make_subprocess_mock
+from claude_runner_strategy import ClaudeRunnerStrategy
+from code_health_check_request import CodeHealthCheckRequest
 from hc_violation_parser import ViolationParser
-from hc_checker_factory import make_health_checker
+from hc_checker_factory import LegacyHealthCheckerFactory
 from hc_tag_detector import TagDetector
 from hc_rule_loader import GatewayRuleLoader
+from health_violation import HealthViolation
+from llm_config import LlmConfig
+from solid_coder_config import SolidCoderConfig
 from hc_checker import (
     HealthPromptBuilder, PrinciplesLoader, LLMReviewer,
     LLMExecutor, TextBasedOutputHandler, ResponseParser,
@@ -92,10 +97,21 @@ def _make_check_pipeline():
     return lambda *a, **kw: next(it)
 
 
-def _claude_backend_patch():
-    from llm_config import LlmConfig
-    from solid_coder_config import SolidCoderConfig
-    return patch("hc_config.load_config", return_value=SolidCoderConfig(llm=LlmConfig(backend="claude")))
+def _make_legacy_checker():
+    request = CodeHealthCheckRequest(
+        content=LONG_SWIFT,
+        path="/src/Foo.swift",
+        language="Swift",
+        parent_session_id="test-session",
+    )
+    with patch("hc_checker_factory.GateLogger", return_value=MagicMock()):
+        checker = LegacyHealthCheckerFactory(
+            project_root=Path("/src"),
+            config=SolidCoderConfig(llm=LlmConfig(backend="claude")),
+            strategy=ClaudeRunnerStrategy(),
+            mcp_config='{"mcpServers": {}}',
+        ).make(request)
+    return checker
 
 
 class TestViolationParser(unittest.TestCase):
@@ -323,47 +339,46 @@ class TestCheck(unittest.TestCase):
 
     def test_returns_violations_list_when_gateway_reports_findings(self):
         mock_violations = [
-            {"principle": "SRP", "metric_id": "SRP-2",
-             "issue": "SRP-2: /src/Foo.swift, unit Foo — cohesion_groups >= 2 (measured: cohesion_groups=2)\n    -> Call mcp__docs__load_fix_for_violation(SRP-2) for fix guidance",
-             "fix": "Call mcp__docs__load_fix_for_violation(SRP-2) for guidance."},
-            {"principle": "OCP", "metric_id": "OCP-1",
-             "issue": "OCP-1: /src/Foo.swift, unit Foo — sealed_variation_points >= 1 (measured: sealed_variation_points=2)\n    -> Call mcp__docs__load_fix_for_violation(OCP-1) for fix guidance",
-             "fix": "Call mcp__docs__load_fix_for_violation(OCP-1) for guidance."},
+            HealthViolation(
+                principle="SRP",
+                metric_id="SRP-2",
+                issue="SRP-2 is severe",
+                evidence="Legacy output did not preserve evidence for SRP-2.",
+                fix="Call mcp__docs__load_fix_for_violation(SRP-2) for guidance.",
+            ),
+            HealthViolation(
+                principle="OCP",
+                metric_id="OCP-1",
+                issue="OCP-1 is severe",
+                evidence="Legacy output did not preserve evidence for OCP-1.",
+                fix="Call mcp__docs__load_fix_for_violation(OCP-1) for guidance.",
+            ),
         ]
-        with _claude_backend_patch(), \
-             patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
+        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=mock_violations):
-            result = make_health_checker(
-                mcp_config='{"mcpServers": {}}',
-                session_id="test-session",
-                file_path="/src/Foo.swift",
-            ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+            result = _make_legacy_checker().check(
+                LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
+            )
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
-        self.assertEqual(result[0]["principle"], "SRP")
+        self.assertEqual(result[0].principle, "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
-        with _claude_backend_patch(), \
-             patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
+        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=[]):
-            result = make_health_checker(
-                mcp_config='{"mcpServers": {}}',
-                session_id="test-session",
-                file_path="/src/Foo.swift",
-            ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+            result = _make_legacy_checker().check(
+                LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
+            )
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
     def test_raises_on_gateway_failure(self):
         from hook_utils import SubprocessError
-        with _claude_backend_patch(), \
-             patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
+        with patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
             with self.assertRaises(SubprocessError):
-                make_health_checker(
-                    mcp_config='{"mcpServers": {}}',
-                    session_id="test-session",
-                    file_path="/src/Foo.swift",
-                ).check(LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session")
+                _make_legacy_checker().check(
+                    LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
+                )
 
 
 class TestSupportedExtensions(unittest.TestCase):
