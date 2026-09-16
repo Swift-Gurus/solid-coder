@@ -4,21 +4,30 @@ from typing import cast
 
 from harness.aggregate_assignment import AggregateAssignment
 from harness.aggregate_assignment_collecting import AggregateAssignmentCollecting
-from harness.aggregate_batch_step_presentation import AggregateBatchStepPresentation
+from harness.aggregate_assignment_presentation import AggregateAssignmentPresentation
+from harness.aggregate_step_rejection import AggregateStepRejection
 from harness.step_result import StepResult
 
 
 """
 solid-name: AggregateAssignmentCollector
 solid-category: service
-solid-spec: [SPEC-045]
+solid-spec: [SPEC-045, SPEC-052]
 solid-description: Groups original aggregate step results by opaque item label and workflow alias.
 """
 class AggregateAssignmentCollector(AggregateAssignmentCollecting):
     def collect(self, steps: list[StepResult]) -> list[AggregateAssignment]:
         assignments: list[AggregateAssignment] = []
         for step in steps:
-            presentation = cast(AggregateBatchStepPresentation, step.batch)
+            presentation = cast(AggregateAssignmentPresentation, step.batch)
+            rejections: list[AggregateStepRejection] = []
+            if step.rejection_reason is not None:
+                rejections.append(
+                    AggregateStepRejection(
+                        step_id=presentation.authored_step.step_id,
+                        reason=step.rejection_reason,
+                    )
+                )
             matching_index = next(
                 (
                     index
@@ -35,6 +44,7 @@ class AggregateAssignmentCollector(AggregateAssignmentCollecting):
                         workflow_alias=presentation.workflow_alias,
                         instance_id=step.instance_id,
                         steps=[presentation.authored_step],
+                        rejections=rejections,
                     )
                 )
                 continue
@@ -44,5 +54,6 @@ class AggregateAssignmentCollector(AggregateAssignmentCollecting):
                 workflow_alias=assignment.workflow_alias,
                 instance_id=assignment.instance_id,
                 steps=[*assignment.steps, presentation.authored_step],
+                rejections=[*assignment.rejections, *rejections],
             )
         return assignments

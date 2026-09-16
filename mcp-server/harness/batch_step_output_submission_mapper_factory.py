@@ -3,6 +3,12 @@
 from harness.aggregate_batch_output_submission_mapper import (
     AggregateBatchOutputSubmissionMapper,
 )
+from harness.aggregate_envelope_rejection_renderer import (
+    AggregateEnvelopeRejectionRenderer,
+)
+from harness.aggregate_envelope_submission_rejector import (
+    AggregateEnvelopeSubmissionRejector,
+)
 from harness.batch_submission_target_resolver import BatchSubmissionTargetResolver
 from harness.batch_presentation_capability_registration import (
     BatchPresentationCapabilityRegistration,
@@ -48,7 +54,10 @@ class BatchStepOutputSubmissionMapperFactory:
                         capability=AggregateBatchOutputSubmissionMapper(
                             target_resolver=BatchSubmissionTargetResolver(),
                             success_builder=SuccessfulStepOutputMappingBuilder(),
-                            rejection_builder=RejectedStepOutputMappingBuilder(),
+                            envelope_rejector=AggregateEnvelopeSubmissionRejector(
+                                rejection_renderer=AggregateEnvelopeRejectionRenderer(),
+                                rejection_builder=RejectedStepOutputMappingBuilder(),
+                            ),
                         ),
                     ),
                 ]

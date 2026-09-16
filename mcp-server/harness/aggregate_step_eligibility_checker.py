@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from harness.aggregate_step_eligibility_checking import AggregateStepEligibilityChecking
 from harness.flow_def import FlowDef
+from harness.for_each_mode import ForEachMode
 from harness.step_def import StepDef
 from harness.step_instance import StepInstance
 from harness.workflow_execution_mode import WorkflowExecutionMode
@@ -16,7 +17,7 @@ _MODEL_OWNED_STEP_TYPES = frozenset({"agent", "metric", "exception"})
 solid-name: AggregateStepEligibilityChecker
 solid-category: service
 solid-spec: [SPEC-045]
-solid-description: Determines aggregate eligibility from typed ownership policy and step execution type.
+solid-description: Selects steps eligible for aggregate model execution.
 """
 class AggregateStepEligibilityChecker(AggregateStepEligibilityChecking):
     def is_eligible(
@@ -31,4 +32,9 @@ class AggregateStepEligibilityChecker(AggregateStepEligibilityChecking):
         return (
             execution is WorkflowExecutionMode.AGGREGATE
             and step.type in _MODEL_OWNED_STEP_TYPES
+            and not (
+                instance.workflow_instance is not None
+                and step.for_each is not None
+                and step.for_each.mode is ForEachMode.INDIVIDUAL
+            )
         )

@@ -6,6 +6,9 @@ from harness.aggregate_item_schema_builder import AggregateItemSchemaBuilder
 from harness.aggregate_prompt_renderer import AggregatePromptRenderer
 from harness.aggregate_response_schema_builder import AggregateResponseSchemaBuilder
 from harness.aggregate_step_schema_builder import AggregateStepSchemaBuilder
+from harness.aggregate_submission_instruction_renderer import (
+    AggregateSubmissionInstructionRenderer,
+)
 from harness.aggregate_turn_compiler import AggregateTurnCompiler
 from harness.aggregate_workflow_schema_builder import AggregateWorkflowSchemaBuilder
 from harness.output_spec_schema_serializer import OutputSpecSchemaSerializer
@@ -16,7 +19,7 @@ from json_serializer import JsonSerializer
 """
 solid-name: AggregateBatchStepRendererFactory
 solid-category: factory
-solid-spec: [SPEC-045]
+solid-spec: [SPEC-045, SPEC-052]
 solid-description: Assembles aggregate assignment rendering and strict response-schema construction.
 """
 class AggregateBatchStepRendererFactory:
@@ -40,5 +43,6 @@ class AggregateBatchStepRendererFactory:
                     object_schema_builder=object_schema_builder,
                 ),
             ),
+            submission_instructions=AggregateSubmissionInstructionRenderer(),
             json_serializer=JsonSerializer(),
         )
