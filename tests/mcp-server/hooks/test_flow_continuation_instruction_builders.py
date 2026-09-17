@@ -37,6 +37,41 @@ class TestFlowContinuationInstructionBuilders(unittest.TestCase):
         self.assertIn("Do not inspect ALL_TOOLS", instruction)
         self.assertIn("Do not search for tools", instruction)
 
+    def test_codex_instruction_builds_outputs_incrementally(self) -> None:
+        instruction = CodexFlowContinuationInstructionBuilder().build("gate-run")
+
+        self.assertIn("const outputs = {};", instruction)
+        self.assertIn(
+            "const assign = (path, value)",
+            instruction,
+        )
+        self.assertIn(
+            "cursor[path[path.length - 1]] = value;",
+            instruction,
+        )
+        self.assertIn("one assign call for every required schema leaf", instruction)
+        self.assertIn("run_id: \"gate-run\", outputs", instruction)
+        self.assertNotIn(
+            '{"<returned-step-id>": <JSON output>}',
+            instruction,
+        )
+
+    def test_codex_instruction_recovers_local_script_failure_in_same_run(self) -> None:
+        instruction = CodexFlowContinuationInstructionBuilder().build("gate-run")
+
+        self.assertIn("did not reach flow_next", instruction)
+        self.assertIn("same run_id", instruction)
+        self.assertIn("Do not call flow_start", instruction)
+        self.assertIn("reconstruct the complete outputs object", instruction)
+        self.assertIn("Call flow_next once", instruction)
+
+    def test_codex_instruction_preserves_partial_mcp_recovery_contract(self) -> None:
+        instruction = CodexFlowContinuationInstructionBuilder().build("gate-run")
+
+        self.assertIn("flow_next returns a validation rejection", instruction)
+        self.assertIn("accepted assignments are already saved", instruction)
+        self.assertIn("only the pending or rejected subset", instruction)
+
     def test_native_instruction_uses_registered_flow_next_tool(self) -> None:
         instruction = NativeFlowContinuationInstructionBuilder().build("gate-run")
 

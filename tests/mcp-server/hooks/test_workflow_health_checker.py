@@ -109,6 +109,9 @@ class TestWorkflowHealthChecker(unittest.TestCase):
         self.violation_selector.select.assert_called_once_with(self.review_result)
 
     def test_rejects_nonterminal_child_session(self) -> None:
+        self.runner.run.return_value = (
+            "Script failed\nScript error:\nSyntaxError: Unexpected string"
+        )
         self.flow.flow_status.return_value = FlowStatusResult(
             flow="SOLID Gate on Write",
             run_id="gate-run",
@@ -120,7 +123,7 @@ class TestWorkflowHealthChecker(unittest.TestCase):
             pending=["rule.metric"],
         )
 
-        with self.assertRaisesRegex(RuntimeError, "did not complete"):
+        with self.assertRaises(RuntimeError) as raised:
             self.sut.check(
                 content="struct NewFeature {}",
                 path="/project/Sources/NewFeature.swift",
@@ -128,7 +131,43 @@ class TestWorkflowHealthChecker(unittest.TestCase):
                 parent_session_id="parent-session",
             )
 
+        message = str(raised.exception)
+        self.assertIn("Gate workflow did not complete: ready", message)
+        self.assertIn("SyntaxError: Unexpected string", message)
+        self.assertIn("Pending workflow steps: rule.metric", message)
+        self.assertIn("Retry the same write", message)
         self.result_reader.read.assert_not_called()
+
+    def test_propagates_child_runner_error_with_retry_action(self) -> None:
+        self.runner.run.side_effect = RuntimeError(
+            "Script failed: SyntaxError: Unexpected string"
+        )
+        self.flow.flow_status.return_value = FlowStatusResult(
+            flow="SOLID Gate on Write",
+            run_id="gate-run",
+            status="ready",
+            turn_count=1,
+            max_turns=500,
+            completed=[],
+            running=[],
+            pending=["rule.metric"],
+        )
+
+        with self.assertRaises(RuntimeError) as raised:
+            self.sut.check(
+                content="struct NewFeature {}",
+                path="/project/Sources/NewFeature.swift",
+                language="Swift",
+                parent_session_id="parent-session",
+            )
+
+        message = str(raised.exception)
+        self.assertIn("Gate workflow did not complete: ready", message)
+        self.assertIn("SyntaxError: Unexpected string", message)
+        self.assertIn("Pending workflow steps: rule.metric", message)
+        self.assertIn("Retry the same write", message)
+        self.assertIn("new isolated review", message)
+        self.flow.flow_status.assert_called_once_with("gate-run")
 
     def test_rejects_failed_flow_start(self) -> None:
         self.flow.flow_start.return_value = FlowStartResult(

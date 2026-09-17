@@ -69,24 +69,39 @@ class WorkflowHealthChecker:
         if started.status == "done":
             return []
 
-        response = self._runner.run(
-            self._prompt_builder.build(
-                content=content,
-                path=path,
-                parent_session_id=parent_session_id,
-                run_id=started.run_id,
-                first_step=self._renderer.render_start(started),
-            ),
-            timeout=self._timeout_seconds,
-        )
-        if not response:
-            raise RuntimeError("Gate workflow child session returned no result")
+        response = None
+        child_error = None
+        try:
+            response = self._runner.run(
+                self._prompt_builder.build(
+                    content=content,
+                    path=path,
+                    parent_session_id=parent_session_id,
+                    run_id=started.run_id,
+                    first_step=self._renderer.render_start(started),
+                ),
+                timeout=self._timeout_seconds,
+            )
+        except Exception as error:
+            child_error = error
 
         status = self._flow.flow_status(started.run_id)
         if status.status != "done":
             detail = status.error or status.status
+            pending = ", ".join(status.pending) or "unknown"
+            child_detail = (
+                f"Child session error: {child_error}"
+                if child_error is not None
+                else f"Child session result: {response or 'no result'}"
+            )
             raise RuntimeError(
-                f"Gate workflow did not complete: {detail}"
+                f"Gate workflow did not complete: {detail}\n"
+                f"{child_detail}\n"
+                f"Pending workflow steps: {pending}\n"
+                "Retry the same write. The gate will start a new isolated review "
+                "and resubmit the complete aggregate. Do not attempt a partial "
+                "flow_next correction from the parent session or modify the source "
+                "solely because of this infrastructure failure."
             )
         return self._violation_selector.select(
             self._result_reader.read(started.run_id)
