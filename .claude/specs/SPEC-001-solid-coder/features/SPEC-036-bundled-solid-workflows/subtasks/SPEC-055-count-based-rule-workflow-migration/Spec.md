@@ -307,6 +307,14 @@ synchronization, and typed-identifier findings. MCP derives UITEST-1 through
 UITEST-5, preserves UITEST-5's minor/severe thresholds, applies authored
 exceptions per observation, and retains the Swift UI-test applicability gate.
 
+The locked UI Testing fixture passes through Codex and Claude with exact values
+`2 / 1 / 1 / 9 / 8`. Live validation made each metric's observation identity
+explicit: inline flows are counted per offending test method, overlapping
+base-class symptoms form one suite observation, assertion fragmentation is
+counted per group, synchronization is counted per wait or unguarded access
+site, and typed identifiers are counted per raw query occurrence. Final Codex
+and Claude runs completed in 54.21s and 79.32s respectively.
+
 LSP now derives LSP-1 developer-owned type-check count plus LSP-3/LSP-4 fatal
 and empty implementation counts directly from its existing typed shared
 analysis. External type checks remain explicit non-counted observations. LSP-2
@@ -331,5 +339,5 @@ Codex/Claude rule scenarios are completed one workflow at a time.
 After the Unit Testing checkpoint, the complete non-live suite is green at
 1,822 passing tests, 4 intentional skips, and the one known host-Xcode dynamic
 command case explicitly deselected. Structured Concurrency, Code Smells,
-Frontmatter, and Unit Testing now have locked live evidence from both Codex and
-Claude.
+Frontmatter, Unit Testing, and UI Testing now have locked live evidence from
+both Codex and Claude.

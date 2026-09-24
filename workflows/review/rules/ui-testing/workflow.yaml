@@ -90,6 +90,25 @@ steps:
       Set `is_exception` to true only when the individual observation matches an
       authored exception. Supply nonempty reasoning and precise source evidence
       for every observation. Return no observation for a compliant category.
+
+      Use these metric-specific observation identities:
+
+      - UITEST-1: emit one inline-flow observation per offending test method.
+        Do not add another duplicated-sequence observation when every
+        participating method already has an inline-flow observation for that
+        sequence.
+      - UITEST-2: treat a suite that lacks a shared base while owning its
+        lifecycle as one base-class observation rather than one per symptom.
+      - UITEST-3: emit one observation per fragmented assertion group.
+      - UITEST-4: emit one observation for every individual time-based wait and
+        for every individual interaction or assertion lacking a condition-based
+        wait. Do not merge distinct source locations merely because one helper
+        could fix all of them. Reading `element.exists` inside an immediate
+        assertion is not a condition-based wait; when no earlier wait guards
+        that element, the assertion is its own synchronization observation.
+      - UITEST-5: emit one observation for every raw string query occurrence.
+        Mixed usage may strengthen the evidence but must not add a second
+        observation for a query already counted.
     outputs:
       - name: observations
         type: data
