@@ -101,7 +101,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertEqual(self._rule_step_count(identities, "swiftui"), 11)
         self.assertEqual(
             self._rule_step_count(identities, "structured-concurrency"),
-            14,
+            2,
         )
 
     def test_file_review_applies_project_policy_before_rule_materialization(self) -> None:

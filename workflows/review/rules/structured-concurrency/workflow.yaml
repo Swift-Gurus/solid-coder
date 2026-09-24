@@ -11,10 +11,14 @@ rule:
       included: [structured-concurrency]
 
 steps:
-  - id: model_mixing
-    type: metric
-    metric_id: SC-1
+  - id: classify_concurrency_observations
+    type: agent
     prompt: |
+      Analyze unit `{{params.review_unit.target.name}}` from the source already
+      visible in this session. Apply every canonical detection procedure below.
+
+      ## SC-1: Concurrency Model Mixing
+
       A type MUST use one concurrency model. Mixing `async/await` with GCD (`DispatchQueue.async`, `DispatchQueue.main.async`) or completion handlers in the same type creates unpredictable execution order and makes cancellation impossible.
 
       1. Count `async` functions/methods in the type
@@ -24,17 +28,8 @@ steps:
       **Scoring:**
       - If async count > 0 AND (GCD count > 0 OR completion handler count > 0) → the type mixes models
 
-      Return `1` when the type mixes models, otherwise `0`, with reasoning and precise evidence.
+      ## SC-2: Unstructured Task Lifecycle
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: orphaned_tasks
-    type: metric
-    metric_id: SC-2
-    prompt: |
       Every `Task { }` or `Task.detached { }` created outside of SwiftUI `.task` modifier must have a stored handle and a cancellation path.
 
       1. Count `Task {` and `Task.detached {` occurrences in the type
@@ -44,48 +39,21 @@ steps:
       3. Count tasks without stored handle = orphaned tasks
       4. Count tasks with stored handle but no cancel call = leaked tasks
 
-      Return the combined orphaned-or-leaked task count with reasoning and precise evidence.
+      ## SC-3: Concurrency Safety Bypasses
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: safety_bypasses
-    type: metric
-    metric_id: SC-3
-    prompt: |
       Developer escape hatches that silence the compiler without fixing the underlying problem.
 
       1. Count `@unchecked Sendable` on any type — bypasses compiler Sendable verification entirely, regardless of whether properties are `let` or `var`
       2. Count `nonisolated(unsafe)` usages — bypasses actor isolation checking
 
-      Return the combined safety-bypass count with reasoning and precise evidence.
+      ## SC-4: Sequential vs Concurrent Await
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: independent_sequential_awaits
-    type: metric
-    metric_id: SC-4
-    prompt: |
       1. Find sequences of `await` calls within the same scope (function body, closure)
       2. For each pair of sequential awaits: are they independent? (second doesn't use result of first)
       3. Count independent sequential awaits that could be `async let` or `TaskGroup`
 
-      Return the count with reasoning and precise evidence.
+      ## SC-5: Sync-to-Async Bridging
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 3}
-
-  - id: blocking_bridges
-    type: metric
-    metric_id: SC-5
-    prompt: |
       1. Count synchronous functions that use blocking mechanisms to wait for async results:
          - `DispatchSemaphore` + `.wait()` around async code
          - `DispatchGroup` + `.wait()` around async code  
@@ -94,32 +62,157 @@ steps:
          - Is there a native async API available for what's being wrapped?
          - Does every code path resume exactly once?
 
-      Return the blocking-bridge violation count with reasoning and precise evidence.
+      ## SC-6: Duration API
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: raw_duration_count
-    type: metric
-    metric_id: SC-6
-    prompt: |
       Use Swift `Duration` API for all time values. Raw nanosecond/millisecond integers are error-prone and unreadable.
 
       1. Count usages of `Task.sleep(nanoseconds:)` — should be `Task.sleep(for: .seconds(N))`
       2. Count raw integer literals used as time durations (nanoseconds, milliseconds) where `.seconds()`, `.milliseconds()`, `.minutes()` should be used
       3. Applies to: timeouts, delays, intervals, any time duration parameter
 
-      Return the count with reasoning and precise evidence.
+      Return one observation for every violation site, using exactly one of these
+      classifications:
 
-      Apply this measurement to unit `{{params.review_unit.target.name}}` from the source already visible in this session.
+      - `MODEL_MIXING`: one observation when the reviewed type mixes models.
+      - `ORPHANED_OR_LEAKED_TASK`: one observation per unmanaged task.
+      - `SAFETY_BYPASS`: one observation per compiler-safety bypass.
+      - `INDEPENDENT_SEQUENTIAL_AWAIT`: one observation per independent await
+        counted by SC-4.
+      - `BLOCKING_BRIDGE`: one observation per blocking or invalid bridge.
+      - `RAW_DURATION`: one observation per raw duration use.
+
+      Set `is_exception` only when the individual observation matches one of the
+      authored exceptions used by the final exception step. Return no observation
+      for a compliant category. Supply nonempty reasoning and precise source
+      evidence for every observation.
+    outputs:
+      - name: observations
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - classification
+              - location
+              - is_exception
+              - reasoning
+              - evidence
+            properties:
+              classification:
+                type: string
+                enum:
+                  - MODEL_MIXING
+                  - ORPHANED_OR_LEAKED_TASK
+                  - SAFETY_BYPASS
+                  - INDEPENDENT_SEQUENTIAL_AWAIT
+                  - BLOCKING_BRIDGE
+                  - RAW_DURATION
+              location: {type: string, minLength: 1}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: model_mixing
+    type: metric
+    metric_id: SC-1
+    depends_on: [classify_concurrency_observations]
     value: {type: integer, minimum: 0}
     scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: MODEL_MIXING
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: orphaned_tasks
+    type: metric
+    metric_id: SC-2
+    depends_on: [classify_concurrency_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: ORPHANED_OR_LEAKED_TASK
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: safety_bypasses
+    type: metric
+    metric_id: SC-3
+    depends_on: [classify_concurrency_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: SAFETY_BYPASS
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: independent_sequential_awaits
+    type: metric
+    metric_id: SC-4
+    depends_on: [classify_concurrency_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: INDEPENDENT_SEQUENTIAL_AWAIT
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 3}
+
+  - id: blocking_bridges
+    type: metric
+    metric_id: SC-5
+    depends_on: [classify_concurrency_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: BLOCKING_BRIDGE
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: raw_duration_count
+    type: metric
+    metric_id: SC-6
+    depends_on: [classify_concurrency_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_concurrency_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: RAW_DURATION
+          - ref: "{{item.is_exception}}"
+            equals: false
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: classify_exception
     type: exception
+    depends_on:
+      - model_mixing
+      - orphaned_tasks
+      - safety_bypasses
+      - independent_sequential_awaits
+      - blocking_bridges
+      - raw_duration_count
     prompt: |
       1. **Legacy bridge code** — `withCheckedContinuation` wrapping completion-handler APIs (e.g., `URLSession` delegate methods, CoreLocation callbacks, `NotificationCenter` observers) that Apple has not yet provided an `async` alternative for. If an `async` version of the API exists in the SDK, using continuation instead of the async version IS a violation.
       2. **SwiftUI `.task` modifier** — framework manages Task cancellation automatically, no need to store handle

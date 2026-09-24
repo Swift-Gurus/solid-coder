@@ -246,9 +246,19 @@ detection wording for valid comparison.
 
 SRP validation covers exact `6 / 2 / 2` values, MCP ownership, exception
 override, audit persistence, incomplete-observation rejection, bundle execution,
-and aggregate presentation with one analysis prompt per unit. Current non-live
-results are 764 flow-engine tests passing (with the one host-Xcode wrapper case
-deselected), 852 MCP-server tests passing with 4 intentional skips, 95 harness
-tests, 62 hook tests, and 36 Apple-build tests. Locked live execution remains
-blocked by the host-integration issues recorded in SPEC-054 rather than an SRP
-assertion.
+and aggregate presentation with one analysis prompt per unit.
+
+Structured Concurrency now uses one typed
+`classify_concurrency_observations` model step for model mixing, unmanaged task
+lifecycle, safety bypasses, independent sequential awaits, blocking bridges,
+and raw durations. MCP derives SC-1 through SC-6 from that shared collection,
+preserves the existing thresholds, and excludes an excepted observation only
+from its matching metric. Bundle coverage confirms the migration reduces the
+selected rule from fourteen model-facing steps to two while retaining internal
+metric execution.
+
+Current non-live results are 765 flow-engine tests passing (with the one
+host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
+intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
+Locked live execution remains blocked by the host-integration issues recorded
+in SPEC-054 rather than an SRP or Structured Concurrency assertion.
