@@ -24,7 +24,10 @@ steps:
       An isolated test can run in any order, concurrently, and repeatedly with the same result. Shared mutable state between tests and test interdependencies break isolation.
 
       1. **Shared mutable state** — scan test class for:
-         - `static var` / `static let` that is mutated across tests
+         - `static var`, because its mutable state is shared by every test
+           instance; count the declaration even when this source snapshot does
+           not show a test mutating or reading it
+         - `static let` whose referenced object is mutated across tests
          - Class-level `var` properties not reset in `setUp`/`init`
          - Singleton access (`.shared`, `.default`) without injection
       2. **Test interdependencies** — look for:
@@ -192,6 +195,15 @@ steps:
       Set `is_exception` to true only when the individual observation matches an
       authored exception. Supply nonempty reasoning and precise source evidence
       for every observation. Return no observation for a compliant category.
+
+      Emit one observation per distinct remediation within each metric. When
+      several detection bullets describe the same underlying site or root cause,
+      combine their evidence into one observation rather than counting the same
+      problem twice. In particular, one test-double misuse remains one TEST-4
+      observation even when it is both an unnecessary mock and a mock-only
+      assertion, and one file or suite using the wrong testing framework remains
+      one TEST-6 observation even when its import, superclass, and assertion
+      macros all demonstrate that framework choice.
     outputs:
       - name: observations
         type: data

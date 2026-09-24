@@ -52,7 +52,10 @@ An isolated test can run in any order, concurrently, and repeatedly with the sam
 
 <detection id="TEST-1">
 1. **Shared mutable state** — scan test class for:
-   - `static var` / `static let` that is mutated across tests
+   - `static var`, because its mutable state is shared by every test
+     instance; count the declaration even when this source snapshot does
+     not show a test mutating or reading it
+   - `static let` whose referenced object is mutated across tests
    - Class-level `var` properties not reset in `setUp`/`init`
    - Singleton access (`.shared`, `.default`) without injection
 2. **Test interdependencies** — look for:

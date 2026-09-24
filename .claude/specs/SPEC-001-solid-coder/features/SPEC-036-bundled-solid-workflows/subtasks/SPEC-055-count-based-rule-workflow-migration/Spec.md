@@ -293,6 +293,14 @@ unit-test tag and Swift-file applicability. Gate-on-write coverage confirms the
 prospective buffer now presents one classifier instead of seven simultaneous
 rule steps.
 
+The locked Unit Testing fixture passes through Codex and Claude with exact
+values `1 / 2 / 3 / 1 / 1 / 1`. Live validation clarified two canonical
+counting boundaries without changing the fixture contract: multiple symptoms
+of one test-double or framework remediation produce one observation, while a
+`static var` declaration is itself shared mutable test state even when the
+reviewed snapshot does not show a read or mutation. Codex completed in 45.85s
+and Claude completed in 79.64s.
+
 UI Testing now uses one file-scoped `classify_ui_test_observations` model step
 for flow encapsulation, base-class structure, assertion grouping,
 synchronization, and typed-identifier findings. MCP derives UITEST-1 through
@@ -317,12 +325,11 @@ SUI-4 categorical injection style remain model-owned; reducer-backed maxima
 belong to SPEC-057. Bundle startup presents six SwiftUI steps instead of eleven.
 
 All count-based workflow migrations named by this spec are implemented and
-non-live validated. The spec remains `in-progress` solely because its locked
-Codex/Claude live matrix is blocked by the host-integration issues recorded in
-SPEC-054.
+non-live validated. The spec remains `in-progress` while the remaining locked
+Codex/Claude rule scenarios are completed one workflow at a time.
 
-Current non-live results are 775 flow-engine tests passing (with the one
-host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
-intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
-Locked live execution remains blocked by the host-integration issues recorded
-in SPEC-054 rather than a migrated-rule assertion.
+After the Unit Testing checkpoint, the complete non-live suite is green at
+1,822 passing tests, 4 intentional skips, and the one known host-Xcode dynamic
+command case explicitly deselected. Structured Concurrency, Code Smells,
+Frontmatter, and Unit Testing now have locked live evidence from both Codex and
+Claude.
