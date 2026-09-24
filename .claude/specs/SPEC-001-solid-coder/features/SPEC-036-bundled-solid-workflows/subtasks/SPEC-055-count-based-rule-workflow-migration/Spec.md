@@ -281,6 +281,10 @@ bad description observations. MCP derives FM-1 through FM-5, retains all
 metric-specific exclusions and thresholds, and reduces initial rule presentation
 from six simultaneous model steps to one classification step.
 
+The locked missing-frontmatter fixture passes through Codex and Claude with
+exact values `1 / 0 / 0 / 0 / 0`; focused non-live Frontmatter coverage remains
+green at 8 tests.
+
 Unit Testing now uses one file-scoped `classify_test_observations` model step
 for isolation, structure, naming, test-double, setup, and framework findings.
 MCP derives TEST-1 through TEST-6, preserves the TEST-3 minor/severe bands,
