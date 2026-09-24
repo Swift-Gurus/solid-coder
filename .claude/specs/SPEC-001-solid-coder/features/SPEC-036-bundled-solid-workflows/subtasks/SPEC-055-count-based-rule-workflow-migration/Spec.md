@@ -257,8 +257,17 @@ from its matching metric. Bundle coverage confirms the migration reduces the
 selected rule from fourteen model-facing steps to two while retaining internal
 metric execution.
 
-Current non-live results are 765 flow-engine tests passing (with the one
+Code Smells now uses one file-scoped `classify_smell_observations` model step
+for static logic, effective top-level type boundaries, and inline types. MCP
+derives CS-1 through CS-3, preserves metric-specific exclusions independently,
+and retains the explicit no-rule-wide-exception decision. Bundle coverage
+confirms that initial model presentation drops from four simultaneous rule
+steps to one classification step. The deeper effective-boundary validation
+described by SPEC-051 remains separate from this arithmetic-ownership migration.
+
+Current non-live results are 767 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
 Locked live execution remains blocked by the host-integration issues recorded
-in SPEC-054 rather than an SRP or Structured Concurrency assertion.
+in SPEC-054 rather than an SRP, Structured Concurrency, or Code Smells
+assertion.

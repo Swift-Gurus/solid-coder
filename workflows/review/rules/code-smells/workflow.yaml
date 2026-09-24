@@ -7,31 +7,22 @@ rule:
   scope: file
 
 steps:
-  - id: static_logic_count
-    type: metric
-    metric_id: CS-1
+  - id: classify_smell_observations
+    type: agent
     prompt: |
+      Analyze file `{{params.review_unit.target.name}}` from the source already
+      visible in this session. Apply every canonical detection procedure below.
+
+      ## CS-1: Static Logic
+
       Static functions, class methods, or module-level functions used to hold or split
       business logic across a type — not constants, not a build-system DSL.
 
       Count static or class methods that contain business logic (branching, construction,
       transformation). Exclude pure constants and build-system DSL files.
 
-      Return the count with reasoning and precise source evidence.
+      ## CS-2: Multiple Types Per File
 
-      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
-  - id: class_struct_count
-    type: metric
-    metric_id: CS-2
-    prompt: |
       Count of distinct class or struct definitions in a single source file, excluding
       private extensions that exist solely to support the file's primary type and one
       behavioral contract colocated with its first concrete implementation for the
@@ -42,13 +33,88 @@ steps:
       behavioral contract and its first concrete implementation as one cohesive type
       boundary; additional implementations count independently.
 
-      Return the count with reasoning and precise source evidence.
+      ## CS-3: Inline Type Definition
 
-      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
+      Count of class, struct, interface, or enum definitions declared inside a function or method body rather than at module/file scope.
+
+      Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
+      Count each such declaration. Anonymous functions/lambdas do not count.
+
+      Return one observation for every counted or explicitly excluded site, using
+      exactly one of these classifications:
+
+      - `STATIC_LOGIC`: one observation per static or class method containing
+        business logic.
+      - `TYPE_BOUNDARY`: one observation per effective top-level class or struct
+        boundary after grouping one behavioral contract with its first cohesive
+        implementation.
+      - `INLINE_TYPE`: one observation per type declared inside a function or
+        method body.
+
+      Set `is_exception` to true only when that individual candidate matches a
+      metric-specific exclusion above. Return no observation for declarations
+      outside these three candidate categories. Supply nonempty reasoning and
+      precise source evidence for every observation.
+    outputs:
+      - name: observations
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - classification
+              - location
+              - is_exception
+              - reasoning
+              - evidence
+            properties:
+              classification:
+                type: string
+                enum:
+                  - STATIC_LOGIC
+                  - TYPE_BOUNDARY
+                  - INLINE_TYPE
+              location: {type: string, minLength: 1}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: static_logic_count
+    type: metric
+    metric_id: CS-1
+    depends_on: [classify_smell_observations]
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: STATIC_LOGIC
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: class_struct_count
+    type: metric
+    metric_id: CS-2
+    depends_on: [classify_smell_observations]
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: TYPE_BOUNDARY
+          - ref: "{{item.is_exception}}"
+            equals: false
       severe:
         operator: greater_than_or_equal
         value: 2
@@ -56,25 +122,28 @@ steps:
   - id: inline_type_count
     type: metric
     metric_id: CS-3
-    prompt: |
-      Count of class, struct, interface, or enum definitions declared inside a function or method body rather than at module/file scope.
-
-      Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
-      Count each such declaration. Anonymous functions/lambdas do not count.
-
-      Return the count with reasoning and precise source evidence.
-
-      Apply this measurement to file `{{params.review_unit.target.name}}`, whose source is already visible in the current model session.
+    depends_on: [classify_smell_observations]
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: INLINE_TYPE
+          - ref: "{{item.is_exception}}"
+            equals: false
       severe:
         operator: greater_than_or_equal
         value: 1
 
   - id: classify_exception
     type: exception
+    depends_on:
+      - static_logic_count
+      - class_struct_count
+      - inline_type_count
     prompt: |
       This rule has no rule-wide exception categories. Metric-specific exclusions are already authored in CS-1, CS-2, and CS-3 and must be applied while measuring those metrics. Return `is_exception: false` with reasoning and evidence confirming that no separate rule-wide exception was applied.
 
