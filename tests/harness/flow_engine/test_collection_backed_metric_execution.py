@@ -16,7 +16,7 @@ from harness.runs_base_dir_resolver import RunsBaseDirResolver
 """
 solid-name: TestCollectionBackedMetricExecution
 solid-category: integration-test
-solid-spec: [SPEC-053]
+solid-spec: [SPEC-053, SPEC-054]
 solid-description: Verifies deterministic collection metric completion through the real flow engine.
 """
 class TestCollectionBackedMetricExecution(unittest.TestCase):
@@ -170,6 +170,71 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
             ["reviews-1", "reviews-2"],
         )
 
+    def test_batch_for_each_derives_one_instance_scoped_metric_per_item(self) -> None:
+        parent_path = self._write_dynamic_rule_workflows(batch=True)
+        prepared = self.engine.flow_start(str(parent_path))
+        analyses = self.engine.flow_next({
+            prepared.steps[0].instance_id: {
+                "units": [{"name": "Alpha"}, {"name": "Beta"}],
+            }
+        })
+
+        self.assertEqual(
+            [step.batch.label for step in analyses.steps],
+            ["Alpha", "Beta"],
+        )
+        exceptions = self.engine.flow_next({
+            "Alpha": {
+                "task_sites": [
+                    {"classification": "DETACHED", "is_exception": False},
+                ],
+            },
+            "Beta": {
+                "task_sites": [
+                    {"classification": "DETACHED", "is_exception": False},
+                    {"classification": "DETACHED", "is_exception": False},
+                ],
+            },
+        })
+
+        self.assertEqual(
+            [step.batch.label for step in exceptions.steps],
+            ["Alpha", "Beta"],
+        )
+        metric_events = [
+            event
+            for event in self._events(prepared.run_id)
+            if event.get("event") == "step_completed"
+            and event.get("metric_derivation") is not None
+        ]
+        self.assertEqual(
+            [event["outputs"]["value"] for event in metric_events],
+            [1, 2],
+        )
+        self.assertEqual(
+            [event["workflow_instance_id"] for event in metric_events],
+            ["reviews-1", "reviews-2"],
+        )
+
+        completed = self.engine.flow_next({
+            "Alpha": {
+                "is_exception": False,
+                "additional_info": {
+                    "reasoning": "Alpha is not exempt.",
+                    "evidence": "Alpha performs runtime behavior.",
+                },
+            },
+            "Beta": {
+                "is_exception": False,
+                "additional_info": {
+                    "reasoning": "Beta is not exempt.",
+                    "evidence": "Beta performs runtime behavior.",
+                },
+            },
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+
     def test_aggregate_execution_omits_internal_metric_and_preserves_exception_audit(self) -> None:
         workflow_path = self.project_root / "aggregate.yaml"
         workflow_path.write_text(
@@ -229,6 +294,58 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         self.assertEqual(
             result["metrics"][0]["derivation"]["matched_indexes"],
             [0],
+        )
+
+    def test_aggregate_execution_drains_reducer_without_model_metric_step(self) -> None:
+        workflow_path = self.project_root / "aggregate-maximum.yaml"
+        workflow_path.write_text(
+            textwrap.dedent(self._maximum_workflow()).replace(
+                "max_turns: 5",
+                "max_turns: 5\nexecution:\n  mode: aggregate",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        started = self.engine.flow_start(str(workflow_path))
+
+        self.assertEqual(len(started.steps), 1)
+        self.assertNotIn("maximum_depth", started.steps[0].prompt)
+        advanced = self.engine.flow_next({
+            "maximum-depth-review": {
+                "maximum-depth-review": {
+                    "analyze_views": {
+                        "views": [
+                            {"depth": 2, "is_exception": False},
+                            {"depth": 5, "is_exception": False},
+                        ]
+                    }
+                }
+            }
+        })
+
+        self.assertIsNone(advanced.error, advanced.error)
+        self.assertEqual(len(advanced.steps), 1)
+        self.assertNotIn("maximum_depth", advanced.steps[0].prompt)
+        completed = self.engine.flow_next({
+            "maximum-depth-review": {
+                "maximum-depth-review": {
+                    "classify_exception": {
+                        "is_exception": False,
+                        "additional_info": {
+                            "reasoning": "No exception applies.",
+                            "evidence": "The unit contains runtime behavior.",
+                        },
+                    }
+                }
+            }
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        result = self._result(started.run_id, "maximum-depth-review")
+        self.assertEqual(result["metrics"][0]["value"], 5)
+        self.assertEqual(
+            result["metrics"][0]["derivation"]["reducer"]["type"],
+            "maximum",
         )
 
     def test_skipped_source_completes_internal_metric_with_zero(self) -> None:
@@ -305,6 +422,53 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         self.assertEqual(len(metric_events), 1)
         self.assertEqual(metric_events[0]["outputs"]["value"], 1)
 
+    def test_reduces_and_replays_maximum_with_projection_evidence(self) -> None:
+        workflow_path = self.project_root / "maximum.yaml"
+        workflow_path.write_text(
+            textwrap.dedent(self._maximum_workflow()),
+            encoding="utf-8",
+        )
+        started = self.engine.flow_start(str(workflow_path))
+
+        advanced = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "views": [
+                    {"depth": 2, "is_exception": False},
+                    {"depth": 9, "is_exception": True},
+                    {"depth": 5, "is_exception": False},
+                ]
+            }
+        })
+
+        self.assertIsNone(advanced.error, advanced.error)
+        metric_event = next(
+            event
+            for event in self._events(started.run_id)
+            if event.get("step_id") == "maximum_depth"
+        )
+        self.assertEqual(metric_event["outputs"]["value"], 5)
+        self.assertIn(
+            "maximum reducer",
+            metric_event["outputs"]["additional_info"]["reasoning"],
+        )
+        derivation = metric_event["metric_derivation"]
+        self.assertEqual(derivation["kind"], "collection_reducer")
+        self.assertEqual(derivation["reducer"]["type"], "maximum")
+        self.assertEqual(
+            derivation["projection_evidence"],
+            [{"index": 0, "value": 2}, {"index": 2, "value": 5}],
+        )
+
+        replayed = self._engine().flow_next()
+
+        self.assertIsNone(replayed.error, replayed.error)
+        metric_events = [
+            event
+            for event in self._events(started.run_id)
+            if event.get("step_id") == "maximum_depth"
+        ]
+        self.assertEqual(len(metric_events), 1)
+
     def _engine(self):
         return FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
@@ -320,14 +484,18 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
             for line in events_path.read_text(encoding="utf-8").splitlines()
         ]
 
-    def _result(self, run_id: str) -> dict:
+    def _result(
+        self,
+        run_id: str,
+        workflow_id: str = "detached-task-review",
+    ) -> dict:
         result_path = (
             self.project_root
             / "runs"
             / run_id
             / "results"
             / "review"
-            / "detached-task-review"
+            / workflow_id
             / run_id
             / "result.json"
         )
@@ -376,7 +544,48 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
             prompt: Classify the whole-rule exception.
         """
 
-    def _write_dynamic_rule_workflows(self) -> Path:
+    def _maximum_workflow(self) -> str:
+        return """
+        id: maximum-depth-review
+        name: Maximum Depth Review
+        max_turns: 5
+        rule: {}
+        steps:
+          - id: analyze_views
+            prompt: Classify view depths.
+            outputs:
+              - name: views
+                type: data
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [depth, is_exception]
+                    properties:
+                      depth: {type: integer}
+                      is_exception: {type: boolean}
+          - id: maximum_depth
+            type: metric
+            metric_id: DEPTH-1
+            depends_on: [analyze_views]
+            value: {type: integer, minimum: 0}
+            scoring:
+              source: "{{steps.analyze_views.outputs.views}}"
+              when:
+                ref: "{{item.is_exception}}"
+                equals: false
+              reducer:
+                type: maximum
+                value: "{{item.depth}}"
+              severe: {operator: greater_than_or_equal, value: 5}
+          - id: classify_exception
+            type: exception
+            depends_on: [maximum_depth]
+            prompt: Classify the whole-rule exception.
+        """
+
+    def _write_dynamic_rule_workflows(self, batch: bool = False) -> Path:
         workflow_root = self.project_root / "workflows" / "review"
         child_path = (
             workflow_root
@@ -394,9 +603,8 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         )
         parent_path = workflow_root / "parent" / "workflow.yaml"
         parent_path.parent.mkdir(parents=True, exist_ok=True)
-        parent_path.write_text(
-            textwrap.dedent(
-                """
+        parent_workflow = textwrap.dedent(
+            """
                 id: parent-review
                 name: Parent Review
                 max_turns: 10
@@ -417,9 +625,19 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
                       workflow: child-detached-task-review
                     as: reviews
                     depends_on: [prepare]
-                    for_each: "{{steps.prepare.outputs.units}}"
-                """
-            ),
+                    __FOR_EACH__
+            """
+        )
+        for_each = (
+            "for_each:\n"
+            '      source: "{{steps.prepare.outputs.units}}"\n'
+            "      mode: batch\n"
+            '      label: "{{item.name}}"'
+            if batch
+            else 'for_each: "{{steps.prepare.outputs.units}}"'
+        )
+        parent_path.write_text(
+            parent_workflow.replace("__FOR_EACH__", for_each),
             encoding="utf-8",
         )
         return parent_path

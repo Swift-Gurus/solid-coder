@@ -40,10 +40,12 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
                     continue
                 source = step.metric_calculation.source
                 item_condition = step.metric_calculation.condition
+                metric_reducer = step.metric_calculation.reducer
                 reference_name = "scoring.source"
             else:
                 source = step.for_each.source
                 item_condition = None
+                metric_reducer = None
                 reference_name = "for_each"
             self._target_validator.validate(
                 target=ForEachValidationTarget(
@@ -56,6 +58,7 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
                     ),
                     dependency_ids=step.depends_on,
                     item_condition=item_condition,
+                    metric_reducer=metric_reducer,
                     reference_name=reference_name,
                 ),
                 steps=steps,

@@ -37,8 +37,7 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
     ) -> WorkflowRunContext:
         if workflow_instance is None:
             return replace(
-                context,
-                item=ResolvedWorkflowContextValue(present=True, value=item),
+                self.resolve_item(context, item),
                 workflows=self._results_selector.select(
                     context.workflows,
                     None,
@@ -65,7 +64,7 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
                     )
                 )
         return replace(
-            context,
+            self.resolve_item(context, item),
             parameters=workflow_instance.inputs,
             completed_steps=WorkflowContextValues(entries=local_completions),
             skipped_steps=WorkflowContextValues(entries=local_skips),
@@ -73,5 +72,14 @@ class WorkflowStepContextResolver(WorkflowStepContextResolving):
                 context.workflows,
                 workflow_instance,
             ),
+        )
+
+    def resolve_item(
+        self,
+        context: WorkflowRunContext,
+        item: object,
+    ) -> WorkflowRunContext:
+        return replace(
+            context,
             item=ResolvedWorkflowContextValue(present=True, value=item),
         )

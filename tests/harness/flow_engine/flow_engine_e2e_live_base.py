@@ -279,6 +279,90 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual(scored["derivation"]["source_size"], 4)
         self.assertEqual(events[-1].get("event"), "run_completed")
 
+    def test_collection_reducer_is_scored_and_audited_by_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            workflow_path = Path(temporary_directory) / "workflow.yaml"
+            workflow_path.write_text(
+                textwrap.dedent(
+                    """
+                    id: e2e-maximum-depth
+                    name: E2E Maximum Depth
+                    max_turns: 5
+                    rule: {}
+                    steps:
+                      - id: analyze_views
+                        prompt: |
+                          Submit exactly three view observations in this order:
+                          depth 2 non-exception, depth 9 exception, and depth 5
+                          non-exception.
+                        outputs:
+                          - name: views
+                            type: data
+                            schema:
+                              type: array
+                              minItems: 3
+                              maxItems: 3
+                              items:
+                                type: object
+                                additionalProperties: false
+                                required: [depth, is_exception]
+                                properties:
+                                  depth: {type: integer}
+                                  is_exception: {type: boolean}
+                      - id: maximum_depth
+                        type: metric
+                        metric_id: DEPTH-1
+                        depends_on: [analyze_views]
+                        value: {type: integer, minimum: 0}
+                        scoring:
+                          source: "{{steps.analyze_views.outputs.views}}"
+                          when:
+                            ref: "{{item.is_exception}}"
+                            equals: false
+                          reducer:
+                            type: maximum
+                            value: "{{item.depth}}"
+                          severe: {operator: greater_than_or_equal, value: 5}
+                      - id: classify_exception
+                        type: exception
+                        depends_on: [maximum_depth]
+                        prompt: |
+                          Submit is_exception false. Explain that the locked test
+                          data is intentionally scored without a whole-rule exception.
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            events = self._run_live_workflow(
+                workflow_path,
+                prohibited_prompt_fragments=["depth 2 non-exception"],
+            )
+
+        metric_completion = next(
+            event
+            for event in events
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == "maximum_depth"
+        )
+        self.assertEqual(metric_completion["session_id"], "engine")
+        self.assertEqual(metric_completion["outputs"]["value"], 5)
+        derivation = metric_completion["metric_derivation"]
+        self.assertEqual(derivation["kind"], "collection_reducer")
+        self.assertEqual(derivation["reducer"]["type"], "maximum")
+        self.assertEqual(derivation["matched_indexes"], [0, 2])
+        self.assertEqual(derivation["excluded_indexes"], [1])
+        self.assertEqual(
+            derivation["projection_evidence"],
+            [{"index": 0, "value": 2}, {"index": 2, "value": 5}],
+        )
+        scored = next(
+            event for event in events if event.get("event") == "metric_scored"
+        )
+        self.assertEqual(scored["value"], 5)
+        self.assertEqual(scored["severity"], "SEVERE")
+        self.assertEqual(events[-1].get("event"), "run_completed")
+
     def _run_classification_case(self, case: ClassificationCase) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             workflow_package = Path(temporary_directory) / "flows"

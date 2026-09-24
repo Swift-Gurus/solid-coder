@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from harness.collection_metric_reducer import CollectionMetricReducer
 from harness.condition_declaration import ConditionDeclaration
 from harness.step_output_reference import StepOutputReference
 
@@ -20,4 +21,5 @@ class ForEachValidationTarget:
     source_step_id: str
     dependency_ids: list[str]
     item_condition: Optional[ConditionDeclaration] = None
+    metric_reducer: Optional[CollectionMetricReducer] = None
     reference_name: str = "for_each"

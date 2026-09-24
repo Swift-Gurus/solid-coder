@@ -41,6 +41,7 @@ class TestForEachReferenceValidator(unittest.TestCase):
                 schema_decoder=PydanticModelDecoder(
                     model_type=WorkflowDataSchema,
                 ),
+                error_factory=FlowValidationErrorFactory(),
             ),
             source_identity_resolver=ForEachSourceIdentityResolver(),
         )

@@ -21,3 +21,9 @@ class WorkflowStepContextResolving(Protocol):
         workflow_instance: IncludedWorkflowInstance | None,
         item: object,
     ) -> WorkflowRunContext: ...
+
+    def resolve_item(
+        self,
+        context: WorkflowRunContext,
+        item: object,
+    ) -> WorkflowRunContext: ...

@@ -14,7 +14,10 @@ from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.command_step_shape_validator import CommandStepShapeValidator
 from harness.command_step_value_validator import CommandStepValueValidator
-from harness.collection_metric_evaluator import CollectionMetricEvaluator
+from harness.collection_metric_evaluator_factory import (
+    CollectionMetricEvaluatorFactory,
+)
+from harness.collection_metric_reducer_decoder import CollectionMetricReducerDecoder
 from harness.collection_metric_step_instance_builder import (
     CollectionMetricStepInstanceBuilder,
 )
@@ -51,6 +54,8 @@ from harness.dynamic_include_alias_groups_assembler import (
 from harness.dynamic_include_alias_groups_selector import (
     DynamicIncludeAliasGroupsSelector,
 )
+from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
+from harness.effective_metric_scoring_applier import EffectiveMetricScoringApplier
 from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
@@ -115,6 +120,8 @@ from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_declaration_decoder import MetricDeclarationDecoder
+from harness.metric_step_contract_assembling import MetricStepContractAssembler
+from harness.metric_override_applier import MetricOverrideApplier
 from harness.metric_step_shape_validator import MetricStepShapeValidator
 from harness.materialized_workflow_instances_collector import (
     MaterializedWorkflowInstancesCollector,
@@ -140,6 +147,7 @@ from harness.owned_include_dependencies_rebaser import (
 )
 from harness.path_builder import PathBuilder
 from harness.path_checking import PathChecker
+from harness.policy_applying_flow_loader import PolicyApplyingFlowLoader
 from harness.prompt_content_resolver import PromptContentResolver
 from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
@@ -504,7 +512,7 @@ class FlowEngineAssemblyFactory:
         group_dependency_expander = GroupDependencyExpander(
             IncludeAliasGroupFinder()
         )
-        flow_loader = FlowLoader(
+        base_flow_loader = FlowLoader(
             file_loader=yaml_file_loader,
             definition_resolver=FlowDefinitionResolver(
                 config_extractor=FlowConfigExtractor(),
@@ -575,6 +583,12 @@ class FlowEngineAssemblyFactory:
                             expression_parser=workflow_expression_parser,
                             reference_parser=step_output_reference_parser,
                             condition_parser=condition_parser,
+                            reducer_decoder=CollectionMetricReducerDecoder(
+                                expression_parser=workflow_expression_parser,
+                                condition_parser=condition_parser,
+                                error_factory=error_factory,
+                            ),
+                            contract_assembler=MetricStepContractAssembler(),
                             error_factory=error_factory,
                         ),
                         additional_info_output=RuleAdditionalInfoOutputProvider(),
@@ -670,6 +684,7 @@ class FlowEngineAssemblyFactory:
                             schema_decoder=PydanticModelDecoder(
                                 model_type=WorkflowDataSchema,
                             ),
+                            error_factory=error_factory,
                         ),
                         source_identity_resolver=ForEachSourceIdentityResolver(),
                     ),
@@ -710,6 +725,20 @@ class FlowEngineAssemblyFactory:
                 step_builder=StepBuilder(),
             ),
             error_factory=error_factory,
+        )
+        flow_loader = (
+            base_flow_loader
+            if review_policy_loader is None
+            else PolicyApplyingFlowLoader(
+                delegate=base_flow_loader,
+                policy_loader=review_policy_loader,
+                scoring_applier=EffectiveMetricScoringApplier(
+                    plan_resolver=EffectiveMetricPlanResolver(
+                        override_applier=MetricOverrideApplier(),
+                        error_factory=error_factory,
+                    )
+                ),
+            )
         )
 
         event_appender = EventAppender(
@@ -827,8 +856,12 @@ class FlowEngineAssemblyFactory:
                                 ),
                             ),
                             items_resolver=items_resolver,
-                            evaluator=CollectionMetricEvaluator(
-                                condition_evaluator
+                            evaluator=CollectionMetricEvaluatorFactory().build(
+                                condition_evaluator=condition_evaluator,
+                                expression_evaluator=expression_resolver,
+                                value_comparator=strict_value_comparator,
+                                context_resolver=workflow_step_context_resolver,
+                                error_factory=error_factory,
                             ),
                             context_resolver=workflow_step_context_resolver,
                         ),

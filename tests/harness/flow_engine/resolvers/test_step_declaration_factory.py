@@ -15,6 +15,9 @@ from harness.comparison_condition import ComparisonCondition
 from harness.comparison_condition_parser import ComparisonConditionParser
 from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
+from harness.collection_metric_reducer_decoder import (
+    CollectionMetricReducerDecoder,
+)
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
 from harness.for_each_declaration import ForEachDeclaration
@@ -24,6 +27,7 @@ from harness.for_each_reference_parser import ForEachReferenceParser
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_declaration_decoder import MetricDeclarationDecoder
+from harness.metric_step_contract_assembling import MetricStepContractAssembler
 from harness.operation_step_contract import OperationStepContract
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.rule_additional_info_output_provider import (
@@ -75,6 +79,12 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     expression_parser=expression_parser,
                     reference_parser=reference_parser,
                     condition_parser=condition_parser,
+                    reducer_decoder=CollectionMetricReducerDecoder(
+                        expression_parser=expression_parser,
+                        condition_parser=condition_parser,
+                        error_factory=error_factory,
+                    ),
+                    contract_assembler=MetricStepContractAssembler(),
                     error_factory=error_factory,
                 ),
                 additional_info_output=RuleAdditionalInfoOutputProvider(),

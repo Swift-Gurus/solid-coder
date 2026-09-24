@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from harness.flow_validation_error import FlowValidationError
 from harness.condition_item_schema_validating import ConditionItemSchemaValidating
+from harness.collection_metric_reducer_type import CollectionMetricReducerType
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.for_each_target_validating import ForEachTargetValidating
 from harness.for_each_validation_target import ForEachValidationTarget
 from harness.models import StepDef
@@ -26,10 +27,12 @@ class ForEachReferenceValidator(ForEachTargetValidating):
         reachability_checker: StepDependencyReachabilityChecking,
         item_schema_validator: ConditionItemSchemaValidating,
         schema_decoder: StructuredModelDecoding[WorkflowDataSchema],
+        error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._reachability_checker = reachability_checker
         self._item_schema_validator = item_schema_validator
         self._schema_decoder = schema_decoder
+        self._error_factory = error_factory
 
     def validate(
         self,
@@ -45,7 +48,7 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             None,
         )
         if source_step is None:
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} references unknown step "
                 f"'{target.source_reference.step_id}'"
             )
@@ -58,7 +61,7 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             None,
         )
         if source_output is None:
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} references unknown output "
                 f"'{target.source_reference.output_name}' on step "
                 f"'{target.source_reference.step_id}'"
@@ -68,11 +71,11 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             target.dependency_ids,
             steps,
         ):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} must reference a transitive dependency"
             )
         if source_output.schema is None:
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} source output "
                 f"'{target.source_reference.output_name}' must declare an array schema"
             )
@@ -81,13 +84,47 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             f"step '{target.source_reference.step_id}' output schema",
         )
         if source_schema.type != "array":
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} source output "
                 f"'{target.source_reference.output_name}' must declare an array schema"
             )
+        item_schema = source_schema.items or WorkflowDataSchema()
         if target.item_condition is not None:
             self._item_schema_validator.validate(
                 target.target_id,
                 target.item_condition,
-                source_schema.items or WorkflowDataSchema(),
+                item_schema,
+            )
+        reducer = target.metric_reducer
+        if reducer is None:
+            return
+        if reducer.value is not None:
+            allowed_types = (
+                ["integer", "number"]
+                if reducer.type in {
+                    CollectionMetricReducerType.MAXIMUM,
+                    CollectionMetricReducerType.MINIMUM,
+                }
+                else ["integer", "number", "string", "boolean", "null"]
+            )
+            self._item_schema_validator.validate_reference(
+                target.target_id,
+                f"{reducer.type.value} reducer value",
+                reducer.value,
+                item_schema,
+                allowed_types,
+            )
+        if reducer.numerator_condition is not None:
+            self._item_schema_validator.validate(
+                target.target_id,
+                reducer.numerator_condition,
+                item_schema,
+                "reducer numerator_when",
+            )
+        if reducer.denominator_condition is not None:
+            self._item_schema_validator.validate(
+                target.target_id,
+                reducer.denominator_condition,
+                item_schema,
+                "reducer denominator_when",
             )

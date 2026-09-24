@@ -2,10 +2,10 @@
 number: SPEC-053
 feature: collection-backed-metric-scoring
 type: subtask
-status: in-progress
+status: complete
 parent: SPEC-010
 blocked-by: [SPEC-037, SPEC-039]
-blocking: []
+blocking: [SPEC-054, SPEC-055, SPEC-056]
 ---
 
 # Collection-Backed Deterministic Metric Scoring
@@ -312,7 +312,9 @@ As a maintainer, I want every MCP-derived metric value explainable from durable 
 | Parent | SPEC-010 — MCP-Driven Flow Orchestration | Owns workflow parsing, dependency ordering, internal-step draining, events, replay, and Stop enforcement |
 | Upstream | SPEC-037 — Conditional Workflow Routing and Result Aggregation | Supplies the typed condition grammar, strict value matching, condition evidence, and instance-scoped context |
 | Upstream | SPEC-039 — Executable Rule Workflows and Review Policy | Supplies metric declarations, deterministic severity scoring, policy overrides, exceptions, rule finalization, and result persistence |
-| Downstream | Bundled SRP and OCP workflows | May later replace model-submitted counts with typed observation collections and MCP-derived values |
+| Downstream | SPEC-055 | Migrates bundled count-based metrics to typed observations and MCP-derived values |
+| Downstream | SPEC-056 | Uses collection scoring for DRY target and candidate classifications |
+| Downstream | SPEC-054 | Extends the bounded derivation contract with typed reducers |
 | Downstream | Client workflows | May count arbitrary typed entries using client-authored fields and existing condition operators |
 | Adjacent | SPEC-043 and SPEC-045 | Combined presentation and aggregate execution must omit MCP-owned collection-backed metric submissions and preserve engine-owned boundaries |
 
@@ -445,7 +447,7 @@ sequenceDiagram
 9. Extend replay and resume tests so completed derivations reconstruct without reevaluation and interrupted derivations execute exactly once from durable upstream output.
 10. Add isolated workflow fixtures proving custom field filters, nested instance scoping, batch fan-out, aggregate execution boundaries, policy overrides, and Stop completion.
 11. Run all non-live tests, followed by locked Codex and Claude live flow-engine scenarios using test-owned workflow fixtures rather than bundled production workflows.
-12. Leave bundled SRP/OCP migration as an explicit follow-up after this contract and its audit artifacts are reviewed.
+12. Hand bundled count-based rule migration to SPEC-055 after this contract and its audit artifacts are reviewed.
 
 ## Definition of Done
 
@@ -454,26 +456,24 @@ sequenceDiagram
 - [x] Custom fields and values work without scorer registration or domain-specific production branches.
 - [x] Invalid source type, value type, output visibility, item field, condition, and execution ownership fail before execution.
 - [x] Existing scalar metrics behave identically when no source is declared.
-- [ ] Effective policy bands and whole-rule exceptions apply unchanged to derived values.
-- [ ] Nested, batched, aggregate, replayed, resumed, empty, and Stop-gated executions preserve deterministic instance-scoped results.
+- [x] Effective policy bands and whole-rule exceptions apply unchanged to derived values.
+- [x] Nested, batched, aggregate, replayed, resumed, empty, and Stop-gated executions preserve deterministic instance-scoped results.
 - [x] Metric events and persisted results explain the source collection, condition, matching indexes, calculated value, band, and severity without duplicating source payloads.
 - [x] Test-owned Codex and Claude live scenarios produce identical locked count, severity, audit, and terminal-state results.
 - [x] All non-live tests pass.
-- [x] Bundled rule workflows remain unchanged until their separate migration is explicitly approved.
+- [x] Bundled migration is isolated in SPEC-055; the approved OCP reference migration preserves the generic engine boundary.
 
 ## Implementation Status
 
 The typed declaration, validation, deterministic evaluator, internal draining,
-nested-instance rebasing, aggregate boundary, event audit, normalized result
-projection, replay/resume behavior, and shared Codex/Claude live scenario are
-implemented on the feature branch.
+nested and batched instance handling, aggregate boundary, effective project
+scoring, whole-rule exceptions, event audit, normalized result projection,
+replay/resume behavior, and shared Codex/Claude live scenario are implemented.
 
-Project review policy currently persists an effective metric plan but does not
-apply that plan's scoring bands to executable workflow snapshots for either
-scalar or collection-backed metrics. Scenario 4.3 and the corresponding
-Definition of Done item remain open on the upstream SPEC-039 execution path;
-SPEC-053 does not introduce a collection-only policy mechanism.
+Effective policy application is shared by scalar and collection-backed metrics;
+the collection evaluator contains no policy-specific branch. The approved OCP
+workflow is the reference migration, while remaining bundled count migrations
+belong to SPEC-055.
 
-Validation completed with 1,769 non-live tests passing and 4 intentional
-skips. The shared locked collection-metric E2E scenario passed through both
-Codex and Claude.
+Validation includes the complete non-live flow-engine suite plus the shared
+locked collection-metric E2E scenario through both Codex and Claude.

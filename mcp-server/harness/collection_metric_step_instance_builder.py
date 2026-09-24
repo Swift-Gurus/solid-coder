@@ -13,7 +13,7 @@ from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 """
 solid-name: CollectionMetricStepInstanceBuilder
 solid-category: decorator
-solid-spec: [SPEC-053]
+solid-spec: [SPEC-053, SPEC-054]
 solid-description: Completes collection-backed metric instances with deterministic engine outputs.
 """
 class CollectionMetricStepInstanceBuilder(StepInstanceBuilding):
@@ -72,21 +72,43 @@ class CollectionMetricStepInstanceBuilder(StepInstanceBuilding):
                 values={
                     "value": evaluation.value,
                     "additional_info": {
-                        "reasoning": (
-                            f"Counted {evaluation.value} of "
-                            f"{evaluation.source_size} source entries matching "
-                            "the authored condition."
-                        ),
-                        "evidence": (
-                            f"Source steps.{source.step_id}.outputs."
-                            f"{source.output_name}; matched indexes "
-                            f"{evaluation.matched_indexes}; excluded indexes "
-                            f"{evaluation.excluded_indexes}."
-                        ),
+                        "reasoning": self._reasoning(evaluation),
+                        "evidence": self._evidence(evaluation),
                     },
                 }
             ),
             metric_calculation=evaluation,
             workflow_instance=step.workflow_instance,
             authored_prompt="",
+        )
+
+    def _reasoning(self, calculation) -> str:
+        reducer = calculation.reducer
+        if reducer is None:
+            return (
+                f"Counted {calculation.value} of "
+                f"{calculation.source_size} source entries matching "
+                "the authored condition."
+            )
+        return (
+            f"Applied the {reducer.type.value} reducer to "
+            f"{len(calculation.matched_indexes)} of "
+            f"{calculation.source_size} source entries and derived "
+            f"{calculation.value}."
+        )
+
+    def _evidence(self, calculation) -> str:
+        source = calculation.source
+        projections = ", ".join(
+            f"{evidence.index}={evidence.value!r}"
+            for evidence in calculation.projection_evidence
+        )
+        return (
+            f"Source steps.{source.step_id}.outputs.{source.output_name}; "
+            f"matched indexes {calculation.matched_indexes}; excluded indexes "
+            f"{calculation.excluded_indexes}; projections [{projections}]; "
+            f"distinct indexes {calculation.distinct_indexes}; numerator "
+            f"indexes {calculation.numerator_indexes}; denominator indexes "
+            f"{calculation.denominator_indexes}; zero denominator "
+            f"{calculation.zero_denominator}."
         )

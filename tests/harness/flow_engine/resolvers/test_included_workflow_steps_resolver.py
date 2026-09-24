@@ -11,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.collection_metric_calculation import CollectionMetricCalculation
+from harness.collection_metric_reducer import CollectionMetricReducer
+from harness.collection_metric_reducer_type import CollectionMetricReducerType
 from harness.condition_operator import ConditionOperator
 from harness.include_alias_group import IncludeAliasGroup
 from harness.included_workflow_dependencies_resolver import (
@@ -198,7 +200,11 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
                         source=StepOutputReference(
                             step_id="review.analyze",
                             output_name="entries",
-                        )
+                        ),
+                        reducer=CollectionMetricReducer(
+                            type=CollectionMetricReducerType.MAXIMUM,
+                            value=WorkflowExpression("item.depth"),
+                        ),
                     ),
                 ),
             ],
@@ -210,6 +216,13 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
         self.assertEqual(
             steps[1].metric_calculation.source,
             StepOutputReference(step_id="analyze", output_name="entries"),
+        )
+        self.assertEqual(
+            steps[1].metric_calculation.reducer,
+            CollectionMetricReducer(
+                type=CollectionMetricReducerType.MAXIMUM,
+                value=WorkflowExpression("item.depth"),
+            ),
         )
 
 

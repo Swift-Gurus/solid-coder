@@ -1,5 +1,6 @@
 """Rebases included collection metric calculations into local scope."""
 
+from dataclasses import replace
 from typing import Optional
 
 from harness.collection_metric_calculation import CollectionMetricCalculation
@@ -7,14 +8,13 @@ from harness.included_metric_calculation_resolving import (
     IncludedMetricCalculationResolving,
 )
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
-from harness.step_output_reference import StepOutputReference
 
 
 """
 solid-name: IncludedMetricCalculationResolver
-solid-category: service
-solid-spec: [SPEC-053]
-solid-description: Rebases included metric calculations into instance-local scope.
+solid-category: adapter
+solid-spec: [SPEC-053, SPEC-054]
+solid-description: Preserves deterministic metric behavior while adapting source identities into an included workflow scope.
 """
 class IncludedMetricCalculationResolver(IncludedMetricCalculationResolving):
     def resolve(
@@ -25,16 +25,15 @@ class IncludedMetricCalculationResolver(IncludedMetricCalculationResolving):
         if calculation is None:
             return None
         source = calculation.source
-        local_identity = identities.require_declaration(source.step_id)
-        return CollectionMetricCalculation(
-            source=StepOutputReference(
+        local_identity = next(
+            entry
+            for entry in identities.entries
+            if entry.declaration_id == source.step_id
+        )
+        return replace(
+            calculation,
+            source=replace(
+                source,
                 step_id=local_identity.local_step_id,
-                output_name=source.output_name,
             ),
-            condition=calculation.condition,
-            value=calculation.value,
-            source_size=calculation.source_size,
-            matched_indexes=calculation.matched_indexes,
-            excluded_indexes=calculation.excluded_indexes,
-            condition_evidence=calculation.condition_evidence,
         )

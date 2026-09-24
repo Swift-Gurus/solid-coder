@@ -10,7 +10,7 @@ from harness.workflow_expression_serializing import WorkflowExpressionSerializin
 """
 solid-name: RuleStepSnapshotRewriter
 solid-category: boundary
-solid-spec: [SPEC-039]
+solid-spec: [SPEC-039, SPEC-054]
 solid-description: Normalizes rule-step snapshots for their public workflow representation.
 """
 class RuleStepSnapshotRewriter(StepSnapshotRewriting):
@@ -63,4 +63,24 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
                 scoring["when"] = self._condition_serializer.serialize(
                     calculation.condition
                 )
+            reducer = calculation.reducer
+            if reducer is not None:
+                serialized_reducer = {"type": reducer.type.value}
+                if reducer.value is not None:
+                    serialized_reducer["value"] = (
+                        self._expression_serializer.serialize(reducer.value)
+                    )
+                if reducer.numerator_condition is not None:
+                    serialized_reducer["numerator_when"] = (
+                        self._condition_serializer.serialize(
+                            reducer.numerator_condition
+                        )
+                    )
+                if reducer.denominator_condition is not None:
+                    serialized_reducer["denominator_when"] = (
+                        self._condition_serializer.serialize(
+                            reducer.denominator_condition
+                        )
+                    )
+                scoring["reducer"] = serialized_reducer
         snapshot["scoring"] = scoring
