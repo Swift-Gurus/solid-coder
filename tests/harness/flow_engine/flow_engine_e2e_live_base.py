@@ -6,6 +6,7 @@ import json
 import shutil
 import sys
 import tempfile
+import textwrap
 import unittest
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -186,6 +187,97 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             ),
             event_types,
         )
+
+    def test_collection_backed_metric_is_scored_by_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            workflow_path = Path(temporary_directory) / "workflow.yaml"
+            workflow_path.write_text(
+                textwrap.dedent(
+                    """
+                    id: e2e-collection-metric
+                    name: E2E Collection Metric
+                    max_turns: 5
+                    rule: {}
+                    steps:
+                      - id: analyze_task_sites
+                        prompt: |
+                          Submit exactly these four task sites in this order:
+                          DETACHED non-exception, STRUCTURED non-exception,
+                          DETACHED exception, DETACHED non-exception.
+                        outputs:
+                          - name: task_sites
+                            type: data
+                            schema:
+                              type: array
+                              minItems: 4
+                              maxItems: 4
+                              items:
+                                type: object
+                                additionalProperties: false
+                                required: [classification, is_exception]
+                                properties:
+                                  classification:
+                                    type: string
+                                    enum: [DETACHED, STRUCTURED]
+                                  is_exception: {type: boolean}
+                      - id: detached_task_count
+                        type: metric
+                        metric_id: DT-1
+                        depends_on: [analyze_task_sites]
+                        value: {type: integer, minimum: 0}
+                        scoring:
+                          source: "{{steps.analyze_task_sites.outputs.task_sites}}"
+                          when:
+                            all:
+                              - ref: "{{item.classification}}"
+                                equals: DETACHED
+                              - ref: "{{item.is_exception}}"
+                                equals: false
+                          severe: {operator: greater_than_or_equal, value: 1}
+                      - id: classify_exception
+                        type: exception
+                        depends_on: [detached_task_count]
+                        prompt: |
+                          Submit is_exception false. Explain that the locked test
+                          data is intentionally scored without a whole-rule exception.
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            events = self._run_live_workflow(
+                workflow_path,
+                prohibited_prompt_fragments=["DETACHED non-exception"],
+            )
+
+        metric_completion = next(
+            event
+            for event in events
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == "detached_task_count"
+        )
+        self.assertEqual(metric_completion["session_id"], "engine")
+        self.assertEqual(metric_completion["outputs"]["value"], 2)
+        self.assertEqual(
+            metric_completion["metric_derivation"]["matched_indexes"],
+            [0, 3],
+        )
+        self.assertEqual(
+            metric_completion["metric_derivation"]["excluded_indexes"],
+            [1, 2],
+        )
+        scored = next(
+            event for event in events if event.get("event") == "metric_scored"
+        )
+        self.assertEqual(scored["value"], 2)
+        self.assertEqual(scored["severity"], "SEVERE")
+        self.assertEqual(scored["raw_severity"], "SEVERE")
+        self.assertEqual(
+            scored["matching_band"],
+            {"operator": "greater_than_or_equal", "value": 1},
+        )
+        self.assertEqual(scored["derivation"]["source_size"], 4)
+        self.assertEqual(events[-1].get("event"), "run_completed")
 
     def _run_classification_case(self, case: ClassificationCase) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

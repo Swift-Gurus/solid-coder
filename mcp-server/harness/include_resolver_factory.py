@@ -21,6 +21,7 @@ from harness.include_step_appender import IncludeStepAppender
 from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
 from harness.local_nested_identity_qualifier import LocalNestedIdentityQualifier
+from harness.metric_scoring_source_qualifier import MetricScoringSourceQualifier
 from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_alias_group_qualifier import (
     NestedIncludeAliasGroupQualifier,
@@ -55,12 +56,15 @@ from harness.runtime_include_group_dynamic_checker import (
 )
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_qualifier import StepQualifier
+from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_include_source_resolver import WorkflowIncludeSourceResolver
 from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
+from harness.workflow_expression_parser import WorkflowExpressionParser
+from harness.workflow_expression_serializer import WorkflowExpressionSerializer
 from harness.workflow_resource_reference_creating import (
     WorkflowResourceReferenceCreating,
 )
@@ -180,7 +184,13 @@ class IncludeResolverFactory:
                     IncludeCycleGuard(self._error_factory)
                 ),
                 nested_qualifier=NestedIncludeQualifier(
-                    step_qualifier=StepQualifier(),
+                    step_qualifier=StepQualifier(
+                        metric_source_qualifier=MetricScoringSourceQualifier(
+                            expression_parser=WorkflowExpressionParser(),
+                            reference_parser=StepOutputReferenceParser(),
+                            expression_serializer=WorkflowExpressionSerializer(),
+                        )
+                    ),
                     group_qualifier=NestedIncludeAliasGroupQualifier(
                         identity=LocalNestedIdentityQualifier()
                     ),

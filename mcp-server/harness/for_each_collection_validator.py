@@ -36,17 +36,27 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
     ) -> None:
         for step in steps:
             if step.for_each is None:
-                continue
+                if step.metric_calculation is None:
+                    continue
+                source = step.metric_calculation.source
+                item_condition = step.metric_calculation.condition
+                reference_name = "scoring.source"
+            else:
+                source = step.for_each.source
+                item_condition = None
+                reference_name = "for_each"
             self._target_validator.validate(
                 target=ForEachValidationTarget(
                     target_id=step.id,
-                    source_reference=step.for_each.source,
+                    source_reference=source,
                     source_step_id=self._source_identity_resolver.resolve(
-                        step.for_each.source.step_id,
+                        source.step_id,
                         ForEachSourceIdentityScope(member_ids=[step.id]),
                         alias_groups or [],
                     ),
                     dependency_ids=step.depends_on,
+                    item_condition=item_condition,
+                    reference_name=reference_name,
                 ),
                 steps=steps,
             )

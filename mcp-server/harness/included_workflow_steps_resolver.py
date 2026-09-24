@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 from harness.include_alias_group import IncludeAliasGroup
+from harness.included_metric_calculation_resolving import (
+    IncludedMetricCalculationResolving,
+)
 from harness.included_workflow_dependencies_resolving import (
     IncludedWorkflowDependenciesResolving,
 )
@@ -31,10 +34,12 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
         input_resolver: WorkflowInputBindingsResolving,
         identity_resolver: IncludedWorkflowStepIdentityResolving,
         dependency_resolver: IncludedWorkflowDependenciesResolving,
+        metric_calculation_resolver: IncludedMetricCalculationResolving,
     ) -> None:
         self._input_resolver = input_resolver
         self._identity_resolver = identity_resolver
         self._dependency_resolver = dependency_resolver
+        self._metric_calculation_resolver = metric_calculation_resolver
 
     def resolve(
         self,
@@ -87,6 +92,10 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
                 depends_on=self._dependency_resolver.resolve(
                     template,
                     group,
+                    step_identities,
+                ),
+                metric_calculation=self._metric_calculation_resolver.resolve(
+                    template.metric_calculation,
                     step_identities,
                 ),
                 workflow_instance=workflow_instance,

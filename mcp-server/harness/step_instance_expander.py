@@ -81,6 +81,7 @@ class StepInstanceExpander(StepInstanceExpanding):
                     automatic_outputs=StepOutputs(
                         values={output.name: [] for output in step.outputs}
                     ),
+                    automatic_empty_collection=True,
                     workflow_instance=step.workflow_instance,
                 )
             ]

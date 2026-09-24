@@ -6,6 +6,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from harness.collection_metric_derivation_projection import (
+    CollectionMetricDerivationProjection,
+)
+
 
 """
 solid-name: StepCompletedEvent
@@ -27,3 +31,4 @@ class StepCompletedEvent(BaseModel):
     item: Any = None
     parent_completed: bool = True
     empty_collection: bool = False
+    metric_derivation: Optional[CollectionMetricDerivationProjection] = None

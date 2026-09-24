@@ -10,10 +10,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
+from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.condition_operator import ConditionOperator
 from harness.include_alias_group import IncludeAliasGroup
 from harness.included_workflow_dependencies_resolver import (
     IncludedWorkflowDependenciesResolver,
+)
+from harness.included_metric_calculation_resolver import (
+    IncludedMetricCalculationResolver,
 )
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
@@ -23,6 +27,7 @@ from harness.included_workflow_step_identity_resolver import (
 )
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.models import StepDef
+from harness.step_output_reference import StepOutputReference
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
@@ -59,6 +64,7 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
             input_resolver=StubInputResolver(),
             identity_resolver=IncludedWorkflowStepIdentityResolver(),
             dependency_resolver=IncludedWorkflowDependenciesResolver(),
+            metric_calculation_resolver=IncludedMetricCalculationResolver(),
         )
         group = IncludeAliasGroup(
             alias="review",
@@ -142,6 +148,7 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
             input_resolver=StubInputResolver(),
             identity_resolver=IncludedWorkflowStepIdentityResolver(),
             dependency_resolver=IncludedWorkflowDependenciesResolver(),
+            metric_calculation_resolver=IncludedMetricCalculationResolver(),
         )
 
         steps = sut.resolve(
@@ -166,6 +173,43 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
         self.assertEqual(
             steps[0].workflow_instance.condition,
             include_condition,
+        )
+
+    def test_rebases_collection_metric_source_to_instance_local_identity(self) -> None:
+        sut = IncludedWorkflowStepsResolver(
+            input_resolver=StubInputResolver(),
+            identity_resolver=IncludedWorkflowStepIdentityResolver(),
+            dependency_resolver=IncludedWorkflowDependenciesResolver(),
+            metric_calculation_resolver=IncludedMetricCalculationResolver(),
+        )
+
+        steps = sut.resolve(
+            group=IncludeAliasGroup(
+                alias="review",
+                member_ids=["review.analyze", "review.count"],
+            ),
+            templates=[
+                StepDef(id="review.analyze", prompt="Analyze."),
+                StepDef(
+                    id="review.count",
+                    prompt="",
+                    depends_on=["review.analyze"],
+                    metric_calculation=CollectionMetricCalculation(
+                        source=StepOutputReference(
+                            step_id="review.analyze",
+                            output_name="entries",
+                        )
+                    ),
+                ),
+            ],
+            iteration_index=0,
+            item=ReviewUnit(name="Dashboard"),
+            context=WorkflowRunContext(),
+        )
+
+        self.assertEqual(
+            steps[1].metric_calculation.source,
+            StepOutputReference(step_id="analyze", output_name="entries"),
         )
 
 

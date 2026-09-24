@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from harness.batch_step_presentation import BatchStepPresentation
+from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.step_outputs import StepOutputs
 from harness.step_skip import StepSkip
@@ -25,6 +26,8 @@ class StepInstance:
     prompt: str
     iteration_index: int | None = None
     automatic_outputs: StepOutputs | None = None
+    automatic_empty_collection: bool = False
+    metric_calculation: Optional[CollectionMetricCalculation] = None
     skip: StepSkip | None = None
     workflow_instance: IncludedWorkflowInstance | None = None
     batch: Optional[BatchStepPresentation] = None

@@ -159,6 +159,12 @@ name: Example workflow
 description: Human-readable purpose.
 max_turns: 20
 
+execution:                    # optional; granular is the default
+  mode: granular
+
+presentation:                 # optional; individual is the default
+  mode: individual
+
 when:                         # optional workflow-level condition
   ref: "{{params.enabled}}"
   equals: true
@@ -183,6 +189,8 @@ steps: []
 | `name` | Human-readable name stored with the run. |
 | `description` | Informational package description. |
 | `max_turns` | Circuit breaker for successful model-owned step submissions. It is not the per-step retry count. |
+| `execution.mode` | `granular` returns compatible model-owned steps separately; `aggregate` compiles a compatible dependency phase into one submission contract. |
+| `presentation.mode` | `individual` presents eligible children separately; `combined` combines compatible rule instructions and outputs without changing rule identity. |
 | `when` | Eligibility condition evaluated once before any step executes. At the root, reference `params` only. |
 | `rule` | Enrolls the workflow in the review-rule catalog. See [Review rule workflows](#review-rule-workflows). |
 | `outputs` | Values published to a parent when this workflow is included. |
@@ -245,7 +253,10 @@ instance ID.
 - id: step_id
   type: agent
   depends_on: [other_step]
-  for_each: "{{steps.other_step.outputs.items}}"
+  for_each:
+    source: "{{steps.other_step.outputs.items}}"
+    mode: batch
+    label: "{{item.name}}"
   when:
     ref: "{{item.enabled}}"
     equals: true
@@ -258,7 +269,7 @@ instance ID.
 | `id` | Required identity local to the workflow. Prefer `snake_case` for predictable references. |
 | `type` | Execution owner. Omit for `agent`. |
 | `depends_on` | Array of prerequisite step IDs or include aliases. |
-| `for_each` | Array-valued output reference used to create one instance per item. |
+| `for_each` | Array-valued output reference, or a structured source/mode/label declaration, used to create one instance per item. |
 | `when` | Conditional execution; a false condition records an auditable skip. |
 | `max_attempts` | Maximum failed submissions or executions for this step; default `3`. |
 | `outputs` | Named values validated when the step completes. |
@@ -385,7 +396,7 @@ Current production operations:
 
 | Operation | Required `with` inputs | Optional `with` inputs |
 |---|---|---|
-| `review.prepare` | `target` | — |
+| `review.prepare` | `target` | `context_sources` |
 | `source.collect_changes` | `project_root` | — |
 | `source.analyze` | `source` | — |
 | `source.prepare_search_targets` | `source`, `granularity` | — |
@@ -547,6 +558,13 @@ own local step outputs, its own `item`, and workflow results visible within its
 scope. It does not receive ambient parent parameters unless the parent maps
 them with `with`.
 
+A step-output expression selects one declared output. It does not traverse
+inside that output's JSON value. For example,
+`steps.analyze.outputs.dependencies` is valid when `dependencies` is an output;
+`steps.analyze.outputs.analysis.dependencies` is not a nested-property query.
+Publish a collection as its own named output when `for_each` or
+`scoring.source` must consume it.
+
 When a fanned-out step completes, its parent step output is an ordered list of
 the per-instance values. For example,
 `{{steps.review.outputs.finding}}` resolves to a list after every `review`
@@ -554,7 +572,8 @@ instance reaches a terminal completed state.
 
 ## `for_each`
 
-`for_each` accepts only a step-output reference:
+The compact form accepts a step-output reference and presents instances
+individually:
 
 ```yaml
 - id: prepare
@@ -573,6 +592,25 @@ instance reaches a terminal completed state.
   prompt: Inspect {{item}}.
 ```
 
+The structured form controls model presentation without changing per-item
+execution identity:
+
+```yaml
+- id: inspect
+  depends_on: [prepare]
+  for_each:
+    source: "{{steps.prepare.outputs.items}}"
+    mode: batch
+    label: "{{item.name}}"
+  prompt: Inspect {{item}}.
+```
+
+| Field | Values | Meaning |
+|---|---|---|
+| `source` | Step-output expression | Required array-valued source. |
+| `mode` | `individual`, `batch` | `individual` returns one item at a time. `batch` presents ready sibling instances together and validates coverage by item. |
+| `label` | Workflow expression | Optional stable, human-readable item label used in a batch submission. It does not replace the engine-owned instance identity. |
+
 The source output must:
 
 - exist;
@@ -582,6 +620,42 @@ The source output must:
 An empty array creates no instances and completes that fan-out without model
 work. `item` exposes the current value; no authored `index` expression is
 currently available.
+
+## Execution and presentation modes
+
+Execution and presentation are independent:
+
+```yaml
+- group: aggregate_rule_reviews
+  execution:
+    mode: aggregate
+  presentation:
+    mode: combined
+  steps:
+    - include:
+        rules: all
+      as: rule_reviews
+      depends_on: [prepare_review]
+      for_each:
+        source: "{{steps.prepare_review.outputs.units}}"
+        mode: batch
+        label: "{{item.target.name}}"
+      with:
+        review_unit: "{{item}}"
+```
+
+| Declaration | Default | Effect |
+|---|---|---|
+| `execution.mode: granular` | Yes | Preserve ordinary step-by-step model transitions. |
+| `execution.mode: aggregate` | No | Compile compatible model-owned steps in the same dependency phase into one model submission. Engine-owned commands, scripts, operations, and collection-backed metrics remain phase boundaries and run internally. |
+| `presentation.mode: individual` | Yes | Present eligible child rules independently. |
+| `presentation.mode: combined` | No | Deduplicate shared authored instructions and present compatible rule contracts together while retaining each rule, metric, exception, and result identity. |
+
+`combined` is not a scoring mode and `aggregate` does not flatten the DAG.
+Dependencies, conditions, retries, audit events, replay identities, and child
+workflow ownership remain intact. A nested workflow may declare its own modes;
+an explicitly owned boundary applies within its own scope rather than silently
+rewriting unrelated parent or child execution.
 
 ## Conditions
 
@@ -956,6 +1030,82 @@ Scoring must define at least one of `minor` and `severe`. Operators are:
 String and boolean metrics support only `equals` and `not_equals`. Threshold
 values must have the metric's corresponding type.
 
+### Collection-backed deterministic metric
+
+An ordinary metric asks the model to submit its scalar `value`. When the model
+instead returns a typed collection of observations, MCP can derive an integer
+metric by counting entries:
+
+```yaml
+- id: analyze_task_sites
+  type: agent
+  prompt: Classify every task creation site.
+  outputs:
+    - name: task_sites
+      type: data
+      schema:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [classification, is_exception, reasoning, evidence]
+          properties:
+            classification:
+              type: string
+              enum: [DETACHED, UNSTRUCTURED, STRUCTURED]
+            is_exception: {type: boolean}
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
+- id: detached_task_count
+  type: metric
+  metric_id: DT-1
+  depends_on: [analyze_task_sites]
+  value:
+    type: integer
+    minimum: 0
+  scoring:
+    source: "{{steps.analyze_task_sites.outputs.task_sites}}"
+    when:
+      all:
+        - ref: "{{item.classification}}"
+          equals: DETACHED
+        - ref: "{{item.is_exception}}"
+          equals: false
+    severe:
+      operator: greater_than_or_equal
+      value: 1
+```
+
+Here the model classifies and supplies evidence; MCP performs the count and
+severity decision. The metric itself causes no model turn.
+
+| Field | Meaning |
+|---|---|
+| `scoring.source` | A visible upstream array output. The source step must be a dependency. |
+| `scoring.when` | Optional existing condition grammar evaluated once per source entry with that entry bound as `item`. Omit it to count every entry. |
+| `value` | Must be `type: integer` because the deterministic operation is a count. |
+| `minor` / `severe` | Existing scalar severity bands applied to the derived count. |
+
+Collection-backed metric restrictions:
+
+- the source output schema must declare `type: array`;
+- condition fields such as `item.classification` must exist in the array item
+  schema;
+- the metric must not declare `prompt`, `prompt_file`, authored `outputs`,
+  `for_each`, a command/script, an operation, or a delegate mode;
+- source order is preserved and equal entries at different indexes are each
+  counted;
+- an empty collection produces zero;
+- a missing or unresolvable source is an error, not zero;
+- step-level `when` decides whether the metric node runs, whereas
+  `scoring.when` decides which source entries contribute to its count.
+
+This is deliberately a filtered count, not a general expression language. It
+does not perform sums, joins, averages, custom code, or inferred arithmetic.
+If a metric needs fields from two analyses, first make an upstream step publish
+one typed collection containing every field required by the filter.
+
 The generated metric submission is:
 
 ```json
@@ -1018,6 +1168,167 @@ discovery or allow project workflows to replace bundled IDs.
 The engine persists the effective rule plan, policy source, hashes, enablement
 decisions, scoring replacements, condition evidence, step outputs, skips, and
 retries in run artifacts for audit and replay.
+
+### Current SPEC-039 policy limitation
+
+Rule enablement from the project policy is active. The effective plan also
+records metric enablement and replacement scoring bands. However, the current
+runtime does not yet apply replacement scoring bands from that plan while
+materializing executable rule steps. This limitation affects ordinary scalar
+metrics and collection-backed metrics equally.
+
+Until SPEC-039's effective-policy runtime integration is completed, put the
+thresholds you need to execute directly in the rule workflow's `scoring`
+declaration. A project policy is still the intended client override surface;
+do not fork or replace a bundled workflow ID to work around this limitation.
+
+## Editing the bundled OCP workflow
+
+The bundled OCP package is:
+
+```text
+workflows/review/rules/ocp/workflow.yaml
+```
+
+Its public workflow ID and policy coordinate are both `ocp`. It is a rule
+workflow, so keep its root `rule: {}` marker, at least one metric, and exactly
+one exception step.
+
+The current OCP flow uses one shared `analyze_dependencies` agent step, then
+asks the model to submit scalar counts for OCP-1, OCP-2, and OCP-3. That remains
+valid. To experiment with deterministic MCP counting, migrate one metric at a
+time and keep its stable `metric_id`.
+
+### OCP-1: expose the collection, then convert
+
+The current `analyze_dependencies` step wraps `dependencies` inside an
+`analysis` object. `scoring.source` selects a declared output and does not
+traverse nested JSON properties. First publish `dependencies` and
+`has_hardcoded_behavior_selection` as separate outputs while preserving their
+existing schemas:
+
+```yaml
+outputs:
+  - name: dependencies
+    type: data
+    schema:
+      type: array
+      items:
+        # Keep the current dependency item schema here.
+
+  - name: has_hardcoded_behavior_selection
+    type: data
+    schema:
+      type: boolean
+```
+
+Then OCP-1 can become:
+
+```yaml
+- id: sealed_variation_points
+  type: metric
+  metric_id: OCP-1
+  depends_on: [analyze_dependencies]
+  value:
+    type: integer
+    minimum: 0
+  scoring:
+    source: "{{steps.analyze_dependencies.outputs.dependencies}}"
+    when:
+      all:
+        - ref: "{{item.classification}}"
+          equals: DIRECT_NON_INJECTED
+        - ref: "{{item.is_exception}}"
+          equals: false
+    severe:
+      operator: greater_than_or_equal
+      value: 1
+```
+
+Remove the old OCP-1 `prompt`. Leaving it in place mixes model-owned and
+MCP-owned metric execution and is rejected during workflow loading.
+
+### OCP-2: direct conversion after classification
+
+The `analyze_testability.outputs.testability` array already publishes a
+`classification`. Count its `UNTESTABLE` entries:
+
+```yaml
+- id: untestable_dependencies
+  type: metric
+  metric_id: OCP-2
+  depends_on: [analyze_testability]
+  value:
+    type: integer
+    minimum: 0
+  scoring:
+    source: "{{steps.analyze_testability.outputs.testability}}"
+    when:
+      ref: "{{item.classification}}"
+      equals: UNTESTABLE
+    severe:
+      operator: greater_than_or_equal
+      value: 1
+```
+
+Again, remove the metric prompt. The upstream model still owns the semantic
+testability classification and its reasoning/evidence; MCP owns only counting
+and scoring.
+
+### OCP-3: reshape before converting
+
+OCP-3 currently needs three facts about the same dependency:
+
+- dependency classification is `DIRECT_INJECTED`;
+- the dependency is not an exception;
+- its testability classification is `TESTABLE`.
+
+Those facts currently live across the dependency analysis and testability
+analysis. Collection-backed scoring does not join arrays. First change the
+`testability` item schema and its agent instructions so every returned entry
+also carries the original dependency classification and exception flag. Then
+OCP-3 can filter one array:
+
+```yaml
+scoring:
+  source: "{{steps.analyze_testability.outputs.testability}}"
+  when:
+    all:
+      - ref: "{{item.dependency_classification}}"
+        equals: DIRECT_INJECTED
+      - ref: "{{item.classification}}"
+        equals: TESTABLE
+      - ref: "{{item.is_exception}}"
+        equals: false
+  minor:
+    operator: greater_than_or_equal
+    value: 1
+```
+
+Do not make MCP understand OCP-specific names. `classification`,
+`dependency_classification`, and `is_exception` are authored fields validated
+from this workflow's own JSON Schema.
+
+### Whole-unit OCP exception
+
+Keep `classify_exception` as a separate `type: exception` step. Per-dependency
+`is_exception` filters individual observations before counting; the rule's
+exception step decides whether the entire reviewed unit is exempt. MCP keeps
+the raw measurements and derivation audit, then applies the whole-rule
+exception during finalization.
+
+### Safe OCP edit checklist
+
+- keep `id: ocp`, `metric_id: OCP-1|OCP-2|OCP-3`, and the exception step stable;
+- change only one metric and its supporting analysis schema at a time;
+- declare every condition field in the source array's item schema;
+- make the source-producing step a transitive dependency of the metric;
+- remove `prompt` from every collection-backed metric;
+- retain non-empty reasoning and evidence on the upstream classifications;
+- run the focused OCP parsing/scoring tests before live tests;
+- run all non-live tests, then the locked Codex and Claude OCP flow tests;
+- remember that policy scoring overrides are auditable but not yet active at
+  runtime until the remaining SPEC-039 integration is completed.
 
 ## Flow-engine configuration
 

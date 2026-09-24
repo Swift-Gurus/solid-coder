@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from harness.event_appender import EventAppending
+from harness.metric_derivation_rendering import MetricDerivationRendering
 from harness.models import StepInstance
 from harness.output_recording import OutputRecording
 
@@ -15,8 +16,13 @@ solid-description: Records completed step outputs with explicit execution and ow
 """
 class OutputRecorder(OutputRecording):
 
-    def __init__(self, event_appender: EventAppending) -> None:
+    def __init__(
+        self,
+        event_appender: EventAppending,
+        derivation_renderer: MetricDerivationRendering,
+    ) -> None:
         self._event_appender = event_appender
+        self._derivation_renderer = derivation_renderer
 
     def record(self, events_path: str, ready: list[StepInstance], step_outputs: dict, session_id: str) -> None:
         addressed = [
@@ -47,6 +53,9 @@ class OutputRecorder(OutputRecording):
                 len(addressed_siblings) == len(pending_siblings)
                 and instance == addressed_siblings[-1]
             )
+            metric_derivation = self._derivation_renderer.render(
+                instance.metric_calculation
+            )
             self._event_appender.append(events_path, "step_completed", {
                 "instance_id": instance.instance_id,
                 "step_id": instance.step_id,
@@ -71,7 +80,12 @@ class OutputRecorder(OutputRecording):
                 "local_step_id": local_step_id,
                 "item": instance.item,
                 "parent_completed": completes_parent,
-                "empty_collection": instance.automatic_outputs is not None,
+                "empty_collection": instance.automatic_empty_collection,
+                **(
+                    {"metric_derivation": metric_derivation}
+                    if metric_derivation is not None
+                    else {}
+                ),
             })
             self._event_appender.append(events_path, "session_step_recorded", {
                 "session_id": session_id,

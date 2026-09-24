@@ -24,19 +24,19 @@ Skills pass `--mode <name>` to `gateway.py load_rules`; the server resolves prof
 
 | Principle | Activation | code | review | planner | synth-impl | synth-fixes |
 |---|---|---:|---:|---:|---:|---:|
-| Code Smells | always | 411 | 38 | 431 | 838 | 838 |
+| Code Smells | always | 460 | 38 | 495 | 951 | 951 |
 | Don't Repeat Yourself | always | 1,088 | 6,425 | 1,549 | 2,635 | 3,664 |
 | Frontmatter | always | 703 | 38 | 1,298 | 1,997 | 1,997 |
 | Interface Segregation Principle | always | 538 | 5,154 | 1,855 | 2,392 | 3,179 |
 | Liskov Substitution Principle | always | 634 | 5,424 | 2,035 | 2,668 | 3,359 |
-| Open/Closed Principle | always | 3,647 | 6,497 | 1,561 | 2,098 | 2,922 |
+| Open/Closed Principle | always | 3,647 | 6,529 | 1,593 | 2,130 | 2,953 |
 | Single Responsibility Principle | always | 817 | 3,760 | 1,447 | 1,919 | 2,480 |
 | Structured Concurrency | conditional | 925 | 2,951 | 1,370 | 2,289 | 3,427 |
 | SwiftUI Best Practices | conditional | 1,436 | 14,734 | 4,314 | 5,748 | 7,899 |
 | Unit Testing | conditional | 1,026 | 9,335 | 3,133 | 4,156 | 6,501 |
 | UI Testing | conditional | 1,054 | 9,298 | 2,104 | 3,155 | 5,293 |
-| **MIN** |  | **7,838** | **38** | **10,176** | **14,547** | **18,439** |
-| **MAX** |  | **12,279** | **14,734** | **21,097** | **29,895** | **41,559** |
+| **MIN** |  | **7,887** | **38** | **10,272** | **14,692** | **18,583** |
+| **MAX** |  | **12,328** | **14,734** | **21,193** | **30,040** | **41,703** |
 
 - **MIN** = smallest realistic load for that mode. For `all` aggregation: sum of always-on principles (7). For `per-principle`: smallest single principle.
 - **MAX** = heaviest realistic load. For `all`: sum of all discovered principles (11). For `per-principle`: largest single principle.

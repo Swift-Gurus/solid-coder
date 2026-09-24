@@ -8,6 +8,7 @@ solid-description: Tests inlining included sub-flow steps under an alias, qualif
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
@@ -158,7 +159,7 @@ def _make_resolver(loader: StubFileLoader) -> IncludeResolver:
                 IncludeCycleGuard(error_factory)
             ),
             nested_qualifier=NestedIncludeQualifier(
-                step_qualifier=StepQualifier(),
+                step_qualifier=StepQualifier(metric_source_qualifier=Mock()),
                 group_qualifier=NestedIncludeAliasGroupQualifier(
                     identity=LocalNestedIdentityQualifier()
                 ),

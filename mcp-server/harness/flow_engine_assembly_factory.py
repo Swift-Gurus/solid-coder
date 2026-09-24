@@ -14,6 +14,10 @@ from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.command_step_shape_validator import CommandStepShapeValidator
 from harness.command_step_value_validator import CommandStepValueValidator
+from harness.collection_metric_evaluator import CollectionMetricEvaluator
+from harness.collection_metric_step_instance_builder import (
+    CollectionMetricStepInstanceBuilder,
+)
 from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.comparison_condition_parser import ComparisonConditionParser
 from harness.comparison_operation_parser import ComparisonOperationParser
@@ -24,7 +28,9 @@ from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_comparator import ConditionComparator
 from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
 from harness.condition_evaluator import ConditionEvaluator
+from harness.condition_item_schema_validator import ConditionItemSchemaValidator
 from harness.condition_parser import ConditionParser
+from harness.condition_reference_collector import ConditionReferenceCollector
 from harness.condition_reference_resolver import ConditionReferenceResolver
 from harness.condition_value_matcher import ConditionValueMatcher
 from harness.conditional_step_instance_builder import ConditionalStepInstanceBuilder
@@ -96,6 +102,9 @@ from harness.incoming_edge_checker import IncomingEdgeChecker
 from harness.included_workflow_dependencies_resolver import (
     IncludedWorkflowDependenciesResolver,
 )
+from harness.included_metric_calculation_resolver import (
+    IncludedMetricCalculationResolver,
+)
 from harness.included_workflow_step_identity_resolver import (
     IncludedWorkflowStepIdentityResolver,
 )
@@ -106,6 +115,7 @@ from harness.json_schema_validating import JsonSchemaValidator
 from harness.kahn_cycle_detector import KahnCycleDetector
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_declaration_decoder import MetricDeclarationDecoder
+from harness.metric_step_shape_validator import MetricStepShapeValidator
 from harness.materialized_workflow_instances_collector import (
     MaterializedWorkflowInstancesCollector,
 )
@@ -135,8 +145,8 @@ from harness.prompt_file_loader import PromptFileLoader
 from harness.prompt_file_path_resolver import PromptFilePathResolver
 from harness.registered_template_value_renderer import RegisteredTemplateValueRenderer
 from harness.pydantic_model_decoder import PydanticModelDecoder
-from harness.nested_include_group_runtime_rebaser import (
-    NestedIncludeGroupRuntimeRebaser,
+from harness.nested_include_group_runtime_builder import (
+    NestedIncludeGroupRuntimeBuilder,
 )
 from harness.recursive_dynamic_include_group_expander import (
     RecursiveDynamicIncludeGroupExpander,
@@ -247,6 +257,7 @@ from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
+from harness.workflow_data_schema import WorkflowDataSchema
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
@@ -277,6 +288,7 @@ class FlowEngineAssemblyFactory:
         json_file_loader = YamlConfigFileLoader(loader=JsonLoader())
         path_builder = PathBuilder()
         error_factory = FlowValidationErrorFactory()
+        agent_step_shape_validator = AgentStepShapeValidator(error_factory)
         registered_operations = operation_registry or OperationRegistry(
             registrations=[],
             name_validator=LogicalOperationNameValidator(),
@@ -557,9 +569,13 @@ class FlowEngineAssemblyFactory:
                     for_each_parser=for_each_declaration_parser,
                     rule_step_contract_resolver=RuleStepContractResolver(
                         metric_decoder=MetricDeclarationDecoder(
-                            PydanticModelDecoder(
+                            decoder=PydanticModelDecoder(
                                 model_type=MetricDeclaration,
-                            )
+                            ),
+                            expression_parser=workflow_expression_parser,
+                            reference_parser=step_output_reference_parser,
+                            condition_parser=condition_parser,
+                            error_factory=error_factory,
                         ),
                         additional_info_output=RuleAdditionalInfoOutputProvider(),
                         assessment_decoder=PydanticModelDecoder(
@@ -603,7 +619,14 @@ class FlowEngineAssemblyFactory:
                         registrations=[
                             StepFieldValidatorRegistration(
                                 "agent",
-                                AgentStepShapeValidator(error_factory),
+                                agent_step_shape_validator,
+                            ),
+                            StepFieldValidatorRegistration(
+                                "metric",
+                                MetricStepShapeValidator(
+                                    model_owned_validator=agent_step_shape_validator,
+                                    error_factory=error_factory,
+                                ),
                             ),
                             StepFieldValidatorRegistration(
                                 "script",
@@ -628,7 +651,7 @@ class FlowEngineAssemblyFactory:
                                 OperationStepShapeValidator(error_factory),
                             ),
                         ],
-                        default=AgentStepShapeValidator(error_factory),
+                        default=agent_step_shape_validator,
                     ),
                     command_allowlist_resolver=allowlist_resolver,
                     command_allowlist_validator=CommandAllowlistValidator(
@@ -640,6 +663,13 @@ class FlowEngineAssemblyFactory:
                     for_each_validator=ForEachCollectionValidator(
                         target_validator=ForEachReferenceValidator(
                             reachability_checker=StepDependencyReachabilityChecker(),
+                            item_schema_validator=ConditionItemSchemaValidator(
+                                reference_collector=ConditionReferenceCollector(),
+                                error_factory=error_factory,
+                            ),
+                            schema_decoder=PydanticModelDecoder(
+                                model_type=WorkflowDataSchema,
+                            ),
                         ),
                         source_identity_resolver=ForEachSourceIdentityResolver(),
                     ),
@@ -746,8 +776,9 @@ class FlowEngineAssemblyFactory:
                             input_resolver=input_bindings_resolver,
                             identity_resolver=included_step_identity_resolver,
                             dependency_resolver=IncludedWorkflowDependenciesResolver(),
+                            metric_calculation_resolver=IncludedMetricCalculationResolver(),
                         ),
-                        runtime_rebaser=NestedIncludeGroupRuntimeRebaser(
+                        runtime_rebaser=NestedIncludeGroupRuntimeBuilder(
                             identity=runtime_identity_qualifier,
                             dependency_rebaser=owned_dependency_rebaser,
                         ),
@@ -775,24 +806,31 @@ class FlowEngineAssemblyFactory:
                     items_resolver=items_resolver,
                     context_resolver=workflow_step_context_resolver,
                     instance_builder=ConditionalStepInstanceBuilder(
-                        delegate=StepInstanceBuilder(
-                            renderer=interpolator,
+                        delegate=CollectionMetricStepInstanceBuilder(
+                            delegate=StepInstanceBuilder(
+                                renderer=interpolator,
+                                context_resolver=workflow_step_context_resolver,
+                                operation_inputs_resolver=OperationInputsResolver(
+                                    input_bindings_resolver
+                                ),
+                                batch_presentation_resolver=(
+                                    BatchStepPresentationResolver(
+                                        declaration_resolver=(
+                                            StepForEachDeclarationResolver()
+                                        ),
+                                        presentation_builder=(
+                                            BatchStepPresentationBuilder(
+                                                expression_resolver
+                                            )
+                                        ),
+                                    )
+                                ),
+                            ),
+                            items_resolver=items_resolver,
+                            evaluator=CollectionMetricEvaluator(
+                                condition_evaluator
+                            ),
                             context_resolver=workflow_step_context_resolver,
-                            operation_inputs_resolver=OperationInputsResolver(
-                                input_bindings_resolver
-                            ),
-                            batch_presentation_resolver=(
-                                BatchStepPresentationResolver(
-                                    declaration_resolver=(
-                                        StepForEachDeclarationResolver()
-                                    ),
-                                    presentation_builder=(
-                                        BatchStepPresentationBuilder(
-                                            expression_resolver
-                                        )
-                                    ),
-                                )
-                            ),
                         ),
                         condition_applier=StepConditionApplier(
                             condition_evaluator,

@@ -15,20 +15,32 @@ from harness.workflow_yaml_serializer import WorkflowYamlSerializer
 from harness.yaml_workflow_persister import YamlWorkflowPersister
 
 
-def make_workflow_persister() -> WorkflowPersisting:
-    return YamlWorkflowPersister(
-        workflow_serializer=WorkflowYamlSerializer(
-            snapshot_converter=DataclassWorkflowSnapshotConverter(),
-            condition_field_rewriter=ConditionFieldRewriter(
-                condition_serializer=make_condition_serializer(),
-            ),
-            step_rewriters=[
-                RuleStepSnapshotRewriter(),
-                OperationStepSnapshotRewriter(
-                    WorkflowExpressionSerializer()
+"""
+solid-name: WorkflowPersisterFactory
+solid-category: service
+solid-spec: [SPEC-030, SPEC-037, SPEC-053]
+solid-description: Provides durable workflow snapshot persistence.
+"""
+class WorkflowPersisterFactory:
+    def make(self) -> WorkflowPersisting:
+        condition_serializer = make_condition_serializer()
+        expression_serializer = WorkflowExpressionSerializer()
+        return YamlWorkflowPersister(
+            workflow_serializer=WorkflowYamlSerializer(
+                snapshot_converter=DataclassWorkflowSnapshotConverter(),
+                condition_field_rewriter=ConditionFieldRewriter(
+                    condition_serializer=condition_serializer,
                 ),
-            ],
-            output_serializer=WorkflowOutputSnapshotSerializer(),
-            yaml_dumper=SafeYamlDumper(),
+                step_rewriters=[
+                    RuleStepSnapshotRewriter(
+                        condition_serializer=condition_serializer,
+                        expression_serializer=expression_serializer,
+                    ),
+                    OperationStepSnapshotRewriter(
+                        expression_serializer
+                    ),
+                ],
+                output_serializer=WorkflowOutputSnapshotSerializer(),
+                yaml_dumper=SafeYamlDumper(),
+            )
         )
-    )

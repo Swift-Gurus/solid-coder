@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from harness.flow_validation_error import FlowValidationError
+from harness.condition_item_schema_validating import ConditionItemSchemaValidating
 from harness.for_each_target_validating import ForEachTargetValidating
 from harness.for_each_validation_target import ForEachValidationTarget
 from harness.models import StepDef
 from harness.step_dependency_reachability_checking import (
     StepDependencyReachabilityChecking,
 )
+from harness.structured_model_decoding import StructuredModelDecoding
+from harness.workflow_data_schema import WorkflowDataSchema
 
 
 """
@@ -21,8 +24,12 @@ class ForEachReferenceValidator(ForEachTargetValidating):
     def __init__(
         self,
         reachability_checker: StepDependencyReachabilityChecking,
+        item_schema_validator: ConditionItemSchemaValidating,
+        schema_decoder: StructuredModelDecoding[WorkflowDataSchema],
     ) -> None:
         self._reachability_checker = reachability_checker
+        self._item_schema_validator = item_schema_validator
+        self._schema_decoder = schema_decoder
 
     def validate(
         self,
@@ -39,7 +46,7 @@ class ForEachReferenceValidator(ForEachTargetValidating):
         )
         if source_step is None:
             raise FlowValidationError(
-                f"Step '{target.target_id}' for_each references unknown step "
+                f"Step '{target.target_id}' {target.reference_name} references unknown step "
                 f"'{target.source_reference.step_id}'"
             )
         source_output = next(
@@ -52,7 +59,7 @@ class ForEachReferenceValidator(ForEachTargetValidating):
         )
         if source_output is None:
             raise FlowValidationError(
-                f"Step '{target.target_id}' for_each references unknown output "
+                f"Step '{target.target_id}' {target.reference_name} references unknown output "
                 f"'{target.source_reference.output_name}' on step "
                 f"'{target.source_reference.step_id}'"
             )
@@ -62,10 +69,25 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             steps,
         ):
             raise FlowValidationError(
-                f"Step '{target.target_id}' for_each must reference a transitive dependency"
+                f"Step '{target.target_id}' {target.reference_name} must reference a transitive dependency"
             )
-        if source_output.schema is None or source_output.schema.get("type") != "array":
+        if source_output.schema is None:
             raise FlowValidationError(
-                f"Step '{target.target_id}' for_each source output "
+                f"Step '{target.target_id}' {target.reference_name} source output "
                 f"'{target.source_reference.output_name}' must declare an array schema"
+            )
+        source_schema = self._schema_decoder.decode(
+            source_output.schema,
+            f"step '{target.source_reference.step_id}' output schema",
+        )
+        if source_schema.type != "array":
+            raise FlowValidationError(
+                f"Step '{target.target_id}' {target.reference_name} source output "
+                f"'{target.source_reference.output_name}' must declare an array schema"
+            )
+        if target.item_condition is not None:
+            self._item_schema_validator.validate(
+                target.target_id,
+                target.item_condition,
+                source_schema.items or WorkflowDataSchema(),
             )

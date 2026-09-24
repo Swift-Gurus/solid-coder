@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 from harness.workflow_execution_mode import WorkflowExecutionMode
-from harness.workflow_persister_factory import make_workflow_persister
+from harness.workflow_persister_factory import WorkflowPersisterFactory
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
@@ -232,7 +232,7 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
         loaded = self.loader.load(str(workflow), [])
         run_directory = self.root / "run"
         run_directory.mkdir()
-        make_workflow_persister().persist(run_directory, loaded)
+        WorkflowPersisterFactory().make().persist(run_directory, loaded)
 
         restored = self.loader.load(str(run_directory / "workflow.yaml"), [])
         group = next(group for group in restored.alias_groups if group.alias == "selected")

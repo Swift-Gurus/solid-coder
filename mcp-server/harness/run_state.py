@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.collection_metric_derivation_projection import (
+    CollectionMetricDerivationProjection,
+)
 from harness.included_workflow_step_completion import IncludedWorkflowStepCompletion
 from harness.step_instance_completion import StepInstanceCompletion
 from harness.step_outputs import StepOutputs
@@ -33,3 +36,7 @@ class RunState:
     attempts_used: dict[str, int] = field(default_factory=dict)
     attempt_step_ids: dict[str, str] = field(default_factory=dict)
     rejection_reasons: dict[str, str] = field(default_factory=dict)
+    metric_derivations: dict[
+        str,
+        CollectionMetricDerivationProjection,
+    ] = field(default_factory=dict)

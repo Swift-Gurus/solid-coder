@@ -36,6 +36,10 @@ class AggregatePhaseStepCollector(AggregatePhaseStepCollecting):
         for candidate in flow.steps:
             if self._boundary_resolver.resolve(flow, candidate) != boundary_id:
                 continue
+            if candidate.metric_calculation is not None:
+                if selected:
+                    break
+                continue
             if candidate.type not in _MODEL_OWNED_STEP_TYPES:
                 if selected:
                     break

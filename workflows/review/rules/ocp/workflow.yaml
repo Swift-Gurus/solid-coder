@@ -1,167 +1,386 @@
 id: ocp
 name: Open Closed Principle Review
-description: Measures sealed variation points and testability signals and reports deterministic OCP severity.
+description: >
+  Measures sealed variation points and concrete dependency testability.
+  The model supplies observable dependency facts; MCP deterministically
+  derives metric values and severity.
 max_turns: 10
 
 rule: {}
 
 steps:
   - id: analyze_dependencies
+    type: agent
     prompt: |
-      1. **List every dependency** the class uses (properties, parameters, method calls to external types)
-      2. **Classify each as** 
-         - ABSTRACT (protocol-typed and injected) 
-         - DIRECT (passed in construction methods or used directly in class) 
-           - INJECTED (concrete class, singleton, static) passed into construction of the object (init, factory methods, convenience inits)
-             - construction methods (init, create type factory methods, convenience methods) can have default arguments -> consider INJECTED
-           - NON-INJECTED (concrete class, singleton, static, instantiated internally) used internally without injection
-         - INDIRECT (concrete class, singleton, static passed indirectly by dependencies)
-      3. **Check OCP exceptions** — apply only the `<exceptions principle="OCP">` block below. Exclude every matching unit or dependency from the OCP count before calculating sealed variation points.
-      4. **Count concrete dependencies DIRECT NON-INJECTED**
-      5. **Exclude from the count of DIRECT NON-INJECTED** the dependencies that fit the exception for **Pure Data Structures**
-      6. **Sum** = total sealed variation points
+      Analyze every dependency used by unit
+      `{{params.review_unit.target.name}}`.
 
-      Analyze every dependency once. Preserve whether it is excepted, whether its concrete type can be instantiated or subclassed, and the source evidence supporting each decision. Also record whether the unit contains hardcoded behavior-selection logic.
+      The unit source is already visible in the current model session.
 
-      Apply this analysis to unit `{{params.review_unit.target.name}}`. Its source is already visible in the current model session.
+      ## 1. Inventory dependencies
+
+      List every external type or runtime collaborator used through:
+
+      - stored properties
+      - initializer, factory, or method parameters
+      - method calls to external types
+      - constructed objects
+      - singleton or static access
+      - dependencies reached through another collaborator
+
+      Analyze each dependency exactly once.
+
+      ## 2. Classify each dependency
+
+      Assign exactly one classification:
+
+      ### ABSTRACT (protocol-typed and injected)
+
+      ### DIRECT_INJECTED
+
+      The dependency is concrete and is supplied directly through an
+      initializer, factory method, convenience initializer, or another
+      construction boundary.
+
+      A concrete default argument on a construction method remains injected.
+
+      ### DIRECT_NON_INJECTED
+
+      The dependency is concrete and acquired internally by the unit, including:
+
+      - direct construction
+      - singleton access
+      - static/global access
+      - service location
+      - hidden concrete defaults created inside the unit
+
+      ### INDIRECT
+
+      The concrete dependency is reached through another dependency rather
+      than being acquired directly by the reviewed unit.
+
+      ## 3. Record observable dependency properties
+
+      For every dependency answer:
+
+      - `has_business_logic`
+        Does the dependency make domain or application decisions?
+
+      - `has_behavioral_dependencies`
+        Does the dependency itself collaborate with runtime services or other
+        behavioral dependencies?
+
+      - `has_side_effecting_behavior`
+        Does the dependency perform observable work outside its own stored
+        data, such as networking, persistence, logging, notifications,
+        process interaction, global mutation, or runtime service calls?
+
+        Merely storing or mutating its own data does not count as
+        side-effecting behavior.
+
+      - `can_substitute_without_modifying_unit`
+        Can the reviewed unit receive an alternative implementation or test
+        double without changing the reviewed unit's source?
+
+      - `can_subclass`
+        Can the concrete dependency type be subclassed?
+
+      - `can_instantiate`
+        Can a caller construct an instance of the dependency type?
+
+      Supply precise reasoning and source evidence for every dependency.
+
+      ## 4. Record hardcoded behavior selections
+
+      Separately list every location where the unit selects behavior through
+      hardcoded cases, concrete-type checks, string identifiers, enum cases,
+      or equivalent branching that must be modified whenever a new behavior
+      is introduced.
+
+      Do not include ordinary validation branches or branches that do not
+      select among behavioral implementations.
+
+      Return an empty array when none exist.
+
     outputs:
-      - name: analysis
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [dependencies, has_hardcoded_behavior_selection]
-          properties:
-            dependencies:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [name, classification, is_exception, can_instantiate, can_subclass, reasoning, evidence]
-                properties:
-                  name: {type: string, minLength: 1}
-                  classification:
-                    type: string
-                    enum: [ABSTRACT, DIRECT_INJECTED, DIRECT_NON_INJECTED, INDIRECT]
-                  is_exception: {type: boolean}
-                  can_instantiate: {type: boolean}
-                  can_subclass: {type: boolean}
-                  reasoning: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-            has_hardcoded_behavior_selection: {type: boolean}
-
-  - id: sealed_variation_points
-    type: metric
-    metric_id: OCP-1
-    depends_on: [analyze_dependencies]
-    prompt: |
-      A "sealed variation point" is a place where adding a new behavior or swapping an implementation requires modifying this class instead of extending it.
-
-      Count dependencies classified as DIRECT_NON_INJECTED that are not exceptions. This count is the total sealed variation points. Do not rediscover or reclassify dependencies.
-
-      Use the dependency analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
-  - id: analyze_testability
-    depends_on: [analyze_dependencies]
-    prompt: |
-      - Use the OCP-1 analysis, including the `<exceptions principle="OCP">` exclusions, to validate concrete dependencies.
-      - For every dependency classified DIRECT INJECTED or INDIRECT, reuse its OCP-1 classification and substitution evidence.
-      - Classify the dependency as UNTESTABLE only when it is concrete, is not already behind an abstraction, and its type can neither be substituted nor subclassed. Otherwise classify it as TESTABLE.
-
-      *Note*: any class that is not final can be subclassed.
-
-      Do not rediscover dependencies. Return one testability classification for every DIRECT_INJECTED or INDIRECT dependency from the shared analysis. Use NOT_APPLICABLE for every other dependency retained as supporting evidence.
-
-      Use the dependency analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
-    outputs:
-      - name: testability
+      - name: dependencies
         type: data
         schema:
           type: array
           items:
             type: object
             additionalProperties: false
-            required: [name, classification, reasoning, evidence]
+            required:
+              - name
+              - classification
+              - has_business_logic
+              - has_behavioral_dependencies
+              - has_side_effecting_behavior
+              - can_substitute_without_modifying_unit
+              - can_subclass
+              - can_instantiate
+              - reasoning
+              - evidence
             properties:
-              name: {type: string, minLength: 1}
+              name:
+                type: string
+                minLength: 1
+
               classification:
                 type: string
-                enum: [TESTABLE, UNTESTABLE, NOT_APPLICABLE]
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+                enum:
+                  - ABSTRACT
+                  - DIRECT_INJECTED
+                  - DIRECT_NON_INJECTED
+                  - INDIRECT
 
-  - id: untestable_dependencies
+              has_business_logic:
+                type: boolean
+
+              has_behavioral_dependencies:
+                type: boolean
+
+              has_side_effecting_behavior:
+                type: boolean
+
+              can_substitute_without_modifying_unit:
+                type: boolean
+
+              can_subclass:
+                type: boolean
+
+              can_instantiate:
+                type: boolean
+
+              reasoning:
+                type: string
+                minLength: 1
+
+              evidence:
+                type: string
+                minLength: 1
+
+      - name: hardcoded_behavior_selections
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - reasoning
+              - evidence
+            properties:
+              reasoning:
+                type: string
+                minLength: 1
+
+              evidence:
+                type: string
+                minLength: 1
+
+  # OCP-1: internally acquired concrete behavioral dependencies.
+  - id: sealed_variation_points
     type: metric
-    metric_id: OCP-2
-    depends_on: [analyze_testability]
-    prompt: |
-      A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+    metric_id: OCP-1
+    observation_id: direct_non_injected_count
+    depends_on:
+      - analyze_dependencies
 
-      Count UNTESTABLE decisions from the shared testability analysis. Do not rediscover dependencies or revise the classifications.
-
-      Use the dependency and testability analyses you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
+
     scoring:
+      source: "{{steps.analyze_dependencies.outputs.dependencies}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: DIRECT_NON_INJECTED
+
+          # A pure-data dependency has all three observable signals false.
+          # Negating that condition retains only behavioral dependencies.
+          - not:
+              all:
+                - ref: "{{item.has_business_logic}}"
+                  equals: false
+
+                - ref: "{{item.has_behavioral_dependencies}}"
+                  equals: false
+
+                - ref: "{{item.has_side_effecting_behavior}}"
+                  equals: false
+
       severe:
         operator: greater_than_or_equal
         value: 1
 
-  - id: testable_direct_count
+  # OCP-1 also includes hardcoded behavior-selection points that may exist
+  # without an external dependency.
+  - id: hardcoded_behavior_selection_count
     type: metric
-    metric_id: OCP-3
-    depends_on: [analyze_testability]
-    prompt: |
-      A class is OCP-compliant when it can be tested without modifying its source. Testability is a proxy for extensibility.
+    metric_id: OCP-1
+    observation_id: hardcoded_behavior_selection_count
+    depends_on:
+      - analyze_dependencies
 
-      Count dependencies classified as DIRECT_INJECTED in the shared dependency analysis that are not exceptions and whose corresponding testability decision is TESTABLE. Pure-data dependencies and every other typed exception remain excluded. Do not rediscover dependencies or revise the classifications.
-
-      Use the dependency and testability analyses you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise them.
     value:
       type: integer
       minimum: 0
+
     scoring:
+      source: "{{steps.analyze_dependencies.outputs.hardcoded_behavior_selections}}"
+
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  # OCP-2: injected or indirect concrete behavioral dependencies that cannot
+  # be substituted and cannot be subclassed.
+  - id: untestable_concrete_dependencies
+    type: metric
+    metric_id: OCP-2
+    observation_id: untestable_concrete_count
+    depends_on:
+      - analyze_dependencies
+
+    value:
+      type: integer
+      minimum: 0
+
+    scoring:
+      source: "{{steps.analyze_dependencies.outputs.dependencies}}"
+      when:
+        all:
+          - any:
+              - ref: "{{item.classification}}"
+                equals: DIRECT_INJECTED
+
+              - ref: "{{item.classification}}"
+                equals: INDIRECT
+
+          - not:
+              all:
+                - ref: "{{item.has_business_logic}}"
+                  equals: false
+
+                - ref: "{{item.has_behavioral_dependencies}}"
+                  equals: false
+
+                - ref: "{{item.has_side_effecting_behavior}}"
+                  equals: false
+
+          - ref: "{{item.can_substitute_without_modifying_unit}}"
+            equals: false
+
+          - ref: "{{item.can_subclass}}"
+            equals: false
+
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  # OCP-3: injected or indirect concrete behavioral dependencies that remain
+  # substitutable or subclassable. These are testable but still concrete.
+  - id: testable_concrete_dependencies
+    type: metric
+    metric_id: OCP-3
+    observation_id: testable_concrete_count
+    depends_on:
+      - analyze_dependencies
+
+    value:
+      type: integer
+      minimum: 0
+
+    scoring:
+      source: "{{steps.analyze_dependencies.outputs.dependencies}}"
+      when:
+        all:
+          - any:
+              - ref: "{{item.classification}}"
+                equals: DIRECT_INJECTED
+
+              - ref: "{{item.classification}}"
+                equals: INDIRECT
+
+          - not:
+              all:
+                - ref: "{{item.has_business_logic}}"
+                  equals: false
+
+                - ref: "{{item.has_behavioral_dependencies}}"
+                  equals: false
+
+                - ref: "{{item.has_side_effecting_behavior}}"
+                  equals: false
+
+          - any:
+              - ref: "{{item.can_substitute_without_modifying_unit}}"
+                equals: true
+
+              - ref: "{{item.can_subclass}}"
+                equals: true
+
       minor:
         operator: greater_than_or_equal
         value: 1
 
   - id: classify_exception
     type: exception
-    depends_on: [analyze_dependencies]
+    depends_on:
+      - analyze_dependencies
+
     prompt: |
-      Decide whether the entire supplied unit is exempt from OCP review under these authored exceptions:
+      Decide whether the entire unit
+      `{{params.review_unit.target.name}}`
+      is exempt from OCP review.
 
-      1. **Factories/Builders** — a class whose primary responsibility is constructing or composing other objects (name ends in Factory, Builder, Assembler, or Configurator; or its primary output is a fully configured object graph). The ENTIRE class is exempt from OCP-1 and OCP-2: constructing, holding, and wiring concrete dependencies is inherently its job. Do NOT flag individual instantiations inside a Factory/Builder as sealed variation points.
-      2. **Dependency-free units** — units with no dependencies and no hardcoded behavior-selection logic are exempt.
-      3. **Pure data structures** — immutable or mutable data carriers with no business logic, runtime collaborators, or side effects are exempt.
-      4. **Boundary Adapters** - (see @adapter.md) - applies ONLY when wrapping truly static-only APIs.
-      5. **Pure Views UI elements** - UI elements that don't have any business logic dependencies.
-      6. **Test code** — unit tests, UI tests, integration tests, mocks, stubs, fakes, and test helpers are exempt. Test code intentionally uses concrete types and is not subject to OCP review.
-          When encountering a `.shared` / `.default` / static access, **inspect the returned type** before deciding:
+      Use the unit source and the dependency analysis already submitted.
+      Do not rediscover or reclassify dependencies.
 
-          | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |
-          |---------------|---------------------------|--------|-------------------|
-          | Concrete class (non-final) | Yes — can subclass | Protocol extension conformance + inject the instance | **No** |
-          | Concrete final class | Yes — can instantiate | Protocol extension conformance + inject the instance | **No** |
-          | Protocol / interface | Already abstract | Depend on the protocol directly | **No** |
-          | Enum with static members only | No | Wrap in adapter struct | **Yes** |
-          | Global function / constant | No | Wrap in adapter struct | **Yes** |
+      Apply only these whole-unit exceptions:
 
-          Boundary Adapter Recognition Conditions (ALL must hold):
-          - API is not owned by dev (search in project/local packages/local framework files)
-          - API doesn't support instantiation: enums with only static members, global constants, static global functions
-          - The type **cannot** be subclassed or instantiated — only then is a wrapper struct justified
+      1. **Factories/Builders** — a class whose primary responsibility is
+         constructing or composing other objects (name ends in Factory,
+         Builder, Assembler, or Configurator; or its primary output is a fully
+         configured object graph). The ENTIRE class is exempt from OCP-1 and
+         OCP-2: constructing, holding, and wiring concrete dependencies is
+         inherently its job. Do NOT flag individual instantiations inside a
+         Factory/Builder as sealed variation points.
 
-      Apply whole-unit exceptions literally against the shared dependency analysis. "Dependency-free" requires that the typed dependency array is literally empty; dependencies marked as dependency-level exceptions are still dependencies. A protocol, class, or other behavior declaration that merely uses pure-data dependencies is not itself a data carrier, so that usage does not make the reviewed unit itself a pure data structure.
+      2. **Dependency-free units** — units with no dependencies and no
+         hardcoded behavior-selection logic are exempt.
 
-      Mandatory first branch: when the shared dependency analysis has an empty `dependencies` array and `has_hardcoded_behavior_selection` is false, the dependency-free exception is satisfied and you MUST return `is_exception: true`. Evaluate the remaining exceptions only when that branch does not match.
+      3. **Pure data structures** — immutable or mutable data carriers with no
+         business logic, runtime collaborators, or side effects are exempt.
 
-      Classify unit `{{params.review_unit.target.name}}` using its source and the dependency analysis you previously submitted; do not rediscover or revise that analysis.
+      4. **Boundary Adapters** — applies ONLY when wrapping truly static-only
+         APIs.
+
+      5. **Pure Views UI elements** — UI elements that don't have any business
+         logic dependencies.
+
+      6. **Test code** — unit tests, UI tests, integration tests, mocks, stubs,
+         fakes, and test helpers are exempt. Test code intentionally uses
+         concrete types and is not subject to OCP review.
+
+      When encountering a `.shared` / `.default` / static access, inspect the
+      returned type before deciding:
+
+      | Returned type | Can instantiate / subclass? | Action | Boundary Adapter? |
+      |---------------|-----------------------------|--------|-------------------|
+      | Concrete class (non-final) | Yes — can subclass | Protocol extension conformance + inject the instance | No |
+      | Concrete final class | Yes — can instantiate | Protocol extension conformance + inject the instance | No |
+      | Protocol / interface | Already abstract | Depend on the protocol directly | No |
+      | Enum with static members only | No | Wrap in adapter struct | Yes |
+      | Global function / constant | No | Wrap in adapter struct | Yes |
+
+      Boundary Adapter Recognition Conditions — ALL must hold:
+
+      - API is not owned by dev (search in project/local packages/local
+        framework files)
+      - API doesn't support instantiation: enums with only static members,
+        global constants, static global functions
+      - The type cannot be subclassed or instantiated — only then is a wrapper
+        struct justified

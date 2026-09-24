@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
 from harness.included_workflow_instance import IncludedWorkflowInstance
@@ -39,5 +40,6 @@ class StepDef:
     max_attempts: int = 3
     workflow_instance: IncludedWorkflowInstance | None = None
     metric: MetricDeclaration | None = None
+    metric_calculation: CollectionMetricCalculation | None = None
     assessment: RuleAssessmentDeclaration | None = None
     operation: OperationStep | None = None

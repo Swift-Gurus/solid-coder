@@ -18,7 +18,7 @@ from harness.models import FlowValidationError
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
-from harness.workflow_persister_factory import make_workflow_persister
+from harness.workflow_persister_factory import WorkflowPersisterFactory
 
 
 class TestRuleWorkflowLoading(unittest.TestCase):
@@ -137,7 +137,7 @@ class TestRuleWorkflowLoading(unittest.TestCase):
         run_directory = self.directory / "run"
         run_directory.mkdir()
 
-        make_workflow_persister().persist(run_directory, flow)
+        WorkflowPersisterFactory().make().persist(run_directory, flow)
         reloaded = self.loader.load(str(run_directory / "workflow.yaml"), [])
 
         self.assertEqual(
@@ -411,7 +411,7 @@ class TestRuleWorkflowLoading(unittest.TestCase):
         )
         run_directory = self.directory / "composite-metric-run"
         run_directory.mkdir()
-        make_workflow_persister().persist(run_directory, flow)
+        WorkflowPersisterFactory().make().persist(run_directory, flow)
 
         reloaded = self.loader.load(str(run_directory / "workflow.yaml"), [])
 

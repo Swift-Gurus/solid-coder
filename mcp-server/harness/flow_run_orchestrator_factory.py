@@ -42,6 +42,7 @@ from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
 from harness.json_loading import JsonLoader
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
+from harness.metric_derivation_renderer import MetricDerivationRenderer
 from harness.name_resolving_flow_loader import NameResolvingFlowLoader
 from harness.operation_registration import OperationRegistration
 from harness.operation_registry import OperationRegistry
@@ -107,7 +108,7 @@ from harness.workflow_catalog_factory import WorkflowCatalogFactory
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
-from harness.workflow_persister_factory import make_workflow_persister
+from harness.workflow_persister_factory import WorkflowPersisterFactory
 from hook_utils import _resolve_project_root
 from json_serializer import JsonSerializer
 from mcp_config_builder import McpConfigBuilder
@@ -192,7 +193,13 @@ class FlowRunOrchestratorFactory:
             dag_runner=assembly.dag_runner,
             aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(),
         )
-        output_recorder = OutputRecorder(event_appender=assembly.event_appender)
+        condition_serializer = make_condition_serializer()
+        output_recorder = OutputRecorder(
+            event_appender=assembly.event_appender,
+            derivation_renderer=MetricDerivationRenderer(
+                condition_serializer
+            ),
+        )
         completion_checker = RunCompletionChecker(
             event_appender=assembly.event_appender,
             active_run=active_run,
@@ -283,7 +290,6 @@ class FlowRunOrchestratorFactory:
             StepBatchRunnerRegistration("command", "", single_process_batch),
             StepBatchRunnerRegistration("operation", "", single_operation_batch),
         ])
-        condition_serializer = make_condition_serializer()
         step_execution_failure_handler = StepExecutionFailureHandler(
             failure_attributor=ScriptFailureAttributor(),
             attempt_failure_handler=attempt_failure_handler,
@@ -336,7 +342,7 @@ class FlowRunOrchestratorFactory:
                 run_initializer=RunInitializer(
                     active_run=active_run,
                     scaffolder=RunDirectoryScaffolder(
-                        workflow_persister=make_workflow_persister(),
+                        workflow_persister=WorkflowPersisterFactory().make(),
                     ),
                 ),
                 metadata_store=metadata_store,

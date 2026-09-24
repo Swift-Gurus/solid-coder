@@ -1,7 +1,9 @@
 """Defines one resolved workflow iteration validation target."""
 
 from dataclasses import dataclass
+from typing import Optional
 
+from harness.condition_declaration import ConditionDeclaration
 from harness.step_output_reference import StepOutputReference
 
 
@@ -17,3 +19,5 @@ class ForEachValidationTarget:
     source_reference: StepOutputReference
     source_step_id: str
     dependency_ids: list[str]
+    item_condition: Optional[ConditionDeclaration] = None
+    reference_name: str = "for_each"

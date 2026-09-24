@@ -20,7 +20,7 @@ from harness.flow_def import FlowDef
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.include_alias_group import IncludeAliasGroup
 from harness.step_def import StepDef
-from harness.workflow_persister_factory import make_workflow_persister
+from harness.workflow_persister_factory import WorkflowPersisterFactory
 
 
 class TestYamlWorkflowPersister(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestYamlWorkflowPersister(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             run_directory = Path(temporary_directory)
-            make_workflow_persister().persist(run_directory, flow)
+            WorkflowPersisterFactory().make().persist(run_directory, flow)
             workflow_path = run_directory / "workflow.yaml"
             snapshot = yaml.safe_load(workflow_path.read_text())
             reloaded = FlowEngineAssemblyFactory().build().flow_loader.load(

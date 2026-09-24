@@ -1,8 +1,13 @@
 """Defines one validated metric observation awaiting deterministic scoring."""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from findings.metric_additional_info import MetricAdditionalInfo
+from harness.collection_metric_derivation_projection import (
+    CollectionMetricDerivationProjection,
+)
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_scoring_band import MetricComparisonValue
 
@@ -19,3 +24,7 @@ class RuleMetricObservation(BaseModel):
     declaration: MetricDeclaration
     value: MetricComparisonValue
     additional_info: MetricAdditionalInfo
+    derivation: Optional[CollectionMetricDerivationProjection] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )

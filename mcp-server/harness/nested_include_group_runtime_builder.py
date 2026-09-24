@@ -1,4 +1,4 @@
-"""Rebases nested include declarations beneath one parent runtime instance."""
+"""Builds nested include declarations beneath one parent runtime instance."""
 
 from dataclasses import replace
 
@@ -16,12 +16,12 @@ from harness.runtime_include_identity_qualifying import (
 
 
 """
-solid-name: NestedIncludeGroupRuntimeRebaser
+solid-name: NestedIncludeGroupRuntimeBuilder
 solid-category: service
 solid-spec: [SPEC-037]
-solid-description: Rebuilds a nested include group and its templates for one exact materialized parent instance.
+solid-description: Builds a nested include group and its templates for one exact materialized parent instance.
 """
-class NestedIncludeGroupRuntimeRebaser(IncludeGroupRuntimeRebasing):
+class NestedIncludeGroupRuntimeBuilder(IncludeGroupRuntimeRebasing):
     def __init__(
         self,
         identity: RuntimeIncludeIdentityQualifying,
@@ -89,6 +89,23 @@ class NestedIncludeGroupRuntimeRebaser(IncludeGroupRuntimeRebasing):
                         scoped_ids,
                         owner_group,
                         owner_instance,
+                    ),
+                    metric_calculation=(
+                        replace(
+                            template.metric_calculation,
+                            source=replace(
+                                template.metric_calculation.source,
+                                step_id=self._identity.qualify(
+                                    template.metric_calculation.source.step_id,
+                                    owner_group,
+                                    owner_instance,
+                                ),
+                            ),
+                        )
+                        if template.metric_calculation is not None
+                        and template.metric_calculation.source.step_id
+                        in scoped_ids
+                        else template.metric_calculation
                     ),
                 )
                 for template in templates

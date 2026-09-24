@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Optional, Union
 
 from pydantic import AliasChoices, ConfigDict, Field
 
+from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
 from harness.metric_declaration import MetricDeclaration
@@ -50,5 +51,6 @@ class StepDeclaration:
     max_attempts: int = 3
     source_file: Optional[str] = None
     metric: Optional[MetricDeclaration] = None
+    metric_calculation: Optional[CollectionMetricCalculation] = None
     assessment: Optional[RuleAssessmentDeclaration] = None
     operation: Optional[OperationStep] = None

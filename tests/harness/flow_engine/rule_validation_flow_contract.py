@@ -62,14 +62,18 @@ class RuleValidationFlowContract(unittest.TestCase):
             ),
         ).build()
 
-    def test_starts_metrics_and_one_exception_without_scoring_step(self) -> None:
+    def test_exposes_only_model_owned_steps_and_one_exception(self) -> None:
         checkpoint = self._complete_workflow()
 
         self.assertEqual(
             set(checkpoint.step_ids),
             {
                 *(analysis.step_id for analysis in self.SCENARIO.analysis),
-                *(metric.step_id for metric in self.SCENARIO.metrics),
+                *(
+                    metric.step_id
+                    for metric in self.SCENARIO.metrics
+                    if not metric.mcp_owned
+                ),
                 "classify_exception",
             },
         )
@@ -151,26 +155,57 @@ class RuleValidationFlowContract(unittest.TestCase):
                 for prompt in checkpoint.prompts
             ))
 
-    def test_rejects_unaudited_measurement_before_scoring(self) -> None:
-        started = self._advance_through_analysis().result
-        first_metric = self.SCENARIO.metrics[0]
-        metric_step = next(
-            step
-            for step in started.steps
-            if step.step_id == first_metric.step_id
+    def test_metric_measurements_are_audited_before_scoring(self) -> None:
+        model_metric = next(
+            (
+                metric
+                for metric in self.SCENARIO.metrics
+                if not metric.mcp_owned
+            ),
+            None,
         )
+        if model_metric is not None:
+            started = self._advance_through_analysis().result
+            metric_step = next(
+                step
+                for step in started.steps
+                if step.step_id == model_metric.step_id
+            )
+            rejected = self.sut.flow_next(
+                {metric_step.instance_id: {"value": model_metric.value}}
+            )
+            self.assertEqual(rejected.status, "ready")
+            rejected_metric = next(
+                step
+                for step in rejected.steps
+                if step.step_id == model_metric.step_id
+            )
+            self.assertIn("additional_info", rejected_metric.rejection_reason)
 
-        rejected = self.sut.flow_next(
-            {metric_step.instance_id: {"value": first_metric.value}}
-        )
-
-        self.assertEqual(rejected.status, "ready")
-        rejected_metric = next(
-            step
-            for step in rejected.steps
-            if step.step_id == first_metric.step_id
-        )
-        self.assertIn("additional_info", rejected_metric.rejection_reason)
+        mcp_metric_coordinates = {
+            (metric.metric_id, metric.observation_id)
+            for metric in self.SCENARIO.metrics
+            if metric.mcp_owned
+        }
+        if mcp_metric_coordinates:
+            checkpoint = self._complete_workflow()
+            result = self._rule_result(checkpoint.run_id)
+            audited_decisions = [
+                metric
+                for metric in result.metrics
+                if (metric.metric_id, metric.observation_id)
+                in mcp_metric_coordinates
+            ]
+            self.assertEqual(
+                len(audited_decisions),
+                len(mcp_metric_coordinates),
+            )
+            self.assertTrue(all(
+                metric.derivation is not None
+                and metric.additional_info.reasoning
+                and metric.additional_info.evidence
+                for metric in audited_decisions
+            ))
 
     def test_mcp_scores_all_metrics_and_publishes_audited_result(self) -> None:
         checkpoint = self._complete_workflow()

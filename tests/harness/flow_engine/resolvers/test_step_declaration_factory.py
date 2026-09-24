@@ -47,28 +47,35 @@ class EmptyOperationStepContractResolver:
 class TestStepDeclarationFactory(unittest.TestCase):
     def setUp(self):
         error_factory = FlowValidationErrorFactory()
-        self.sut = StepDeclarationFactory(
-            condition_parser=ConditionParser(
-                composition_parser=CompositionConditionParser(),
-                comparison_parser=ComparisonConditionParser(
-                    expression_parser=WorkflowExpressionParser(),
-                    operation_parser=ComparisonOperationParser(
-                        error_factory
-                    ),
+        expression_parser = WorkflowExpressionParser()
+        reference_parser = StepOutputReferenceParser()
+        condition_parser = ConditionParser(
+            composition_parser=CompositionConditionParser(),
+            comparison_parser=ComparisonConditionParser(
+                expression_parser=expression_parser,
+                operation_parser=ComparisonOperationParser(
+                    error_factory
                 ),
             ),
+        )
+        self.sut = StepDeclarationFactory(
+            condition_parser=condition_parser,
             for_each_parser=ForEachDeclarationParser(
                 reference_parser=ForEachReferenceParser(
-                    expression_parser=WorkflowExpressionParser(),
-                    reference_parser=StepOutputReferenceParser(),
+                    expression_parser=expression_parser,
+                    reference_parser=reference_parser,
                 ),
-                expression_parser=WorkflowExpressionParser(),
+                expression_parser=expression_parser,
             ),
             rule_step_contract_resolver=RuleStepContractResolver(
                 metric_decoder=MetricDeclarationDecoder(
-                    PydanticModelDecoder(
+                    decoder=PydanticModelDecoder(
                         model_type=MetricDeclaration,
-                    )
+                    ),
+                    expression_parser=expression_parser,
+                    reference_parser=reference_parser,
+                    condition_parser=condition_parser,
+                    error_factory=error_factory,
                 ),
                 additional_info_output=RuleAdditionalInfoOutputProvider(),
                 assessment_decoder=PydanticModelDecoder(

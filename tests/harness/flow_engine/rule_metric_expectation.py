@@ -22,3 +22,4 @@ class RuleMetricExpectation(BaseModel):
     detection_name: str = Field(min_length=1)
     value: MetricComparisonValue
     severity: ReviewSeverity
+    mcp_owned: bool = False

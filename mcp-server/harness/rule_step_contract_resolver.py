@@ -64,7 +64,8 @@ class RuleStepContractResolver(RuleStepContractResolving):
                 f"Rule step '{step_id}' has an engine-generated output contract and must not declare outputs"
             )
         if step_type == "metric":
-            metric = self._metric_decoder.decode(raw)
+            metric_contract = self._metric_decoder.decode(raw)
+            metric = metric_contract.metric
             return RuleStepContract(
                 outputs=[
                     OutputSpec(
@@ -75,6 +76,7 @@ class RuleStepContractResolver(RuleStepContractResolving):
                     self._additional_info_output.provide(),
                 ],
                 metric=metric,
+                metric_calculation=metric_contract.calculation,
             )
         if step_type == "exception":
             return RuleStepContract(

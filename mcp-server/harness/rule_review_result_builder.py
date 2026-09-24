@@ -32,23 +32,39 @@ class RuleReviewResultBuilder(RuleReviewResultBuilding):
         provenance: RuleReviewProvenance,
         observations: RuleObservations,
     ) -> RuleReviewResult:
-        decisions = [
-            RuleMetricDecision(
+        decisions: list[RuleMetricDecision] = []
+        for observation in observations.metrics:
+            raw_severity = self._scorer.evaluate(
+                observation.value,
+                observation.declaration.scoring,
+            )
+            matching_band = None
+            if raw_severity is ReviewSeverity.SEVERE:
+                matching_band = observation.declaration.scoring.severe
+            elif raw_severity is ReviewSeverity.MINOR:
+                matching_band = observation.declaration.scoring.minor
+            decisions.append(RuleMetricDecision(
                 metric_id=observation.declaration.metric_id,
                 observation_id=observation.declaration.observation_id,
                 value=observation.value,
                 severity=(
                     ReviewSeverity.COMPLIANT
                     if observations.exception.is_exception
-                    else self._scorer.evaluate(
-                        observation.value,
-                        observation.declaration.scoring,
-                    )
+                    else raw_severity
                 ),
                 additional_info=observation.additional_info,
-            )
-            for observation in observations.metrics
-        ]
+                derivation=observation.derivation,
+                raw_severity=(
+                    raw_severity
+                    if observation.derivation is not None
+                    else None
+                ),
+                matching_band=(
+                    matching_band
+                    if observation.derivation is not None
+                    else None
+                ),
+            ))
         return RuleReviewResult(
             workflow_id=workflow_id,
             rule_instance_id=rule_instance_id,

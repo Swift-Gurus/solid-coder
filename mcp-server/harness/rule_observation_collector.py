@@ -56,12 +56,11 @@ class RuleObservationCollector(RuleObservationCollecting):
             if step.metric is not None:
                 outputs = self._outputs_resolver.resolve(step.id, run_state)
                 metrics.append(
-                    RuleMetricObservation.model_validate(
-                        {
-                            "declaration": step.metric,
-                            "value": outputs.get("value"),
-                            "additional_info": outputs.get("additional_info"),
-                        }
+                    RuleMetricObservation(
+                        declaration=step.metric,
+                        value=outputs.get("value"),
+                        additional_info=outputs.get("additional_info"),
+                        derivation=run_state.metric_derivations.get(step.id),
                     )
                 )
             elif step.type == "exception":

@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory  # noqa: E402
 from harness.flow_validation_error import FlowValidationError  # noqa: E402
-from harness.workflow_persister_factory import make_workflow_persister  # noqa: E402
+from harness.workflow_persister_factory import WorkflowPersisterFactory  # noqa: E402
 
 
 """
@@ -54,7 +54,7 @@ class TestAggregateRuleWorkflowLoading(unittest.TestCase):
         run_directory = self.directory / "run"
         run_directory.mkdir()
 
-        make_workflow_persister().persist(run_directory, flow)
+        WorkflowPersisterFactory().make().persist(run_directory, flow)
         snapshot = (run_directory / "workflow.yaml").read_text()
         reloaded = self.loader.load(str(run_directory / "workflow.yaml"), [])
 

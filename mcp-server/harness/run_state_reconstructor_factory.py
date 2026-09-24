@@ -6,11 +6,13 @@ from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_parser import ConditionParser
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.run_state_builder import RunStateBuilder
 from harness.run_state_event_router import RunStateEventRouter
 from harness.run_state_reconstructor import RunStateReconstructor
 from harness.run_status_transition import RunStatusTransition
 from harness.step_completed_transition import StepCompletedTransition
+from harness.step_completed_event import StepCompletedEvent
 from harness.step_instance_output_aggregator import StepInstanceOutputAggregator
 from harness.step_outputs_builder import StepOutputsBuilder
 from harness.step_rejected_transition import StepRejectedTransition
@@ -39,6 +41,9 @@ def make_run_state_reconstructor() -> RunStateReconstructor:
             transitions={
                 "step_started": StepStartedTransition(),
                 "step_completed": StepCompletedTransition(
+                    event_decoder=PydanticModelDecoder(
+                        model_type=StepCompletedEvent,
+                    ),
                     step_outputs_builder=StepOutputsBuilder(),
                     output_aggregator=StepInstanceOutputAggregator(),
                 ),

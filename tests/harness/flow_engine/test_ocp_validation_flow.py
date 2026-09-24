@@ -37,33 +37,33 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
             RuleAnalysisExpectation(
                 step_id="analyze_dependencies",
                 output={
-                    "analysis": {
-                        "dependencies": [
-                            {
-                                "name": "UserDefaults.standard",
-                                "classification": "DIRECT_NON_INJECTED",
-                                "is_exception": False,
-                                "can_instantiate": True,
-                                "can_subclass": False,
-                                "reasoning": "Static access seals the dependency.",
-                                "evidence": "OCP_SHARED_ANALYSIS_EVIDENCE",
-                            }
-                        ],
-                        "has_hardcoded_behavior_selection": False,
-                    }
-                },
-            ),
-            RuleAnalysisExpectation(
-                step_id="analyze_testability",
-                output={
-                    "testability": [
+                    "dependencies": [
                         {
                             "name": "UserDefaults.standard",
-                            "classification": "UNTESTABLE",
-                            "reasoning": "The static access cannot be substituted.",
-                            "evidence": "OCP_SHARED_TESTABILITY_EVIDENCE",
-                        }
-                    ]
+                            "classification": "DIRECT_NON_INJECTED",
+                            "has_business_logic": False,
+                            "has_behavioral_dependencies": False,
+                            "has_side_effecting_behavior": True,
+                            "can_substitute_without_modifying_unit": False,
+                            "can_subclass": False,
+                            "can_instantiate": True,
+                            "reasoning": "The unit directly accesses persistent preferences.",
+                            "evidence": "OCP_USER_DEFAULTS_EVIDENCE",
+                        },
+                        {
+                            "name": "NotificationCenter.default",
+                            "classification": "DIRECT_NON_INJECTED",
+                            "has_business_logic": False,
+                            "has_behavioral_dependencies": False,
+                            "has_side_effecting_behavior": True,
+                            "can_substitute_without_modifying_unit": False,
+                            "can_subclass": False,
+                            "can_instantiate": True,
+                            "reasoning": "The unit directly posts runtime notifications.",
+                            "evidence": "OCP_NOTIFICATION_CENTER_EVIDENCE",
+                        },
+                    ],
+                    "hardcoded_behavior_selections": [],
                 },
             ),
         ],
@@ -71,26 +71,42 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
             RuleMetricExpectation(
                 step_id="sealed_variation_points",
                 metric_id="OCP-1",
+                observation_id="direct_non_injected_count",
                 detection_id="OCP-1",
                 detection_name="Sealed Variation Points",
                 value=2,
                 severity="SEVERE",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
-                step_id="untestable_dependencies",
+                step_id="hardcoded_behavior_selection_count",
+                metric_id="OCP-1",
+                observation_id="hardcoded_behavior_selection_count",
+                detection_id="OCP-1",
+                detection_name="Sealed Variation Points",
+                value=0,
+                severity="COMPLIANT",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="untestable_concrete_dependencies",
                 metric_id="OCP-2",
+                observation_id="untestable_concrete_count",
                 detection_id="OCP-2",
                 detection_name="Testability",
                 value=0,
                 severity="COMPLIANT",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
-                step_id="testable_direct_count",
+                step_id="testable_concrete_dependencies",
                 metric_id="OCP-3",
+                observation_id="testable_concrete_count",
                 detection_id="OCP-2",
                 detection_name="Testability",
                 value=0,
                 severity="COMPLIANT",
+                mcp_owned=True,
             ),
         ],
         final_severity="SEVERE",
@@ -104,38 +120,16 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
             ["analyze_dependencies"],
         )
         dependency_analysis = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "analysis": {
-                    "dependencies": [
-                        {
-                            "name": "UserDefaults.standard",
-                            "classification": "DIRECT_NON_INJECTED",
-                            "is_exception": False,
-                            "can_instantiate": True,
-                            "can_subclass": False,
-                            "reasoning": "Static access seals the dependency.",
-                            "evidence": "OCP_SHARED_ANALYSIS_EVIDENCE",
-                        }
-                    ],
-                    "has_hardcoded_behavior_selection": False,
-                }
-            }
+            started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
         })
 
         self.assertEqual(
             {step.step_id for step in dependency_analysis.steps},
-            {
-                "sealed_variation_points",
-                "analyze_testability",
-                "classify_exception",
-            },
+            {"classify_exception"},
         )
         self.assertTrue(all(
-            "OCP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
-            for step in dependency_analysis.steps
-        ))
-        self.assertTrue(all(
-            "previously submitted" in step.prompt
+            "OCP_USER_DEFAULTS_EVIDENCE" not in step.prompt
+            and "OCP_NOTIFICATION_CENTER_EVIDENCE" not in step.prompt
             for step in dependency_analysis.steps
         ))
         exception_step = next(
@@ -143,49 +137,36 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
             if step.step_id == "classify_exception"
         )
         self.assertIn(
-            "dependency array is literally empty",
+            "no dependencies and no",
             exception_step.prompt,
         )
         self.assertIn(
-            "does not make the reviewed unit itself a pure data structure",
+            "Pure data structures",
             exception_step.prompt,
         )
         self.assertIn(
-            "MUST return `is_exception: true`",
+            "ENTIRE class is exempt",
             exception_step.prompt,
         )
-        testability_step = next(
-            step for step in dependency_analysis.steps
-            if step.step_id == "analyze_testability"
-        )
-        measured = self.sut.flow_next({
-            testability_step.instance_id: {
-                "testability": [
-                    {
-                        "name": "UserDefaults.standard",
-                        "classification": "UNTESTABLE",
-                        "reasoning": "The static access cannot be substituted.",
-                        "evidence": "OCP_SHARED_TESTABILITY_EVIDENCE",
-                    }
-                ]
-            }
-        })
 
-        downstream = {
-            step.step_id: step.prompt
-            for step in measured.steps
-        }
-        self.assertIn("untestable_dependencies", downstream)
-        self.assertIn("testable_direct_count", downstream)
-        self.assertNotIn(
-            "OCP_SHARED_TESTABILITY_EVIDENCE",
-            downstream["untestable_dependencies"],
-        )
-        self.assertNotIn(
-            "OCP_SHARED_TESTABILITY_EVIDENCE",
-            downstream["testable_direct_count"],
-        )
-        self.assertIn(
-            "not exceptions",
-            downstream["testable_direct_count"],
-        )
+    def test_uses_canonical_rule_detection_and_exception_instructions(self) -> None:
+        started = self._start()
+        analysis_prompt = started.steps[0].prompt
+
+        self.assertIn("ABSTRACT (protocol-typed and injected)", analysis_prompt)
+        self.assertIn("DIRECT_NON_INJECTED", analysis_prompt)
+        self.assertIn("has_business_logic", analysis_prompt)
+        self.assertIn("has_behavioral_dependencies", analysis_prompt)
+        self.assertIn("has_side_effecting_behavior", analysis_prompt)
+        self.assertIn("can_substitute_without_modifying_unit", analysis_prompt)
+        self.assertIn("can_subclass", analysis_prompt)
+
+        advanced = self.sut.flow_next({
+            started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
+        })
+        exception_prompt = advanced.steps[0].prompt
+        self.assertIn("ENTIRE class is exempt from OCP-1 and", exception_prompt)
+        self.assertIn("Do NOT flag individual instantiations", exception_prompt)
+        self.assertIn("API is not owned by dev", exception_prompt)
+        self.assertIn("cannot be subclassed or instantiated", exception_prompt)
+        self.assertIn("Test code intentionally uses", exception_prompt)

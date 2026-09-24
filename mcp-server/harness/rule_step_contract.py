@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.metric_declaration import MetricDeclaration
 from harness.output_spec import OutputSpec
 from harness.rule_assessment_declaration import RuleAssessmentDeclaration
@@ -19,4 +20,5 @@ solid-description: Carries typed metric metadata and the output contract resolve
 class RuleStepContract:
     outputs: list[OutputSpec] = field(default_factory=list)
     metric: MetricDeclaration | None = None
+    metric_calculation: CollectionMetricCalculation | None = None
     assessment: RuleAssessmentDeclaration | None = None

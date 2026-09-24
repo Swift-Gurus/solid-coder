@@ -10,6 +10,7 @@ from __future__ import annotations
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
@@ -30,9 +31,19 @@ class SpyEventAppender:
 
 class TestOutputRecorder(unittest.TestCase):
 
+    def setUp(self) -> None:
+        self.derivation_renderer = Mock()
+        self.derivation_renderer.render.return_value = None
+
+    def _recorder(self, appender: SpyEventAppender) -> OutputRecorder:
+        return OutputRecorder(
+            event_appender=appender,
+            derivation_renderer=self.derivation_renderer,
+        )
+
     def test_records_completion_and_session_mapping_per_addressed_instance(self):
         appender = SpyEventAppender()
-        sut = OutputRecorder(event_appender=appender)
+        sut = self._recorder(appender)
         instances = [
             StepInstance(step_id="step-a", instance_id="step-a-1", item=None, prompt="Do step-a"),
             StepInstance(step_id="step-b", instance_id="step-b-1", item=None, prompt="Do step-b"),
@@ -59,6 +70,7 @@ class TestOutputRecorder(unittest.TestCase):
         self.assertEqual(first_completed["session_id"], "session-42")
         self.assertIsNone(first_completed["iteration_index"])
         self.assertTrue(first_completed["parent_completed"])
+        self.assertNotIn("metric_derivation", first_completed)
 
         second_completed = appender.events[2][2]
         self.assertEqual(second_completed["instance_id"], "step-b-1")
@@ -66,7 +78,7 @@ class TestOutputRecorder(unittest.TestCase):
 
     def test_partial_for_each_submission_records_only_addressed_instance(self):
         appender = SpyEventAppender()
-        sut = OutputRecorder(event_appender=appender)
+        sut = self._recorder(appender)
         instances = self._for_each_instances()
 
         sut.record(
@@ -87,7 +99,7 @@ class TestOutputRecorder(unittest.TestCase):
 
     def test_complete_for_each_submission_marks_only_final_event_as_parent_complete(self):
         appender = SpyEventAppender()
-        sut = OutputRecorder(event_appender=appender)
+        sut = self._recorder(appender)
         instances = self._for_each_instances()
 
         sut.record(
@@ -112,7 +124,7 @@ class TestOutputRecorder(unittest.TestCase):
 
     def test_no_instances_records_nothing(self):
         appender = SpyEventAppender()
-        sut = OutputRecorder(event_appender=appender)
+        sut = self._recorder(appender)
 
         sut.record("/run/events.jsonl", [], {}, "session-1")
 
@@ -120,7 +132,7 @@ class TestOutputRecorder(unittest.TestCase):
 
     def test_records_explicit_child_workflow_and_local_step_identities(self):
         appender = SpyEventAppender()
-        sut = OutputRecorder(event_appender=appender)
+        sut = self._recorder(appender)
         workflow_instance = IncludedWorkflowInstance(
             alias="review",
             instance_id="workflow-instance-7",

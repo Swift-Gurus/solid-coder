@@ -1,10 +1,15 @@
 """Defines one deterministic metric decision in a rule review result."""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from findings.metric_additional_info import MetricAdditionalInfo
 from findings.review_severity import ReviewSeverity
-from harness.metric_scoring_band import MetricComparisonValue
+from harness.collection_metric_derivation_projection import (
+    CollectionMetricDerivationProjection,
+)
+from harness.metric_scoring_band import MetricComparisonValue, MetricScoringBand
 
 
 """
@@ -21,3 +26,15 @@ class RuleMetricDecision(BaseModel):
     value: MetricComparisonValue
     severity: ReviewSeverity
     additional_info: MetricAdditionalInfo
+    derivation: Optional[CollectionMetricDerivationProjection] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
+    raw_severity: Optional[ReviewSeverity] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
+    matching_band: Optional[MetricScoringBand] = Field(
+        default=None,
+        exclude_if=lambda value: value is None,
+    )
