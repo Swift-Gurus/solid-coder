@@ -41,8 +41,12 @@ class ExtremeCollectionMetricReducer(CollectionMetricReducing):
     ) -> CollectionMetricReductionResult:
         evidence = self._projection_resolver.resolve(declaration, entries)
         if not evidence:
-            raise self._error_factory.create(
-                f"{self._reducer_name} reducer cannot reduce an empty collection"
+            if declaration.empty_value is None:
+                raise self._error_factory.create(
+                    f"{self._reducer_name} reducer cannot reduce an empty collection"
+                )
+            return CollectionMetricReductionResult(
+                value=declaration.empty_value,
             )
         return CollectionMetricReductionResult(
             value=self._value_selector.select([item.value for item in evidence]),

@@ -257,6 +257,139 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
             },
         )
 
+    def test_reduces_projected_scalar_child_outputs_without_model_fan_in(self) -> None:
+        child = self.project_root / "coverage.yaml"
+        child.write_text(
+            textwrap.dedent(
+                """
+                id: conformer-coverage
+                name: Conformer Coverage
+                outputs:
+                  - name: coverage
+                    type: data
+                    value: "{{steps.measure.outputs.coverage}}"
+                    schema: {type: number, minimum: 0, maximum: 1}
+                steps:
+                  - id: measure
+                    prompt: Measure {{params.conformer.name}}.
+                    outputs:
+                      - name: coverage
+                        type: data
+                        schema: {type: number, minimum: 0, maximum: 1}
+                """
+            ),
+            encoding="utf-8",
+        )
+        parent = self.project_root / "minimum-coverage.yaml"
+        parent.write_text(
+            textwrap.dedent(
+                """
+                id: minimum-coverage-review
+                name: Minimum Coverage Review
+                max_turns: 5
+                rule: {}
+                steps:
+                  - id: prepare
+                    prompt: Prepare conformers.
+                    outputs:
+                      - name: conformers
+                        type: data
+                        schema:
+                          type: array
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [name]
+                            properties:
+                              name: {type: string}
+                  - include: ./coverage.yaml
+                    as: coverages
+                    depends_on: [prepare]
+                    for_each: "{{steps.prepare.outputs.conformers}}"
+                    with:
+                      conformer: "{{item}}"
+                  - id: minimum_coverage
+                    type: metric
+                    metric_id: ISP-2
+                    depends_on: [coverages]
+                    value: {type: number, minimum: 0, maximum: 1}
+                    scoring:
+                      source: "{{workflows.coverages.outputs.coverage}}"
+                      reducer:
+                        type: minimum
+                        value: "{{item}}"
+                        empty_value: 1.0
+                      severe: {operator: less_than, value: 0.6}
+                  - id: classify_exception
+                    type: exception
+                    depends_on: [minimum_coverage]
+                    prompt: Classify the whole-rule exception.
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        prepared = self.engine.flow_start(str(parent))
+        measurements = self.engine.flow_next({
+            prepared.steps[0].instance_id: {
+                "conformers": [{"name": "Complete"}, {"name": "Partial"}],
+            }
+        })
+        exception = self.engine.flow_next({
+            measurements.steps[0].instance_id: {"coverage": 0.75},
+            measurements.steps[1].instance_id: {"coverage": 0.5},
+        })
+
+        self.assertIsNone(exception.error, exception.error)
+        self.assertEqual(
+            [step.step_id for step in exception.steps],
+            ["classify_exception"],
+        )
+        metric_event = next(
+            event
+            for event in self._events(prepared.run_id)
+            if event.get("step_id") == "minimum_coverage"
+        )
+        self.assertEqual(metric_event["outputs"]["value"], 0.5)
+        self.assertEqual(
+            metric_event["metric_derivation"]["projection_evidence"],
+            [
+                {"index": 0, "value": 0.75},
+                {"index": 1, "value": 0.5},
+            ],
+        )
+        completed = self.engine.flow_next({
+            exception.steps[0].instance_id: {
+                "is_exception": False,
+                "additional_info": {
+                    "reasoning": "No exception applies.",
+                    "evidence": "Both conformers are production declarations.",
+                },
+            }
+        })
+        self.assertEqual(completed.status, "done")
+
+        empty_preparation = self.engine.flow_start(str(parent))
+        empty_exception = self.engine.flow_next({
+            empty_preparation.steps[0].instance_id: {"conformers": []}
+        })
+
+        self.assertIsNone(empty_exception.error, empty_exception.error)
+        self.assertEqual(
+            [step.step_id for step in empty_exception.steps],
+            ["classify_exception"],
+        )
+        empty_metric_event = next(
+            event
+            for event in self._events(empty_preparation.run_id)
+            if event.get("step_id") == "minimum_coverage"
+        )
+        self.assertEqual(empty_metric_event["outputs"]["value"], 1.0)
+        self.assertEqual(
+            empty_metric_event["metric_derivation"]["projection_evidence"],
+            [],
+        )
+
     def test_nested_rule_instances_score_only_their_projected_children(self) -> None:
         parent_path = self._write_nested_projection_rule_workflows()
         prepared = self.engine.flow_start(str(parent_path))

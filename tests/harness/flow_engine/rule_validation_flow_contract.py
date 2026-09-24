@@ -13,6 +13,9 @@ if str(_HARNESS_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIRECTORY))
 
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
+from harness.collection_operation_registrations_factory import (
+    CollectionOperationRegistrationsFactory,
+)
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
@@ -60,6 +63,9 @@ class RuleValidationFlowContract(unittest.TestCase):
             session_reader=StaticSessionIdReader(
                 f"spec-039-{self.SCENARIO.workflow_id}-test"
             ),
+            operation_registrations=SourceOperationRegistrationsFactory(
+                project_directory=self.project_directory,
+            ).make(),
         ).build()
 
     def test_exposes_only_model_owned_steps_and_one_exception(self) -> None:
@@ -84,9 +90,12 @@ class RuleValidationFlowContract(unittest.TestCase):
 
     def test_declares_expected_rule_applicability(self) -> None:
         operation_registry = OperationRegistry(
-            registrations=SourceOperationRegistrationsFactory(
-                project_directory=self.project_directory,
-            ).make(),
+            registrations=[
+                *CollectionOperationRegistrationsFactory().make(),
+                *SourceOperationRegistrationsFactory(
+                    project_directory=self.project_directory,
+                ).make(),
+            ],
             name_validator=LogicalOperationNameValidator(),
             error_factory=FlowValidationErrorFactory(),
         )
@@ -99,7 +108,7 @@ class RuleValidationFlowContract(unittest.TestCase):
             / "rules"
             / self.SCENARIO.workflow_id
             / "workflow.yaml",
-            [],
+            [str(self.PROJECT_ROOT / "workflows")],
         )
 
         self.assertIsNotNone(workflow.rule)

@@ -2,7 +2,7 @@
 number: SPEC-057
 feature: reducer-and-repository-backed-rule-migration
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-036
 blocked-by: [SPEC-054, SPEC-055, SPEC-056]
 blocking: []
@@ -126,7 +126,9 @@ violations.
 
 **Given** there is no substitutable relationship to evaluate
 **When** the LSP workflow runs
-**Then** it skips with the existing audited applicability outcome
+**Then** the repository relationship branch is skipped with an audited condition
+decision
+**And** locally applicable type-check and unsupported-contract metrics still run
 **And** repository absence is not reported as compliance evidence.
 
 ### US-4: Preserve policy, aggregation, and audit
@@ -162,7 +164,9 @@ durable
 - ISP and LSP repository discovery reuse typed `source.*` operations and complete
 candidate coverage validation; neither rule parses human-readable search text.
 - Selected repository entries run as child workflow instances with declared typed
-outputs. Parents consume only generic ordered output projections.
+outputs and ordered completion. When a nested observation array must be flattened,
+a schema-gated normalization step may copy completed child classifications but
+must not reread source, infer new facts, calculate metrics, or choose severity.
 - Numeric extrema and distinct counts use SPEC-054 reducers. Filtered counts use
 SPEC-053. No model submits a derived total, minimum, or maximum.
 - Rule-specific classification enums, exception signals, thresholds, and evidence
@@ -216,12 +220,33 @@ indexes, reducer, raw value, effective band, and scoring authority.
 
 ## Definition of Done
 
-- [ ] ISP metrics use complete repository-backed conformer evidence and MCP
+- [x] ISP metrics use complete repository-backed conformer evidence and MCP
       scoring.
-- [ ] SwiftUI extrema are reducer-owned and source-auditable.
-- [ ] LSP relationship evidence is durable and never independently re-inferred by
+- [x] SwiftUI extrema are reducer-owned and source-auditable.
+- [x] LSP relationship evidence is durable and never independently re-inferred by
       metric prompts.
-- [ ] No migrated rule requires a rule-specific production scorer or parser.
-- [ ] Policy, exceptions, applicability, aggregation, replay, and Stop behavior
+- [x] No migrated rule requires a rule-specific production scorer or parser.
+- [x] Policy, exceptions, applicability, aggregation, replay, and Stop behavior
       are covered.
 - [ ] All non-live and locked Codex/Claude fixture tests pass.
+
+## Implementation Status
+
+ISP now discovers repository candidates through typed source operations, validates
+complete candidate dispositions, runs one child review per selected candidate,
+calculates child coverage through the generic `collection.ratio` operation, and
+derives width, minimum coverage, and cohesion through MCP-owned metrics.
+
+SwiftUI now submits per-property and per-chain observations. MCP applies maximum
+reducers with explicit zero empty-collection values while preserving every
+projected source index, including duplicate maxima.
+
+LSP now gates repository discovery on a durable concrete-inheritance trigger,
+validates candidate coverage, records child relationship classifications, and
+uses one schema-gated normalization step before MCP counts contract violations.
+The false-trigger path records skipped repository work without suppressing the
+other LSP metrics.
+
+Focused reducer and rule tests pass, together with the complete non-live flow
+engine, MCP server, harness, hook, dispatcher, and Apple build suites. Locked
+live Codex/Claude fixture runs remain before this spec can be marked complete.

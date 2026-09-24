@@ -77,6 +77,8 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
                     serialized_reducer["value"] = (
                         self._expression_serializer.serialize(reducer.value)
                     )
+                if reducer.empty_value is not None:
+                    serialized_reducer["empty_value"] = reducer.empty_value
                 if reducer.numerator_condition is not None:
                     serialized_reducer["numerator_when"] = (
                         self._condition_serializer.serialize(

@@ -44,6 +44,7 @@ class TestMetricDerivationRenderer(unittest.TestCase):
                 source=StepOutputReference("analyze", "entries"),
                 reducer=CollectionMetricReducer(
                     type=CollectionMetricReducerType.RATIO,
+                    empty_value=1.0,
                     numerator_condition=condition,
                     denominator_condition=condition,
                 ),
@@ -60,6 +61,7 @@ class TestMetricDerivationRenderer(unittest.TestCase):
 
         self.assertEqual(projection.kind, "collection_reducer")
         self.assertEqual(projection.reducer.type, CollectionMetricReducerType.RATIO)
+        self.assertEqual(projection.reducer.empty_value, 1.0)
         self.assertEqual(projection.numerator_indexes, [])
         self.assertEqual(projection.denominator_indexes, [])
         self.assertTrue(projection.zero_denominator)

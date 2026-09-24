@@ -28,6 +28,7 @@ from harness.minimum_collection_metric_value_selector import (
     MinimumCollectionMetricValueSelector,
 )
 from harness.ratio_collection_metric_reducer import RatioCollectionMetricReducer
+from harness.ratio_value_calculator import RatioValueCalculator
 from harness.strict_value_comparing import StrictValueComparing
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
@@ -86,6 +87,7 @@ class CollectionMetricEvaluatorFactory:
                         CollectionMetricReducerType.RATIO,
                         RatioCollectionMetricReducer(
                             condition_evaluator=condition_evaluator,
+                            value_calculator=RatioValueCalculator(),
                             error_factory=error_factory,
                         ),
                     ),

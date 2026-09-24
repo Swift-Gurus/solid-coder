@@ -165,11 +165,15 @@ steps:
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
 
-  - id: body_nesting_depth
-    type: metric
-    metric_id: SUI-1
-    observation_id: body_nesting_depth
+  - id: classify_extrema_observations
+    type: agent
     prompt: |
+      Analyze view unit `{{params.review_unit.target.name}}` from the source
+      already visible in this session. Return observations, not maxima, counts,
+      severities, or findings.
+
+      ## SUI-1: Body Complexity
+
       Even moderately nested view hierarchies should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
 
       1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
@@ -179,30 +183,87 @@ steps:
       3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
       4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
 
-      Return the maximum nesting depth as the metric value with reasoning and precise evidence. Do not return the expression count from this step.
+      Return one `view_properties` entry for every view-returning property. Use
+      zero only when the authored measurement genuinely has no expression.
 
-      Apply this measurement to view unit `{{params.review_unit.target.name}}` from the source already visible in this session.
+      ## SUI-3: Modifier Chain Length
+
+      When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has 2 or more chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
+
+      **Scope:** Only counts modifiers on **nested child views** inside a closure — NOT on the top-level return value of `body` or a computed property. The top-level view's own modifiers are part of its external API and don't hurt readability.
+
+      1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
+      2. **For each child view expression** inside that closure (not the outermost container)
+      3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
+      4. **Flag** if modifier count >= 2
+
+      Return one `modifier_chains` entry for every nested child with at least one
+      modifier. Preserve duplicate lengths as independent evidence. Set
+      `is_exception` only for an individually applicable authored exception.
+      Supply nonempty reasoning and precise source evidence for every entry.
+    outputs:
+      - name: view_properties
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [location, nesting_depth, expression_count, is_exception, reasoning, evidence]
+            properties:
+              location: {type: string, minLength: 1}
+              nesting_depth: {type: integer, minimum: 0}
+              expression_count: {type: integer, minimum: 0}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: modifier_chains
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [location, length, is_exception, reasoning, evidence]
+            properties:
+              location: {type: string, minLength: 1}
+              length: {type: integer, minimum: 0}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: body_nesting_depth
+    type: metric
+    metric_id: SUI-1
+    observation_id: body_nesting_depth
+    depends_on: [classify_extrema_observations]
     value: {type: integer, minimum: 0}
     scoring:
+      source: "{{steps.classify_extrema_observations.outputs.view_properties}}"
+      when:
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: maximum
+        value: "{{item.nesting_depth}}"
+        empty_value: 0
       severe: {operator: greater_than_or_equal, value: 2}
 
   - id: view_expression_count
     type: metric
     metric_id: SUI-1
     observation_id: view_expression_count
-    prompt: |
-      1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
-      2. **For each view-returning property, measure:**
-         - Max nesting depth of view builder expressions (each View/container that takes a `@ViewBuilder` closure adds one level)
-         - Count of distinct view expressions (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
-      3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
-      4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
-
-      Return the maximum expression count as the metric value with reasoning and precise evidence. Do not return the nesting depth from this step.
-
-      Apply this measurement to view unit `{{params.review_unit.target.name}}` from the source already visible in this session.
+    depends_on: [classify_extrema_observations]
     value: {type: integer, minimum: 0}
     scoring:
+      source: "{{steps.classify_extrema_observations.outputs.view_properties}}"
+      when:
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: maximum
+        value: "{{item.expression_count}}"
+        empty_value: 0
       severe: {operator: greater_than_or_equal, value: 5}
 
   - id: impure_count
@@ -223,21 +284,17 @@ steps:
   - id: max_modifier_chain
     type: metric
     metric_id: SUI-3
-    prompt: |
-      When a view expression inside a `@ViewBuilder` closure (inside `body` or any view-returning property) has 2 or more chained modifiers, it should be extracted into a named `var` or separate subview. This keeps each closure body scannable at a glance.
-
-      **Scope:** Only counts modifiers on **nested child views** inside a closure — NOT on the top-level return value of `body` or a computed property. The top-level view's own modifiers are part of its external API and don't hurt readability.
-
-      1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
-      2. **For each child view expression** inside that closure (not the outermost container)
-      3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
-      4. **Flag** if modifier count >= 2
-
-      Return the maximum nested-child modifier count with reasoning and precise evidence.
-
-      Apply this measurement to view unit `{{params.review_unit.target.name}}` from the source already visible in this session.
+    depends_on: [classify_extrema_observations]
     value: {type: integer, minimum: 0}
     scoring:
+      source: "{{steps.classify_extrema_observations.outputs.modifier_chains}}"
+      when:
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: maximum
+        value: "{{item.length}}"
+        empty_value: 0
       severe: {operator: greater_than_or_equal, value: 2}
 
   - id: vm_injection_style

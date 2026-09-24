@@ -7,6 +7,7 @@ solid-description: Verifies canonical ISP instructions, protocol applicability, 
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -25,12 +26,14 @@ from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
 from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
 from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
 from rule_validation_scenario import RuleValidationScenario  # noqa: E402
+from rule_workflow_checkpoint import RuleWorkflowCheckpoint  # noqa: E402
 from source.file_analysis_source import FileAnalysisSource  # noqa: E402
 from source.prepare_search_targets_input import PrepareSearchTargetsInput  # noqa: E402
 from source.prepare_search_targets_operation_factory import (  # noqa: E402
     PrepareSearchTargetsOperationFactory,
 )
 from source.search_target_granularity import SearchTargetGranularity  # noqa: E402
+from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
 from source.source_operation_registrations_factory import (  # noqa: E402
     SourceOperationRegistrationsFactory,
 )
@@ -54,33 +57,40 @@ class TestISPValidationFlow(RuleValidationFlowContract):
         analysis=[
             RuleAnalysisExpectation(
                 step_id="analyze_protocol",
-                output={
-                    "analysis": {
-                        "requirements": [
-                            {
-                                "name": "fetch",
-                                "evidence": "ISP_SHARED_ANALYSIS_EVIDENCE",
-                            }
-                        ],
-                        "default_implementations": [],
-                    }
-                },
+                output={},
             ),
-            *[
+            RuleAnalysisExpectation(
+                step_id="select_candidates",
+                output={},
+            ),
+            *(
                 RuleAnalysisExpectation(
-                    step_id="classify_conformer",
-                    output={
-                        "assessment": {
-                            "classification": "NOT_RELEVANT",
-                            "name": "Candidate",
-                            "implementations": [],
-                            "default_implementations": [],
-                            "evidence": "ISP_CANDIDATE_EVIDENCE",
-                        }
-                    },
+                    step_id=f"candidate_reviews-{index}.inspect_candidate",
+                    output={},
                 )
-                for _ in range(3)
-            ],
+                for index in range(1, 4)
+            ),
+            *(
+                RuleAnalysisExpectation(
+                    step_id=f"candidate_reviews-{index}.classify_candidate",
+                    output={},
+                )
+                for index in range(1, 4)
+            ),
+            *(
+                RuleAnalysisExpectation(
+                    step_id=(
+                        f"candidate_reviews-{index}."
+                        "classify_requirement_coverage"
+                    ),
+                    output={},
+                )
+                for index in range(1, 4)
+            ),
+            RuleAnalysisExpectation(
+                step_id="analyze_cohesion",
+                output={},
+            ),
         ],
         metrics=[
             RuleMetricExpectation(
@@ -90,14 +100,16 @@ class TestISPValidationFlow(RuleValidationFlowContract):
                 detection_name="Protocol Width",
                 value=10,
                 severity="SEVERE",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
                 step_id="min_coverage",
                 metric_id="ISP-2",
                 detection_id="ISP-2",
                 detection_name="Conformer Coverage",
-                value=50,
+                value=0.5,
                 severity="SEVERE",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
                 step_id="cohesion_groups",
@@ -106,6 +118,7 @@ class TestISPValidationFlow(RuleValidationFlowContract):
                 detection_name="Protocol Cohesion Groups",
                 value=2,
                 severity="SEVERE",
+                mcp_owned=True,
             ),
         ],
         final_severity="SEVERE",
@@ -155,48 +168,246 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             self._parameters.model_dump(mode="json"),
         )
 
-    def test_protocol_analysis_is_reused_without_prompt_reserialization(self) -> None:
-        started = self._start()
-
-        self.assertEqual([step.step_id for step in started.steps], ["analyze_protocol"])
-        candidate_review = self.sut.flow_next({
-            started.steps[0].instance_id: self.SCENARIO.analysis[0].output
-        })
+    def test_repository_evidence_is_reduced_without_model_owned_metrics(self) -> None:
+        checkpoint = self._advance_through_analysis()
 
         self.assertEqual(
-            [step.step_id for step in candidate_review.steps],
-            ["classify_conformer", "classify_conformer", "classify_conformer"],
+            [step.step_id for step in checkpoint.result.steps],
+            ["classify_exception"],
         )
-        candidate_prompts = "\n".join(
-            step.prompt for step in candidate_review.steps
+        prompts = "\n".join(checkpoint.prompts)
+        self.assertIn("ArchiveBrowser", prompts)
+        self.assertIn("WorkspaceEditor", prompts)
+        self.assertIn("normal file-reading tool", prompts)
+        metric_values = {
+            event["step_id"]: event["outputs"]["value"]
+            for event in self._events(checkpoint.run_id)
+            if event.get("event") == "step_completed"
+            and event.get("step_id")
+            in {"width", "min_coverage", "cohesion_groups"}
+        }
+        self.assertEqual(
+            metric_values,
+            {"width": 10, "min_coverage": 0.5, "cohesion_groups": 2},
         )
-        self.assertIn("ArchiveBrowser", candidate_prompts)
-        self.assertIn("WorkspaceEditor", candidate_prompts)
-        self.assertIn("normal file-reading tool", candidate_prompts)
-        measured = self.sut.flow_next({
-            step.instance_id: expectation.output
-            for step, expectation in zip(
-                candidate_review.steps,
-                self.SCENARIO.analysis[1:],
+
+    def _advance_through_analysis(self) -> RuleWorkflowCheckpoint:
+        started = self._start()
+        self.assertEqual(
+            {step.step_id for step in started.steps},
+            {"analyze_protocol", "select_candidates"},
+        )
+        prompts = [step.prompt for step in started.steps]
+        step_ids = [step.step_id for step in started.steps]
+        analysis = next(
+            step for step in started.steps if step.step_id == "analyze_protocol"
+        )
+        selection = next(
+            step for step in started.steps if step.step_id == "select_candidates"
+        )
+        candidate_inspections = self.sut.flow_next({
+            analysis.instance_id: self._protocol_analysis(),
+            selection.instance_id: {
+                "dispositions": [
+                    {
+                        "candidate_id": f"candidate-{index}",
+                        "disposition": "INSPECT",
+                        "reasoning": "The declaration may conform or provide defaults.",
+                        "evidence": "The candidate metadata references DocumentService.",
+                    }
+                    for index in range(1, 4)
+                ]
+            },
+        })
+        self.assertEqual(
+            [step.step_id for step in candidate_inspections.steps],
+            [
+                "candidate_reviews-1.inspect_candidate",
+                "candidate_reviews-2.inspect_candidate",
+                "candidate_reviews-3.inspect_candidate",
+            ],
+        )
+        prompts.extend(step.prompt for step in candidate_inspections.steps)
+        step_ids.extend(step.step_id for step in candidate_inspections.steps)
+        validated_selection = next(
+            event
+            for event in self._events(started.run_id)
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == "validate_selection"
+        )
+        selected_candidates = [
+            SelectedSourceCandidate.model_validate(candidate)
+            for candidate in validated_selection["outputs"]["selected_candidates"]
+        ]
+        candidate_classifications = self.sut.flow_next({
+            step.instance_id: {
+                "reasoning": "Inspected the exact selected declaration.",
+                "evidence": f"Read {candidate.source.path}.",
+            }
+            for step, candidate in zip(
+                candidate_inspections.steps,
+                selected_candidates,
             )
         })
 
         self.assertEqual(
-            {step.step_id for step in measured.steps},
-            {"width", "min_coverage", "cohesion_groups", "classify_exception"},
+            [step.step_id for step in candidate_classifications.steps],
+            [
+                "candidate_reviews-1.classify_candidate",
+                "candidate_reviews-2.classify_candidate",
+                "candidate_reviews-3.classify_candidate",
+            ],
         )
-        self.assertTrue(all(
-            "ISP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
-            for step in measured.steps
-        ))
-        self.assertTrue(all(
-            "previously submitted" in step.prompt
-            for step in measured.steps
-            if step.step_id != "classify_exception"
-        ))
-        cohesion = next(
-            step for step in measured.steps
-            if step.step_id == "cohesion_groups"
+        prompts.extend(step.prompt for step in candidate_classifications.steps)
+        step_ids.extend(step.step_id for step in candidate_classifications.steps)
+        coverage = self.sut.flow_next({
+            step.instance_id: {
+                "assessment": self._candidate_assessment(candidate)
+            }
+            for step, candidate in zip(
+                candidate_classifications.steps,
+                selected_candidates,
+            )
+        })
+
+        coverage_steps = [
+            step
+            for step in coverage.steps
+            if step.step_id.endswith("classify_requirement_coverage")
+        ]
+        self.assertIsNone(
+            coverage.error,
+            coverage.error,
         )
-        self.assertIn("binary implementation vector", cohesion.prompt)
-        self.assertIn("identical vectors", cohesion.prompt)
+        self.assertEqual(
+            len(coverage_steps),
+            3,
+            {
+                "ready": [
+                    step.step_id for step in coverage.steps
+                ],
+                "skipped": [
+                    event
+                    for event in self._events(started.run_id)
+                    if event.get("event") == "step_skipped"
+                ],
+            },
+        )
+        prompts.extend(step.prompt for step in coverage_steps)
+        step_ids.extend(step.step_id for step in coverage_steps)
+        cohesion_ready = self.sut.flow_next({
+            step.instance_id: {
+                "coverage_entries": self._coverage_entries(step)
+            }
+            for step in coverage_steps
+        })
+        self.assertIsNone(cohesion_ready.error, cohesion_ready.error)
+        self.assertEqual(
+            [step.step_id for step in cohesion_ready.steps],
+            ["analyze_cohesion"],
+        )
+        prompts.extend(step.prompt for step in cohesion_ready.steps)
+        step_ids.extend(step.step_id for step in cohesion_ready.steps)
+        cohesion = cohesion_ready.steps[0]
+        exception = self.sut.flow_next({
+            cohesion.instance_id: {
+                "requirement_groups": [
+                    {
+                        "requirement": requirement,
+                        "usage_vector": "1,1" if index < 5 else "0,1",
+                        "reasoning": "Derived from the completed conformer assessments.",
+                        "evidence": f"Requirement {requirement} classifications.",
+                    }
+                    for index, requirement in enumerate(self._requirements())
+                ]
+            },
+        })
+        self.assertEqual(
+            [step.step_id for step in exception.steps],
+            ["classify_exception"],
+        )
+        prompts.extend(step.prompt for step in exception.steps)
+        step_ids.extend(step.step_id for step in exception.steps)
+        return RuleWorkflowCheckpoint(
+            run_id=started.run_id,
+            result=exception,
+            prompts=prompts,
+            step_ids=step_ids,
+        )
+
+    def _protocol_analysis(self) -> dict[str, object]:
+        return {
+            "requirements": [
+                {
+                    "name": requirement,
+                    "evidence": f"DocumentService declares {requirement}.",
+                }
+                for requirement in self._requirements()
+            ],
+            "default_implementations": [],
+        }
+
+    def _candidate_assessment(
+        self,
+        candidate: SelectedSourceCandidate,
+    ) -> dict[str, object]:
+        name = candidate.source.unit
+        is_conformer = name in {"ArchiveBrowser", "WorkspaceEditor"}
+        implementations = (
+            [
+                {
+                    "requirement": requirement,
+                    "classification": (
+                        "MEANINGFUL"
+                        if name == "WorkspaceEditor" or index < 5
+                        else "EMPTY"
+                    ),
+                    "evidence": f"{name}.{requirement} implementation.",
+                }
+                for index, requirement in enumerate(self._requirements())
+            ]
+            if is_conformer
+            else []
+        )
+        return {
+            "candidate_id": candidate.candidate_id,
+            "location": str(candidate.source.path),
+            "classification": "CONFORMER" if is_conformer else "NOT_RELEVANT",
+            "name": name,
+            "implementations": implementations,
+            "default_implementations": [],
+            "evidence": f"Inspected {candidate.source.path}.",
+        }
+
+    def _coverage_entries(self, step) -> list[dict[str, object]]:
+        if (
+            "ArchiveBrowser" not in step.prompt
+            and "WorkspaceEditor" not in step.prompt
+        ):
+            return []
+        complete = "WorkspaceEditor" in step.prompt
+        return [
+            {
+                "observation_id": requirement,
+                "matches": complete or index < 5,
+                "included": True,
+                "reasoning": "Meaningful or delegated implementations are covered.",
+                "evidence": f"Conformer implementation for {requirement}.",
+            }
+            for index, requirement in enumerate(self._requirements())
+        ]
+
+    @staticmethod
+    def _requirements() -> list[str]:
+        return [
+            "open", "list", "search", "metadata", "preview",
+            "create", "update", "rename", "move", "delete",
+        ]
+
+    def _events(self, run_id: str) -> list[dict[str, object]]:
+        path = self.project_root / "runs" / run_id / "events.jsonl"
+        return [
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]

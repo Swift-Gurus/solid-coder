@@ -7,6 +7,7 @@ solid-description: Verifies canonical LSP instructions, typed observations, exce
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -44,12 +45,8 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                             "evidence": "LSP_SHARED_ANALYSIS_EVIDENCE",
                         }
                     ],
-                    "inheritance": {
-                        "has_trigger": False,
-                        "relationships": [],
-                        "reasoning": "No concrete inheritance is present.",
-                        "evidence": "LSP_SHARED_ANALYSIS_EVIDENCE",
-                    },
+                    "has_inheritance": False,
+                    "relationship_terms": ["MediaPlayer"],
                     "contract_implementations": [
                         {
                             "member": "reset",
@@ -58,7 +55,11 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                         }
                     ],
                 },
-            )
+            ),
+            RuleAnalysisExpectation(
+                step_id="classify_relationship_violations",
+                output={"observations": []},
+            ),
         ],
         metrics=[
             RuleMetricExpectation(
@@ -77,6 +78,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                 detection_name="Contract Compliance",
                 value=0,
                 severity="COMPLIANT",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
                 step_id="fatal_error_methods",
@@ -100,7 +102,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
         final_severity="SEVERE",
     )
 
-    def test_trigger_and_contract_analysis_is_reused_without_reserialization(self) -> None:
+    def test_false_inheritance_trigger_skips_repository_relationship_work(self) -> None:
         started = self._start()
 
         self.assertEqual(
@@ -108,11 +110,11 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
             ["analyze_substitutability"],
         )
         self.assertIn(
-            "Only classify contract implementations whose method bodies are present inside unit `lsp-fixture-unit`",
+            "only for implementations whose\nbodies are present inside the supplied unit",
             started.steps[0].prompt,
         )
         self.assertIn(
-            "Protocol requirements declared without bodies are not implementations",
+            "Protocol requirements declared\nwithout bodies are not implementations",
             started.steps[0].prompt,
         )
         self.assertIn(
@@ -124,23 +126,42 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
         })
 
         self.assertEqual(
-            {step.step_id for step in measured.steps},
-            {
-                "contract_violations",
-                "classify_exception",
-            },
+            [step.step_id for step in measured.steps],
+            ["classify_relationship_violations"],
         )
         self.assertTrue(all(
             "LSP_SHARED_ANALYSIS_EVIDENCE" not in step.prompt
             for step in measured.steps
         ))
         self.assertTrue(all(
-            "previously submitted" in step.prompt
+            "completed repository relationship classifications" in step.prompt
             for step in measured.steps
         ))
-        contract_prompt = next(
-            step.prompt for step in measured.steps
-            if step.step_id == "contract_violations"
+        exception = self.sut.flow_next({
+            measured.steps[0].instance_id: {"observations": []},
+        })
+        self.assertEqual(
+            [step.step_id for step in exception.steps],
+            ["classify_exception"],
         )
-        self.assertIn("has_trigger", contract_prompt)
-        self.assertNotIn("FATAL", contract_prompt)
+        skipped = {
+            event["step_id"]
+            for event in self._events(started.run_id)
+            if event.get("event") == "step_skipped"
+        }
+        self.assertTrue({
+            "prepare_relationship_query",
+            "search_relationship_candidates",
+            "present_relationship_candidates",
+            "select_relationship_candidates",
+            "validate_relationship_candidates",
+        }.issubset(skipped), skipped)
+
+    def _events(self, run_id: str) -> list[dict[str, object]]:
+        return [
+            json.loads(line)
+            for line in (
+                self.project_root / "runs" / run_id / "events.jsonl"
+            ).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]

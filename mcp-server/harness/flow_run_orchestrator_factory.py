@@ -20,6 +20,9 @@ from harness.batch_step_output_submission_mapper_factory import (
     BatchStepOutputSubmissionMapperFactory,
 )
 from harness.command_allowlist_resolving import CommandAllowlistResolving
+from harness.collection_operation_registrations_factory import (
+    CollectionOperationRegistrationsFactory,
+)
 from harness.concurrent_session_delegate_batch_runner import ConcurrentSessionDelegateBatchRunner
 from harness.condition_serializer_factory import make_condition_serializer
 from harness.delegate_instruction_builder import DelegateInstructionBuilder
@@ -154,7 +157,10 @@ class FlowRunOrchestratorFactory:
         path_checker = PathChecker()
         error_factory = FlowValidationErrorFactory()
         operation_registry = OperationRegistry(
-            registrations=self._operation_registrations,
+            registrations=[
+                *CollectionOperationRegistrationsFactory().make(),
+                *self._operation_registrations,
+            ],
             name_validator=LogicalOperationNameValidator(),
             error_factory=error_factory,
         )

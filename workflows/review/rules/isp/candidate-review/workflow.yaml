@@ -1,0 +1,127 @@
+id: isp-candidate-review
+name: ISP Candidate Review
+description: Reads and classifies one validated repository candidate against one reviewed protocol.
+max_turns: 5
+
+outputs:
+  - name: assessment
+    type: data
+    value: "{{steps.classify_candidate.outputs.assessment}}"
+    schema_file: assessment.schema.json
+  - name: coverage
+    type: data
+    value: "{{steps.coverage_ratio.outputs.value}}"
+    schema: {type: number, minimum: 0, maximum: 1}
+
+steps:
+  - id: inspect_candidate
+    prompt: |
+      Read `{{params.candidate.source.path}}` with your normal file-reading tool
+      and inspect only declaration `{{params.candidate.source.unit}}`. Do not
+      classify another declaration, search again, count metrics, or decide
+      severity.
+
+      Return concise reasoning about whether the declaration conforms to or
+      supplies default implementations for protocol
+      `{{params.protocol_name}}`. Evidence must identify the selected path and
+      cite the relevant declaration or implementation body.
+
+      Candidate frontmatter description: {{params.candidate.source.description}}
+    outputs:
+      - name: reasoning
+        type: data
+        schema: {type: string, minLength: 1}
+      - name: evidence
+        type: data
+        schema: {type: string, minLength: 1}
+
+  - id: classify_candidate
+    depends_on: [inspect_candidate]
+    prompt: |
+      Classify only the completed candidate inspection against reviewed
+      protocol `{{params.protocol_name}}`. Use the protocol requirements and
+      default implementations from the protocol analysis already submitted in
+      this model session. Do not read another file, search again, calculate a
+      coverage percentage, count metrics, or decide severity.
+
+      A conformer with low coverage is being forced to depend on methods it does not use. This is the direct ISP violation signal.
+
+      1. **Find all conformers** of the protocol in the project
+      2. **For each conformer, classify each required method/property as:**
+         - MEANINGFUL — contains real logic (more than a single return statement with a default value)
+         - EMPTY — empty body `{}`
+         - STUB — returns a hardcoded default, throws `fatalError`, or has a trivial passthrough that ignores the intent
+         - DELEGATED — forwards to another object (still counts as meaningful)
+      3. **Calculate coverage** = meaningful / total requirements
+
+      Choose exactly one candidate classification:
+
+      - CONFORMER — the declaration conforms to the reviewed protocol. Return
+        exactly one implementation record for every declared requirement.
+      - DEFAULT_PROVIDER — the declaration is a protocol extension that
+        supplies defaults. Return every supplied requirement in
+        `default_implementations` and no implementation records.
+      - NOT_RELEVANT — it neither conforms nor supplies defaults. Return both
+        implementation arrays empty.
+
+      For a CONFORMER, classify each requirement as MEANINGFUL, EMPTY, STUB,
+      DELEGATED, or MISSING. MEANINGFUL contains real logic; EMPTY has an empty
+      body; STUB returns a hardcoded default, traps, or ignores the contract;
+      DELEGATED forwards the behavior to another object; MISSING has no concrete
+      implementation in the inspected declaration. Do not omit a requirement.
+
+      Copy candidate ID `{{params.candidate.candidate_id}}`, location
+      `{{params.candidate.source.path}}`, and name
+      `{{params.candidate.source.unit}}` exactly. Ground every decision in the
+      completed inspection.
+    outputs:
+      - name: assessment
+        type: data
+        schema_file: assessment.schema.json
+
+  - id: classify_requirement_coverage
+    depends_on: [classify_candidate]
+    prompt: |
+      Use only the protocol analysis and complete candidate assessments already
+      submitted in this model session. Do not inspect source again, omit a
+      requirement, calculate a ratio, count metrics, or decide severity.
+
+      For candidate `{{params.candidate.source.unit}}`, return an empty
+      `coverage_entries` array when its completed classification is
+      DEFAULT_PROVIDER or NOT_RELEVANT. When it is CONFORMER, return exactly one
+      entry for every requirement declared by protocol `{{params.protocol_name}}`,
+      copying the requirement name into `observation_id`.
+
+      Set `matches` to true for MEANINGFUL or DELEGATED implementations. EMPTY,
+      STUB, and MISSING are uncovered unless a completed DEFAULT_PROVIDER
+      assessment supplies that exact requirement and this conformer does not
+      override it with a non-meaningful implementation. When the complete
+      candidate assessments contain exactly one CONFORMER, apply the authored
+      single-conformer adjustment by marking every declared requirement covered;
+      explain that adjustment in each entry rather than inventing source logic.
+
+      Set `included` to true for every returned requirement. Preserve declaration
+      order and supply independent reasoning and evidence for every decision.
+      MCP will calculate the coverage ratio.
+    outputs:
+      - name: coverage_entries
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [observation_id, matches, included, reasoning, evidence]
+            properties:
+              observation_id: {type: string, minLength: 1}
+              matches: {type: boolean}
+              included: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: coverage_ratio
+    type: operation
+    operation: collection.ratio
+    depends_on: [classify_requirement_coverage]
+    with:
+      observations: "{{steps.classify_requirement_coverage.outputs.coverage_entries}}"

@@ -1,0 +1,54 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "candidate_id",
+    "location",
+    "classification",
+    "name",
+    "implementations",
+    "default_implementations",
+    "evidence"
+  ],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^candidate-[1-9][0-9]*$"
+    },
+    "location": {"type": "string", "minLength": 1},
+    "classification": {
+      "type": "string",
+      "enum": ["CONFORMER", "DEFAULT_PROVIDER", "NOT_RELEVANT"]
+    },
+    "name": {"type": "string", "minLength": 1},
+    "implementations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement", "classification", "evidence"],
+        "properties": {
+          "requirement": {"type": "string", "minLength": 1},
+          "classification": {
+            "type": "string",
+            "enum": ["MEANINGFUL", "EMPTY", "STUB", "DELEGATED", "MISSING"]
+          },
+          "evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "default_implementations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requirement", "evidence"],
+        "properties": {
+          "requirement": {"type": "string", "minLength": 1},
+          "evidence": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "evidence": {"type": "string", "minLength": 1}
+  }
+}

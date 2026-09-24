@@ -1,7 +1,7 @@
 id: isp
 name: Interface Segregation Principle Review
-description: Measures protocol width, conformer coverage, and cohesion groups and reports deterministic ISP severity.
-max_turns: 10
+description: Measures protocol width, conformer coverage, and cohesion groups from complete repository evidence.
+max_turns: 40
 
 rule:
   match:
@@ -9,6 +9,45 @@ rule:
       included: [protocol]
 
 steps:
+  - id: analyze_protocol
+    prompt: |
+      Analyze only protocol `{{params.review_unit.target.name}}` in the source
+      already visible in this model session. Do not inspect repository
+      candidates, count metrics, calculate coverage, or decide severity.
+
+      A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
+
+      1. **List every method and property** declared in the protocol (including associated types)
+      2. **Count total requirements** (methods + properties + associated types)
+      3. **Exclude inherited requirements** — only count what THIS protocol declares, not parent protocols
+
+      Return one requirement record for every declaration and every default
+      implementation visible with this protocol. Preserve source evidence so
+      later candidate and metric steps reuse this exact analysis.
+    outputs:
+      - name: requirements
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, evidence]
+            properties:
+              name: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: default_implementations
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [requirement, evidence]
+            properties:
+              requirement: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
   - id: prepare_conformer_query
     type: operation
     operation: source.prepare_search_query
@@ -26,178 +65,147 @@ steps:
       context: "{{params.source_context}}"
       included_file_extensions: "{{steps.prepare_conformer_query.outputs.included_file_extensions}}"
 
-  - id: analyze_protocol
+  - id: present_candidates
+    type: operation
+    operation: source.present_search
     depends_on: [search_conformers]
+    with:
+      candidates: "{{steps.search_conformers.outputs.candidates}}"
+      files_scanned: "{{steps.search_conformers.outputs.files_scanned}}"
+
+  - id: select_candidates
+    depends_on: [present_candidates]
     prompt: |
-      1. **List every method and property** declared in the protocol (including associated types)
-      2. **Count total requirements** (methods + properties + associated types)
-      3. **Exclude inherited requirements** — only count what THIS protocol declares, not parent protocols
+      Account for every repository candidate shown below. Return exactly one
+      disposition for every `candidate_id`, copying that ID exactly.
 
-      1. **Find all conformers** of the protocol in the project
-      2. **For each conformer, classify each required method/property as:**
-         - MEANINGFUL — contains real logic (more than a single return statement with a default value)
-         - EMPTY — empty body `{}`
-         - STUB — returns a hardcoded default, throws `fatalError`, or has a trivial passthrough that ignores the intent
-         - DELEGATED — forwards to another object (still counts as meaningful)
-      3. **Calculate coverage** = meaningful / total requirements
+      Use INSPECT when the candidate may conform to protocol
+      `{{params.review_unit.target.name}}` or may supply protocol-extension
+      defaults. Use REJECT only when its name and frontmatter description prove
+      it cannot do either. For both dispositions, explain the decision and cite
+      evidence from the shown metadata. Do not read source, classify a
+      conformer, omit an ID, invent an ID, count metrics, or decide severity.
+      An empty search result requires an empty disposition list.
 
-      MCP has bounded "all conformers" deterministically. Candidate inspection is executed separately after this step so every candidate receives exactly one auditable decision. In this step, analyze only protocol `{{params.review_unit.target.name}}`: return its declared requirements and any default implementations visible in the source already present in the current model session. Do not classify candidates or invent conformers.
+      {{steps.present_candidates.outputs.text}}
+    outputs:
+      - name: dispositions
+        type: data
+        schema:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [candidate_id, disposition, reasoning, evidence]
+            properties:
+              candidate_id:
+                type: string
+                pattern: "^candidate-[1-9][0-9]*$"
+              disposition:
+                type: string
+                enum: [INSPECT, REJECT]
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: validate_selection
+    type: operation
+    operation: source.validate_candidate_selection
+    depends_on: [select_candidates]
+    with:
+      candidates: "{{steps.search_conformers.outputs.candidates}}"
+      dispositions: "{{steps.select_candidates.outputs.dispositions}}"
+
+  - include:
+      workflow: isp-candidate-review
+    as: candidate_reviews
+    depends_on: [analyze_protocol, validate_selection]
+    for_each: "{{steps.validate_selection.outputs.selected_candidates}}"
+    with:
+      candidate: "{{item}}"
+      protocol_name: "{{params.review_unit.target.name}}"
+
+  - id: analyze_cohesion
+    depends_on: [candidate_reviews]
+    prompt: |
+      Analyze protocol `{{params.review_unit.target.name}}` using only the
+      protocol and complete candidate assessments already submitted in this
+      model session. Do not inspect source again, omit a requirement, count
+      groups, calculate metrics, or decide severity.
+
+      Group protocol methods by which conformers actually use them together. Disjoint groups suggest the protocol should be split.
 
       1. **Build a usage matrix**: for each conformer, which methods are MEANINGFUL
       2. **Identify groups of methods** that are always used together across conformers
       3. **Count groups** — if methods cluster into 2+ disjoint usage groups, the protocol mixes responsibilities
 
-      Preserve evidence for every declared requirement and visible protocol-extension default so all later candidate and metric steps reuse this exact analysis.
-
+      Return exactly one record for every declared requirement, in declaration
+      order. Encode its binary implementation vector in conformer source order:
+      use `1` for MEANINGFUL or DELEGATED and `0` for EMPTY, STUB, or MISSING.
+      Requirements with identical vectors have the same `usage_vector`. MCP will
+      count distinct vectors; do not return a derived group count.
     outputs:
-      - name: analysis
+      - name: requirement_groups
         type: data
         schema:
-          type: object
-          additionalProperties: false
-          required: [requirements, default_implementations]
-          properties:
-            requirements:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [name, evidence]
-                properties:
-                  name: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-            default_implementations:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [requirement, evidence]
-                properties:
-                  requirement: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-
-  - id: classify_conformer
-    depends_on: [analyze_protocol, search_conformers]
-    for_each: "{{steps.search_conformers.outputs.candidates}}"
-    prompt: |
-      Read `{{item.path}}` with your normal file-reading tool and inspect only the declaration named `{{item.unit}}` with identity `{{item.unit_identity}}`. MCP requires exactly one assessment for this candidate; do not analyze another candidate or invent a path.
-
-      Classify the inspected declaration as exactly one of:
-      - CONFORMER — it conforms to the reviewed protocol. Return exactly one implementation record for every shared requirement.
-      - DEFAULT_PROVIDER — it is a protocol extension that supplies default implementations. Return every supplied requirement in `default_implementations`.
-      - NOT_RELEVANT — it neither conforms nor supplies protocol defaults. Return empty implementation arrays.
-
-      For a CONFORMER, classify every required member as MEANINGFUL, EMPTY, STUB, DELEGATED, or MISSING. Do not omit an unsupported requirement. Evidence must cite the inspected path and relevant line or source excerpt.
-
-      Reviewed protocol: `{{params.review_unit.target.name}}`
-      Use the protocol analysis you previously submitted; do not rediscover or revise it.
-      Candidate frontmatter description: {{item.description}}
-      Candidate path: {{item.path}}
-    outputs:
-      - name: assessment
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [classification, name, implementations, default_implementations, evidence]
-          properties:
-            classification:
-              type: string
-              enum: [CONFORMER, DEFAULT_PROVIDER, NOT_RELEVANT]
-            name: {type: string, minLength: 1}
-            implementations:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [requirement, classification, evidence]
-                properties:
-                  requirement: {type: string, minLength: 1}
-                  classification:
-                    type: string
-                    enum: [MEANINGFUL, EMPTY, STUB, DELEGATED, MISSING]
-                  evidence: {type: string, minLength: 1}
-            default_implementations:
-              type: array
-              items:
-                type: object
-                additionalProperties: false
-                required: [requirement, evidence]
-                properties:
-                  requirement: {type: string, minLength: 1}
-                  evidence: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [requirement, usage_vector, reasoning, evidence]
+            properties:
+              requirement: {type: string, minLength: 1}
+              usage_vector: {type: string, minLength: 1}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
 
   - id: width
     type: metric
     metric_id: ISP-1
-    depends_on: [analyze_protocol, classify_conformer]
-    prompt: |
-      A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
-
-      Return the number of declared requirements in the shared protocol analysis. Do not rediscover requirements.
-
-      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [analyze_protocol]
+    value: {type: integer, minimum: 0}
     scoring:
-      minor:
-        operator: greater_than_or_equal
-        value: 6
-      severe:
-        operator: greater_than_or_equal
-        value: 9
+      source: "{{steps.analyze_protocol.outputs.requirements}}"
+      minor: {operator: greater_than_or_equal, value: 6}
+      severe: {operator: greater_than_or_equal, value: 9}
 
   - id: min_coverage
     type: metric
     metric_id: ISP-2
-    depends_on: [analyze_protocol, classify_conformer]
-    prompt: |
-      A conformer with low coverage is being forced to depend on methods it does not use. This is the direct ISP violation signal.
-
-      Apply these authored ISP-2 adjustments before returning the minimum coverage:
-      - If only one conformer exists in the project, coverage is trivially 100%. Record "unable to verify ISP — single conformer" in `additional_info`.
-      - If every non-meaningful requirement has a default implementation through a protocol extension and the conformer does not override it, that default satisfies ISP and must not reduce coverage.
-
-      Calculate the minimum meaningful implementation coverage across assessments classified CONFORMER and return an integer percentage from 0 through 100. MEANINGFUL and DELEGATED count as covered; EMPTY, STUB, and MISSING do not. Do not rediscover or reclassify conformers.
-
-      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
-    value:
-      type: integer
-      minimum: 0
-      maximum: 100
+    depends_on: [candidate_reviews]
+    value: {type: number, minimum: 0, maximum: 1}
     scoring:
-      minor:
-        operator: less_than
-        value: 80
-      severe:
-        operator: less_than
-        value: 60
+      source: "{{workflows.candidate_reviews.outputs.coverage}}"
+      reducer:
+        type: minimum
+        value: "{{item}}"
+        empty_value: 1.0
+      minor: {operator: less_than, value: 0.8}
+      severe: {operator: less_than, value: 0.6}
 
   - id: cohesion_groups
     type: metric
     metric_id: ISP-3
-    depends_on: [analyze_protocol, classify_conformer]
-    prompt: |
-      Group protocol methods by which conformers actually use them together. Disjoint groups suggest the protocol should be split.
-
-      Build one binary implementation vector per requirement in declared requirement order. Each vector has one position per conformer in the shared analysis: use `1` for MEANINGFUL or DELEGATED and `0` for EMPTY, STUB, or a missing implementation. Requirements with identical vectors belong to the same usage group. Return the number of distinct vectors; do not group by semantic topic, graph connectivity, or naming. Do not rediscover or reclassify conformers.
-
-      Use the protocol analysis and candidate assessments you previously submitted for protocol `{{params.review_unit.target.name}}`; do not rediscover or revise them.
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [analyze_cohesion]
+    value: {type: integer, minimum: 0}
     scoring:
-      severe:
-        operator: greater_than_or_equal
-        value: 2
+      source: "{{steps.analyze_cohesion.outputs.requirement_groups}}"
+      reducer:
+        type: distinct_count
+        value: "{{item.usage_vector}}"
+      severe: {operator: greater_than_or_equal, value: 2}
 
   - id: classify_exception
     type: exception
-    depends_on: [analyze_protocol, classify_conformer]
+    depends_on:
+      - width
+      - min_coverage
+      - cohesion_groups
+      - candidate_reviews
     prompt: |
-      Decide whether the entire supplied protocol is exempt from ISP review. Non-protocol applicability is enforced before this workflow starts. Single-conformer and default-implementation criteria adjust only ISP-2 and do not exempt ISP-1 or ISP-3. Apply the remaining whole-rule exceptions from this complete authored list:
+      Decide whether the entire supplied protocol is exempt from ISP review.
+      Single-conformer and default-implementation criteria adjust only ISP-2
+      and do not exempt ISP-1 or ISP-3. Apply this complete authored list:
 
       1. **Non-protocol units** — ISP applies ONLY to protocol/interface declarations. Classes, structs, enums, extensions, and standalone functions that do not declare a protocol are outside ISP scope — do NOT include them in the ISP section of the submission. Omit these units from ISP metrics entirely. Conformers are examined only as evidence during ISP-2 (coverage analysis) of the protocol they conform to, not as ISP review targets themselves.
       2. **Marker protocols** — protocols with zero requirements used for type discrimination (e.g., `Sendable`, `Identifiable`). Width = 0 is always COMPLIANT.
@@ -207,4 +215,6 @@ steps:
       6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
       7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
 
-      Classify protocol `{{params.review_unit.target.name}}` using its source, protocol analysis, and candidate assessments already visible in the current model session; do not rediscover or revise them.
+      Use only the completed protocol analysis, candidate assessments, and
+      deterministic metric results. Do not inspect source again, recalculate a
+      metric, or revise an earlier classification.

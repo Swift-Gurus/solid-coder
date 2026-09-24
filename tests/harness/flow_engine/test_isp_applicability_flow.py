@@ -76,10 +76,14 @@ class TestISPApplicabilityFlow(unittest.TestCase):
         self.assertEqual(
             [event["local_step_id"] for event in skipped],
             [
+                "analyze_protocol",
                 "prepare_conformer_query",
                 "search_conformers",
-                "analyze_protocol",
                 "width",
+                "present_candidates",
+                "select_candidates",
+                "validate_selection",
+                "analyze_cohesion",
                 "min_coverage",
                 "cohesion_groups",
                 "classify_exception",
@@ -110,10 +114,9 @@ class TestISPApplicabilityFlow(unittest.TestCase):
 
     def _prepare_isolated_catalog(self) -> Path:
         rule_package = self.plugin_root / "workflows" / "review" / "rules" / "isp"
-        rule_package.mkdir(parents=True)
-        shutil.copy2(
-            _PROJECT_ROOT / "workflows" / "review" / "rules" / "isp" / "workflow.yaml",
-            rule_package / "workflow.yaml",
+        shutil.copytree(
+            _PROJECT_ROOT / "workflows" / "review" / "rules" / "isp",
+            rule_package,
         )
         bundle = self.plugin_root / "workflows" / "review" / "bundles" / "isp-skip"
         bundle.mkdir(parents=True)

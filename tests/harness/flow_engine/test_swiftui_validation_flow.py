@@ -7,6 +7,7 @@ solid-description: Verifies SwiftUI applicability, canonical instructions, indep
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -98,12 +99,51 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
                     ],
                 },
             ),
+            RuleAnalysisExpectation(
+                step_id="classify_extrema_observations",
+                output={
+                    "view_properties": [
+                        {
+                            "location": "DashboardView.body",
+                            "nesting_depth": 3,
+                            "expression_count": 8,
+                            "is_exception": False,
+                            "reasoning": "The body contains the deepest builder tree.",
+                            "evidence": "VStack > List > HStack in body.",
+                        },
+                        {
+                            "location": "DashboardView.emptyState",
+                            "nesting_depth": 1,
+                            "expression_count": 2,
+                            "is_exception": False,
+                            "reasoning": "The helper contains one shallow container.",
+                            "evidence": "VStack with Text in emptyState.",
+                        },
+                    ],
+                    "modifier_chains": [
+                        {
+                            "location": "DashboardView.body.TextField",
+                            "length": 2,
+                            "is_exception": False,
+                            "reasoning": "The nested child has two modifiers.",
+                            "evidence": "TextField applies textFieldStyle and frame.",
+                        },
+                        {
+                            "location": "DashboardView.body.HStack",
+                            "length": 2,
+                            "is_exception": False,
+                            "reasoning": "A second child has the same maximum.",
+                            "evidence": "HStack applies accessibility modifiers.",
+                        },
+                    ],
+                },
+            ),
         ],
         metrics=[
-            RuleMetricExpectation(step_id="body_nesting_depth", metric_id="SUI-1", observation_id="body_nesting_depth", detection_id="SUI-1", detection_name="Body Complexity", value=3, severity="SEVERE"),
-            RuleMetricExpectation(step_id="view_expression_count", metric_id="SUI-1", observation_id="view_expression_count", detection_id="SUI-1", detection_name="Body Complexity", value=8, severity="SEVERE"),
+            RuleMetricExpectation(step_id="body_nesting_depth", metric_id="SUI-1", observation_id="body_nesting_depth", detection_id="SUI-1", detection_name="Body Complexity", value=3, severity="SEVERE", mcp_owned=True),
+            RuleMetricExpectation(step_id="view_expression_count", metric_id="SUI-1", observation_id="view_expression_count", detection_id="SUI-1", detection_name="Body Complexity", value=8, severity="SEVERE", mcp_owned=True),
             RuleMetricExpectation(step_id="impure_count", metric_id="SUI-2", detection_id="SUI-2", detection_name="View Purity", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="max_modifier_chain", metric_id="SUI-3", detection_id="SUI-3", detection_name="Modifier Chain Length", value=2, severity="SEVERE"),
+            RuleMetricExpectation(step_id="max_modifier_chain", metric_id="SUI-3", detection_id="SUI-3", detection_name="Modifier Chain Length", value=2, severity="SEVERE", mcp_owned=True),
             RuleMetricExpectation(step_id="vm_injection_style", metric_id="SUI-4", detection_id="SUI-4", detection_name="ViewModel Injection", value="concrete", severity="SEVERE"),
             RuleMetricExpectation(step_id="preview_only_count", metric_id="SUI-5", detection_id="SUI-5", detection_name="Preview-Only View Containment", value=1, severity="SEVERE", mcp_owned=True),
             RuleMetricExpectation(step_id="views_without_preview_count", metric_id="SUI-6", detection_id="SUI-6", detection_name="Preview Coverage", value=2, severity="SEVERE", mcp_owned=True),
@@ -127,8 +167,19 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
             for observation in self.SCENARIO.analysis[0].output["observations"]
         ]
 
+        countable = next(
+            step
+            for step in started.steps
+            if step.step_id == "classify_countable_observations"
+        )
+        extrema = next(
+            step
+            for step in started.steps
+            if step.step_id == "classify_extrema_observations"
+        )
         ready = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": observations},
+            countable.instance_id: {"observations": observations},
+            extrema.instance_id: self.SCENARIO.analysis[1].output,
         })
         completed = self._finish_ready_workflow(ready, started.run_id)
 
@@ -144,13 +195,65 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
         self.assertEqual(metrics[("SUI-7", "value")].value, 1)
         self.assertEqual(result.severity, "SEVERE")
 
+    def test_extrema_preserve_equal_maximum_observations(self) -> None:
+        checkpoint = self._advance_through_analysis()
+        modifier_event = next(
+            event
+            for event in self._events(checkpoint.run_id)
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == "max_modifier_chain"
+        )
+
+        self.assertEqual(modifier_event["outputs"]["value"], 2)
+        self.assertEqual(
+            modifier_event["metric_derivation"]["projection_evidence"],
+            [
+                {"index": 0, "value": 2},
+                {"index": 1, "value": 2},
+            ],
+        )
+
+    def test_empty_extrema_collections_use_authored_zero_values(self) -> None:
+        started = self._start()
+        countable = next(
+            step
+            for step in started.steps
+            if step.step_id == "classify_countable_observations"
+        )
+        extrema = next(
+            step
+            for step in started.steps
+            if step.step_id == "classify_extrema_observations"
+        )
+        ready = self.sut.flow_next({
+            countable.instance_id: self.SCENARIO.analysis[0].output,
+            extrema.instance_id: {
+                "view_properties": [],
+                "modifier_chains": [],
+            },
+        })
+        self._finish_ready_workflow(ready, started.run_id)
+        metrics = {
+            (metric.metric_id, metric.observation_id): metric.value
+            for metric in self._rule_result(started.run_id).metrics
+        }
+
+        self.assertEqual(metrics[("SUI-1", "body_nesting_depth")], 0)
+        self.assertEqual(metrics[("SUI-1", "view_expression_count")], 0)
+        self.assertEqual(metrics[("SUI-3", "value")], 0)
+
     def test_rejects_an_observation_without_required_evidence(self) -> None:
         started = self._start()
         invalid = dict(self.SCENARIO.analysis[0].output["observations"][0])
         invalid.pop("evidence")
 
+        classifier = next(
+            step
+            for step in started.steps
+            if step.step_id == "classify_countable_observations"
+        )
         rejected = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": [invalid]},
+            classifier.instance_id: {"observations": [invalid]},
         })
 
         self.assertEqual(rejected.status, "ready")
@@ -172,3 +275,11 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
             if step.step_id == "classify_countable_observations"
         )
         self.assertIn("evidence", classifier.rejection_reason)
+
+    def _events(self, run_id: str) -> list[dict[str, object]]:
+        events_path = self.project_root / "runs" / run_id / "events.jsonl"
+        return [
+            json.loads(line)
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]

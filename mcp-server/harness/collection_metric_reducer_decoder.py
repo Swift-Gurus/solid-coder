@@ -56,6 +56,11 @@ class CollectionMetricReducerDecoder(CollectionMetricReducerDecoding):
         if reducer_type == CollectionMetricReducerType.RATIO:
             return CollectionMetricReducer(
                 type=reducer_type,
+                empty_value=self._empty_value(
+                    step_id,
+                    raw.get("empty_value"),
+                    metric_value_type,
+                ),
                 numerator_condition=self._condition(
                     step_id,
                     raw.get("numerator_when"),
@@ -74,13 +79,21 @@ class CollectionMetricReducerDecoder(CollectionMetricReducerDecoding):
                 "requires a value reference"
             )
         expression = self._expression_parser.parse(value)
-        if not expression.value.startswith("item."):
+        if (
+            expression.value != "item"
+            and not expression.value.startswith("item.")
+        ):
             raise self._error_factory.create(
                 f"Metric step '{step_id}' reducer value must reference item"
             )
         return CollectionMetricReducer(
             type=reducer_type,
             value=expression,
+            empty_value=self._empty_value(
+                step_id,
+                raw.get("empty_value"),
+                metric_value_type,
+            ),
         )
 
     def _type(
@@ -102,11 +115,20 @@ class CollectionMetricReducerDecoder(CollectionMetricReducerDecoding):
         reducer_type: CollectionMetricReducerType,
         fields: set[object],
     ) -> None:
-        allowed = (
-            {"type", "numerator_when", "denominator_when"}
-            if reducer_type == CollectionMetricReducerType.RATIO
-            else {"type", "value"}
-        )
+        if reducer_type == CollectionMetricReducerType.RATIO:
+            allowed = {
+                "type",
+                "empty_value",
+                "numerator_when",
+                "denominator_when",
+            }
+        elif reducer_type in {
+            CollectionMetricReducerType.MAXIMUM,
+            CollectionMetricReducerType.MINIMUM,
+        }:
+            allowed = {"type", "value", "empty_value"}
+        else:
+            allowed = {"type", "value"}
         unknown = sorted(str(field) for field in fields - allowed)
         if not unknown:
             return
@@ -119,6 +141,26 @@ class CollectionMetricReducerDecoder(CollectionMetricReducerDecoding):
             f"Metric step '{step_id}' {reducer_type.value} reducer has "
             f"unsupported fields: {', '.join(unknown)}"
         )
+
+    def _empty_value(
+        self,
+        step_id: str,
+        raw: object,
+        metric_value_type: MetricValueType,
+    ) -> int | float | None:
+        if raw is None:
+            return None
+        expected_type = (
+            int
+            if metric_value_type == MetricValueType.INTEGER
+            else (int, float)
+        )
+        if isinstance(raw, bool) or not isinstance(raw, expected_type):
+            raise self._error_factory.create(
+                f"Metric step '{step_id}' reducer empty_value must match "
+                f"metric value type {metric_value_type.value}"
+            )
+        return raw
 
     def _validate_metric_type(
         self,

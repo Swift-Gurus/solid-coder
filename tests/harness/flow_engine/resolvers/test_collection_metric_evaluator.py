@@ -312,6 +312,30 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
         self.assertEqual(result.value, 0.0)
         self.assertTrue(result.zero_denominator)
 
+    def test_ratio_with_zero_denominator_uses_authored_empty_value(self) -> None:
+        condition = ComparisonCondition(
+            reference=WorkflowExpression("item.selected"),
+            operator=ConditionOperator.EQUALS,
+            expected=True,
+        )
+
+        result = self.sut.evaluate(
+            CollectionMetricCalculation(
+                source=self.source,
+                reducer=CollectionMetricReducer(
+                    type=CollectionMetricReducerType.RATIO,
+                    empty_value=1.0,
+                    numerator_condition=condition,
+                    denominator_condition=condition,
+                ),
+            ),
+            [],
+            WorkflowRunContext(),
+        )
+
+        self.assertEqual(result.value, 1.0)
+        self.assertTrue(result.zero_denominator)
+
     def test_maximum_rejects_an_empty_filtered_collection(self) -> None:
         with self.assertRaisesRegex(
             FlowValidationError,

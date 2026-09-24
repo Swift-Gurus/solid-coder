@@ -48,7 +48,7 @@
     "source_index": 0,
     "metrics": [
       {"step_id": "width", "metric_id": "ISP-1", "value": 6, "severity": "MINOR"},
-      {"step_id": "min_coverage", "metric_id": "ISP-2", "value": 83, "severity": "COMPLIANT"},
+      {"step_id": "min_coverage", "metric_id": "ISP-2", "value": 0.83, "severity": "COMPLIANT"},
       {"step_id": "cohesion_groups", "metric_id": "ISP-3", "value": 2, "severity": "SEVERE"}
     ],
     "final_severity": "SEVERE"

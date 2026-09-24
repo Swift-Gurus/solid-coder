@@ -7,6 +7,7 @@ from harness.collection_metric_reduction_result import (
 )
 from harness.condition_decision_evaluating import ConditionDecisionEvaluating
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.ratio_value_calculator import RatioValueCalculator
 from harness.selected_collection_metric_entry import SelectedCollectionMetricEntry
 
 
@@ -20,9 +21,11 @@ class RatioCollectionMetricReducer(CollectionMetricReducing):
     def __init__(
         self,
         condition_evaluator: ConditionDecisionEvaluating,
+        value_calculator: RatioValueCalculator,
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._condition_evaluator = condition_evaluator
+        self._value_calculator = value_calculator
         self._error_factory = error_factory
 
     def reduce(
@@ -57,10 +60,14 @@ class RatioCollectionMetricReducer(CollectionMetricReducing):
                 denominator_indexes.append(entry.source_index)
         zero_denominator = not denominator_indexes
         return CollectionMetricReductionResult(
-            value=(
-                0.0
-                if zero_denominator
-                else len(numerator_indexes) / len(denominator_indexes)
+            value=self._value_calculator.calculate(
+                numerator_count=len(numerator_indexes),
+                denominator_count=len(denominator_indexes),
+                empty_value=(
+                    declaration.empty_value
+                    if declaration.empty_value is not None
+                    else 0.0
+                ),
             ),
             numerator_indexes=numerator_indexes,
             denominator_indexes=denominator_indexes,

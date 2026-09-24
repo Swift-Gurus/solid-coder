@@ -32,6 +32,20 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
         self.assertEqual(reducer.type.value, "maximum")
         self.assertEqual(reducer.value.value, "item.depth")
 
+    def test_loads_authored_empty_value_for_numeric_extreme(self) -> None:
+        workflow = self._maximum_workflow().replace(
+            '                        value: "{{item.depth}}"',
+            '                        value: "{{item.depth}}"\n'
+            "                        empty_value: 0",
+        )
+
+        flow = self._load(workflow)
+
+        self.assertEqual(
+            flow.steps[1].metric_calculation.reducer.empty_value,
+            0,
+        )
+
     def test_loads_ratio_conditions(self) -> None:
         flow = self._load(self._ratio_workflow())
 
@@ -49,6 +63,19 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
         with self.assertRaisesRegex(
             FlowValidationError,
             "maximum reducer requires a value reference",
+        ):
+            self._load(workflow)
+
+    def test_rejects_fractional_empty_value_for_integer_metric(self) -> None:
+        workflow = self._maximum_workflow().replace(
+            '                        value: "{{item.depth}}"',
+            '                        value: "{{item.depth}}"\n'
+            "                        empty_value: 0.5",
+        )
+
+        with self.assertRaisesRegex(
+            FlowValidationError,
+            "empty_value must match metric value type integer",
         ):
             self._load(workflow)
 

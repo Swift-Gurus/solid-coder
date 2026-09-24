@@ -1,6 +1,6 @@
 """Defines the persisted projection of a collection metric reducer."""
 
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -18,5 +18,6 @@ class CollectionMetricReducerProjection(BaseModel):
 
     type: CollectionMetricReducerType
     value: Optional[str] = None
+    empty_value: Optional[Union[int, float]] = None
     numerator_when: Optional[dict[str, object]] = Field(default=None)
     denominator_when: Optional[dict[str, object]] = Field(default=None)

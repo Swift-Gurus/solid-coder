@@ -64,8 +64,11 @@ Reducer contracts:
 - `distinct_count` requires a scalar `value` reference and counts distinct JSON
   scalar values after the ordinary `scoring.when` filter.
 - `ratio` counts entries matching `numerator_when` and divides by entries
-  matching `denominator_when`. A zero denominator produces `0.0` and is recorded
-  explicitly in derivation evidence.
+  matching `denominator_when`. A zero denominator produces `0.0` unless the
+  reducer declares a numeric `empty_value`; the decision is recorded explicitly
+  in derivation evidence.
+- `maximum` and `minimum` may declare a numeric `empty_value` matching the metric
+  value type. Without it, reducing an empty selected collection remains an error.
 - The outer `scoring.when`, when present, limits entries before any reducer is
   evaluated. Ratio conditions operate only on that filtered collection.
 
@@ -133,8 +136,9 @@ declares a string metric
 **Given** no selected entries remain
 **When** MCP evaluates maximum, minimum, or distinct count
 **Then** distinct count returns zero
-**And** maximum and minimum fail with an explicit empty-reduction diagnostic
-instead of fabricating a value.
+**And** maximum and minimum use an explicitly authored `empty_value` when present
+**And** otherwise fail with an explicit empty-reduction diagnostic instead of
+fabricating a value.
 
 ### US-3: Preserve filtering, policy, audit, and replay
 
@@ -177,6 +181,8 @@ more model-owned work.
   expressions are not supported.
 - Numeric reducers preserve integer output only when both the metric declaration
   and all projected values are integers; ratio always produces a number.
+- Reducer `empty_value` declarations are type-checked, snapshotted, rendered into
+  derivation evidence, and replayed without recomputation.
 - Distinctness uses canonical JSON scalar equality and preserves source order in
   audit evidence.
 - Derived events identify reducer type, filtered indexes, projected values or

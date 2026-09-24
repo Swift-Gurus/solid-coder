@@ -27,6 +27,6 @@ class ISPValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "cohesion_groups",
     ]
     EXPECTED_METRIC_IDS = ["ISP-1", "ISP-2", "ISP-3"]
-    EXPECTED_VALUES = [10, 50, 2]
+    EXPECTED_VALUES = [10, 0.5, 2]
     EXPECTED_METRIC_SEVERITIES = ["SEVERE", "SEVERE", "SEVERE"]
     EXPECTED_FINAL_SEVERITY = "SEVERE"

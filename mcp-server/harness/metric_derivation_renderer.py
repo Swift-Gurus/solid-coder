@@ -53,6 +53,7 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                         if reducer.value is not None
                         else None
                     ),
+                    "empty_value": reducer.empty_value,
                     "numerator_when": (
                         self._condition_serializer.serialize(
                             reducer.numerator_condition
