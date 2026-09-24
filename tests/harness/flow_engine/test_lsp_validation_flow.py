@@ -1,7 +1,7 @@
 """
 solid-name: test_lsp_validation_flow
 solid-category: integration-test
-solid-spec: [SPEC-039]
+solid-spec: [SPEC-039, SPEC-055, SPEC-057]
 solid-description: Verifies canonical LSP instructions, typed observations, exception handling, scoring, and audit behavior.
 """
 
@@ -68,6 +68,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                 detection_name="Type Check Count",
                 value=0,
                 severity="COMPLIANT",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
                 step_id="contract_violations",
@@ -84,6 +85,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                 detection_name="Empty Methods",
                 value=1,
                 severity="SEVERE",
+                mcp_owned=True,
             ),
             RuleMetricExpectation(
                 step_id="empty_methods",
@@ -92,6 +94,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
                 detection_name="Empty Methods",
                 value=0,
                 severity="COMPLIANT",
+                mcp_owned=True,
             ),
         ],
         final_severity="SEVERE",
@@ -123,10 +126,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
         self.assertEqual(
             {step.step_id for step in measured.steps},
             {
-                "type_checks",
                 "contract_violations",
-                "fatal_error_methods",
-                "empty_methods",
                 "classify_exception",
             },
         )

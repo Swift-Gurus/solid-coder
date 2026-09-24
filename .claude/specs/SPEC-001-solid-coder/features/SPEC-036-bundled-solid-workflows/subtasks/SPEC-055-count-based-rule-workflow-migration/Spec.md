@@ -285,6 +285,15 @@ synchronization, and typed-identifier findings. MCP derives UITEST-1 through
 UITEST-5, preserves UITEST-5's minor/severe thresholds, applies authored
 exceptions per observation, and retains the Swift UI-test applicability gate.
 
+LSP now derives LSP-1 developer-owned type-check count plus LSP-3/LSP-4 fatal
+and empty implementation counts directly from its existing typed shared
+analysis. External type checks remain explicit non-counted observations. LSP-2
+contract-violation summation remains model-owned because it traverses nested
+inheritance relationships and override fields; SPEC-057 owns that reducer-backed
+follow-up. The shared rule test contract now completes the same hybrid run after
+an intentional malformed model-metric submission instead of attempting a second
+run against the active session lock.
+
 Current non-live results are 773 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.

@@ -164,8 +164,19 @@ class RuleValidationFlowContract(unittest.TestCase):
             ),
             None,
         )
-        if model_metric is not None:
-            started = self._advance_through_analysis().result
+        mcp_metric_coordinates = {
+            (metric.metric_id, metric.observation_id)
+            for metric in self.SCENARIO.metrics
+            if metric.mcp_owned
+        }
+
+        if model_metric is None:
+            if not mcp_metric_coordinates:
+                return
+            run_id = self._complete_workflow().run_id
+        else:
+            checkpoint = self._advance_through_analysis()
+            started = checkpoint.result
             metric_step = next(
                 step
                 for step in started.steps
@@ -181,31 +192,28 @@ class RuleValidationFlowContract(unittest.TestCase):
                 if step.step_id == model_metric.step_id
             )
             self.assertIn("additional_info", rejected_metric.rejection_reason)
+            if not mcp_metric_coordinates:
+                return
+            run_id = checkpoint.run_id
+            self._finish_ready_workflow(rejected, run_id)
 
-        mcp_metric_coordinates = {
-            (metric.metric_id, metric.observation_id)
-            for metric in self.SCENARIO.metrics
-            if metric.mcp_owned
-        }
-        if mcp_metric_coordinates:
-            checkpoint = self._complete_workflow()
-            result = self._rule_result(checkpoint.run_id)
-            audited_decisions = [
-                metric
-                for metric in result.metrics
-                if (metric.metric_id, metric.observation_id)
-                in mcp_metric_coordinates
-            ]
-            self.assertEqual(
-                len(audited_decisions),
-                len(mcp_metric_coordinates),
-            )
-            self.assertTrue(all(
-                metric.derivation is not None
-                and metric.additional_info.reasoning
-                and metric.additional_info.evidence
-                for metric in audited_decisions
-            ))
+        result = self._rule_result(run_id)
+        audited_decisions = [
+            metric
+            for metric in result.metrics
+            if (metric.metric_id, metric.observation_id)
+            in mcp_metric_coordinates
+        ]
+        self.assertEqual(
+            len(audited_decisions),
+            len(mcp_metric_coordinates),
+        )
+        self.assertTrue(all(
+            metric.derivation is not None
+            and metric.additional_info.reasoning
+            and metric.additional_info.evidence
+            for metric in audited_decisions
+        ))
 
     def test_mcp_scores_all_metrics_and_publishes_audited_result(self) -> None:
         checkpoint = self._complete_workflow()
@@ -292,9 +300,26 @@ class RuleValidationFlowContract(unittest.TestCase):
         is_exception: bool = False,
     ) -> RuleWorkflowCheckpoint:
         checkpoint = self._advance_through_analysis()
-        current = checkpoint.result
-        prompts = list(checkpoint.prompts)
-        step_ids = list(checkpoint.step_ids)
+        completion = self._finish_ready_workflow(
+            checkpoint.result,
+            checkpoint.run_id,
+            is_exception=is_exception,
+        )
+        return RuleWorkflowCheckpoint(
+            run_id=checkpoint.run_id,
+            result=completion.result,
+            prompts=[*checkpoint.prompts, *completion.prompts],
+            step_ids=[*checkpoint.step_ids, *completion.step_ids],
+        )
+
+    def _finish_ready_workflow(
+        self,
+        current,
+        run_id: str,
+        is_exception: bool = False,
+    ) -> RuleWorkflowCheckpoint:
+        prompts = []
+        step_ids = []
         while current.steps:
             current = self.sut.flow_next({
                 step.instance_id: self._output_for(
@@ -307,7 +332,7 @@ class RuleValidationFlowContract(unittest.TestCase):
             step_ids.extend(step.step_id for step in current.steps)
         self.assertEqual(current.status, "done", current.error)
         return RuleWorkflowCheckpoint(
-            run_id=checkpoint.run_id,
+            run_id=run_id,
             result=current,
             prompts=prompts,
             step_ids=step_ids,

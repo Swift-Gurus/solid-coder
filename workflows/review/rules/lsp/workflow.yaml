@@ -8,6 +8,8 @@ rule: {}
 steps:
   - id: analyze_substitutability
     prompt: |
+      - A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
+
       1. **Count typechecks** — `is`, `as?`, `as!`, `type(of:)` used with concrete types, protocols, interfaces
       2. **Count out exceptions**
          - see typecast-lsp-exception.swift in Examples
@@ -42,6 +44,11 @@ steps:
       4. **Count** = total contract violations (new guards + weakened postconditions + invariant violations)
 
       *Note*: If the base class source is not available for reading, flag as "unable to verify" rather than assuming compliant.
+
+      - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
+      - Empty methods or vars. Meaning non implemented methods or var from the contract
+      - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
+        - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
 
       1. **Count total methods/vars in the interface**
       2. **Count empty methods/vars** 
@@ -121,16 +128,14 @@ steps:
     type: metric
     metric_id: LSP-1
     depends_on: [analyze_substitutability]
-    prompt: |
-      - A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
-
-      Count type checks classified as DEVELOPER in the shared analysis. EXTERNAL checks are exceptions and UNKNOWN checks must be reported as unable to verify rather than assumed violations. Do not rediscover ownership.
-
-      Use the type-check analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{steps.analyze_substitutability.outputs.type_checks}}"
+      when:
+        ref: "{{item.ownership}}"
+        equals: DEVELOPER
       severe:
         operator: greater_than_or_equal
         value: 1
@@ -159,19 +164,14 @@ steps:
     type: metric
     metric_id: LSP-3
     depends_on: [analyze_substitutability]
-    prompt: |
-      - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
-      - Empty methods or vars. Meaning non implemented methods or var from the contract
-      - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
-        - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
-
-      Count contract implementations classified as FATAL in the shared analysis. Do not rediscover or reclassify members.
-
-      Use the contract-implementation analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{steps.analyze_substitutability.outputs.contract_implementations}}"
+      when:
+        ref: "{{item.classification}}"
+        equals: FATAL
       severe:
         operator: greater_than_or_equal
         value: 1
@@ -180,19 +180,14 @@ steps:
     type: metric
     metric_id: LSP-4
     depends_on: [analyze_substitutability]
-    prompt: |
-      - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
-      - Empty methods or vars. Meaning non implemented methods or var from the contract
-      - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
-        - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
-
-      Count contract implementations classified as EMPTY in the shared analysis. Do not include FATAL implementations and do not rediscover or reclassify members.
-
-      Use the contract-implementation analysis you previously submitted for unit `{{params.review_unit.target.name}}`; do not rediscover or revise it.
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{steps.analyze_substitutability.outputs.contract_implementations}}"
+      when:
+        ref: "{{item.classification}}"
+        equals: EMPTY
       minor:
         operator: greater_than_or_equal
         value: 1
