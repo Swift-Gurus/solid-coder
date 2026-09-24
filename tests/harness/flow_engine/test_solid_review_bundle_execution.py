@@ -131,7 +131,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("func load() async" in prompt for prompt in prompts))
         self.assertFalse(any("'code':" in prompt for prompt in prompts))
 
-    def test_aggregate_experiment_reuses_every_canonical_rule_step(self) -> None:
+    def test_aggregate_experiment_presents_one_srp_analysis_per_unit(self) -> None:
         self.target_path.write_text(self.source, encoding="utf-8")
         BundledReviewRulePolicyWriter(
             plugin_root=_PROJECT_ROOT,
@@ -151,7 +151,12 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
 
         self.assertIsNone(started.error, started.error)
         identities = [step.step_id for step in started.steps]
-        self.assertEqual(self._rule_step_count(identities, "srp"), 8)
+        self.assertEqual(self._rule_step_count(identities, "srp"), 2)
+        self.assertTrue(all(
+            ".analyze_responsibilities" in identity
+            for identity in identities
+            if ".rule_reviews.srp-" in identity
+        ))
         self.assertTrue(all(step.batch is not None for step in started.steps))
         self.assertEqual(
             {step.batch.mode.value for step in started.steps},

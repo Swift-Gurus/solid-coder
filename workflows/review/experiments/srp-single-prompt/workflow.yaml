@@ -23,7 +23,7 @@ steps:
       3. Calls, branches, fallbacks, collection operations, cache operations, formatting primitives, and storage primitives that merely implement that outcome are not additional actions.
       4. Add another action for a method only when it performs an independently changeable responsibility that is not required to achieve its primary outcome.
       5. Keep distinct primary actions from different methods distinct. Do not merge them merely because their labels are synonyms.
-      6. Before submitting, build one evidence entry per counted action containing the method, action, and rationale. `verb_count` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
+      6. Before submitting, build one evidence entry per counted action containing the method, action, and rationale. The metric value is the number of evidence entries.
 
       Example: a load method that checks a cache and falls back to storage performs the single action "load"; cache lookup and storage lookup are implementation details. A save method that invalidates its cache performs the single action "save" when invalidation is required to keep the saved result consistent.
 
@@ -39,7 +39,7 @@ steps:
       3. Do not remove a method merely because it uses variables from both sides of a group. Remove it as an orchestrator only when it coordinates independently meaningful operations. A method that needs all of those variables to produce one cohesive result is not an orchestrator and keeps the group connected.
       4. A cache and its backing storage belong to the same data-access group when the methods use them together to provide consistent save/load/invalidate behavior.
       5. Formatting machinery and presentation templates belong to the same presentation group when methods combine them to produce rendered output.
-      6. Before submitting, build one evidence entry per group containing its methods, variables, and rationale. `cohesion_groups` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
+      6. Before submitting, build one evidence entry per group containing its methods, variables, and rationale. The metric value is the number of evidence entries.
 
       A class/function/struct/module/instance should have one reason to change
 
@@ -49,7 +49,7 @@ steps:
       2. Merge backing storage, caching, and cache consistency into one data-access stakeholder when they jointly implement retrieval and persistence behavior.
       3. Merge templates, number formatting, string formatting, and collection layout into one presentation stakeholder when they jointly produce displayed output.
       4. Count security, operations, product policy, validation, or other stakeholders only when code in the unit demonstrates independently changeable behavior for that concern. Do not infer them solely from a type name.
-      5. Before submitting, build one evidence entry per stakeholder containing the stakeholder, methods, and rationale. `stakeholder_count` must equal the number of evidence entries. Submit only the metric fields required by the output schema.
+      5. Before submitting, build one evidence entry per stakeholder containing the stakeholder, methods, and rationale. The metric value is the number of evidence entries.
 
       Apply this complete authored SRP exception:
 

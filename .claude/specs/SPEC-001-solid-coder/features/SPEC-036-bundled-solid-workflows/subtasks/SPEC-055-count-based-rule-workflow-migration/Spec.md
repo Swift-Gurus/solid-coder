@@ -2,7 +2,7 @@
 number: SPEC-055
 feature: count-based-rule-workflow-migration
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-036
 blocked-by: [SPEC-053]
 blocking: []
@@ -233,3 +233,22 @@ actionable retry message
 - [ ] Incomplete observations cannot trigger partial scoring.
 - [ ] The shared Codex/Claude harness validates every migrated rule.
 - [ ] All non-live suites and locked live rule scenarios pass after each migration.
+
+## Implementation Status
+
+OCP remains the reference collection-backed migration. SRP now uses one typed
+`analyze_responsibilities` model step to return actions, cohesion groups, and
+stakeholders with required reasoning and evidence. MCP derives SRP-1, SRP-2,
+and SRP-3 as filtered collection counts, applies the existing thresholds,
+records derivation evidence, and runs the existing rule-wide facade exception.
+The retained single-prompt experiment shares output-shape-neutral canonical
+detection wording for valid comparison.
+
+SRP validation covers exact `6 / 2 / 2` values, MCP ownership, exception
+override, audit persistence, incomplete-observation rejection, bundle execution,
+and aggregate presentation with one analysis prompt per unit. Current non-live
+results are 764 flow-engine tests passing (with the one host-Xcode wrapper case
+deselected), 852 MCP-server tests passing with 4 intentional skips, 95 harness
+tests, 62 hook tests, and 36 Apple-build tests. Locked live execution remains
+blocked by the host-integration issues recorded in SPEC-054 rather than an SRP
+assertion.
