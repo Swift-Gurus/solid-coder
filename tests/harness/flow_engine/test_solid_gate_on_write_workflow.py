@@ -32,7 +32,7 @@ from source.source_operation_registrations_factory import (  # noqa: E402
 """
 solid-name: TestSolidGateOnWriteWorkflow
 solid-category: integration-test
-solid-spec: [SPEC-036, SPEC-039, SPEC-041]
+solid-spec: [SPEC-036, SPEC-039, SPEC-041, SPEC-055]
 solid-description: Proves the packaged gate reviews a nonexistent destination from its prospective buffer and materializes file-scoped test review once.
 """
 class TestSolidGateOnWriteWorkflow(unittest.TestCase):
@@ -90,7 +90,7 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
 
         self.assertIsNone(started.error, started.error)
         self.assertFalse(self.target_path.exists())
-        self.assertEqual(len(started.steps), 7)
+        self.assertEqual(len(started.steps), 1)
         self.assertTrue(
             all("unit-testing" in step.instance_id for step in started.steps)
         )

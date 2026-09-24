@@ -271,7 +271,15 @@ bad description observations. MCP derives FM-1 through FM-5, retains all
 metric-specific exclusions and thresholds, and reduces initial rule presentation
 from six simultaneous model steps to one classification step.
 
-Current non-live results are 769 flow-engine tests passing (with the one
+Unit Testing now uses one file-scoped `classify_test_observations` model step
+for isolation, structure, naming, test-double, setup, and framework findings.
+MCP derives TEST-1 through TEST-6, preserves the TEST-3 minor/severe bands,
+applies observation-level exceptions independently, and keeps the existing
+unit-test tag and Swift-file applicability. Gate-on-write coverage confirms the
+prospective buffer now presents one classifier instead of seven simultaneous
+rule steps.
+
+Current non-live results are 771 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
 Locked live execution remains blocked by the host-integration issues recorded
