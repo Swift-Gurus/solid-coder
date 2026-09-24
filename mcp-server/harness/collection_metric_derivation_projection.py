@@ -10,21 +10,21 @@ from harness.collection_metric_projection_evidence import (
 from harness.collection_metric_reducer_projection import (
     CollectionMetricReducerProjection,
 )
+from harness.collection_source_reference import CollectionSourceReference
 from harness.condition_evidence import ConditionEvidence
-from harness.step_output_reference import StepOutputReference
 
 
 """
 solid-name: CollectionMetricDerivationProjection
 solid-category: model
-solid-spec: [SPEC-053, SPEC-054]
+solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Preserves durable evidence for auditing and replaying one collection-derived metric without reevaluation.
 """
 class CollectionMetricDerivationProjection(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 
     kind: Literal["collection_count", "collection_reducer"] = "collection_count"
-    source: StepOutputReference
+    source: CollectionSourceReference
     source_size: int = Field(ge=0)
     matched_indexes: list[int]
     excluded_indexes: list[int]

@@ -3,19 +3,19 @@ from __future__ import annotations
 from harness.models import FlowDef, RunState, StepDef
 
 
-_PROCESS_STEP_TYPES = {"script", "command"}
+_DEPENDENCY_VALIDATING_STEP_TYPES = {"script", "command", "operation"}
 
 
 """
 solid-name: ScriptFailureAttributor
 solid-category: service
-solid-spec: [SPEC-027, SPEC-037]
-solid-description: Attributes process-step failures to the responsible process step or completed agent input.
+solid-spec: [SPEC-027, SPEC-037, SPEC-056]
+solid-description: Attributes deterministic validation-step failures to the responsible step or completed agent input.
 """
 class ScriptFailureAttributor:
 
     def attribute(self, failed_step: StepDef, run_state: RunState, flow_def: FlowDef) -> str:
-        if failed_step.type not in _PROCESS_STEP_TYPES:
+        if failed_step.type not in _DEPENDENCY_VALIDATING_STEP_TYPES:
             return failed_step.id
         step_map = {step.id: step for step in flow_def.steps}
         candidates = [

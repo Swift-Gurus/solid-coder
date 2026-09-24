@@ -15,5 +15,6 @@ class DRYDuplicationAssessment(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     classification: DRYDuplicationClassification
+    is_exception: bool
     reasoning: str = Field(min_length=1)
     evidence: str = Field(min_length=1)

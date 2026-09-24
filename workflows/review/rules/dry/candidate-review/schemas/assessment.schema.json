@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "location", "reuse", "duplication"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^candidate-[1-9][0-9]*$"
+    },
+    "location": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "is_exception", "reasoning", "evidence"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["EXACT", "EXTENSIBLE", "PARTIAL", "NOT_SUITABLE"]
+        },
+        "is_exception": {"type": "boolean"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "evidence": {"type": "string", "minLength": 1}
+      }
+    },
+    "duplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "is_exception", "reasoning", "evidence"],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": ["IDENTICAL", "STRUCTURAL", "SIMILAR", "NOT_DUPLICATE"]
+        },
+        "is_exception": {"type": "boolean"},
+        "reasoning": {"type": "string", "minLength": 1},
+        "evidence": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

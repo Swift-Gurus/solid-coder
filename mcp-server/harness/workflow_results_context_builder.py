@@ -17,8 +17,8 @@ from harness.workflow_run_context import WorkflowRunContext
 """
 solid-name: WorkflowResultsContextBuilder
 solid-category: service
-solid-spec: [SPEC-037]
-solid-description: Builds ordered include-alias results for workflow runtime expressions.
+solid-spec: [SPEC-037, SPEC-056]
+solid-description: Builds ordered include-alias result envelopes and declared output projections for runtime expressions.
 """
 class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
 
@@ -54,6 +54,10 @@ class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
                     authored_alias=group.authored_alias,
                     owner_alias=group.owner_alias,
                     runtime_owner_instance_id=group.runtime_owner_instance_id,
+                    output_names=[
+                        output.specification.name
+                        for output in group.outputs
+                    ],
                     entries=results,
                 ),
             ))

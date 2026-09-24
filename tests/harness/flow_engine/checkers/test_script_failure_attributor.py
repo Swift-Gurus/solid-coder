@@ -1,8 +1,8 @@
 """
 solid-name: test_script_failure_attributor
 solid-category: unit-test
-solid-spec: [SPEC-027]
-solid-description: Tests attributing a failed script step's attempt to itself or to a completed agent-type dependency.
+solid-spec: [SPEC-027, SPEC-056]
+solid-description: Tests attributing failed deterministic validation steps to themselves or completed agent dependencies.
 """
 
 import sys
@@ -42,6 +42,31 @@ class TestScriptFailureAttributor(unittest.TestCase):
         run_state = RunState(completed={"prep": StepOutputs()}, running=[], turn_count=1, status="in_progress")
 
         self.assertEqual(self.sut.attribute(gate, run_state, flow_def), "gate")
+
+    def test_attributes_operation_validation_failure_to_agent_dependency(self):
+        selection = StepDef(id="select", prompt="p", type="agent")
+        validation = StepDef(
+            id="validate",
+            prompt="",
+            type="operation",
+            depends_on=["select"],
+        )
+        flow_def = FlowDef(
+            name="f",
+            max_turns=10,
+            steps=[selection, validation],
+        )
+        run_state = RunState(
+            completed={"select": StepOutputs()},
+            running=[],
+            turn_count=1,
+            status="in_progress",
+        )
+
+        self.assertEqual(
+            self.sut.attribute(validation, run_state, flow_def),
+            "select",
+        )
 
     def test_session_delegate_failure_is_attributed_to_its_own_instance(self):
         prepare = StepDef(id="prepare", prompt="p", type="agent")

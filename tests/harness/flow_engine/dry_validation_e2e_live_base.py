@@ -33,7 +33,7 @@ from source.prepare_search_targets_operation_factory import (  # noqa: E402
     PrepareSearchTargetsOperationFactory,
 )
 from source.search_target_granularity import SearchTargetGranularity  # noqa: E402
-from source.source_search_candidate import SourceSearchCandidate  # noqa: E402
+from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
 from source.source_search_context import SourceSearchContext  # noqa: E402
 
 
@@ -52,7 +52,7 @@ _PROTOCOL_REUSE_SCENARIO = (
 """
 solid-name: DRYValidationE2ELiveBase
 solid-category: test-support
-solid-spec: [SPEC-039, SPEC-040]
+solid-spec: [SPEC-039, SPEC-040, SPEC-056]
 solid-description: Supplies an isolated unit-scoped DRY scenario and exact operation, observation, scoring, and audit assertions.
 """
 class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
@@ -61,12 +61,24 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
     FIXTURE = _FIXTURE
     EXPECTED_STEP_IDS = [
         "reuse_misses",
-        "duplicate_sites",
+        "repository_duplicate_sites",
+        "within_unit_duplicate_sites",
         "missing_abstractions",
     ]
-    EXPECTED_METRIC_IDS = ["DRY-1", "DRY-2", "DRY-3"]
-    EXPECTED_VALUES = [0, 2, 1]
-    EXPECTED_METRIC_SEVERITIES = ["COMPLIANT", "SEVERE", "SEVERE"]
+    EXPECTED_METRIC_IDS = ["DRY-1", "DRY-2", "DRY-2", "DRY-3"]
+    EXPECTED_OBSERVATION_IDS = [
+        "repository_reuse_miss_count",
+        "repository_duplicate_location_count",
+        "within_unit_duplicate_location_count",
+        "missing_abstraction_count",
+    ]
+    EXPECTED_VALUES = [0, 0, 2, 1]
+    EXPECTED_METRIC_SEVERITIES = [
+        "COMPLIANT",
+        "COMPLIANT",
+        "SEVERE",
+        "SEVERE",
+    ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
     ALLOW_AUXILIARY_STEPS = True
 
@@ -122,17 +134,26 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
         searched = self._completion(completions, "search_repository")
         selected = self._completion(completions, "select_candidates")
         validated = self._completion(completions, "validate_selection")
-        classified = self._completion(completions, "classify_candidate")
+        target_analysis = self._completion(completions, "analyze_target_patterns")
 
         self.assertTrue(generated["outputs"]["generated_terms"])
         self.assertEqual(searched["outputs"]["candidates"], [])
-        self.assertEqual(selected["outputs"]["selections"], [])
+        self.assertEqual(selected["outputs"]["dispositions"], [])
         self.assertEqual(validated["outputs"]["selected_candidates"], [])
-        self.assertEqual(classified["outputs"]["assessment"], [])
-        self.assertTrue(classified["empty_collection"])
+        self.assertEqual(validated["outputs"]["dispositions"], [])
+        self.assertFalse(any(
+            str(event.get("step_id", "")).endswith("classify_candidate")
+            for event in completions
+        ))
+        self.assertTrue(target_analysis["outputs"]["within_unit_duplicates"])
+        self.assertTrue(target_analysis["outputs"]["missing_abstractions"])
         self.assertEqual(searched["session_id"], "engine")
         self.assertEqual(validated["session_id"], "engine")
-        self.assertEqual(classified["session_id"], "engine")
+        for step_id in self.EXPECTED_STEP_IDS:
+            self.assertEqual(
+                self._completion(completions, step_id)["session_id"],
+                "engine",
+            )
 
     def test_existing_protocol_with_different_names_is_an_exact_reuse_miss(
         self,
@@ -203,12 +224,14 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             if event.get("event") == "step_completed"
         ]
         classification = self._completion(completions, "classify_candidate")
-        candidate = SourceSearchCandidate.model_validate(classification["item"])
+        selected = SelectedSourceCandidate.model_validate(classification["item"])
         assessment = DRYCandidateAssessment.model_validate(
             classification["outputs"]["assessment"]
         )
 
-        self.assertEqual(candidate.unit, expectation.candidate_name)
+        self.assertEqual(selected.source.unit, expectation.candidate_name)
+        self.assertEqual(assessment.candidate_id, selected.candidate_id)
+        self.assertEqual(assessment.location, str(selected.source.path))
         self.assertEqual(
             assessment.reuse.classification,
             expectation.reuse_classification,

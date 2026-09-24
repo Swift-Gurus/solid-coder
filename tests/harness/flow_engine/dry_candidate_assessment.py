@@ -1,6 +1,6 @@
 """Defines one schema-validated live DRY candidate assessment."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from dry_duplication_assessment import DRYDuplicationAssessment
 from dry_reuse_assessment import DRYReuseAssessment
@@ -15,5 +15,7 @@ solid-description: Maps one candidate output into independent reuse and implemen
 class DRYCandidateAssessment(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    candidate_id: str = Field(pattern=r"^candidate-[1-9][0-9]*$")
+    location: str = Field(min_length=1)
     reuse: DRYReuseAssessment
     duplication: DRYDuplicationAssessment

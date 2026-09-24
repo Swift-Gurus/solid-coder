@@ -5,6 +5,7 @@ from __future__ import annotations
 from harness.collection_metric_evaluating import CollectionMetricEvaluating
 from harness.for_each_items_resolving import ForEachItemsResolving
 from harness.models import StepDef, StepInstance, StepOutputs
+from harness.step_output_reference import StepOutputReference
 from harness.step_instance_building import StepInstanceBuilding
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
@@ -13,7 +14,7 @@ from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 """
 solid-name: CollectionMetricStepInstanceBuilder
 solid-category: decorator
-solid-spec: [SPEC-053, SPEC-054]
+solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Completes collection-backed metric instances with deterministic engine outputs.
 """
 class CollectionMetricStepInstanceBuilder(StepInstanceBuilding):
@@ -61,7 +62,6 @@ class CollectionMetricStepInstanceBuilder(StepInstanceBuilding):
             entries,
             scoped_context,
         )
-        source = calculation.source
         return StepInstance(
             step_id=step.id,
             instance_id=instance_id,
@@ -99,12 +99,20 @@ class CollectionMetricStepInstanceBuilder(StepInstanceBuilding):
 
     def _evidence(self, calculation) -> str:
         source = calculation.source
+        source_reference = (
+            f"steps.{source.step_id}.outputs.{source.output_name}"
+            if isinstance(source, StepOutputReference)
+            else (
+                f"workflows.{source.workflow_alias}.outputs."
+                f"{source.output_name}"
+            )
+        )
         projections = ", ".join(
             f"{evidence.index}={evidence.value!r}"
             for evidence in calculation.projection_evidence
         )
         return (
-            f"Source steps.{source.step_id}.outputs.{source.output_name}; "
+            f"Source {source_reference}; "
             f"matched indexes {calculation.matched_indexes}; excluded indexes "
             f"{calculation.excluded_indexes}; projections [{projections}]; "
             f"distinct indexes {calculation.distinct_indexes}; numerator "

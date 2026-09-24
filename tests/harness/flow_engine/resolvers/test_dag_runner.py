@@ -94,6 +94,7 @@ def _make_runner() -> DAGRunner:
                 reference_resolver=StepOutputReferenceResolver[list[object]](
                     error_factory
                 ),
+                expression_evaluator=resolver,
             ),
             context_resolver=context_resolver,
             instance_builder=StepInstanceBuilder(

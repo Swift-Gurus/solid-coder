@@ -8,12 +8,13 @@ from harness.included_metric_calculation_resolving import (
     IncludedMetricCalculationResolving,
 )
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
+from harness.step_output_reference import StepOutputReference
 
 
 """
 solid-name: IncludedMetricCalculationResolver
 solid-category: adapter
-solid-spec: [SPEC-053, SPEC-054]
+solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Preserves deterministic metric behavior while adapting source identities into an included workflow scope.
 """
 class IncludedMetricCalculationResolver(IncludedMetricCalculationResolving):
@@ -25,6 +26,8 @@ class IncludedMetricCalculationResolver(IncludedMetricCalculationResolving):
         if calculation is None:
             return None
         source = calculation.source
+        if not isinstance(source, StepOutputReference):
+            return calculation
         local_identity = next(
             entry
             for entry in identities.entries

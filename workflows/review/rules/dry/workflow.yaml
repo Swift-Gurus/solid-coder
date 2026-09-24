@@ -43,15 +43,15 @@ steps:
   - id: select_candidates
     depends_on: [present_candidates]
     prompt: |
-      Select only repository candidates whose names and descriptions indicate that their source may implement the same responsibility or logical sequence as the reviewed target. Do not classify candidates or claim a finding yet. Return an empty selection when none of the summaries is promising.
+      Account for every repository candidate shown below. Return exactly one disposition for every `candidate_id`, copying that ID exactly.
 
-      For each selected candidate, copy its `path` and `unit` exactly and explain briefly why its summary warrants source inspection. You will read and classify the selected files in the next step.
+      Use `INSPECT` when the candidate name and description indicate that its source may implement the same responsibility or logical sequence as the reviewed target. You will read and classify that candidate in the next step. Use `REJECT` when the metadata establishes that source inspection is not warranted. For both dispositions, explain the decision and cite evidence from the shown candidate name or description. Do not read source, classify reuse or duplication, claim a finding, omit an ID, or invent an ID. An empty search result requires an empty disposition list.
 
       Reviewed target name: {{params.review_unit.target.name}}
       Reviewed target kind: {{params.review_unit.target.kind}}
       {{steps.present_candidates.outputs.text}}
     outputs:
-      - name: selections
+      - name: dispositions
         type: data
         schema:
           type: array
@@ -59,11 +59,16 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [path, unit, reasoning]
+            required: [candidate_id, disposition, reasoning, evidence]
             properties:
-              path: {type: string, minLength: 1}
-              unit: {type: string, minLength: 1}
+              candidate_id:
+                type: string
+                pattern: "^candidate-[1-9][0-9]*$"
+              disposition:
+                type: string
+                enum: [INSPECT, REJECT]
               reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
 
   - id: present_candidates
     type: operation
@@ -79,7 +84,7 @@ steps:
     depends_on: [select_candidates]
     with:
       candidates: "{{steps.search_repository.outputs.candidates}}"
-      selections: "{{steps.select_candidates.outputs.selections}}"
+      dispositions: "{{steps.select_candidates.outputs.dispositions}}"
 
   - include:
       workflow: dry-candidate-review
@@ -90,44 +95,16 @@ steps:
       target: "{{params.review_unit.target}}"
       candidate: "{{item}}"
 
-  - id: reuse_misses
-    type: metric
-    metric_id: DRY-1
+  - id: analyze_target_patterns
     depends_on: [candidate_reviews]
     prompt: |
-      1. **Identify the responsibility** of each new or modified code unit — what does it do? What problem does it solve? This includes:
-         - A new type or function (any access level)
-         - A private view or view builder that composes a layout
-         - A computed property that transforms or formats data
-         - An inline expression that could be wrapped by an existing convenience
-         - An object that provides functionality another object already provides
-      2. **Search the codebase** for existing code that serves the same responsibility:
-         - Generate synonyms for the name and its responsibility (3 per keyword)
-         - Search by name variants, method signatures, protocol conformances, variable types, and relationships
-         - Search extensions on types being used — convenience wrappers are commonly missed
-         - Search shared/common directories and design system modules for equivalent components, views, or layouts
-      3. **Classify matches:**
-         - EXACT — existing code covers 100% of the need, could be used directly
-         - EXTENSIBLE — existing code covers the core need, could be extended (via protocol extension, overload, or configuration) to cover the rest
-         - PARTIAL — existing code covers some overlap but serves a genuinely different purpose
-      4. **Count** EXACT and EXTENSIBLE matches that were not reused = reuse misses
+      Analyze reviewed unit `{{params.review_unit.target.name}}` for within-unit
+      duplication and missing abstractions. Its source is already visible in the
+      current model session. Do not search the repository, inspect candidate
+      files, count observations, or choose severity.
 
-      Use only each repository candidate's `reuse` classification for this metric. Count EXACT and EXTENSIBLE reuse decisions; do not infer reuse from the independent `duplication` classification. Return the count only through the metric output schema.
+      For within-unit duplication:
 
-      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
-  - id: duplicate_sites
-    type: metric
-    metric_id: DRY-2
-    depends_on: [candidate_reviews]
-    prompt: |
       1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
       2. **Search other units in the same module/target** for methods with the same logical sequence:
          - Same control flow structure (if/else, guard, switch patterns)
@@ -139,24 +116,14 @@ steps:
          - SIMILAR — overlapping logic with meaningful differences (not a violation)
       4. **Count** IDENTICAL and STRUCTURAL matches = inlined duplications
 
-      Independently inspect the reviewed unit for IDENTICAL or STRUCTURAL logical sequences repeated across its own methods, helpers, or expressions. Count every participating implementation location once; two methods that contain the same sequence therefore contribute two duplicate sites even when repository search returns no candidates.
+      Return one `within_unit_duplicates` observation for every participating
+      implementation location classified IDENTICAL or STRUCTURAL. Two methods
+      containing one repeated sequence therefore produce two observations. Use
+      a stable source location such as `Current.swift:Type.method` and do not
+      return SIMILAR or declaration-only observations.
 
-      Also consume each selected repository candidate's independent `duplication` classification. Count each candidate source location classified IDENTICAL or STRUCTURAL once, after deduplicating the same location across repository evidence. Do not infer duplication from the independent `reuse` classification, and do not count pairs, SIMILAR findings, declarations, signatures, or protocol requirements without implemented logic. Return the combined within-unit and repository location count only through the metric output schema.
+      For missing abstractions:
 
-      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      severe:
-        operator: greater_than_or_equal
-        value: 2
-
-  - id: missing_abstractions
-    type: metric
-    metric_id: DRY-3
-    depends_on: [candidate_reviews]
-    prompt: |
       1. **Identify the domain** of the type under review — what business concept does it represent?
       2. **Identify generic patterns** within the type — behavior, layout, or creation logic that is not specific to the domain:
          - Behavioral patterns (retry, queue, cache, observe, poll — any reusable flow)
@@ -168,20 +135,142 @@ steps:
          - If NO (the pattern is inherently domain-specific) → not a violation
       4. **Count** missing abstractions
 
-      Use both completed analysis lanes. Return the count only through the metric output schema.
+      Return one `missing_abstractions` observation for each reusable,
+      non-domain-specific pattern, with a stable source location or pattern ID.
 
-      Apply this metric to unit `{{params.review_unit.target.name}}` using the source and repository classifications already visible in the current model session.
+      For every returned observation, set `is_exception` only when that specific
+      finding matches one of these authored DRY exceptions:
+
+      1. Intentionally specialized behavior with genuinely different domain semantics.
+      2. Configuration or constants that must remain independently changeable.
+      3. A protocol default implementation supplied only for conformance convenience.
+
+      Supply independent reasoning and source evidence for every observation.
+    outputs:
+      - name: within_unit_duplicates
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [location, classification, is_exception, reasoning, evidence]
+            properties:
+              location: {type: string, minLength: 1}
+              classification:
+                type: string
+                enum: [IDENTICAL, STRUCTURAL]
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: missing_abstractions
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [location, pattern, is_exception, reasoning, evidence]
+            properties:
+              location: {type: string, minLength: 1}
+              pattern: {type: string, minLength: 1}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: reuse_misses
+    type: metric
+    metric_id: DRY-1
+    observation_id: repository_reuse_miss_count
+    depends_on: [candidate_reviews]
     value:
       type: integer
       minimum: 0
     scoring:
+      source: "{{workflows.candidate_reviews.outputs.assessment}}"
+      when:
+        all:
+          - any:
+              - ref: "{{item.reuse.classification}}"
+                equals: EXACT
+              - ref: "{{item.reuse.classification}}"
+                equals: EXTENSIBLE
+          - ref: "{{item.reuse.is_exception}}"
+            equals: false
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: repository_duplicate_sites
+    type: metric
+    metric_id: DRY-2
+    observation_id: repository_duplicate_location_count
+    depends_on: [candidate_reviews]
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      source: "{{workflows.candidate_reviews.outputs.assessment}}"
+      when:
+        all:
+          - any:
+              - ref: "{{item.duplication.classification}}"
+                equals: IDENTICAL
+              - ref: "{{item.duplication.classification}}"
+                equals: STRUCTURAL
+          - ref: "{{item.duplication.is_exception}}"
+            equals: false
+      reducer:
+        type: distinct_count
+        value: "{{item.location}}"
+      severe:
+        operator: greater_than_or_equal
+        value: 1
+
+  - id: within_unit_duplicate_sites
+    type: metric
+    metric_id: DRY-2
+    observation_id: within_unit_duplicate_location_count
+    depends_on: [analyze_target_patterns]
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      source: "{{steps.analyze_target_patterns.outputs.within_unit_duplicates}}"
+      when:
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: distinct_count
+        value: "{{item.location}}"
+      severe:
+        operator: greater_than_or_equal
+        value: 2
+
+  - id: missing_abstractions
+    type: metric
+    metric_id: DRY-3
+    observation_id: missing_abstraction_count
+    depends_on: [analyze_target_patterns]
+    value:
+      type: integer
+      minimum: 0
+    scoring:
+      source: "{{steps.analyze_target_patterns.outputs.missing_abstractions}}"
+      when:
+        ref: "{{item.is_exception}}"
+        equals: false
       severe:
         operator: greater_than_or_equal
         value: 1
 
   - id: classify_exception
     type: exception
-    depends_on: [candidate_reviews]
+    depends_on:
+      - reuse_misses
+      - repository_duplicate_sites
+      - within_unit_duplicate_sites
+      - missing_abstractions
     prompt: |
       Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Candidate-level exceptions must be excluded from metric evidence before counting. Mark the entire unit as an exception only when every apparent finding is exempt.
 

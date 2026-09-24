@@ -6,6 +6,9 @@ from harness.catalog_rule_set_members_resolver import CatalogRuleSetMembersResol
 from harness.combined_rule_presentation_factory import (
     CombinedRulePresentationFactory,
 )
+from harness.collection_source_reference_parser import (
+    CollectionSourceReferenceParser,
+)
 from harness.condition_conjoiner import ConditionConjoiner
 from harness.condition_serializer_factory import make_condition_serializer
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
@@ -187,7 +190,9 @@ class IncludeResolverFactory:
                     step_qualifier=StepQualifier(
                         metric_source_qualifier=MetricScoringSourceQualifier(
                             expression_parser=WorkflowExpressionParser(),
-                            reference_parser=StepOutputReferenceParser(),
+                            reference_parser=CollectionSourceReferenceParser(
+                                step_reference_parser=StepOutputReferenceParser(),
+                            ),
                             expression_serializer=WorkflowExpressionSerializer(),
                         )
                     ),

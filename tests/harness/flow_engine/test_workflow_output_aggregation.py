@@ -18,8 +18,8 @@ from harness.runs_base_dir_resolver import RunsBaseDirResolver
 """
 solid-name: TestWorkflowOutputAggregation
 solid-category: test
-solid-spec: [SPEC-037]
-solid-description: Verifies included workflow outputs are exposed as ordered alias result envelopes.
+solid-spec: [SPEC-037, SPEC-056]
+solid-description: Verifies included workflow outputs are exposed as ordered envelopes and typed output projections.
 """
 class TestWorkflowOutputAggregation(unittest.TestCase):
 
@@ -103,6 +103,57 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
             aggregated.steps[0].prompt,
             "Aggregate [].",
         )
+
+    def test_projects_one_declared_output_from_every_child_in_source_order(self) -> None:
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        project_root = Path(temporary_directory.name)
+        flow_path = self._write_workflows(project_root)
+        parent = flow_path.read_text(encoding="utf-8").replace(
+            "{{workflows.review.results}}",
+            "{{workflows.review.outputs.review_results}}",
+        )
+        flow_path.write_text(parent, encoding="utf-8")
+        orchestrator = self._make_orchestrator(project_root)
+
+        started = orchestrator.flow_start(str(flow_path))
+        children = orchestrator.flow_next({
+            started.steps[0].instance_id: {
+                "units": [
+                    {"name": "Alpha", "enabled": True},
+                    {"name": "Beta", "enabled": True},
+                ],
+            }
+        })
+        aggregated = orchestrator.flow_next({
+            children.steps[1].instance_id: {"review": "Beta review"},
+            children.steps[0].instance_id: {"review": "Alpha review"},
+        })
+
+        self.assertIsNone(aggregated.error, aggregated.error)
+        self.assertEqual(
+            aggregated.steps[0].prompt,
+            "Aggregate ['Alpha review', 'Beta review'].",
+        )
+
+    def test_projects_an_empty_output_collection_for_empty_fan_out(self) -> None:
+        temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary_directory.cleanup)
+        project_root = Path(temporary_directory.name)
+        flow_path = self._write_workflows(project_root)
+        parent = flow_path.read_text(encoding="utf-8").replace(
+            "{{workflows.review.results}}",
+            "{{workflows.review.outputs.review_results}}",
+        )
+        flow_path.write_text(parent, encoding="utf-8")
+        orchestrator = self._make_orchestrator(project_root)
+
+        started = orchestrator.flow_start(str(flow_path))
+        aggregated = orchestrator.flow_next({
+            started.steps[0].instance_id: {"units": []}
+        })
+
+        self.assertEqual(aggregated.steps[0].prompt, "Aggregate [].")
 
     def test_non_iterated_include_publishes_one_result_envelope(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()

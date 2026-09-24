@@ -53,6 +53,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     FIXTURE: ClassVar[Path]
     EXPECTED_STEP_IDS: ClassVar[list[str]]
     EXPECTED_METRIC_IDS: ClassVar[list[str]]
+    EXPECTED_OBSERVATION_IDS: ClassVar[list[str] | None] = None
     EXPECTED_VALUES: ClassVar[list[int | float | str | bool]]
     EXPECTED_METRIC_SEVERITIES: ClassVar[list[str]]
     EXPECTED_FINAL_SEVERITY: ClassVar[str]
@@ -276,12 +277,22 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             len(self.EXPECTED_STEP_IDS),
             len(self.EXPECTED_METRIC_SEVERITIES),
         )
+        if self.EXPECTED_OBSERVATION_IDS is not None:
+            self.assertEqual(
+                len(self.EXPECTED_STEP_IDS),
+                len(self.EXPECTED_OBSERVATION_IDS),
+            )
         return LiveRuleValidationExpectation(
             workflow_id=self.WORKFLOW_ID,
             metrics=[
                 RuleMetricResultExpectation(
                     step_id=step_id,
                     metric_id=self.EXPECTED_METRIC_IDS[index],
+                    observation_id=(
+                        self.EXPECTED_OBSERVATION_IDS[index]
+                        if self.EXPECTED_OBSERVATION_IDS is not None
+                        else "value"
+                    ),
                     value=self.EXPECTED_VALUES[index],
                     severity=self.EXPECTED_METRIC_SEVERITIES[index],
                 )

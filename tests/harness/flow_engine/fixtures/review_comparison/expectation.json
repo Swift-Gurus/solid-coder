@@ -13,9 +13,10 @@
     "workflow_id": "dry",
     "source_index": 0,
     "metrics": [
-      {"step_id": "reuse_misses", "metric_id": "DRY-1", "value": 0, "severity": "COMPLIANT"},
-      {"step_id": "duplicate_sites", "metric_id": "DRY-2", "value": 0, "severity": "COMPLIANT"},
-      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "value": 0, "severity": "COMPLIANT"}
+      {"step_id": "reuse_misses", "metric_id": "DRY-1", "observation_id": "repository_reuse_miss_count", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "repository_duplicate_sites", "metric_id": "DRY-2", "observation_id": "repository_duplicate_location_count", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "within_unit_duplicate_sites", "metric_id": "DRY-2", "observation_id": "within_unit_duplicate_location_count", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "observation_id": "missing_abstraction_count", "value": 0, "severity": "COMPLIANT"}
     ],
     "final_severity": "COMPLIANT"
   },
@@ -23,9 +24,10 @@
     "workflow_id": "dry",
     "source_index": 1,
     "metrics": [
-      {"step_id": "reuse_misses", "metric_id": "DRY-1", "value": 1, "severity": "SEVERE"},
-      {"step_id": "duplicate_sites", "metric_id": "DRY-2", "value": 1, "severity": "COMPLIANT"},
-      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "value": 0, "severity": "COMPLIANT"}
+      {"step_id": "reuse_misses", "metric_id": "DRY-1", "observation_id": "repository_reuse_miss_count", "value": 1, "severity": "SEVERE"},
+      {"step_id": "repository_duplicate_sites", "metric_id": "DRY-2", "observation_id": "repository_duplicate_location_count", "value": 1, "severity": "SEVERE"},
+      {"step_id": "within_unit_duplicate_sites", "metric_id": "DRY-2", "observation_id": "within_unit_duplicate_location_count", "value": 0, "severity": "COMPLIANT"},
+      {"step_id": "missing_abstractions", "metric_id": "DRY-3", "observation_id": "missing_abstraction_count", "value": 0, "severity": "COMPLIANT"}
     ],
     "final_severity": "SEVERE"
   },

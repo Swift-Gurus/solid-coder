@@ -2,6 +2,7 @@
 
 from harness.condition_serializing import ConditionSerializing
 from harness.step_def import StepDef
+from harness.step_output_reference import StepOutputReference
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_expression_serializing import WorkflowExpressionSerializing
@@ -10,7 +11,7 @@ from harness.workflow_expression_serializing import WorkflowExpressionSerializin
 """
 solid-name: RuleStepSnapshotRewriter
 solid-category: boundary
-solid-spec: [SPEC-039, SPEC-054]
+solid-spec: [SPEC-039, SPEC-054, SPEC-056]
 solid-description: Normalizes rule-step snapshots for their public workflow representation.
 """
 class RuleStepSnapshotRewriter(StepSnapshotRewriting):
@@ -52,11 +53,17 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
         calculation = step.metric_calculation
         if calculation is not None:
             reference = calculation.source
+            source_expression = (
+                f"steps.{reference.step_id}.outputs.{reference.output_name}"
+                if isinstance(reference, StepOutputReference)
+                else (
+                    f"workflows.{reference.workflow_alias}.outputs."
+                    f"{reference.output_name}"
+                )
+            )
             scoring["source"] = self._expression_serializer.serialize(
                 WorkflowExpression(
-                    value=(
-                        f"steps.{reference.step_id}.outputs.{reference.output_name}"
-                    )
+                    value=source_expression
                 )
             )
             if calculation.condition is not None:

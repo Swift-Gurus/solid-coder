@@ -17,7 +17,13 @@ from harness.command_step_value_validator import CommandStepValueValidator
 from harness.collection_metric_evaluator_factory import (
     CollectionMetricEvaluatorFactory,
 )
+from harness.collection_reference_validator_factory import (
+    CollectionReferenceValidatorFactory,
+)
 from harness.collection_metric_reducer_decoder import CollectionMetricReducerDecoder
+from harness.collection_source_reference_parser import (
+    CollectionSourceReferenceParser,
+)
 from harness.collection_metric_step_instance_builder import (
     CollectionMetricStepInstanceBuilder,
 )
@@ -31,9 +37,7 @@ from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_comparator import ConditionComparator
 from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
 from harness.condition_evaluator import ConditionEvaluator
-from harness.condition_item_schema_validator import ConditionItemSchemaValidator
 from harness.condition_parser import ConditionParser
-from harness.condition_reference_collector import ConditionReferenceCollector
 from harness.condition_reference_resolver import ConditionReferenceResolver
 from harness.condition_value_matcher import ConditionValueMatcher
 from harness.conditional_step_instance_builder import ConditionalStepInstanceBuilder
@@ -70,11 +74,9 @@ from harness.flow_definition_validator import FlowDefinitionValidator
 from harness.flow_engine_assembly import FlowEngineAssembly
 from harness.flow_loader import FlowLoader
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
-from harness.for_each_collection_validator import ForEachCollectionValidator
 from harness.for_each_declaration_parser import ForEachDeclarationParser
 from harness.for_each_items_resolver import ForEachItemsResolver
 from harness.for_each_reference_parser import ForEachReferenceParser
-from harness.for_each_reference_validator import ForEachReferenceValidator
 from harness.for_each_source_identity_resolver import ForEachSourceIdentityResolver
 from harness.group_dependency_expander import GroupDependencyExpander
 from harness.include_alias_collision_validator import IncludeAliasCollisionValidator
@@ -212,7 +214,6 @@ from harness.step_collection_uses_resolver import StepCollectionUsesResolver
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_declaration_factory import StepDeclarationFactory
 from harness.step_dependency_checker import StepDependencyChecker
-from harness.step_dependency_reachability_checker import StepDependencyReachabilityChecker
 from harness.step_dependency_graph_factory import StepDependencyGraphFactory
 from harness.step_executable_resolver import StepExecutableResolver
 from harness.step_field_validator_registration import StepFieldValidatorRegistration
@@ -265,7 +266,6 @@ from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifier import WorkflowResourcePathClassifier
 from harness.workflow_resource_path_resolver import WorkflowResourcePathResolver
 from harness.workflow_resource_reference_factory import WorkflowResourceReferenceFactory
-from harness.workflow_data_schema import WorkflowDataSchema
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
@@ -347,6 +347,9 @@ class FlowEngineAssemblyFactory:
         )
         interpolation_error_factory = InterpolationErrorFactory()
         step_output_reference_parser = StepOutputReferenceParser()
+        collection_source_reference_parser = CollectionSourceReferenceParser(
+            step_reference_parser=step_output_reference_parser,
+        )
         output_schema_file_loader = OutputSchemaFileLoader(
             resource_loader=json_resource_loader,
             reference_factory=schema_reference_factory,
@@ -581,7 +584,7 @@ class FlowEngineAssemblyFactory:
                                 model_type=MetricDeclaration,
                             ),
                             expression_parser=workflow_expression_parser,
-                            reference_parser=step_output_reference_parser,
+                            reference_parser=collection_source_reference_parser,
                             condition_parser=condition_parser,
                             reducer_decoder=CollectionMetricReducerDecoder(
                                 expression_parser=workflow_expression_parser,
@@ -674,19 +677,8 @@ class FlowEngineAssemblyFactory:
                     ),
                     dependency_validator=dependency_validator,
                     include_validator=include_structure_validator,
-                    for_each_validator=ForEachCollectionValidator(
-                        target_validator=ForEachReferenceValidator(
-                            reachability_checker=StepDependencyReachabilityChecker(),
-                            item_schema_validator=ConditionItemSchemaValidator(
-                                reference_collector=ConditionReferenceCollector(),
-                                error_factory=error_factory,
-                            ),
-                            schema_decoder=PydanticModelDecoder(
-                                model_type=WorkflowDataSchema,
-                            ),
-                            error_factory=error_factory,
-                        ),
-                        source_identity_resolver=ForEachSourceIdentityResolver(),
+                    for_each_validator=CollectionReferenceValidatorFactory().make(
+                        error_factory
                     ),
                 ),
                 rule_validator=RuleWorkflowValidator(
@@ -776,6 +768,7 @@ class FlowEngineAssemblyFactory:
             reference_resolver=StepOutputReferenceResolver[list[object]](
                 interpolation_error_factory
             ),
+            expression_evaluator=expression_resolver,
         )
         input_bindings_resolver = WorkflowInputBindingsResolver(
             evaluator=expression_resolver,

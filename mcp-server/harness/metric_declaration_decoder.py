@@ -3,6 +3,9 @@
 from harness.collection_metric_reducer_decoding import (
     CollectionMetricReducerDecoding,
 )
+from harness.collection_source_reference_parsing import (
+    CollectionSourceReferenceParsing,
+)
 from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.metric_declaration import MetricDeclaration
@@ -10,7 +13,6 @@ from harness.metric_declaration_decoding import MetricDeclarationDecoding
 from harness.metric_step_contract import MetricStepContract
 from harness.metric_step_contract_assembling import MetricStepContractAssembling
 from harness.metric_value_type import MetricValueType
-from harness.step_output_reference_parsing import StepOutputReferenceParsing
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
@@ -18,7 +20,7 @@ from harness.workflow_expression_parsing import WorkflowExpressionParsing
 """
 solid-name: MetricDeclarationDecoder
 solid-category: boundary-adapter
-solid-spec: [SPEC-039, SPEC-054]
+solid-spec: [SPEC-039, SPEC-054, SPEC-056]
 solid-description: Produces validated executable measurement contracts from authored configuration.
 """
 class MetricDeclarationDecoder(MetricDeclarationDecoding):
@@ -26,7 +28,7 @@ class MetricDeclarationDecoder(MetricDeclarationDecoding):
         self,
         decoder: StructuredModelDecoding[MetricDeclaration],
         expression_parser: WorkflowExpressionParsing,
-        reference_parser: StepOutputReferenceParsing,
+        reference_parser: CollectionSourceReferenceParsing,
         condition_parser: ConditionParsing,
         reducer_decoder: CollectionMetricReducerDecoding,
         contract_assembler: MetricStepContractAssembling,

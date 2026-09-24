@@ -13,8 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.project_context import ProjectDirectory
 from source.search_target_granularity import SearchTargetGranularity
-from source.source_candidate_selection import SourceCandidateSelection
-from source.source_search_candidate import SourceSearchCandidate
+from source.selected_source_candidate import SelectedSourceCandidate
+from source.source_candidate_disposition import SourceCandidateDisposition
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
@@ -51,48 +51,75 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
         )).candidates
         self.operation = ValidateCandidateSelectionOperation()
 
-    def test_returns_only_selected_candidates_in_selection_order(self) -> None:
-        selections = [
-            self._selection(self.candidates[1]),
-            self._selection(self.candidates[0]),
+    def test_returns_inspected_candidates_in_discovered_order(self) -> None:
+        dispositions = [
+            self._disposition(2, "REJECT"),
+            self._disposition(1, "INSPECT"),
         ]
 
         output = self.operation.execute(ValidateCandidateSelectionInput(
             candidates=self.candidates,
-            selections=selections,
+            dispositions=dispositions,
         ))
 
         self.assertEqual(
             output.selected_candidates,
-            [self.candidates[1], self.candidates[0]],
+            [SelectedSourceCandidate(
+                candidate_id="candidate-1",
+                source=self.candidates[0],
+            )],
+        )
+        self.assertEqual(
+            output.dispositions,
+            [dispositions[1], dispositions[0]],
         )
 
-    def test_rejects_duplicate_selected_identity(self) -> None:
-        selection = self._selection(self.candidates[0])
+    def test_rejects_duplicate_candidate_id(self) -> None:
+        disposition = self._disposition(1, "INSPECT")
 
-        with self.assertRaisesRegex(ValidationError, "duplicate reference"):
+        with self.assertRaisesRegex(ValidationError, "duplicate candidate IDs.*candidate-1"):
             ValidateCandidateSelectionInput(
                 candidates=self.candidates,
-                selections=[selection, selection],
+                dispositions=[disposition, disposition],
             )
 
-    def test_rejects_identity_that_search_did_not_return(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "unknown reference"):
+    def test_rejects_unknown_candidate_id(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "unknown candidate IDs.*candidate-3"):
             ValidateCandidateSelectionInput(
                 candidates=self.candidates,
-                selections=[SourceCandidateSelection(
-                    path="/missing/Missing.swift",
-                    unit="Missing",
-                    reasoning="The summary appeared relevant.",
-                )],
+                dispositions=[
+                    self._disposition(1, "REJECT"),
+                    self._disposition(2, "REJECT"),
+                    self._disposition(3, "REJECT"),
+                ],
             )
+
+    def test_rejects_missing_candidate_id(self) -> None:
+        with self.assertRaisesRegex(ValidationError, "missing candidate IDs.*candidate-2"):
+            ValidateCandidateSelectionInput(
+                candidates=self.candidates,
+                dispositions=[self._disposition(1, "INSPECT")],
+            )
+
+    def test_accepts_empty_dispositions_for_empty_search(self) -> None:
+        output = self.operation.execute(ValidateCandidateSelectionInput(
+            candidates=[],
+            dispositions=[],
+        ))
+
+        self.assertEqual(output.selected_candidates, [])
+        self.assertEqual(output.dispositions, [])
 
     @staticmethod
-    def _selection(candidate: SourceSearchCandidate) -> SourceCandidateSelection:
-        return SourceCandidateSelection(
-            path=str(candidate.path),
-            unit=candidate.unit,
+    def _disposition(
+        candidate_index: int,
+        disposition: str,
+    ) -> SourceCandidateDisposition:
+        return SourceCandidateDisposition(
+            candidate_id=f"candidate-{candidate_index}",
+            disposition=disposition,
             reasoning="The summary identifies matching formatting behavior.",
+            evidence="The candidate description names formatting behavior.",
         )
 
 

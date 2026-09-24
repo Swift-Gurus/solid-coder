@@ -8,21 +8,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.condition_item_schema_validator import ConditionItemSchemaValidator
-from harness.condition_reference_collector import ConditionReferenceCollector
-from harness.for_each_collection_validator import ForEachCollectionValidator
+from harness.collection_reference_validator_factory import (
+    CollectionReferenceValidatorFactory,
+)
 from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_reference_parser import ForEachReferenceParser
-from harness.for_each_reference_validator import ForEachReferenceValidator
-from harness.for_each_source_identity_resolver import ForEachSourceIdentityResolver
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.models import FlowValidationError, OutputSpec, StepDef
-from harness.pydantic_model_decoder import PydanticModelDecoder
-from harness.step_dependency_reachability_checker import StepDependencyReachabilityChecker
 from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.workflow_expression_parser import WorkflowExpressionParser
-from harness.workflow_data_schema import WorkflowDataSchema
 
 
 class TestForEachReferenceValidator(unittest.TestCase):
@@ -31,19 +26,8 @@ class TestForEachReferenceValidator(unittest.TestCase):
             expression_parser=WorkflowExpressionParser(),
             reference_parser=StepOutputReferenceParser(),
         )
-        self.sut = ForEachCollectionValidator(
-            target_validator=ForEachReferenceValidator(
-                reachability_checker=StepDependencyReachabilityChecker(),
-                item_schema_validator=ConditionItemSchemaValidator(
-                    reference_collector=ConditionReferenceCollector(),
-                    error_factory=FlowValidationErrorFactory(),
-                ),
-                schema_decoder=PydanticModelDecoder(
-                    model_type=WorkflowDataSchema,
-                ),
-                error_factory=FlowValidationErrorFactory(),
-            ),
-            source_identity_resolver=ForEachSourceIdentityResolver(),
+        self.sut = CollectionReferenceValidatorFactory().make(
+            FlowValidationErrorFactory()
         )
 
     def test_accepts_array_output_from_a_transitive_dependency(self) -> None:

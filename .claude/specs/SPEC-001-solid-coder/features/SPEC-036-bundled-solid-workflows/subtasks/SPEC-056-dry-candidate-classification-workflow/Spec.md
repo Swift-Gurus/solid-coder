@@ -2,7 +2,7 @@
 number: SPEC-056
 feature: dry-candidate-classification-workflow
 type: subtask
-status: draft
+status: in-progress
 parent: SPEC-036
 blocked-by: [SPEC-053, SPEC-040]
 blocking: []
@@ -278,11 +278,29 @@ reasoning and evidence
 
 ## Definition of Done
 
-- [ ] Every shown search candidate receives one audited disposition.
-- [ ] Only INSPECT candidates are read and classified.
-- [ ] Every selected candidate has source-grounded reuse and duplication evidence.
-- [ ] Ordered child outputs are available through a typed generic projection.
-- [ ] DRY-1, DRY-2, and DRY-3 are scored by MCP without model arithmetic.
-- [ ] Protocol/conformer and declaration-only false positives are covered.
+- [x] Every shown search candidate receives one audited disposition.
+- [x] Only INSPECT candidates are read and classified.
+- [x] Every selected candidate has source-grounded reuse and duplication evidence.
+- [x] Ordered child outputs are available through a typed generic projection.
+- [x] DRY-1, DRY-2, and DRY-3 are scored by MCP without model arithmetic.
+- [x] Protocol/conformer and declaration-only false positives are covered.
 - [ ] Controlled Codex and Claude fixtures produce locked auditable results.
-- [ ] All non-live tests pass.
+- [x] All non-live tests pass.
+
+## Validation Evidence
+
+- The DRY integration contract passes with complete disposition retry,
+  inspected-candidate fan-out, ordered child projection, two independent DRY-2
+  observations, MCP scoring, whole-rule exceptions, prospective buffers, and
+  protocol reuse coverage.
+- A nested two-parent regression proves projected child assessments remain
+  instance-scoped and replay creates no duplicate metric events.
+- The non-live flow-engine suite passes with 782 tests and one deliberate
+  environment deselection caused by `/bin/bash -lc` resetting the Swift parser
+  PATH shim.
+- The supporting non-live suites also pass: 854 MCP-server tests with four
+  environment skips, 95 harness tests, 62 hook tests, and 36 Apple build tests.
+- Live validation is currently environment-blocked before workflow execution:
+  Codex produced no first model event, while Claude exhausted API retries with
+  `ENOTFOUND`. The Claude model-profile compatibility flag successfully removed
+  the separate Advisor/profile startup rejection.

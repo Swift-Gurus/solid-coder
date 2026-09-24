@@ -20,6 +20,7 @@ for _directory in (_HARNESS, _MCP_SERVER):
 from harness.review_result import ReviewResult  # noqa: E402
 from review.prepare_review_input import PrepareReviewInput  # noqa: E402
 from source.file_analysis_source import FileAnalysisSource  # noqa: E402
+from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
 from codex_review_stage_evidence_reader import (  # noqa: E402
     CodexReviewStageEvidenceReader,
 )
@@ -55,7 +56,7 @@ _EXPECTATION_FILE = (
 """
 solid-name: SolidReviewComparisonE2ELiveBase
 solid-category: test-support
-solid-spec: [SPEC-036, SPEC-041]
+solid-spec: [SPEC-036, SPEC-041, SPEC-056]
 solid-description: Executes and audits the fixed composite workflow-review smoke scenario used before repeated comparison.
 """
 class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
@@ -179,30 +180,22 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
             and event.get("local_step_id") == "classify_candidate"
             and not event.get("empty_collection", False)
         ]
-        empty_classifications = [
-            event
-            for event in events
-            if event.get("event") == "step_completed"
-            and event.get("local_step_id") == "classify_candidate"
-            and event.get("empty_collection", False)
-        ]
-
         self.assertTrue(classification_events)
-        self.assertTrue(all(
-            event.get("item") is None
-            and event.get("outputs", {}).get("assessment") == []
-            for event in empty_classifications
-        ))
         for classification in classification_events:
+            classified_candidate = SelectedSourceCandidate.model_validate(
+                classification["item"]
+            )
             selected = any(
-                selection["path"] == classification["item"]["path"]
-                and selection["unit"] == classification["item"]["unit"]
+                candidate == classified_candidate
                 for event in events
                 if event.get("event") == "step_completed"
-                and event.get("local_step_id") == "select_candidates"
+                and event.get("local_step_id") == "validate_selection"
                 and event.get("workflow_instance_id")
                 == classification.get("parent_workflow_instance_id")
-                for selection in event["outputs"]["selections"]
+                for candidate in map(
+                    SelectedSourceCandidate.model_validate,
+                    event["outputs"]["selected_candidates"],
+                )
             )
             self.assertTrue(selected)
 
@@ -225,7 +218,10 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
         tool_inputs = self._custom_tool_inputs(self._transcript(run))
 
         for classification in classifications:
-            candidate_path = str(classification["item"]["path"])
+            candidate = SelectedSourceCandidate.model_validate(
+                classification["item"]
+            )
+            candidate_path = str(candidate.source.path)
             classification_instance = str(classification["instance_id"])
             read_indexes = [
                 index

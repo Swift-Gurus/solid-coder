@@ -7,40 +7,16 @@ outputs:
   - name: assessment
     type: data
     value: "{{steps.classify_candidate.outputs.assessment}}"
-    schema:
-      type: object
-      additionalProperties: false
-      required: [reuse, duplication]
-      properties:
-        reuse:
-          type: object
-          additionalProperties: false
-          required: [classification, reasoning, evidence]
-          properties:
-            classification:
-              type: string
-              enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]
-            reasoning: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
-        duplication:
-          type: object
-          additionalProperties: false
-          required: [classification, reasoning, evidence]
-          properties:
-            classification:
-              type: string
-              enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]
-            reasoning: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
+    schema_file: assessment.schema.json
 
 steps:
   - id: inspect_candidate
     prompt: |
-      Read the selected file at `{{params.candidate.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.unit}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
+      Read the selected file at `{{params.candidate.source.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.source.unit}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
 
       Return concise reasoning about what the inspected declaration actually implements and evidence quoting or precisely citing its relevant executable statements. If it contains only declarations or signatures, state that explicitly in both reasoning and evidence. Evidence must identify the inspected candidate path.
 
-      Candidate frontmatter description: {{params.candidate.description}}
+      Candidate frontmatter description: {{params.candidate.source.description}}
     outputs:
       - name: reasoning
         type: data
@@ -61,9 +37,9 @@ steps:
       Make two independent classifications. A candidate may be directly reusable without duplicating any implemented logic.
 
       Reuse classification — choose exactly one:
-      - EXACT — the candidate covers the complete responsibility and can be reused directly.
-      - EXTENSIBLE — the candidate covers the core responsibility and can be extended by configuration, overload, or protocol extension.
-      - PARTIAL — the overlap has meaningful semantic differences and direct reuse is inappropriate.
+      - EXACT — existing code covers 100% of the need, could be used directly.
+      - EXTENSIBLE — existing code covers the core need, could be extended (via protocol extension, overload, or configuration) to cover the rest.
+      - PARTIAL — existing code covers some overlap but serves a genuinely different purpose.
       - NOT_SUITABLE — source inspection disproves the summary-level match and the candidate is not suitable for reuse.
 
       Implementation-duplication classification — choose exactly one:
@@ -76,32 +52,14 @@ steps:
 
       A conformer is not a reusable replacement for its protocol: when the reviewed target is a protocol or interface and the candidate merely implements that contract, classify reuse as NOT_SUITABLE. Classify a protocol/conformer relationship without duplicated implementation as NOT_DUPLICATE even when their contracts or responsibilities are equivalent. Do not let either classification determine the other. Supply separate reasoning and evidence for both decisions, grounded in the completed inspection.
 
-      Apply these classifications to candidate `{{params.candidate.unit}}` against reviewed unit `{{params.target.name}}`, using the source inspection you previously submitted. Do not restate or revise that inspection.
+      For each decision, set `is_exception` only when that specific apparent finding matches one of these authored DRY exceptions:
+
+      1. Intentionally specialized behavior with genuinely different domain semantics.
+      2. Configuration or constants that must remain independently changeable.
+      3. A protocol default implementation supplied only for conformance convenience.
+
+      Copy candidate ID `{{params.candidate.candidate_id}}` and location `{{params.candidate.source.path}}` exactly into the assessment. Apply the classifications to candidate `{{params.candidate.source.unit}}` against reviewed unit `{{params.target.name}}`, using the source inspection you previously submitted. Do not restate or revise that inspection.
     outputs:
       - name: assessment
         type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [reuse, duplication]
-          properties:
-            reuse:
-              type: object
-              additionalProperties: false
-              required: [classification, reasoning, evidence]
-              properties:
-                classification:
-                  type: string
-                  enum: [EXACT, EXTENSIBLE, PARTIAL, NOT_SUITABLE]
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
-            duplication:
-              type: object
-              additionalProperties: false
-              required: [classification, reasoning, evidence]
-              properties:
-                classification:
-                  type: string
-                  enum: [IDENTICAL, STRUCTURAL, SIMILAR, NOT_DUPLICATE]
-                reasoning: {type: string, minLength: 1}
-                evidence: {type: string, minLength: 1}
+        schema_file: assessment.schema.json

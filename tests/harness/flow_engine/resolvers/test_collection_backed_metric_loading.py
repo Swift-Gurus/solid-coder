@@ -12,6 +12,7 @@ from harness.all_condition import AllCondition
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.models import FlowValidationError
 from harness.step_output_reference import StepOutputReference
+from harness.workflow_output_reference import WorkflowOutputReference
 
 
 """
@@ -196,6 +197,81 @@ class TestCollectionBackedMetricLoading(unittest.TestCase):
             StepOutputReference(
                 step_id="child.analyze_task_sites",
                 output_name="task_sites",
+            ),
+        )
+
+    def test_loads_included_workflow_output_projection_as_metric_source(self) -> None:
+        child = self.directory / "child.yaml"
+        child.write_text(
+            textwrap.dedent(
+                """
+                id: child-analysis
+                name: Child Analysis
+                outputs:
+                  - name: observation
+                    type: data
+                    value: "{{steps.analyze.outputs.observation}}"
+                    schema:
+                      type: object
+                      additionalProperties: false
+                      required: [classification]
+                      properties:
+                        classification: {type: string}
+                steps:
+                  - id: analyze
+                    prompt: Analyze the candidate.
+                    outputs:
+                      - name: observation
+                        type: data
+                        schema:
+                          type: object
+                          additionalProperties: false
+                          required: [classification]
+                          properties:
+                            classification: {type: string}
+                """
+            ),
+            encoding="utf-8",
+        )
+        parent = self.directory / "parent.yaml"
+        parent.write_text(
+            textwrap.dedent(
+                """
+                id: parent-review
+                name: Parent Review
+                max_turns: 5
+                rule: {}
+                steps:
+                  - include: child.yaml
+                    as: analyses
+                  - id: matching_count
+                    type: metric
+                    metric_id: TEST-1
+                    depends_on: [analyses]
+                    value: {type: integer, minimum: 0}
+                    scoring:
+                      source: "{{workflows.analyses.outputs.observation}}"
+                      when:
+                        ref: "{{item.classification}}"
+                        equals: MATCH
+                      severe: {operator: greater_than_or_equal, value: 1}
+                  - id: classify_exception
+                    type: exception
+                    depends_on: [matching_count]
+                    prompt: Classify the whole-rule exception.
+                """
+            ),
+            encoding="utf-8",
+        )
+
+        flow = self.loader.load(str(parent), [])
+
+        metric = next(step for step in flow.steps if step.metric is not None)
+        self.assertEqual(
+            metric.metric_calculation.source,
+            WorkflowOutputReference(
+                workflow_alias="analyses",
+                output_name="observation",
             ),
         )
 

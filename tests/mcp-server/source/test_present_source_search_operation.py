@@ -23,7 +23,7 @@ solid-spec: [SPEC-039, SPEC-040]
 solid-description: Verifies workflow source search exposes readable candidate summaries without internal search metadata.
 """
 class TestPresentSourceSearchOperation(unittest.TestCase):
-    def test_renders_only_candidate_name_description_and_path(self) -> None:
+    def test_renders_candidate_id_name_description_and_path(self) -> None:
         candidate_path = Path("/project/Sources/ExistingCatalog.swift")
         output = PresentSourceSearchOperation(
             renderer=CodebaseSearchOutputRenderer(),
@@ -51,6 +51,7 @@ class TestPresentSourceSearchOperation(unittest.TestCase):
         self.assertEqual(
             output.text,
             "Here is what we found:\n\n"
+            "candidate_id: candidate-1\n"
             "unit: ExistingCatalog\n"
             "description: Persists cached catalog data.\n"
             f"path: {candidate_path}",

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from harness.condition_item_schema_validating import ConditionItemSchemaValidating
-from harness.collection_metric_reducer_type import CollectionMetricReducerType
+from harness.collection_metric_item_contract_validating import (
+    CollectionMetricItemContractValidating,
+)
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.for_each_target_validating import ForEachTargetValidating
 from harness.for_each_validation_target import ForEachValidationTarget
@@ -25,12 +26,12 @@ class ForEachReferenceValidator(ForEachTargetValidating):
     def __init__(
         self,
         reachability_checker: StepDependencyReachabilityChecking,
-        item_schema_validator: ConditionItemSchemaValidating,
+        item_contract_validator: CollectionMetricItemContractValidating,
         schema_decoder: StructuredModelDecoding[WorkflowDataSchema],
         error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._reachability_checker = reachability_checker
-        self._item_schema_validator = item_schema_validator
+        self._item_contract_validator = item_contract_validator
         self._schema_decoder = schema_decoder
         self._error_factory = error_factory
 
@@ -89,42 +90,9 @@ class ForEachReferenceValidator(ForEachTargetValidating):
                 f"'{target.source_reference.output_name}' must declare an array schema"
             )
         item_schema = source_schema.items or WorkflowDataSchema()
-        if target.item_condition is not None:
-            self._item_schema_validator.validate(
-                target.target_id,
-                target.item_condition,
-                item_schema,
-            )
-        reducer = target.metric_reducer
-        if reducer is None:
-            return
-        if reducer.value is not None:
-            allowed_types = (
-                ["integer", "number"]
-                if reducer.type in {
-                    CollectionMetricReducerType.MAXIMUM,
-                    CollectionMetricReducerType.MINIMUM,
-                }
-                else ["integer", "number", "string", "boolean", "null"]
-            )
-            self._item_schema_validator.validate_reference(
-                target.target_id,
-                f"{reducer.type.value} reducer value",
-                reducer.value,
-                item_schema,
-                allowed_types,
-            )
-        if reducer.numerator_condition is not None:
-            self._item_schema_validator.validate(
-                target.target_id,
-                reducer.numerator_condition,
-                item_schema,
-                "reducer numerator_when",
-            )
-        if reducer.denominator_condition is not None:
-            self._item_schema_validator.validate(
-                target.target_id,
-                reducer.denominator_condition,
-                item_schema,
-                "reducer denominator_when",
-            )
+        self._item_contract_validator.validate(
+            target.target_id,
+            item_schema,
+            target.item_condition,
+            target.metric_reducer,
+        )

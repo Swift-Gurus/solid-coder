@@ -5,12 +5,13 @@ from typing import Optional
 from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.condition_serializing import ConditionSerializing
 from harness.metric_derivation_rendering import MetricDerivationRendering
+from harness.step_output_reference import StepOutputReference
 
 
 """
 solid-name: MetricDerivationRenderer
 solid-category: boundary
-solid-spec: [SPEC-053, SPEC-054]
+solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Renders durable collection metric derivation audit payloads.
 """
 class MetricDerivationRenderer(MetricDerivationRendering):
@@ -31,10 +32,7 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                 if reducer is not None
                 else "collection_count"
             ),
-            "source": {
-                "step_id": calculation.source.step_id,
-                "output_name": calculation.source.output_name,
-            },
+            "source": self._source(calculation),
             "source_size": calculation.source_size,
             "condition": (
                 self._condition_serializer.serialize(condition)
@@ -89,4 +87,18 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                 for evidence in calculation.denominator_condition_evidence
             ],
             "zero_denominator": calculation.zero_denominator,
+        }
+
+    @staticmethod
+    def _source(calculation: CollectionMetricCalculation) -> dict:
+        source = calculation.source
+        if isinstance(source, StepOutputReference):
+            return {
+                "step_id": source.step_id,
+                "output_name": source.output_name,
+            }
+        return {
+            "kind": "workflow_output",
+            "workflow_alias": source.workflow_alias,
+            "output_name": source.output_name,
         }

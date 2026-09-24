@@ -1,5 +1,9 @@
-"""Projects validated selected identities to discovered candidates."""
+"""Projects validated dispositions to inspected candidates and audit records."""
 
+from source.source_candidate_disposition_kind import (
+    SourceCandidateDispositionKind,
+)
+from source.selected_source_candidate import SelectedSourceCandidate
 from source.validate_candidate_selection_input import ValidateCandidateSelectionInput
 from source.validate_candidate_selection_output import ValidateCandidateSelectionOutput
 
@@ -7,20 +11,34 @@ from source.validate_candidate_selection_output import ValidateCandidateSelectio
 """
 solid-name: ValidateCandidateSelectionOperation
 solid-category: service
-solid-spec: [SPEC-039, SPEC-040]
-solid-description: Resolves validated selected identities to discovered source candidates.
+solid-spec: [SPEC-039, SPEC-040, SPEC-056]
+solid-description: Resolves complete candidate dispositions into source-ordered inspection work and audit records.
 """
 class ValidateCandidateSelectionOperation:
     def execute(
         self,
         operation_input: ValidateCandidateSelectionInput,
     ) -> ValidateCandidateSelectionOutput:
+        ordered_dispositions = [
+            next(
+                disposition
+                for disposition in operation_input.dispositions
+                if disposition.candidate_id == f"candidate-{index}"
+            )
+            for index in range(1, len(operation_input.candidates) + 1)
+        ]
         return ValidateCandidateSelectionOutput(
             selected_candidates=[
-                candidate
-                for selection in operation_input.selections
-                for candidate in operation_input.candidates
-                if str(candidate.path) == selection.path
-                and candidate.unit == selection.unit
+                SelectedSourceCandidate(
+                    candidate_id=disposition.candidate_id,
+                    source=candidate,
+                )
+                for candidate, disposition in zip(
+                    operation_input.candidates,
+                    ordered_dispositions,
+                )
+                if disposition.disposition
+                is SourceCandidateDispositionKind.INSPECT
             ],
+            dispositions=ordered_dispositions,
         )

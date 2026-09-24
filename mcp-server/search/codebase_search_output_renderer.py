@@ -9,8 +9,8 @@ from source.source_search_output import SourceSearchOutput
 """
 solid-name: CodebaseSearchOutputRenderer
 solid-category: presenter
-solid-spec: [SPEC-040]
-solid-description: Presents reusable source units with descriptions and absolute inspection paths.
+solid-spec: [SPEC-040, SPEC-056]
+solid-description: Presents stable candidate IDs, reusable source units, descriptions, and absolute inspection paths.
 """
 class CodebaseSearchOutputRenderer(CodebaseSearchOutputRendering):
     def render(
@@ -25,9 +25,10 @@ class CodebaseSearchOutputRenderer(CodebaseSearchOutputRendering):
             )
 
         lines = ["Here is what we found:"]
-        for candidate in output.candidates:
+        for index, candidate in enumerate(output.candidates, start=1):
             lines.extend([
                 "",
+                f"candidate_id: candidate-{index}",
                 f"unit: {candidate.unit}",
                 f"description: {candidate.description}",
                 f"path: {candidate.path}",

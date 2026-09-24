@@ -15,5 +15,6 @@ class DRYReuseAssessment(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     classification: DRYReuseClassification
+    is_exception: bool
     reasoning: str = Field(min_length=1)
     evidence: str = Field(min_length=1)

@@ -11,22 +11,31 @@ from harness.for_each_target_validating import ForEachTargetValidating
 from harness.for_each_validation_target import ForEachValidationTarget
 from harness.include_alias_group import IncludeAliasGroup
 from harness.models import StepDef
+from harness.workflow_output_collection_validating import (
+    WorkflowOutputCollectionValidating,
+)
+from harness.workflow_output_collection_validation_target import (
+    WorkflowOutputCollectionValidationTarget,
+)
+from harness.workflow_output_reference import WorkflowOutputReference
 
 
 """
 solid-name: ForEachCollectionValidator
 solid-category: service
-solid-spec: [SPEC-030, SPEC-037]
-solid-description: Coordinates iteration-source validation for steps and included workflow groups.
+solid-spec: [SPEC-030, SPEC-037, SPEC-056]
+solid-description: Coordinates step-output iteration validation and workflow-output collection metric validation.
 """
 class ForEachCollectionValidator(ForEachReferenceValidating):
 
     def __init__(
         self,
         target_validator: ForEachTargetValidating,
+        workflow_output_validator: WorkflowOutputCollectionValidating,
         source_identity_resolver: ForEachSourceIdentityResolving,
     ) -> None:
         self._target_validator = target_validator
+        self._workflow_output_validator = workflow_output_validator
         self._source_identity_resolver = source_identity_resolver
 
     def validate_for_each_references(
@@ -42,6 +51,19 @@ class ForEachCollectionValidator(ForEachReferenceValidating):
                 item_condition = step.metric_calculation.condition
                 metric_reducer = step.metric_calculation.reducer
                 reference_name = "scoring.source"
+                if isinstance(source, WorkflowOutputReference):
+                    self._workflow_output_validator.validate(
+                        target=WorkflowOutputCollectionValidationTarget(
+                            target_id=step.id,
+                            source_reference=source,
+                            dependency_ids=step.depends_on,
+                            item_condition=item_condition,
+                            metric_reducer=metric_reducer,
+                        ),
+                        steps=steps,
+                        alias_groups=alias_groups or [],
+                    )
+                    continue
             else:
                 source = step.for_each.source
                 item_condition = None
