@@ -93,7 +93,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("unit-testing" in identity for identity in identities))
         self.assertFalse(any("ui-testing" in identity for identity in identities))
         self.assertEqual(self._rule_step_count(identities, "code-smells"), 1)
-        self.assertEqual(self._rule_step_count(identities, "frontmatter"), 6)
+        self.assertEqual(self._rule_step_count(identities, "frontmatter"), 1)
         self.assertEqual(self._rule_step_count(identities, "srp"), 2)
         self.assertEqual(self._rule_step_count(identities, "ocp"), 2)
         self.assertEqual(self._rule_step_count(identities, "lsp"), 2)

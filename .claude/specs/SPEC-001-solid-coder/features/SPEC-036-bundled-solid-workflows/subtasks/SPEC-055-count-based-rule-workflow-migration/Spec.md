@@ -265,9 +265,14 @@ confirms that initial model presentation drops from four simultaneous rule
 steps to one classification step. The deeper effective-boundary validation
 described by SPEC-051 remains separate from this arithmetic-ownership migration.
 
-Current non-live results are 767 flow-engine tests passing (with the one
+Frontmatter now uses one file-scoped `classify_frontmatter_observations` model
+step for missing metadata, name mismatch, invalid category, incorrect stack, and
+bad description observations. MCP derives FM-1 through FM-5, retains all
+metric-specific exclusions and thresholds, and reduces initial rule presentation
+from six simultaneous model steps to one classification step.
+
+Current non-live results are 769 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
 Locked live execution remains blocked by the host-integration issues recorded
-in SPEC-054 rather than an SRP, Structured Concurrency, or Code Smells
-assertion.
+in SPEC-054 rather than a migrated-rule assertion.
