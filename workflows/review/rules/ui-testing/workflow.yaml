@@ -12,10 +12,15 @@ rule:
       included: [ui-test]
 
 steps:
-  - id: flow_violations
-    type: metric
-    metric_id: UITEST-1
+  - id: classify_ui_test_observations
+    type: agent
     prompt: |
+      Analyze UI test unit `{{params.review_unit.target.name}}` from the source
+      already visible in this session. Apply every canonical detection procedure
+      below.
+
+      ## UITEST-1: Flow Encapsulation
+
       Any multi-step sequence of UI interactions needed to reach a specific app state is a flow. Flows belong in dedicated coordinator types — not inlined in test methods. A coordinator is any named type (struct or class) that holds an `app` reference and exposes named methods for reaching app states. Coordinators compose: a coordinator for a later screen holds and delegates to the coordinator for the screen that precedes it.
 
       1. **Inline flows** — flag any test method that contains a sequence of 3 or more direct UI interactions (tap, type, navigate, wait for element, keyboard shortcut) to reach a state, without delegating to a named coordinator type
@@ -24,17 +29,8 @@ steps:
 
       **Count:** Number of flow encapsulation violations found.
 
-      Return the count with reasoning and precise source evidence.
+      ## UITEST-2: Base Class Structure
 
-      Apply this measurement to UI test unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: base_class_violations
-    type: metric
-    metric_id: UITEST-2
-    prompt: |
       App launch, teardown, and all conditional setup (clean persistence, prefilled state, animation control, state reset arguments) are base class responsibilities. The base class owns the `XCUIApplication` instance, launches before each test, tears down after, and exposes methods for conditional configurations. A test suite that re-implements any part of this is duplicating infrastructure that belongs in one place.
 
       1. **No shared base class** — flag test classes that inherit directly from `XCTestCase` and manage their own `XCUIApplication`, `setUp`, or `tearDown`
@@ -44,17 +40,8 @@ steps:
 
       **Count:** Number of base class structure violations found.
 
-      Return the count with reasoning and precise source evidence.
+      ## UITEST-3: Assertion Grouping
 
-      Apply this measurement to UI test unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: grouping_violations
-    type: metric
-    metric_id: UITEST-3
-    prompt: |
       Navigating to a screen state — launching the app, performing a flow, triggering a transition — should happen once per state. All observable properties of that state are asserted in a single test. Splitting into `test_showsTitle`, `test_showsIcon`, `test_showsButton` runs the same expensive navigation N times to verify N independent properties that could be checked in one pass.
 
       1. **Fragmented assertions** — identify groups of test methods in the same class where:
@@ -66,17 +53,8 @@ steps:
 
       **Count:** Number of fragmented assertion groups found (count groups, not individual tests).
 
-      Return the count with reasoning and precise source evidence.
+      ## UITEST-4: Synchronization
 
-      Apply this measurement to UI test unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: sync_violations
-    type: metric
-    metric_id: UITEST-4
-    prompt: |
       A UI test must wait for the app to reach a state before it can interact with or assert on it. The correct mechanism is condition-based: wait until an element exists, until a predicate is true, or until an expectation is fulfilled. Time-based waiting (sleep, fixed delays) is always wrong — it either waits too long (wastes CI time) or too short (flaky). Calling `waitForExistence(timeout:)` directly on an element is compliant. A wrapper method that internally calls `waitForExistence` or any other condition-based wait is also compliant — and preferred, since it centralizes the timeout constant and failure message. The violation is when nothing in the call chain waits for a condition at all.
 
       1. **Time-based waits** — flag any use of:
@@ -89,17 +67,8 @@ steps:
 
       **Count:** Number of synchronization violations found.
 
-      Return the count with reasoning and precise source evidence.
+      ## UITEST-5: Typed Identifiers
 
-      Apply this measurement to UI test unit `{{params.review_unit.target.name}}` from the source already visible in this session.
-    value: {type: integer, minimum: 0}
-    scoring:
-      severe: {operator: greater_than_or_equal, value: 1}
-
-  - id: identifier_violations
-    type: metric
-    metric_id: UITEST-5
-    prompt: |
       Element queries that use string literals directly couple tests to the current identifier values and break silently on rename. All identifiers — whether owned by the app or assigned by the system (dialogs, panels, Dock) — must be referenced through a typed constant system.
 
       1. **Raw string queries** — flag any element query that uses a string literal directly:
@@ -109,16 +78,130 @@ steps:
 
       **Count:** Number of typed identifier violations found.
 
-      Return the count with reasoning and precise source evidence.
+      Return one observation for every violation or explicitly excepted candidate,
+      using exactly one of these classifications:
 
-      Apply this measurement to UI test unit `{{params.review_unit.target.name}}` from the source already visible in this session.
+      - `FLOW_VIOLATION`
+      - `BASE_CLASS_VIOLATION`
+      - `GROUPING_VIOLATION`
+      - `SYNC_VIOLATION`
+      - `IDENTIFIER_VIOLATION`
+
+      Set `is_exception` to true only when the individual observation matches an
+      authored exception. Supply nonempty reasoning and precise source evidence
+      for every observation. Return no observation for a compliant category.
+    outputs:
+      - name: observations
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - classification
+              - location
+              - is_exception
+              - reasoning
+              - evidence
+            properties:
+              classification:
+                type: string
+                enum:
+                  - FLOW_VIOLATION
+                  - BASE_CLASS_VIOLATION
+                  - GROUPING_VIOLATION
+                  - SYNC_VIOLATION
+                  - IDENTIFIER_VIOLATION
+              location: {type: string, minLength: 1}
+              is_exception: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: flow_violations
+    type: metric
+    metric_id: UITEST-1
+    depends_on: [classify_ui_test_observations]
     value: {type: integer, minimum: 0}
     scoring:
+      source: "{{steps.classify_ui_test_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: FLOW_VIOLATION
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: base_class_violations
+    type: metric
+    metric_id: UITEST-2
+    depends_on: [classify_ui_test_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_ui_test_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: BASE_CLASS_VIOLATION
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: grouping_violations
+    type: metric
+    metric_id: UITEST-3
+    depends_on: [classify_ui_test_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_ui_test_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: GROUPING_VIOLATION
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: sync_violations
+    type: metric
+    metric_id: UITEST-4
+    depends_on: [classify_ui_test_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_ui_test_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: SYNC_VIOLATION
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: identifier_violations
+    type: metric
+    metric_id: UITEST-5
+    depends_on: [classify_ui_test_observations]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_ui_test_observations.outputs.observations}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: IDENTIFIER_VIOLATION
+          - ref: "{{item.is_exception}}"
+            equals: false
       minor: {operator: greater_than_or_equal, value: 1}
       severe: {operator: greater_than_or_equal, value: 3}
 
   - id: classify_exception
     type: exception
+    depends_on:
+      - flow_violations
+      - base_class_violations
+      - grouping_violations
+      - sync_violations
+      - identifier_violations
     prompt: |
       1. **Launch performance tests** — `measure { app.launch() }` blocks that exist specifically to measure launch time
       2. **Terminate-and-relaunch boundary tests** — tests that verify behavior across an intentional app termination (state restoration, crash recovery) may call launch more than once

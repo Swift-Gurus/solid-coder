@@ -279,7 +279,13 @@ unit-test tag and Swift-file applicability. Gate-on-write coverage confirms the
 prospective buffer now presents one classifier instead of seven simultaneous
 rule steps.
 
-Current non-live results are 771 flow-engine tests passing (with the one
+UI Testing now uses one file-scoped `classify_ui_test_observations` model step
+for flow encapsulation, base-class structure, assertion grouping,
+synchronization, and typed-identifier findings. MCP derives UITEST-1 through
+UITEST-5, preserves UITEST-5's minor/severe thresholds, applies authored
+exceptions per observation, and retains the Swift UI-test applicability gate.
+
+Current non-live results are 773 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
 Locked live execution remains blocked by the host-integration issues recorded
