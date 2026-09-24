@@ -271,6 +271,10 @@ confirms that initial model presentation drops from four simultaneous rule
 steps to one classification step. The deeper effective-boundary validation
 described by SPEC-051 remains separate from this arithmetic-ownership migration.
 
+The locked Code Smells fixture passes through Codex and Claude with exact values
+`1 / 2 / 1`, audited MCP derivations, the file-scoped result, and terminal run
+completion validated by the shared live rule harness.
+
 Frontmatter now uses one file-scoped `classify_frontmatter_observations` model
 step for missing metadata, name mismatch, invalid category, incorrect stack, and
 bad description observations. MCP derives FM-1 through FM-5, retains all
