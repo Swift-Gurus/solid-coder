@@ -41,3 +41,6 @@ class LSPValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "COMPLIANT",
     ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
+    ALLOW_AUXILIARY_STEPS = True
+    EXPECTED_RULE_SOURCE_INDEX = 1
+    EXPECTED_RULE_RESULT_COUNT = 2

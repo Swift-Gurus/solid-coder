@@ -60,6 +60,8 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     REVIEW_WORKFLOW_ID: ClassVar[str] = "solid-review"
     EXPECTED_EXCEPTION: ClassVar[bool] = False
     ALLOW_AUXILIARY_STEPS: ClassVar[bool] = False
+    EXPECTED_RULE_SOURCE_INDEX: ClassVar[int] = 0
+    EXPECTED_RULE_RESULT_COUNT: ClassVar[int] = 1
 
     def setUp(self) -> None:
         self._source_project = ReviewComparisonSourceProject.create(self.FIXTURE)
@@ -124,6 +126,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             for event in events
             if event.get("event") == "step_completed"
             and self._belongs_to_rule(event.get("workflow_instance_id"))
+            and event.get("workflow_source_index") == expectation.source_index
         ]
         completed_step_ids = {
             event["local_step_id"] for event in completed_steps
@@ -155,11 +158,17 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             expectation.is_exception,
         )
 
+        workflow_instance_ids = {
+            event["workflow_instance_id"] for event in completed_steps
+        }
         recorded_sessions = [
             event
             for event in events
             if event.get("event") == "session_step_recorded"
-            and self._belongs_to_rule(event.get("instance_id"))
+            and any(
+                event["instance_id"].startswith(f"{workflow_instance_id}.")
+                for workflow_instance_id in workflow_instance_ids
+            )
         ]
         recorded_step_ids = {
             step_id
@@ -185,18 +194,29 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         )
         self.assertEqual(aggregate.workflow_id, self.REVIEW_WORKFLOW_ID)
         self.assertEqual(aggregate.severity, expectation.final_severity)
-        self.assertEqual(len(aggregate.rule_results), 1)
-
-        result = aggregate.rule_results[0]
-        preserved_rule_result = RuleReviewResult.model_validate_json(
-            (
-                review_directory
-                / result.workflow_id
-                / result.rule_instance_id
-                / "result.json"
-            ).read_text()
+        self.assertEqual(
+            len(aggregate.rule_results),
+            expectation.rule_result_count,
         )
-        self.assertEqual(preserved_rule_result, result)
+        for aggregate_result in aggregate.rule_results:
+            preserved_result = RuleReviewResult.model_validate_json(
+                (
+                    review_directory
+                    / aggregate_result.workflow_id
+                    / aggregate_result.rule_instance_id
+                    / "result.json"
+                ).read_text()
+            )
+            self.assertEqual(preserved_result, aggregate_result)
+
+        matching_results = [
+            result
+            for result in aggregate.rule_results
+            if result.workflow_id == expectation.workflow_id
+            and result.provenance.source_index == expectation.source_index
+        ]
+        self.assertEqual(len(matching_results), 1)
+        result = matching_results[0]
         self.assertEqual(result.workflow_id, expectation.workflow_id)
         self.assertEqual(result.severity, expectation.final_severity)
         self.assertEqual(result.scoring_authority, "mcp")
@@ -301,4 +321,6 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             final_severity=self.EXPECTED_FINAL_SEVERITY,
             is_exception=self.EXPECTED_EXCEPTION,
             allow_auxiliary_steps=self.ALLOW_AUXILIARY_STEPS,
+            source_index=self.EXPECTED_RULE_SOURCE_INDEX,
+            rule_result_count=self.EXPECTED_RULE_RESULT_COUNT,
         )

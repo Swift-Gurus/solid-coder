@@ -20,3 +20,5 @@ class LiveRuleValidationExpectation(BaseModel):
     final_severity: ReviewSeverity
     is_exception: bool = False
     allow_auxiliary_steps: bool = False
+    source_index: int = Field(default=0, ge=0)
+    rule_result_count: int = Field(default=1, ge=1)

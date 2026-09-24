@@ -127,6 +127,20 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
             config = (codex_home / "config.toml").read_text(encoding="utf-8")
             self.assertIn("tool_output_token_limit = 262144", config)
 
+    def test_generated_config_records_checkout_project_context(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            codex_home = Path(directory)
+
+            runner._write_config(codex_home, Path("/plugin"))
+
+            config = (codex_home / "config.toml").read_text(encoding="utf-8")
+            self.assertIn("[[hooks.SessionStart]]", config)
+            self.assertIn(
+                "/plugin/mcp-server/hooks/on_agent_start.py",
+                config,
+            )
+
     def _run_with_output(
         self,
         runner: CodexLiveSessionRunner,

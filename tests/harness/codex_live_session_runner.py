@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -84,15 +86,28 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         raise RuntimeError("Codex session returned no child thread ID")
 
     def _write_config(self, codex_home: Path, plugin_root: Path) -> None:
+        session_start_command = " ".join([
+            shlex.quote(sys.executable),
+            shlex.quote(str(
+                plugin_root / "mcp-server" / "hooks" / "on_agent_start.py"
+            )),
+        ])
         (codex_home / "config.toml").write_text(
             "tool_output_token_limit = 262144\n\n"
             "[features]\n"
-            "plugins = true\n\n"
+            "plugins = true\n"
+            "hooks = true\n\n"
             "[marketplaces.solid-coder]\n"
             'source_type = "local"\n'
             f"source = {json.dumps(str(plugin_root))}\n\n"
             '[plugins."solid-coder@solid-coder"]\n'
-            "enabled = true\n",
+            "enabled = true\n\n"
+            "[[hooks.SessionStart]]\n"
+            'matcher = "startup|resume|clear|compact"\n\n'
+            "[[hooks.SessionStart.hooks]]\n"
+            'type = "command"\n'
+            f"command = {json.dumps(session_start_command)}\n"
+            "timeout = 1200\n",
             encoding="utf-8",
         )
 
