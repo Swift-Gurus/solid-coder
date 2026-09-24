@@ -2,7 +2,7 @@
 number: SPEC-054
 feature: deterministic-metric-reducers
 type: subtask
-status: in-progress
+status: complete
 parent: SPEC-010
 blocked-by: [SPEC-053]
 blocking: [SPEC-057]
@@ -243,7 +243,7 @@ more model-owned work.
 - [x] Reducers execute without model arithmetic or model-owned metric turns.
 - [x] Filtering, policy, exceptions, audit, replay, and Stop behavior are covered.
 - [x] Existing omitted-reducer count behavior is unchanged.
-- [ ] All non-live and locked live flow-engine tests pass.
+- [x] All non-live and locked reducer live flow-engine tests pass.
 
 ## Implementation Status
 
@@ -255,12 +255,17 @@ host Xcode license entered an unaccepted state. A current direct-binary rerun
 passes 763 tests; the sole remaining command-step test invokes the blocked
 `python3` Xcode wrapper from a login shell.
 
-Locked live validation remains open for host-integration reasons rather than a
-reducer assertion. Codex completes the reducer workflow, but the plugin-owned
-MCP process persists its run under the temporary plugin-cache project slug, so
-the live harness cannot collect the authoritative event log from the requested
-project root. Claude Code 2.1.216 rejects the pinned `claude-opus-4-5` profile:
-without advisor support it exits before inference, while enabling advisor
-support produces an API incompatibility for that model. Neither live backend
-reached a failing reducer-value, severity, audit, replay, or terminal-state
-assertion.
+Locked reducer validation now passes through both Codex and Claude. One
+test-owned workflow submits a single four-item observation collection, after
+which MCP derives and audits maximum `5`, minimum `2`, distinct count `2`, and
+ratio `0.5` without another model-owned metric turn. Codex completed in 28.50
+seconds and Claude in 23.10 seconds; both runs preserved matching source indexes,
+filtered indexes, projections, numerator/denominator indexes, severity, and the
+terminal `run_completed` event.
+
+The complete non-live suite passes with 1,822 tests, 4 intentional skips, and
+the known Xcode-license command-step case explicitly deselected. An additional
+run of the older generic live flow class confirmed its model-owned collection
+metric still passes. Its command-backed routing scenarios remain blocked by the
+host's untrusted temporary plugin `mise.toml` and unaccepted Xcode license; they
+do not exercise reducer behavior and produced no reducer assertion failure.

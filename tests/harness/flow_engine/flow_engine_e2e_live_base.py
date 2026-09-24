@@ -70,7 +70,7 @@ class ClassificationCase:
 """
 solid-name: FlowEngineE2ELiveBase
 solid-category: test-support
-solid-spec: [SPEC-031, SPEC-027, SPEC-037]
+solid-spec: [SPEC-031, SPEC-027, SPEC-037, SPEC-054]
 solid-description: Executes model-profile-backed routing and session-delegate fan-out while verifying persisted engine transitions.
 """
 class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
@@ -279,43 +279,53 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual(scored["derivation"]["source_size"], 4)
         self.assertEqual(events[-1].get("event"), "run_completed")
 
-    def test_collection_reducer_is_scored_and_audited_by_engine(self) -> None:
+    def test_collection_reducers_are_scored_and_audited_by_engine(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             workflow_path = Path(temporary_directory) / "workflow.yaml"
             workflow_path.write_text(
                 textwrap.dedent(
                     """
-                    id: e2e-maximum-depth
-                    name: E2E Maximum Depth
+                    id: e2e-collection-reducers
+                    name: E2E Collection Reducers
                     max_turns: 5
                     rule: {}
                     steps:
-                      - id: analyze_views
+                      - id: classify_observations
                         prompt: |
-                          Submit exactly three view observations in this order:
-                          depth 2 non-exception, depth 9 exception, and depth 5
-                          non-exception.
+                          Submit exactly four observations in this order:
+                          depth 2, group alpha, UNSAFE, non-exception;
+                          depth 9, group beta, UNSAFE, exception;
+                          depth 5, group gamma, SAFE, non-exception;
+                          depth 7, group gamma, SAFE, exception.
                         outputs:
-                          - name: views
+                          - name: observations
                             type: data
                             schema:
                               type: array
-                              minItems: 3
-                              maxItems: 3
+                              minItems: 4
+                              maxItems: 4
                               items:
                                 type: object
                                 additionalProperties: false
-                                required: [depth, is_exception]
+                                required:
+                                  - depth
+                                  - group
+                                  - classification
+                                  - is_exception
                                 properties:
                                   depth: {type: integer}
+                                  group: {type: string}
+                                  classification:
+                                    type: string
+                                    enum: [SAFE, UNSAFE]
                                   is_exception: {type: boolean}
                       - id: maximum_depth
                         type: metric
-                        metric_id: DEPTH-1
-                        depends_on: [analyze_views]
+                        metric_id: REDUCER-MAX
+                        depends_on: [classify_observations]
                         value: {type: integer, minimum: 0}
                         scoring:
-                          source: "{{steps.analyze_views.outputs.views}}"
+                          source: "{{steps.classify_observations.outputs.observations}}"
                           when:
                             ref: "{{item.is_exception}}"
                             equals: false
@@ -323,9 +333,60 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
                             type: maximum
                             value: "{{item.depth}}"
                           severe: {operator: greater_than_or_equal, value: 5}
+                      - id: minimum_depth
+                        type: metric
+                        metric_id: REDUCER-MIN
+                        depends_on: [classify_observations]
+                        value: {type: integer, minimum: 0}
+                        scoring:
+                          source: "{{steps.classify_observations.outputs.observations}}"
+                          when:
+                            ref: "{{item.is_exception}}"
+                            equals: false
+                          reducer:
+                            type: minimum
+                            value: "{{item.depth}}"
+                          severe: {operator: less_than_or_equal, value: 2}
+                      - id: distinct_groups
+                        type: metric
+                        metric_id: REDUCER-DISTINCT
+                        depends_on: [classify_observations]
+                        value: {type: integer, minimum: 0}
+                        scoring:
+                          source: "{{steps.classify_observations.outputs.observations}}"
+                          when:
+                            ref: "{{item.is_exception}}"
+                            equals: false
+                          reducer:
+                            type: distinct_count
+                            value: "{{item.group}}"
+                          severe: {operator: greater_than_or_equal, value: 2}
+                      - id: unsafe_ratio
+                        type: metric
+                        metric_id: REDUCER-RATIO
+                        depends_on: [classify_observations]
+                        value: {type: number, minimum: 0, maximum: 1}
+                        scoring:
+                          source: "{{steps.classify_observations.outputs.observations}}"
+                          reducer:
+                            type: ratio
+                            numerator_when:
+                              all:
+                                - ref: "{{item.classification}}"
+                                  equals: UNSAFE
+                                - ref: "{{item.is_exception}}"
+                                  equals: false
+                            denominator_when:
+                              ref: "{{item.is_exception}}"
+                              equals: false
+                          severe: {operator: greater_than_or_equal, value: 0.5}
                       - id: classify_exception
                         type: exception
-                        depends_on: [maximum_depth]
+                        depends_on:
+                          - maximum_depth
+                          - minimum_depth
+                          - distinct_groups
+                          - unsafe_ratio
                         prompt: |
                           Submit is_exception false. Explain that the locked test
                           data is intentionally scored without a whole-rule exception.
@@ -336,31 +397,96 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
 
             events = self._run_live_workflow(
                 workflow_path,
-                prohibited_prompt_fragments=["depth 2 non-exception"],
+                prohibited_prompt_fragments=["group alpha"],
             )
 
-        metric_completion = next(
-            event
+        metric_completions = {
+            event["step_id"]: event
             for event in events
             if event.get("event") == "step_completed"
-            and event.get("step_id") == "maximum_depth"
-        )
-        self.assertEqual(metric_completion["session_id"], "engine")
-        self.assertEqual(metric_completion["outputs"]["value"], 5)
-        derivation = metric_completion["metric_derivation"]
-        self.assertEqual(derivation["kind"], "collection_reducer")
-        self.assertEqual(derivation["reducer"]["type"], "maximum")
-        self.assertEqual(derivation["matched_indexes"], [0, 2])
-        self.assertEqual(derivation["excluded_indexes"], [1])
+            and event.get("step_id") in {
+                "maximum_depth",
+                "minimum_depth",
+                "distinct_groups",
+                "unsafe_ratio",
+            }
+        }
         self.assertEqual(
-            derivation["projection_evidence"],
+            set(metric_completions),
+            {
+                "maximum_depth",
+                "minimum_depth",
+                "distinct_groups",
+                "unsafe_ratio",
+            },
+        )
+        self.assertEqual(
+            {
+                step_id: completion["outputs"]["value"]
+                for step_id, completion in metric_completions.items()
+            },
+            {
+                "maximum_depth": 5,
+                "minimum_depth": 2,
+                "distinct_groups": 2,
+                "unsafe_ratio": 0.5,
+            },
+        )
+        self.assertEqual(
+            {
+                step_id: completion["metric_derivation"]["reducer"]["type"]
+                for step_id, completion in metric_completions.items()
+            },
+            {
+                "maximum_depth": "maximum",
+                "minimum_depth": "minimum",
+                "distinct_groups": "distinct_count",
+                "unsafe_ratio": "ratio",
+            },
+        )
+        self.assertTrue(all(
+            completion["session_id"] == "engine"
+            for completion in metric_completions.values()
+        ))
+
+        maximum_derivation = metric_completions[
+            "maximum_depth"
+        ]["metric_derivation"]
+        self.assertEqual(maximum_derivation["kind"], "collection_reducer")
+        self.assertEqual(maximum_derivation["matched_indexes"], [0, 2])
+        self.assertEqual(maximum_derivation["excluded_indexes"], [1, 3])
+        self.assertEqual(
+            maximum_derivation["projection_evidence"],
             [{"index": 0, "value": 2}, {"index": 2, "value": 5}],
         )
-        scored = next(
-            event for event in events if event.get("event") == "metric_scored"
+        ratio_derivation = metric_completions["unsafe_ratio"][
+            "metric_derivation"
+        ]
+        self.assertEqual(ratio_derivation["numerator_indexes"], [0])
+        self.assertEqual(ratio_derivation["denominator_indexes"], [0, 2])
+        self.assertFalse(ratio_derivation["zero_denominator"])
+
+        scored = {
+            event["metric_id"]: event
+            for event in events
+            if event.get("event") == "metric_scored"
+        }
+        self.assertEqual(
+            {
+                metric_id: decision["value"]
+                for metric_id, decision in scored.items()
+            },
+            {
+                "REDUCER-MAX": 5,
+                "REDUCER-MIN": 2,
+                "REDUCER-DISTINCT": 2,
+                "REDUCER-RATIO": 0.5,
+            },
         )
-        self.assertEqual(scored["value"], 5)
-        self.assertEqual(scored["severity"], "SEVERE")
+        self.assertTrue(all(
+            decision["severity"] == "SEVERE"
+            for decision in scored.values()
+        ))
         self.assertEqual(events[-1].get("event"), "run_completed")
 
     def _run_classification_case(self, case: ClassificationCase) -> None:
