@@ -226,11 +226,11 @@ actionable retry message
 
 ## Definition of Done
 
-- [ ] Every in-scope bundled metric is derived from typed observations by MCP.
-- [ ] The model submits no raw count for an in-scope metric.
-- [ ] Canonical detection, exceptions, IDs, thresholds, and applicability remain
+- [x] Every in-scope bundled metric is derived from typed observations by MCP.
+- [x] The model submits no raw count for an in-scope metric.
+- [x] Canonical detection, exceptions, IDs, thresholds, and applicability remain
       unchanged and are covered by tests.
-- [ ] Incomplete observations cannot trigger partial scoring.
+- [x] Incomplete observations cannot trigger partial scoring.
 - [ ] The shared Codex/Claude harness validates every migrated rule.
 - [ ] All non-live suites and locked live rule scenarios pass after each migration.
 
@@ -294,7 +294,20 @@ follow-up. The shared rule test contract now completes the same hybrid run after
 an intentional malformed model-metric submission instead of attempting a second
 run against the active session lock.
 
-Current non-live results are 773 flow-engine tests passing (with the one
+SwiftUI now uses one typed `classify_countable_observations` model step for
+impure view members, preview-only types, views without previews, invalid
+container accessibility, fixed frames, and over-isolation. MCP derives SUI-2
+and SUI-5 through SUI-9 from that collection and applies exceptions per
+observation. SUI-1 nesting/expression maxima, SUI-3 maximum modifier chain, and
+SUI-4 categorical injection style remain model-owned; reducer-backed maxima
+belong to SPEC-057. Bundle startup presents six SwiftUI steps instead of eleven.
+
+All count-based workflow migrations named by this spec are implemented and
+non-live validated. The spec remains `in-progress` solely because its locked
+Codex/Claude live matrix is blocked by the host-integration issues recorded in
+SPEC-054.
+
+Current non-live results are 775 flow-engine tests passing (with the one
 host-Xcode wrapper case deselected), 852 MCP-server tests passing with 4
 intentional skips, 95 harness tests, 62 hook tests, and 36 Apple-build tests.
 Locked live execution remains blocked by the host-integration issues recorded
