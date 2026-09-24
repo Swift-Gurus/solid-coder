@@ -257,6 +257,12 @@ from its matching metric. Bundle coverage confirms the migration reduces the
 selected rule from fourteen model-facing steps to two while retaining internal
 metric execution.
 
+The locked Structured Concurrency fixture now passes through both Codex and
+Claude with exact values `1 / 1 / 1 / 3 / 1 / 1`. Live validation exposed and
+corrected one prompt ambiguity: SC-4 counts each independent await call once,
+not each adjacent pair. The full non-live suite remains green with 1,822 tests,
+4 intentional skips, and the known host-Xcode command case deselected.
+
 Code Smells now uses one file-scoped `classify_smell_observations` model step
 for static logic, effective top-level type boundaries, and inline types. MCP
 derives CS-1 through CS-3, preserves metric-specific exclusions independently,

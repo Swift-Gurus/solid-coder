@@ -52,6 +52,10 @@ steps:
       2. For each pair of sequential awaits: are they independent? (second doesn't use result of first)
       3. Count independent sequential awaits that could be `async let` or `TaskGroup`
 
+      Count each independent await call in the sequence exactly once, not each
+      adjacent pair. A run of three mutually independent await calls therefore
+      produces three `INDEPENDENT_SEQUENTIAL_AWAIT` observations.
+
       ## SC-5: Sync-to-Async Bridging
 
       1. Count synchronous functions that use blocking mechanisms to wait for async results:
