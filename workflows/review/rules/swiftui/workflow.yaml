@@ -135,6 +135,10 @@ steps:
       Set `is_exception` to true only when the individual observation matches an
       authored exception. Supply nonempty reasoning and precise source evidence
       for every observation. Return no observation for a compliant category.
+      For SUI-8, emit one `FIXED_FRAME` observation per offending `.frame(...)`
+      call. When the same call supplies both a literal width and a literal
+      height, combine both dimensions in that observation's evidence rather
+      than emitting one observation per argument.
       Repository evidence: No MCP-owned repository evidence was supplied.
     outputs:
       - name: observations
@@ -183,8 +187,19 @@ steps:
       3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
       4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
 
-      Return one `view_properties` entry for every view-returning property. Use
-      zero only when the authored measurement genuinely has no expression.
+      Return one `view_properties` entry for every view-returning property.
+      Nesting depth includes the leaf view expression on the deepest builder
+      path: for example, `VStack { HStack { Text(...) } }` has depth 3, not 2.
+      Count only expressions that produce a SwiftUI `View`. Action closures and
+      other non-`@ViewBuilder` closures, including a `Task` created inside a
+      `Button` action, add neither a view expression nor a nesting level. Count
+      expression occurrences rather than unique view types, so two separate
+      `Text` expressions count twice.
+
+      Copy the deepest ordered path into `deepest_path` and every ordered
+      occurrence into `expressions`. Preserve duplicate expression names as
+      separate array entries. Use empty arrays only when the property genuinely
+      contains no View expression. Do not submit either collection's length.
 
       ## SUI-3: Modifier Chain Length
 
@@ -198,7 +213,17 @@ steps:
       4. **Flag** if modifier count >= 2
 
       Return one `modifier_chains` entry for every nested child with at least one
-      modifier. Preserve duplicate lengths as independent evidence. Set
+      modifier. Copy every modifier call into `modifiers` in source order; one
+      `.frame(width:height:)` call is one modifier. Preserve equal chains as
+      independent evidence and do not submit the chain length. Do not prefilter
+      entries using the violation threshold: one-modifier chains are required
+      evidence even though they are individually compliant. Omitting any
+      modifier-bearing nested child makes the observation collection incomplete.
+      A container nested inside another builder is still a child even when it
+      opens its own builder closure. For example, in
+      `VStack { HStack { ... }.accessibilityIdentifier(...) }`, include the
+      `HStack` modifier chain because only the outermost `VStack` is excluded.
+      Set
       `is_exception` only for an individually applicable authored exception.
       Supply nonempty reasoning and precise source evidence for every entry.
     outputs:
@@ -209,11 +234,15 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [location, nesting_depth, expression_count, is_exception, reasoning, evidence]
+            required: [location, deepest_path, expressions, is_exception, reasoning, evidence]
             properties:
               location: {type: string, minLength: 1}
-              nesting_depth: {type: integer, minimum: 0}
-              expression_count: {type: integer, minimum: 0}
+              deepest_path:
+                type: array
+                items: {type: string, minLength: 1}
+              expressions:
+                type: array
+                items: {type: string, minLength: 1}
               is_exception: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
@@ -224,28 +253,61 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [location, length, is_exception, reasoning, evidence]
+            required: [location, modifiers, is_exception, reasoning, evidence]
             properties:
               location: {type: string, minLength: 1}
-              length: {type: integer, minimum: 0}
+              modifiers:
+                type: array
+                minItems: 1
+                items: {type: string, minLength: 1}
               is_exception: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
+
+  - id: count_nesting_paths
+    type: operation
+    operation: collection.count
+    depends_on: [classify_extrema_observations]
+    for_each: "{{steps.classify_extrema_observations.outputs.view_properties}}"
+    when:
+      ref: "{{item.is_exception}}"
+      equals: false
+    with:
+      values: "{{item.deepest_path}}"
+
+  - id: count_view_expressions
+    type: operation
+    operation: collection.count
+    depends_on: [classify_extrema_observations]
+    for_each: "{{steps.classify_extrema_observations.outputs.view_properties}}"
+    when:
+      ref: "{{item.is_exception}}"
+      equals: false
+    with:
+      values: "{{item.expressions}}"
+
+  - id: count_modifier_chains
+    type: operation
+    operation: collection.count
+    depends_on: [classify_extrema_observations]
+    for_each: "{{steps.classify_extrema_observations.outputs.modifier_chains}}"
+    when:
+      ref: "{{item.is_exception}}"
+      equals: false
+    with:
+      values: "{{item.modifiers}}"
 
   - id: body_nesting_depth
     type: metric
     metric_id: SUI-1
     observation_id: body_nesting_depth
-    depends_on: [classify_extrema_observations]
+    depends_on: [count_nesting_paths]
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_extrema_observations.outputs.view_properties}}"
-      when:
-        ref: "{{item.is_exception}}"
-        equals: false
+      source: "{{steps.count_nesting_paths.outputs.value}}"
       reducer:
         type: maximum
-        value: "{{item.nesting_depth}}"
+        value: "{{item}}"
         empty_value: 0
       severe: {operator: greater_than_or_equal, value: 2}
 
@@ -253,16 +315,13 @@ steps:
     type: metric
     metric_id: SUI-1
     observation_id: view_expression_count
-    depends_on: [classify_extrema_observations]
+    depends_on: [count_view_expressions]
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_extrema_observations.outputs.view_properties}}"
-      when:
-        ref: "{{item.is_exception}}"
-        equals: false
+      source: "{{steps.count_view_expressions.outputs.value}}"
       reducer:
         type: maximum
-        value: "{{item.expression_count}}"
+        value: "{{item}}"
         empty_value: 0
       severe: {operator: greater_than_or_equal, value: 5}
 
@@ -284,16 +343,13 @@ steps:
   - id: max_modifier_chain
     type: metric
     metric_id: SUI-3
-    depends_on: [classify_extrema_observations]
+    depends_on: [count_modifier_chains]
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_extrema_observations.outputs.modifier_chains}}"
-      when:
-        ref: "{{item.is_exception}}"
-        equals: false
+      source: "{{steps.count_modifier_chains.outputs.value}}"
       reducer:
         type: maximum
-        value: "{{item.length}}"
+        value: "{{item}}"
         empty_value: 0
       severe: {operator: greater_than_or_equal, value: 2}
 

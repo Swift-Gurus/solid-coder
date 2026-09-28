@@ -84,6 +84,11 @@ class ForEachReferenceValidator(ForEachTargetValidating):
             source_output.schema,
             f"step '{target.source_reference.step_id}' output schema",
         )
+        if source_step.for_each is not None:
+            source_schema = WorkflowDataSchema(
+                type="array",
+                items=source_schema,
+            )
         if source_schema.type != "array":
             raise self._error_factory.create(
                 f"Step '{target.target_id}' {target.reference_name} source output "

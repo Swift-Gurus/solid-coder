@@ -45,7 +45,7 @@ struct DashboardView: View {
             TextField("Filter", text: $query)
                 .frame(width: 240, height: 44)
             Text(filteredRows.joined(separator: ", "))
-            PreviewOnlyBadge()
+            Divider()
         }
     }
 

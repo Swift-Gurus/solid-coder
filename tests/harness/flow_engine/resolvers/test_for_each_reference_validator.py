@@ -44,6 +44,30 @@ class TestForEachReferenceValidator(unittest.TestCase):
 
         self.sut.validate_for_each_references(steps)
 
+    def test_treats_for_each_step_outputs_as_ordered_arrays(self) -> None:
+        steps = [
+            self._source(),
+            StepDef(
+                id="measure",
+                prompt="Measure {{item}}",
+                depends_on=["load"],
+                for_each=self._declaration("load", "files"),
+                outputs=[OutputSpec(
+                    name="length",
+                    type="data",
+                    schema={"type": "integer"},
+                )],
+            ),
+            StepDef(
+                id="review",
+                prompt="Review {{item}}",
+                depends_on=["measure"],
+                for_each=self._declaration("measure", "length"),
+            ),
+        ]
+
+        self.sut.validate_for_each_references(steps)
+
     def test_rejects_source_step_that_is_not_a_transitive_dependency(self) -> None:
         steps = [
             self._source(),

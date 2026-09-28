@@ -2,7 +2,7 @@
 number: SPEC-057
 feature: reducer-and-repository-backed-rule-migration
 type: subtask
-status: in-progress
+status: complete
 parent: SPEC-036
 blocked-by: [SPEC-054, SPEC-055, SPEC-056]
 blocking: []
@@ -30,8 +30,9 @@ reducers defined by upstream specs.
 | ISP-1 width | Protocol requirement observations | Filtered requirement count |
 | ISP-2 minimum coverage | Per-conformer implemented/required coverage facts | Ordered child fan-in and minimum reducer |
 | ISP-3 cohesion groups | Requirement-to-client/group classifications | Distinct count or validated count, per canonical metric definition |
-| SwiftUI SUI-1 nesting | Per-expression depth observations | Maximum depth and existing severity bands |
-| SwiftUI SUI-3 modifier chain | Per-chain length observations | Maximum chain length and existing severity bands |
+| SwiftUI SUI-1 nesting | Ordered View-expression paths | Per-path count, ordered fan-in, maximum, and existing severity bands |
+| SwiftUI SUI-1 expression count | Ordered View-expression occurrences per property | Per-property count, ordered fan-in, maximum, and existing severity bands |
+| SwiftUI SUI-3 modifier chain | Ordered modifier occurrences per chain | Per-chain count, ordered fan-in, maximum, and existing severity bands |
 | SwiftUI remaining categorical metrics | Typed classifications and exception evidence | Filtered counts or existing scalar comparison, as appropriate |
 | LSP repository/relationship evidence | Subtype/conformer contract classifications | Ordered fan-in, filtered counts, and deterministic final severity |
 
@@ -80,20 +81,32 @@ observations rather than model-submitted maxima.
 
 #### Scenario 2.1 — Calculate body nesting depth
 
-**Given** the model returns every relevant view-expression path and its depth
+**Given** the model returns every relevant ordered view-expression path
 **When** MCP evaluates SUI-1
-**Then** it records the maximum non-excepted depth
+**Then** a `collection.count` operation measures each non-excepted path during
+ordered `for_each` execution
+**And** the metric records the maximum aggregated count
 **And** audit evidence identifies the source observation that produced it.
 
-#### Scenario 2.2 — Calculate maximum modifier chain
+#### Scenario 2.2 — Calculate view-expression count
 
-**Given** the model returns modifier-chain observations with lengths
+**Given** the model returns every View-expression occurrence for each
+view-returning property
+**When** MCP evaluates the SUI-1 expression-count observation
+**Then** a `collection.count` operation measures each non-excepted property
+**And** the metric records the maximum aggregated count
+**And** repeated View types remain separate occurrences.
+
+#### Scenario 2.3 — Calculate maximum modifier chain
+
+**Given** the model returns ordered modifier occurrences for each chain
 **When** MCP evaluates SUI-3
-**Then** it records the maximum non-excepted length
+**Then** a `collection.count` operation measures each non-excepted chain
+**And** the metric records the maximum aggregated count
 **And** duplicate lengths remain distinct evidence even though the raw maximum is
 unchanged.
 
-#### Scenario 2.3 — Handle an empty applicable collection explicitly
+#### Scenario 2.4 — Handle an empty applicable collection explicitly
 
 **Given** a valid SwiftUI unit contains no relevant chain or nested expression
 **When** the workflow prepares observations
@@ -167,8 +180,11 @@ candidate coverage validation; neither rule parses human-readable search text.
 outputs and ordered completion. When a nested observation array must be flattened,
 a schema-gated normalization step may copy completed child classifications but
 must not reread source, infer new facts, calculate metrics, or choose severity.
-- Numeric extrema and distinct counts use SPEC-054 reducers. Filtered counts use
-SPEC-053. No model submits a derived total, minimum, or maximum.
+- Numeric extrema and distinct counts use SPEC-054 reducers. Nested evidence
+  collections are counted through the generic engine-owned `collection.count`
+  operation during ordinary `for_each`; existing step-output fan-in aggregates
+  the counts in source order before the maximum reducer consumes them. No model
+  submits a derived total, collection length, minimum, or maximum.
 - Rule-specific classification enums, exception signals, thresholds, and evidence
 remain in workflow YAML and output schemas.
 - Metric and observation IDs, applicability selectors, tags, extensions, unit
@@ -209,8 +225,9 @@ indexes, reducer, raw value, effective band, and scoring authority.
 1. Complete SPEC-054 reducer tests and SPEC-056 ordered child-output projection.
 2. Rewrite ISP analysis into protocol facts plus per-conformer child outputs;
    derive ISP-1/2/3 through generic count/minimum/distinct-count operations.
-3. Migrate SwiftUI maximum-depth and maximum-chain metrics, then remaining
-   categorical observations not completed by SPEC-055.
+3. Add generic intermediate collection counting, preserve ordered `for_each`
+fan-in schemas, and migrate SwiftUI maximum-depth and maximum-chain metrics;
+then migrate remaining categorical observations not completed by SPEC-055.
 4. Migrate LSP repository/relationship analysis so downstream metrics consume one
    durable trigger and complete relationship classifications.
 5. Add policy, exception, audit, replay, aggregate, Stop, and applicability tests
@@ -228,7 +245,7 @@ indexes, reducer, raw value, effective band, and scoring authority.
 - [x] No migrated rule requires a rule-specific production scorer or parser.
 - [x] Policy, exceptions, applicability, aggregation, replay, and Stop behavior
       are covered.
-- [ ] All non-live and locked Codex/Claude fixture tests pass.
+- [x] All non-live and locked Codex/Claude fixture tests pass.
 
 ## Implementation Status
 
@@ -237,9 +254,13 @@ complete candidate dispositions, runs one child review per selected candidate,
 calculates child coverage through the generic `collection.ratio` operation, and
 derives width, minimum coverage, and cohesion through MCP-owned metrics.
 
-SwiftUI now submits per-property and per-chain observations. MCP applies maximum
-reducers with explicit zero empty-collection values while preserving every
-projected source index, including duplicate maxima.
+SwiftUI now submits ordered deepest-path, View-expression, and modifier-call
+evidence collections without numeric lengths. The generic `collection.count`
+operation measures every non-excepted collection during `for_each`; existing
+ordered step-output fan-in publishes those counts, and the maximum reducer
+derives the three extrema with complete projection evidence. Load-time schema
+validation now reflects the array output that ordinary `for_each` already
+publishes at runtime.
 
 LSP now gates repository discovery on a durable concrete-inheritance trigger,
 validates candidate coverage, records child relationship classifications, and
@@ -247,6 +268,23 @@ uses one schema-gated normalization step before MCP counts contract violations.
 The false-trigger path records skipped repository work without suppressing the
 other LSP metrics.
 
-Focused reducer and rule tests pass, together with the complete non-live flow
-engine, MCP server, harness, hook, dispatcher, and Apple build suites. Locked
-live Codex/Claude fixture runs remain before this spec can be marked complete.
+Focused reducer, operation-composition, fan-in-schema, and rule tests pass. The
+complete non-live flow-engine, MCP server, harness, hook, dispatcher, and Apple
+build suites pass with 1,827 tests, 4 intentional skips, and 1 known command-step
+deselection.
+
+Initial locked SwiftUI live validation produced the correct final metrics
+through both Codex and Claude, but artifact inspection showed Claude omitted
+compliant one-modifier observations before MCP reduction. The live contract now
+requires complete ordered intermediate counts (`[3]`, `[8]`, and `[2, 1, 1]`)
+in addition to final metrics. After clarifying that a nested container remains a
+child even when it opens another builder closure, both locked model profiles
+passed that strict contract. The preserved successful run IDs are
+`20260924T134643Z-c94a3997` for Codex and
+`20260924T134950Z-ef6634cc` for Claude.
+
+An intervening Codex attempt failed before workflow execution because its
+generated session did not expose the flow-engine function. An unchanged runner
+configuration exposed the function on immediate rerun and completed the strict
+contract, so this is recorded as a transient live-session registration failure,
+not as workflow evidence.

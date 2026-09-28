@@ -1,5 +1,8 @@
 """Composes deterministic collection-operation registrations."""
 
+from harness.collection_count_input import CollectionCountInput
+from harness.collection_count_operation import CollectionCountOperation
+from harness.collection_count_output import CollectionCountOutput
 from harness.collection_ratio_input import CollectionRatioInput
 from harness.collection_ratio_operation import CollectionRatioOperation
 from harness.collection_ratio_output import CollectionRatioOutput
@@ -16,6 +19,12 @@ solid-description: Registers reusable typed collection operations owned by the f
 class CollectionOperationRegistrationsFactory:
     def make(self) -> list[OperationRegistration]:
         return [
+            OperationRegistration(
+                name="collection.count",
+                input_model=CollectionCountInput,
+                output_model=CollectionCountOutput,
+                handler=CollectionCountOperation(),
+            ),
             OperationRegistration(
                 name="collection.ratio",
                 input_model=CollectionRatioInput,

@@ -105,16 +105,25 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
                     "view_properties": [
                         {
                             "location": "DashboardView.body",
-                            "nesting_depth": 3,
-                            "expression_count": 8,
+                            "deepest_path": ["VStack", "HStack", "Text"],
+                            "expressions": [
+                                "VStack",
+                                "HStack",
+                                "Text",
+                                "Image",
+                                "Button",
+                                "TextField",
+                                "Text",
+                                "Divider",
+                            ],
                             "is_exception": False,
                             "reasoning": "The body contains the deepest builder tree.",
                             "evidence": "VStack > List > HStack in body.",
                         },
                         {
                             "location": "DashboardView.emptyState",
-                            "nesting_depth": 1,
-                            "expression_count": 2,
+                            "deepest_path": ["VStack", "Text"],
+                            "expressions": ["VStack", "Text"],
                             "is_exception": False,
                             "reasoning": "The helper contains one shallow container.",
                             "evidence": "VStack with Text in emptyState.",
@@ -123,14 +132,17 @@ class TestSwiftUIValidationFlow(RuleValidationFlowContract):
                     "modifier_chains": [
                         {
                             "location": "DashboardView.body.TextField",
-                            "length": 2,
+                            "modifiers": ["textFieldStyle", "frame"],
                             "is_exception": False,
                             "reasoning": "The nested child has two modifiers.",
                             "evidence": "TextField applies textFieldStyle and frame.",
                         },
                         {
                             "location": "DashboardView.body.HStack",
-                            "length": 2,
+                            "modifiers": [
+                                "accessibilityElement",
+                                "accessibilityIdentifier",
+                            ],
                             "is_exception": False,
                             "reasoning": "A second child has the same maximum.",
                             "evidence": "HStack applies accessibility modifiers.",
