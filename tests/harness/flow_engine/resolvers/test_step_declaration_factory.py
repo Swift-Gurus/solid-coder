@@ -18,6 +18,13 @@ from harness.composition_condition_parser import CompositionConditionParser
 from harness.collection_metric_reducer_decoder import (
     CollectionMetricReducerDecoder,
 )
+from harness.collection_source_reference_parser import (
+    CollectionSourceReferenceParser,
+)
+from harness.co_located_metric_collection_decoder import (
+    CoLocatedMetricCollectionDecoder,
+)
+from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
 from harness.for_each_declaration import ForEachDeclaration
@@ -70,6 +77,24 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     reference_parser=reference_parser,
                 ),
                 expression_parser=expression_parser,
+            ),
+            co_located_metric_decoder=CoLocatedMetricCollectionDecoder(
+                decoder=PydanticModelDecoder(
+                    model_type=CoLocatedMetricDeclaration,
+                ),
+                condition_parser=condition_parser,
+                reducer_decoder=CollectionMetricReducerDecoder(
+                    expression_parser=expression_parser,
+                    condition_parser=condition_parser,
+                    error_factory=error_factory,
+                ),
+                contract_assembler=MetricStepContractAssembler(),
+                expression_parser=expression_parser,
+                source_reference_parser=(
+                    CollectionSourceReferenceParser(
+                        step_reference_parser=reference_parser,
+                    )
+                ),
             ),
             rule_step_contract_resolver=RuleStepContractResolver(
                 metric_decoder=MetricDeclarationDecoder(

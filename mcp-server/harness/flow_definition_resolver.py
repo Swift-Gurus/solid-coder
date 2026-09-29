@@ -1,6 +1,7 @@
 """Resolves a raw workflow document and all composition resources."""
 
 from harness.condition_parsing import ConditionParsing
+from harness.co_located_metric_normalizing import CoLocatedMetricNormalizing
 from harness.flow_config_extractor import FlowConfigExtracting
 from harness.flow_def import FlowDef
 from harness.include_alias_group_snapshot_parsing import IncludeAliasGroupSnapshotParsing
@@ -46,6 +47,7 @@ class FlowDefinitionResolver:
         schema_resolver: OutputSchemaResolving,
         prompt_annotator: OutputSchemaPromptAnnotating,
         step_mapper: StepDeclarationMapping,
+        metric_normalizer: CoLocatedMetricNormalizing,
         rule_decoder: StructuredModelDecoding[RuleDeclaration],
         execution_resolver: StructuredModeResolver[
             WorkflowExecutionDeclaration,
@@ -69,6 +71,7 @@ class FlowDefinitionResolver:
         self._schema_resolver = schema_resolver
         self._prompt_annotator = prompt_annotator
         self._step_mapper = step_mapper
+        self._metric_normalizer = metric_normalizer
         self._rule_decoder = rule_decoder
         self._execution_resolver = execution_resolver
         self._presentation_resolver = presentation_resolver
@@ -119,6 +122,11 @@ class FlowDefinitionResolver:
         step_declarations = [
             self._prompt_annotator.annotate(step) for step in schema_steps
         ]
+        normalization = self._metric_normalizer.normalize(
+            step_declarations,
+            [*inclusion.alias_groups, *restored_alias_groups],
+            top_level_step_ids,
+        )
 
         return FlowDef(
             id=workflow_id,
@@ -128,9 +136,9 @@ class FlowDefinitionResolver:
             condition=condition,
             execution=execution,
             presentation=presentation,
-            step_declarations=step_declarations,
-            top_level_step_ids=top_level_step_ids,
-            alias_groups=[*inclusion.alias_groups, *restored_alias_groups],
+            step_declarations=normalization.steps,
+            top_level_step_ids=normalization.top_level_step_ids,
+            alias_groups=normalization.alias_groups,
             include_chain=inclusion.include_chain,
             source_path=source_path,
             sources=sources,

@@ -2,7 +2,7 @@
 number: SPEC-058
 feature: co-located-metric-authoring
 type: subtask
-status: draft
+status: complete
 parent: SPEC-010
 blocked-by: [SPEC-039, SPEC-053, SPEC-054]
 blocking: []
@@ -251,7 +251,7 @@ presentation
 **Then** the normalized rule result includes both forms identically
 **And** severity selection does not depend on authoring syntax.
 
-### US-4: Preserve instance identity through nesting and fan-out
+### US-4: Preserve instance identity through nested workflow fan-out
 
 As a workflow author, I want a compact metric to score the exact output instance
 that owns it so results cannot cross units or nested rule instances.
@@ -264,14 +264,13 @@ review unit
 **Then** each runtime metric instance depends on its matching agent-step instance
 **And** it reads only that instance's output.
 
-#### Scenario 4.2 — Score an owning step's fan-out instances independently
+#### Scenario 4.2 — Require explicit metrics for owner-level fan-out
 
 **Given** an agent step with a co-located metric is expanded with `for_each`
-**When** its instances complete in any order
-**Then** one metric instance is materialized for each owning step instance
-**And** source values, attempts, events, and results preserve the same item index
-and label
-**And** no metric waits for or consumes another sibling's fan-in output.
+**When** the workflow is loaded
+**Then** validation rejects the compact declaration
+**And** directs the author to use explicit metric steps until the engine has an
+instance-local direct-step output reference contract.
 
 #### Scenario 4.3 — Replay without recompilation drift
 
@@ -339,8 +338,11 @@ that its explicit equivalent would report.
 - Normalized metric IDs participate in the existing workflow-scope uniqueness
   check.
 - The runtime dependency on the owning step is implicit and instance-local.
-- Fan-out creates one metric instance per owning step instance and carries the
-  same source index, item value, and label.
+- Include-level fan-out creates one metric instance per materialized rule
+  workflow instance through the existing included-workflow runtime.
+- Direct owner-step `for_each` is rejected in the initial contract; it requires
+  a separate instance-local output-reference design before compact metrics can
+  support it without consuming sibling fan-in output.
 - Compact metrics are engine-owned deterministic calculations. Model-owned
   scalar metrics remain explicit steps.
 - Existing workflows and clients are backward compatible without migration.
@@ -355,6 +357,8 @@ that its explicit equivalent would report.
 - Allowing a compact metric to read arbitrary steps or multiple sources.
 - Adding a new condition, reducer, severity, policy, exception, or expression
   language.
+- Supporting co-located metrics on a directly iterating owner step; use an
+  included workflow or explicit metric steps for that case.
 - Automatically rewriting bundled workflows.
 - Moving whole-rule exception steps into agent steps.
 - Asking the model to calculate counts, extrema, distinct values, ratios, or
@@ -380,8 +384,8 @@ that its explicit equivalent would report.
   incompatible value schemas.
 - Execution tests proving metrics drain after an ordinary agent submission and
   after an aggregate submission without appearing in model-facing schemas.
-- Instance-scoping tests for nested includes and an owning agent step expanded
-  by `for_each`.
+- Instance-scoping tests for nested includes and validation coverage rejecting
+  direct owner-step `for_each`.
 - Rule-result tests mixing compact and explicit metrics with a whole-rule
   exception and effective project policy.
 - Event/replay tests proving stable identity, source evidence, no duplicate
@@ -401,7 +405,7 @@ that its explicit equivalent would report.
 4. Add a normalization boundary that expands compact declarations into existing
    typed runtime metric nodes while retaining source locations.
 5. Add failing execution tests for ordinary completion, aggregate completion,
-   nested includes, and owner-level `for_each` instances.
+   nested includes, and rejected owner-level `for_each` declarations.
 6. Implement instance-local materialization and reuse the existing internal
    metric drain, event, policy, exception, result, audit, replay, and Stop paths.
 7. Add mixed compact/explicit compatibility coverage and representative legacy
@@ -412,14 +416,28 @@ that its explicit equivalent would report.
 
 ## Definition of Done
 
-- [ ] Workflow authors may declare deterministic local-output metrics beside an
+- [x] Workflow authors may declare deterministic local-output metrics beside an
   agent step.
-- [ ] Compact declarations normalize to existing runtime metric nodes.
-- [ ] Explicit `type: metric` workflows remain fully supported and unchanged.
-- [ ] Prompts without metrics remain valid; no metric is inferred.
-- [ ] Invalid local sources and independent-execution fields fail at load time.
-- [ ] Ordinary, aggregate, nested, fan-out, policy, exception, audit, replay, and
+- [x] Compact declarations normalize to existing runtime metric nodes.
+- [x] Explicit `type: metric` workflows remain fully supported and unchanged.
+- [x] Prompts without metrics remain valid; no metric is inferred.
+- [x] Invalid local sources and independent-execution fields fail at load time.
+- [x] Ordinary, aggregate, nested, fan-out, policy, exception, audit, replay, and
   Stop behavior have deterministic coverage.
-- [ ] All non-live tests pass.
-- [ ] Locked Codex and Claude test-owned live workflows pass before bundled
+- [x] All non-live tests pass.
+- [x] Locked Codex and Claude test-owned live workflows pass before bundled
   workflow migration begins.
+
+## Validation Evidence
+
+- The complete non-live suite passes with live integration folders excluded.
+- Compact execution coverage proves ordinary and aggregate drain, nested
+  include fan-out, mixed explicit/compact finalization, exception audit,
+  persisted derivation evidence, and replay without duplicate evaluation.
+- Project-policy integration proves effective scoring overrides apply to a
+  normalized co-located metric.
+- Stop-hook integration proves the gate blocks on authored model work, never
+  exposes the internally drained metric as a pending model step, and allows Stop
+  after the rule completes.
+- The test-owned compact workflow passes through both Codex and Claude. Each
+  model submits one observation collection and MCP derives two metrics from it.

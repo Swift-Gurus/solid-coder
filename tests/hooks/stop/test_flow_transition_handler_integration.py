@@ -44,6 +44,38 @@ _AGGREGATE_FLOW_YAML = textwrap.dedent("""
         depends_on: [inspect]
 """)
 
+_COMPACT_METRIC_FLOW_YAML = textwrap.dedent("""
+    id: compact-metric-stop
+    name: compact_metric_stop
+    max_turns: 5
+    rule: {}
+    steps:
+      - id: inspect
+        prompt: Inspect actions.
+        outputs:
+          - name: actions
+            type: data
+            schema:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required: [name]
+                properties:
+                  name: {type: string}
+        metrics:
+          - id: action_count
+            metric_id: STOP-ACTIONS
+            value: {type: integer, minimum: 0}
+            scoring:
+              source: actions
+              severe: {operator: greater_than_or_equal, value: 1}
+      - id: classify_exception
+        type: exception
+        depends_on: [action_count]
+        prompt: Classify the whole-rule exception.
+""")
+
 
 class TestFlowTransitionHandlerIntegration(unittest.TestCase):
     """Drives a real FlowRunOrchestrator against real files on disk — no stubs, no live LLM."""
@@ -126,6 +158,41 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         self.assertFalse(allow)
         self.assertIn("decide", reason)
         self.assertNotIn("inspect", reason)
+
+    def test_compact_metric_drains_internally_without_becoming_a_stop_target(self):
+        workflow = Path(self._tmpdir) / "compact-metric.yaml"
+        workflow.write_text(_COMPACT_METRIC_FLOW_YAML, encoding="utf-8")
+        started = self.orchestrator.flow_start(str(workflow))
+
+        initial_allow, initial_reason = self._evaluate()
+
+        self.assertFalse(initial_allow)
+        self.assertIn("inspect", initial_reason)
+        exception = self.orchestrator.flow_next({
+            started.steps[0].instance_id: {
+                "actions": [{"name": "load"}],
+            }
+        })
+
+        exception_allow, exception_reason = self._evaluate()
+
+        self.assertFalse(exception_allow)
+        self.assertIn("classify_exception", exception_reason)
+        self.assertNotIn("action_count", exception_reason)
+        completed = self.orchestrator.flow_next({
+            exception.steps[0].instance_id: {
+                "is_exception": False,
+                "additional_info": {
+                    "reasoning": "No rule exception applies.",
+                    "evidence": "The reviewed unit performs runtime behavior.",
+                },
+            }
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        final_allow, final_reason = self._evaluate()
+        self.assertTrue(final_allow)
+        self.assertEqual(final_reason, "")
 
 
 if __name__ == "__main__":

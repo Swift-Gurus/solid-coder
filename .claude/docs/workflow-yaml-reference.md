@@ -1106,6 +1106,55 @@ does not perform sums, joins, averages, custom code, or inferred arithmetic.
 If a metric needs fields from two analyses, first make an upstream step publish
 one typed collection containing every field required by the filter.
 
+### Co-located deterministic metrics
+
+When a metric reads one data output from the same agent step, it may be authored
+beside that output instead of as a repetitive sibling step:
+
+```yaml
+- id: analyze_task_sites
+  type: agent
+  prompt: Classify every task creation site.
+  outputs:
+    - name: task_sites
+      type: data
+      schema:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [classification, is_exception]
+          properties:
+            classification: {type: string}
+            is_exception: {type: boolean}
+  metrics:
+    - id: detached_task_count
+      metric_id: DT-1
+      value: {type: integer, minimum: 0}
+      scoring:
+        source: task_sites
+        when:
+          all:
+            - ref: "{{item.classification}}"
+              equals: DETACHED
+            - ref: "{{item.is_exception}}"
+              equals: false
+        severe: {operator: greater_than_or_equal, value: 1}
+```
+
+`metrics[].scoring.source` is the exact name of a data output on the owning
+agent step. It is not a template expression. The engine normalizes each entry
+into an ordinary engine-owned `type: metric` step, so filtering, reducers,
+severity, policy, events, replay, results, and audit use the same runtime path.
+The model submits `task_sites` once and never submits the derived count.
+
+Use an explicit `type: metric` step when the metric reads another step, depends
+on multiple steps, needs step-level `when`, has independent `for_each` or
+scheduling, or asks the model for a scalar measurement. Direct `for_each` on an
+agent that declares `metrics` is rejected in the initial contract; put the
+agent and compact metric inside an included workflow that is fanned out, or use
+an explicit metric step.
+
 The generated metric submission is:
 
 ```json

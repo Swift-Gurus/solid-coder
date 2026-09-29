@@ -7,6 +7,7 @@ from typing import Annotated, ClassVar, Optional, Union
 
 from pydantic import AliasChoices, ConfigDict, Field
 
+from harness.co_located_metric_contract import CoLocatedMetricContract
 from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.condition_declaration import ConditionDeclaration
 from harness.for_each_declaration import ForEachDeclaration
@@ -54,3 +55,4 @@ class StepDeclaration:
     metric_calculation: Optional[CollectionMetricCalculation] = None
     assessment: Optional[RuleAssessmentDeclaration] = None
     operation: Optional[OperationStep] = None
+    co_located_metrics: list[CoLocatedMetricContract] = field(default_factory=list)

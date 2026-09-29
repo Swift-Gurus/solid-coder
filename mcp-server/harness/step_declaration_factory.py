@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from harness.co_located_metric_collection_decoding import (
+    CoLocatedMetricCollectionDecoding,
+)
 from harness.condition_parsing import ConditionParsing
 from harness.for_each_declaration_parsing import ForEachDeclarationParsing
 from harness.operation_step_contract_resolving import (
@@ -25,26 +28,30 @@ class StepDeclarationFactory(StepDeclarationMapping):
         for_each_parser: ForEachDeclarationParsing,
         rule_step_contract_resolver: RuleStepContractResolving,
         operation_step_contract_resolver: OperationStepContractResolving,
+        co_located_metric_decoder: CoLocatedMetricCollectionDecoding,
     ) -> None:
         self._condition_parser = condition_parser
         self._for_each_parser = for_each_parser
         self._rule_step_contract_resolver = rule_step_contract_resolver
         self._operation_step_contract_resolver = operation_step_contract_resolver
+        self._co_located_metric_decoder = co_located_metric_decoder
 
     def map(self, raw: dict) -> StepDeclaration:
         rule_contract = self._rule_step_contract_resolver.resolve(raw)
         operation_contract = self._operation_step_contract_resolver.resolve(raw)
+        outputs = (
+            operation_contract.outputs
+            if operation_contract.step is not None
+            else rule_contract.outputs
+        )
+        step_id = raw.get("id") or "<unknown>"
         return StepDeclaration(
             id=raw.get("id"),
             type=raw.get("type", "agent"),
             prompt=raw.get("prompt"),
             authored_prompt=raw.get("authored_prompt"),
             depends_on=raw.get("depends_on"),
-            outputs=(
-                operation_contract.outputs
-                if operation_contract.step is not None
-                else rule_contract.outputs
-            ),
+            outputs=outputs,
             for_each=(
                 self._for_each_parser.parse(
                     raw.get("id") or "<unknown>",
@@ -72,4 +79,9 @@ class StepDeclarationFactory(StepDeclarationMapping):
             metric_calculation=rule_contract.metric_calculation,
             assessment=rule_contract.assessment,
             operation=operation_contract.step,
+            co_located_metrics=self._co_located_metric_decoder.decode(
+                step_id,
+                outputs,
+                raw.get("metrics"),
+            ),
         )

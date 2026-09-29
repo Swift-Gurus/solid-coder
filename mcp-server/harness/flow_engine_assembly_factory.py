@@ -14,6 +14,20 @@ from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.command_allowlist_validator import CommandAllowlistValidator
 from harness.command_step_shape_validator import CommandStepShapeValidator
 from harness.command_step_value_validator import CommandStepValueValidator
+from harness.co_located_metric_collection_decoder import (
+    CoLocatedMetricCollectionDecoder,
+)
+from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
+from harness.co_located_metric_dependency_rebaser import (
+    CoLocatedMetricDependencyRebaser,
+)
+from harness.co_located_metric_dependency_resolver import (
+    CoLocatedMetricDependencyResolver,
+)
+from harness.co_located_metric_normalizer import CoLocatedMetricNormalizer
+from harness.co_located_metric_owner_validator import CoLocatedMetricOwnerValidator
+from harness.co_located_metric_step_expander import CoLocatedMetricStepExpander
+from harness.co_located_metrics_clearer import CoLocatedMetricsClearer
 from harness.collection_metric_evaluator_factory import (
     CollectionMetricEvaluatorFactory,
 )
@@ -43,6 +57,15 @@ from harness.condition_value_matcher import ConditionValueMatcher
 from harness.conditional_step_instance_builder import ConditionalStepInstanceBuilder
 from harness.dag_runner import DAGRunner
 from harness.data_output_validator import DataOutputValidator
+from harness.dataclass_co_located_metrics_replacer import (
+    DataclassCoLocatedMetricsReplacer,
+)
+from harness.dataclass_include_alias_group_members_appender import (
+    DataclassIncludeAliasGroupMembersAppender,
+)
+from harness.dataclass_step_dependencies_replacer import (
+    DataclassStepDependenciesReplacer,
+)
 from harness.delegate_step_shape_validator import DelegateStepShapeValidator
 from harness.directed_graph_factory import DirectedGraphFactory
 from harness.dynamic_workflow_steps_resolver import DynamicWorkflowStepsResolver
@@ -578,6 +601,22 @@ class FlowEngineAssemblyFactory:
                 step_mapper=StepDeclarationFactory(
                     condition_parser=condition_parser,
                     for_each_parser=for_each_declaration_parser,
+                    co_located_metric_decoder=CoLocatedMetricCollectionDecoder(
+                        decoder=PydanticModelDecoder(
+                            model_type=CoLocatedMetricDeclaration,
+                        ),
+                        condition_parser=condition_parser,
+                        reducer_decoder=CollectionMetricReducerDecoder(
+                            expression_parser=workflow_expression_parser,
+                            condition_parser=condition_parser,
+                            error_factory=error_factory,
+                        ),
+                        contract_assembler=MetricStepContractAssembler(),
+                        expression_parser=workflow_expression_parser,
+                        source_reference_parser=(
+                            collection_source_reference_parser
+                        ),
+                    ),
                     rule_step_contract_resolver=RuleStepContractResolver(
                         metric_decoder=MetricDeclarationDecoder(
                             decoder=PydanticModelDecoder(
@@ -610,6 +649,26 @@ class FlowEngineAssemblyFactory:
                             error_factory
                         ),
                         error_factory=error_factory,
+                    ),
+                ),
+                metric_normalizer=CoLocatedMetricNormalizer(
+                    owner_validator=CoLocatedMetricOwnerValidator(error_factory),
+                    membership_resolver=IncludeGroupMembershipResolver(),
+                    step_expander=CoLocatedMetricStepExpander(
+                        additional_info_output=RuleAdditionalInfoOutputProvider(),
+                    ),
+                    metrics_clearer=CoLocatedMetricsClearer(
+                        metrics_replacer=DataclassCoLocatedMetricsReplacer(),
+                    ),
+                    group_members_appender=(
+                        DataclassIncludeAliasGroupMembersAppender()
+                    ),
+                    dependency_rebaser=CoLocatedMetricDependencyRebaser(
+                        membership_resolver=IncludeGroupMembershipResolver(),
+                        dependency_resolver=(
+                            CoLocatedMetricDependencyResolver()
+                        ),
+                        dependency_replacer=DataclassStepDependenciesReplacer(),
                     ),
                 ),
                 rule_decoder=PydanticModelDecoder(

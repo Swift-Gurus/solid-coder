@@ -17,7 +17,7 @@ from harness.runs_base_dir_resolver import RunsBaseDirResolver
 """
 solid-name: TestEffectiveCollectionMetricPolicyExecution
 solid-category: integration-test
-solid-spec: [SPEC-053, SPEC-054]
+solid-spec: [SPEC-053, SPEC-054, SPEC-058]
 solid-description: Verifies project scoring overrides reach executable collection-backed metrics.
 """
 class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
@@ -157,6 +157,36 @@ class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
         self.assertEqual(result["metrics"][0]["severity"], "COMPLIANT")
         self.assertNotIn("matching_band", result["metrics"][0])
 
+    def test_project_scoring_override_applies_to_co_located_metric(self) -> None:
+        self.workflow_path.write_text(
+            textwrap.dedent(self._compact_workflow()),
+            encoding="utf-8",
+        )
+        started = self.engine.flow_start(str(self.workflow_path))
+        exception = self.engine.flow_next({
+            started.steps[0].instance_id: {
+                "task_sites": [
+                    {"classification": "DETACHED"},
+                    {"classification": "DETACHED"},
+                ]
+            }
+        })
+        completed = self.engine.flow_next({
+            exception.steps[0].instance_id: {
+                "is_exception": False,
+                "additional_info": {
+                    "reasoning": "No whole-rule exception applies.",
+                    "evidence": "The unit performs runtime behavior.",
+                },
+            }
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        result = self._result(started.run_id)
+        self.assertEqual(result["metrics"][0]["value"], 2)
+        self.assertEqual(result["metrics"][0]["severity"], "COMPLIANT")
+        self.assertNotIn("matching_band", result["metrics"][0])
+
     def _result(
         self,
         run_id: str,
@@ -208,6 +238,42 @@ class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
           - id: classify_exception
             type: exception
             depends_on: [maximum_depth]
+            prompt: Classify the whole-rule exception.
+        """
+
+    def _compact_workflow(self) -> str:
+        return """
+        id: detached-task-review
+        name: Detached Task Review
+        max_turns: 5
+        rule: {}
+        steps:
+          - id: analyze_task_sites
+            prompt: Classify every task site.
+            outputs:
+              - name: task_sites
+                type: data
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [classification]
+                    properties:
+                      classification: {type: string}
+            metrics:
+              - id: detached_task_count
+                metric_id: DT-1
+                value: {type: integer, minimum: 0}
+                scoring:
+                  source: task_sites
+                  when:
+                    ref: "{{item.classification}}"
+                    equals: DETACHED
+                  severe: {operator: greater_than_or_equal, value: 1}
+          - id: classify_exception
+            type: exception
+            depends_on: [detached_task_count]
             prompt: Classify the whole-rule exception.
         """
 
