@@ -15,8 +15,8 @@ from harness.comparison_condition import ComparisonCondition
 from harness.comparison_condition_parser import ComparisonConditionParser
 from harness.comparison_operation_parser import ComparisonOperationParser
 from harness.composition_condition_parser import CompositionConditionParser
-from harness.collection_metric_reducer_decoder import (
-    CollectionMetricReducerDecoder,
+from harness.collection_metric_reducer_decoder_factory import (
+    CollectionMetricReducerDecoderFactory,
 )
 from harness.collection_source_reference_parser import (
     CollectionSourceReferenceParser,
@@ -83,7 +83,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     model_type=CoLocatedMetricDeclaration,
                 ),
                 condition_parser=condition_parser,
-                reducer_decoder=CollectionMetricReducerDecoder(
+                reducer_decoder=CollectionMetricReducerDecoderFactory().build(
                     expression_parser=expression_parser,
                     condition_parser=condition_parser,
                     error_factory=error_factory,
@@ -104,7 +104,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     expression_parser=expression_parser,
                     reference_parser=reference_parser,
                     condition_parser=condition_parser,
-                    reducer_decoder=CollectionMetricReducerDecoder(
+                    reducer_decoder=CollectionMetricReducerDecoderFactory().build(
                         expression_parser=expression_parser,
                         condition_parser=condition_parser,
                         error_factory=error_factory,

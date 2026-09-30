@@ -1101,7 +1101,7 @@ Collection-backed metric restrictions:
 - step-level `when` decides whether the metric node runs, whereas
   `scoring.when` decides which source entries contribute to its count.
 
-This is deliberately a filtered count, not a general expression language. It
+Without `scoring.reducer`, this is a filtered count, not a general expression language. It
 does not perform sums, joins, averages, custom code, or inferred arithmetic.
 If a metric needs fields from two analyses, first make an upstream step publish
 one typed collection containing every field required by the filter.
@@ -1181,6 +1181,76 @@ The generated exception submission is:
 
 `additional_info.reasoning` and `additional_info.evidence` are required,
 non-empty strings for auditability.
+
+### Connected-component metrics
+
+Use `component_count` when collection items form groups through shared scalar
+values. The model supplies facts; MCP filters the items, finds intersections,
+merges transitive connections, and scores the number of groups.
+
+```yaml
+- id: analyze_resources
+  type: agent
+  prompt: Classify the resources used by every item and whether that item is excluded.
+  outputs:
+    - name: items
+      type: data
+      schema:
+        type: array
+        items:
+          type: object
+          required: [resources, excluded]
+          properties:
+            resources:
+              type: array
+              items: {type: string}
+            excluded: {type: boolean}
+  metrics:
+    - id: groups
+      metric_id: RESOURCE-GROUPS
+      value: {type: integer, minimum: 0}
+      scoring:
+        source: items
+        when:
+          ref: "{{item.excluded}}"
+          equals: false
+        reducer:
+          type: component_count
+          relation:
+            operator: intersects
+            left: "{{left.resources}}"
+            right: "{{right.resources}}"
+        severe: {operator: greater_than_or_equal, value: 2}
+```
+
+The same reducer works on an explicit `type: metric` step with its ordinary
+`scoring.source` reference, including projected child-workflow outputs.
+
+- `left` and `right` refer to the two compared items. Their fields must be
+  declared arrays with a scalar item schema (`string`, `integer`, `number`,
+  `boolean`, or `null`). They are references, not executable expressions.
+- `scoring.when` filters first. An excluded item cannot bridge two groups.
+- `{cache}`, `{cache, storage}`, and `{storage}` form one transitive group.
+- Empty selected input produces zero. Each isolated item, including an item
+  with an empty set, contributes one group.
+- Equal names or equal item contents do not collapse source items. Repeated
+  set members do not add groups. Comparisons use strict scalar identity.
+- With different projection paths, either directional intersection connects
+  the pair. Reordering input therefore does not change the grouping.
+- The metric must be an integer. No `value` projection, `empty_value`, or
+  additional reducer fields are accepted for `component_count`.
+- `left` and `right` are local to this relation, not new roots for ordinary
+  workflow `when` conditions.
+
+Events retain `metric_derivation.component_evidence`: projected sets, matching
+source-index pairs, and ordered component indexes. Final rule results retain
+the same data at `metrics[].derivation.component_evidence`, along with the
+relation at `metrics[].derivation.reducer.relation`. Replay restores completed
+evidence without recomputing it. This reducer adds no model counting turn.
+
+For SRP-2, a workflow can publish method-to-variable facts and filter lifecycle
+and orchestrator methods using `scoring.when`. Those meanings stay in the
+workflow; the engine only sees generic sets and source indexes.
 
 ## Project review policy
 

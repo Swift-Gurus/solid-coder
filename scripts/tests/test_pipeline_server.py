@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SEARCH_FIXTURES = ROOT / "skills" / "validate-plan" / "scripts" / "test_fixtures"
 sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "pipeline"))
 
@@ -117,7 +118,7 @@ class TestSplitImplementationPlan(unittest.TestCase):
 
 class TestSearchCodebase(unittest.TestCase):
     def test_no_terms_returns_error(self):
-        result = tools["search_codebase"](sources_dir=str(ROOT))
+        result = tools["search_codebase"](sources_dir=str(SEARCH_FIXTURES))
         self.assertIsInstance(result, str)
         self.assertIn("Error", result)
 
@@ -127,26 +128,44 @@ class TestSearchCodebase(unittest.TestCase):
         self.assertIn("Error", result)
 
     def test_tag_search_returns_text(self):
-        result = tools["search_codebase"](sources_dir=str(ROOT), tags=["server", "pipeline", "loads"], min_matches=1)
+        result = tools["search_codebase"](
+            sources_dir=str(SEARCH_FIXTURES), tags=["network", "product", "fetches"], min_matches=1,
+        )
         self.assertIsInstance(result, str)
+        self.assertIn("unit: ProductFetchService.swift\n", result)
+        self.assertIn(f"path: {SEARCH_FIXTURES / 'ProductFetchService.swift'}", result)
 
     def test_plan_path_extracts_terms(self):
-        import tempfile, json as _json
-        arch = {"components": [{"name": "MCPServer", "category": "service",
-                                "interfaces": ["Serving"], "stack": [], "dependencies": []}]}
-        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as f:
-            _json.dump(arch, f); plan_path = f.name
-        result = tools["search_codebase"](sources_dir=str(ROOT), plan_path=plan_path, min_matches=1)
+        import json
+        arch = {"components": [{"name": "ProductFetchService", "category": "network",
+                                "interfaces": ["ProductReading"], "stack": [], "dependencies": []}]}
+        with tempfile.TemporaryDirectory() as temporary:
+            plan_path = Path(temporary) / "architecture.json"
+            plan_path.write_text(json.dumps(arch), encoding="utf-8")
+            result = tools["search_codebase"](
+                sources_dir=str(SEARCH_FIXTURES), plan_path=str(plan_path), min_matches=1,
+            )
         self.assertIsInstance(result, str)
+        self.assertIn("unit: ProductFetchService.swift\n", result)
 
     def test_no_matches_returns_message(self):
-        result = tools["search_codebase"](sources_dir=str(ROOT), tags=["zzz_nonexistent_term"], min_matches=1)
-        self.assertIn("No files matched", result)
+        result = tools["search_codebase"](
+            sources_dir=str(SEARCH_FIXTURES), tags=["zzz_nonexistent_term"], min_matches=1,
+        )
+        self.assertEqual(result, f"No files matched in {SEARCH_FIXTURES} (7 files scanned).")
 
-    def test_output_has_instructions(self):
-        result = tools["search_codebase"](sources_dir=str(ROOT), tags=["server", "loads", "strips"], min_matches=1)
-        if "No files" not in result and "Error" not in result and "Read" not in result:
-            self.assertIn("Review", result)
+    def test_output_has_candidate_summary(self):
+        result = tools["search_codebase"](
+            sources_dir=str(SEARCH_FIXTURES), tags=["network"], min_matches=1,
+        )
+        self.assertEqual(result, "\n".join([
+            "Here is what we found:",
+            "",
+            "candidate_id: candidate-1",
+            "unit: ProductFetchService.swift",
+            "description: Fetches product data from REST API with pagination",
+            f"path: {SEARCH_FIXTURES / 'ProductFetchService.swift'}",
+        ]))
 
 
 if __name__ == "__main__":

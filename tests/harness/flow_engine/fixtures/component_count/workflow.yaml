@@ -1,0 +1,50 @@
+id: component-count-contract
+name: Shared Resource Groups
+max_turns: 4
+rule: {}
+steps:
+  - id: classify
+    type: agent
+    prompt: |
+      Classify the resource sets below as one complete items array, in order.
+      Each item has name, resources, and excluded fields.
+      A uses cache; B uses cache and storage; C uses storage;
+      D uses formatter; E uses storage and formatter but is excluded.
+      All other items have excluded false.
+    outputs:
+      - name: items
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, resources, excluded]
+            properties:
+              name: {type: string}
+              resources:
+                type: array
+                items: {type: string}
+              excluded: {type: boolean}
+    metrics:
+      - id: groups
+        metric_id: RESOURCE-GROUPS
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: items
+          when:
+            ref: "{{item.excluded}}"
+            equals: false
+          reducer:
+            type: component_count
+            relation:
+              operator: intersects
+              left: "{{left.resources}}"
+              right: "{{right.resources}}"
+          severe: {operator: greater_than_or_equal, value: 2}
+  - id: classify_exception
+    type: exception
+    depends_on: [groups]
+    prompt: |
+      Classify this test fixture as is_exception false, with reasoning and
+      evidence explaining that shared resource grouping has no exemption here.

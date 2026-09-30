@@ -46,19 +46,21 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
     def setUp(self) -> None:
         interpolation_errors = InterpolationErrorFactory()
         condition_evaluator = FlowEngineAssemblyFactory().build().condition_evaluator
+        nested_value_resolver = NestedPathResolver(
+            component_accessor=NestedComponentAccessor(
+                attribute_reader=BuiltinAttributeReader()
+            ),
+            error_factory=interpolation_errors,
+        )
         expression_evaluator = ExpressionResolver(
                 step_output_resolver=Mock(),
-                nested_value_resolver=NestedPathResolver(
-                    component_accessor=NestedComponentAccessor(
-                        attribute_reader=BuiltinAttributeReader()
-                    ),
-                    error_factory=interpolation_errors,
-                ),
+                nested_value_resolver=nested_value_resolver,
                 error_factory=interpolation_errors,
             )
         self.sut = CollectionMetricEvaluatorFactory().build(
             condition_evaluator=condition_evaluator,
             expression_evaluator=expression_evaluator,
+            nested_value_resolver=nested_value_resolver,
             value_comparator=StrictValueComparator(),
             context_resolver=WorkflowStepContextResolver(
                 WorkflowResultsVisibilitySelector()

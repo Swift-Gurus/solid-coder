@@ -34,7 +34,7 @@ from harness.collection_metric_evaluator_factory import (
 from harness.collection_reference_validator_factory import (
     CollectionReferenceValidatorFactory,
 )
-from harness.collection_metric_reducer_decoder import CollectionMetricReducerDecoder
+from harness.collection_metric_reducer_decoder_factory import CollectionMetricReducerDecoderFactory
 from harness.collection_source_reference_parser import (
     CollectionSourceReferenceParser,
 )
@@ -606,7 +606,7 @@ class FlowEngineAssemblyFactory:
                             model_type=CoLocatedMetricDeclaration,
                         ),
                         condition_parser=condition_parser,
-                        reducer_decoder=CollectionMetricReducerDecoder(
+                        reducer_decoder=CollectionMetricReducerDecoderFactory().build(
                             expression_parser=workflow_expression_parser,
                             condition_parser=condition_parser,
                             error_factory=error_factory,
@@ -625,7 +625,7 @@ class FlowEngineAssemblyFactory:
                             expression_parser=workflow_expression_parser,
                             reference_parser=collection_source_reference_parser,
                             condition_parser=condition_parser,
-                            reducer_decoder=CollectionMetricReducerDecoder(
+                            reducer_decoder=CollectionMetricReducerDecoderFactory().build(
                                 expression_parser=workflow_expression_parser,
                                 condition_parser=condition_parser,
                                 error_factory=error_factory,
@@ -911,6 +911,7 @@ class FlowEngineAssemblyFactory:
                             evaluator=CollectionMetricEvaluatorFactory().build(
                                 condition_evaluator=condition_evaluator,
                                 expression_evaluator=expression_resolver,
+                                nested_value_resolver=nested_value_resolver,
                                 value_comparator=strict_value_comparator,
                                 context_resolver=workflow_step_context_resolver,
                                 error_factory=error_factory,

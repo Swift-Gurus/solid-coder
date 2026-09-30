@@ -60,6 +60,7 @@ class SourceSearchOperation:
             )
         ]
         candidates: list[SourceSearchCandidate] = []
+        files_with_frontmatter = 0
         for snapshot, origin in [
             *[
                 (snapshot, SourceCandidateOrigin.PROPOSED)
@@ -70,7 +71,9 @@ class SourceSearchOperation:
                 for snapshot in repository_snapshots
             ],
         ]:
-            for unit in self._units.resolve(snapshot):
+            units = self._units.resolve(snapshot)
+            files_with_frontmatter += int(any(unit.frontmatter.description for unit in units))
+            for unit in units:
                 if self._exclusion.is_excluded(
                     root,
                     unit,
@@ -105,4 +108,5 @@ class SourceSearchOperation:
                 len(proposed_snapshots)
                 + len(repository_snapshots)
             ),
+            files_with_frontmatter=files_with_frontmatter,
         )

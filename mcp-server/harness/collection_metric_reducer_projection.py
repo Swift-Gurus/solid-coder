@@ -5,6 +5,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
+from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
 
 
 """
@@ -21,3 +22,4 @@ class CollectionMetricReducerProjection(BaseModel):
     empty_value: Optional[Union[int, float]] = None
     numerator_when: Optional[dict[str, object]] = Field(default=None)
     denominator_when: Optional[dict[str, object]] = Field(default=None)
+    relation: Optional[PairwiseRelationDeclaration] = None

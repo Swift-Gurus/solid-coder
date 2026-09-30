@@ -2,9 +2,8 @@
 
 from harness.condition_serializing import ConditionSerializing
 from harness.step_def import StepDef
-from harness.step_output_reference import StepOutputReference
+from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
-from harness.workflow_expression import WorkflowExpression
 from harness.workflow_expression_serializing import WorkflowExpressionSerializing
 
 
@@ -52,19 +51,8 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
         )
         calculation = step.metric_calculation
         if calculation is not None:
-            reference = calculation.source
-            source_expression = (
-                f"steps.{reference.step_id}.outputs.{reference.output_name}"
-                if isinstance(reference, StepOutputReference)
-                else (
-                    f"workflows.{reference.workflow_alias}.outputs."
-                    f"{reference.output_name}"
-                )
-            )
             scoring["source"] = self._expression_serializer.serialize(
-                WorkflowExpression(
-                    value=source_expression
-                )
+                calculation.source.expression
             )
             if calculation.condition is not None:
                 scoring["when"] = self._condition_serializer.serialize(
@@ -73,6 +61,12 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
             reducer = calculation.reducer
             if reducer is not None:
                 serialized_reducer = {"type": reducer.type.value}
+                if reducer.relation is not None:
+                    serialized_reducer["relation"] = PairwiseRelationDeclaration(
+                        operator=reducer.relation.operator,
+                        left=self._expression_serializer.serialize(reducer.relation.left),
+                        right=self._expression_serializer.serialize(reducer.relation.right),
+                    ).model_dump(mode="json")
                 if reducer.value is not None:
                     serialized_reducer["value"] = (
                         self._expression_serializer.serialize(reducer.value)

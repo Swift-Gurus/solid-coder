@@ -62,7 +62,7 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
 
         with self.assertRaisesRegex(
             FlowValidationError,
-            "maximum reducer requires a value reference",
+            r"maximum\.value\s+Field required",
         ):
             self._load(workflow)
 
@@ -88,7 +88,7 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
 
         with self.assertRaisesRegex(
             FlowValidationError,
-            "ratio reducer must not declare a value reference",
+            r"ratio\.value\s+Extra inputs are not permitted",
         ):
             self._load(workflow)
 

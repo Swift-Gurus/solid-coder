@@ -3,9 +3,11 @@
 from typing import Optional
 
 from harness.collection_metric_calculation import CollectionMetricCalculation
+from harness.collection_source_reference import CollectionSourceReference
 from harness.condition_serializing import ConditionSerializing
 from harness.metric_derivation_rendering import MetricDerivationRendering
-from harness.step_output_reference import StepOutputReference
+from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
+from harness.pydantic_type_adapter_encoder import StructuredModelEncoding
 
 
 """
@@ -15,8 +17,13 @@ solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Renders durable collection metric derivation audit payloads.
 """
 class MetricDerivationRenderer(MetricDerivationRendering):
-    def __init__(self, condition_serializer: ConditionSerializing) -> None:
+    def __init__(
+        self,
+        condition_serializer: ConditionSerializing,
+        source_encoder: StructuredModelEncoding[CollectionSourceReference],
+    ) -> None:
         self._condition_serializer = condition_serializer
+        self._source_encoder = source_encoder
 
     def render(
         self,
@@ -32,7 +39,7 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                 if reducer is not None
                 else "collection_count"
             ),
-            "source": self._source(calculation),
+            "source": self._source_encoder.encode(calculation.source),
             "source_size": calculation.source_size,
             "condition": (
                 self._condition_serializer.serialize(condition)
@@ -48,6 +55,15 @@ class MetricDerivationRenderer(MetricDerivationRendering):
             "reducer": (
                 {
                     "type": reducer.type.value,
+                    "relation": (
+                        PairwiseRelationDeclaration(
+                            operator=reducer.relation.operator,
+                            left=reducer.relation.left.value,
+                            right=reducer.relation.right.value,
+                        ).model_dump(mode="json")
+                        if reducer.relation is not None
+                        else None
+                    ),
                     "value": (
                         reducer.value.value
                         if reducer.value is not None
@@ -88,18 +104,9 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                 for evidence in calculation.denominator_condition_evidence
             ],
             "zero_denominator": calculation.zero_denominator,
-        }
-
-    @staticmethod
-    def _source(calculation: CollectionMetricCalculation) -> dict:
-        source = calculation.source
-        if isinstance(source, StepOutputReference):
-            return {
-                "step_id": source.step_id,
-                "output_name": source.output_name,
-            }
-        return {
-            "kind": "workflow_output",
-            "workflow_alias": source.workflow_alias,
-            "output_name": source.output_name,
+            "component_evidence": (
+                calculation.component_evidence.model_dump(mode="json")
+                if calculation.component_evidence is not None
+                else None
+            ),
         }

@@ -7,6 +7,7 @@ from typing import Optional, Union
 
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
 from harness.condition_declaration import ConditionDeclaration
+from harness.pairwise_relation import PairwiseRelation
 from harness.workflow_expression import WorkflowExpression
 
 
@@ -23,3 +24,4 @@ class CollectionMetricReducer:
     empty_value: Optional[Union[int, float]] = None
     numerator_condition: Optional[ConditionDeclaration] = None
     denominator_condition: Optional[ConditionDeclaration] = None
+    relation: Optional[PairwiseRelation] = None

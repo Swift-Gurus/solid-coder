@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from search.codebase_search_output_rendering import CodebaseSearchOutputRendering
-from source.source_search_output import SourceSearchOutput
+from source.source_search_results import SourceSearchResults
 
 
 """
@@ -15,7 +15,7 @@ solid-description: Presents stable candidate IDs, reusable source units, descrip
 class CodebaseSearchOutputRenderer(CodebaseSearchOutputRendering):
     def render(
         self,
-        output: SourceSearchOutput,
+        output: SourceSearchResults,
         project_root: Path,
     ) -> str:
         if not output.candidates:

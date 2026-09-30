@@ -13,7 +13,8 @@ from source.source_candidate_origin import SourceCandidateOrigin  # noqa: E402
 from source.source_search_candidate import SourceSearchCandidate  # noqa: E402
 from source.source_search_match import SourceSearchMatch  # noqa: E402
 from source.source_search_match_kind import SourceSearchMatchKind  # noqa: E402
-from source.source_search_output import SourceSearchOutput  # noqa: E402
+from source.source_search_results import SourceSearchResults  # noqa: E402
+from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory  # noqa: E402
 
 
 """
@@ -28,7 +29,7 @@ class TestPresentSourceSearchOperation(unittest.TestCase):
         output = PresentSourceSearchOperation(
             renderer=CodebaseSearchOutputRenderer(),
             project_directory=ProjectDirectory(path=Path("/project")),
-        ).execute(SourceSearchOutput(
+        ).execute(SourceSearchResults(
             candidates=[SourceSearchCandidate(
                 unit="ExistingCatalog",
                 unit_identity="class:ExistingCatalog:6",
@@ -60,6 +61,26 @@ class TestPresentSourceSearchOperation(unittest.TestCase):
         self.assertNotIn("unit_identity", output.text)
         self.assertNotIn("content_sha256", output.text)
         self.assertNotIn("matches", output.text)
+
+    def test_registered_presentation_accepts_existing_workflow_input(self) -> None:
+        registration = next(
+            registration
+            for registration in SourceOperationRegistrationsFactory(
+                project_directory=ProjectDirectory(path=Path("/project")),
+            ).make()
+            if registration.name == "source.present_search"
+        )
+
+        operation_input = registration.input_model.model_validate({
+            "candidates": [],
+            "files_scanned": 4,
+        })
+        output = registration.handler.execute(operation_input)
+
+        self.assertEqual(
+            output.text,
+            "No files matched in /project (4 files scanned).",
+        )
 
 
 if __name__ == "__main__":

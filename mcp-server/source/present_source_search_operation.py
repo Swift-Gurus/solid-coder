@@ -2,7 +2,7 @@
 
 from harness.project_context import ProjectDirectoryReading
 from search.codebase_search_output_rendering import CodebaseSearchOutputRendering
-from source.source_search_output import SourceSearchOutput
+from source.source_search_results import SourceSearchResults
 from source.source_search_presentation import SourceSearchPresentation
 
 
@@ -23,7 +23,7 @@ class PresentSourceSearchOperation:
 
     def execute(
         self,
-        operation_input: SourceSearchOutput,
+        operation_input: SourceSearchResults,
     ) -> SourceSearchPresentation:
         return SourceSearchPresentation(
             text=self._renderer.render(

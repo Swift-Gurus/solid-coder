@@ -42,6 +42,26 @@ class CollectionMetricItemContractValidator(
             )
         if reducer is None:
             return
+        relation = reducer.relation
+        if relation is not None:
+            self._item_schema_validator.validate_reference(
+                target_id,
+                "reducer relation.left",
+                relation.left,
+                item_schema,
+                allowed_types=["array"],
+                root="left",
+                allowed_item_types=["integer", "number", "string", "boolean", "null"],
+            )
+            self._item_schema_validator.validate_reference(
+                target_id,
+                "reducer relation.right",
+                relation.right,
+                item_schema,
+                allowed_types=["array"],
+                root="right",
+                allowed_item_types=["integer", "number", "string", "boolean", "null"],
+            )
         if reducer.value is not None:
             allowed_types = (
                 ["integer", "number"]

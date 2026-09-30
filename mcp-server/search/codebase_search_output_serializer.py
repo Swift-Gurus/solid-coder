@@ -4,9 +4,6 @@ from search.codebase_search_output_serializing import CodebaseSearchOutputSerial
 from search.codebase_search_query_kind import CodebaseSearchQueryKind
 from source.source_search_output import SourceSearchOutput
 
-_MISSING_DESCRIPTION = "No solid-description frontmatter."
-
-
 """
 solid-name: CodebaseSearchOutputSerializer
 solid-category: serializer
@@ -40,11 +37,7 @@ class CodebaseSearchOutputSerializer(CodebaseSearchOutputSerializing):
             "matches": matches,
             "summary": {
                 "total_files_scanned": output.files_scanned,
-                "files_with_frontmatter": len([
-                    candidate
-                    for candidate in output.candidates
-                    if candidate.description != _MISSING_DESCRIPTION
-                ]),
-                "files_matched": len(matches),
+                "files_with_frontmatter": output.files_with_frontmatter,
+                "files_matched": len({candidate.path for candidate in output.candidates}),
             },
         }

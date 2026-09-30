@@ -47,9 +47,11 @@ class ConditionItemSchemaValidator(ConditionItemSchemaValidating):
         reference: WorkflowExpression,
         item_schema: WorkflowDataSchema,
         allowed_types: Optional[list[str]] = None,
+        root: str = "item",
+        allowed_item_types: Optional[list[str]] = None,
     ) -> None:
         components = reference.value.split(".")
-        if not components or components[0] != "item":
+        if not components or components[0] != root:
             return
         current_schema = item_schema
         for field_name in components[1:]:
@@ -64,4 +66,12 @@ class ConditionItemSchemaValidator(ConditionItemSchemaValidating):
             raise self._error_factory.create(
                 f"Metric step '{step_id}' {reference_name} must reference an "
                 f"item field with schema type {' or '.join(allowed_types)}"
+            )
+        if allowed_item_types is not None and (
+            current_schema.items is None
+            or current_schema.items.type not in allowed_item_types
+        ):
+            raise self._error_factory.create(
+                f"Metric step '{step_id}' {reference_name} must reference an "
+                "array with a declared scalar item schema"
             )

@@ -31,4 +31,5 @@ class SourceSearchOutputFilter(SourceSearchOutputFiltering):
                 )
             ],
             files_scanned=output.files_scanned,
+            files_with_frontmatter=output.files_with_frontmatter,
         )

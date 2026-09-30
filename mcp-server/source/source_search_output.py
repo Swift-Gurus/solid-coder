@@ -1,18 +1,15 @@
 """Defines typed repository source-search output."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import Field
 
-from source.source_search_candidate import SourceSearchCandidate
+from source.source_search_results import SourceSearchResults
 
 
 """
 solid-name: SourceSearchOutput
 solid-category: model
 solid-spec: [SPEC-040]
-solid-description: Returns stable typed search candidates and the auditable scan count.
+solid-description: Reports source-search candidates, scanned files, and documented-file totals for audit summaries.
 """
-class SourceSearchOutput(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    candidates: list[SourceSearchCandidate]
-    files_scanned: int
+class SourceSearchOutput(SourceSearchResults):
+    files_with_frontmatter: int = Field(ge=0)

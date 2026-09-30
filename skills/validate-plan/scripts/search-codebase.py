@@ -20,9 +20,9 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "search"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from codebase_searcher import search_raw  # noqa: E402
+from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory  # noqa: E402
 
 
 def _parse_args():
@@ -64,10 +64,10 @@ def main():
         sys.exit(1)
 
     synonyms_set, spec_numbers = _build_params(args)
-    result = search_raw(
+    result = RawCodebaseSearcherFactory().make().search_raw(
         sources_dir=str(sources),
-        tags=list(synonyms_set),
-        spec_numbers=list(spec_numbers),
+        tags=sorted(synonyms_set),
+        spec_numbers=sorted(spec_numbers),
         min_matches=args.min_matches,
     )
     print(json.dumps(result, indent=2))

@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Protocol
 
-from source.source_search_output import SourceSearchOutput
+from source.source_search_results import SourceSearchResults
 
 
 """
@@ -15,6 +15,6 @@ solid-description: Contract for rendering typed source-search results for LLM in
 class CodebaseSearchOutputRendering(Protocol):
     def render(
         self,
-        output: SourceSearchOutput,
+        output: SourceSearchResults,
         project_root: Path,
     ) -> str: ...

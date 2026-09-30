@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from harness.workflow_expression import WorkflowExpression
+
 
 """
 solid-name: StepOutputReference
@@ -13,3 +15,7 @@ solid-description: Identifies one local workflow step and one declared output se
 class StepOutputReference:
     step_id: str
     output_name: str
+
+    @property
+    def expression(self) -> WorkflowExpression:
+        return WorkflowExpression(f"steps.{self.step_id}.outputs.{self.output_name}")

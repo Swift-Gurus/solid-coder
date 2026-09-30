@@ -5,6 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from pydantic import TypeAdapter
+
+from harness.collection_source_reference import CollectionSourceReference
+from harness.pydantic_type_adapter_encoder import PydanticTypeAdapterEncoder
+
 from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
 from harness.active_run_lock_clearer import ActiveRunLockClearer
@@ -203,7 +208,10 @@ class FlowRunOrchestratorFactory:
         output_recorder = OutputRecorder(
             event_appender=assembly.event_appender,
             derivation_renderer=MetricDerivationRenderer(
-                condition_serializer
+                condition_serializer,
+                source_encoder=PydanticTypeAdapterEncoder(
+                    adapter=TypeAdapter(CollectionSourceReference),
+                ),
             ),
         )
         completion_checker = RunCompletionChecker(

@@ -12,6 +12,7 @@ from harness.collection_metric_reducer_projection import (
 )
 from harness.collection_source_reference import CollectionSourceReference
 from harness.condition_evidence import ConditionEvidence
+from harness.component_metrics.component_metric_evidence import ComponentMetricEvidence
 
 
 """
@@ -43,3 +44,4 @@ class CollectionMetricDerivationProjection(BaseModel):
         default_factory=list
     )
     zero_denominator: bool = False
+    component_evidence: Optional[ComponentMetricEvidence] = None

@@ -6,7 +6,6 @@ This module maps mode → (profile, exclude sections, aggregation strategy).
 Imported by:
   - server.py           (load_rules_for_mode tool)
   - gateway.py          (CLI alias)
-  - scripts/token-cost-by-mode.py (doc generator)
 
 Change a mode's load shape in ONE place.
 """
@@ -55,16 +54,6 @@ MODES = {
         "description": "`synthesize-fixes` — holistic fix planner (loop loads all principles into one context)",
         "loads": ["rule", "code_rules", "instructions"],
     },
-}
-
-
-# Human-readable labels for the "Loads" column in the generated doc.
-SECTION_LABELS = {
-    "rule": "rule.md",
-    "code_rules": "code/instructions.md",
-    "instructions": "fix or review/instructions.md",
-    "examples": "Examples/",
-    "patterns": "required_patterns",
 }
 
 

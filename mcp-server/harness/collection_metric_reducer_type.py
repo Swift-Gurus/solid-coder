@@ -14,3 +14,4 @@ class CollectionMetricReducerType(str, Enum):
     MINIMUM = "minimum"
     DISTINCT_COUNT = "distinct_count"
     RATIO = "ratio"
+    COMPONENT_COUNT = "component_count"

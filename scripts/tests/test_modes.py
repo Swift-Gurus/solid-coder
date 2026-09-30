@@ -8,6 +8,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
 import modes  # noqa: E402
 
 
+EXPECTED_SECTIONS = frozenset({"rule", "code_rules", "instructions", "examples", "patterns"})
+
+
 class TestModesRegistry(unittest.TestCase):
     def test_all_expected_modes_present(self):
         expected = {"code", "review", "planner", "synth-impl", "synth-fixes"}
@@ -31,19 +34,17 @@ class TestModesRegistry(unittest.TestCase):
                 self.assertIn(cfg["aggregation"], ["all", "per-principle"])
 
     def test_loads_sections_are_known(self):
-        valid_sections = set(modes.SECTION_LABELS.keys())
         for name, cfg in modes.MODES.items():
             with self.subTest(mode=name):
                 for section in cfg["loads"]:
-                    self.assertIn(section, valid_sections,
+                    self.assertIn(section, EXPECTED_SECTIONS,
                                   f"{name} declares unknown section: {section}")
 
     def test_exclude_sections_are_known(self):
-        valid_sections = set(modes.SECTION_LABELS.keys())
         for name, cfg in modes.MODES.items():
             with self.subTest(mode=name):
                 for section in cfg["exclude"]:
-                    self.assertIn(section, valid_sections,
+                    self.assertIn(section, EXPECTED_SECTIONS,
                                   f"{name} excludes unknown section: {section}")
 
     def test_resolve_returns_config(self):
@@ -60,13 +61,6 @@ class TestModesRegistry(unittest.TestCase):
 
     def test_review_is_per_principle(self):
         self.assertEqual(modes.MODES["review"]["aggregation"], "per-principle")
-
-    def test_section_labels_have_no_pipe(self):
-        # pipe chars break markdown tables
-        for key, label in modes.SECTION_LABELS.items():
-            with self.subTest(section=key):
-                self.assertNotIn("|", label)
-
 
 if __name__ == "__main__":
     unittest.main()

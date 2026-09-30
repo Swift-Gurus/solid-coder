@@ -118,17 +118,9 @@ Each principle folder contains: `rule.md` (metrics + severity bands), `fix/instr
 | `SwiftUI` | View best practices — body complexity, view purity, modifier chains, VM injection |
 | `Frontmatter` | Every type declaration carries correct `solid-` frontmatter — presence, name match, category, stack, description quality |
 
-### Token Cost
+### Mode Load Profiles
 
-Rule docs are injected into the context window on every pipeline run. Budget accordingly against the 200k context ceiling.
-
-* **Per-principle × mode table** (how many tokens each principle costs in each mode): see docs/token-cost-by-mode.md
-
-* **Per-folder / per-file breakdown** (drill down into which files drive cost): see docs/token-budget.md
-
-  * Regenerate with: `python3 scripts/token-budget.py --out .claude/docs/token-budget.md`
-
-**Mode load profiles** (what each pipeline mode includes from a principle folder):
+What each pipeline mode includes from a principle folder:
 
 | Mode                                        | rule.md | code/instructions.md | fix/instructions.md | review/instructions.md | Examples | required\_patterns |
 | ------------------------------------------- | :-----: | :------------------: | :-----------------: | :--------------------: | :------: | :----------------: |
@@ -167,6 +159,3 @@ Code-smells has no `review/` subfolder, so it is not active in review mode.
 | docs/improvements-partial.md   | Partially implemented improvements (12 items)                                                                               |
 | docs/improvements-archive.md   | Completed/resolved improvements (12 items)                                                                                  |
 | docs/create-type-notes.md      | **Read before modifying** **`create-type`** — hardcoded dependencies on its vocabulary (e.g. `VALID_STACKS`)                |
-| docs/token-cost-by-mode.md     | Per-principle × pipeline-mode token cost table                                                                              |
-| docs/token-budget.md           | Auto-generated per-folder / per-file token breakdown of `references/principles/` (run `scripts/token-budget.py` to refresh) |
-

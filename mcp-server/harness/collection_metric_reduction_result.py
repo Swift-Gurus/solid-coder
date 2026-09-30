@@ -1,12 +1,13 @@
 """Defines the deterministic result of one collection metric reducer."""
 
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Optional, Union
 
 from harness.collection_metric_projection_evidence import (
     CollectionMetricProjectionEvidence,
 )
 from harness.condition_evidence import ConditionEvidence
+from harness.component_metrics.component_metric_evidence import ComponentMetricEvidence
 
 
 """
@@ -31,3 +32,4 @@ class CollectionMetricReductionResult:
         default_factory=list
     )
     zero_denominator: bool = False
+    component_evidence: Optional[ComponentMetricEvidence] = None

@@ -29,4 +29,6 @@ class ConditionItemSchemaValidating(Protocol):
         reference: WorkflowExpression,
         item_schema: WorkflowDataSchema,
         allowed_types: Optional[list[str]] = None,
+        root: str = "item",
+        allowed_item_types: Optional[list[str]] = None,
     ) -> None: ...

@@ -29,4 +29,4 @@ When **creating or modifying** any `.py` or `.sh` script in the repo:
 
 **Scope-specific notes**:
 - `mcp-server/` — mode registry changes (`modes.py`) require updated `test_modes.py` assertions. Gateway/server signature changes must be verified via a direct `gateway.py` subprocess call.
-- Hook-facing wrappers (e.g. `scripts/regen-token-docs.py`) — test the JSON output shape and the `hookSpecificOutput` field.
+- Hook-facing wrappers — test the JSON output shape and the `hookSpecificOutput` field.

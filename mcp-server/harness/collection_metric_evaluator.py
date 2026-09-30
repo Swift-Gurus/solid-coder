@@ -105,4 +105,7 @@ class CollectionMetricEvaluator(CollectionMetricEvaluating):
             zero_denominator=(
                 reduction.zero_denominator if reduction is not None else False
             ),
+            component_evidence=(
+                reduction.component_evidence if reduction is not None else None
+            ),
         )

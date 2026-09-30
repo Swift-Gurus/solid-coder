@@ -53,12 +53,15 @@ def test_matches_cache_with_persistence():
     assert any("CacheService.swift" in p for p in paths), f"Expected CacheService in {paths}"
 
 
-def test_no_frontmatter_excluded():
-    """NoFrontmatter.swift should never appear in matches."""
-    code, out = run_script(["plain", "model", "string", "foundation"])
+def test_no_frontmatter_matches_symbols_with_explicit_missing_description():
+    """Undocumented source remains discoverable through its declared symbols."""
+    code, out = run_script(["PlainModel"])
     assert code == 0
-    paths = [m["path"] for m in out["matches"]]
-    assert not any("NoFrontmatter" in p for p in paths), f"NoFrontmatter should not match: {paths}"
+    assert len(out["matches"]) == 1
+    match = out["matches"][0]
+    assert match["path"] == os.path.join(FIXTURES, "NoFrontmatter.swift")
+    assert match["description"] == "No solid-description frontmatter."
+    assert match["matched_terms"] == ["plainmodel"]
 
 
 def test_no_matches_for_unrelated_synonyms():
@@ -166,15 +169,18 @@ def test_block_comment_frontmatter():
 
 
 def test_multiple_frontmatter_blocks_in_one_file():
-    """MultiBlock.swift has two frontmatter blocks — both should contribute matched terms."""
+    """Each frontmatter unit retains its own description and matching terms."""
     code, out = run_script(["navigation", "dashboard", "analytics", "screen"])
     assert code == 0
-    paths = [m["path"] for m in out["matches"]]
-    assert any("MultiBlock.swift" in p for p in paths), f"Expected MultiBlock in {paths}"
-    match = next(m for m in out["matches"] if "MultiBlock" in m["path"])
-    # 'navigation' comes from first block, 'analytics'/'screen' from second
-    assert "navigation" in match["matched_terms"], f"Expected 'navigation' in {match['matched_terms']}"
-    assert "screen" in match["matched_terms"], f"Expected 'screen' in {match['matched_terms']}"
+    matches = [m for m in out["matches"] if "MultiBlock.swift" in m["path"]]
+    assert len(matches) == 2
+    first = next(m for m in matches if m["unit"] == "FirstView")
+    second = next(m for m in matches if m["unit"] == "SecondView")
+    assert first["matched_terms"] == ["navigation"]
+    assert first["description"] == "Renders a navigation header with back button"
+    assert second["matched_terms"] == ["analytics", "dashboard", "screen"]
+    assert second["description"] == "Main dashboard screen showing analytics data"
+    assert out["summary"]["files_matched"] == 1
 
 
 def test_multi_block_file_counted_once():
