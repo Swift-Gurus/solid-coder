@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import sys
-import tempfile
 from pathlib import Path
 
 _HARNESS_DIR = Path(__file__).resolve().parents[1]
@@ -17,7 +16,6 @@ from dry_candidate_assessment import DRYCandidateAssessment  # noqa: E402
 from dry_repository_scenario_expectation import (  # noqa: E402
     DRYRepositoryScenarioExpectation,
 )
-from dry_rule_workflow_parameters import DRYRuleWorkflowParameters  # noqa: E402
 from live_rule_validation_expectation import (  # noqa: E402
     LiveRuleValidationExpectation,
 )
@@ -25,16 +23,7 @@ from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
 from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase  # noqa: E402
-from harness.rule_applicability_context import RuleApplicabilityContext  # noqa: E402
-from review.normalized_review_unit import NormalizedReviewUnit  # noqa: E402
-from source.file_analysis_source import FileAnalysisSource  # noqa: E402
-from source.prepare_search_targets_input import PrepareSearchTargetsInput  # noqa: E402
-from source.prepare_search_targets_operation_factory import (  # noqa: E402
-    PrepareSearchTargetsOperationFactory,
-)
-from source.search_target_granularity import SearchTargetGranularity  # noqa: E402
 from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
-from source.source_search_context import SourceSearchContext  # noqa: E402
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -83,42 +72,9 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
     ALLOW_AUXILIARY_STEPS = True
 
     def setUp(self) -> None:
-        temporary = tempfile.TemporaryDirectory(prefix="solid-coder-dry-live-")
-        self.addCleanup(temporary.cleanup)
-        self._execution_root = Path(temporary.name)
-        self._reviewed_source = self._execution_root / "PayrollLedger.swift"
-        self._reviewed_source.write_text(
-            self.FIXTURE.read_text(encoding="utf-8"),
-            encoding="utf-8",
-        )
         super().setUp()
-
-    @property
-    def execution_project_root(self) -> Path:
-        return self._execution_root
-
-    @property
-    def workflow_parameters(self) -> DRYRuleWorkflowParameters:
-        prepared = PrepareSearchTargetsOperationFactory().make().execute(
-            PrepareSearchTargetsInput(
-                source=FileAnalysisSource(path=self._reviewed_source),
-                granularity=SearchTargetGranularity.UNIT,
-            )
-        )
-        self.assertEqual(len(prepared.targets), 1)
-        target = prepared.targets[0]
-        return DRYRuleWorkflowParameters(
-            review_unit=NormalizedReviewUnit(
-                target=target,
-                applicability=RuleApplicabilityContext(
-                    file_extension=".swift",
-                    unit_kind=target.kind,
-                    tags=[],
-                ),
-                tag_evidence=[],
-            ),
-            source_context=SourceSearchContext(sources=[prepared.snapshot]),
-        )
+        for candidate in (self._source_project.root / "Sources" / "Candidates").glob("*.swift"):
+            candidate.unlink()
 
     def assert_workflow(self, run) -> None:
         super().assert_workflow(run)
@@ -165,7 +121,7 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             )
         )
         run = self._run_scenario(LiveWorkflowScenario(
-            workflow_id=self.WORKFLOW_ID,
+            workflow_id=self.REVIEW_WORKFLOW_ID,
             parameters=self.workflow_parameters,
             artifact_scope=LiveSessionArtifactScope(
                 domain="review",
@@ -174,7 +130,7 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             model_context=(
                 "Source under review:\n"
                 "```swift\n"
-                f"{self._reviewed_source.read_text(encoding='utf-8')}"
+                f"{self._source_project.review_target.read_text(encoding='utf-8')}"
                 "\n```"
             ),
         ))
@@ -192,17 +148,13 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
         self._assert_candidate_classification(run, expectation)
 
     def _provision_protocol_reuse_scenario(self) -> None:
-        temporary = tempfile.TemporaryDirectory(prefix="solid-coder-dry-reuse-live-")
-        self.addCleanup(temporary.cleanup)
-        self._execution_root = Path(temporary.name)
-        self._reviewed_source = self._execution_root / "NetworkResourceFetching.swift"
-        self._reviewed_source.write_text(
+        self._source_project.review_target.write_text(
             (_PROTOCOL_REUSE_SCENARIO / "reviewed.swift").read_text(
                 encoding="utf-8"
             ),
             encoding="utf-8",
         )
-        (self._execution_root / "RemoteContentLoading.swift").write_text(
+        (self._source_project.review_target.parent / "RemoteContentLoading.swift").write_text(
             (_PROTOCOL_REUSE_SCENARIO / "existing.swift").read_text(
                 encoding="utf-8"
             ),

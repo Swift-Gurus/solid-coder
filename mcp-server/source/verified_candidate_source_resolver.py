@@ -64,13 +64,10 @@ class VerifiedCandidateSourceResolver(CandidateSourceResolving):
                 candidate=candidate,
                 detail="candidate content changed after repository search",
             )
-        unit_bytes = content_bytes[
-            candidate.start_offset:candidate.end_offset + 1
-        ]
-        bounded = unit_bytes[:maximum_bytes]
+        bounded = content_bytes[:maximum_bytes]
         return LoadedCandidateSource(
             candidate=candidate,
             content=bounded.decode("utf-8", errors="replace"),
-            original_bytes=len(unit_bytes),
-            truncated=len(unit_bytes) > maximum_bytes,
+            original_bytes=len(content_bytes),
+            truncated=len(content_bytes) > maximum_bytes,
         )

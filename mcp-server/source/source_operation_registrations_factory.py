@@ -34,7 +34,6 @@ from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
 from source.source_search_presentation import SourceSearchPresentation
 from source.source_search_results import SourceSearchResults
-from source.search_target_granularity import SearchTargetGranularity
 from source.validate_candidate_selection_input import (
     ValidateCandidateSelectionInput,
 )
@@ -93,7 +92,6 @@ class SourceOperationRegistrationsFactory:
                 output_model=SourceSearchOutput,
                 handler=SourceSearchOperationFactory().make(
                     self._project_directory,
-                    SearchTargetGranularity.UNIT,
                 ),
             ),
             OperationRegistration(

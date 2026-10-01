@@ -22,7 +22,6 @@ from source.source_search_match import SourceSearchMatch
 from source.source_search_match_kind import SourceSearchMatchKind
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
-from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -45,7 +44,6 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
         project_directory = ProjectDirectory(path=self.project_root)
         self.candidate = SourceSearchOperationFactory().make(
             project_directory,
-            SearchTargetGranularity.UNIT,
         ).execute(
             SourceSearchInput(
                 queries=[SourceSearchQuery(id="tax", terms=["TaxRule"])],
@@ -83,8 +81,6 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             description="No solid-description frontmatter.",
             path=(self.project_root.parent / "Outside.swift").resolve(),
             source_identity="../Outside.swift",
-            start_offset=0,
-            end_offset=1,
             content_sha256="0" * 64,
             origin=SourceCandidateOrigin.REPOSITORY,
             matches=[SourceSearchMatch(

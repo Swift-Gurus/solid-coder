@@ -21,8 +21,6 @@ class RepositorySourceUnit(BaseModel):
     description: str = Field(min_length=1)
     path: Path
     source_identity: str = Field(min_length=1)
-    start_offset: int = Field(ge=0)
-    end_offset: int = Field(ge=0)
     content: str
     frontmatter: SourceFrontmatter
     file_content: str

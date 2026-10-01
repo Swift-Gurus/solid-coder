@@ -22,7 +22,7 @@ ContentSha256 = Annotated[
 solid-name: SourceSearchCandidate
 solid-category: model
 solid-spec: [SPEC-040]
-solid-description: Represents one bounded repository unit selected by source search.
+solid-description: Represents candidate metadata and provenance for a file the caller may inspect after source search.
 """
 class SourceSearchCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -32,8 +32,6 @@ class SourceSearchCandidate(BaseModel):
     description: str = Field(min_length=1)
     path: Path
     source_identity: SourceIdentity
-    start_offset: int = Field(ge=0)
-    end_offset: int = Field(ge=0)
     content_sha256: ContentSha256
     origin: SourceCandidateOrigin
     matches: Annotated[list[SourceSearchMatch], Field(min_length=1)]

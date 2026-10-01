@@ -41,8 +41,6 @@ class RepositorySourceUnitProjector(RepositorySourceUnitProjecting):
             description=frontmatter.description or _MISSING_DESCRIPTION,
             path=snapshot.path,
             source_identity=snapshot.source_identity,
-            start_offset=unit.start_offset,
-            end_offset=unit.end_offset,
             content=self._source_slice.resolve(
                 snapshot.content,
                 unit.start_offset,

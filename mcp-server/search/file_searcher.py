@@ -1,83 +1,59 @@
-"""
-solid-description: Locates source files by type name or filename pattern.
-solid-category: utility
-solid-tags: [utility, search]
-"""
+"""Locates source files by type name or filename pattern."""
 
 import re
-from pathlib import Path
 from typing import Optional
 
-from source.default_repository_source_exclusions import (
-    DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
-)
-from source.filtered_repository_source_files_discoverer import (
-    FilteredRepositorySourceFilesDiscoverer,
-)
-from source.os_directory_tree_walker import OsDirectoryTreeWalker
-
-_SOURCE_EXTS = {".swift", ".kt", ".java", ".py", ".ts", ".js"}
-_DECL_PATTERN = re.compile(
-    r'\b(class|struct|protocol|enum|actor|extension|typealias)\s+{name}\b'
-)
-_SOURCE_FILES = FilteredRepositorySourceFilesDiscoverer(
-    tree=OsDirectoryTreeWalker(),
-    excluded_directories=DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
-)
+from harness.path_building import PathBuilding
+from harness.project_context import ProjectDirectoryReading
+from source.default_source_file_extensions import DEFAULT_SOURCE_FILE_EXTENSIONS
+from source.repository_source_files_discovering import RepositorySourceFilesDiscovering
+from utils.path_file_system_reader import FileSystemReading
 
 
-def grep_by_name(name: str, directory: Optional[str] = None) -> str:
-    """Search file contents for type definitions, extensions, and imports of *name*.
+"""
+solid-name: FileSearcher
+solid-category: service
+solid-spec: [SPEC-040, SPEC-060]
+solid-description: Finds source definitions by declared type name and locates source files by filename pattern within a project.
+"""
+class FileSearcher:
+    def __init__(
+        self,
+        files: RepositorySourceFilesDiscovering,
+        file_system: FileSystemReading,
+        project_directory: ProjectDirectoryReading,
+        paths: PathBuilding,
+    ) -> None:
+        self._files = files
+        self._file_system = file_system
+        self._project_directory = project_directory
+        self._paths = paths
 
-    Finds lines matching: class/struct/protocol/enum/actor/extension/typealias <name>
+    def grep_by_name(self, name: str, directory: Optional[str] = None) -> str:
+        root = self._paths.build(directory) if directory else self._project_directory.read()
+        if not self._file_system.is_dir(str(root)):
+            return f"Error: directory not found: {root}"
+        pattern = re.compile(
+            r'\b(class|struct|protocol|enum|actor|extension|typealias)\s+' + re.escape(name) + r'\b'
+        )
+        results: list[str] = []
+        for filepath in self._files.discover(root):
+            if filepath.suffix not in DEFAULT_SOURCE_FILE_EXTENSIONS:
+                continue
+            try:
+                content = self._file_system.read_text(filepath)
+                results.extend(
+                    f"{filepath}:{lineno}: {line.strip()}"
+                    for lineno, line in enumerate(content.splitlines(), 1)
+                    if pattern.search(line)
+                )
+            except (OSError, UnicodeError):
+                continue
+        return "\n".join(results) if results else f"No definitions or extensions of '{name}' found."
 
-    Returns a formatted string listing matching files and matched lines.
-    """
-    root = Path(directory) if directory else Path.cwd()
-    if not root.is_dir():
-        return f"Error: directory not found: {root}"
-
-    pattern = re.compile(
-        r'\b(class|struct|protocol|enum|actor|extension|typealias)\s+' + re.escape(name) + r'\b'
-    )
-
-    results = []
-    for filepath in _SOURCE_FILES.discover(root):
-        if filepath.suffix not in _SOURCE_EXTS:
-            continue
-        try:
-            for lineno, line in enumerate(
-                filepath.read_text(encoding="utf-8", errors="replace").splitlines(), 1
-            ):
-                if pattern.search(line):
-                    results.append(f"{filepath}:{lineno}: {line.strip()}")
-        except OSError:
-            continue
-
-    if not results:
-        return f"No definitions or extensions of '{name}' found."
-    return "\n".join(results)
-
-
-def glob_by_name(pattern: str, directory: Optional[str] = None) -> str:
-    """Search filenames matching a glob pattern.
-
-    Examples:
-      glob_by_name("*UserManager*")  → finds UserManager.swift, MockUserManager.swift
-      glob_by_name("*Repository*")   → finds all files with 'Repository' in the name
-
-    Returns a newline-separated list of matching file paths.
-    """
-    root = Path(directory) if directory else Path.cwd()
-    if not root.is_dir():
-        return f"Error: directory not found: {root}"
-
-    matches = [
-        str(path)
-        for path in _SOURCE_FILES.discover(root)
-        if root.rglob(pattern) and path.match(pattern)
-    ]
-
-    if not matches:
-        return f"No files matching '{pattern}' found."
-    return "\n".join(sorted(matches))
+    def glob_by_name(self, pattern: str, directory: Optional[str] = None) -> str:
+        root = self._paths.build(directory) if directory else self._project_directory.read()
+        if not self._file_system.is_dir(str(root)):
+            return f"Error: directory not found: {root}"
+        matches = sorted(str(path) for path in self._files.discover(root) if path.match(pattern))
+        return "\n".join(matches) if matches else f"No files matching '{pattern}' found."

@@ -4,6 +4,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from source.default_source_file_extensions import DEFAULT_SOURCE_FILE_EXTENSIONS
 from source.source_search_query import SourceSearchQuery
 from source.source_unit_identity import SourceUnitIdentity
 from source.source_search_context import SourceSearchContext
@@ -30,6 +31,6 @@ class SourceSearchInput(BaseModel):
     excluded_units: list[SourceUnitIdentity] = Field(default_factory=list)
     context: SourceSearchContext = Field(default_factory=SourceSearchContext)
     included_file_extensions: list[SourceFileExtension] = Field(
-        default_factory=list,
+        default_factory=lambda: sorted(DEFAULT_SOURCE_FILE_EXTENSIONS),
     )
     max_candidates: int = Field(default=20, ge=1, le=100)

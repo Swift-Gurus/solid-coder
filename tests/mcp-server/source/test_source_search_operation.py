@@ -51,7 +51,6 @@ class TestSourceSearchOperation(unittest.TestCase):
         )
         self.operation = SourceSearchOperationFactory().make(
             ProjectDirectory(path=self.project_root),
-            SearchTargetGranularity.UNIT,
         )
 
     def test_returns_stable_candidates_with_query_and_match_provenance(self) -> None:
@@ -65,6 +64,7 @@ class TestSourceSearchOperation(unittest.TestCase):
             excluded_units=[SourceUnitIdentity(
                 source_identity="Sources/Current.swift",
                 unit_identity="struct:InvoiceTaxCalculator:1",
+                granularity=SearchTargetGranularity.FILE,
             )],
         ))
 
@@ -86,7 +86,7 @@ class TestSourceSearchOperation(unittest.TestCase):
             (self.project_root / "Sources/InvoiceTaxCalculator.swift").resolve(),
         )
         undocumented = result.candidates[1]
-        self.assertEqual(undocumented.unit, "TaxReport")
+        self.assertEqual(undocumented.unit, "TaxReport.swift")
         self.assertEqual(
             undocumented.description,
             "No solid-description frontmatter.",

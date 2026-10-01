@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from source.source_unit import SourceUnit
 
 
 """
@@ -18,3 +20,4 @@ class RepositorySourceSnapshot(BaseModel):
     source_identity: str
     content: str
     content_sha256: str
+    units: list[SourceUnit] = Field(default_factory=list)

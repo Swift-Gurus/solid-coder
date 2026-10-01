@@ -37,6 +37,8 @@ _FLOWS = ("apply", "health")
 
 
 class TestHarnessRunner(TestHarnessRunning):
+    __test__ = False
+
     def __init__(
         self,
         path_resolver: PathResolving,

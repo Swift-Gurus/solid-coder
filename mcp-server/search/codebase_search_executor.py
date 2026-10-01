@@ -8,7 +8,6 @@ from search.codebase_search_execution import CodebaseSearchExecution
 from search.codebase_search_input_building import CodebaseSearchInputBuilding
 from search.source_search_output_filtering import SourceSearchOutputFiltering
 from source.source_search_operation_factory import SourceSearchOperationFactory
-from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -46,7 +45,6 @@ class CodebaseSearchExecutor(CodebaseSearchExecuting):
         )
         operation = self._operation_factory.make(
             ProjectDirectory(path=resolution.project_root),
-            SearchTargetGranularity.FILE,
         )
         output = operation.execute(resolution.operation_input)
         return CodebaseSearchExecution(

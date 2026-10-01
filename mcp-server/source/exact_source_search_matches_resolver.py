@@ -1,6 +1,7 @@
 """Resolves exact repository source matches with typed provenance."""
 
 from source.repository_source_unit import RepositorySourceUnit
+from source.exact_source_search_evidence_resolver import SourceSearchEvidenceResolving
 from source.source_search_match import SourceSearchMatch
 from source.source_search_match_kind_resolving import (
     SourceSearchMatchKindResolving,
@@ -12,18 +13,24 @@ from source.source_search_query import SourceSearchQuery
 """
 solid-name: ExactSourceSearchMatchesResolver
 solid-category: service
-solid-spec: [SPEC-040]
+solid-spec: [SPEC-040, SPEC-060]
 solid-description: Preserves query identity and exact terms while resolving typed source-match evidence.
 """
 class ExactSourceSearchMatchesResolver(SourceSearchMatchesResolving):
-    def __init__(self, kind: SourceSearchMatchKindResolving) -> None:
+    def __init__(
+        self,
+        kind: SourceSearchMatchKindResolving,
+        evidence: SourceSearchEvidenceResolving,
+    ) -> None:
         self._kind = kind
+        self._evidence = evidence
 
     def resolve(
         self,
         unit: RepositorySourceUnit,
         queries: list[SourceSearchQuery],
     ) -> list[SourceSearchMatch]:
+        evidence = self._evidence.resolve(unit)
         matches: list[SourceSearchMatch] = []
         for query in queries:
             resolved_terms: set[str] = set()
@@ -32,7 +39,7 @@ class ExactSourceSearchMatchesResolver(SourceSearchMatchesResolving):
                 if term_identity in resolved_terms:
                     continue
                 resolved_terms.add(term_identity)
-                kind = self._kind.resolve(unit, term_identity)
+                kind = self._kind.resolve(evidence, term_identity)
                 if kind is not None:
                     matches.append(SourceSearchMatch(
                         query_id=query.id,

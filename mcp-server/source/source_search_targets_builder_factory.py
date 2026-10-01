@@ -1,6 +1,7 @@
 """Composes file and unit source-search target construction."""
 
 from harness.ordered_string_collector import OrderedStringCollector
+from harness.path_builder import PathBuilder
 from harness.sha256_content_hasher import Sha256ContentHasher
 from source.exact_source_tokens_resolver_factory import (
     ExactSourceTokensResolverFactory,
@@ -47,6 +48,7 @@ class SourceSearchTargetsBuilderFactory:
         )
         return SourceSearchTargetsBuilder(
             content_hasher=Sha256ContentHasher(),
+            paths=PathBuilder(),
             builders=SourceSearchTargetsBuilderResolver([
                 SourceSearchTargetsBuilderRegistration(
                     granularity=SearchTargetGranularity.FILE,

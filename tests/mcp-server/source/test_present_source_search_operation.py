@@ -36,8 +36,6 @@ class TestPresentSourceSearchOperation(unittest.TestCase):
                 description="Persists cached catalog data.",
                 path=candidate_path,
                 source_identity="Sources/ExistingCatalog.swift",
-                start_offset=10,
-                end_offset=100,
                 content_sha256="a" * 64,
                 origin=SourceCandidateOrigin.REPOSITORY,
                 matches=[SourceSearchMatch(

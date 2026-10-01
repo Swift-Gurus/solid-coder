@@ -2,6 +2,7 @@
 
 from source.repository_source_snapshot import RepositorySourceSnapshot
 from source.repository_source_unit import RepositorySourceUnit
+from source.repository_source_unit_projecting import RepositorySourceUnitProjecting
 from source.repository_source_units_resolving import (
     RepositorySourceUnitsResolving,
 )
@@ -25,15 +26,22 @@ class FrontmatterRepositorySourceUnitsResolver(
         self,
         frontmatter_reader: SourceFrontmatterReading,
         unit_builder: WholeFileRepositorySourceUnitBuilding,
+        projector: RepositorySourceUnitProjecting,
     ) -> None:
         self._frontmatter_reader = frontmatter_reader
         self._unit_builder = unit_builder
+        self._projector = projector
 
     def resolve(
         self,
         snapshot: RepositorySourceSnapshot,
     ) -> list[RepositorySourceUnit]:
         frontmatters = self._frontmatter_reader.read(snapshot.content)
+        if snapshot.units:
+            return [
+                self._projector.project(snapshot, unit, frontmatters)
+                for unit in snapshot.units
+            ]
         if not frontmatters:
             frontmatters = [SourceFrontmatter()]
         return [

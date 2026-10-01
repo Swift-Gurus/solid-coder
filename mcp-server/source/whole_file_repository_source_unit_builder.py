@@ -32,8 +32,6 @@ class WholeFileRepositorySourceUnitBuilder(
             description=frontmatter.description or _MISSING_DESCRIPTION,
             path=snapshot.path,
             source_identity=snapshot.source_identity,
-            start_offset=0,
-            end_offset=max(0, len(snapshot.content.encode("utf-8")) - 1),
             content=snapshot.content,
             frontmatter=frontmatter,
             file_content=snapshot.content,

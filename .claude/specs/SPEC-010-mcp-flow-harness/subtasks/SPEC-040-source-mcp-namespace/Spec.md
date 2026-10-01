@@ -19,10 +19,10 @@ Completed:
 - File and in-memory text sources are sealed input variants.
 - Swift analysis uses parser output rather than line-oriented declaration regular expressions and returns typed units plus recoverable diagnostics.
 - Engine-owned `type: operation` steps resolve logical operation names, validate inputs/outputs, drain without a model turn, and participate in fan-out, conditions, retries, events, and replay.
-- Internal `source.search` and `source.read_candidates` operations accept immutable typed Pydantic contracts, share repository traversal with legacy health search, preserve stable query/match provenance, exclude exact reviewed-unit identities, prefer complete proposed-source context over stale disk paths, validate candidate paths against the engine-owned canonical root, detect changed content through the shared SHA-256 capability, and persist bounded exact unit content plus candidate origin for replay.
-- Focused source and workflow tests prove deterministic ranking, exact-unit exclusion, same-file sibling retention, prospective-buffer self-exclusion, `.solid-coder` artifact exclusion, exact bounded unit reads, escaped-root and changed-source outcomes, operation engine ownership, and replay without search or filesystem rereads.
+- Internal `source.search` uses the same source-owned metadata discovery as legacy health search. It filters extensions and replaced disk paths before reading, never invokes source analysis, and returns candidate metadata rather than declaration ranges. Prepared review context supplies exact unit identities for self-exclusion and sibling matching. Explicit `source.read_candidates` verifies root confinement and the search-time hash before returning bounded file content.
+- Focused source and workflow tests prove equivalent legacy/workflow candidates, no parser calls during search, early file eligibility, deterministic ranking, exact-unit exclusion, same-file sibling retention, prospective-buffer self-exclusion, `.solid-coder` artifact exclusion, bounded file reads, escaped-root and changed-source outcomes, operation engine ownership, and replay without search or filesystem rereads.
 - `source.prepare_search_targets` and `source.prepare_search_query` keep source slicing, target/query/unit identities, deterministic terms, exact self-exclusion, and query assembly MCP-owned.
-- The bundled unit-scoped DRY workflow invokes one reusable target-search workflow for its normalized review unit. The model supplies only individual lexical semantic terms and independent per-candidate reuse and implementation-duplication decisions with reasoning and evidence; MCP expands identifier components, performs query assembly, searches sibling/external repository sources, and loads exact candidate units.
+- The bundled unit-scoped DRY workflow uses its normalized review unit. The model supplies individual lexical semantic terms, selects candidates from metadata, reads selected paths, and provides independent reuse and implementation-duplication decisions with reasoning and evidence. MCP expands identifier components, assembles queries, searches sibling/external sources, and validates candidate selection; it does not preload candidate code into prompts.
 - Nested candidate fan-out preserves the parent target input and the inner candidate item, records conditional skips with their item evidence, publishes ordered target result envelopes, and emits an empty classification collection when every candidate is unavailable or ineligible.
 
 Remaining:
@@ -185,7 +185,7 @@ As a review workflow, I want a deterministic base/head diff so pull-request revi
 
 ### US-8: Search and load source candidates for comparison
 
-As a unit-scoped rule workflow, I want MCP-owned repository search and candidate loading so the model can classify concrete reuse and duplication evidence without choosing paths or parsing formatted search output.
+As a unit-scoped rule workflow, I want MCP-owned repository discovery and optional verified candidate reads so the model can select and inspect relevant files without inventing candidate paths.
 
 **Acceptance Criteria:**
 
@@ -193,10 +193,12 @@ As a unit-scoped rule workflow, I want MCP-owned repository search and candidate
 - Each search term is one explicit term, not a shell fragment, regular expression, or delimiter-encoded list. Duplicate terms within a query are rejected or normalized deterministically before search.
 - The project root comes from the resolved run or MCP request context. A bundled workflow does not allow the model to substitute another search root.
 - Search reuses the repository search service shared with existing health-check behavior, while the flow operation returns typed results and never writes or consumes a health-check completion marker.
+- Both callers use one metadata-discovery implementation. Search does not invoke Swift or other source parsers, even for matching files. Frontmatter is decoded directly from text; missing frontmatter retains lexical filename/import/content matching and an explicit missing-description message.
+- Directory exclusions, file-extension eligibility, and replacement by proposed snapshots are applied before content reads. The default extensions are `.swift`, `.kt`, `.java`, `.py`, `.ts`, and `.js`; explicit extensions replace that policy, and an explicit empty list permits generic extension search.
 - Search considers structured frontmatter plus exact filename, symbol, import, and source-content evidence. Every returned candidate identifies the originating query, canonical project-relative source identity, matched terms, match kinds, and stable rank/order.
-- Exact reviewed-unit identities are derived from MCP-owned targets and removed before results are published. Sibling units in the same source remain eligible; an agent cannot author or widen exclusions.
+- Exact reviewed-unit identities are derived from MCP-owned targets and removed before results are published using already-prepared source units. Sibling units in the same source remain eligible; an agent cannot author or widen exclusions. Missing prepared context for an exact-unit exclusion fails actionably instead of triggering parsing or silently widening the exclusion. Whole-file targets use an explicit typed file exclusion.
 - Candidate identities are deduplicated and ordered deterministically. Search limits are explicit typed inputs with bounded defaults rather than prompt conventions.
-- `source.read_candidates` accepts typed candidate identities produced by search, verifies that every resolved path remains within the canonical project root, verifies the search-time file hash, and returns the exact bounded candidate-unit slice with canonical unit/source identity and truncation metadata.
+- Search candidates carry metadata and provenance, not declaration offsets. `source.read_candidates` is an explicit optional operation: it verifies that every resolved path remains within the canonical project root, verifies the search-time file hash, and returns bounded complete-file content with candidate/source identity and truncation metadata. It does not infer declaration slices from frontmatter or invoke source analysis.
 - Missing, unreadable, escaped-root, oversized, or changed candidate sources produce typed per-candidate outcomes; they do not silently disappear or cause unrelated candidates to lose their results.
 - Search results and loaded candidate sources are ordinary typed operation outputs. Completion events persist the effective queries, exclusions, provenance, source identities, bounded content, and failures required for audit and replay.
 - Replay reconstructs both operation outputs from persisted run evidence and does not search the repository or reread candidate files.
@@ -283,11 +285,15 @@ source.prepare_search_query
         ↓
 source.search typed queries, excluding only the reviewed unit
         ↓
-source.read_candidates typed candidate identities
+source.present_search name, description, and absolute path
         ↓
-flow-engine for_each loaded candidate
+agent selects candidates with reasons and evidence
         ↓
-agent classifies supplied target/candidate code
+source.validate_candidate_selection
+        ↓
+flow-engine for_each selected candidate
+        ↓
+agent reads the candidate path and classifies it
 ```
 
 ### Audit and replay
@@ -297,7 +303,7 @@ agent classifies supplied target/candidate code
 - Replay reconstructs completed operation outputs from persisted run evidence and does not rerun Git or source analysis.
 - Configuration or source changes after operation completion affect new runs only.
 - Raw source content is not duplicated into every event; persisted snapshots retain the minimum canonical input needed by the owning run contract.
-- Candidate content is bounded once by `source.read_candidates` and persisted with that completed operation output, so downstream audit and replay observe the exact compared bytes without rereading the working tree.
+- When explicitly used, `source.read_candidates` bounds verified file content once and persists it with that operation output. The DRY selection path instead persists shown metadata, dispositions, and classification evidence; it does not automatically load candidate code into a model prompt.
 
 ## Connects To
 
@@ -336,14 +342,16 @@ agent classifies supplied target/candidate code
 ### Repository search and candidate loading
 
 - Multiple typed queries retain their query identities through stable candidate ordering and deduplication.
+- Equivalent requests through legacy health search and registered workflow search produce identical ordered typed results and descriptions, with zero parser calls for documented, undocumented, and nonmatching source files.
+- Ineligible resources and stale disk paths replaced by proposed buffers are never read; explicit extension overrides and unrestricted empty-extension searches remain supported.
 - Search proves exact filename, symbol/import, frontmatter, and source-content matches while rejecting regex, shell, empty-term, and escaped-root inputs.
 - The exact reviewed unit is excluded without removing sibling units in the same source; absolute buffer identities and project-relative repository identities resolve to the same canonical source.
-- Proposed sibling units and units from another file in the same multi-file patch replace stale repository snapshots, remain searchable before write authorization, and load their exact in-memory content with `proposed` provenance.
+- Prepared sibling units and units from another file in the same multi-file patch replace stale repository snapshots and remain searchable before write authorization. Optional explicit reads return the corresponding verified in-memory file content with `proposed` provenance, not a fabricated declaration range.
 - Candidate loading rejects paths outside the canonical project root and returns typed outcomes for missing, unreadable, changed, oversized, and successfully loaded files.
 - A DRY fixture containing only within-unit duplication still produces local evidence when search returns no candidates.
 - Identifier tokenization expands compound deterministic or generated terms into searchable lexical components without discarding the original term.
 - A temporary repository scenario containing a reviewed protocol and a conforming implementation is found through semantic terms; both Codex and Claude classify the conformer as `NOT_SUITABLE` for protocol reuse and `NOT_DUPLICATE` when it contains no duplicated implementation. MCP scores `DRY-1=0`, `DRY-2=0`, and `DRY-3=0` for that relationship.
-- Replay returns the persisted candidates and exact bounded candidate content after repository files change, and the search/read services are not invoked again.
+- Replay returns persisted candidate metadata and any explicitly read bounded file content after repository files change; the search/read services are not invoked again.
 
 ### Workflow integration
 

@@ -12,7 +12,6 @@ from pydantic import ValidationError
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.project_context import ProjectDirectory
-from source.search_target_granularity import SearchTargetGranularity
 from source.selected_source_candidate import SelectedSourceCandidate
 from source.source_candidate_disposition import SourceCandidateDisposition
 from source.source_search_input import SourceSearchInput
@@ -45,7 +44,6 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
         )
         self.candidates = SourceSearchOperationFactory().make(
             ProjectDirectory(path=self.project_root),
-            SearchTargetGranularity.UNIT,
         ).execute(SourceSearchInput(
             queries=[SourceSearchQuery(id="format", terms=["Formatter"])],
         )).candidates

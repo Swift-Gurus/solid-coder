@@ -1,8 +1,10 @@
 """Prepares one deterministic source-search query."""
 
 from gate.file_extension_extracting import FileExtensionExtracting
+from findings.review_unit_kind import ReviewUnitKind
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_output import PrepareSearchQueryOutput
+from source.search_target_granularity import SearchTargetGranularity
 from source.source_search_query import SourceSearchQuery
 from source.source_tokens_resolving import SourceTokensResolving
 from source.source_unit_identity import SourceUnitIdentity
@@ -46,6 +48,11 @@ class PrepareSearchQueryOperation:
             excluded_units=[SourceUnitIdentity(
                 source_identity=operation_input.target.source_identity,
                 unit_identity=operation_input.target.unit_identity,
+                granularity=(
+                    SearchTargetGranularity.FILE
+                    if operation_input.target.kind is ReviewUnitKind.DOCUMENT
+                    else SearchTargetGranularity.UNIT
+                ),
             )],
             included_file_extensions=[
                 self._extension.suffix_of(

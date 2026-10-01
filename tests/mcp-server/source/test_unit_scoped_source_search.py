@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
@@ -28,6 +29,8 @@ from source.source_candidate_origin import SourceCandidateOrigin
 from source.source_search_input import SourceSearchInput
 from source.source_search_context import SourceSearchContext
 from source.source_search_operation_factory import SourceSearchOperationFactory
+from source.source_operation_error import SourceOperationError
+from source.swift_parser_runner import SwiftParserRunner
 from source.text_analysis_source import TextAnalysisSource
 from hooks.pathlib_extractor import PathlibExtractor
 
@@ -36,7 +39,7 @@ from hooks.pathlib_extractor import PathlibExtractor
 solid-name: TestUnitScopedSourceSearch
 solid-category: integration-test
 solid-spec: [SPEC-040]
-solid-description: Proves repository search excludes only the reviewed unit while retaining and exactly loading sibling units from the same file.
+solid-description: Proves metadata search uses prepared context to exclude self, retain siblings, and verify explicit file reads without reparsing.
 """
 class TestUnitScopedSourceSearch(unittest.TestCase):
     def setUp(self) -> None:
@@ -64,12 +67,12 @@ struct SiblingCalculator {
             ),
         )
 
-    def test_excludes_only_reviewed_unit_and_loads_exact_sibling_source(self) -> None:
+    def test_excludes_only_reviewed_unit_without_parsing_and_reads_verified_file(self) -> None:
         prospective_buffer = self.source_path.read_text(encoding="utf-8").replace(
             "sharedCalculation() -> Int { 1 }",
             "sharedCalculation() -> Int { 99 }",
         )
-        targets = PrepareSearchTargetsOperationFactory().make().execute(
+        prepared = PrepareSearchTargetsOperationFactory().make().execute(
             PrepareSearchTargetsInput(
                 source=TextAnalysisSource(
                     text=prospective_buffer,
@@ -77,9 +80,9 @@ struct SiblingCalculator {
                 ),
                 granularity=SearchTargetGranularity.UNIT,
             )
-        ).targets
+        )
         reviewed = next(
-            target for target in targets if target.name == "PrimaryCalculator"
+            target for target in prepared.targets if target.name == "PrimaryCalculator"
         )
         query = self.query_preparer.execute(
             PrepareSearchQueryInput(
@@ -87,15 +90,14 @@ struct SiblingCalculator {
                 generated_terms=["sharedCalculation"],
             )
         )
-        searched = SourceSearchOperationFactory().make(
-            self.project_directory,
-            SearchTargetGranularity.UNIT,
-        ).execute(
-            SourceSearchInput(
+        context = SourceSearchContext(sources=[prepared.snapshot])
+        with patch.object(SwiftParserRunner, "run", side_effect=AssertionError("Search must not parse Swift")) as parser:
+            searched = SourceSearchOperationFactory().make(self.project_directory).execute(SourceSearchInput(
                 queries=query.queries,
                 excluded_units=query.excluded_units,
-            )
-        )
+                context=context,
+            ))
+        parser.assert_not_called()
 
         same_file = [
             candidate
@@ -113,15 +115,10 @@ struct SiblingCalculator {
         ).make().execute(
             ReadSourceCandidatesInput(
                 candidates=same_file,
+                context=context,
             )
         ).results[0]
-        self.assertEqual(
-            loaded.content,
-            "struct SiblingCalculator {\n"
-            "    func sharedCalculation() -> Int { 2 }\n"
-            "}",
-        )
-        self.assertNotIn("PrimaryCalculator", loaded.content)
+        self.assertEqual(loaded.content, prospective_buffer)
 
     def test_proposed_sibling_replaces_the_stale_disk_candidate(self) -> None:
         prospective_buffer = self.source_path.read_text(encoding="utf-8").replace(
@@ -149,7 +146,6 @@ struct SiblingCalculator {
         )
         searched = SourceSearchOperationFactory().make(
             self.project_directory,
-            SearchTargetGranularity.UNIT,
         ).execute(SourceSearchInput(
             queries=query.queries,
             excluded_units=query.excluded_units,
@@ -204,7 +200,6 @@ struct SiblingCalculator {
 
         searched = SourceSearchOperationFactory().make(
             self.project_directory,
-            SearchTargetGranularity.UNIT,
         ).execute(SourceSearchInput(
             queries=query.queries,
             excluded_units=query.excluded_units,
@@ -222,6 +217,35 @@ struct SiblingCalculator {
         self.assertFalse(
             any(candidate.unit == "StaleFormatter" for candidate in searched.candidates)
         )
+
+    def test_unit_exclusion_without_prepared_context_fails_actionably(self) -> None:
+        prepared = PrepareSearchTargetsOperationFactory().make().execute(PrepareSearchTargetsInput(
+            source=TextAnalysisSource(text=self.source_path.read_text(), virtual_path=str(self.source_path)),
+            granularity=SearchTargetGranularity.UNIT,
+        ))
+        query = self.query_preparer.execute(PrepareSearchQueryInput(
+            target=prepared.targets[0], generated_terms=["sharedCalculation"],
+        ))
+
+        with self.assertRaisesRegex(SourceOperationError, "prepared source context"):
+            SourceSearchOperationFactory().make(self.project_directory).execute(SourceSearchInput(
+                queries=query.queries, excluded_units=query.excluded_units,
+            ))
+
+    def test_whole_file_exclusion_does_not_require_unit_analysis(self) -> None:
+        prepared = PrepareSearchTargetsOperationFactory().make().execute(PrepareSearchTargetsInput(
+            source=TextAnalysisSource(text=self.source_path.read_text(), virtual_path=str(self.source_path)),
+            granularity=SearchTargetGranularity.FILE,
+        ))
+        query = self.query_preparer.execute(PrepareSearchQueryInput(
+            target=prepared.targets[0], generated_terms=["sharedCalculation"],
+        ))
+
+        searched = SourceSearchOperationFactory().make(self.project_directory).execute(SourceSearchInput(
+            queries=query.queries, excluded_units=query.excluded_units,
+        ))
+
+        self.assertEqual(searched.candidates, [])
 
 
 if __name__ == "__main__":

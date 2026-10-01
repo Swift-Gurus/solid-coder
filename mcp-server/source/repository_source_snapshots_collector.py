@@ -27,11 +27,22 @@ class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
         self._files = files
         self._content_hasher = content_hasher
 
-    def collect(self, project_root: Path) -> list[RepositorySourceSnapshot]:
+    def collect(
+        self,
+        project_root: Path,
+        included_file_extensions: list[str],
+        excluded_paths: set[Path],
+    ) -> list[RepositorySourceSnapshot]:
         root = project_root.resolve()
         snapshots: list[RepositorySourceSnapshot] = []
         for path in self._files.discover(root):
+            if included_file_extensions and path.suffix.casefold() not in included_file_extensions:
+                continue
             resolved_path = path.resolve()
+            if resolved_path in excluded_paths:
+                continue
+            if included_file_extensions and resolved_path.suffix.casefold() not in included_file_extensions:
+                continue
             try:
                 source_identity = resolved_path.relative_to(root).as_posix()
             except ValueError:

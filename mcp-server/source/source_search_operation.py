@@ -49,16 +49,11 @@ class SourceSearchOperation:
             or snapshot.path.suffix.casefold()
             in operation_input.included_file_extensions
         ]
-        repository_snapshots = [
-            snapshot
-            for snapshot in self._snapshots.collect(root)
-            if snapshot.path.resolve() not in proposed_paths
-            and (
-                not operation_input.included_file_extensions
-                or snapshot.path.suffix.casefold()
-                in operation_input.included_file_extensions
-            )
-        ]
+        repository_snapshots = self._snapshots.collect(
+            root,
+            operation_input.included_file_extensions,
+            proposed_paths,
+        )
         candidates: list[SourceSearchCandidate] = []
         files_with_frontmatter = 0
         for snapshot, origin in [
@@ -78,6 +73,7 @@ class SourceSearchOperation:
                     root,
                     unit,
                     operation_input.excluded_units,
+                    snapshot.units,
                 ):
                     continue
                 matches = self._matches.resolve(unit, operation_input.queries)
@@ -88,8 +84,6 @@ class SourceSearchOperation:
                         description=unit.description,
                         path=unit.path,
                         source_identity=unit.source_identity,
-                        start_offset=unit.start_offset,
-                        end_offset=unit.end_offset,
                         content_sha256=unit.content_sha256,
                         origin=origin,
                         matches=matches,

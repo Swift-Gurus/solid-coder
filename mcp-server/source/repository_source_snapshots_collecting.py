@@ -13,4 +13,9 @@ solid-spec: [SPEC-040]
 solid-description: Contract for collecting stable readable source snapshots beneath one canonical project root.
 """
 class RepositorySourceSnapshotsCollecting(Protocol):
-    def collect(self, project_root: Path) -> list[RepositorySourceSnapshot]: ...
+    def collect(
+        self,
+        project_root: Path,
+        included_file_extensions: list[str],
+        excluded_paths: set[Path],
+    ) -> list[RepositorySourceSnapshot]: ...

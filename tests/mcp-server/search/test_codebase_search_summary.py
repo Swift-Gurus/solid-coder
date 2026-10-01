@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.project_context import ProjectDirectory
 from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory
-from source.search_target_granularity import SearchTargetGranularity
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
@@ -75,7 +74,7 @@ class TestCodebaseSearchSummary(unittest.TestCase):
 
     def test_candidate_limit_does_not_change_scan_summary(self) -> None:
         operation = SourceSearchOperationFactory().make(
-            ProjectDirectory(path=self.root), SearchTargetGranularity.FILE,
+            ProjectDirectory(path=self.root),
         )
 
         result = operation.execute(SourceSearchInput(

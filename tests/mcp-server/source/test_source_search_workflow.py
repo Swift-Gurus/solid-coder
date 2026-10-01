@@ -24,7 +24,6 @@ from source.read_source_candidates_output import ReadSourceCandidatesOutput
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
-from source.search_target_granularity import SearchTargetGranularity
 
 
 """
@@ -47,7 +46,6 @@ class TestSourceSearchWorkflow(unittest.TestCase):
         project_directory = ProjectDirectory(path=self.project_root)
         self.search = Mock(wraps=SourceSearchOperationFactory().make(
             project_directory,
-            SearchTargetGranularity.UNIT,
         ))
         self.reader = Mock(wraps=ReadSourceCandidatesOperationFactory(
             project_directory

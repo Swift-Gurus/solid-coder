@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Protocol
 
 from source.repository_source_unit import RepositorySourceUnit
+from source.source_unit import SourceUnit
 from source.source_unit_identity import SourceUnitIdentity
 
 
@@ -19,4 +20,5 @@ class SourceUnitExclusionChecking(Protocol):
         project_root: Path,
         unit: RepositorySourceUnit,
         exclusions: list[SourceUnitIdentity],
+        prepared_units: list[SourceUnit],
     ) -> bool: ...

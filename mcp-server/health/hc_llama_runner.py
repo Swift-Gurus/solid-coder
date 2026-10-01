@@ -103,13 +103,15 @@ def make_llama_server_runner(
         observer = LLMSessionObserver(logger=logger)
 
     from lib.gateway_tools import GatewayHandlerFactory  # noqa: PLC0415
+    from harness.project_context import ProjectDirectory  # noqa: PLC0415
     from search.codebase_searcher_factory import CodebaseSearcherFactory  # noqa: PLC0415
-    from search.file_searcher import grep_by_name, glob_by_name  # noqa: PLC0415
 
     gw_handler = GatewayHandlerFactory().make(PLUGIN_ROOT / "references")
+    search_factory = CodebaseSearcherFactory()
+    file_search = search_factory.make_file_search(ProjectDirectory(path=Path.cwd()))
     dry_search_services = DrySearchServiceFactory()
     dry_search = dry_search_services.make_search(
-        CodebaseSearcherFactory().make()
+        search_factory.make()
     )
     guarded_submission = dry_search_services.make_submission(gw_handler)
     findings_submitter = GatewayFindingsSubmitter(handler=guarded_submission)
@@ -120,8 +122,8 @@ def make_llama_server_runner(
             output_dir=output_dir,
             min_matches=1,
         ),
-        grep_fn=grep_by_name,
-        glob_fn=glob_by_name,
+        grep_fn=file_search.grep_by_name,
+        glob_fn=file_search.glob_by_name,
         read_fn=lambda p: Path(p).read_text(encoding="utf-8"),
     )
     dispatcher = GatewayToolDispatcher(

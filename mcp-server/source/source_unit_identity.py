@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.search_target_granularity import SearchTargetGranularity
+
 
 """
 solid-name: SourceUnitIdentity
@@ -14,3 +16,4 @@ class SourceUnitIdentity(BaseModel):
 
     source_identity: str = Field(min_length=1)
     unit_identity: str = Field(min_length=1)
+    granularity: SearchTargetGranularity = SearchTargetGranularity.UNIT
