@@ -7,8 +7,6 @@ import sys
 from pathlib import Path
 from typing import ClassVar
 
-from pydantic import ValidationError
-
 _HARNESS_DIR = Path(__file__).resolve().parents[1]
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 for _directory in (_HARNESS_DIR, _MCP_SERVER):
@@ -22,7 +20,7 @@ from source.file_analysis_source import FileAnalysisSource  # noqa: E402
 from bundled_review_rule_policy_writer import (  # noqa: E402
     BundledReviewRulePolicyWriter,
 )
-from codex_transcript_prompt_event import CodexTranscriptPromptEvent  # noqa: E402
+from codex_protocol.reader import CodexProtocolReader  # noqa: E402
 from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
 from live_rule_validation_expectation import (  # noqa: E402
     LiveRuleValidationExpectation,
@@ -103,8 +101,8 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         )
 
     def assert_workflow(self, run: PreservedLiveWorkflowRun) -> None:
-        self.assert_rule_workflow(run, self._validation_expectation())
         self._assert_codex_protocol(run)
+        self.assert_rule_workflow(run, self._validation_expectation())
 
     def assert_rule_workflow(
         self,
@@ -247,49 +245,34 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         )
 
     def _assert_codex_protocol(self, run: PreservedLiveWorkflowRun) -> None:
+        if self.MODEL_PROFILE != "codex":
+            return
         sessions = run.session.artifact_directory / "codex-runtime" / "sessions"
         transcripts = sorted(sessions.rglob("*.jsonl")) if sessions.exists() else []
-        if not transcripts:
-            return
-        transcript = transcripts[-1].read_text(encoding="utf-8")
-        events = [
-            json.loads(line)
-            for line in transcript.splitlines()
-            if line.strip()
-        ]
-        tool_inputs = [
-            event["payload"]["input"]
-            for event in events
-            if event.get("type") == "response_item"
-            and event.get("payload", {}).get("type") == "custom_tool_call"
-        ]
-        user_messages: list[str] = []
-        for line in transcript.splitlines():
-            try:
-                user_messages.append(
-                    CodexTranscriptPromptEvent.model_validate_json(line).prompt
-                )
-            except ValidationError:
-                continue
-        tool_outputs = [
-            json.dumps(event["payload"].get("output", ""))
-            for event in events
-            if event.get("type") == "response_item"
-            and event.get("payload", {}).get("type")
-            == "custom_tool_call_output"
-        ]
-        source = self.FIXTURE.read_text(encoding="utf-8")
-
-        self.assertFalse(any("ALL_TOOLS" in tool_input for tool_input in tool_inputs))
+        self.assertEqual(len(transcripts), 1, "Expected one preserved Codex transcript")
+        evidence = CodexProtocolReader().read(transcripts[0])
+        evidence_path = run.session.artifact_directory / "codex-protocol-evidence.json"
+        evidence_path.write_text(evidence.model_dump_json(indent=2), encoding="utf-8")
+        print(
+            f"Codex protocol: discovery={len(evidence.discovery_call_ids)}, "
+            f"flow_start={len(evidence.successful_flow_start_call_ids)}/{evidence.flow_start_attempts}, "
+            f"flow_next={len(evidence.successful_flow_next_call_ids)}/{evidence.flow_next_attempts}, "
+            f"failed_calls={len(evidence.failed_calls)}, "
+            f"unanswered_calls={len(evidence.unanswered_call_ids)}. Evidence: {evidence_path}"
+        )
         self.assertTrue(any(
-            "tools.mcp__solid_coder_flow_engine__flow_start" in tool_input
-            for tool_input in tool_inputs
-        ))
-        self.assertEqual("\n".join(user_messages).count(source), 1)
-        self.assertNotIn(source, "\n".join(tool_outputs))
+            evidence.successful_flow_start_call_ids
+        ), "Expected a successful flow_start MCP response")
+        self.assertTrue(any(
+            evidence.successful_flow_next_call_ids
+        ), "Expected a successful flow_next MCP response")
+        self.assertFalse(evidence.unanswered_call_ids, "Tool calls have no recorded responses")
+        source = self.FIXTURE.read_text(encoding="utf-8")
+        self.assertEqual("\n".join(evidence.user_prompts).count(source), 1)
+        self.assertNotIn(source, "\n".join(evidence.tool_outputs))
         self.assertNotIn(
             "Show the following output to the user exactly as-is",
-            transcript,
+            transcripts[0].read_text(encoding="utf-8"),
         )
 
     def _validation_expectation(self) -> LiveRuleValidationExpectation:
