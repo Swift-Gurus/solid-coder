@@ -1,0 +1,92 @@
+id: aggregate-classifiers
+name: Independent Classifiers With Co-Located Metrics
+max_turns: 8
+execution:
+  mode: aggregate
+presentation:
+  mode: combined
+rule: {}
+steps:
+  - id: classify_actions
+    prompt: |
+      Classify these actions in order: initialize is lifecycle, load and save
+      are not lifecycle. Return name and is_lifecycle for each action.
+    outputs:
+      - name: actions
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, is_lifecycle]
+            properties:
+              name: {type: string}
+              is_lifecycle: {type: boolean}
+    metrics:
+      - id: action_count
+        metric_id: ACTIONS
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: actions
+          when:
+            ref: "{{item.is_lifecycle}}"
+            equals: false
+          severe: {operator: greater_than_or_equal, value: 2}
+  - id: classify_variable_usage
+    prompt: |
+      Classify these methods in order, returning method and variables:
+      load uses cache, save uses cache and storage, render uses view.
+    outputs:
+      - name: method_variable_usage
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [method, variables]
+            properties:
+              method: {type: string}
+              variables:
+                type: array
+                items: {type: string}
+    metrics:
+      - id: cohesion_groups
+        metric_id: GROUPS
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: method_variable_usage
+          reducer:
+            type: component_count
+            relation:
+              operator: intersects
+              left: "{{left.variables}}"
+              right: "{{right.variables}}"
+          severe: {operator: greater_than_or_equal, value: 2}
+  - id: classify_stakeholders
+    prompt: |
+      Classify these stakeholders in order: Operations, Presentation.
+      Return their names as the stakeholders array.
+    outputs:
+      - name: stakeholders
+        type: data
+        schema:
+          type: array
+          items: {type: string}
+    metrics:
+      - id: stakeholder_count
+        metric_id: STAKEHOLDERS
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: stakeholders
+          severe: {operator: greater_than_or_equal, value: 2}
+  - id: classify_exception
+    type: exception
+    depends_on: [action_count, cohesion_groups, stakeholder_count]
+    prompt: |
+      Engine results: actions={{steps.action_count.outputs.value}},
+      groups={{steps.cohesion_groups.outputs.value}},
+      stakeholders={{steps.stakeholder_count.outputs.value}}.
+      Classify this locked fixture as is_exception false, with reasoning and
+      evidence referring to the engine results. No rule exception applies.

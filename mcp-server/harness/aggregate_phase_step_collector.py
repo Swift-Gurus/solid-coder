@@ -37,8 +37,9 @@ class AggregatePhaseStepCollector(AggregatePhaseStepCollecting):
             if self._boundary_resolver.resolve(flow, candidate) != boundary_id:
                 continue
             if candidate.metric_calculation is not None:
-                if selected:
-                    break
+                # Metrics stay engine-owned. Their position must not hide
+                # independent classifiers; consumers still wait because an
+                # uncalculated metric is not in settled_ids or selected_ids.
                 continue
             if candidate.type not in _MODEL_OWNED_STEP_TYPES:
                 if selected:

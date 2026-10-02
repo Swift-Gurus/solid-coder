@@ -14,6 +14,10 @@ ensure_on_path(
 
 from harness.flow_start_result import FlowStartResult  # noqa: E402
 from harness.flow_status_result import FlowStatusResult  # noqa: E402
+from codex_flow_continuation_instruction_builder import (  # noqa: E402
+    CodexFlowContinuationInstructionBuilder,
+)
+from gate_flow_prompt_builder import GateFlowPromptBuilder  # noqa: E402
 from review.prepare_review_input import PrepareReviewInput  # noqa: E402
 from source.text_analysis_source import TextAnalysisSource  # noqa: E402
 from workflow_health_checker import WorkflowHealthChecker  # noqa: E402
@@ -33,7 +37,10 @@ class TestWorkflowHealthChecker(unittest.TestCase):
         self.result_reader = MagicMock()
         self.violation_selector = MagicMock()
         self.input_builder = MagicMock()
-        self.prompt_builder = MagicMock()
+        self.continuation_builder = CodexFlowContinuationInstructionBuilder()
+        self.prompt_builder = GateFlowPromptBuilder(
+            continuation_instruction_builder=self.continuation_builder,
+        )
         self.review_input = PrepareReviewInput(
             target=TextAnalysisSource(
                 text="struct NewFeature {}",
@@ -47,7 +54,6 @@ class TestWorkflowHealthChecker(unittest.TestCase):
             isolated=True,
         )
         self.renderer.render_start.return_value = "first ready review step"
-        self.prompt_builder.build.return_value = "bootstrap prompt"
         self.runner.run.return_value = "Flow complete."
         self.flow.flow_status.return_value = FlowStatusResult(
             flow="SOLID Gate on Write",
@@ -96,14 +102,15 @@ class TestWorkflowHealthChecker(unittest.TestCase):
         self.renderer.render_start.assert_called_once_with(
             self.flow.flow_start.return_value
         )
-        self.prompt_builder.build.assert_called_once_with(
-            content="struct NewFeature {}",
-            path="/project/Sources/NewFeature.swift",
-            parent_session_id="parent-session",
-            run_id="gate-run",
-            first_step="first ready review step",
-        )
-        self.runner.run.assert_called_once_with("bootstrap prompt", timeout=321)
+        self.runner.run.assert_called_once()
+        prompt = self.runner.run.call_args.args[0]
+        self.assertEqual(prompt.count("struct NewFeature {}"), 1)
+        self.assertTrue(prompt.startswith("# spawned-by: parent-session\n"))
+        self.assertIn("/project/Sources/NewFeature.swift", prompt)
+        self.assertIn("first ready review step", prompt)
+        self.assertIn("The server has already started the isolated review run", prompt)
+        self.assertTrue(prompt.endswith(self.continuation_builder.build("gate-run")))
+        self.runner.run.assert_called_once_with(prompt, timeout=321)
         self.flow.flow_status.assert_called_once_with("gate-run")
         self.result_reader.read.assert_called_once_with("gate-run")
         self.violation_selector.select.assert_called_once_with(self.review_result)

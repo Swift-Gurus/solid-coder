@@ -20,6 +20,7 @@ from claude_test_base import ClaudeTestBase  # noqa: E402
 from codex_live_session_runner import CodexLiveSessionRunner  # noqa: E402
 from codex_test_base import CodexTestBase  # noqa: E402
 from flow_engine.flow_engine_e2e_live_base import FlowEngineE2ELiveBase  # noqa: E402
+from live_test_base import LiveTestBase  # noqa: E402
 from local_test_base import LocalTestBase  # noqa: E402
 
 
@@ -28,11 +29,11 @@ class TestModelProfileTestBases(unittest.TestCase):
     def test_live_backends_use_callable_flow_lifecycle_names(self) -> None:
         self.assertEqual(
             CodexTestBase.FLOW_START_TOOL,
-            "mcp__solid_coder_flow_engine__flow_start",
+            "flow_start",
         )
         self.assertEqual(
             CodexTestBase.FLOW_NEXT_TOOL,
-            "mcp__solid_coder_flow_engine__flow_next",
+            "flow_next",
         )
         self.assertEqual(ClaudeTestBase.FLOW_START_TOOL, "flow_start")
         self.assertEqual(ClaudeTestBase.FLOW_NEXT_TOOL, "flow_next")
@@ -57,26 +58,44 @@ class TestModelProfileTestBases(unittest.TestCase):
         self.assertEqual(base.MODEL_PROFILE, "codex")
         self.assertIsInstance(base.live_session_runner(), CodexLiveSessionRunner)
 
-    def test_codex_flow_instruction_calls_deferred_tools_without_discovery(self) -> None:
+    def test_codex_flow_request_uses_shared_bootstrap_and_mcp_instructions(self) -> None:
         instruction = CodexTestBase().flow_execution_instruction(
             workflow_id="solid-review",
             parameters_json='{"target":{"kind":"file","path":"/project/A.swift"}}',
         )
 
-        self.assertIn("Inside functions.exec", instruction)
         self.assertIn(
-            "tools.mcp__solid_coder_flow_engine__flow_start",
+            'Call flow_start with flow=\'solid-review\' and params equal to this JSON: '
+            '{"target":{"kind":"file","path":"/project/A.swift"}}.',
             instruction,
         )
         self.assertIn(
-            "tools.mcp__solid_coder_flow_engine__flow_next",
+            "Follow the instructions and submission schema returned by MCP",
             instruction,
         )
-        self.assertIn(
-            'flow_next({outputs: {"<returned-step-id>": <JSON output>}})',
-            instruction,
+        self.assertNotIn("functions.exec", instruction)
+        self.assertNotIn("<returned-step-id>", instruction)
+        self.assertNotIn("ALL_TOOLS", instruction)
+
+    def test_backends_inherit_the_same_workflow_request(self) -> None:
+        self.assertIs(
+            CodexTestBase.flow_execution_instruction,
+            LiveTestBase.flow_execution_instruction,
         )
-        self.assertIn("Do not inspect ALL_TOOLS", instruction)
+        self.assertIs(
+            ClaudeTestBase.flow_execution_instruction,
+            LiveTestBase.flow_execution_instruction,
+        )
+
+    def test_backend_requests_do_not_duplicate_recovery_policy(self) -> None:
+        instruction = CodexTestBase().flow_execution_instruction("fixture", "{}")
+
+        self.assertEqual(
+            instruction,
+            ClaudeTestBase().flow_execution_instruction("fixture", "{}"),
+        )
+        self.assertNotIn("retry", instruction.lower())
+        self.assertNotIn("outputs:", instruction)
 
     def test_claude_base_selects_profile_and_runner(self) -> None:
         base = ClaudeTestBase()
@@ -91,7 +110,7 @@ class TestModelProfileTestBases(unittest.TestCase):
         )
 
         self.assertIn("Call flow_start", instruction)
-        self.assertIn("with flow_next", instruction)
+        self.assertIn("using flow_next", instruction)
 
     def test_live_base_prefers_claude_parent_session(self) -> None:
         with patch.dict(

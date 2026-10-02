@@ -17,6 +17,7 @@ class LiveRuleValidationExpectation(BaseModel):
 
     workflow_id: str = Field(min_length=1)
     metrics: list[RuleMetricResultExpectation] = Field(min_length=1)
+    analysis_step_ids: list[str] = Field(default_factory=list)
     final_severity: ReviewSeverity
     is_exception: bool = False
     allow_auxiliary_steps: bool = False

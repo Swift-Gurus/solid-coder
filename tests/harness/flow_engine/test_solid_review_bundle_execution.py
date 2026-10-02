@@ -94,7 +94,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("ui-testing" in identity for identity in identities))
         self.assertEqual(self._rule_step_count(identities, "code-smells"), 1)
         self.assertEqual(self._rule_step_count(identities, "frontmatter"), 1)
-        self.assertEqual(self._rule_step_count(identities, "srp"), 2)
+        self.assertEqual(self._rule_step_count(identities, "srp"), 6)
         self.assertEqual(self._rule_step_count(identities, "ocp"), 2)
         self.assertEqual(self._rule_step_count(identities, "lsp"), 2)
         self.assertEqual(self._rule_step_count(identities, "dry"), 2)
@@ -123,7 +123,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         ]
         self.assertTrue(rule_identities)
         self.assertTrue(all(".rule_reviews.srp-" in item for item in rule_identities))
-        self.assertEqual(self._rule_step_count(rule_identities, "srp"), 2)
+        self.assertEqual(self._rule_step_count(rule_identities, "srp"), 6)
         prompts = [step.prompt for step in started.steps]
         self.assertTrue(any("ProfileView" in prompt for prompt in prompts))
         self.assertTrue(any("ProfileStore" in prompt for prompt in prompts))
@@ -131,7 +131,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("func load() async" in prompt for prompt in prompts))
         self.assertFalse(any("'code':" in prompt for prompt in prompts))
 
-    def test_aggregate_experiment_presents_one_srp_analysis_per_unit(self) -> None:
+    def test_aggregate_experiment_presents_three_srp_classifiers_per_unit(self) -> None:
         self.target_path.write_text(self.source, encoding="utf-8")
         BundledReviewRulePolicyWriter(
             plugin_root=_PROJECT_ROOT,
@@ -151,12 +151,18 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
 
         self.assertIsNone(started.error, started.error)
         identities = [step.step_id for step in started.steps]
-        self.assertEqual(self._rule_step_count(identities, "srp"), 2)
-        self.assertTrue(all(
-            ".analyze_responsibilities" in identity
-            for identity in identities
-            if ".rule_reviews.srp-" in identity
-        ))
+        self.assertEqual(self._rule_step_count(identities, "srp"), 6)
+        self.assertEqual(
+            [
+                sum(identity.endswith(f".{classifier}") for identity in identities)
+                for classifier in (
+                    "classify_actions",
+                    "classify_variable_usage",
+                    "classify_stakeholders",
+                )
+            ],
+            [2, 2, 2],
+        )
         self.assertTrue(all(step.batch is not None for step in started.steps))
         self.assertEqual(
             {step.batch.mode.value for step in started.steps},

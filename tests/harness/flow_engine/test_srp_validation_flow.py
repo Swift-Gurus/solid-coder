@@ -35,38 +35,84 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
         ),
         analysis=[
             RuleAnalysisExpectation(
-                step_id="analyze_responsibilities",
+                step_id="classify_actions",
                 output={
                     "actions": [
                         {
-                            "method": method,
-                            "action": action,
-                            "reasoning": f"{method} has the {action} outcome.",
-                            "evidence": f"{method} source body",
-                        }
-                        for method, action in (
-                            ("save", "save"),
-                            ("load", "load"),
-                            ("invalidate", "invalidate"),
-                            ("render", "render"),
-                            ("format", "format"),
-                            ("present", "present"),
-                        )
-                    ],
-                    "cohesion_groups": [
-                        {
-                            "methods": ["save", "load", "invalidate"],
-                            "variables": ["storage", "cache"],
-                            "reasoning": "These methods share data-access state.",
-                            "evidence": "storage and cache are used together.",
+                            "method": "init",
+                            "action": "initialize",
+                            "is_lifecycle": True,
+                            "reasoning": "The initializer stores injected dependencies.",
+                            "evidence": "self.storage = storage; self.cache = cache",
                         },
+                        *[
+                            {
+                                "method": method,
+                                "action": method,
+                                "is_lifecycle": False,
+                                "reasoning": f"{method} has an independently meaningful outcome.",
+                                "evidence": f"{method} source body",
+                            }
+                            for method in (
+                                "save", "load", "invalidate", "render", "format", "present",
+                            )
+                        ],
+                    ],
+                },
+            ),
+            RuleAnalysisExpectation(
+                step_id="classify_variable_usage",
+                output={
+                    "method_variable_usage": [
                         {
-                            "methods": ["render", "format", "present"],
+                            "method": "init",
+                            "variables": ["storage", "cache", "template", "formatter"],
+                            "is_lifecycle": True,
+                            "is_orchestrator": False,
+                            "reasoning": "Initialization connects all fields but is lifecycle behavior.",
+                            "evidence": "The initializer assigns all four stored properties.",
+                        },
+                        *[
+                            {
+                                "method": method,
+                                "variables": ["storage", "cache"],
+                                "is_lifecycle": False,
+                                "is_orchestrator": False,
+                                "reasoning": "Both fields contribute to one data-access outcome.",
+                                "evidence": f"{method} directly accesses storage and cache.",
+                            }
+                            for method in ("save", "load", "invalidate")
+                        ],
+                        {
+                            "method": "render",
                             "variables": ["template", "formatter"],
-                            "reasoning": "These methods produce presentation output.",
-                            "evidence": "template and formatter drive rendering.",
+                            "is_lifecycle": False,
+                            "is_orchestrator": False,
+                            "reasoning": "Both fields produce one rendered result.",
+                            "evidence": "template.replacingOccurrences uses formatter.string",
+                        },
+                        {
+                            "method": "format",
+                            "variables": ["formatter"],
+                            "is_lifecycle": False,
+                            "is_orchestrator": False,
+                            "reasoning": "The method configures and uses the formatter.",
+                            "evidence": "formatter.minimumFractionDigits; formatter.string",
+                        },
+                        {
+                            "method": "present",
+                            "variables": ["template"],
+                            "is_lifecycle": False,
+                            "is_orchestrator": False,
+                            "reasoning": "The template renders each displayed item.",
+                            "evidence": "items.map { template.replacingOccurrences(...) }",
                         },
                     ],
+                },
+            ),
+            RuleAnalysisExpectation(
+                step_id="classify_stakeholders",
+                output={
                     "stakeholders": [
                         {
                             "stakeholder": "data access",
@@ -125,42 +171,51 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
     )
 
     def test_analysis_is_reused_without_prompt_reserialization(self) -> None:
-        analysis = self._start()
-        self.assertEqual(
-            [step.step_id for step in analysis.steps],
-            ["analyze_responsibilities"],
-        )
-        self.assertNotIn(self.review_unit, analysis.steps[0].prompt)
-        self.assertIn(self.review_unit_name, analysis.steps[0].prompt)
+        checkpoint = self._advance_through_analysis()
+        prompts = "\n".join(checkpoint.prompts)
 
-        exception = self.sut.flow_next({
-            analysis.steps[0].instance_id: self.SCENARIO.analysis[0].output,
-        })
         self.assertEqual(
-            [step.step_id for step in exception.steps],
+            [step.step_id for step in checkpoint.result.steps],
             ["classify_exception"],
         )
-        self.assertNotIn(self.review_unit, exception.steps[0].prompt)
-        self.assertNotIn("Canonical srp fixture evidence", exception.steps[0].prompt)
+        self.assertNotIn(self.review_unit, prompts)
+        self.assertIn(self.review_unit_name, prompts)
+        self.assertNotIn("Both fields produce one rendered result.", prompts)
+
+    def test_uses_canonical_rule_detection_and_exception_instructions(self) -> None:
+        checkpoint = self._advance_through_analysis()
+        prompts = "\n".join(checkpoint.prompts)
+
+        self.assertIn("single action verb, not a description", prompts)
+        self.assertIn("initializer,", prompts)
+        self.assertIn("deinitializer, or factory method", prompts)
+        self.assertIn("every instance variable it directly uses", prompts)
+        self.assertIn("is_orchestrator", prompts)
+        self.assertIn("distinct stakeholders", prompts)
+        self.assertIn("Every stored property and initializer parameter is protocol-typed", prompts)
+        self.assertIn("pure delegation without business logic", prompts)
+        self.assertIn("every dependency is", prompts)
+        self.assertIn("injected through its initializer", prompts)
 
     def test_rejects_an_observation_without_required_evidence(self) -> None:
         analysis = self._start()
-        invalid_output = dict(self.SCENARIO.analysis[0].output)
-        invalid_output["actions"] = [
-            {
-                "method": "save",
-                "action": "save",
-                "reasoning": "The method persists the supplied data.",
-            }
-        ]
 
         rejected = self.sut.flow_next({
-            analysis.steps[0].instance_id: invalid_output,
+            analysis.steps[0].instance_id: {
+                "actions": [
+                    {
+                        "method": "save",
+                        "action": "save",
+                        "is_lifecycle": False,
+                        "reasoning": "The method persists the supplied data.",
+                    }
+                ],
+            },
         })
 
         self.assertEqual(rejected.status, "ready")
         self.assertEqual(
             [step.step_id for step in rejected.steps],
-            ["analyze_responsibilities"],
+            ["classify_actions", "classify_variable_usage", "classify_stakeholders"],
         )
         self.assertIn("evidence", rejected.steps[0].rejection_reason)

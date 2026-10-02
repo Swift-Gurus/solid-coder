@@ -93,7 +93,8 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             )),
         ])
         (codex_home / "config.toml").write_text(
-            "tool_output_token_limit = 262144\n\n"
+            "tool_output_token_limit = 262144\n"
+            f"log_dir = {json.dumps(str(codex_home / 'log'))}\n\n"
             "[features]\n"
             "plugins = true\n"
             "hooks = true\n\n"
@@ -168,7 +169,12 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             text=True,
             timeout=request.timeout,
             cwd=str(request.project_root),
-            env=environment,
+            env=environment | {
+                "RUST_LOG": (
+                    "warn,codex_mcp=debug,codex_mcp_extension=debug,"
+                    "codex_core::mcp_tool_exposure=debug"
+                ),
+            },
         )
         (artifact_directory / "codex-events.jsonl").write_text(
             process.stdout,
@@ -188,12 +194,14 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         artifact_directory: Path,
     ) -> None:
         runtime_artifacts = artifact_directory / "codex-runtime"
-        sessions = codex_home / "sessions"
-        if sessions.exists():
-            shutil.copytree(sessions, runtime_artifacts / "sessions")
-        for database in codex_home.glob("state_*.sqlite*"):
-            runtime_artifacts.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(database, runtime_artifacts / database.name)
+        runtime_artifacts.mkdir(parents=True, exist_ok=True)
+        for directory_name in ("sessions", "log"):
+            directory = codex_home / directory_name
+            if directory.exists():
+                shutil.copytree(directory, runtime_artifacts / directory_name)
+        for pattern in ("config.toml", "state_*.sqlite*", "logs_*.sqlite*"):
+            for source in codex_home.glob(pattern):
+                shutil.copy2(source, runtime_artifacts / source.name)
 
     def _write_execution_evidence(
         self,

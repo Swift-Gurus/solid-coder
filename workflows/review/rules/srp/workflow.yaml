@@ -9,59 +9,30 @@ rule:
       included: [class, struct, enum, extension, actor, function]
 
 steps:
-  - id: analyze_responsibilities
+  - id: classify_actions
     type: agent
     prompt: |
       Analyze unit `{{params.review_unit.target.name}}`. Its source is already
       visible in the current model session; do not request or rediscover it.
 
-      Return the complete typed observations required by all three SRP metrics.
-
       ## SRP-1: Verb Count
 
-      List every distinct action (verb) the class performs. Not method names — what it actually *does*
+      Classify the externally meaningful actions performed by every method
+      declared by the supplied unit.
 
-      Measure the distinct responsibilities expressed as action verbs by the supplied unit. Apply this procedure exactly:
+      1. For each method, identify its primary externally meaningful action.
+      2. Represent `action` as a single action verb, not a description,
+         sentence, or method name.
+      3. Set `is_lifecycle` to true when the method is an initializer,
+         deinitializer, or factory method. Otherwise set it to false.
+      4. Include another action for the same method only when it performs
+         another independently changeable responsibility.
+      5. Do not create separate actions for calls, branches, fallbacks,
+         collection operations, cache operations, formatting primitives, or
+         storage primitives that merely implement another action.
+      6. Include nonempty reasoning and direct source evidence for every action.
+      7. Produce one complete `actions` array after classifying every method.
 
-      1. Ignore initializers, deinitializers, and factory methods.
-      2. For every remaining method, identify one primary externally meaningful action that describes the method's complete outcome.
-      3. Calls, branches, fallbacks, collection operations, cache operations, formatting primitives, and storage primitives that merely implement that outcome are not additional actions.
-      4. Add another action for a method only when it performs an independently changeable responsibility that is not required to achieve its primary outcome.
-      5. Keep distinct primary actions from different methods distinct. Do not merge them merely because their labels are synonyms.
-      6. Before submitting, build one evidence entry per counted action containing the method, action, and rationale. The metric value is the number of evidence entries.
-
-      Example: a load method that checks a cache and falls back to storage performs the single action "load"; cache lookup and storage lookup are implementation details. A save method that invalidates its cache performs the single action "save" when invalidation is required to keep the saved result consistent.
-
-      ## SRP-2: Cohesion Groups
-
-      A class is cohesive when its methods manipulate its variables. High cohesion = most methods use most variables.
-
-      **From Clean Code Chapter 10:**
-      > "In general the more variables a method manipulates the more cohesive that method is to its class. A class in which each variable is used by each method is maximally cohesive."
-
-      Measure cohesion groups in the supplied unit. Apply this procedure exactly:
-
-      1. Ignore lifecycle methods and list which instance variables each remaining method directly uses.
-      2. Connect methods when they share an instance variable, including transitive connections, and form the resulting method groups.
-      3. Do not remove a method merely because it uses variables from both sides of a group. Remove it as an orchestrator only when it coordinates independently meaningful operations. A method that needs all of those variables to produce one cohesive result is not an orchestrator and keeps the group connected.
-      4. A cache and its backing storage belong to the same data-access group when the methods use them together to provide consistent save/load/invalidate behavior.
-      5. Formatting machinery and presentation templates belong to the same presentation group when methods combine them to produce rendered output.
-      6. Before submitting, build one evidence entry per group containing its methods, variables, and rationale. The metric value is the number of evidence entries.
-
-      ## SRP-3: Stakeholder Count
-
-      A class/function/struct/module/instance should have one reason to change
-
-      Measure distinct stakeholders who could independently request changes to the supplied unit. Apply this procedure exactly:
-
-      1. Count change-driving concerns demonstrated by the unit's behavior, not every framework type, dependency, implementation mechanism, or hypothetical team.
-      2. Merge backing storage, caching, and cache consistency into one data-access stakeholder when they jointly implement retrieval and persistence behavior.
-      3. Merge templates, number formatting, string formatting, and collection layout into one presentation stakeholder when they jointly produce displayed output.
-      4. Count security, operations, product policy, validation, or other stakeholders only when code in the unit demonstrates independently changeable behavior for that concern. Do not infer them solely from a type name.
-      5. Before submitting, build one evidence entry per stakeholder containing the stakeholder, methods, and rationale. The metric value is the number of evidence entries.
-
-      Analyze every action, cohesion group, and stakeholder exactly once. Supply
-      nonempty reasoning and source evidence for every observation.
     outputs:
       - name: actions
         type: data
@@ -70,32 +41,182 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [method, action, reasoning, evidence]
+            required:
+              - method
+              - action
+              - is_lifecycle
+              - reasoning
+              - evidence
             properties:
-              method: {type: string, minLength: 1}
-              action: {type: string, minLength: 1}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+              method:
+                type: string
+                minLength: 1
 
-      - name: cohesion_groups
+              action:
+                type: string
+                minLength: 1
+
+              is_lifecycle:
+                type: boolean
+
+              reasoning:
+                type: string
+                minLength: 1
+
+              evidence:
+                type: string
+                minLength: 1
+
+    metrics:
+      - id: verb_count
+        metric_id: SRP-1
+
+        value:
+          type: integer
+          minimum: 0
+
+        scoring:
+          source: actions
+
+          when:
+            ref: "{{item.is_lifecycle}}"
+            equals: false
+
+          minor:
+            operator: greater_than_or_equal
+            value: 3
+
+          severe:
+            operator: greater_than
+            value: 5
+
+  - id: classify_variable_usage
+    type: agent
+    prompt: |
+      Analyze unit `{{params.review_unit.target.name}}`. Its source is already
+      visible in the current model session; do not request or rediscover it.
+
+      ## SRP-2: Cohesion Groups
+
+      Classify the instance-variable usage of every method declared by the
+      supplied unit.
+
+      1. For every method, identify every instance variable it directly uses.
+         Use the variable names declared in the source.
+      2. Set `is_lifecycle` to true when the method is an initializer,
+         deinitializer, or factory method. Otherwise set it to false.
+      3. Set `is_orchestrator` to true only when the method coordinates
+         independently meaningful operations rather than using the variables
+         together to produce one cohesive outcome.
+      4. A method that uses variables from multiple areas to produce one cohesive
+         result is not an orchestrator.
+      5. Include nonempty reasoning and direct source evidence for every method.
+      6. Produce one complete `method_variable_usage` array after classifying
+         every method.
+
+    outputs:
+      - name: method_variable_usage
         type: data
         schema:
           type: array
           items:
             type: object
             additionalProperties: false
-            required: [methods, variables, reasoning, evidence]
+            required:
+              - method
+              - variables
+              - is_lifecycle
+              - is_orchestrator
+              - reasoning
+              - evidence
             properties:
-              methods:
-                type: array
-                minItems: 1
-                items: {type: string, minLength: 1}
+              method:
+                type: string
+                minLength: 1
+
               variables:
                 type: array
-                items: {type: string, minLength: 1}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+                uniqueItems: true
+                items:
+                  type: string
+                  minLength: 1
 
+              is_lifecycle:
+                type: boolean
+
+              is_orchestrator:
+                type: boolean
+
+              reasoning:
+                type: string
+                minLength: 1
+
+              evidence:
+                type: string
+                minLength: 1
+
+    metrics:
+      - id: cohesion_groups
+        metric_id: SRP-2
+
+        value:
+          type: integer
+          minimum: 0
+
+        scoring:
+          source: method_variable_usage
+
+          when:
+            all:
+              - ref: "{{item.is_lifecycle}}"
+                equals: false
+
+              - ref: "{{item.is_orchestrator}}"
+                equals: false
+
+          reducer:
+            type: component_count
+            relation:
+              operator: intersects
+              left: "{{left.variables}}"
+              right: "{{right.variables}}"
+
+          severe:
+            operator: greater_than_or_equal
+            value: 2
+
+  - id: classify_stakeholders
+    type: agent
+    prompt: |
+      Analyze unit `{{params.review_unit.target.name}}`. Its source is already
+      visible in the current model session; do not request or rediscover it.
+
+      ## SRP-3: Stakeholder Count
+
+      A class, function, struct, module, or instance should have one reason to
+      change.
+
+      Classify the distinct stakeholders who could independently request
+      changes to the supplied unit.
+
+      1. Identify change-driving concerns demonstrated by the unit's behavior.
+      2. Do not create stakeholders for every framework type, dependency,
+         implementation mechanism, or hypothetical team.
+      3. Treat backing storage, caching, and cache consistency as one
+         data-access stakeholder when they jointly implement retrieval and
+         persistence behavior.
+      4. Treat templates, number formatting, string formatting, and collection
+         layout as one presentation stakeholder when they jointly produce
+         displayed output.
+      5. Include security, operations, product policy, validation, or another
+         stakeholder only when the unit contains independently changeable
+         behavior for that concern.
+      6. Do not infer a stakeholder solely from a type or method name.
+      7. Include nonempty reasoning and direct source evidence for every
+         stakeholder.
+      8. Produce one complete `stakeholders` array after analyzing the unit.
+
+    outputs:
       - name: stakeholders
         type: data
         schema:
@@ -103,69 +224,67 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [stakeholder, methods, reasoning, evidence]
+            required:
+              - stakeholder
+              - methods
+              - reasoning
+              - evidence
             properties:
-              stakeholder: {type: string, minLength: 1}
+              stakeholder:
+                type: string
+                minLength: 1
+
               methods:
                 type: array
                 minItems: 1
-                items: {type: string, minLength: 1}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+                items:
+                  type: string
+                  minLength: 1
 
-  - id: verb_count
-    type: metric
-    metric_id: SRP-1
-    depends_on: [analyze_responsibilities]
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      source: "{{steps.analyze_responsibilities.outputs.actions}}"
-      minor:
-        operator: greater_than_or_equal
-        value: 3
-      severe:
-        operator: greater_than
-        value: 5
+              reasoning:
+                type: string
+                minLength: 1
 
-  - id: cohesion_groups
-    type: metric
-    metric_id: SRP-2
-    depends_on: [analyze_responsibilities]
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      source: "{{steps.analyze_responsibilities.outputs.cohesion_groups}}"
-      severe:
-        operator: greater_than_or_equal
-        value: 2
+              evidence:
+                type: string
+                minLength: 1
 
-  - id: stakeholder_count
-    type: metric
-    metric_id: SRP-3
-    depends_on: [analyze_responsibilities]
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      source: "{{steps.analyze_responsibilities.outputs.stakeholders}}"
-      severe:
-        operator: greater_than_or_equal
-        value: 2
+    metrics:
+      - id: stakeholder_count
+        metric_id: SRP-3
+
+        value:
+          type: integer
+          minimum: 0
+
+        scoring:
+          source: stakeholders
+
+          severe:
+            operator: greater_than_or_equal
+            value: 2
 
   - id: classify_exception
     type: exception
-    depends_on: [verb_count, cohesion_groups, stakeholder_count]
+    depends_on:
+      - verb_count
+      - cohesion_groups
+      - stakeholder_count
+
     prompt: |
-      1. **Facade / Coordinator** (see @facade.md)
-         A class that only coordinates protocol-typed subsystems has one responsibility: coordination.
+      Analyze whether unit `{{params.review_unit.target.name}}` is an SRP
+      facade or coordinator exception.
 
-         Check the Facade Recognition Conditions (ALL must hold):
-          1. Every stored property / init parameter is protocol-typed
-          2. Every method body is pure delegation — no business logic, no branching on own mutable state
-          3. Class creates no objects internally — all dependencies injected via init
-         If ALL conditions hold: cohesion groups = 1 (coordination), final severity = COMPLIANT
+      A class that only coordinates protocol-typed subsystems has one
+      responsibility: coordination.
 
-      Classify unit `{{params.review_unit.target.name}}` using the source and SRP measurements already visible in the current model session.
+      Classify it as an exception only when all of these conditions hold:
+
+      1. Every stored property and initializer parameter is protocol-typed.
+      2. Every method body performs pure delegation without business logic or
+         branching on the unit's own mutable state.
+      3. The unit creates no collaborators internally; every dependency is
+         injected through its initializer.
+
+      Include nonempty reasoning and direct source evidence supporting the
+      classification.

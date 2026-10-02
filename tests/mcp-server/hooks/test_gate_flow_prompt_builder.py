@@ -12,11 +12,12 @@ ensure_on_path(
 )
 
 from gate_flow_prompt_builder import GateFlowPromptBuilder  # noqa: E402
-
-
-class StubContinuationInstructionBuilder:
-    def build(self, run_id: str) -> str:
-        return f"continue exact run {run_id}"
+from codex_flow_continuation_instruction_builder import (  # noqa: E402
+    CodexFlowContinuationInstructionBuilder,
+)
+from native_flow_continuation_instruction_builder import (  # noqa: E402
+    NativeFlowContinuationInstructionBuilder,
+)
 
 
 """
@@ -29,25 +30,31 @@ class TestGateFlowPromptBuilder(unittest.TestCase):
     def test_builds_single_source_bootstrap_for_existing_run(self) -> None:
         source = "struct PendingView { let marker = 7391 }"
 
-        prompt = GateFlowPromptBuilder(
-            continuation_instruction_builder=(
-                StubContinuationInstructionBuilder()
-            ),
-        ).build(
-            content=source,
-            path="/project/Sources/PendingView.swift",
-            parent_session_id="parent-session",
-            run_id="gate-run",
-            first_step="Measure SRP for PendingView.",
-        )
+        for continuation_builder in [
+            CodexFlowContinuationInstructionBuilder(),
+            NativeFlowContinuationInstructionBuilder(),
+        ]:
+            with self.subTest(backend=type(continuation_builder).__name__):
+                prompt = GateFlowPromptBuilder(
+                    continuation_instruction_builder=continuation_builder,
+                ).build(
+                    content=source,
+                    path="/project/Sources/PendingView.swift",
+                    parent_session_id="parent-session",
+                    run_id="gate-run",
+                    first_step="Measure SRP for PendingView.",
+                )
 
-        self.assertEqual(prompt.count(source), 1)
-        self.assertTrue(prompt.startswith("# spawned-by: parent-session\n"))
-        self.assertIn("/project/Sources/PendingView.swift", prompt)
-        self.assertIn("gate-run", prompt)
-        self.assertIn("Measure SRP for PendingView.", prompt)
-        self.assertIn("continue exact run gate-run", prompt)
-        self.assertNotIn("flow_start", prompt)
+                self.assertEqual(prompt.count(source), 1)
+                self.assertTrue(prompt.startswith("# spawned-by: parent-session\n"))
+                self.assertIn("/project/Sources/PendingView.swift", prompt)
+                self.assertIn("gate-run", prompt)
+                self.assertIn("Measure SRP for PendingView.", prompt)
+                self.assertIn(
+                    "The server has already started the isolated review run",
+                    prompt,
+                )
+                self.assertTrue(prompt.endswith(continuation_builder.build("gate-run")))
 
 
 if __name__ == "__main__":

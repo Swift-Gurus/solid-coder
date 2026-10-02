@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 
@@ -254,6 +255,227 @@ class TestCoLocatedMetricExecution(unittest.TestCase):
             [event["outputs"]["value"] for event in metric_events],
             [1, 2],
         )
+
+    def test_combines_independent_classifiers_across_co_located_metrics(self) -> None:
+        self._write_aggregate_workflow()
+
+        started = self.engine.flow_start(str(self.workflow_path))
+
+        self.assertIsNone(started.error, started.error)
+        self.assertEqual(
+            [step.step_id for step in started.steps],
+            ["classify_actions", "classify_variable_usage", "classify_stakeholders"],
+        )
+        rendered = BatchStepRendererFactory().make().render(started.steps)
+        self.assertEqual(rendered.count("Classify these actions in order"), 1)
+        self.assertEqual(rendered.count("Classify these methods in order"), 1)
+        self.assertEqual(rendered.count("Classify these stakeholders in order"), 1)
+        self.assertNotIn("Engine results:", rendered)
+        self.assertNotIn("classify_exception", rendered)
+        self.assertNotIn("action_count", rendered)
+        self.assertNotIn("cohesion_groups", rendered)
+        self.assertNotIn("stakeholder_count", rendered)
+
+    def test_aggregate_metrics_drain_before_dependent_exception_and_replay_once(self) -> None:
+        self._write_aggregate_workflow()
+        started = self.engine.flow_start(str(self.workflow_path))
+
+        exception = self.engine.flow_next({
+            "aggregate-classifiers": {
+                "aggregate-classifiers": {
+                    "classify_actions": {"actions": [
+                        {"name": "initialize", "is_lifecycle": True},
+                        {"name": "load", "is_lifecycle": False},
+                        {"name": "save", "is_lifecycle": False},
+                    ]},
+                    "classify_variable_usage": {"method_variable_usage": [
+                        {"method": "load", "variables": ["cache"]},
+                        {"method": "save", "variables": ["cache", "storage"]},
+                        {"method": "render", "variables": ["view"]},
+                    ]},
+                    "classify_stakeholders": {"stakeholders": [
+                        "Operations", "Presentation",
+                    ]},
+                },
+            },
+        })
+
+        self.assertIsNone(exception.error, exception.error)
+        self.assertEqual([step.step_id for step in exception.steps], ["classify_exception"])
+        self.assertIn("actions=2", exception.steps[0].prompt)
+        self.assertIn("groups=2", exception.steps[0].prompt)
+        self.assertIn("stakeholders=2", exception.steps[0].prompt)
+        metrics = [
+            event for event in self._events(started.run_id)
+            if event.get("event") == "step_completed"
+            and event.get("session_id") == "engine"
+        ]
+        self.assertEqual(
+            [event["step_id"] for event in metrics],
+            ["action_count", "cohesion_groups", "stakeholder_count"],
+        )
+        self.assertEqual([event["outputs"]["value"] for event in metrics], [2, 2, 2])
+        self.assertEqual(metrics[0]["metric_derivation"]["matched_indexes"], [1, 2])
+        self.assertEqual(
+            metrics[1]["metric_derivation"]["component_evidence"]["components"],
+            [[0, 1], [2]],
+        )
+        events_before_replay = self._events(started.run_id)
+
+        restarted = self._engine()
+        replayed = restarted.flow_next()
+
+        self.assertIsNone(replayed.error, replayed.error)
+        self.assertEqual([step.step_id for step in replayed.steps], ["classify_exception"])
+        self.assertEqual(self._events(started.run_id), events_before_replay)
+        finished = restarted.flow_next({
+            "aggregate-classifiers": {
+                "aggregate-classifiers": {
+                    "classify_exception": {
+                        "is_exception": False,
+                        "additional_info": {
+                            "reasoning": "No rule exception applies.",
+                            "evidence": "All three engine metrics are two.",
+                        },
+                    },
+                },
+            },
+        })
+        self.assertEqual(finished.status, "done", finished.error)
+        result_path = (
+            self.project_root / "runs" / started.run_id / "results/review"
+            / "aggregate-classifiers" / started.run_id / "result.json"
+        )
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            [metric["metric_id"] for metric in result["metrics"]],
+            ["ACTIONS", "GROUPS", "STAKEHOLDERS"],
+        )
+        self.assertEqual([metric["value"] for metric in result["metrics"]], [2, 2, 2])
+        self.assertEqual(
+            [metric["severity"] for metric in result["metrics"]],
+            ["SEVERE", "SEVERE", "SEVERE"],
+        )
+
+    def test_nested_combined_submission_keeps_three_metrics_scoped_per_target(self) -> None:
+        parent_path = self._write_combined_dynamic_rule_workflows()
+        self._write_aggregate_workflow()
+        child_path = self.project_root / "workflows/review/compact-rule/workflow.yaml"
+        child_path.write_text(
+            self.workflow_path.read_text(encoding="utf-8").replace(
+                "id: aggregate-classifiers", "id: compact-rule", 1,
+            ),
+            encoding="utf-8",
+        )
+        prepared = self.engine.flow_start(str(parent_path))
+        analyses = self.engine.flow_next({
+            prepared.steps[0].instance_id: {"units": [{"name": "Alpha"}, {"name": "Beta"}]},
+        })
+        self.assertIsNone(analyses.error, analyses.error)
+        self.assertEqual(len(analyses.steps), 6)
+
+        exceptions = self.engine.flow_next({
+            "Alpha": {"reviews": {
+                "classify_actions": {"actions": [{"name": "load", "is_lifecycle": False}]},
+                "classify_variable_usage": {"method_variable_usage": [
+                    {"method": "load", "variables": ["cache"]},
+                    {"method": "save", "variables": ["cache"]},
+                ]},
+                "classify_stakeholders": {"stakeholders": ["Operations"]},
+            }},
+            "Beta": {"reviews": {
+                "classify_actions": {"actions": []},
+                "classify_variable_usage": {"method_variable_usage": []},
+                "classify_stakeholders": {"stakeholders": []},
+            }},
+        })
+
+        self.assertIsNone(exceptions.error, exceptions.error)
+        self.assertEqual(
+            [step.step_id for step in exceptions.steps],
+            ["aggregate_rules.reviews-1.classify_exception", "aggregate_rules.reviews-2.classify_exception"],
+        )
+        metrics = [
+            event for event in self._events(prepared.run_id)
+            if event.get("event") == "step_completed" and event.get("session_id") == "engine"
+        ]
+        self.assertEqual(
+            [event["step_id"] for event in metrics],
+            [
+                "aggregate_rules.reviews-1.action_count",
+                "aggregate_rules.reviews-2.action_count",
+                "aggregate_rules.reviews-1.cohesion_groups",
+                "aggregate_rules.reviews-2.cohesion_groups",
+                "aggregate_rules.reviews-1.stakeholder_count",
+                "aggregate_rules.reviews-2.stakeholder_count",
+            ],
+        )
+        self.assertEqual([event["outputs"]["value"] for event in metrics], [1, 0, 1, 0, 1, 0])
+        self.assertEqual(
+            [event["workflow_instance_id"] for event in metrics],
+            ["aggregate_rules.reviews-1", "aggregate_rules.reviews-2"] * 3,
+        )
+
+    def test_partial_aggregate_scores_only_valid_classifiers_and_retries_missing_work(self) -> None:
+        self._write_aggregate_workflow()
+        started = self.engine.flow_start(str(self.workflow_path))
+
+        remaining = self.engine.flow_next({
+            "aggregate-classifiers": {
+                "aggregate-classifiers": {
+                    "classify_actions": {"actions": [
+                        {"name": "load", "is_lifecycle": False},
+                    ]},
+                    "classify_variable_usage": {"method_variable_usage": [
+                        {"method": "load", "variables": "not-an-array"},
+                    ]},
+                },
+            },
+        })
+
+        self.assertIsNone(remaining.error, remaining.error)
+        self.assertEqual(
+            [step.step_id for step in remaining.steps],
+            ["classify_variable_usage", "classify_stakeholders"],
+        )
+        self.assertIn("not of type 'array'", remaining.steps[0].rejection_reason)
+        self.assertEqual(
+            [event["step_id"] for event in self._events(started.run_id)
+             if event.get("event") == "step_completed"],
+            ["classify_actions", "action_count"],
+        )
+        restarted = self._engine()
+        replayed = restarted.flow_next()
+        self.assertEqual(
+            [step.step_id for step in replayed.steps],
+            ["classify_variable_usage", "classify_stakeholders"],
+        )
+
+        exception = restarted.flow_next({
+            "aggregate-classifiers": {
+                "aggregate-classifiers": {
+                    "classify_variable_usage": {"method_variable_usage": [
+                        {"method": "load", "variables": ["cache"]},
+                    ]},
+                    "classify_stakeholders": {"stakeholders": ["Operations"]},
+                },
+            },
+        })
+
+        self.assertIsNone(exception.error, exception.error)
+        self.assertEqual([step.step_id for step in exception.steps], ["classify_exception"])
+        self.assertEqual(
+            [event["step_id"] for event in self._events(started.run_id)
+             if event.get("event") == "step_completed"],
+            [
+                "classify_actions", "action_count", "classify_variable_usage",
+                "classify_stakeholders", "cohesion_groups", "stakeholder_count",
+            ],
+        )
+
+    def _write_aggregate_workflow(self) -> None:
+        fixture = Path(__file__).parent / "fixtures/aggregate_co_located_metrics/workflow.yaml"
+        self.workflow_path.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
 
     def _engine(self):
         return FlowRunOrchestratorFactory(

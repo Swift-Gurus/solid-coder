@@ -21,6 +21,11 @@ class SRPValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "srp"
     ARTIFACT_SCENARIO = "srp"
     FIXTURE = _FIXTURE
+    EXPECTED_ANALYSIS_STEP_IDS = [
+        "classify_actions",
+        "classify_variable_usage",
+        "classify_stakeholders",
+    ]
     EXPECTED_STEP_IDS = [
         "verb_count",
         "cohesion_groups",

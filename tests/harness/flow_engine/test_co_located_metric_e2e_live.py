@@ -123,6 +123,53 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
         )
         self.assertEqual(events[-1].get("event"), "run_completed")
 
+    def test_combined_classifications_derive_all_metrics_before_exception(self) -> None:
+        workflow_path = (
+            Path(__file__).parent
+            / "fixtures/aggregate_co_located_metrics/workflow.yaml"
+        )
+
+        events = self._run_live_workflow(workflow_path)
+
+        completed = [event for event in events if event.get("event") == "step_completed"]
+        self.assertEqual(
+            [event["step_id"] for event in completed],
+            [
+                "classify_actions", "classify_variable_usage", "classify_stakeholders",
+                "action_count", "cohesion_groups", "stakeholder_count", "classify_exception",
+            ],
+        )
+        metrics = [event for event in completed if event.get("session_id") == "engine"]
+        self.assertEqual(
+            [event["step_id"] for event in metrics],
+            ["action_count", "cohesion_groups", "stakeholder_count"],
+        )
+        self.assertEqual([event["outputs"]["value"] for event in metrics], [2, 2, 2])
+        self.assertEqual(metrics[0]["metric_derivation"]["matched_indexes"], [1, 2])
+        self.assertEqual(
+            metrics[1]["metric_derivation"]["component_evidence"]["components"],
+            [[0, 1], [2]],
+        )
+        scored = [event for event in events if event.get("event") == "metric_scored"]
+        self.assertEqual(
+            [event["metric_id"] for event in scored],
+            ["ACTIONS", "GROUPS", "STAKEHOLDERS"],
+        )
+        self.assertEqual([event["value"] for event in scored], [2, 2, 2])
+        self.assertEqual([event["severity"] for event in scored], ["SEVERE"] * 3)
+        self.assertEqual(
+            [event["total"] for event in events if event.get("event") == "turn_counted"],
+            [1, 2],
+            "One combined classification submission, then one dependent exception submission.",
+        )
+        self.assertFalse(
+            {"step_attempt_failed", "step_rejected", "run_failed"}.intersection(
+                event.get("event") for event in events
+            ),
+            events,
+        )
+        self.assertEqual(events[-1].get("event"), "run_completed")
+
     def _run_live_workflow(self, workflow_path: Path) -> list[dict]:
         runs_dir = solid_coder_project_dir(_PROJECT_ROOT) / "runs"
         before = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()

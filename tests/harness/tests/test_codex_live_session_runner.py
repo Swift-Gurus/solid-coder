@@ -110,6 +110,11 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
         )
         environment = process.call_args.kwargs["env"]
         self.assertNotIn("CLAUDE_PROJECT_DIR", environment)
+        self.assertEqual(
+            environment["RUST_LOG"],
+            "warn,codex_mcp=debug,codex_mcp_extension=debug,"
+            "codex_core::mcp_tool_exposure=debug",
+        )
 
     def test_rejects_event_stream_without_child_thread_id(self) -> None:
         runner = CodexLiveSessionRunner()
@@ -140,6 +145,40 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
                 "/plugin/mcp-server/hooks/on_agent_start.py",
                 config,
             )
+
+    def test_generated_config_enables_logs_inside_isolated_home(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            codex_home = Path(directory)
+
+            runner._write_config(codex_home, Path("/plugin"))
+
+            config = (codex_home / "config.toml").read_text(encoding="utf-8")
+            self.assertIn(f'log_dir = "{codex_home / "log"}"', config)
+
+    def test_preserves_startup_diagnostics_without_copying_credentials(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as artifacts:
+            artifact_directory = Path(artifacts)
+            with tempfile.TemporaryDirectory() as directory:
+                codex_home = Path(directory)
+                (codex_home / "log").mkdir()
+                (codex_home / "log" / "codex-tui.log").write_text("MCP startup failed")
+                (codex_home / "config.toml").write_text("plugins = true")
+                (codex_home / "logs_1.sqlite").write_bytes(b"database")
+                (codex_home / "logs_1.sqlite-wal").write_bytes(b"pending logs")
+                (codex_home / "state_5.sqlite").write_bytes(b"state")
+                (codex_home / "auth.json").write_text("do not preserve credentials")
+
+                runner._preserve_runtime(codex_home, artifact_directory)
+
+            runtime = artifact_directory / "codex-runtime"
+            self.assertEqual(
+                sorted(str(path.relative_to(runtime)) for path in runtime.rglob("*") if path.is_file()),
+                ["config.toml", "log/codex-tui.log", "logs_1.sqlite", "logs_1.sqlite-wal", "state_5.sqlite"],
+            )
+            self.assertEqual((runtime / "log" / "codex-tui.log").read_text(), "MCP startup failed")
+            self.assertEqual((runtime / "logs_1.sqlite-wal").read_bytes(), b"pending logs")
 
     def _run_with_output(
         self,

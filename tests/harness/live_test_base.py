@@ -22,8 +22,9 @@ class LiveTestBase:
     ) -> str:
         return (
             f"Call {self.FLOW_START_TOOL} with flow={workflow_id!r} and params "
-            f"equal to this JSON: {parameters_json}. Drive every returned step "
-            f"with {self.FLOW_NEXT_TOOL} until the flow reaches done, failed, "
+            f"equal to this JSON: {parameters_json}. "
+            "Follow the instructions and submission schema returned by MCP "
+            f"using {self.FLOW_NEXT_TOOL} until the flow reaches done, failed, "
             "or timed out. Do not edit files."
         )
 

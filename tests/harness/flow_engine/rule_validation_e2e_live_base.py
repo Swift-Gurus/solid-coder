@@ -52,6 +52,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     ARTIFACT_SCENARIO: ClassVar[str]
     FIXTURE: ClassVar[Path]
     EXPECTED_STEP_IDS: ClassVar[list[str]]
+    EXPECTED_ANALYSIS_STEP_IDS: ClassVar[list[str]] = []
     EXPECTED_METRIC_IDS: ClassVar[list[str]]
     EXPECTED_OBSERVATION_IDS: ClassVar[list[str] | None] = None
     EXPECTED_VALUES: ClassVar[list[int | float | str | bool]]
@@ -132,6 +133,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             event["local_step_id"] for event in completed_steps
         }
         expected_step_ids = {
+            *expectation.analysis_step_ids,
             *(metric.step_id for metric in expectation.metrics),
             "classify_exception",
         }
@@ -304,6 +306,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             )
         return LiveRuleValidationExpectation(
             workflow_id=self.WORKFLOW_ID,
+            analysis_step_ids=self.EXPECTED_ANALYSIS_STEP_IDS,
             metrics=[
                 RuleMetricResultExpectation(
                     step_id=step_id,
