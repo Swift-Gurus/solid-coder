@@ -21,25 +21,27 @@ from health_violation_block_formatter import (  # noqa: E402
 solid-name: TestHealthViolationBlockFormatter
 solid-category: unit-test
 solid-spec: [SPEC-036]
-solid-description: Proves typed gate violations render their rule identity, reasoning, evidence, and fix guidance.
+solid-description: Proves typed gate violations render correction guidance without exposing audit evidence or removing it from the finding.
 """
 class TestHealthViolationBlockFormatter(unittest.TestCase):
-    def test_formats_typed_violation_evidence(self) -> None:
-        reason = HealthViolationBlockFormatter().format_block_reason([
-            HealthViolation(
-                principle="srp",
-                metric_id="SRP-2",
-                issue="Two cohesion groups were measured.",
-                evidence="Feature.swift:4-19",
-                fix="Extract one responsibility.",
-            )
-        ])
+    def test_formats_correction_guidance_without_audit_evidence(self) -> None:
+        violation = HealthViolation(
+            principle="srp",
+            metric_id="SRP-2",
+            issue="Two cohesion groups were measured.",
+            evidence="Source method_variable_usage; matched indexes [1, 2]; excluded indexes [0].",
+            fix="Extract one responsibility.",
+        )
+
+        reason = HealthViolationBlockFormatter().format_block_reason([violation])
 
         self.assertIn("1 SEVERE violation(s)", reason)
         self.assertIn("srp / SRP-2", reason)
         self.assertIn("Two cohesion groups were measured.", reason)
-        self.assertIn("Feature.swift:4-19", reason)
+        self.assertNotIn("Evidence:", reason)
+        self.assertNotIn(violation.evidence, reason)
         self.assertIn("Extract one responsibility.", reason)
+        self.assertIn(violation.evidence, violation.model_dump_json())
 
 
 if __name__ == "__main__":

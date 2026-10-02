@@ -16,7 +16,10 @@ for _d in (_MCP_DIR, _MODULE_DIR):
         sys.path.insert(0, str(_d))
 
 from hook_utils import load_toml  # noqa: E402
+from scoring.config_merger import ConfigMerger, ConfigMerging  # noqa: E402
+from scoring.parent_chain import parent_chain  # noqa: E402
 from solid_coder_paths import CONFIG_DIR, CONFIG_TOML, CONFIG_LOCAL_TOML  # noqa: E402
+from toml_root_values import TomlRootValues  # noqa: E402
 from utils.debug_logger import Observing  # noqa: E402
 
 # Anchor to the project root (hooks/ parent) so configs are found regardless of cwd.
@@ -24,6 +27,11 @@ _PROJECT_ROOT = _MCP_DIR.parent
 T = TypeVar("T")
 
 
+"""
+solid-name: TomlLoader
+solid-category: abstraction
+solid-description: Contract for loading TOML configuration values from a supplied file path.
+"""
 class TomlLoader(Protocol):
     def __call__(self, path: Path) -> dict: ...
 
@@ -58,14 +66,25 @@ def _read_with_overrides(
     extract: Callable[[dict], dict],
     _loader: TomlLoader = load_toml,
     _cwd: Optional[Path] = None,
+    _merger: ConfigMerging = ConfigMerger(),
 ) -> dict:
-    """Fetch repo + local config, merging extracted local overrides on top of repo defaults."""
-    effective_cwd = _resolve_project_cwd(_cwd=_cwd)
-    repo_path = find_repo_config(_cwd=effective_cwd)
-    local_path = find_config(_cwd=effective_cwd)
-    base = extract(_loader(repo_path)) if repo_path else {}
-    override = extract(_loader(local_path)) if local_path else {}
-    return {**base, **override}
+    """Merge root-to-leaf project settings, stopping at the nearest Git boundary."""
+    effective_cwd = _resolve_project_cwd(_cwd=_cwd).resolve()
+    directories: list[Path] = []
+    for directory in parent_chain(effective_cwd):
+        directories.append(directory)
+        if (directory / ".git").exists():
+            break
+
+    merged: dict = {}
+    for directory in reversed(directories):
+        for config_path in (
+            find_repo_config(_cwd=directory),
+            find_config(_cwd=directory),
+        ):
+            if config_path is not None:
+                merged = _merger.merge(merged, extract(_loader(config_path)))
+    return merged
 
 
 def read_section(
@@ -83,7 +102,7 @@ def read_root_section(
 ) -> dict:
     """Read top-level scalar keys (not [table] sections), merging repo defaults under local overrides."""
     return _read_with_overrides(
-        lambda data: {k: v for k, v in data.items() if not isinstance(v, dict)},
+        lambda data: TomlRootValues.model_validate(data).model_dump(),
         _loader=_loader,
         _cwd=_cwd,
     )

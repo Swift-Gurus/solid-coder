@@ -1,0 +1,366 @@
+# Discussion draft, saved unchanged in intent from the chat. Not activated or
+# validated as an executable replacement for the bundled ISP workflow.
+# Open decisions: exact coverage completeness enforcement, deterministic
+# tag-to-exception binding, and whether public extension members affect ISP-1.
+# The current empty coverage fallback is not evidence of verified compliance.
+id: isp
+name: Interface Segregation Principle Review
+description: >
+  Reviews interface width, conformer coverage, and cohesion.
+  The model classifies source evidence; MCP calculates metrics.
+max_turns: 60
+
+rule:
+  match:
+    unit_kinds:
+      included: [protocol]
+
+steps:
+  - id: classify_interface
+    type: agent
+    prompt: |
+      Review interface `{{params.review_unit.target.name}}`.
+      Its source is already visible in the current session.
+
+      A wide interface forces conformers to implement requirements they
+      do not need. Each unnecessary requirement creates coupling and
+      implementation burden.
+
+      List its methods, properties, and associated types.
+      Identify whether each requirement is inherited or declared here.
+      Preserve the signature so overloaded requirements remain distinct.
+
+      Classify the interface's relevant exception facts:
+
+      - TestCode: a mock, stub, fake, test helper, or test double.
+      - Marker: an interface with no requirements.
+      - Composition: an interface composing other interfaces.
+      - ObjectiveCInterop: an Objective-C interoperability interface.
+      - FrameworkConstrained: its requirements are mandated by a framework.
+
+      A composition tag alone does not establish that its components are
+      narrow and compliant. Objective-C interoperability alone does not
+      establish that a framework mandates its requirements.
+
+      Explain each classification and cite source evidence.
+    outputs:
+      - name: requirements
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [signature, kind, is_inherited, reasoning, evidence]
+            properties:
+              signature: {type: string, minLength: 1}
+              kind:
+                type: string
+                enum: [METHOD, PROPERTY, ASSOCIATED_TYPE]
+              is_inherited: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: interface_facts
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [tags, reasoning, evidence]
+          properties:
+            tags:
+              type: array
+              uniqueItems: true
+              items:
+                type: string
+                enum:
+                  - TestCode
+                  - Marker
+                  - Composition
+                  - ObjectiveCInterop
+                  - FrameworkConstrained
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+    metrics:
+      - id: width
+        metric_id: ISP-1
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: requirements
+          when:
+            ref: "{{item.is_inherited}}"
+            equals: false
+          minor: {operator: greater_than_or_equal, value: 6}
+          severe: {operator: greater_than_or_equal, value: 9}
+
+  - id: search_related_code
+    type: operation
+    operation: source.search
+    with:
+      queries:
+        - id: interface_references
+          terms:
+            - "{{params.review_unit.target.name}}"
+      context: "{{params.source_context}}"
+
+  - id: present_candidates
+    type: operation
+    operation: source.present_search
+    depends_on: [search_related_code]
+    with:
+      candidates: "{{steps.search_related_code.outputs.candidates}}"
+      files_scanned: "{{steps.search_related_code.outputs.files_scanned}}"
+
+  - id: select_candidates
+    type: agent
+    depends_on: [present_candidates]
+    prompt: |
+      Review these search results for interface
+      `{{params.review_unit.target.name}}`.
+
+      Classify every candidate as:
+
+      - INSPECT: it may contain a conformer, an interface extension,
+        or an extension of a conformer.
+      - REJECT: its supplied metadata establishes that it is unrelated.
+
+      Explain each decision using the candidate's name and description.
+      When the metadata is insufficient to reject a candidate, use INSPECT.
+
+      Preserve each candidate_id exactly.
+
+      {{steps.present_candidates.outputs.text}}
+    outputs:
+      - name: dispositions
+        type: data
+        schema:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required: [candidate_id, disposition, reasoning, evidence]
+            properties:
+              candidate_id:
+                type: string
+                pattern: "^candidate-[1-9][0-9]*$"
+              disposition:
+                type: string
+                enum: [INSPECT, REJECT]
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+
+  - id: validate_selection
+    type: operation
+    operation: source.validate_candidate_selection
+    depends_on: [select_candidates]
+    with:
+      candidates: "{{steps.search_related_code.outputs.candidates}}"
+      dispositions: "{{steps.select_candidates.outputs.dispositions}}"
+
+  - id: inspect_candidates
+    type: agent
+    depends_on: [classify_interface, validate_selection]
+    for_each:
+      source: "{{steps.validate_selection.outputs.selected_candidates}}"
+      mode: batch
+      label: "{{item.candidate_id}}"
+    prompt: |
+      Read `{{item.source.path}}` using your file-reading tool.
+
+      Search result:
+      Unit: {{item.source.unit}}
+      Description: {{item.source.description}}
+
+      Inspect declarations relevant to interface
+      `{{params.review_unit.target.name}}`.
+
+      Record evidence identifying:
+
+      - Conformers and their implementations.
+      - Implementations supplied by conformer extensions.
+      - Defaults supplied by interface extensions.
+      - Conditions restricting where an extension applies.
+      - Overrides of default implementations.
+      - Additional public interface-extension members.
+      - Test conformers such as mocks, stubs, fakes, and helpers.
+
+      Preserve signatures, declaration names, and source locations.
+      Explain when the inspected candidate is unrelated.
+    outputs:
+      - name: inspection
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reasoning, evidence]
+          properties:
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
+  - id: classify_coverage
+    type: agent
+    depends_on: [inspect_candidates]
+    prompt: |
+      Classify conformer coverage for interface
+      `{{params.review_unit.target.name}}` using the completed interface
+      analysis and candidate inspections.
+
+      Identify each distinct conformer once, combining its declaration
+      and relevant extensions.
+
+      For every conformer, assess every requirement declared by this
+      interface. Use these implementation classifications in your reasoning:
+
+      - MEANINGFUL: contains real implementation logic.
+      - EMPTY: has an empty implementation body.
+      - STUB: returns a hardcoded default, traps, or ignores the
+        requirement's intended behavior.
+      - DELEGATED: forwards the behavior to another object.
+      - MISSING: no satisfying implementation was established.
+
+      Set matches to true for MEANINGFUL or DELEGATED implementations.
+
+      An applicable interface default satisfies a requirement when the
+      conformer does not override it with a non-meaningful implementation.
+      Explain the applicable default and override evidence.
+
+      Set included to false for observations belonging to test conformers.
+      Otherwise set included to true.
+
+      Copy each requirement's signature into observation_id.
+      Include an observation for every declared requirement.
+
+      Finding one conformer in search results does not establish that only
+      one conformer exists in the project. Apply the single-conformer
+      exception only when the available evidence establishes that fact,
+      and explain the "unable to verify ISP — single conformer" adjustment.
+    outputs:
+      - name: conformers
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, observations]
+            properties:
+              name: {type: string, minLength: 1}
+              observations:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [observation_id, matches, included, reasoning, evidence]
+                  properties:
+                    observation_id: {type: string, minLength: 1}
+                    matches: {type: boolean}
+                    included: {type: boolean}
+                    reasoning: {type: string, minLength: 1}
+                    evidence: {type: string, minLength: 1}
+
+  - id: calculate_coverage
+    type: operation
+    operation: collection.ratio
+    depends_on: [classify_coverage]
+    for_each: "{{steps.classify_coverage.outputs.conformers}}"
+    with:
+      observations: "{{item.observations}}"
+
+  - id: minimum_coverage
+    type: metric
+    metric_id: ISP-2
+    depends_on: [calculate_coverage]
+    value: {type: number, minimum: 0, maximum: 1}
+    scoring:
+      source: "{{steps.calculate_coverage.outputs.value}}"
+      reducer:
+        type: minimum
+        value: "{{item}}"
+        empty_value: 1.0
+      minor: {operator: less_than, value: 0.8}
+      severe: {operator: less_than, value: 0.6}
+
+  - id: classify_cohesion
+    type: agent
+    depends_on: [classify_coverage]
+    prompt: |
+      Classify usage patterns for interface
+      `{{params.review_unit.target.name}}`.
+
+      Group requirements by which conformers actually use them together.
+      Disjoint usage groups suggest the interface mixes responsibilities.
+
+      Use the conformers in their recorded order, excluding test conformers.
+
+      For every requirement declared by this interface, record its usage
+      vector in that same conformer order:
+
+      - 1: a MEANINGFUL or DELEGATED implementation, including an applicable
+        satisfying default.
+      - 0: an EMPTY, STUB, or MISSING implementation.
+
+      Requirements with identical vectors have the same observed usage
+      pattern. Explain each classification using the completed evidence.
+
+      When there are no non-test conformers available, return an empty list
+      and explain the evidence limitation.
+    outputs:
+      - name: requirement_groups
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [requirement, usage_vector, reasoning, evidence]
+            properties:
+              requirement: {type: string, minLength: 1}
+              usage_vector:
+                type: string
+                pattern: "^[01]+$"
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
+      - name: evidence_note
+        type: string
+    metrics:
+      - id: cohesion_groups
+        metric_id: ISP-3
+        value: {type: integer, minimum: 0}
+        scoring:
+          source: requirement_groups
+          reducer:
+            type: distinct_count
+            value: "{{item.usage_vector}}"
+          severe: {operator: greater_than_or_equal, value: 2}
+
+  - id: classify_exception
+    type: exception
+    depends_on:
+      - classify_interface
+      - minimum_coverage
+      - classify_cohesion
+    prompt: |
+      Determine whether interface
+      `{{params.review_unit.target.name}}` is exempt as a whole.
+
+      Use the recorded interface facts and completed source inspections.
+
+      Whole-interface exceptions:
+
+      - TestCode: the reviewed interface itself is test-only code.
+      - Marker: it has no requirements.
+      - Composition: it composes narrow, compliant interfaces without
+        introducing an additional segregation violation.
+      - FrameworkConstrained: the relevant requirement set is imposed
+        by an interoperability framework.
+
+      Composition or ObjectiveCInterop tags alone do not establish an
+      exception. Cite the evidence supporting the relevant condition.
+
+      These cases affect coverage rather than exempting the whole interface:
+
+      - Test conformers.
+      - Applicable default implementations.
+      - The verified single-conformer adjustment.
+
+      Explain the decision and provide source evidence.

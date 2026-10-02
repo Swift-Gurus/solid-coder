@@ -7,7 +7,7 @@ from health_violation import HealthViolation
 solid-name: HealthViolationBlockFormatter
 solid-category: service
 solid-spec: [SPEC-036]
-solid-description: Formats severe health findings with their diagnostic evidence and correction guidance.
+solid-description: Formats severe health findings with correction guidance while keeping audit evidence out of the model-facing response.
 """
 class HealthViolationBlockFormatter:
     def format_block_reason(
@@ -22,7 +22,6 @@ class HealthViolationBlockFormatter:
                 f"{issue_lines[0]}"
             )
             lines.extend(f"    {line}" for line in issue_lines[1:])
-            lines.append(f"    Evidence: {violation.evidence}")
             if violation.fix:
                 lines.append(f"    Suggested fix: {violation.fix}")
             lines.append("")

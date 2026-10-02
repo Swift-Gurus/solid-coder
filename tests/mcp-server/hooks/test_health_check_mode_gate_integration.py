@@ -23,10 +23,12 @@ solid-description: Verifies the write gate routes prospective content through th
 """
 class TestHealthCheckModeGateIntegration:
     @pytest.mark.parametrize("mode", ["legacy", "workflow"])
+    @pytest.mark.parametrize("relative_directory", [".", "ios/Tools/BuildInsights"])
     def test_routes_unwritten_source_through_selected_checker(
         self,
         tmp_path: Path,
         mode: str,
+        relative_directory: str,
     ) -> None:
         config_directory = tmp_path / ".solid-coder"
         config_directory.mkdir()
@@ -34,7 +36,9 @@ class TestHealthCheckModeGateIntegration:
             f'[feature_flags]\nhealth_check_mode = "{mode}"\n',
             encoding="utf-8",
         )
-        destination = tmp_path / "ProspectiveView.swift"
+        working_directory = tmp_path / relative_directory
+        working_directory.mkdir(parents=True, exist_ok=True)
+        destination = working_directory / "ProspectiveView.swift"
         content = "struct ProspectiveView {\n" + "    let value = 1\n" * 40 + "}\n"
         gate = MagicMock()
 
@@ -53,7 +57,7 @@ class TestHealthCheckModeGateIntegration:
                 file_path=str(destination),
                 language="Swift",
                 session_id="parent-session",
-                cwd=str(tmp_path),
+                cwd=str(working_directory),
             )
 
         other.assert_not_called()
@@ -61,7 +65,7 @@ class TestHealthCheckModeGateIntegration:
         assert request.content == content
         assert request.path == str(destination)
         assert request.parent_session_id == "parent-session"
-        assert request.cwd == str(tmp_path)
+        assert request.cwd == str(working_directory)
         assert not destination.exists()
         gate.allow.assert_called_once_with()
         gate.block.assert_not_called()

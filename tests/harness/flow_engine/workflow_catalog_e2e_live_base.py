@@ -31,11 +31,6 @@ from model_profile_loader import ModelProfileLoader  # noqa: E402
 
 _PLUGIN_ROOT = _MCP_SERVER.parent
 _FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "workflow_catalog_e2e"
-_ALLOWED_TOOLS = (
-    "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status,"
-    "mcp__solid-coder-pipeline__flow_start,mcp__solid-coder-pipeline__flow_next,"
-    "mcp__solid-coder-pipeline__flow_status,flow_start,flow_next,flow_status"
-)
 _FAILED_EVENTS = {"step_attempt_failed", "step_rejected", "run_failed"}
 
 
@@ -50,6 +45,7 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     FLOW_START_TOOL: ClassVar[str]
+    ALLOWED_FLOW_TOOLS: ClassVar[str]
 
     @property
     @abstractmethod
@@ -97,7 +93,7 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
             plugin_root=_PLUGIN_ROOT,
             model=profile.llm["model"],
             timeout=profile.llm["timeout"],
-            allowed_tools=_ALLOWED_TOOLS,
+            allowed_tools=self.ALLOWED_FLOW_TOOLS,
             mcp_config=McpConfigBuilder().build(_PLUGIN_ROOT),
         )
 

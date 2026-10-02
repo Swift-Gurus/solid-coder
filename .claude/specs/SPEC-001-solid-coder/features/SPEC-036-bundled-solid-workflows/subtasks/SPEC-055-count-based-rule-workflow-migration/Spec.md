@@ -26,7 +26,7 @@ ownership of arithmetic, not what constitutes a violation.
 | Rule | This spec migrates | Deferred |
 |---|---|---|
 | OCP | Dependency and behavior-selection observations; OCP-1/2/3 counts | Nothing; it is the reference migration |
-| SRP | Actions, cohesion groups, and stakeholders as typed observations | No reducer work |
+| SRP | Actions, method-variable usage, and stakeholders as typed observations; MCP counts actions/stakeholders and derives cohesion components | Generic pairwise reduction is implemented by SPEC-059 |
 | Structured Concurrency | Countable task, isolation, await, bridge, and duration-literal sites | Any future aggregate numeric reducer |
 | Code Smells | Static logic, concrete type, and inline type observations | Boundary inference bug remains SPEC-051 |
 | Frontmatter | Missing, mismatched, invalid, and low-quality field observations | None |
@@ -189,6 +189,8 @@ actionable retry message
 |---|---|---|
 | Parent | SPEC-036 | Owns bundled rule and review workflows |
 | Upstream | SPEC-053 | Provides filtered collection counts and audit |
+| Upstream | SPEC-058 | Provides co-located metric declarations without additional model work |
+| Upstream | SPEC-059 | Provides generic pairwise component reduction used for SRP cohesion |
 | Upstream | SPEC-039 | Provides executable rule declarations, policy, and results |
 | Fixtures | SPEC-014 through SPEC-025 | Provide principle-specific locked cases |
 | Adjacent | SPEC-051 | Owns the code-smells effective-boundary defect |
@@ -205,6 +207,15 @@ actionable retry message
 - Assert exact locked raw values and severities before and after migration.
 - Assert aggregate file review exposes classification work but never MCP-owned
   metric steps in its model submission schema.
+- Submit the three independent SRP classification outputs together and assert
+  MCP calculates every co-located metric from the corresponding accepted output;
+  presentation alone is not sufficient evidence. Cover partial submissions,
+  replay, nested rule ownership, and genuine dependencies that must wait for
+  scoring.
+- Preserve Codex transcripts and correlate actual successful `flow_start` and
+  `flow_next` responses with their calls. Record tool discovery and recovered
+  local-script failures as diagnostics, not rule-result failures; retain exact
+  step, metric, exception, audit, and terminal-state assertions.
 - Run all non-live suites after each rule, then the rule's Codex and Claude live
   scenario before moving to the next rule.
 
@@ -236,17 +247,59 @@ actionable retry message
 
 ## Implementation Status
 
-OCP remains the reference collection-backed migration. SRP now uses one typed
-`analyze_responsibilities` model step to return actions, cohesion groups, and
-stakeholders with required reasoning and evidence. MCP derives SRP-1, SRP-2,
-and SRP-3 as filtered collection counts, applies the existing thresholds,
-records derivation evidence, and runs the existing rule-wide facade exception.
-The retained single-prompt experiment shares output-shape-neutral canonical
-detection wording for valid comparison.
+OCP remains the reference collection-backed migration. The agreed SRP draft is
+now the bundled `workflows/review/rules/srp/workflow.yaml`. It has three
+independent typed classifiers: `classify_actions`, `classify_variable_usage`,
+and `classify_stakeholders`, each with co-located MCP-owned metric declarations
+and required reasoning/evidence. SRP-1 counts non-lifecycle action observations;
+SRP-2 derives connected components from intersecting instance-variable sets,
+excluding lifecycle methods and orchestrators; SRP-3 counts stakeholder
+observations. The facade exception remains a separate step after scoring.
 
-SRP validation covers exact `6 / 2 / 2` values, MCP ownership, exception
-override, audit persistence, incomplete-observation rejection, bundle execution,
-and aggregate presentation with one analysis prompt per unit.
+The runtime retains seven distinct steps: the three classifiers, `verb_count`,
+`cohesion_groups`, `stakeholder_count`, and `classify_exception`. The calling
+workflow controls sequential versus aggregate presentation; the rule itself
+does not force either mode. Aggregate execution accepts the three independent
+classification outputs together and MCP calculates their metrics before the
+dependent exception step. Genuine dependencies on scored outputs still wait.
+
+SRP validation preserves the unchanged fixture and exact `6 / 2 / 2` values,
+MCP ownership, exception override, audit persistence, incomplete-observation
+rejection, bundle execution, combined submissions, partial completion, replay,
+and nested rule ownership. The SRP promotion and aggregate scoring coverage are
+committed in `026231e`; the shared Codex protocol-evidence contract is committed
+in `262f1e1`.
+
+Latest SRP validation checkpoint (2026-10-02 UTC):
+
+- All non-live groups: **2,470 passed, 4 skipped**.
+- Fresh Codex sequential and aggregate SRP runs: **2 passed**, both with exact
+  `6 / 2 / 2` metrics. Sequential run `20261002T015554Z-05693e2e` records one
+  successful start and five successful next calls; aggregate run
+  `20261002T015710Z-71d1e967` records one successful start and two successful
+  next calls. Neither has failed or unanswered calls.
+- The earlier completed Codex and Claude sequential/aggregate runs were
+  revalidated against the full shared assertions: **4 passed**. The Claude
+  evidence is from sequential run `20261002T005314Z-d2adebae` and aggregate run
+  `20261002T005532Z-4b8979bd`; these were not fresh Claude reruns at this checkpoint.
+- Codex evidence is preserved as `codex-protocol-evidence.json` beside each
+  run's transcript and flow artifacts. Discovery and recovered script failures
+  remain visible separately from successful MCP execution and exact scoring.
+
+The next rule under review is **OCP**, before Structured Concurrency. Initial
+inspection confirms one dependency classifier, four MCP-owned metric outputs,
+and a separate whole-unit exception step. Its focused deterministic workflow
+and legacy exception-prompt checks pass: **9 tests**. The shared live OCP
+expectations still name the old three metric steps and omit the dependency
+classifier and hardcoded-selection metric; these expectations must be aligned
+with the current contract before claiming current live validation. Existing
+OCP fixtures 2 (abstract injection) and 3 (pure-data construction) are not wired
+into the focused workflow scenarios. Coverage must also exercise injected and
+indirect testability filters and nonzero hardcoded-selection observations.
+No OCP workflow, fixture, or test was changed during this inspection.
+
+This spec remains `in-progress` because the remaining migration validation and
+rule-by-rule review are not complete.
 
 Structured Concurrency now uses one typed
 `classify_concurrency_observations` model step for model mixing, unmanaged task
@@ -260,7 +313,7 @@ metric execution.
 The locked Structured Concurrency fixture now passes through both Codex and
 Claude with exact values `1 / 1 / 1 / 3 / 1 / 1`. Live validation exposed and
 corrected one prompt ambiguity: SC-4 counts each independent await call once,
-not each adjacent pair. The full non-live suite remains green with 1,822 tests,
+not each adjacent pair. That historical non-live checkpoint had 1,822 passing tests,
 4 intentional skips, and the known host-Xcode command case deselected.
 
 Code Smells now uses one file-scoped `classify_smell_observations` model step
@@ -336,7 +389,7 @@ All count-based workflow migrations named by this spec are implemented and
 non-live validated. The spec remains `in-progress` while the remaining locked
 Codex/Claude rule scenarios are completed one workflow at a time.
 
-After the Unit Testing checkpoint, the complete non-live suite is green at
+At the earlier Unit Testing checkpoint, the complete non-live suite was green at
 1,822 passing tests, 4 intentional skips, and the one known host-Xcode dynamic
 command case explicitly deselected. Structured Concurrency, Code Smells,
 Frontmatter, Unit Testing, and UI Testing now have locked live evidence from
