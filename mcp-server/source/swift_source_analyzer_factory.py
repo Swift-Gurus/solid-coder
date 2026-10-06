@@ -13,6 +13,7 @@ from hook_utils import SubprocessAdapter
 from source.exact_source_tokens_resolver_factory import (
     ExactSourceTokensResolverFactory,
 )
+from source.members.swift_member_decoder_factory import SwiftMemberDecoderFactory
 from source.source_evidence_resolver import SourceEvidenceResolver
 from source.swift_ast_item_decoder import SwiftASTItemDecoder
 from source.swift_ast_items_loader import SwiftASTItemsLoader
@@ -39,8 +40,8 @@ from source.utf8_source_offset_line_resolver import UTF8SourceOffsetLineResolver
 """
 solid-name: SwiftSourceAnalyzerFactory
 solid-category: factory
-solid-spec: [SPEC-040]
-solid-description: Provides parsed Swift units, diagnostics, and auditable built-in technology detections from immutable source.
+solid-spec: [SPEC-040, SPEC-062]
+solid-description: Provides parsed Swift units and members, diagnostics, and auditable built-in technology detections from immutable source.
 """
 class SwiftSourceAnalyzerFactory:
     def make(self) -> SwiftSourceAnalyzer:
@@ -67,6 +68,7 @@ class SwiftSourceAnalyzerFactory:
                     ),
                     name_resolver=name_resolver,
                     line_resolver=line_resolver,
+                    member_decoder=SwiftMemberDecoderFactory().make(evidence_resolver),
                 ),
             ),
             diagnostics=SwiftParseDiagnosticsResolver(),

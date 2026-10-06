@@ -2,6 +2,7 @@
 
 from typing import Optional
 
+from source.members.swift_member_decoder import SwiftMembersDecoding
 from source.source_line_range import SourceLineRange
 from source.source_offset_line_resolving import SourceOffsetLineResolving
 from source.source_unit import SourceUnit
@@ -13,8 +14,8 @@ from source.swift_ast_unit_name_resolving import SwiftASTUnitNameResolving
 """
 solid-name: SwiftASTItemDecoder
 solid-category: boundary-adapter
-solid-spec: [SPEC-040]
-solid-description: Converts supported Swift declaration items into source-unit metadata with stable identities and spans.
+solid-spec: [SPEC-040, SPEC-062]
+solid-description: Converts supported Swift declarations into source-unit metadata with stable identities, spans, and direct members.
 """
 class SwiftASTItemDecoder(SwiftASTItemDecoding):
     def __init__(
@@ -22,10 +23,12 @@ class SwiftASTItemDecoder(SwiftASTItemDecoding):
         kind_resolver: SwiftASTUnitKindResolving,
         name_resolver: SwiftASTUnitNameResolving,
         line_resolver: SourceOffsetLineResolving,
+        member_decoder: SwiftMembersDecoding,
     ) -> None:
         self._kind_resolver = kind_resolver
         self._name_resolver = name_resolver
         self._line_resolver = line_resolver
+        self._member_decoder = member_decoder
 
     def decode(self, item: object, source: str) -> Optional[SourceUnit]:
         if not isinstance(item, dict):
@@ -48,11 +51,13 @@ class SwiftASTItemDecoder(SwiftASTItemDecoding):
             return None
         start_line = self._line_resolver.resolve(source, start_offset)
         end_line = self._line_resolver.resolve(source, end_offset)
+        identity = f"{kind.value}:{name}:{start_line}"
         return SourceUnit(
-            identity=f"{kind.value}:{name}:{start_line}",
+            identity=identity,
             kind=kind,
             name=name,
             span=SourceLineRange(start=start_line, end=end_line),
             start_offset=start_offset,
             end_offset=end_offset,
+            members=self._member_decoder.decode(item, identity, source),
         )

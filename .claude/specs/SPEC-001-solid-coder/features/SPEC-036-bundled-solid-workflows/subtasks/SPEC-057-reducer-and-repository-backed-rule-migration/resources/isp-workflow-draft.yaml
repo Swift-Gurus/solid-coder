@@ -1,8 +1,12 @@
-# Discussion draft, saved unchanged in intent from the chat. Not activated or
+# Discussion draft. Not activated or
 # validated as an executable replacement for the bundled ISP workflow.
 # Open decisions: exact coverage completeness enforcement, deterministic
-# tag-to-exception binding, and whether public extension members affect ISP-1.
-# The current empty coverage fallback is not evidence of verified compliance.
+# tag-to-exception binding, and scoring for a separate extension metric.
+# Approved follow-up (Spec.md): missing usable conformer evidence produces
+# "unable to verify", not 100% coverage or zero-group compliance. Width remains
+# independently measurable. Invalid/missing submissions still require recovery.
+# Pending: typed outcome binding and guards before coverage/cohesion scoring.
+# Comments below describe requirements, not new executable YAML attributes.
 id: isp
 name: Interface Segregation Principle Review
 description: >
@@ -267,6 +271,9 @@ steps:
       observations: "{{item.observations}}"
 
   - id: minimum_coverage
+    # Pending outcome binding: score only when usable coverage is available.
+    # Otherwise record "unable to verify" with its reason and audit evidence.
+    # An empty collection must not reduce to an invented 1.0 coverage value.
     type: metric
     metric_id: ISP-2
     depends_on: [calculate_coverage]
@@ -276,7 +283,6 @@ steps:
       reducer:
         type: minimum
         value: "{{item}}"
-        empty_value: 1.0
       minor: {operator: less_than, value: 0.8}
       severe: {operator: less_than, value: 0.6}
 
@@ -324,6 +330,8 @@ steps:
         type: string
     metrics:
       - id: cohesion_groups
+        # Pending outcome binding: an empty list caused by unavailable conformer
+        # evidence is "unable to verify", not a measured zero-group result.
         metric_id: ISP-3
         value: {type: integer, minimum: 0}
         scoring:

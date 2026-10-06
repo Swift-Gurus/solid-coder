@@ -288,3 +288,74 @@ generated session did not expose the flow-engine function. An unchanged runner
 configuration exposed the function on immediate rerun and completed the strict
 contract, so this is recorded as a transient live-session registration failure,
 not as workflow evidence.
+
+## Approved ISP Follow-up — Unable to Verify
+
+Recorded 2026-10-06 for the next ISP revision. This requirement is not implemented
+by the completed migration above. The saved
+[ISP discussion draft](resources/isp-workflow-draft.yaml) remains inactive.
+
+As a reviewer, I want insufficient evidence reported as **unable to verify** so
+missing conformer evidence cannot appear to prove compliance.
+
+### Outcome contract
+
+- **Unable to verify** is an evidence outcome, not a severity, a whole-rule
+  exception, or a successful measurement. It must not manufacture a numeric
+  value, such as 100% coverage or zero cohesion groups.
+- Apply the outcome only to metrics whose required evidence is unavailable.
+  Independently measurable interface width still receives its normal score;
+  known violations are retained in the combined review result.
+- MCP derives the outcome from recorded discovery/analysis limitations and
+  validated classifications. Persist the affected unit and metric identities,
+  reason, available evidence, and missing evidence in the normal run audit.
+  The review summary exposes the outcome and a concise explanation; detailed
+  evidence remains in the audit rather than the gate's model-facing message.
+- An empty search result does not prove that no conformers exist. A bounded
+  search returning one conformer does not prove that it is the only conformer.
+  Discovered evidence and discovery completeness must remain distinguishable.
+- Missing, duplicate, unknown, or invalid required model submissions remain
+  validation errors with retry instructions. They are not converted into
+  unable-to-verify results. A timeout or failed source operation remains an
+  execution failure, not an evidence outcome.
+
+### Acceptance scenarios for the follow-up
+
+1. **Given** discovery completes without usable non-test conformer evidence,
+   **when** ISP evaluates coverage and conformer-based cohesion,
+   **then** those metrics report unable to verify, with the evidence limitation,
+   and neither 100% coverage nor zero-group compliance is fabricated.
+2. **Given** every discovered conformer is excluded as test code,
+   **when** no eligible evidence remains,
+   **then** the affected metrics report unable to verify and the audit retains
+   the exclusions that explain the empty eligible set.
+3. **Given** an interface declares nine requirements but conformer evidence is
+   unavailable, **when** ISP finalizes its result,
+   **then** ISP-1 remains SEVERE while the evidence-dependent metrics report
+   unable to verify; the interface is not exempted as a whole.
+4. **Given** complete eligible conformer evidence establishes coverages of
+   1.0, 0.75, and 0.5, **when** MCP scores ISP-2,
+   **then** the measured minimum remains 0.5 and existing severity bands apply.
+5. **Given** a required classification is omitted from an aggregate submission,
+   **when** MCP validates it, **then** the missing work remains pending and the
+   response identifies what to resubmit; unable to verify cannot satisfy it.
+6. **Given** an unable-to-verify result and its supporting audit are persisted,
+   **when** the run is replayed, **then** the same outcome and explanation are
+   reconstructed without searching again or converting the outcome to COMPLIANT.
+
+### Pending implementation decisions
+
+The next ISP/source-analysis specs must define the typed outcome representation,
+discovery-completeness signals, and workflow binding. Gate handling must depend
+on review context rather than treating every unable-to-verify result identically.
+A newly introduced interface with no conformers is warning-eligible: retain the
+unable-to-verify outcome without claiming compliance. The evidence needed to
+establish that context and the policy for other cases still need definition;
+zero search hits alone do not establish a first interface. Missing submissions
+and failed operations remain errors rather than warning-eligible outcomes.
+
+SPEC-062 implements the source-member inventory prerequisite. It does not activate
+the ISP draft or choose the remaining gate policy. Do not claim
+runtime support until those contracts and the scenarios above are implemented.
+The scoring policy for the separate extension metric is still undecided and is
+not changed by this requirement.
