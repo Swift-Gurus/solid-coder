@@ -359,3 +359,211 @@ the ISP draft or choose the remaining gate policy. Do not claim
 runtime support until those contracts and the scenarios above are implemented.
 The scoring policy for the separate extension metric is still undecided and is
 not changed by this requirement.
+
+### Source-analysis module boundary and discovery contract
+
+The next ISP revision must keep code parsing and structural analysis in a
+dedicated, reusable source-analysis package within `mcp-server/source/`. Reuse
+the existing parser pipeline and SPEC-062 member inventory rather than adding
+an ISP-specific parser or copying their implementations.
+
+- The source-analysis package owns declaration/member extraction, normalized
+  signatures, conformance and extension relationships, visibility facts, source
+  identities/ranges, and explicit unresolved or unsupported-analysis diagnostics.
+  Language-specific parsing stays behind that package's typed contracts.
+- MCP operation handlers adapt typed inputs and outputs to those capabilities.
+  The workflow engine, gate, prompt renderers, and scoring components must not
+  parse source code or interpret language-specific declaration syntax.
+- Search remains candidate discovery, not structural proof. The initial ISP
+  query contains only the full interface identifier: no generated synonyms,
+  tags, or expanded name fragments. Reuse the existing typed search machinery;
+  a new `name` shorthand or operation name shown in a discussion draft is not
+  an implemented or required public contract.
+- After analysis establishes conformer identities, discovery may search their
+  exact names to locate separate extensions that do not mention the interface.
+  Do not repeat discovery when those extensions are already known. Preserve
+  search bounds and unresolved inherited or conditional relationships instead
+  of claiming that every conformer or extension has been found.
+- Match members to requirements using parsed signatures and established owner
+  relationships, not textual signature equality or matching names alone.
+  Account for overloads and supported generic constraints, and include property
+  and associated-type requirements rather than limiting analysis to functions.
+  Unsupported or ambiguous matches remain explicit analysis limitations.
+- Analyze relevant candidate sources and prospective buffers through the shared
+  source context. Do not require parsing every searched file merely to return
+  candidate metadata, and do not ask the LLM to reconstruct structural links.
+- Workflow YAML owns `for_each`/`when` filtering, classification instructions,
+  exception policy, and scoring declarations. Exclude `private`/`fileprivate`
+  members before LLM presentation. The LLM classifies implementation behavior
+  and extension responsibilities with reasoning/evidence; MCP calculates metrics
+  through generic workflow mechanics. The analysis package must not embed ISP
+  thresholds, severity decisions, or rule-specific exception policy.
+
+### Additional acceptance scenarios — discovery and aggregate execution
+
+1. **Given** a conformer declares its interface in one file and implements a
+   requirement in a separate extension that mentions only the conformer's name,
+   **when** discovery and source analysis run, **then** the exact interface-name
+   query locates the conformance and an exact conformer-name lookup locates the
+   extension when needed; no synonyms or tags broaden either query.
+2. **Given** an unrelated type has an identical method signature and a real
+   conformer has overloaded members or different internal parameter names,
+   **when** source analysis matches requirements, **then** owner relationships
+   and normalized signatures identify the supported matches without including
+   the unrelated type or relying on raw declaration-string equality.
+3. **Given** generic constraints, inherited relationships, or missing source
+   prevent a reliable match, **when** analysis finishes, **then** typed diagnostics
+   retain the ambiguity and affected identities; downstream evidence-dependent
+   metrics follow the unable-to-verify contract rather than assuming completeness.
+4. **Given** an aggregate ISP workflow has inventory, search, and relationship
+   operations plus eligible and private/fileprivate members, **when** it advances,
+   **then** MCP executes and persists the prerequisite operations before dependent
+   agent work, records visibility-based skips, and presents only eligible members.
+   Engine-owned operations are not converted into LLM instructions or absorbed
+   into a combined prompt.
+5. **Given** all eligible classifications arrive in a combined submission,
+   **when** MCP advances the workflow, **then** it maps every classification to
+   its original member/step instance, executes the ready scoring steps, and
+   persists the fixture's expected metric values and evidence. Assertions cover
+   calculated results and operation outputs, not just rendered prompt contents.
+6. **Given** a combined submission omits or invalidates one member assessment,
+   **when** MCP validates it, **then** accepted sibling work remains completed,
+   missing or rejected work remains pending, and dependent calculations wait.
+   Independently ready calculations may complete without reopening valid work.
+7. **Given** completed operation outputs, classifications, skips, and metric
+   results are persisted, **when** the run resumes or replays, **then** it restores
+   those results and pending identities without repeating completed search,
+   parsing, or scoring. This does not promise exactly-once execution across a
+   crash before an operation's completion was persisted.
+
+These scenarios remain pending for the ISP follow-up. Existing generic aggregate
+tests do not establish that the proposed ISP workflow or its unfinished scoring
+and outcome bindings are implemented.
+
+### Approved shared parser direction — Tree-sitter
+
+Use Tree-sitter behind the dedicated source-analysis package, with injected
+language grammars. This replaces the proposed Swift-only syntax-library approach,
+not the lightweight candidate search. Tree-sitter supplies concrete syntax trees;
+it does not by itself resolve symbols, prove conformance, or establish semantic
+equivalence. Language adapters must publish the existing typed source facts and
+explicit limitations rather than exposing grammar node names to workflow logic.
+
+The first parser qualification covers these cases in
+`tests/mcp-server/source/analysis/test_tree_sitter_syntax_parser.py`:
+
+1. **Given** overloaded Swift requirements, **when** their syntax is parsed,
+   **then** external parameter labels and declared types remain distinguishable.
+2. **Given** a conformance and a separate extension, **when** both are parsed,
+   **then** the inherited name and extension owner are preserved for subsequent
+   relationship resolution; parsing alone does not claim a resolved relationship.
+3. **Given** associated types, property requirements, and private/fileprivate
+   members, **when** they are parsed, **then** member kinds and explicit visibility
+   modifiers remain available to the typed member inventory.
+4. **Given** constrained extensions and generic methods, **when** they are parsed,
+   **then** their declared constraints are retained rather than silently erased.
+5. **Given** an incomplete prospective buffer, **when** parsing recovers a partial
+   tree, **then** the parse error remains visible and is not an empty success.
+6. **Given** non-ASCII source, **when** declaration ranges are read,
+   **then** UTF-8 byte ranges identify the original source text correctly.
+7. **Given** a TypeScript grammar instead of Swift, **when** the same parser adapter
+   is used, **then** interface and class declarations parse without Swift-specific
+   behavior in that adapter.
+
+All seven checks passed on 2026-10-06 in each of two isolated environments:
+
+- Python 3.9.6, Tree-sitter 0.23.2, Swift grammar 0.0.1, TypeScript grammar 0.23.2.
+- Python 3.12.14, Tree-sitter 0.26.0, Swift grammar 0.7.4, TypeScript grammar 0.23.2.
+
+The current Swift grammar uses language ABI 15, which Tree-sitter 0.23.2 cannot
+load. Python 3.10 or newer was approved as the minimum on 2026-10-06. The supported
+configuration pins Tree-sitter 0.26.0, Swift grammar 0.7.4, and TypeScript grammar
+0.23.2 in `requirements.txt`; do not retain an older-grammar fallback for Python
+3.9. The earlier Python 3.9 results are historical qualification evidence only.
+These checks qualify the listed syntax cases, not the completeness of either
+grammar. They preceded the production parser integration recorded below. No
+global interpreter change has been made.
+
+MCP servers and hooks currently invoke `python3` through the host process's PATH.
+That interpreter must be Python 3.10+ with the declared dependencies installed;
+installing them under another Python does not change the plugin's launch path.
+The README documents this setup. Dependency resolution against Python 3.10 wheels
+passes; the qualification tests execute under isolated Python 3.12.14, not an
+actual Python 3.10 interpreter.
+
+Verification on 2026-10-06: all 83 source tests passed in both qualification
+environments. After approving the new baseline, the complete non-live sweep under
+Python 3.12 also passed with 2,512 tests and four skips, including the new parser
+checks and mocked hook E2E tests. The earlier Python 3.9 sweep reached the same
+result after eight tests were rerun unchanged with access to their expected
+`~/.solid-coder` test directories.
+
+The existing shared live catalog contract also passed for both locked profiles
+(Codex `gpt-5.6-terra` and Claude `claude-opus-4-5`): two tests in 59.14 seconds.
+The test process and its child-process PATH used the isolated Python 3.12
+environment. These checks verify existing engine behavior under that runtime;
+they do not establish production integration of Tree-sitter or the ISP draft.
+The approved dependencies are declared in the repository and installed only in
+the isolated qualification environment; the user's global Python and local
+configuration remain unchanged.
+
+Implementation sequence:
+
+1. Completed: declare compatible runtime/grammar dependencies, resolve Python
+   3.10 wheels, and verify installation and parser checks under Python 3.12.
+2. Partially completed: the existing source/member inventory, direct ownership,
+   effective visibility, source ranges, incomplete/unsupported diagnostics, and
+   technology tags now use the shared parser. Grammar-specific traversal stays
+   inside the source-analysis package and the existing analyzer registry is
+   reused. Publishing normalized signatures and structural relationship facts
+   remains pending; parser qualification alone does not implement those facts.
+3. Implement bounded relationship resolution, including separate extensions,
+   overloads, unrelated same-signature members, and unresolved constraints; do not
+   substitute identifier matches for semantic proof.
+4. Connect the thin source operations and inactive ISP draft, then implement the
+   discovery, aggregate submission/scoring, partial recovery, and replay scenarios
+   above before activating it.
+5. Run all non-live tests and the locked Codex/Claude flow-engine checks after
+   production integration. Parser qualification alone is not end-to-end evidence.
+
+### Production parser integration — 2026-10-06
+
+`SourceAnalysisOperationFactory` now routes Swift file and buffer analysis through
+Tree-sitter. One syntax parse produces a typed inventory consumed by the existing
+source analyzer and tag detectors. `SourceUnit`, `SourceMember`, source evidence,
+the language registry, and the public `source.analyze` result contract are reused.
+No compiler subprocess or temporary Swift source file is needed for analysis.
+
+The dedicated `source/analysis/` package owns grammar traversal and member-name,
+access, range, import, syntax-signal, and diagnostic extraction. The existing
+visibility policy consumes typed access levels rather than compiler JSON.
+The unused compiler-JSON adapters, subprocess runner, and tag-evidence path were
+removed; search remains parser-free.
+
+Verified cases include:
+
+- One shared parse supplies units, members, and technology tags.
+- Direct member ownership, overload identities, associated types, lifecycle
+  members, subscripts, property bindings, and effective access remain covered.
+- Return types and associated-type constraints are not additional member names.
+- Equivalent file and prospective-buffer analysis preserves Unicode evidence;
+  incomplete buffers retain usable declarations and explicit diagnostics.
+- Comments and string text, including raw strings, do not activate technology
+  rules; executable string interpolation still can. Tag evidence identifies the
+  actual code instead of an earlier matching comment.
+- Workflow replay retains member facts without another parse, and both shared
+  search entry points are guarded against invoking the new parser.
+
+Validation under isolated Python 3.12.14: **90 source tests passed**; the complete
+non-live sweep passed with **2,519 tests and four skips**. The existing shared live
+catalog contract passed for Codex `gpt-5.6-terra` and Claude `claude-opus-4-5`:
+**two tests in 64.34 seconds**, including nested workflow IDs, scripts, commands,
+and completion. The child-process PATH used the same isolated Python runtime.
+The user's global interpreter and local TOML were not changed.
+
+This completes the existing-inventory parser replacement, not the ISP follow-up.
+Normalized signature facts, bounded interface/conformer/extension resolution,
+discovery-completeness outcomes, the inactive ISP draft's bindings, and its
+aggregate submission/scoring/recovery scenarios remain pending. The live catalog
+checks do not establish completion of those ISP scenarios. TypeScript remains a
+parser qualification case, not a newly registered production language analyzer.

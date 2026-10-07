@@ -19,7 +19,7 @@ from search.codebase_search_query_kind import CodebaseSearchQueryKind
 from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
 from source.source_search_input import SourceSearchInput
 from source.source_search_query import SourceSearchQuery
-from source.swift_parser_runner import SwiftParserRunner
+from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
 
 
@@ -134,7 +134,7 @@ class TestSharedSourceSearchEntryPoints(unittest.TestCase):
     def test_search_does_not_invoke_swift_parser_even_for_matching_source(self) -> None:
         (self.project / "Sources" / "Plain.swift").write_text("struct UndocumentedProfile {}\n")
         (self.project / "Sources" / "Unrelated.swift").write_text("struct Unrelated {}\n")
-        with patch.object(SwiftParserRunner, "run", side_effect=AssertionError("Search must not parse Swift")) as parser:
+        with patch.object(TreeSitterSyntaxParser, "parse", side_effect=AssertionError("Search must not parse Swift")) as parser:
             legacy = self.legacy.search(sources_dir=str(self.project), tags=self.query.terms)
             workflow = self.search.execute(SourceSearchInput(queries=[self.query]))
 

@@ -30,7 +30,7 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_context import SourceSearchContext
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_operation_error import SourceOperationError
-from source.swift_parser_runner import SwiftParserRunner
+from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
 from source.text_analysis_source import TextAnalysisSource
 from hooks.pathlib_extractor import PathlibExtractor
 
@@ -91,7 +91,7 @@ struct SiblingCalculator {
             )
         )
         context = SourceSearchContext(sources=[prepared.snapshot])
-        with patch.object(SwiftParserRunner, "run", side_effect=AssertionError("Search must not parse Swift")) as parser:
+        with patch.object(TreeSitterSyntaxParser, "parse", side_effect=AssertionError("Search must not parse Swift")) as parser:
             searched = SourceSearchOperationFactory().make(self.project_directory).execute(SourceSearchInput(
                 queries=query.queries,
                 excluded_units=query.excluded_units,

@@ -15,6 +15,26 @@ The most important idea is that **rules are applied before code is written, and 
 
 ---
 
+## Python requirements
+
+Use **Python 3.10 or newer**. From the plugin checkout, install dependencies into
+the Python environment that will run the plugin:
+
+```bash
+python3 --version
+python3 -m pip install -r requirements.txt
+```
+
+Use an activated virtual environment if dependencies are not installed in your
+chosen Python environment. The plugin's MCP servers and hooks invoke `python3`
+from the host process's `PATH`; it must resolve to that same Python 3.10+
+environment. Installing dependencies under a different interpreter does not
+change which interpreter the plugin launches.
+
+Tree-sitter and its Swift and TypeScript grammars are pinned together in
+`requirements.txt`. Python 3.9 and the older Swift grammar are no longer part of
+the supported dependency configuration.
+
 ## Core workflows
 
 ### `build-spec`

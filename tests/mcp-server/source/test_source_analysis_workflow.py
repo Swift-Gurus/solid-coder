@@ -18,7 +18,7 @@ from operation_workflow_integration_driver import OperationWorkflowIntegrationDr
 from harness.project_context import ProjectDirectory
 from source.source_analysis import SourceAnalysis
 from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
-from source.swift_parser_runner import SwiftParserRunner
+from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
 
 
 """
@@ -103,7 +103,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
                 prompt: "Members: {{steps.analyze.outputs.units}}"
             """
         ))
-        with patch.object(SwiftParserRunner, "run", autospec=True, side_effect=SwiftParserRunner.run) as parser:
+        with patch.object(TreeSitterSyntaxParser, "parse", autospec=True, side_effect=TreeSitterSyntaxParser.parse) as parser:
             started = self.driver.start(params={
                 "source": {"kind": "file", "path": str(self.first_path)},
             })

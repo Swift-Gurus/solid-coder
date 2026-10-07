@@ -3,8 +3,7 @@
 from typing import Protocol
 
 from source.members.source_member_visibility import SourceMemberVisibility
-from source.members.swift_declared_access_resolver import SwiftDeclaredAccessResolving
-from source.members.swift_member_declaration import SwiftMemberDeclaration
+from findings.review_unit_kind import ReviewUnitKind
 
 
 """
@@ -15,7 +14,8 @@ solid-description: Contract for resolving member access within a declaring unit.
 """
 class SwiftMemberVisibilityResolving(Protocol):
     def resolve(
-        self, owner: SwiftMemberDeclaration, member: SwiftMemberDeclaration,
+        self, owner_kind: ReviewUnitKind, owner_access: SourceMemberVisibility,
+        member_access: SourceMemberVisibility | None,
     ) -> SourceMemberVisibility: ...
 
 
@@ -26,17 +26,13 @@ solid-spec: [SPEC-062]
 solid-description: Resolves member access using owner restrictions, protocol requirements, and extension defaults.
 """
 class SwiftMemberVisibilityResolver(SwiftMemberVisibilityResolving):
-    def __init__(self, declared_access: SwiftDeclaredAccessResolving) -> None:
-        self._declared_access = declared_access
-
     def resolve(
-        self, owner: SwiftMemberDeclaration, member: SwiftMemberDeclaration,
+        self, owner_kind: ReviewUnitKind, owner_access: SourceMemberVisibility,
+        member_access: SourceMemberVisibility | None,
     ) -> SourceMemberVisibility:
-        owner_access = self._declared_access.resolve(owner) or SourceMemberVisibility.INTERNAL
-        if owner.kind == "protocol":
+        if owner_kind is ReviewUnitKind.PROTOCOL:
             return owner_access
-        member_access = self._declared_access.resolve(member)
-        if owner.kind == "extension_decl":
+        if owner_kind is ReviewUnitKind.EXTENSION:
             return member_access or owner_access
         ordering = list(SourceMemberVisibility)
         return min(
