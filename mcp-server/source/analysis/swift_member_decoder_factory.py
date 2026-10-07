@@ -1,5 +1,11 @@
 """Composes Swift member inventory decoding."""
 
+from source.analysis.signatures.tree_sitter_swift_associated_type_signature_parser import TreeSitterSwiftAssociatedTypeSignatureParser
+from source.analysis.signatures.tree_sitter_swift_callable_signature_parser import TreeSitterSwiftCallableSignatureParser
+from source.analysis.signatures.tree_sitter_swift_member_signature_parser import TreeSitterSwiftMemberSignatureParser
+from source.analysis.signatures.tree_sitter_swift_parameters_parser import TreeSitterSwiftParametersParser
+from source.analysis.signatures.tree_sitter_swift_value_signature_parser import TreeSitterSwiftValueSignatureParser
+from source.analysis.signatures.tree_sitter_syntax_tokens_parser import TreeSitterSyntaxTokensParser
 from source.analysis.swift_member_decoder import SwiftMemberDecoder
 from source.analysis.tree_sitter_node_span_parser import TreeSitterNodeSpanParser
 from source.analysis.tree_sitter_swift_access_parser import TreeSitterSwiftAccessParser
@@ -13,16 +19,25 @@ from source.members.swift_member_visibility_resolver import SwiftMemberVisibilit
 """
 solid-name: SwiftMemberDecoderFactory
 solid-category: factory
-solid-spec: [SPEC-062]
-solid-description: Prepares a decoder for Swift source-member inventory analysis.
+solid-spec: [SPEC-062, SPEC-057]
+solid-description: Prepares a decoder for Swift source-member inventory and typed signature analysis.
 """
 class SwiftMemberDecoderFactory:
     def make(self) -> SwiftMemberDecoder:
+        tokens = TreeSitterSyntaxTokensParser()
+        signatures = TreeSitterSwiftMemberSignatureParser(
+            callables=TreeSitterSwiftCallableSignatureParser(
+                tokens=tokens, parameters=TreeSitterSwiftParametersParser(tokens),
+            ),
+            values=TreeSitterSwiftValueSignatureParser(tokens),
+            associated_types=TreeSitterSwiftAssociatedTypeSignatureParser(tokens),
+        )
         return SwiftMemberDecoder(
             names=TreeSitterSwiftMemberNamesParser(TreeSitterSwiftBindingNamesParser()),
             access=TreeSitterSwiftAccessParser(),
             spans=TreeSitterNodeSpanParser(),
             visibility=SwiftMemberVisibilityResolver(),
+            signatures=signatures,
             registrations=[
                 SourceMemberKindRegistration("function_declaration", SourceMemberKind.METHOD),
                 SourceMemberKindRegistration("protocol_function_declaration", SourceMemberKind.METHOD),

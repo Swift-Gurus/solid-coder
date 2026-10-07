@@ -515,8 +515,10 @@ Implementation sequence:
    effective visibility, source ranges, incomplete/unsupported diagnostics, and
    technology tags now use the shared parser. Grammar-specific traversal stays
    inside the source-analysis package and the existing analyzer registry is
-   reused. Publishing normalized signatures and structural relationship facts
-   remains pending; parser qualification alone does not implement those facts.
+   reused. Initial typed signatures are now published for methods, lifecycle
+   members, explicitly typed properties, and associated types (see the
+   2026-10-07 progress entry). Remaining signature forms and structural
+   relationship facts are still pending; extraction does not prove conformance.
 3. Implement bounded relationship resolution, including separate extensions,
    overloads, unrelated same-signature members, and unresolved constraints; do not
    substitute identifier matches for semantic proof.
@@ -567,3 +569,57 @@ discovery-completeness outcomes, the inactive ISP draft's bindings, and its
 aggregate submission/scoring/recovery scenarios remain pending. The live catalog
 checks do not establish completion of those ISP scenarios. TypeScript remains a
 parser qualification case, not a newly registered production language analyzer.
+
+### Initial member-signature extraction — 2026-10-07
+
+The existing `source.analyze` path now publishes a typed signature on each source
+member. Extraction stays in `source/analysis/signatures/`, reuses the existing
+syntax-parsing contract and member-decoder factory, and consumes the existing
+syntax tree rather than parsing the file again. Search and candidate discovery
+remain unchanged and parser-free. No new public MCP tool or ISP-specific scorer
+was introduced, and the ISP discussion draft remains inactive.
+
+Implemented facts and verified cases:
+
+- Callable signatures preserve ordered external labels, parameter types,
+  variadics, result types, declaration modifiers, generic parameters, and
+  constraints. Typed throws retains its error type; failable initializers retain
+  their failure marker.
+- Internal parameter renaming, supported formatting/comment trivia, default
+  expressions, and implementation bodies do not alter the extracted callable
+  shape. Different external labels and overload parameter types remain distinct.
+- Explicitly typed properties retain their own binding's type, getter/setter
+  facts, async/throwing getter effects, and declared modifiers, including private
+  setter restrictions. Associated types retain bounds, defaults, and constraints.
+- Property and callable result types preserve type attributes such as `@Sendable`.
+- Discriminated signature variants survive source-analysis JSON serialization
+  and decoding without manual dictionary mapping.
+- Inferred or destructured property types, unavailable accessor shapes,
+  incomplete declarations, and currently unsupported subscript signatures remain
+  explicitly unresolved. Existing member identity, kind, visibility, and source
+  evidence are preserved even when a signature is unresolved.
+
+The pinned Swift grammar rejects a comment between a property identifier and its
+colon (for example `var count /* units */ : Int`). A test records the resulting
+partial analysis and diagnostics rather than asserting fabricated signature
+facts. Supported comments inside type annotations are covered separately.
+
+These are syntax facts, not semantic type equivalence or conformance decisions.
+Type aliases, generic substitution, constraint satisfaction, declaration-owner
+relationships, and cross-file requirement matching are not inferred from equal
+token sequences. An unresolved signature is also not yet the metric-level
+**unable to verify** outcome described above; that workflow/result binding
+remains pending.
+
+Validation: **22 new signature integration tests passed**. The complete non-live
+sweep passed with **2,541 tests and four skips**, including the non-live tests for
+live-session runner infrastructure. The existing shared catalog E2E passed for
+locked Codex `gpt-5.6-terra` and Claude `claude-opus-4-5`: **two tests in 70.04
+seconds**. These live checks cover existing nested workflow, script, command, and
+completion behavior; they do not establish completion of the ISP follow-up.
+
+Next: complete the remaining signature forms and publish declaration relationship
+facts, then implement bounded interface/conformer/extension resolution and its
+workflow bindings. Aggregate submission/scoring/recovery and evidence-outcome
+scenarios remain required before activating the revised ISP workflow. Local TOML,
+global Python configuration, and bundled workflow YAML were not changed.

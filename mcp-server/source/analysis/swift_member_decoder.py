@@ -5,8 +5,9 @@ from typing import Protocol
 from tree_sitter import Node
 
 from findings.review_unit_kind import ReviewUnitKind
+from source.analysis.signatures.swift_member_syntax import SwiftMemberSyntax
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
-from source.members.source_member import SourceMember
+from source.members.source_member import SourceMember, SourceMemberSignature
 from source.members.source_member_kind_registration import SourceMemberKindRegistration
 from source.members.source_member_visibility import SourceMemberVisibility
 from source.members.swift_member_visibility_resolver import SwiftMemberVisibilityResolving
@@ -28,8 +29,8 @@ class SwiftMembersDecoding(Protocol):
 """
 solid-name: SwiftMemberDecoder
 solid-category: boundary-adapter
-solid-spec: [SPEC-062]
-solid-description: Converts direct declaration members into ordered source facts with distinct identities, access, and line evidence.
+solid-spec: [SPEC-062, SPEC-057]
+solid-description: Converts direct declaration members into ordered source facts with distinct identities, access, typed signatures, and line evidence.
 """
 class SwiftMemberDecoder(SwiftMembersDecoding):
     def __init__(
@@ -39,12 +40,14 @@ class SwiftMemberDecoder(SwiftMembersDecoding):
         spans: SourceSyntaxParsing[Node, SourceLineRange],
         visibility: SwiftMemberVisibilityResolving,
         registrations: list[SourceMemberKindRegistration],
+        signatures: SourceSyntaxParsing[SwiftMemberSyntax, SourceMemberSignature],
     ) -> None:
         self._names = names
         self._access = access
         self._spans = spans
         self._visibility = visibility
         self._registrations = registrations
+        self._signatures = signatures
 
     def decode(
         self, item: Node, owner_kind: ReviewUnitKind, owner_identity: str,
@@ -72,5 +75,8 @@ class SwiftMemberDecoder(SwiftMembersDecoding):
                     kind=registration.member_kind,
                     visibility=access,
                     span=span,
+                    signature=self._signatures.parse(SwiftMemberSyntax(
+                        declaration=declaration, name=name, kind=registration.member_kind,
+                    )),
                 ))
         return members
