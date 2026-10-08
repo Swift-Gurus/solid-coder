@@ -675,3 +675,47 @@ promoted into that inventory. Remaining member-signature forms and ISP workflow
 bindings, including aggregate result/scoring/recovery scenarios, still need to be
 completed before the discussion draft is activated. Candidate search, bundled
 workflows, local TOML, and the user's global Python were unchanged.
+
+### Subscripts and bounded declaration links — 2026-10-07
+
+The first cross-file resolver follows the approved choice: **bounded links;
+preserve uncertainty**. Verified module ownership is not a prerequisite for
+returning these candidate links, and those links are not proof of conformance.
+
+`source.analyze` now retains typed subscript signatures, including external
+parameter labels, result types, generic constraints, and accessor effects.
+Subscripts reuse the existing callable extraction; properties and subscripts
+share accessor extraction. Empty, incomplete, or unsupported accessor shapes
+remain unresolved rather than acquiring fabricated capabilities.
+
+The reusable `source/analysis/relationships/` capability consumes already
+analyzed sources. It retains the supplied analyses and diagnostics alongside
+ordered inheritance-reference and extension-target results. Its scope is
+explicitly `supplied_top_level_sources`, with `unverified_candidates` verification:
+
+- One exact eligible declaration-name match produces a candidate, not a verified
+  conformance. Unrelated identical members do not create a relationship.
+- Multiple matching declarations remain ambiguous with every candidate identity.
+- Missing declarations, qualified or compound references, and unevaluated generic
+  or conditional applicability remain unresolved with a reason. Possible targets
+  are retained when available; constraints and source evidence are not erased.
+- Separate extension targets and their inheritance clauses remain distinct links.
+  Existing typed source/unit identities are reused without parsing identity strings.
+- Duplicate snapshots for one source identity are rejected. Empty, partial, and
+  unsupported inputs never establish repository completeness; their bounded scope
+  and available diagnostics survive JSON round-trip persistence.
+
+The new service does not search, read files, or parse source again. It is not yet
+exposed as a workflow operation, and the inactive ISP draft is unchanged. Semantic
+module ownership, nested ownership, transitive conformance, and requirement-to-
+implementation matching are not supplied by this slice. The remaining ISP work
+still includes member matching, operation/workflow bindings, unable-to-verify
+results, and aggregate submission/scoring/recovery validation before activation.
+
+Validation: **10 subscript and 15 relationship integration tests passed**; all
+**148 source tests passed**. The complete 19-root non-live sweep passed with
+**2,577 tests and four skips**. The existing locked Codex `gpt-5.6-terra` and Claude
+`claude-opus-4-5` workflow-catalog E2E checks passed: **two tests in 66.43 seconds**.
+Those live checks cover the existing nested workflow, process-step, and completion
+contract, not completion of the revised ISP workflow. Local TOML, candidate
+search, bundled workflows, and the user's global Python remain unchanged.

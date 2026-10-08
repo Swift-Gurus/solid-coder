@@ -1,9 +1,11 @@
 """Composes Swift member inventory decoding."""
 
 from source.analysis.signatures.tree_sitter_swift_associated_type_signature_parser import TreeSitterSwiftAssociatedTypeSignatureParser
+from source.analysis.signatures.tree_sitter_swift_accessors_parser import TreeSitterSwiftAccessorsParser
 from source.analysis.signatures.tree_sitter_swift_callable_signature_parser import TreeSitterSwiftCallableSignatureParser
 from source.analysis.signatures.tree_sitter_swift_member_signature_parser import TreeSitterSwiftMemberSignatureParser
 from source.analysis.signatures.tree_sitter_swift_parameters_parser import TreeSitterSwiftParametersParser
+from source.analysis.signatures.tree_sitter_swift_subscript_signature_parser import TreeSitterSwiftSubscriptSignatureParser
 from source.analysis.signatures.tree_sitter_swift_value_signature_parser import TreeSitterSwiftValueSignatureParser
 from source.analysis.signatures.tree_sitter_syntax_tokens_parser import TreeSitterSyntaxTokensParser
 from source.analysis.swift_member_decoder import SwiftMemberDecoder
@@ -25,12 +27,15 @@ solid-description: Prepares a decoder for Swift source-member inventory and type
 class SwiftMemberDecoderFactory:
     def make(self) -> SwiftMemberDecoder:
         tokens = TreeSitterSyntaxTokensParser()
+        accessors = TreeSitterSwiftAccessorsParser(tokens)
+        callables = TreeSitterSwiftCallableSignatureParser(
+            tokens=tokens, parameters=TreeSitterSwiftParametersParser(tokens),
+        )
         signatures = TreeSitterSwiftMemberSignatureParser(
-            callables=TreeSitterSwiftCallableSignatureParser(
-                tokens=tokens, parameters=TreeSitterSwiftParametersParser(tokens),
-            ),
-            values=TreeSitterSwiftValueSignatureParser(tokens),
+            callables=callables,
+            values=TreeSitterSwiftValueSignatureParser(tokens, accessors),
             associated_types=TreeSitterSwiftAssociatedTypeSignatureParser(tokens),
+            subscripts=TreeSitterSwiftSubscriptSignatureParser(callables, accessors),
         )
         return SwiftMemberDecoder(
             names=TreeSitterSwiftMemberNamesParser(TreeSitterSwiftBindingNamesParser()),

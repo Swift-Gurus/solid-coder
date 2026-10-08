@@ -31,11 +31,11 @@ _PROFILE_TEMPLATE = """\
 tool_output_token_limit = 262144
 
 [mcp_servers.pipeline]
-command = "python3"
+command = "python3.12"
 args = ["{pipeline_server}"]
 
 [mcp_servers.docs]
-command = "python3"
+command = "python3.12"
 args = ["{docs_server}"]
 
 [[hooks.PreToolUse]]
@@ -43,7 +43,7 @@ matcher = "apply_patch"
 
 [[hooks.PreToolUse.hooks]]
 type = "command"
-command = "python3 {pre_write_gate}"
+command = "python3.12 {pre_write_gate}"
 timeout = {hook_timeout}
 
 [[hooks.SessionStart]]
@@ -51,7 +51,7 @@ matcher = ""
 
 [[hooks.SessionStart.hooks]]
 type = "command"
-command = "python3 {on_agent_start}"
+command = "python3.12 {on_agent_start}"
 timeout = {hook_timeout}
 
 [[hooks.Stop]]
@@ -59,7 +59,7 @@ matcher = ""
 
 [[hooks.Stop.hooks]]
 type = "command"
-command = "python3 {on_stop}"
+command = "python3.12 {on_stop}"
 timeout = {hook_timeout}
 """
 

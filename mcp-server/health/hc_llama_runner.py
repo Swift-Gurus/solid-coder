@@ -21,7 +21,8 @@ if _MCP_SERVER_DIR not in sys.path:
 
 from hook_utils import GATEWAY, PLUGIN_ROOT, solid_coder_project_dir  # noqa: E402
 import hc_config  # noqa: E402
-from hc_rule_loader import GatewayCommandRunner, GatewayInvoker, GatewayFixInvoker  # noqa: E402
+from health.gateway.gateway_command_runner import GatewayCommandRunner  # noqa: E402
+from health.gateway.gateway_fix_invoker import GatewayFixInvoker  # noqa: E402
 from hc_violation_parser import ViolationParser, ViolationParsing  # noqa: E402
 from health.dry_search_service_factory import DrySearchServiceFactory  # noqa: E402
 
@@ -95,7 +96,7 @@ def make_llama_server_runner(
     Factory function — constructing and wiring concrete dependencies is this
     function's sole responsibility (OCP Factory exception).
     """
-    invoker = GatewayInvoker(gateway, GatewayCommandRunner(), timeout=hc_config.load_config().llm.timeout)
+    invoker = GatewayCommandRunner(gateway, timeout=hc_config.load_config().llm.timeout)
     observer: Optional[LLMSessionObserving] = None
     if session_id:
         log_dir = solid_coder_project_dir() / "llm-sessions" / session_id

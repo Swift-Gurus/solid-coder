@@ -10,6 +10,7 @@ different <day-time> directories.
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
 
@@ -23,6 +24,14 @@ from output_path_builder import OutputPathBuilder
 
 
 class TestOutputPathBuilder(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.home_directory = Path(directory.name)
+        home = patch("output_path_builder.Path.home", return_value=self.home_directory)
+        home.start()
+        self.addCleanup(home.stop)
+
     def _build(self, project_root: Path, model: str, timestamp: str) -> Path:
         return OutputPathBuilder(project_root).build(
             run_timestamp=timestamp,
@@ -61,6 +70,8 @@ class TestOutputPathBuilder(unittest.TestCase):
             log_dir = self._build(root, "claude", "2026-06-01_11-00-00")
             self.assertTrue(log_dir.exists())
             self.assertTrue(log_dir.is_dir())
+            self.assertTrue(log_dir.is_relative_to(self.home_directory / ".solid-coder"))
+            self.assertFalse(log_dir.is_relative_to(root))
 
     def test_reasoning_path_has_fixture_stem_and_flow_in_name(self):
         with tempfile.TemporaryDirectory() as d:

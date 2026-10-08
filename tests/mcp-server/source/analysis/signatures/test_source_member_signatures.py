@@ -162,14 +162,16 @@ class TestSourceMemberSignatures(unittest.TestCase):
         self.assertEqual(result.units[0].members[0].signature.kind, "unresolved")
         self.assertTrue(result.diagnostics)
 
-    def test_unsupported_subscript_signature_does_not_claim_a_matchable_shape(self) -> None:
+    def test_subscript_signature_preserves_callable_and_accessor_facts(self) -> None:
         result = self.operation.execute(AnalyzeSourceInput(source=TextAnalysisSource(
             virtual_path="Store.swift", text="protocol Store { subscript(index: Int) -> String { get } }",
         )))
 
         signature = result.units[0].members[0].signature
-        self.assertEqual(signature.kind, "unresolved")
-        self.assertIn("subscript", signature.reason)
+        self.assertEqual(signature.kind, "subscript")
+        self.assertEqual(signature.callable.parameters[0].external_label, "_")
+        self.assertEqual(signature.callable.return_type, ["String"])
+        self.assertEqual(signature.accessors, ["get"])
 
     def test_destructured_binding_does_not_copy_whole_tuple_type_to_each_member(self) -> None:
         result = self.operation.execute(AnalyzeSourceInput(source=TextAnalysisSource(

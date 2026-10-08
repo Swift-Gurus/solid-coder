@@ -43,7 +43,7 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
 
         self.assertEqual(data["tool_output_token_limit"], 262144)
 
-    def test_hook_commands_contain_absolute_python3_path(self):
+    def test_hook_commands_use_python312_and_absolute_script_paths(self):
         content = self._generated_content()
         data = self._load_toml(content)
         for section in ("PreToolUse", "SessionStart", "Stop"):
@@ -52,11 +52,11 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
                 for hook in entry.get("hooks", []):
                     cmd = hook.get("command", "")
                     self.assertTrue(
-                        cmd.startswith("python3 "),
-                        f"{section} hook command should start with 'python3 ': {cmd!r}",
+                        cmd.startswith("python3.12 "),
+                        f"{section} hook command should start with 'python3.12 ': {cmd!r}",
                     )
                     parts = cmd.split(" ", 1)
-                    self.assertEqual(len(parts), 2, f"Expected 'python3 <path>', got: {cmd!r}")
+                    self.assertEqual(len(parts), 2, f"Expected 'python3.12 <path>', got: {cmd!r}")
                     self.assertTrue(
                         Path(parts[1]).is_absolute(),
                         f"{section} hook script path is not absolute: {parts[1]!r}",
@@ -92,6 +92,7 @@ class TestCodexProfileTomlValidity(TempDirTestBase):
         content = self._generated_content()
         data = self._load_toml(content)
         for name in ("pipeline", "docs"):
+            self.assertEqual(data["mcp_servers"][name]["command"], "python3.12")
             args = data["mcp_servers"][name]["args"]
             self.assertTrue(Path(args[0]).is_file(), f"{name} server script does not exist: {args[0]!r}")
 

@@ -1,6 +1,6 @@
 """Resolves isolated output storage for legacy health reviews."""
 
-from hc_rule_loader import GatewayInvoker
+from health.gateway.gateway_command_runner import GatewayInvoking
 from output_path_resolver import OutputPathResolving
 
 
@@ -10,7 +10,7 @@ solid-category: service
 solid-description: Provides an isolated output directory for one health-check invocation.
 """
 class HealthOutputPathResolver:
-    def __init__(self, invoker: GatewayInvoker, fallback: OutputPathResolving) -> None:
+    def __init__(self, invoker: GatewayInvoking, fallback: OutputPathResolving) -> None:
         self._invoker = invoker
         self._fallback = fallback
 

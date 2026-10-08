@@ -17,19 +17,24 @@ The most important idea is that **rules are applied before code is written, and 
 
 ## Python requirements
 
-Use **Python 3.10 or newer**. From the plugin checkout, install dependencies into
-the Python environment that will run the plugin:
+Use **Python 3.12** for the plugin. From the plugin checkout, install dependencies
+into the Python environment that will run the plugin:
 
 ```bash
-python3 --version
-python3 -m pip install -r requirements.txt
+python3.12 --version
+python3.12 -m pip install -r requirements.txt
 ```
 
 Use an activated virtual environment if dependencies are not installed in your
-chosen Python environment. The plugin's MCP servers and hooks invoke `python3`
-from the host process's `PATH`; it must resolve to that same Python 3.10+
-environment. Installing dependencies under a different interpreter does not
-change which interpreter the plugin launches.
+chosen Python environment. The plugin's MCP servers and hooks invoke `python3.12`
+from the host process's `PATH`. Legacy gateway calls and generated delegated MCP
+configurations inherit that running interpreter through `sys.executable`, rather
+than selecting the host's default `python3` again. Installing dependencies under
+a different interpreter does not make them available to the plugin.
+
+After updating the plugin configuration, restart the Claude/Codex session so its
+MCP servers are relaunched with the selected runtime. No Python-version fallback
+or `SOLID_CODER_PYTHON` override is used.
 
 Tree-sitter and its Swift and TypeScript grammars are pinned together in
 `requirements.txt`. Python 3.9 and the older Swift grammar are no longer part of

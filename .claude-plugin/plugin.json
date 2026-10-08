@@ -7,31 +7,31 @@
   },
   "mcpServers": {
     "apple-build": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/build/apple/server.py"
       ]
     },
     "docs": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/docs/server.py"
       ]
     },
     "flow-engine": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/flow_engine/server.py"
       ]
     },
     "specs": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/specs/server.py"
       ]
     },
     "pipeline": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/pipeline/server.py"
       ]

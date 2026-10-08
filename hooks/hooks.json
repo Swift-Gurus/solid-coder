@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_agent_start.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_agent_start.py\"",
             "timeout": 1200
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_stop.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_stop.py\"",
             "timeout": 1200
           }
         ]
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/check_code_agent_tested.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/check_code_agent_tested.py\"",
             "timeout": 1200
           }
         ]
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/chunk_tracker.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/chunk_tracker.py\"",
             "timeout": 1200
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/split_plan_on_write.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/split_plan_on_write.py\"",
             "timeout": 1200
           }
         ]
@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/pre_write_gate.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/pre_write_gate.py\"",
             "timeout": 1200
           }
         ]
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/prevent_bash_file_write.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/prevent_bash_file_write.py\"",
             "timeout": 1200
           }
         ]
@@ -84,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/validate_json_schema.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/validate_json_schema.py\"",
             "timeout": 1200
           }
         ]
@@ -96,12 +96,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/allow_plugin_file_access.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/allow_plugin_file_access.py\"",
             "timeout": 1200
           },
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_permission_request.py\"",
+            "command": "python3.12 \"${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT}}/mcp-server/hooks/on_permission_request.py\"",
             "timeout": 1200
           }
         ]

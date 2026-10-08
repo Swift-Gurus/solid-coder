@@ -12,7 +12,7 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
 from hc_llama_runner import GatewayToolDispatcher  # noqa: E402
-from hc_rule_loader import GatewayFixInvoker  # noqa: E402
+from health.gateway.gateway_fix_invoker import GatewayFixInvoker  # noqa: E402
 from llama.codebase_searcher import CodebaseSearcher  # noqa: E402
 from llama.tool_call_parser import ToolCallParser  # noqa: E402
 

@@ -9,7 +9,7 @@ from typing import Optional, Protocol
 from llama.codebase_searcher import CodebaseSearching  # noqa: F401
 from llama.findings_submitter import FindingsSubmitting
 from llama.tool_call_parser import ToolCallArgsParsing
-from hc_rule_loader import FixInvoking  # noqa: F401
+from health.gateway.gateway_fix_invoker import FixInvoking  # noqa: F401
 
 
 TOOLS: list = [

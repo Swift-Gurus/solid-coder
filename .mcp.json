@@ -1,35 +1,35 @@
 {
   "mcpServers": {
     "solid-coder-apple-build": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "mcp-server/build/apple/server.py"
       ],
       "cwd": "."
     },
     "solid-coder-docs": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "mcp-server/docs/server.py"
       ],
       "cwd": "."
     },
     "solid-coder-flow-engine": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "mcp-server/flow_engine/server.py"
       ],
       "cwd": "."
     },
     "solid-coder-specs": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "mcp-server/specs/server.py"
       ],
       "cwd": "."
     },
     "solid-coder-pipeline": {
-      "command": "python3",
+      "command": "python3.12",
       "args": [
         "mcp-server/pipeline/server.py"
       ],

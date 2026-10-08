@@ -5,6 +5,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from test_utils import TempDirTestBase
 
 HOOKS_DIR = str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks")
 if HOOKS_DIR not in sys.path:
@@ -142,9 +145,16 @@ class TestPipelineOutputCleanerShouldHandle(unittest.TestCase):
         self.assertFalse(c.should_handle({}))
 
 
-class TestPipelineOutputCleanerHandle(unittest.TestCase):
+class TestPipelineOutputCleanerHandle(TempDirTestBase):
+    def setUp(self):
+        super().setUp()
+        self.safe_root = self.output_dir / ".solid-coder"
+        safe_root = patch("cleanup_pipeline_output._SAFE_ROOT", self.safe_root)
+        safe_root.start()
+        self.addCleanup(safe_root.stop)
+
     def _make_safe_dir(self):
-        base = Path.home() / ".solid-coder"
+        base = self.safe_root
         base.mkdir(exist_ok=True)
         d = base / "test-cleanup-review-999"
         d.mkdir(exist_ok=True)

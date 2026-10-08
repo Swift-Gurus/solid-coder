@@ -1,6 +1,7 @@
 """Tests isolated gate-flow MCP configuration."""
 
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -40,7 +41,7 @@ class TestGateFlowMcpConfigBuilder(unittest.TestCase):
             ["solid-coder-flow-engine"],
         )
         server = parsed["mcpServers"]["solid-coder-flow-engine"]
-        self.assertEqual(server["command"], "python3")
+        self.assertEqual(server["command"], sys.executable)
         self.assertEqual(
             server["args"],
             [str(plugin_root / "mcp-server" / "flow_engine" / "server.py")],

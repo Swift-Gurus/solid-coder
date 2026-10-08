@@ -15,7 +15,10 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
 from hc_checker import HealthPromptBuilder, PrinciplesLoader
-from hc_rule_loader import GatewayRuleLoader, GatewayCommandRunner, GatewayInvoker
+from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader
+from health.gateway.gateway_command_runner import GatewayCommandRunner
+from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader
+from health.gateway.gateway_rule_loader import GatewayRuleLoader
 from hc_tag_detector import TagDetector
 from hook_utils import GATEWAY
 
@@ -24,8 +27,12 @@ _CONDITIONAL_NAMES = frozenset({"swiftui", "structured-concurrency", "testing", 
 
 
 def _make_loader() -> PrinciplesLoader:
+    invoker = GatewayCommandRunner(GATEWAY, timeout=300)
     return PrinciplesLoader(
-        rules=GatewayRuleLoader(invoker=GatewayInvoker(GATEWAY, GatewayCommandRunner(), timeout=300)),
+        rules=GatewayRuleLoader(
+            tags=GatewayCandidateTagsLoader(invoker),
+            detection=GatewayDetectionRulesLoader(invoker),
+        ),
         tags=TagDetector(),
     )
 

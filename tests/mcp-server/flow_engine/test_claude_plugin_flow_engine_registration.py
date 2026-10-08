@@ -24,7 +24,7 @@ class TestClaudePluginFlowEngineRegistration(unittest.TestCase):
         )
 
         registration = manifest["mcpServers"]["flow-engine"]
-        self.assertEqual(registration["command"], "python3")
+        self.assertEqual(registration["command"], "python3.12")
         self.assertEqual(
             registration["args"],
             ["${CLAUDE_PLUGIN_ROOT}/mcp-server/flow_engine/server.py"],

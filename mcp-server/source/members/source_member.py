@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from source.analysis.signatures.source_associated_type_signature import SourceAssociatedTypeSignature
 from source.analysis.signatures.source_callable_signature import SourceCallableSignature
+from source.analysis.signatures.source_subscript_signature import SourceSubscriptSignature
 from source.analysis.signatures.source_unresolved_signature import SourceUnresolvedSignature
 from source.analysis.signatures.source_value_signature import SourceValueSignature
 from source.members.source_member_kind import SourceMemberKind
@@ -14,7 +15,7 @@ from source.source_line_range import SourceLineRange
 
 
 SourceMemberSignature = Annotated[
-    SourceCallableSignature | SourceValueSignature | SourceAssociatedTypeSignature | SourceUnresolvedSignature,
+    SourceCallableSignature | SourceValueSignature | SourceAssociatedTypeSignature | SourceSubscriptSignature | SourceUnresolvedSignature,
     Field(discriminator="kind"),
 ]
 

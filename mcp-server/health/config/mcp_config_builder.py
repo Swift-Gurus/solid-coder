@@ -31,16 +31,18 @@ class McpConfigBuilder:
         project_root: Path,
         profile: McpConfigProfile,
         serializer: JsonSerializing,
+        executable: str = sys.executable,
     ) -> None:
         self._project_root = project_root
         self._profile = profile
         self._serializer = serializer
+        self._executable = executable
 
     def build(self) -> str:
         if self._profile is McpConfigProfile.GATE_FLOW:
             servers = {
                 "solid-coder-flow-engine": {
-                    "command": "python3",
+                    "command": self._executable,
                     "args": [
                         str(
                             self._project_root
@@ -54,13 +56,13 @@ class McpConfigBuilder:
         else:
             servers = {
                 "docs": {
-                    "command": "python3",
+                    "command": self._executable,
                     "args": [
                         str(self._project_root / "mcp-server" / "docs" / "server.py")
                     ],
                 },
                 "pipeline": {
-                    "command": "python3",
+                    "command": self._executable,
                     "args": [
                         str(
                             self._project_root

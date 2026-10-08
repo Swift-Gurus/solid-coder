@@ -6,6 +6,7 @@ solid-category: unit-test
 from __future__ import annotations
 
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -46,9 +47,19 @@ class TestBuildMcpConfig(unittest.TestCase):
         expected = str(self._root / "mcp-server" / "pipeline" / "server.py")
         self.assertIn(expected, self._parsed["mcpServers"]["pipeline"]["args"])
 
-    def test_both_servers_use_python3_command(self):
-        self.assertEqual(self._parsed["mcpServers"]["docs"]["command"], "python3")
-        self.assertEqual(self._parsed["mcpServers"]["pipeline"]["command"], "python3")
+    def test_both_servers_reuse_parent_interpreter(self):
+        self.assertEqual(self._parsed["mcpServers"]["docs"]["command"], sys.executable)
+        self.assertEqual(self._parsed["mcpServers"]["pipeline"]["command"], sys.executable)
+
+    def test_supplied_interpreter_is_preserved_without_path_lookup(self):
+        executable = "/runtime with spaces/bin/python3.12"
+        config = json.loads(McpConfigBuilder(
+            self._root, McpConfigProfile.LEGACY_HEALTH, JsonSerializer(),
+            executable=executable,
+        ).build())
+
+        self.assertEqual(config["mcpServers"]["docs"]["command"], executable)
+        self.assertEqual(config["mcpServers"]["pipeline"]["command"], executable)
 
     def test_different_roots_produce_different_paths(self):
         root_a = Path("/proj/a")

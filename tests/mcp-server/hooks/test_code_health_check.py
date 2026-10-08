@@ -19,7 +19,9 @@ from code_health_check_request import CodeHealthCheckRequest
 from hc_violation_parser import ViolationParser
 from hc_checker_factory import LegacyHealthCheckerFactory
 from hc_tag_detector import TagDetector
-from hc_rule_loader import GatewayRuleLoader
+from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader
+from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader
+from health.gateway.gateway_rule_loader import GatewayRuleLoader
 from health_violation import HealthViolation
 from llm_config import LlmConfig
 from solid_coder_config import SolidCoderConfig
@@ -51,10 +53,13 @@ def _make_runner_mock(returncode: int, stdout_obj) -> MagicMock:
     return m
 
 
-def _make_rule_loader_invoker(return_value=None) -> MagicMock:
+def _make_rule_loader(return_value=None) -> GatewayRuleLoader:
     m = MagicMock()
     m.invoke.return_value = return_value
-    return m
+    return GatewayRuleLoader(
+        tags=GatewayCandidateTagsLoader(m),
+        detection=GatewayDetectionRulesLoader(m),
+    )
 
 
 def _make_rules_mock(tags=None, rules_data=None) -> MagicMock:
@@ -86,11 +91,11 @@ def _make_reviewer(runner_result=None, runner_raises=None, parse_result=None):
     return reviewer, logger
 
 
-def _make_check_pipeline():
+def _make_check_pipeline(output_dir: Path):
     tags_mock = _gateway_tags([])
     detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules",
                                                 "principle_name": "SRP", "metrics_example": {}}])
-    output_path_mock = make_subprocess_mock(0, {"output_root": "/tmp/gate/test-session"})
+    output_path_mock = make_subprocess_mock(0, {"output_root": str(output_dir)})
     claude_mock = make_subprocess_mock(0, [{"type": "result", "result": ""}])
     seq = [tags_mock, detection_mock, output_path_mock, claude_mock]
     it = iter(seq)
@@ -228,26 +233,26 @@ class TestTagDetector(unittest.TestCase):
 
 class TestGatewayRuleLoader(unittest.TestCase):
     def test_get_candidate_tags_returns_tag_list(self):
-        loader = GatewayRuleLoader(invoker=_make_rule_loader_invoker(["swiftui"]))
+        loader = _make_rule_loader(["swiftui"])
         self.assertEqual(loader.get_candidate_tags(), ["swiftui"])
 
     def test_get_candidate_tags_returns_empty_when_invoker_returns_empty(self):
-        loader = GatewayRuleLoader(invoker=_make_rule_loader_invoker([]))
+        loader = _make_rule_loader([])
         self.assertEqual(loader.get_candidate_tags(), [])
 
     def test_load_detection_rules_returns_principles_dict(self):
         data = {"principles": [{"name": "srp"}]}
-        loader = GatewayRuleLoader(invoker=_make_rule_loader_invoker(data))
+        loader = _make_rule_loader(data)
         self.assertIn("principles", loader.load_detection_rules(["swiftui"]))
 
     def test_load_detection_rules_returns_filtered_result(self):
         data = {"principles": [{"name": "swiftui", "content": "SwiftUI rules"}]}
-        loader = GatewayRuleLoader(invoker=_make_rule_loader_invoker(data))
+        loader = _make_rule_loader(data)
         result = loader.load_detection_rules(["swiftui"])
         self.assertEqual(result["principles"][0]["name"], "swiftui")
 
     def test_load_detection_rules_returns_none_on_invoker_failure(self):
-        loader = GatewayRuleLoader(invoker=_make_rule_loader_invoker(None))
+        loader = _make_rule_loader(None)
         self.assertIsNone(loader.load_detection_rules([]))
 
 
@@ -334,8 +339,17 @@ class TestHealthPromptBuilder(unittest.TestCase):
         self.assertIn("Do not pass the aggregated query as one entry in `tags`", prompt)
 
 
-class TestCheck(unittest.TestCase):
+class TestCheck(test_utils.TempDirTestBase):
     """Tests for the full legacy checker pipeline used by baseline comparisons."""
+
+    def setUp(self):
+        super().setUp()
+        project_directory = patch(
+            "health_check_context_writer_factory.solid_coder_project_dir",
+            return_value=self.output_dir,
+        )
+        project_directory.start()
+        self.addCleanup(project_directory.stop)
 
     def test_returns_violations_list_when_gateway_reports_findings(self):
         mock_violations = [
@@ -354,7 +368,7 @@ class TestCheck(unittest.TestCase):
                 fix="Call mcp__docs__load_fix_for_violation(OCP-1) for guidance.",
             ),
         ]
-        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
+        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline(self.output_dir / "health-test")), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=mock_violations):
             result = _make_legacy_checker().check(
                 LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
@@ -364,7 +378,7 @@ class TestCheck(unittest.TestCase):
         self.assertEqual(result[0].principle, "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
-        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline()), \
+        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline(self.output_dir / "health-test")), \
              patch("hc_checker.FileOutputReader.read_violations", return_value=[]):
             result = _make_legacy_checker().check(
                 LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
