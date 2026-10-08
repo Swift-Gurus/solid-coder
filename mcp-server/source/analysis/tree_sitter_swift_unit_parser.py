@@ -7,14 +7,14 @@ from findings.review_unit_kind_parsing import ReviewUnitKindParsing
 from source.analysis.swift_member_decoder import SwiftMembersDecoding
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 from source.source_line_range import SourceLineRange
-from source.source_unit import SourceUnit
+from source.source_unit import SourceUnit, SourceUnitSignature
 
 
 """
 solid-name: TreeSitterSwiftUnitParser
 solid-category: boundary-adapter
 solid-spec: [SPEC-057, SPEC-062]
-solid-description: Produces typed Swift declaration inventories with direct members and source locations.
+solid-description: Produces typed Swift declaration inventories with direct members, declaration headers, and source locations.
 """
 class TreeSitterSwiftUnitParser(SourceSyntaxParsing[Node, SourceUnit | None]):
     def __init__(
@@ -22,10 +22,12 @@ class TreeSitterSwiftUnitParser(SourceSyntaxParsing[Node, SourceUnit | None]):
         unit_kinds: ReviewUnitKindParsing,
         spans: SourceSyntaxParsing[Node, SourceLineRange],
         members: SwiftMembersDecoding,
+        signatures: SourceSyntaxParsing[Node, SourceUnitSignature],
     ) -> None:
         self._unit_kinds = unit_kinds
         self._spans = spans
         self._members = members
+        self._signatures = signatures
 
     def parse(self, source: Node) -> SourceUnit | None:
         declaration_kind = source.child_by_field_name("declaration_kind")
@@ -46,4 +48,5 @@ class TreeSitterSwiftUnitParser(SourceSyntaxParsing[Node, SourceUnit | None]):
             start_offset=source.start_byte,
             end_offset=max(source.start_byte, source.end_byte - 1),
             members=self._members.decode(source, kind, identity),
+            signature=self._signatures.parse(source),
         )

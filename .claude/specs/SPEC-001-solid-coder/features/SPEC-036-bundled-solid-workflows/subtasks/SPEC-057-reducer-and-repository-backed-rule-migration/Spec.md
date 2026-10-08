@@ -516,9 +516,11 @@ Implementation sequence:
    technology tags now use the shared parser. Grammar-specific traversal stays
    inside the source-analysis package and the existing analyzer registry is
    reused. Initial typed signatures are now published for methods, lifecycle
-   members, explicitly typed properties, and associated types (see the
-   2026-10-07 progress entry). Remaining signature forms and structural
-   relationship facts are still pending; extraction does not prove conformance.
+   members, explicitly typed properties, and associated types. Typed declaration
+   headers now preserve inherited references, extension targets, generic
+   parameters, constraints, and modifiers (see the 2026-10-07 progress entries).
+   Remaining signature forms and resolved declaration relationships are still
+   pending; extraction does not prove conformance.
 3. Implement bounded relationship resolution, including separate extensions,
    overloads, unrelated same-signature members, and unresolved constraints; do not
    substitute identifier matches for semantic proof.
@@ -623,3 +625,53 @@ facts, then implement bounded interface/conformer/extension resolution and its
 workflow bindings. Aggregate submission/scoring/recovery and evidence-outcome
 scenarios remain required before activating the revised ISP workflow. Local TOML,
 global Python configuration, and bundled workflow YAML were not changed.
+
+### Declaration-header facts — 2026-10-07
+
+`source.analyze` now publishes a discriminated declaration signature on each
+supported top-level type or extension. The signature retains the declared name,
+ordered inherited type references, generic parameters, constraints, and modifiers.
+Type references include their original source-line evidence. Unsupported or
+incomplete declaration signatures remain explicitly unresolved rather than
+claiming an empty, successfully analyzed header.
+
+The extraction uses the existing syntax tree and parser contract. Type-reference
+conversion is a separate injected parser from declaration-header extraction;
+both remain inside `source/analysis/signatures/`. No new protocol, search path,
+public MCP operation, or ISP-specific scoring behavior was added.
+
+The 11 new source-analysis integration tests establish these cases:
+
+- Given ordered, module-qualified inherited names or generic arguments, when
+  analysis runs, then their tokens and source evidence remain available without
+  declaring that the referenced symbols have been resolved.
+- Given a protocol inherits another protocol, when its direct members are
+  inventoried, then inherited requirements are not fabricated or mixed into that
+  direct-member inventory.
+- Given a qualified extension target, conformance clause, or generic constraint,
+  when analysis runs, then target and inherited references remain distinct and
+  the authored constraints are preserved.
+- Given declaration attributes, access modifiers, or comments, when analysis
+  runs, then modifiers remain syntax facts and supported comment trivia does not
+  alter type tokens. Attributes do not themselves apply rule exceptions.
+- Given nested declarations, recovered malformed syntax, or a free function,
+  when header analysis runs, then child inheritance does not leak into its parent,
+  malformed declarations stay unresolved with partial-analysis diagnostics, and
+  functions do not acquire a fabricated nominal header.
+- Given persisted analysis JSON, when it is decoded, then the typed declaration
+  facts and their evidence are restored unchanged.
+
+Validation: **11 new integration tests passed**; the complete non-live sweep
+passed with **2,552 tests and four skips**. The locked Codex `gpt-5.6-terra` and
+Claude `claude-opus-4-5` workflow-catalog E2E checks passed: **two tests in 55.68
+seconds**. These live checks cover the existing nested workflow, process-step,
+and completion contract, not the unfinished ISP workflow.
+
+This supplies declared relationship inputs, not a resolved relationship graph.
+Nested declaration ownership, cross-file symbol resolution, inherited or
+conditional conformance, and requirement-to-implementation matching remain
+pending. The existing inventory is still top-level; no nested type is silently
+promoted into that inventory. Remaining member-signature forms and ISP workflow
+bindings, including aggregate result/scoring/recovery scenarios, still need to be
+completed before the discussion draft is activated. Candidate search, bundled
+workflows, local TOML, and the user's global Python were unchanged.
