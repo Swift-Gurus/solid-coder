@@ -1,6 +1,12 @@
 """Verifies new health inputs invalidate prior DRY-search completion."""
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
+
+_GATE = Path(__file__).resolve().parents[2] / "mcp-server" / "gate"
+if str(_GATE) not in sys.path:
+    sys.path.insert(0, str(_GATE))
 
 from health.health_check_input_writer import HealthCheckInputWriter
 from patch_file_simulation import PatchFileSimulation

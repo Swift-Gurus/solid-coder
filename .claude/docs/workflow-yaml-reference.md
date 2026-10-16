@@ -394,11 +394,61 @@ authors must not duplicate an `outputs` block.
 
 Current production operations:
 
+`source.analyze` exposes one named `result` containing its complete typed analysis.
+For example, `{{steps.inspect.outputs.result}}` is one analysis for an ordinary
+step, or an ordered array of complete analyses when `inspect` uses `for_each`.
+The underlying analysis service still returns the analysis model directly.
+
+`source.resolve_relationships` accepts that array as `analyses`. It exposes
+`result` (the complete bounded inventory) and `relationships` (its ordered links).
+Use `{{steps.link.outputs.relationships}}` for iteration, and pass
+`{{steps.link.outputs.result}}` plus `{{item}}` to `source.match_requirements` as
+`inventory` and `relationship`. Its named outputs are `inventory`, `relationship`,
+and `matches`. An inherited-type relationship is required for requirement matching;
+use an authored `when` condition to exclude other link kinds.
+
+`source.declaration_members` accepts `inventory` and a prepared `declaration`
+identity (`source_identity`, `unit_identity`, and `granularity: unit`). The identity
+must belong to the supplied inventory; it is MCP-owned data, not an identifier
+the model should invent. Its named outputs are `inventory`, `declaration`, and
+`members`. Each member retains its owner, source evidence, visibility, matching
+declarations, and a structural role: `declared`, `implementation`, `additional`,
+or `unresolved`. Supported default implementations do not become additional
+declarations. Conformer-only members are not part of the selected interface's
+member collection. Visibility filtering and scoring remain workflow policy.
+Ambiguous ownership, conditional applicability, unsupported signatures, and
+unresolved inherited-member identity retain uncertainty rather than asserting
+an exact additional-member count. This operation does not perform discovery or
+read source files again.
+
+Typed operation-output schemas expose referenced nested fields to collection
+conditions while retaining definitions for validation and recursive references.
+For example, `item.role` and `item.reference.member.visibility` can be used in a
+metric's `scoring.when` without duplicating the operation schema in YAML.
+
+These bindings use the existing named-output contract. They do not require
+whole-step references, nested YAML objects in `with`, or LLM reconstruction of
+parsed facts. Candidate and unresolved results do not prove semantic conformance
+or complete repository discovery.
+
+`source.discover_declaration` starts from a prepared `target` and authoritative
+source `context`. It searches the exact declaration name, analyzes bounded hits,
+and uses discovered owner names to find separate extensions when needed. It
+publishes `inventory`, `declaration`, `related_declarations`, `limitations`,
+`queries`, and `searches`. Prospective source snapshots override matching disk
+content. The initial search is not broadened by synonyms or tags; candidate caps,
+unreadable/truncated sources, and unresolved analysis remain explicit limitations.
+This composes search and analysis; ordinary `source.search` remains parser-free.
+
 | Operation | Required `with` inputs | Optional `with` inputs |
 |---|---|---|
 | `review.prepare` | `target` | `context_sources` |
 | `source.collect_changes` | `project_root` | — |
 | `source.analyze` | `source` | — |
+| `source.resolve_relationships` | `analyses` | — |
+| `source.match_requirements` | `inventory`, `relationship` | — |
+| `source.declaration_members` | `inventory`, `declaration` | — |
+| `source.discover_declaration` | `target`, `context` | `max_candidates`, `max_bytes_per_candidate` |
 | `source.prepare_search_targets` | `source`, `granularity` | — |
 | `source.prepare_search_query` | `target`, `generated_terms` | — |
 | `source.search` | `queries` | `excluded_units`, `context`, `included_file_extensions`, `max_candidates` |
@@ -1029,6 +1079,42 @@ Scoring must define at least one of `minor` and `severe`. Operators are:
 
 String and boolean metrics support only `equals` and `not_equals`. Threshold
 values must have the metric's corresponding type.
+
+### Unavailable metric evidence
+
+An explicitly guarded metric can declare `unavailable_reason` when its condition
+means required evidence is insufficient:
+
+```yaml
+- id: coverage
+  type: metric
+  metric_id: EXAMPLE-2
+  depends_on: [classify]
+  when:
+    ref: "{{steps.classify.outputs.available}}"
+    equals: true
+  unavailable_reason: Required implementation evidence could not be verified.
+  value: {type: integer, minimum: 0}
+  scoring:
+    source: "{{steps.classify.outputs.observations}}"
+    severe: {operator: greater_than_or_equal, value: 1}
+```
+
+If the condition skips this metric, its rule result records an entry in
+`unavailable_metrics`: `metric_id`, `observation_id`, `status: unavailable`, and
+`additional_info` containing the authored reasoning and persisted condition
+evidence. That entry has **no value or severity**. Ordinary skipped metrics
+without `unavailable_reason` retain ordinary skip semantics.
+
+Measured siblings keep their actual scores, including known SEVERE findings.
+An entirely unavailable rule has `severity: null`, not COMPLIANT; a review with
+no measured rule severity also has `severity: null`. The enclosing rule result
+retains rule-instance and reviewed-unit provenance. Replay restores the same
+condition evidence and result without rerunning discovery.
+
+Missing or invalid submissions remain pending/rejected; operation failures remain
+failures. Neither becomes an unavailable measurement. This field does not define
+a universal allow/block policy for the write gate.
 
 ### Collection-backed deterministic metric
 

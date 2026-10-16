@@ -1,3 +1,5 @@
+from typing import Protocol
+
 from findings.review_unit_kind import ReviewUnitKind
 from source.analysis.relationships.source_declaration_reference import SourceDeclarationReference
 from source.analysis.relationships.source_declaration_relationship import SourceDeclarationRelationship
@@ -9,12 +11,22 @@ from source.source_unit_identity import SourceUnitIdentity
 
 
 """
+solid-name: SourceRelationshipsResolving
+solid-category: abstraction
+solid-spec: [SPEC-057]
+solid-description: Contract for resolving bounded declaration relationships from inspected source snapshots while retaining uncertainty.
+"""
+class SourceRelationshipsResolving(Protocol):
+    def resolve(self, analyses: list[SourceAnalysis]) -> SourceRelationshipInventory: ...
+
+
+"""
 solid-name: SourceRelationshipResolver
 solid-category: service
 solid-spec: [SPEC-057]
 solid-description: Preserves bounded inheritance and extension links, inspected evidence, and uncertainty across supplied source analyses.
 """
-class SourceRelationshipResolver:
+class SourceRelationshipResolver(SourceRelationshipsResolving):
     def __init__(self, references: SourceReferenceCandidateResolving) -> None:
         self._references = references
 

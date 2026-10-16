@@ -17,6 +17,7 @@ from harness.command_step_value_validator import CommandStepValueValidator
 from harness.co_located_metric_collection_decoder import (
     CoLocatedMetricCollectionDecoder,
 )
+from harness.co_located_metric_source_validator import CoLocatedMetricSourceValidator
 from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
 from harness.co_located_metric_dependency_rebaser import (
     CoLocatedMetricDependencyRebaser,
@@ -83,6 +84,9 @@ from harness.dynamic_include_alias_groups_selector import (
 )
 from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
 from harness.effective_metric_scoring_applier import EffectiveMetricScoringApplier
+from harness.scoring_policy.metric_declaration_scoring_applier import MetricDeclarationScoringApplier
+from harness.scoring_policy.scoring_policy_scope_applier import ScoringPolicyScopeApplier
+from harness.scoring_policy.step_scoring_applier import StepScoringApplier
 from harness.event_appender import EventAppender, EventSerializer, POSIXFileAppender
 from harness.event_replayer import EventParser, EventReplayer
 from harness.expression_evaluating import ExpressionEvaluating
@@ -188,8 +192,8 @@ from harness.recursive_dynamic_include_group_materializer import (
     RecursiveDynamicIncludeGroupMaterializer,
 )
 from harness.runtime_include_identity_qualifier import RuntimeIncludeIdentityQualifier
-from harness.pydantic_operation_output_specs_resolver import (
-    PydanticOperationOutputSpecsResolver,
+from harness.schema_references.operation_output_specs_resolver_factory import (
+    OperationOutputSpecsResolverFactory,
 )
 from harness.resolved_output_schema_applier import ResolvedOutputSchemaApplier
 from harness.resolved_outputs_applier import ResolvedOutputsApplier
@@ -612,10 +616,11 @@ class FlowEngineAssemblyFactory:
                             error_factory=error_factory,
                         ),
                         contract_assembler=MetricStepContractAssembler(),
-                        expression_parser=workflow_expression_parser,
-                        source_reference_parser=(
-                            collection_source_reference_parser
+                        source_validator=CoLocatedMetricSourceValidator(
+                            expression_parser=workflow_expression_parser,
+                            reference_parser=collection_source_reference_parser,
                         ),
+                        error_factory=error_factory,
                     ),
                     rule_step_contract_resolver=RuleStepContractResolver(
                         metric_decoder=MetricDeclarationDecoder(
@@ -645,7 +650,7 @@ class FlowEngineAssemblyFactory:
                     operation_step_contract_resolver=OperationStepContractResolver(
                         registry=registered_operations,
                         expression_parser=workflow_expression_parser,
-                        output_specs_resolver=PydanticOperationOutputSpecsResolver(
+                        output_specs_resolver=OperationOutputSpecsResolverFactory().make(
                             error_factory
                         ),
                         error_factory=error_factory,
@@ -784,10 +789,13 @@ class FlowEngineAssemblyFactory:
                 delegate=base_flow_loader,
                 policy_loader=review_policy_loader,
                 scoring_applier=EffectiveMetricScoringApplier(
-                    plan_resolver=EffectiveMetricPlanResolver(
-                        override_applier=MetricOverrideApplier(),
-                        error_factory=error_factory,
-                    )
+                    scope_applier=ScoringPolicyScopeApplier(
+                        plan_resolver=EffectiveMetricPlanResolver(
+                            override_applier=MetricOverrideApplier(),
+                            error_factory=error_factory,
+                        ),
+                        step_applier=StepScoringApplier(MetricDeclarationScoringApplier()),
+                    ),
                 ),
             )
         )

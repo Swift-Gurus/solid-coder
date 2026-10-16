@@ -74,21 +74,27 @@ class TestISPApplicabilityFlow(unittest.TestCase):
         events = self._events(result.run_id)
         skipped = [event for event in events if event["event"] == "step_skipped"]
         self.assertEqual(
-            [event["local_step_id"] for event in skipped],
-            [
-                "analyze_protocol",
-                "prepare_conformer_query",
-                "search_conformers",
+            {event["local_step_id"] for event in skipped},
+            {
+                "discover",
+                "members",
                 "width",
-                "present_candidates",
-                "select_candidates",
-                "validate_selection",
+                "availability",
                 "analyze_cohesion",
                 "min_coverage",
                 "cohesion_groups",
+                "extension_availability",
+                "mixed_responsibilities",
                 "classify_exception",
-            ],
+            },
         )
+        empty_iterations = [event for event in events if event["event"] == "step_completed"]
+        self.assertEqual(
+            {event["local_step_id"] for event in empty_iterations},
+            {"unresolved_members", "classify_extension_members"},
+        )
+        self.assertTrue(all(event["empty_collection"] for event in empty_iterations))
+        self.assertTrue(all(event["session_id"] == "engine" for event in empty_iterations))
         self.assertTrue(
             all(event["workflow_instance_id"] is not None for event in skipped)
         )

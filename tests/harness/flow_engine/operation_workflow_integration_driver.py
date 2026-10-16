@@ -23,10 +23,12 @@ class OperationWorkflowIntegrationDriver:
         self,
         project_root: Path,
         registrations: list[OperationRegistration],
+        plugin_root: Path | None = None,
     ) -> None:
         self.project_root = project_root
         self.workflow_path = project_root / "workflow.yaml"
         self._registrations = registrations
+        self._plugin_root = plugin_root if plugin_root is not None else project_root
 
     def write_workflow(self, declaration: str) -> None:
         self.workflow_path.write_text(declaration, encoding="utf-8")
@@ -51,6 +53,6 @@ class OperationWorkflowIntegrationDriver:
             base_dir_resolver=RunsBaseDirResolver(
                 project_dir_fn=lambda: self.project_root
             ),
-            plugin_root=self.project_root,
+            plugin_root=self._plugin_root,
             operation_registrations=self._registrations,
         ).build()

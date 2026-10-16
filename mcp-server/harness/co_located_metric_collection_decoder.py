@@ -5,24 +5,18 @@ from harness.co_located_metric_collection_decoding import (
 )
 from harness.co_located_metric_contract import CoLocatedMetricContract
 from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
-from harness.collection_source_reference_parsing import (
-    CollectionSourceReferenceParsing,
-)
+from harness.co_located_metric_source_validator import CoLocatedMetricSourceValidating
 from harness.collection_metric_reducer_decoding import (
     CollectionMetricReducerDecoding,
 )
 from harness.condition_parsing import ConditionParsing
-from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_scoring_declaration import MetricScoringDeclaration
 from harness.metric_step_contract_assembling import MetricStepContractAssembling
 from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
-from harness.step_output_reference_syntax_error import (
-    StepOutputReferenceSyntaxError,
-)
 from harness.structured_model_decoding import StructuredModelDecoding
-from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
 
 """
@@ -38,15 +32,15 @@ class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
         condition_parser: ConditionParsing,
         reducer_decoder: CollectionMetricReducerDecoding,
         contract_assembler: MetricStepContractAssembling,
-        expression_parser: WorkflowExpressionParsing,
-        source_reference_parser: CollectionSourceReferenceParsing,
+        source_validator: CoLocatedMetricSourceValidating,
+        error_factory: FlowValidationErrorCreating,
     ) -> None:
         self._decoder = decoder
         self._condition_parser = condition_parser
         self._reducer_decoder = reducer_decoder
         self._contract_assembler = contract_assembler
-        self._expression_parser = expression_parser
-        self._source_reference_parser = source_reference_parser
+        self._source_validator = source_validator
+        self._error_factory = error_factory
 
     def decode(
         self,
@@ -57,7 +51,7 @@ class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
         if value is None:
             return []
         if not isinstance(value, list):
-            raise FlowValidationError(
+            raise self._error_factory.create(
                 f"Step '{owner_step_id}' metrics must be an array"
             )
         contracts: list[CoLocatedMetricContract] = []
@@ -70,25 +64,11 @@ class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
                 ),
             )
             source_name = declaration.scoring.source
-            source_output = next(
-                (output for output in outputs if output.name == source_name),
-                None,
-            )
-            if source_output is None:
-                self._raise_invalid_source(
-                    owner_step_id,
-                    declaration.id,
-                    source_name,
-                )
-            if source_output.type != "data":
-                raise FlowValidationError(
-                    f"Co-located metric '{declaration.id}' on step "
-                    f"'{owner_step_id}' must reference a data output; "
-                    f"'{source_name}' is type '{source_output.type}'"
-                )
+            self._source_validator.validate(owner_step_id, declaration.id, source_name, outputs)
             metric = MetricDeclaration(
                 metric_id=declaration.metric_id,
                 observation_id=declaration.observation_id,
+                unavailable_reason=declaration.unavailable_reason,
                 value=declaration.value,
                 scoring=MetricScoringDeclaration(
                     minor=declaration.scoring.minor,
@@ -121,24 +101,3 @@ class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
                 )
             )
         return contracts
-
-    def _raise_invalid_source(
-        self,
-        owner_step_id: str,
-        metric_id: str,
-        source_name: str,
-    ) -> None:
-        expression = self._expression_parser.parse(source_name)
-        try:
-            self._source_reference_parser.parse(expression.value)
-        except StepOutputReferenceSyntaxError as error:
-            raise FlowValidationError(
-                f"Co-located metric '{metric_id}' on step "
-                f"'{owner_step_id}' references undeclared local output "
-                f"'{source_name}'"
-            ) from error
-        raise FlowValidationError(
-            f"Co-located metric '{metric_id}' on step '{owner_step_id}' "
-            "cannot reference another step or workflow; use an explicit "
-            "'type: metric' step"
-        )

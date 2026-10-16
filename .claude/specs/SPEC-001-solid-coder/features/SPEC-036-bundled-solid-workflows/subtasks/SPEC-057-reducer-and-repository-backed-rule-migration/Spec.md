@@ -2,13 +2,19 @@
 number: SPEC-057
 feature: reducer-and-repository-backed-rule-migration
 type: subtask
-status: complete
+status: in-progress
 parent: SPEC-036
 blocked-by: [SPEC-054, SPEC-055, SPEC-056]
 blocking: []
 ---
 
 # Reducer and Repository-Backed Rule Migration
+
+Current follow-up status (2026-10-16): the full bundled ISP workflow and explicit
+metric-level unavailable outcomes are implemented. Tests load the bundled rule,
+not a separately maintained ISP policy fixture. The latest validation and
+remaining gate-policy boundary are recorded at the end of this document;
+earlier dated progress entries are historical.
 
 ## Description
 
@@ -357,8 +363,10 @@ and failed operations remain errors rather than warning-eligible outcomes.
 SPEC-062 implements the source-member inventory prerequisite. It does not activate
 the ISP draft or choose the remaining gate policy. Do not claim
 runtime support until those contracts and the scenarios above are implemented.
-The scoring policy for the separate extension metric is still undecided and is
-not changed by this requirement.
+The extension policy was subsequently agreed in the 2026-10-15 decision below:
+combined interface width extends ISP-1, while mixing independent responsibilities
+is a separate SEVERE signal. Implementation and evidence-outcome binding remain
+pending; this decision does not activate the discussion draft.
 
 ### Source-analysis module boundary and discovery contract
 
@@ -719,3 +727,391 @@ Validation: **10 subscript and 15 relationship integration tests passed**; all
 Those live checks cover the existing nested workflow, process-step, and completion
 contract, not completion of the revised ISP workflow. Local TOML, candidate
 search, bundled workflows, and the user's global Python remain unchanged.
+
+### Bounded direct requirement matching — 2026-10-14
+
+The reusable `source/analysis/matching/` package now consumes an existing source
+relationship inventory and one recorded inherited-type relationship. It produces
+ordered matches for the candidate interface's direct requirements, retaining the
+original inspected analyses, relationship uncertainty, member identities,
+visibility, signatures, and source-line evidence. It does not search, read source
+files, parse again, calculate coverage, or classify implementation behavior.
+
+Implemented and verified cases:
+
+- Direct members, separate conformer extensions, extension-declared conformance,
+  and protocol-extension defaults retain their declaring owners. Unrelated types
+  with identical signatures are not included.
+- Supported callable matching distinguishes external labels, parameter types,
+  result types, and modifiers without depending on internal parameter names.
+  Property and subscript candidates account for required accessor capabilities.
+- Multiple possible implementations or ambiguous extension owners remain
+  ambiguous; generic or conditional owner links retain their unresolved status.
+  Matching syntax is a candidate signal, never verified conformance or dispatch.
+- Missing supported matches remain unresolved. Associated-type requirements are
+  retained, but type-alias witnesses, inferred associated types, and generic
+  substitution/constraint satisfaction are not resolved by this slice.
+- Protocol inheritance is not treated as implementation, and inherited
+  requirements are not silently added to the direct-member inventory. Partial
+  analysis diagnostics remain attached to the supplied source snapshot.
+- JSON round trips preserve the result and its evidence. Matching a restored
+  inventory needs no source analysis; a relationship from another snapshot is
+  rejected rather than combined with current evidence.
+
+All signature comparisons use one generic behavioral contract; the first
+implementation owns that contract. The service and typed result models remain
+inside the source-analysis package, with mirrored tests under
+`tests/mcp-server/source/analysis/matching/`.
+
+This is not yet a public workflow operation or activation of the revised ISP
+draft. Visibility facts are retained for the pending workflow's private and
+fileprivate filtering. Discovery completeness, semantic and inherited matching,
+operation/workflow bindings, metric-level unable-to-verify results, and the ISP
+aggregate submission/scoring/recovery scenarios remain outstanding.
+
+Validation: **25 new integration tests passed**. The complete 19-root non-live
+sweep passed with **2,616 tests and four existing abstract-base skips**. On
+2026-10-15, the existing workflow-catalog live contract passed for both locked
+profiles, Codex `gpt-5.6-terra` and Claude `claude-opus-4-5`: **2 passed in
+193.03 seconds**. It verifies nested workflow-ID resolution, ordered engine-owned
+script/command execution, model submissions, completed outputs, and session
+identity; it does not establish the pending ISP workflow integration.
+
+The earlier sandboxed Codex attempt timed out before any model response, and
+Claude was interrupted after both model API hosts failed sandbox DNS checks.
+Following explicit user approval, the same tests passed with network access.
+No test assertions, model profiles, or production behavior changed for the
+retry. Codex still performed extra tool-discovery calls before starting the
+workflow; discovery efficiency is not asserted by this passing contract.
+
+Live evidence is retained under `.solid-coder/.artifacts/test/`:
+
+- Codex: `codex/e2e/flow-engine/workflow-catalog/20261015T124055Z-6db754c8/`.
+- Claude: `claude/e2e/flow-engine/workflow-catalog/20261015T124329Z-f8dc063e/`.
+
+### Engine-owned source relationship operations — 2026-10-15
+
+The existing analysis, relationship resolution, and requirement matching services
+are now connected through typed internal workflow operations. Source parsing and
+matching remain in the dedicated source-analysis package; the engine does not
+interpret source syntax or introduce an ISP-specific execution path.
+
+The workflow-boundary contracts are:
+
+| Operation | Inputs | Named outputs |
+|---|---|---|
+| `source.analyze` | `source` | `result`: one complete source analysis |
+| `source.resolve_relationships` | `analyses`: ordered complete analyses | `result`: complete bounded inventory; `relationships`: its ordered links |
+| `source.match_requirements` | `inventory`, `relationship` | `inventory`, `relationship`, `matches` |
+
+The workflow-facing analysis contract now exposes the complete analysis as one
+named `result`, rather than exposing its fields as independent step outputs.
+Direct analysis-service consumers, including review preparation, are unchanged.
+Existing workflow consumers must bind `steps.<analysis-step>.outputs.result`.
+Ordinary `for_each` fan-in collects these complete objects in source order.
+The relationship collection is also published as a named output so ordinary
+`for_each` can iterate it while passing the complete inventory separately.
+
+No whole-step reference syntax, nested-object construction in `with`, or
+parameter-based `for_each` syntax was added. Existing named-output expressions,
+child-workflow parameters, conditions, fan-out, and replay are reused. An
+operation result adapter shares the existing generic operation contract; it does
+not define another execution interface or duplicate the source-analysis service.
+
+#### Acceptance and integration evidence
+
+- **Given** file paths submitted at the workflow's selection boundary, **when**
+  per-file analysis completes, **then** relationship resolution receives each
+  complete snapshot once and in input order, including its identities and facts.
+- **Given** a protocol, conformer, and separate extension, **when** engine-owned
+  matching runs in an included workflow, **then** it persists the extension's
+  member evidence before returning the combined model-owned classification work.
+- **Given** an extension-target link rather than an inherited-type link, **when**
+  the authored include condition is evaluated, **then** that child is skipped;
+  the source operation does not embed a rule-specific selection policy.
+- **Given** a combined classification submission, **when** all required values
+  validate, **then** the workflow completes without asking the model to resubmit
+  operation outputs.
+- **Given** a missing or invalid sibling classification, **when** the model
+  submits the remaining or corrected value, **then** accepted siblings and
+  completed operation evidence are retained without re-executing analysis.
+- **Given** completed operation evidence and subsequently deleted source files,
+  **when** another orchestrator instance resumes the run, **then** the same
+  matching evidence is restored and the workflow completes without rereading.
+- **Given** no supported implementation match, **when** matching results are
+  persisted, **then** the result remains unresolved rather than becoming a
+  fabricated compliance result.
+
+The fixture and child workflow live under
+`tests/harness/flow_engine/fixtures/source_relationship_operations/`, not in the
+distributed workflow catalog. Nine registered-operation tests, seven workflow
+integration tests, and the two existing source-analysis workflow tests pass.
+The complete 19-root non-live sweep passes with **2,632 tests and four existing
+skips**. After explicit approval to transmit the test inputs, the existing locked
+Codex/Claude workflow-catalog live checks passed: **2 tests in 66.87 seconds** on
+2026-10-15. Retained artifact directories under `.solid-coder/.artifacts/test/`:
+
+- Codex: `codex/e2e/flow-engine/workflow-catalog/20261015T193608Z-36a27afa/`.
+- Claude: `claude/e2e/flow-engine/workflow-catalog/20261015T193644Z-a960c60e/`.
+
+These checks validate the shared engine contract, not the revised ISP workflow.
+
+This completes operation binding, not the ISP follow-up. Discovery completeness,
+private/fileprivate workflow filtering, behavior classification, implementation
+of the extension policy below, metric-level unable-to-verify outcomes, and the
+ISP-specific aggregate scoring/recovery contract remain pending. Bundled review
+workflows have not been activated or changed by this slice.
+
+### Agreed interface-extension policy — 2026-10-15
+
+The following decisions supersede the earlier open extension-scoring question.
+They are requirements for the inactive ISP revision, not a claim of runtime
+support or a change to the currently distributed ISP workflow.
+
+#### Combined exposed width — ISP-1
+
+- Extend the existing width metric rather than adding another width metric.
+- Count requirements declared directly by the interface together with additional
+  non-private members introduced by its extensions. Retain the existing exclusion
+  of inherited requirements.
+- Exclude private/fileprivate extension members before model presentation and
+  width calculation. Members belonging only to conformers or their extensions
+  do not increase the interface's width.
+- A default implementation of an existing requirement does not add another
+  width entry. Preserve distinct overloads using structural member identities
+  and supported signatures, not names alone.
+- MCP derives the unique member count from source-analysis facts. The model does
+  not count members or choose severity.
+- Preserve the existing inclusive bands: 0–5 COMPLIANT, 6–8 MINOR, and 9 or more
+  SEVERE. Unknown ownership or extension applicability remains an evidence
+  limitation rather than a fabricated exact count.
+
+#### Independent responsibilities introduced through extensions
+
+- Flag mixing independent responsibilities through the interface's exposed
+  extension behavior as SEVERE, even when combined width is below six.
+- This is separate from ISP-1 width and ISP-3's conformer-based cohesion signal.
+- The model classifies member responsibilities and their relationship to the
+  interface's existing behavior, retaining reasoning and evidence. The mere
+  presence of an extension, default implementation, or several methods does
+  not establish independent responsibilities.
+- Workflow-authored scoring applies the SEVERE policy from the validated
+  classification. Do not hardcode an ISP-specific scorer in source analysis or
+  the engine, and do not treat missing classifications as compliance.
+
+#### Acceptance and test cases
+
+1. **Given** six directly declared requirements and three additional eligible
+   interface-extension members, **when** MCP calculates width, **then** ISP-1 is
+   9 and SEVERE.
+2. **Given** six requirements and defaults for those same six requirements,
+   **when** MCP calculates width, **then** ISP-1 is 6 and MINOR, not 12.
+3. **Given** three requirements and two additional eligible extension members,
+   **when** MCP calculates width, **then** ISP-1 is 5 and COMPLIANT for width.
+4. **Given** combined eligible counts of 5, 6, 8, and 9, **when** MCP scores width,
+   **then** severities are COMPLIANT, MINOR, MINOR, and SEVERE respectively.
+5. **Given** private/fileprivate extension helpers and conformer-only members,
+   **when** the workflow prepares interface members, **then** those members do
+   not increase ISP-1 and private/fileprivate helpers are not sent for judgment.
+6. **Given** distinct overloads and a matching default implementation,
+   **when** MCP identifies unique exposed members, **then** overloads remain
+   separate and the matching requirement/default pair contributes once.
+7. **Given** combined width of five and validated evidence of mixed independent
+   responsibilities through extensions, **when** scoring completes, **then**
+   ISP-1 remains COMPLIANT and the separate responsibility finding is SEVERE.
+8. **Given** several extension members serving one responsibility, **when** their
+   classifications are evaluated, **then** member count alone does not create a
+   mixed-responsibility finding; ISP-1 still applies independently.
+9. **Given** ambiguous ownership or conditional applicability, **when** it
+   prevents establishing the relevant member set, **then** the affected result
+   preserves its evidence limitation instead of claiming an exact compliant
+   width; independently established findings are retained.
+10. **Given** a combined submission with a missing or invalid responsibility
+    classification, **when** the model corrects only the pending work, **then**
+    accepted siblings and completed operations remain recorded and dependent
+    scoring waits for valid evidence.
+11. **Given** persisted member facts, classifications, exclusions, and scores,
+    **when** the run replays, **then** the same values and evidence are restored
+    without repeating completed search or analysis.
+
+#### Implementation sequence
+
+1. Wire the existing source operations into a test-owned ISP workflow fixture;
+   cover interface-name discovery, separate extensions, and visibility filtering.
+2. Add failing integration assertions for the combined-width and responsibility
+   cases above, including actual scoring after aggregate submissions.
+3. Implement the remaining reusable bindings and evidence outcomes as needed;
+   keep ISP policy in YAML and semantic classification in model-owned steps.
+4. Update the inactive draft to use the validated contracts, then run all non-live
+   tests and locked ISP-specific Codex/Claude live checks before activation.
+
+### Interface-extension member contributions and scoring integration — 2026-10-16
+
+The registered `source.declaration_members` operation accepts a bounded source
+`inventory` and one prepared `declaration` identity. It returns `inventory`,
+`declaration`, and ordered `members`. Each contribution retains its owner, member
+signature, visibility, source evidence, matching declarations, and a typed role:
+`declared`, `implementation`, `additional`, or `unresolved`.
+
+Member collection is shared with requirement matching; signature matching reuses
+the same callable, modifier, and accessor capabilities. The operation does not
+search, reread files, classify responsibilities, or calculate ISP scores.
+Conditional or ambiguous extension ownership and unsupported signatures remain
+unresolved. Inherited requirements are not expanded into the direct inventory;
+an unmatched extension member on an inheriting declaration remains unresolved
+until inherited-member identity can be established. File-granularity identities
+and declarations absent from the supplied snapshot are rejected.
+
+The test-owned workflow at
+`tests/harness/flow_engine/fixtures/isp_extension_review/workflow.yaml` now
+executes source analysis, relationship resolution, and member analysis inside MCP
+before returning batched model classifications. YAML owns visibility filtering,
+the existing ISP-1 width bands, and an ISP-4 independent-extension-responsibility
+signal with a SEVERE threshold of one. This fixture receives explicit prepared
+source snapshots; it does not establish repository-discovery completeness or
+model-classification accuracy.
+
+Verified cases:
+
+- **Given** six direct requirements and three additional exposed extension
+  members, **when** the workflow completes, **then** MCP records width nine and
+  SEVERE. Counts five, six, eight, and nine exercise the inclusive bands.
+- **Given** matching defaults, supported overloads, properties, or subscripts,
+  **when** member contributions are resolved, **then** supported defaults do not
+  add width and distinct overloads remain separate.
+- **Given** private/fileprivate or conformer-only members, **when** the workflow
+  prepares judgment work and scores width, **then** those members are excluded.
+  Empty and private-only extension collections need no member-classification
+  submission and produce zero independent-responsibility observations.
+- **Given** a narrow interface with independently classified extension
+  responsibilities, **when** the model submits its classifications, **then** MCP
+  records ISP-4 as SEVERE even though ISP-1 remains COMPLIANT.
+- **Given** partial or invalid batched classifications, **when** the model
+  corrects the pending subset, **then** accepted work is retained, scoring waits
+  for complete valid classifications, and completed source operations do not
+  rerun. Replay still completes after the original source files are removed.
+- **Given** ambiguous or conditional ownership, generic signatures, or an
+  unresolved inherited-member relationship, **when** the operation result is
+  serialized and restored, **then** its uncertainty and original evidence remain
+  available rather than becoming a fabricated additional-member count.
+
+#### Shared operation-schema correction
+
+Integration exposed an existing schema boundary gap: operation output extraction
+dropped Pydantic definitions, leaving nested `$ref` fields unavailable to
+`scoring.when` and producing dangling references during validation. Reference
+expansion now sits behind the existing `StructuredModelDecoding` contract,
+separate from typed schema decoding and output-spec construction. The JSON-schema
+library identifies actual schema nodes; literal defaults/examples are not
+interpreted as references, and properties named like schema keywords still work.
+Original references and definitions remain available so recursive schemas and
+constraints alongside `$ref` retain their validation semantics. `referencing`
+is declared directly in `requirements.txt`; it was already installed as a
+dependency of JSON Schema validation.
+
+Coverage resides in:
+
+- `tests/harness/flow_engine/test_isp_extension_review_flow.py`: ten workflow
+  tests and six boundary/empty-collection subtests.
+- `tests/mcp-server/source/analysis/operations/test_source_declaration_members_operation.py`:
+  ten source-operation tests.
+- `tests/harness/flow_engine/test_pydantic_operation_output_specs_resolver.py`:
+  nine schema-boundary tests.
+
+The final complete 19-root non-live sweep passed with **2,661 tests, four existing
+skips, and 175 subtests**. The existing locked Codex/Claude workflow-catalog E2E
+checks passed: **two tests in 61.93 seconds**. Their retained test artifacts are
+under `.solid-coder/.artifacts/test/`:
+
+- Codex: `codex/e2e/flow-engine/workflow-catalog/20261016T150801Z-f0650e94/`.
+- Claude: `claude/e2e/flow-engine/workflow-catalog/20261016T150833Z-f6d23260/`.
+
+These live checks validate the shared flow engine, not the revised ISP policy or
+the accuracy of its classifications. The spec remains in progress. Still required:
+connect interface-name discovery and MCP-prepared target identity to the revised
+ISP draft; finish coverage/cohesion and exception bindings; represent metric-level
+unable-to-verify outcomes without turning missing evidence into compliance; and
+run ISP-specific Codex/Claude live scenarios before activating the revised bundled
+workflow. No distributed workflow or local TOML was changed by this slice.
+
+### Full bundled ISP and explicit unavailable outcomes — 2026-10-16
+
+The full rule now lives in `workflows/review/rules/isp/workflow.yaml`, with its
+included conformer-evidence workflow in `candidate-review/workflow.yaml`.
+Deterministic integration and locked-model tests resolve those actual packages.
+The duplicate extension-policy YAML under the test harness and the unused old
+candidate assessment schema have been removed. The discussion draft is historical,
+not an additional executable policy to keep synchronized.
+
+The bundled sequence composes these existing responsibilities:
+
+1. MCP discovers related declarations using the exact interface name and, when
+   necessary, discovered owner names for separate extensions. It preserves the
+   prospective source snapshot, search bounds, source facts, and limitations.
+2. MCP resolves member contributions and calculates combined exposed width;
+   private/fileprivate members are filtered before extension judgment and width.
+3. Included conformer workflows run structural requirement matching in MCP,
+   request evidenced behavioral classifications, and calculate coverage ratios.
+4. With at least two eligible, verifiable conformers and no discovery limitation,
+   the workflow derives minimum coverage and observed usage groups. Otherwise
+   those metrics explicitly report unavailable evidence.
+5. The model classifies exposed extension responsibilities; MCP counts independent,
+   non-excepted behavior and applies the agreed ISP-4 SEVERE threshold of one.
+6. The existing whole-rule exception step and result publication retain the
+   measured metrics and explicit unavailable siblings in one auditable result.
+
+The shared authoring contract adds optional `unavailable_reason` to a guarded
+metric. A skipped metric with that declaration becomes an `unavailable_metrics`
+entry containing metric/observation identity, `status: unavailable`, and
+reasoning/condition evidence. It has no numeric value or severity. Ordinary skips
+without that declaration remain ordinary skips. An all-unavailable result has
+null severity; known measured SEVERE siblings remain SEVERE. Snapshots,
+co-located metric expansion, effective scoring policy, and replay preserve the
+declaration and outcome. Missing/invalid submissions and operation failures are
+not evidence-unavailable outcomes.
+
+Verified integration cases use the real bundled rule:
+
+- **Given** two exposed extension members in an aggregate wrapper, **when** both
+  classifications arrive in one combined submission, **then** MCP records width
+  six and two independent responsibilities, with ISP-4 SEVERE, and executes
+  discovery/member collection only once.
+- **Given** partial or invalid classifications, **when** pending work is corrected,
+  **then** accepted siblings remain recorded and scoring waits for valid work.
+- **Given** persisted source operations and subsequently deleted source files,
+  **when** execution resumes, **then** it finishes from persisted source evidence.
+- **Given** a first interface with no discovered conformer, **when** it finalizes,
+  **then** width stays measured and ISP-2/ISP-3 are unavailable, not fabricated
+  compliant measurements.
+- **Given** measured width ten and unverifiable extension behavior, **when** the
+  result is published, **then** ISP-1 remains SEVERE and ISP-4 is unavailable.
+- **Given** an empty interface or only private extension helpers, **when** the
+  rule executes, **then** empty fan-out and filtered fan-out both complete without
+  requesting nonexistent member judgments or misclassifying known width.
+- **Given** an ordinary conditional skip without an unavailable declaration,
+  **when** results finalize, **then** no unavailable metric is invented.
+
+Current non-live validation: **2,695 passed, four existing abstract-base skips,
+and 175 subtests**, including script and Apple-build tests. The flow-engine slice
+contains **893 passing tests**. A standalone health-input test also now initializes
+its required gate-module path itself instead of depending on test collection
+order. Live ISP expectations retain canonical values 10 / 0.5 / 2 and add ISP-4
+zero for the fixture without exposed extensions. Both locked live ISP checks
+passed: **two tests in 144.77 seconds**, using Codex `gpt-5.6-terra` and Claude
+`claude-opus-4-5`. They execute `solid-review`, enable only ISP through project
+policy, and preserve the real bundled rule's events and final metrics. Codex
+recorded one successful start and five successful continuation calls, with no
+failed or unanswered tool calls. Retained evidence under
+`.solid-coder/.artifacts/test/`:
+
+- Codex: `codex/e2e/review/isp/20261016T181857Z-f2749473/`.
+- Claude: `claude/e2e/review/isp/20261016T181957Z-34fc4cda/`.
+
+Remaining boundary: context-dependent gate handling for unavailable metrics is
+not introduced here. A first-interface warning policy still needs explicit
+context/policy binding; absence of search hits alone is not proof of that context.
+Bounded syntax relationships are not compiler-verified conformance, and model
+reasoning/evidence remains auditable classification, not independently proven
+truth. Complete-requirement classification is requested by the output contract
+and prompt; exact identity-set enforcement for every submitted requirement remains
+follow-up work, distinct from required workflow-instance completion.

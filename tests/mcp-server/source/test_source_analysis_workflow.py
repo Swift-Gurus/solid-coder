@@ -16,6 +16,7 @@ sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
 from harness.project_context import ProjectDirectory
+from harness.operations.operation_result import OperationResult
 from source.source_analysis import SourceAnalysis
 from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
 from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
@@ -43,7 +44,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
             ).make(),
         )
 
-    def test_fans_out_analysis_and_fans_in_units_in_source_order(self) -> None:
+    def test_fans_out_analysis_and_fans_in_results_in_source_order(self) -> None:
         self.driver.write_workflow(textwrap.dedent(
             """
             name: analyze-source-files
@@ -67,7 +68,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
                   source: "{{item}}"
               - id: report
                 depends_on: [analyze]
-                prompt: "Report units: {{steps.analyze.outputs.units}}"
+                prompt: "Report analyses: {{steps.analyze.outputs.result}}"
             """
         ))
         started = self.driver.start()
@@ -100,7 +101,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
                   source: "{{params.source}}"
               - id: report
                 depends_on: [analyze]
-                prompt: "Members: {{steps.analyze.outputs.units}}"
+                prompt: "Analysis: {{steps.analyze.outputs.result}}"
             """
         ))
         with patch.object(TreeSitterSyntaxParser, "parse", autospec=True, side_effect=TreeSitterSyntaxParser.parse) as parser:
@@ -117,7 +118,7 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
                 event for event in events
                 if event.get("event") == "step_completed" and event.get("step_id") == "analyze"
             )
-            analysis = SourceAnalysis.model_validate(recorded["outputs"])
+            analysis = OperationResult[SourceAnalysis].model_validate(recorded["outputs"]).result
             self.assertEqual(len(analysis.units[0].members), 1)
             member = analysis.units[0].members[0]
             self.assertEqual(member.name, "read")

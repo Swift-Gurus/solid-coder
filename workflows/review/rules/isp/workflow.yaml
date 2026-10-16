@@ -1,6 +1,6 @@
 id: isp
 name: Interface Segregation Principle Review
-description: Measures protocol width, conformer coverage, and cohesion groups from complete repository evidence.
+description: Measures exposed interface width, conformer coverage, usage cohesion, and extension responsibilities from bounded repository evidence.
 max_turns: 40
 
 rule:
@@ -9,141 +9,100 @@ rule:
       included: [protocol]
 
 steps:
-  - id: analyze_protocol
-    prompt: |
-      Analyze only protocol `{{params.review_unit.target.name}}` in the source
-      already visible in this model session. Do not inspect repository
-      candidates, count metrics, calculate coverage, or decide severity.
-
-      A "wide" protocol forces conformers to implement methods they do not need. Each unnecessary method is a coupling point that creates implementation burden and fragility.
-
-      1. **List every method and property** declared in the protocol (including associated types)
-      2. **Count total requirements** (methods + properties + associated types)
-      3. **Exclude inherited requirements** — only count what THIS protocol declares, not parent protocols
-
-      Return one requirement record for every declaration and every default
-      implementation visible with this protocol. Preserve source evidence so
-      later candidate and metric steps reuse this exact analysis.
-    outputs:
-      - name: requirements
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [name, evidence]
-            properties:
-              name: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-      - name: default_implementations
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [requirement, evidence]
-            properties:
-              requirement: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-
-  - id: prepare_conformer_query
+  - id: discover
     type: operation
-    operation: source.prepare_search_query
+    operation: source.discover_declaration
     with:
       target: "{{params.review_unit.target}}"
-      generated_terms: "{{params.review_unit.target.deterministic_terms}}"
-
-  - id: search_conformers
-    type: operation
-    operation: source.search
-    depends_on: [prepare_conformer_query]
-    with:
-      queries: "{{steps.prepare_conformer_query.outputs.queries}}"
-      excluded_units: "{{steps.prepare_conformer_query.outputs.excluded_units}}"
       context: "{{params.source_context}}"
-      included_file_extensions: "{{steps.prepare_conformer_query.outputs.included_file_extensions}}"
 
-  - id: present_candidates
+  - id: members
     type: operation
-    operation: source.present_search
-    depends_on: [search_conformers]
+    operation: source.declaration_members
+    depends_on: [discover]
     with:
-      candidates: "{{steps.search_conformers.outputs.candidates}}"
-      files_scanned: "{{steps.search_conformers.outputs.files_scanned}}"
+      inventory: "{{steps.discover.outputs.inventory}}"
+      declaration: "{{steps.discover.outputs.declaration}}"
 
-  - id: select_candidates
-    depends_on: [present_candidates]
-    prompt: |
-      Account for every repository candidate shown below. Return exactly one
-      disposition for every `candidate_id`, copying that ID exactly.
-
-      Use INSPECT when the candidate may conform to protocol
-      `{{params.review_unit.target.name}}` or may supply protocol-extension
-      defaults. Use REJECT only when its name and frontmatter description prove
-      it cannot do either. For both dispositions, explain the decision and cite
-      evidence from the shown metadata. Do not read source, classify a
-      conformer, omit an ID, invent an ID, count metrics, or decide severity.
-      An empty search result requires an empty disposition list.
-
-      {{steps.present_candidates.outputs.text}}
-    outputs:
-      - name: dispositions
-        type: data
-        schema:
-          type: array
-          maxItems: 20
-          items:
-            type: object
-            additionalProperties: false
-            required: [candidate_id, disposition, reasoning, evidence]
-            properties:
-              candidate_id:
-                type: string
-                pattern: "^candidate-[1-9][0-9]*$"
-              disposition:
-                type: string
-                enum: [INSPECT, REJECT]
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-
-  - id: validate_selection
+  - id: unresolved_members
     type: operation
-    operation: source.validate_candidate_selection
-    depends_on: [select_candidates]
+    operation: collection.count
+    depends_on: [members]
+    for_each: "{{steps.members.outputs.members}}"
+    when:
+      all:
+        - ref: "{{item.role}}"
+          equals: unresolved
+        - ref: "{{item.reference.member.visibility}}"
+          not_in: [private, fileprivate]
     with:
-      candidates: "{{steps.search_conformers.outputs.candidates}}"
-      dispositions: "{{steps.select_candidates.outputs.dispositions}}"
+      values: "{{item.matching_declarations}}"
+
+  - id: width
+    type: metric
+    metric_id: ISP-1
+    depends_on: [members, unresolved_members]
+    when:
+      all:
+        - ref: "{{steps.discover.outputs.limitations}}"
+          equals: []
+        - any: &no_unresolved_members
+            - ref: "{{steps.unresolved_members.outputs.value}}"
+              exists: false
+            - ref: "{{steps.unresolved_members.outputs.value}}"
+              equals: []
+    unavailable_reason: Exposed interface width cannot be verified while discovery or member ownership remains incomplete.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.members.outputs.members}}"
+      when:
+        all:
+          - ref: "{{item.role}}"
+            in: [declared, additional]
+          - ref: "{{item.reference.member.visibility}}"
+            not_in: [private, fileprivate]
+      minor: {operator: greater_than_or_equal, value: 6}
+      severe: {operator: greater_than_or_equal, value: 9}
 
   - include:
       workflow: isp-candidate-review
     as: candidate_reviews
-    depends_on: [analyze_protocol, validate_selection]
-    for_each: "{{steps.validate_selection.outputs.selected_candidates}}"
+    depends_on: [discover]
+    for_each: "{{steps.discover.outputs.related_declarations}}"
     with:
       candidate: "{{item}}"
+      inventory: "{{steps.discover.outputs.inventory}}"
       protocol_name: "{{params.review_unit.target.name}}"
 
-  - id: analyze_cohesion
+  - id: availability
+    type: operation
+    operation: collection.ratio
     depends_on: [candidate_reviews]
+    with:
+      observations: "{{workflows.candidate_reviews.outputs.availability}}"
+
+  - id: analyze_cohesion
+    depends_on: [availability]
+    when: &comparable_evidence
+      all:
+        - ref: "{{steps.discover.outputs.limitations}}"
+          equals: []
+        - ref: "{{steps.availability.outputs.value}}"
+          equals: 1.0
+        - ref: "{{steps.availability.outputs.denominator_count}}"
+          not_in: [0, 1]
     prompt: |
-      Analyze protocol `{{params.review_unit.target.name}}` using only the
-      protocol and complete candidate assessments already submitted in this
-      model session. Do not inspect source again, omit a requirement, count
-      groups, calculate metrics, or decide severity.
+      Group protocol methods by which conformers actually use them together.
+      Disjoint groups suggest the protocol should be split.
 
-      Group protocol methods by which conformers actually use them together. Disjoint groups suggest the protocol should be split.
+      For interface "{{params.review_unit.target.name}}", use the completed
+      conformer observations already in this session. Return one record for
+      each directly declared requirement, in declaration order. Its usage
+      vector records coverage across eligible conformers in discovery order:
+      1 for a covered requirement and 0 for an uncovered requirement.
+      Identical vectors describe requirements used together.
 
-      1. **Build a usage matrix**: for each conformer, which methods are MEANINGFUL
-      2. **Identify groups of methods** that are always used together across conformers
-      3. **Count groups** — if methods cluster into 2+ disjoint usage groups, the protocol mixes responsibilities
-
-      Return exactly one record for every declared requirement, in declaration
-      order. Encode its binary implementation vector in conformer source order:
-      use `1` for MEANINGFUL or DELEGATED and `0` for EMPTY, STUB, or MISSING.
-      Requirements with identical vectors have the same `usage_vector`. MCP will
-      count distinct vectors; do not return a derived group count.
+      Preserve the requirement identity, reasoning, and source evidence.
     outputs:
       - name: requirement_groups
         type: data
@@ -159,20 +118,12 @@ steps:
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
 
-  - id: width
-    type: metric
-    metric_id: ISP-1
-    depends_on: [analyze_protocol]
-    value: {type: integer, minimum: 0}
-    scoring:
-      source: "{{steps.analyze_protocol.outputs.requirements}}"
-      minor: {operator: greater_than_or_equal, value: 6}
-      severe: {operator: greater_than_or_equal, value: 9}
-
   - id: min_coverage
     type: metric
     metric_id: ISP-2
-    depends_on: [candidate_reviews]
+    depends_on: [candidate_reviews, availability]
+    when: *comparable_evidence
+    unavailable_reason: Coverage requires at least two eligible conformers with verifiable requirement evidence and no discovery limitation.
     value: {type: number, minimum: 0, maximum: 1}
     scoring:
       source: "{{workflows.candidate_reviews.outputs.coverage}}"
@@ -186,7 +137,9 @@ steps:
   - id: cohesion_groups
     type: metric
     metric_id: ISP-3
-    depends_on: [analyze_cohesion]
+    depends_on: [analyze_cohesion, availability]
+    when: *comparable_evidence
+    unavailable_reason: Usage cohesion requires comparable, verifiable observations from at least two eligible conformers.
     value: {type: integer, minimum: 0}
     scoring:
       source: "{{steps.analyze_cohesion.outputs.requirement_groups}}"
@@ -195,26 +148,126 @@ steps:
         value: "{{item.usage_vector}}"
       severe: {operator: greater_than_or_equal, value: 2}
 
+  - id: classify_extension_members
+    depends_on: [members]
+    for_each:
+      source: "{{steps.members.outputs.members}}"
+      mode: batch
+      label: "{{item.reference.member.identity}}"
+    when:
+      all:
+        - ref: "{{item.role}}"
+          in: [implementation, additional]
+        - ref: "{{item.reference.member.visibility}}"
+          not_in: [private, fileprivate]
+    prompt: |
+      Classify extension member "{{item.reference.member.name}}" relative to
+      interface "{{params.review_unit.target.name}}".
+      Source: {{item.reference.owner.source_identity}}
+      Declaration: {{item.reference.member.signature}}
+
+      Inspect that member using the source already visible in this session,
+      or your normal file-reading tool when necessary.
+      SAME_RESPONSIBILITY serves the interface's responsibility.
+      INDEPENDENT_RESPONSIBILITY introduces separate behavior.
+      UNABLE_TO_VERIFY means the available source does not support a decision.
+
+      Its structural role is "{{item.role}}": implementation supplies a
+      declared requirement; additional introduces an exposed member.
+      A default implementation is not independently a violation.
+      Mark is_exception only when an applicable whole-interface exception
+      below or a framework-mandated member explains this behavior. Preserve
+      the applicable exception, reasoning, and evidence in additional_info.
+
+      In availability, use the member identity as observation_id and included
+      true. Set matches false for UNABLE_TO_VERIFY, otherwise true, and explain
+      the evidence supporting that availability decision.
+    outputs:
+      - name: assessment
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [classification, is_exception, additional_info]
+          properties:
+            classification:
+              type: string
+              enum: [SAME_RESPONSIBILITY, INDEPENDENT_RESPONSIBILITY, UNABLE_TO_VERIFY]
+            is_exception: {type: boolean}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+
+      - name: availability
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [observation_id, matches, included, reasoning, evidence]
+          properties:
+            observation_id: {type: string, minLength: 1}
+            matches: {type: boolean}
+            included: {const: true}
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
+  - id: extension_availability
+    type: operation
+    operation: collection.ratio
+    depends_on: [classify_extension_members]
+    when:
+      ref: "{{steps.classify_extension_members.outputs.availability}}"
+      exists: true
+    with:
+      observations: "{{steps.classify_extension_members.outputs.availability}}"
+
+  - id: mixed_responsibilities
+    type: metric
+    metric_id: ISP-4
+    depends_on: [classify_extension_members, extension_availability, unresolved_members]
+    when:
+      all:
+        - ref: "{{steps.discover.outputs.limitations}}"
+          equals: []
+        - any: *no_unresolved_members
+        - any:
+            - ref: "{{steps.extension_availability.outputs.value}}"
+              exists: false
+            - ref: "{{steps.extension_availability.outputs.value}}"
+              equals: 1.0
+    unavailable_reason: Extension responsibilities remain unverified because discovery, ownership, or a required behavioral classification is incomplete.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_extension_members.outputs.assessment}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            equals: INDEPENDENT_RESPONSIBILITY
+          - ref: "{{item.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
   - id: classify_exception
     type: exception
-    depends_on:
-      - width
-      - min_coverage
-      - cohesion_groups
-      - candidate_reviews
+    depends_on: [width, min_coverage, cohesion_groups, mixed_responsibilities]
     prompt: |
-      Decide whether the entire supplied protocol is exempt from ISP review.
-      Single-conformer and default-implementation criteria adjust only ISP-2
-      and do not exempt ISP-1 or ISP-3. Apply this complete authored list:
+      Classify whether a whole-interface exception applies to
+      "{{params.review_unit.target.name}}", with reasoning and source evidence.
 
-      1. **Non-protocol units** — ISP applies ONLY to protocol/interface declarations. Classes, structs, enums, extensions, and standalone functions that do not declare a protocol are outside ISP scope — do NOT include them in the ISP section of the submission. Omit these units from ISP metrics entirely. Conformers are examined only as evidence during ISP-2 (coverage analysis) of the protocol they conform to, not as ISP review targets themselves.
-      2. **Marker protocols** — protocols with zero requirements used for type discrimination (e.g., `Sendable`, `Identifiable`). Width = 0 is always COMPLIANT.
-      3. **Single-conformer protocols** — if only one conformer exists in the project, coverage is trivially 100%. Not a violation, but flag as "unable to verify ISP — single conformer." The protocol may still be too wide, but there is no evidence from usage.
-      4. **Composition protocols** — protocols defined as `protocol P: A, B {}` (or `typealias P = A & B`) where A and B are already narrow. The composition itself is not a violation if each component protocol is compliant. **Prefer `protocol P: A, B {}` over `typealias`** — a typealias cannot be conformed to directly (you cannot write `class Decorator: MyTypealias`), which breaks the decorator pattern and other composition patterns that need a single nominal type to conform to.
-      5. **@objc protocols** — Objective-C interop protocols may require specific method sets dictated by the framework. Flag as "framework-constrained" rather than violation.
-      6. **Protocols with default implementations** — if all non-meaningful methods have default implementations via protocol extensions, conformers are not forced to implement them. Check whether the conformer overrides the default — if not, the default satisfies ISP.
-      7. **Test code** — mocks, stubs, fakes, test helpers, and test doubles are exempt. They intentionally implement only the subset of a protocol needed for a specific test scenario. Low coverage in test conformers is expected and not a violation.
+      Marker protocols have zero requirements and serve type discrimination.
+      Composition protocols are exempt when they only compose already narrow,
+      compliant protocols. Prefer a nominal composition protocol to a typealias
+      when direct conformance and decorators are needed.
+      Framework-constrained @objc protocols may require specific method sets.
+      Test code, mocks, stubs, fakes, and test helpers are exempt.
 
-      Use only the completed protocol analysis, candidate assessments, and
-      deterministic metric results. Do not inspect source again, recalculate a
-      metric, or revise an earlier classification.
+      These are not whole-interface exemptions:
+      - Zero or one eligible conformer leaves usage evidence unable to verify;
+        it does not make a wide interface compliant.
+      - Protocol defaults affect coverage for the requirement they actually
+        satisfy. They do not exempt additional extension behavior or width.
+      - An unavailable metric is not a measured compliant result.

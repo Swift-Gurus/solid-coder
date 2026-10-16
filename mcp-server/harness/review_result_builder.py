@@ -21,12 +21,9 @@ class ReviewResultBuilder(ReviewResultBuilding):
         workflow_id: str,
         rule_results: list[RuleReviewResult],
     ) -> ReviewResult:
+        metrics = [metric for result in rule_results for metric in result.metrics]
         return ReviewResult(
             workflow_id=workflow_id,
-            severity=self._severity_selector.select([
-                metric
-                for result in rule_results
-                for metric in result.metrics
-            ]),
+            severity=self._severity_selector.select(metrics) if metrics else None,
             rule_results=rule_results,
         )

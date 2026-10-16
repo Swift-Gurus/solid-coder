@@ -1,6 +1,7 @@
 """Collects typed observations from completed executable rule steps."""
 
 from harness.completed_step_outputs_resolving import CompletedStepOutputsResolving
+from findings.metric_additional_info import MetricAdditionalInfo
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_assessment_observations_decoding import (
@@ -11,6 +12,7 @@ from harness.rule_metric_observation import RuleMetricObservation
 from harness.rule_observation_collecting import RuleObservationCollecting
 from harness.rule_observations import RuleObservations
 from harness.run_state import RunState
+from harness.unavailable_rule_metric import UnavailableRuleMetric
 
 
 """
@@ -50,10 +52,23 @@ class RuleObservationCollector(RuleObservationCollecting):
             )
 
         metrics: list[RuleMetricObservation] = []
+        unavailable_metrics: list[UnavailableRuleMetric] = []
         exception: RuleExceptionDecision | None = None
 
         for step in instance.steps:
             if step.metric is not None:
+                skipped = run_state.skipped.get(step.id)
+                if skipped is not None:
+                    if step.metric.unavailable_reason is not None:
+                        unavailable_metrics.append(UnavailableRuleMetric(
+                            metric_id=step.metric.metric_id,
+                            observation_id=step.metric.observation_id,
+                            additional_info=MetricAdditionalInfo(
+                                reasoning=step.metric.unavailable_reason,
+                                evidence=skipped.evidence.model_dump_json(),
+                            ),
+                        ))
+                    continue
                 outputs = self._outputs_resolver.resolve(step.id, run_state)
                 metrics.append(
                     RuleMetricObservation(
@@ -76,4 +91,8 @@ class RuleObservationCollector(RuleObservationCollecting):
             raise self._error_factory.create(
                 f"Rule workflow '{instance.workflow.workflow_id}' has no completed exception observation"
             )
-        return RuleObservations(metrics=metrics, exception=exception)
+        return RuleObservations(
+            metrics=metrics,
+            unavailable_metrics=unavailable_metrics,
+            exception=exception,
+        )

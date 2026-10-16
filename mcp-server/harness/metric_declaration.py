@@ -29,6 +29,9 @@ class MetricDeclaration(BaseModel):
     observation_id: MetricObservationId = "value"
     value: MetricValueDeclaration
     scoring: MetricScoringDeclaration
+    unavailable_reason: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1)
+    ] | None = None
 
     @model_validator(mode="after")
     def validate_comparison_types(self) -> "MetricDeclaration":

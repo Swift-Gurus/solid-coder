@@ -1,11 +1,18 @@
 """Defines a typed failed candidate-source read outcome."""
 
-from typing import Literal
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
 from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.source_search_candidate import SourceSearchCandidate
+
+if TYPE_CHECKING:
+    from source.analysis.operations.candidate_source_analysis_visitor import CandidateSourceVisitor
+
+VisitResult = TypeVar("VisitResult")
 
 UnavailableCandidateSourceKind = Literal[
     CandidateSourceReadKind.MISSING,
@@ -27,3 +34,6 @@ class UnavailableCandidateSource(BaseModel):
     kind: UnavailableCandidateSourceKind
     candidate: SourceSearchCandidate
     detail: str
+
+    def accept(self, visitor: CandidateSourceVisitor[VisitResult]) -> VisitResult:
+        return visitor.visit_unavailable(self)

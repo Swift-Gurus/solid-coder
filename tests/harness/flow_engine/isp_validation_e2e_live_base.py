@@ -25,9 +25,10 @@ class ISPValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "width",
         "min_coverage",
         "cohesion_groups",
+        "mixed_responsibilities",
     ]
-    EXPECTED_METRIC_IDS = ["ISP-1", "ISP-2", "ISP-3"]
-    EXPECTED_VALUES = [10, 0.5, 2]
-    EXPECTED_METRIC_SEVERITIES = ["SEVERE", "SEVERE", "SEVERE"]
+    EXPECTED_METRIC_IDS = ["ISP-1", "ISP-2", "ISP-3", "ISP-4"]
+    EXPECTED_VALUES = [10, 0.5, 2, 0]
+    EXPECTED_METRIC_SEVERITIES = ["SEVERE", "SEVERE", "SEVERE", "COMPLIANT"]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
     ALLOW_AUXILIARY_STEPS = True

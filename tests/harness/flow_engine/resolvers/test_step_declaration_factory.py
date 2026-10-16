@@ -24,6 +24,7 @@ from harness.collection_source_reference_parser import (
 from harness.co_located_metric_collection_decoder import (
     CoLocatedMetricCollectionDecoder,
 )
+from harness.co_located_metric_source_validator import CoLocatedMetricSourceValidator
 from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
@@ -89,12 +90,13 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     error_factory=error_factory,
                 ),
                 contract_assembler=MetricStepContractAssembler(),
-                expression_parser=expression_parser,
-                source_reference_parser=(
-                    CollectionSourceReferenceParser(
+                source_validator=CoLocatedMetricSourceValidator(
+                    expression_parser=expression_parser,
+                    reference_parser=CollectionSourceReferenceParser(
                         step_reference_parser=reference_parser,
                     )
                 ),
+                error_factory=error_factory,
             ),
             rule_step_contract_resolver=RuleStepContractResolver(
                 metric_decoder=MetricDeclarationDecoder(

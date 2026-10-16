@@ -1,0 +1,49 @@
+id: source-relationships
+name: Source Relationship Operations
+max_turns: 8
+execution:
+  mode: aggregate
+presentation:
+  mode: combined
+steps:
+  - id: select
+    prompt: Identify the supplied source files.
+    outputs:
+      - name: sources
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [kind, path]
+            properties:
+              kind: {const: file}
+              path: {type: string}
+
+  - id: inspect
+    type: operation
+    operation: source.analyze
+    depends_on: [select]
+    for_each: "{{steps.select.outputs.sources}}"
+    with:
+      source: "{{item}}"
+
+  - id: link
+    type: operation
+    operation: source.resolve_relationships
+    depends_on: [inspect]
+    with:
+      analyses: "{{steps.inspect.outputs.result}}"
+
+  - include:
+      workflow: source-matching
+    as: checks
+    depends_on: [link]
+    for_each: "{{steps.link.outputs.relationships}}"
+    when:
+      ref: "{{item.reference.kind}}"
+      equals: inherited_type
+    with:
+      inventory: "{{steps.link.outputs.result}}"
+      relationship: "{{item}}"

@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 """
 solid-name: WorkflowDataSchema
 solid-category: model
-solid-spec: [SPEC-053]
-solid-description: Represents array items and nested object fields addressable by workflow conditions.
+solid-spec: [SPEC-053, SPEC-057]
+solid-description: Represents array items, nested object fields, and retained reference definitions addressable by workflow conditions.
 """
 class WorkflowDataSchema(BaseModel):
     model_config = ConfigDict(extra="allow", frozen=True)
@@ -19,6 +19,7 @@ class WorkflowDataSchema(BaseModel):
     type: Optional[str] = None
     properties: dict[str, "WorkflowDataSchema"] = Field(default_factory=dict)
     items: Optional["WorkflowDataSchema"] = None
+    definitions: dict[str, "WorkflowDataSchema"] = Field(default_factory=dict, alias="$defs")
 
     def property(self, name: str) -> Optional["WorkflowDataSchema"]:
         return self.properties.get(name)

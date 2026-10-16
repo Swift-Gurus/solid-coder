@@ -1,7 +1,23 @@
-# Discussion draft. Not activated or
-# validated as an executable replacement for the bundled ISP workflow.
-# Open decisions: exact coverage completeness enforcement, deterministic
-# tag-to-exception binding, and scoring for a separate extension metric.
+# Historical discussion draft, superseded on 2026-10-16 by
+# workflows/review/rules/isp/workflow.yaml and its candidate-review child.
+# The bundled files are the executable source of truth tested by Codex/Claude.
+# The pending notes below describe the earlier draft, not current implementation.
+# Pending implementation: exact coverage completeness enforcement, deterministic
+# tag-to-exception binding, and the agreed extension policy below.
+# Approved extension policy (2026-10-15):
+# - ISP-1 counts directly declared requirements plus additional non-private
+#   interface-extension members. Inherited requirements remain excluded.
+# - A requirement and its default implementation count once; distinct overloads
+#   remain distinct. Conformer-only members do not increase interface width.
+# - Existing bands remain: 6-8 MINOR; 9 or more SEVERE.
+# - Mixing independent responsibilities through exposed extension behavior is
+#   a separate SEVERE signal, including when width is below six. This does not
+#   replace ISP-3's conformer-based cohesion metric.
+# - MCP derives width from structural evidence; the model classifies member
+#   responsibilities with reasoning/evidence. YAML owns the scoring policy.
+# The requirement-list width step below has not yet been replaced with combined
+# member evidence, and the extension responsibility step is not wired. The spec
+# defines the integration/scoring/recovery tests required before activation.
 # Approved follow-up (Spec.md): missing usable conformer evidence produces
 # "unable to verify", not 100% coverage or zero-group compliance. Width remains
 # independently measurable. Invalid/missing submissions still require recovery.

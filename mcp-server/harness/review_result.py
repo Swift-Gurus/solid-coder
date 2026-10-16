@@ -16,5 +16,5 @@ class ReviewResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     workflow_id: str
-    severity: ReviewSeverity
+    severity: ReviewSeverity | None
     rule_results: list[RuleReviewResult] = Field(min_length=1)

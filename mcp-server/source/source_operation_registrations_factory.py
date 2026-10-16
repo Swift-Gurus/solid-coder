@@ -6,7 +6,12 @@ from harness.operation_registration import OperationRegistration
 from harness.project_context import ProjectDirectoryReading
 from hooks.pathlib_extractor import PathlibExtractor
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
-from source.analyze_source_input import AnalyzeSourceInput
+from source.analysis.operations.source_analysis_operation_registrations_factory import (
+    SourceAnalysisOperationRegistrationsFactory,
+)
+from source.analysis.operations.discover_source_declaration_input import DiscoverSourceDeclarationInput
+from source.analysis.operations.source_declaration_discovery import SourceDeclarationDiscovery
+from source.analysis.operations.source_declaration_discovery_operation_factory import SourceDeclarationDiscoveryOperationFactory
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.collect_changes_output import CollectChangesOutput
@@ -27,8 +32,6 @@ from source.read_source_candidates_operation_factory import (
     ReadSourceCandidatesOperationFactory,
 )
 from source.read_source_candidates_output import ReadSourceCandidatesOutput
-from source.source_analysis import SourceAnalysis
-from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
@@ -48,7 +51,7 @@ from source.validate_candidate_selection_output import (
 """
 solid-name: SourceOperationRegistrationsFactory
 solid-category: factory
-solid-spec: [SPEC-040]
+solid-spec: [SPEC-040, SPEC-057]
 solid-description: Composes typed logical operation registrations for deterministic source services.
 """
 class SourceOperationRegistrationsFactory:
@@ -63,11 +66,12 @@ class SourceOperationRegistrationsFactory:
                 output_model=CollectChangesOutput,
                 handler=CollectChangesOperationFactory().make(),
             ),
+            *SourceAnalysisOperationRegistrationsFactory().make(),
             OperationRegistration(
-                name="source.analyze",
-                input_model=AnalyzeSourceInput,
-                output_model=SourceAnalysis,
-                handler=SourceAnalysisOperationFactory().make(),
+                name="source.discover_declaration",
+                input_model=DiscoverSourceDeclarationInput,
+                output_model=SourceDeclarationDiscovery,
+                handler=SourceDeclarationDiscoveryOperationFactory(self._project_directory).make(),
             ),
             OperationRegistration(
                 name="source.prepare_search_targets",

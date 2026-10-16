@@ -1,0 +1,32 @@
+id: source-matching
+name: Source Requirement Matching
+max_turns: 8
+execution:
+  mode: aggregate
+presentation:
+  mode: combined
+steps:
+  - id: match
+    type: operation
+    operation: source.match_requirements
+    with:
+      inventory: "{{params.inventory}}"
+      relationship: "{{params.relationship}}"
+
+  - id: classify
+    depends_on: [match]
+    prompt: |
+      Classify the matched implementations using this evidence:
+      {{steps.match.outputs.matches}}
+    outputs:
+      - name: meaningful
+        type: data
+        schema: {type: boolean}
+
+  - id: audit
+    depends_on: [match]
+    prompt: Record whether the supplied evidence was sufficient.
+    outputs:
+      - name: sufficient
+        type: data
+        schema: {type: boolean}

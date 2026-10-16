@@ -2,12 +2,13 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from findings.review_severity import ReviewSeverity
 from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_decision import RuleMetricDecision
 from harness.rule_review_provenance import RuleReviewProvenance
+from harness.unavailable_rule_metric import UnavailableRuleMetric
 
 
 """
@@ -22,7 +23,16 @@ class RuleReviewResult(BaseModel):
     workflow_id: str
     rule_instance_id: str
     provenance: RuleReviewProvenance
-    severity: ReviewSeverity
+    severity: ReviewSeverity | None
     scoring_authority: Literal["mcp"] = "mcp"
     exception: RuleExceptionDecision
-    metrics: list[RuleMetricDecision] = Field(min_length=1)
+    metrics: list[RuleMetricDecision]
+    unavailable_metrics: list[UnavailableRuleMetric] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_metric_outcomes(self) -> "RuleReviewResult":
+        if not self.metrics and not self.unavailable_metrics:
+            raise ValueError("A rule result requires measured or unavailable metrics")
+        if bool(self.metrics) != (self.severity is not None):
+            raise ValueError("A rule severity requires measured metrics")
+        return self

@@ -39,6 +39,8 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
         if step.metric is None:
             return
         snapshot["metric_id"] = step.metric.metric_id
+        if step.metric.unavailable_reason is not None:
+            snapshot["unavailable_reason"] = step.metric.unavailable_reason
         if step.metric.observation_id != "value":
             snapshot["observation_id"] = step.metric.observation_id
         snapshot["value"] = step.metric.value.model_dump(

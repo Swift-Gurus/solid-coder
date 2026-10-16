@@ -69,7 +69,8 @@ class RuleReviewResultBuilder(RuleReviewResultBuilding):
             workflow_id=workflow_id,
             rule_instance_id=rule_instance_id,
             provenance=provenance,
-            severity=self._severity_selector.select(decisions),
+            severity=self._severity_selector.select(decisions) if decisions else None,
             exception=observations.exception,
             metrics=decisions,
+            unavailable_metrics=observations.unavailable_metrics,
         )

@@ -62,6 +62,7 @@ class MetricDeclarationDecoder(MetricDeclarationDecoding):
             "observation_id": raw.get("observation_id", "value"),
             "value": value,
             "scoring": scoring,
+            "unavailable_reason": raw.get("unavailable_reason"),
         }
         try:
             value_type = MetricValueType(value.get("type"))
