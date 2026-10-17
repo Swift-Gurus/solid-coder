@@ -11,6 +11,7 @@ ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Pat
 
 from _gate_fixtures import HC, call_main
 from health_violation import HealthViolation
+from health_check_outcome import HealthCheckOutcome
 from patch_review_context import PatchReviewContext
 from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
@@ -53,8 +54,8 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         def check(content, file_path, language, session_id, cwd, patch_context):
             rendezvous.wait(timeout=2)
             if file_path.endswith("Second.py"):
-                return [_violation("Second concern.")]
-            return []
+                return HealthCheckOutcome(violations=[_violation("Second concern.")])
+            return HealthCheckOutcome()
 
         request = _patch_event([
             ("/src/First.py", "class First:\n    pass"),
@@ -68,11 +69,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertEqual(reviewed_paths, {"/src/First.py", "/src/Second.py"})
         self.assertEqual(result["permissionDecision"], "deny")
         self.assertIn("/src/Second.py", result["permissionDecisionReason"])
+        self.assertIn("Second concern.", result["permissionDecisionReason"])
 
     def test_multiple_denials_are_aggregated_into_one_response(self):
         def check(content, file_path, language, session_id, cwd, patch_context):
             name = Path(file_path).name
-            return [_violation(f"{name} concern.")]
+            return HealthCheckOutcome(violations=[_violation(f"{name} concern.")])
 
         request = _patch_event([
             ("/src/First.py", "class First:\n    pass"),
@@ -86,6 +88,8 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertEqual(result["permissionDecision"], "deny")
         self.assertIn("/src/First.py", reason)
         self.assertIn("/src/Second.py", reason)
+        self.assertIn("First.py concern.", reason)
+        self.assertIn("Second.py concern.", reason)
 
     def test_unsupported_first_file_does_not_hide_supported_sibling(self):
         request = _patch_event([
@@ -93,7 +97,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
             ("/src/Second.py", "class Second:\n    pass"),
         ])
         violation = [_violation("Second concern.")]
-        with patch(HC, return_value=violation) as health:
+        with patch(HC, return_value=HealthCheckOutcome(violations=violation)) as health:
             _, output = call_main(request)
 
         result = parse_hook_output(output)
@@ -106,7 +110,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
             ("/src/First.py", "class First:\n    pass"),
             ("/src/Second.py", "class Second:\n    pass"),
         ])
-        with patch(HC, return_value=[]) as health:
+        with patch(HC, return_value=HealthCheckOutcome()) as health:
             code, output = call_main(request)
 
         self.assertEqual(code, 0)
@@ -120,7 +124,7 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         def check(content, file_path, language, session_id, cwd, patch_context):
             with observation_lock:
                 observed_contexts.append(patch_context)
-            return []
+            return HealthCheckOutcome()
 
         request = _patch_event([
             ("/src/First.py", "class First:\n    pass"),

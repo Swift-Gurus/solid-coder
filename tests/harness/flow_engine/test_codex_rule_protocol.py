@@ -154,6 +154,38 @@ class TestCodexRuleProtocol(unittest.TestCase):
         self.assertEqual(evidence.startup.token_usage.total_tokens, 110)
         self.assertNotIn(self.case.FIXTURE.read_text(), evidence.model_dump_json())
 
+    def test_unwrapped_responses_require_completed_server_evidence_for_the_same_session(self) -> None:
+        self._write_transcript(
+            self._call("start", "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);"),
+            self._output("start", "Classify the supplied unit.", as_blocks=True),
+            self._call("next", "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);"),
+            self._output("next", "Flow complete.", as_blocks=True),
+        )
+        self.run.run_directory.mkdir()
+        events = self.run.run_directory / "events.jsonl"
+        for session in ["unrelated", "child"]:
+            events.write_text("\n".join([
+                '{"event":"run_started"}',
+                json.dumps({"event": "session_step_recorded", "session_id": session}),
+                '{"event":"run_completed"}',
+            ]))
+            if session == "unrelated":
+                with self.assertRaisesRegex(AssertionError, "successful flow_start"):
+                    self.case._assert_codex_protocol(self.run)
+            else:
+                self.case._assert_codex_protocol(self.run)
+
+    def test_plain_completion_text_alone_does_not_prove_workflow_success(self) -> None:
+        self._write_transcript(
+            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._output("start", "Flow complete."),
+            self._call("next", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._output("next", "Flow complete."),
+        )
+
+        with self.assertRaisesRegex(AssertionError, "successful flow_start"):
+            self.case._assert_codex_protocol(self.run)
+
     def _write_transcript(self, *events: str) -> None:
         source = json.dumps(self.case.FIXTURE.read_text())
         prompt = (

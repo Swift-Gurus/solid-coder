@@ -10,6 +10,7 @@ ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Pat
 from _gate_fixtures import HC, LONG_SWIFT, call_main, event
 from hook_config import HookConfig
 from solid_coder_config import SolidCoderConfig
+from health_check_outcome import HealthCheckOutcome
 
 
 class TestGateExclusion(unittest.TestCase):
@@ -29,15 +30,17 @@ class TestGateExclusion(unittest.TestCase):
             hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])},
             code_review_on_write_enabled=True,
         )
-        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=[]) as hc:
-            call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
+        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
+            _, out = call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
+        self.assertEqual(out, "")
 
     def test_no_exclusions_runs_health_normally(self):
         stub_config = SolidCoderConfig(code_review_on_write_enabled=True)
-        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=[]) as hc:
-            call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
+        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
+            _, out = call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
+        self.assertEqual(out, "")
 
 
 if __name__ == "__main__":

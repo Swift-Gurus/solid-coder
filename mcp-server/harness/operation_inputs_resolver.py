@@ -25,7 +25,8 @@ class OperationInputsResolver(OperationInputsResolving):
         operation: OperationStep,
         context: WorkflowRunContext,
     ) -> WorkflowContextValues[object]:
-        return self._bindings_resolver.resolve(
+        resolved = self._bindings_resolver.resolve(
             operation.input_bindings,
             context,
         )
+        return WorkflowContextValues(entries=[*operation.input_values, *resolved.entries])

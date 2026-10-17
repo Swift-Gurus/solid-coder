@@ -27,6 +27,8 @@ from harness.rule_review_result_persister import RuleReviewResultPersister
 from harness.rule_run_finalizer import RuleRunFinalizer
 from harness.run_completion_finalizing import RunCompletionFinalizing
 from harness.worst_review_severity_selector import WorstReviewSeveritySelector
+from review.normalized_review_unit import NormalizedReviewUnit
+from review.review_unit_source_identity_resolver import ReviewUnitSourceIdentityResolver
 
 
 """
@@ -64,7 +66,8 @@ class RuleRunFinalizerFactory:
         )
         return ReviewRunFinalizer(
             instances_resolver=RuleExecutionInstancesResolver(
-                RuleExecutionCompletionEvaluator()
+                RuleExecutionCompletionEvaluator(),
+                ReviewUnitSourceIdentityResolver(PydanticModelDecoder(NormalizedReviewUnit)),
             ),
             rule_finalizer=rule_finalizer,
             result_builder=ReviewResultBuilder(severity_selector),

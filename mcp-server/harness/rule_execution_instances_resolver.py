@@ -13,6 +13,7 @@ from harness.rule_execution_instances_resolving import (
 )
 from harness.rule_review_provenance import RuleReviewProvenance
 from harness.run_state import RunState
+from review.review_unit_source_identity_resolver import ReviewUnitSourceIdentityResolving
 
 
 """
@@ -25,8 +26,10 @@ class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
     def __init__(
         self,
         completion_evaluator: RuleExecutionCompletionEvaluating,
+        source_identities: ReviewUnitSourceIdentityResolving,
     ) -> None:
         self._completion_evaluator = completion_evaluator
+        self._source_identities = source_identities
 
     def resolve(
         self,
@@ -81,6 +84,7 @@ class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
                         kind="included",
                         scope_identity=workflow_instance.alias,
                         source_index=workflow_instance.source_index,
+                        source_unit=self._source_identities.resolve(workflow_instance.inputs),
                     ),
                     steps=[step],
                 ))

@@ -2,7 +2,7 @@
 number: SPEC-057
 feature: reducer-and-repository-backed-rule-migration
 type: subtask
-status: in-progress
+status: done
 parent: SPEC-036
 blocked-by: [SPEC-054, SPEC-055, SPEC-056]
 blocking: []
@@ -10,11 +10,95 @@ blocking: []
 
 # Reducer and Repository-Backed Rule Migration
 
-Current follow-up status (2026-10-16): the full bundled ISP workflow and explicit
-metric-level unavailable outcomes are implemented. Tests load the bundled rule,
-not a separately maintained ISP policy fixture. The latest validation and
-remaining gate-policy boundary are recorded at the end of this document;
-earlier dated progress entries are historical.
+Current follow-up status (2026-10-16): the simplified bundled ISP workflow,
+source-owned context filtering, and unavailable-metric gate handling are
+implemented and verified. All non-live suites and all four locked Codex/Claude
+ISP live cases pass, including extension-first aggregate execution.
+Tests load the bundled rule, not a separately maintained ISP policy fixture.
+The latest implementation and validation record is at the end of this document;
+earlier conformer-based policy and dated progress entries are historical.
+
+## ISP simplification revision — 2026-10-16
+
+This revision supersedes the conformer-coverage and usage-vector requirements
+below for the bundled ISP workflow. Implementation and deterministic validation
+and locked live validation are complete.
+Retain the shared source-analysis, relationship, requirement-matching, and
+collection operations; removing their use from ISP does not authorize deleting
+them or their independent tests. The legacy prompt and experimental workflow
+variants are not silently migrated with the bundled rule.
+
+The reviewed target can be an interface or an interface extension. MCP resolves
+the definition and relevant extension members, excludes private/fileprivate
+members before presenting classification targets, and supplies one combined
+source context. Source provenance distinguishes declared requirements,
+implementations of those requirements, and additional extension members.
+The model classifies actions, stakeholders/responsibilities, exceptions,
+reasoning, and evidence. MCP calculates and scores the observations with the
+existing workflow conditions and reducers. Actions are not restricted to CRUD
+labels. No conformer search, conformer-classification fan-out, coverage ratio,
+or usage-vector classification is part of the revised ISP rule.
+
+ISP-1 retains exposed-width thresholds: 6–8 MINOR and 9+ SEVERE. Count each
+declared requirement once and each additional exposed extension member once;
+default implementations do not count as additional requirements. Retire the
+ISP-2 coverage metric without reusing its identity for different semantics.
+The approved replacement policy counts distinct classifications across the
+definition and its eligible extensions together:
+
+- ISP-3: three or more independent responsibilities are SEVERE.
+- ISP-5: two or more stakeholders are SEVERE.
+- Actions support classification; their raw count is not a metric.
+
+ISP-3 replaces usage-vector grouping with responsibility classifications. Retire
+the old ISP-4 one-independent-extension-member penalty rather than retaining a
+second, stricter threshold. ISP-5 is a new metric, not a reinterpretation of
+retired ISP-2 coverage. Excepted member observations are excluded by MCP.
+Responsibility and stakeholder labels describe independently change-driving
+concerns, not arbitrary method names; repeated labels count once.
+
+Empty/marker-interface design checks are deferred to a separate workflow.
+They are not inferred to be good design from an ISP skip or exception. Missing,
+ambiguous, or unsupported definition resolution remains explicitly unavailable,
+never fabricated as a compliant measurement. Extensions of concrete types do
+not automatically enter this interface-focused rule.
+
+### Acceptance and test cases
+
+- **Given** an interface with related extensions, **when** ISP starts,
+  **then** MCP prepares the definition and eligible extension members together,
+  and no conformer behavioral analysis is requested.
+- **Given** an extension-only review or prospective buffer, **when** its
+  interface definition is found, **then** the definition is supplied by MCP
+  alongside the extension, with snapshot content taking precedence over disk.
+- **Given** a default implementation and an additional member, **when** width
+  is calculated, **then** the default does not duplicate its requirement and
+  the additional member increases width by one.
+- **Given** classified interface and extension members, **when** MCP scores
+  their distinct non-excepted labels, **then** two responsibilities remain
+  compliant and three are SEVERE; one stakeholder remains compliant and two
+  are SEVERE. Repeated labels and excepted observations do not inflate counts.
+- **Given** private/fileprivate helpers and unrelated conformers, **when** the
+  classification context is rendered, **then** neither becomes a classification
+  target or leaks into the combined source excerpt.
+- **Given** an unresolved or ambiguous extension target, **when** review
+  proceeds, **then** no guessed definition or measured compliance is produced.
+- **Given** a concrete-type extension or empty interface, **when** applicability
+  is evaluated, **then** the deferred empty-interface policy is not invented.
+- **Given** missing, duplicate, unknown, or malformed member classifications,
+  **when** submitted, **then** MCP rejects incomplete accounting before scoring
+  and provides a recoverable correction without repeating accepted source work.
+- **Given** aggregate presentation, **when** combined observations are
+  submitted, **then** MCP-owned preparation remains an execution boundary and
+  scoring uses the same observations and outcomes as sequential execution.
+- **Given** the real distributed ISP YAML, **when** locked Codex and Claude
+  live tests review controlled interface-first and extension-first fixtures,
+  **then** retained prompts, submissions, events, and scored results establish
+  what each model saw and produced. Expectations are fixed before live runs;
+  report mismatches rather than adjusting expected values to the model.
+
+Run all non-live suites before those live checks. Do not use local models or
+maintain a second copy of the ISP policy in test fixtures.
 
 ## Description
 
@@ -243,7 +327,7 @@ then migrate remaining categorical observations not completed by SPEC-055.
 
 ## Definition of Done
 
-- [x] ISP metrics use complete repository-backed conformer evidence and MCP
+- [x] ISP metrics use filtered interface-definition/extension evidence and MCP
       scoring.
 - [x] SwiftUI extrema are reducer-owned and source-auditable.
 - [x] LSP relationship evidence is durable and never independently re-inferred by
@@ -251,9 +335,9 @@ then migrate remaining categorical observations not completed by SPEC-055.
 - [x] No migrated rule requires a rule-specific production scorer or parser.
 - [x] Policy, exceptions, applicability, aggregation, replay, and Stop behavior
       are covered.
-- [x] All non-live and locked Codex/Claude fixture tests pass.
+- [x] All non-live and locked Codex/Claude fixture tests pass for the simplified ISP revision.
 
-## Implementation Status
+## Implementation Status — Initial Migration (Historical)
 
 ISP now discovers repository candidates through typed source operations, validates
 complete candidate dispositions, runs one child review per selected candidate,
@@ -1115,3 +1199,96 @@ reasoning/evidence remains auditable classification, not independently proven
 truth. Complete-requirement classification is requested by the output contract
 and prompt; exact identity-set enforcement for every submitted requirement remains
 follow-up work, distinct from required workflow-instance completion.
+
+### Simplified ISP implementation and gate closure — 2026-10-16
+
+This record supersedes the conformer-based bundled ISP policy and outstanding
+gate boundary described in the preceding historical entry.
+
+- The distributed `workflows/review/rules/isp/workflow.yaml` now measures ISP-1
+  exposed width, ISP-3 distinct responsibilities, and ISP-5 distinct stakeholders.
+  Conformer coverage and usage vectors are not part of its execution. The retained
+  `isp-candidate-review` child and shared requirement-accounting operations remain
+  independently tested; their policy has not been copied into test fixtures.
+- Source discovery can stop after the exact-name pass. Its named `result` carries
+  complete typed discovery to `source.declaration_context`. The latter resolves
+  definition/extension ownership and applies caller-selected visibility exclusions
+  before returning members or rendering context. This is a generic source
+  operation, not an ISP-only filter or scoring implementation. Omitting exclusions
+  retains all visibilities. Member batch labels distinguish equal local identities
+  in separate source files.
+- Operation `with` bindings accept fixed YAML values alongside wrapped runtime
+  references. Fixed booleans, collections, objects, numbers, strings, and nulls
+  are validated by the registered input model and preserved through nesting and
+  replay. Nested literal collections are not recursively interpolated. Include
+  and `for_each` expression contracts are unchanged.
+- The model supplies member classifications and audit information. MCP counts and
+  scores them. Partial submissions preserve accepted members and return pending
+  work; unknown labels and malformed observations can be corrected without
+  repeating source preparation. A mixed verified/unverified batch preserves
+  measured width but leaves responsibility/stakeholder metrics unavailable.
+- Concrete-type extensions produce no interface review. Empty marker interfaces
+  request no invented member judgments; an evidenced marker exception remains
+  distinct from any future empty-interface design rule.
+- Unavailable metrics now reach the real write gate as typed outcomes. They block
+  unless the reviewed interface is verified newly introduced by original/proposed
+  source comparison, or a whole-interface exception applies. Verified introductions
+  produce warnings, not fabricated compliant scores. Measured SEVERE findings still
+  block, including alongside such warnings. Multi-file decisions retain warnings
+  and denials. Audit evidence stays out of model-facing gate messages.
+- Legacy review retains its prompt and execution path. A mode-selection adapter
+  translates its existing typed violation list into the shared outcome. Missing
+  legacy output fails closed. Root and nested project TOML mode-selection tests
+  exercise both paths through the active write-gate factory.
+
+Non-live validation for this revision: **2,738 passed, four abstract schema-base
+skips, and 177 subtests**. This includes **914 flow-engine**, **1,109 MCP**,
+**111 harness support**, **63 Stop/dispatch**, **253 script**, and **288 Apple-build
+and skill-script** tests. The 14 hook failures in the first full pass were fixed
+by updating boundary mocks to the new outcome contract and preserving real
+allow/deny behavior, not by excluding tests.
+
+Live expectations are locked before execution: the new two-file
+`tests/principles/ISP/fixtures/interface-extensions/` scenario has width 3,
+three independent responsibilities, and two stakeholders. Existing fixtures are
+unchanged. Both Codex `gpt-5.6-terra` and Claude `claude-opus-4-5` execute the real
+bundled ISP through `solid-review`. The extension-first variant uses a test-owned
+aggregate wrapper around that same distributed workflow. No local model is run.
+
+Final locked live verification: **four passed in 137.51 seconds**. Both backends
+pass interface-first review and extension-first aggregate review with ISP-1 = 3
+(COMPLIANT), ISP-3 = 3 (SEVERE), ISP-5 = 2 (SEVERE), and no whole-rule exception.
+The assertions require completed engine-owned context preparation, exactly three
+member classifications, filtered source context, complete events, child-session
+ownership, and matching persisted per-rule/aggregate results. No expected metric
+was changed to fit a model response.
+
+Before the final pass, two test-harness issues were corrected: extension-first
+source-once validation still referenced the definition fixture, and the Codex
+protocol check recognized only printed MCP envelopes. Unwrapped response text
+now requires a completed server event ledger owned by that exact child session,
+recorded start/continuation attempts, and no failed or unanswered calls. Plain
+completion text alone and unrelated-session evidence still fail validation.
+All eleven focused protocol tests pass; full workflow and score assertions remain
+required. This did not change the production prompt or workflow execution.
+
+The final live command is:
+
+```sh
+python3.12 -m pytest tests/harness/flow_engine/test_isp_validation_live.py -v -s --tb=short
+```
+
+Retained test evidence under `.solid-coder/.artifacts/test/`:
+
+| Backend | Scenario | Artifact directory |
+| --- | --- | --- |
+| Codex | Extension-first aggregate | `codex/e2e/review/isp-extension-aggregate/20261017T005438Z-93471a22/` |
+| Codex | Interface-first | `codex/e2e/review/isp/20261017T005507Z-2c1381f5/` |
+| Claude | Extension-first aggregate | `claude/e2e/review/isp-extension-aggregate/20261017T005534Z-7ced76fd/` |
+| Claude | Interface-first | `claude/e2e/review/isp/20261017T005614Z-351a740c/` |
+
+These directories preserve recursive copies of the canonical MCP run, including
+`flow-run/events.jsonl` and `flow-run/results/review/result.json`, plus backend
+session output. They are test artifacts, not a change to production run storage.
+No local model was launched. The existing project TOML selection remains legacy;
+these tests explicitly exercise the workflow path without changing that setting.

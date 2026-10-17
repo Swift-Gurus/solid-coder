@@ -7,10 +7,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pydantic import ValidationError
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidator
 from harness.project_context import ProjectDirectory
 from source.selected_source_candidate import SelectedSourceCandidate
 from source.source_candidate_disposition import SourceCandidateDisposition
@@ -47,7 +48,9 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
         ).execute(SourceSearchInput(
             queries=[SourceSearchQuery(id="format", terms=["Formatter"])],
         )).candidates
-        self.operation = ValidateCandidateSelectionOperation()
+        self.operation = ValidateCandidateSelectionOperation(
+            coverage_validator=CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+        )
 
     def test_returns_inspected_candidates_in_discovered_order(self) -> None:
         dispositions = [
@@ -75,29 +78,29 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
     def test_rejects_duplicate_candidate_id(self) -> None:
         disposition = self._disposition(1, "INSPECT")
 
-        with self.assertRaisesRegex(ValidationError, "duplicate candidate IDs.*candidate-1"):
-            ValidateCandidateSelectionInput(
+        with self.assertRaisesRegex(FlowValidationError, "duplicate candidate IDs.*candidate-1"):
+            self.operation.execute(ValidateCandidateSelectionInput(
                 candidates=self.candidates,
                 dispositions=[disposition, disposition],
-            )
+            ))
 
     def test_rejects_unknown_candidate_id(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "unknown candidate IDs.*candidate-3"):
-            ValidateCandidateSelectionInput(
+        with self.assertRaisesRegex(FlowValidationError, "unknown candidate IDs.*candidate-3"):
+            self.operation.execute(ValidateCandidateSelectionInput(
                 candidates=self.candidates,
                 dispositions=[
                     self._disposition(1, "REJECT"),
                     self._disposition(2, "REJECT"),
                     self._disposition(3, "REJECT"),
                 ],
-            )
+            ))
 
     def test_rejects_missing_candidate_id(self) -> None:
-        with self.assertRaisesRegex(ValidationError, "missing candidate IDs.*candidate-2"):
-            ValidateCandidateSelectionInput(
+        with self.assertRaisesRegex(FlowValidationError, "missing candidate IDs.*candidate-2"):
+            self.operation.execute(ValidateCandidateSelectionInput(
                 candidates=self.candidates,
                 dispositions=[self._disposition(1, "INSPECT")],
-            )
+            ))
 
     def test_accepts_empty_dispositions_for_empty_search(self) -> None:
         output = self.operation.execute(ValidateCandidateSelectionInput(

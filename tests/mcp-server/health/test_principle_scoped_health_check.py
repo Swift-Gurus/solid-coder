@@ -28,6 +28,7 @@ from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
 from code_health_check_service import CodeHealthCheckService  # noqa: E402
 from hc_checker import LLMHealthChecker  # noqa: E402
 from health_prompt_builder import HealthPromptBuilder  # noqa: E402
+from health_check_outcome import HealthCheckOutcome  # noqa: E402
 from principles_loader import PrinciplesLoader  # noqa: E402
 
 
@@ -40,7 +41,7 @@ solid-description: Proves declared comparison principles reach the real checker 
 class TestPrincipleScopedHealthCheck(unittest.TestCase):
     def test_check_forwards_declared_principles_in_typed_request(self) -> None:
         service = MagicMock()
-        service.check.return_value = []
+        service.check.return_value = HealthCheckOutcome()
 
         code_health_check.CodeHealthCheck(service).check(
             content="final class Example {}",
@@ -121,7 +122,7 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
 
     def test_service_passes_declared_principles_to_real_checker_contract(self) -> None:
         checker = MagicMock()
-        checker.check.return_value = []
+        checker.check.return_value = HealthCheckOutcome()
         checker_factory = MagicMock()
         checker_factory.make.return_value = checker
         service = CodeHealthCheckService(

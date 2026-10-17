@@ -17,3 +17,7 @@ class ReviewUnitKind(str, Enum):
     ACTOR = "actor"
     FUNCTION = "function"
     DOCUMENT = "document"
+
+    @property
+    def supports_member_declarations(self) -> bool:
+        return self not in {self.FUNCTION, self.DOCUMENT}

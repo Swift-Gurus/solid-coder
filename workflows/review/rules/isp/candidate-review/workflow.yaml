@@ -85,9 +85,18 @@ steps:
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
 
+  - id: validate_coverage
+    type: operation
+    operation: source.validate_requirement_coverage
+    depends_on: [classify_candidate]
+    with:
+      matches: "{{steps.match.outputs.matches}}"
+      availability: "{{steps.classify_candidate.outputs.availability}}"
+      coverage_entries: "{{steps.classify_candidate.outputs.coverage_entries}}"
+
   - id: coverage_ratio
     type: operation
     operation: collection.ratio
-    depends_on: [classify_candidate]
+    depends_on: [validate_coverage]
     with:
-      observations: "{{steps.classify_candidate.outputs.coverage_entries}}"
+      observations: "{{steps.validate_coverage.outputs.observations}}"

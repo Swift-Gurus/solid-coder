@@ -9,10 +9,14 @@ from codex_flow_continuation_instruction_builder import (
 from flow_review_result_reader import FlowReviewResultReader
 from gate_flow_prompt_builder import GateFlowPromptBuilder
 from gate_review_input_builder import GateReviewInputBuilder
+from gate_logger import GateLogger
+from health_review_assessor import HealthReviewAssessor
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
+from harness.path_builder import PathBuilder
+from harness.sha256_content_hasher import Sha256ContentHasher
 from health_checker_creating import HealthCheckerCreating
 from hc_checker import HealthChecking
 from hook_utils import solid_coder_project_dir
@@ -30,6 +34,10 @@ from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
 from workflow_health_checker import WorkflowHealthChecker
+from source.analysis.operations.verify_introduced_interfaces_operation import VerifyIntroducedInterfacesOperation
+from source.path_source_bytes_reader import PathSourceBytesReader
+from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
+from utils.debug_logger import DebugLogger
 
 
 _ALLOWED_TOOLS = "Read,mcp__solid-coder-flow-engine__flow_next"
@@ -94,7 +102,17 @@ class WorkflowHealthCheckerFactory(HealthCheckerCreating):
                 cwd=str(project_root),
             ),
             result_reader=FlowReviewResultReader(runs),
-            violation_selector=ScoredReviewViolationSelector(),
+            assessor=HealthReviewAssessor(ScoredReviewViolationSelector()),
+            introductions=VerifyIntroducedInterfacesOperation(
+                reader=PathSourceBytesReader(),
+                analyzer=SourceAnalysisOperationFactory().make(),
+                paths=PathBuilder(),
+                hasher=Sha256ContentHasher(),
+            ),
+            logger=GateLogger(DebugLogger(
+                project_dir_fn=lambda: solid_coder_project_dir(project_root),
+                filename="gate.log",
+            )),
             input_builder=GateReviewInputBuilder(),
             prompt_builder=GateFlowPromptBuilder(
                 continuation_instruction_builder

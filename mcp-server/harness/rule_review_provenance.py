@@ -3,6 +3,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from source.source_unit_identity import SourceUnitIdentity
 
 
 """
@@ -17,3 +18,4 @@ class RuleReviewProvenance(BaseModel):
     kind: Literal["root", "included"]
     scope_identity: str = Field(min_length=1)
     source_index: int = Field(ge=0)
+    source_unit: SourceUnitIdentity | None = None

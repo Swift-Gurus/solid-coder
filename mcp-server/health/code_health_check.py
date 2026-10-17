@@ -20,6 +20,7 @@ from code_health_check_request_checking import CodeHealthCheckRequestChecking  #
 from code_health_check_service import CodeHealthCheckService  # noqa: E402
 from configured_health_checker_factory import ConfiguredHealthCheckerFactory  # noqa: E402
 from patch_review_context import PatchReviewContext  # noqa: E402
+from health_check_outcome import HealthCheckOutcome  # noqa: E402
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
@@ -45,7 +46,7 @@ class CodeHealthCheck:
         cwd: str = "",
         patch_context: Optional[PatchReviewContext] = None,
         principle_names: Optional[list[str]] = None,
-    ) -> Optional[list]:
+    ) -> HealthCheckOutcome:
         return self._service.check(CodeHealthCheckRequest(
             content=content,
             path=path,

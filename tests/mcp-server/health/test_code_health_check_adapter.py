@@ -24,6 +24,7 @@ for _directory in (
         sys.path.insert(0, str(_directory))
 
 from code_health_check_adapter import CodeHealthCheckAdapter  # noqa: E402
+from health_check_outcome import HealthCheckOutcome  # noqa: E402
 
 
 """
@@ -36,7 +37,8 @@ class TestCodeHealthCheckAdapter(unittest.TestCase):
 
     def test_delegates_to_the_health_checker_object(self) -> None:
         checker = MagicMock()
-        checker.check.return_value = []
+        outcome = HealthCheckOutcome()
+        checker.check.return_value = outcome
         patch_context = MagicMock()
         adapter = CodeHealthCheckAdapter(
             checker=checker,
@@ -51,7 +53,7 @@ class TestCodeHealthCheckAdapter(unittest.TestCase):
             cwd="/project",
         )
 
-        self.assertEqual(result, [])
+        self.assertIs(result, outcome)
         checker.check.assert_called_once_with(
             "final class Example {}",
             "/project/Example.swift",

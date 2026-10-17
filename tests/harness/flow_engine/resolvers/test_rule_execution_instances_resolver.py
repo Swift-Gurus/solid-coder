@@ -17,6 +17,9 @@ from harness.rule_execution_instances_resolver import (  # noqa: E402
 )
 from harness.run_state import RunState  # noqa: E402
 from harness.step_def import StepDef  # noqa: E402
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
+from source.source_unit_identity import SourceUnitIdentity
 
 
 """
@@ -37,6 +40,7 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
             source_index=1,
             source_item="second unit",
             rule_workflow=rule,
+            inputs=WorkflowContextValues(entries=[WorkflowContextValue(name="review_unit", value="normalized-unit")]),
         )
         flow = FlowDef(
             name="review",
@@ -51,8 +55,12 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
         )
         completion = Mock()
         completion.evaluate.return_value = True
+        identities = Mock()
+        identities.resolve.return_value = SourceUnitIdentity(
+            source_identity="/project/Feature.swift", unit_identity="protocol:Reading",
+        )
 
-        instances = RuleExecutionInstancesResolver(completion).resolve(
+        instances = RuleExecutionInstancesResolver(completion, identities).resolve(
             flow,
             RunState(
                 completed={},
@@ -70,6 +78,9 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
             "rule_reviews.srp",
         )
         self.assertEqual(instances[0].provenance.source_index, 1)
+        self.assertEqual(instances[0].provenance.source_unit.source_identity, "/project/Feature.swift")
+        self.assertEqual(instances[0].provenance.source_unit.unit_identity, "protocol:Reading")
+        identities.resolve.assert_called_once_with(workflow_instance.inputs)
 
 
 if __name__ == "__main__":

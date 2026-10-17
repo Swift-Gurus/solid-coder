@@ -415,7 +415,8 @@ the model should invent. Its named outputs are `inventory`, `declaration`, and
 declarations, and a structural role: `declared`, `implementation`, `additional`,
 or `unresolved`. Supported default implementations do not become additional
 declarations. Conformer-only members are not part of the selected interface's
-member collection. Visibility filtering and scoring remain workflow policy.
+member collection. For source-owned visibility filtering and a model-facing
+excerpt, use `source.declaration_context` below. Scoring remains workflow policy.
 Ambiguous ownership, conditional applicability, unsupported signatures, and
 unresolved inherited-member identity retain uncertainty rather than asserting
 an exact additional-member count. This operation does not perform discovery or
@@ -433,12 +434,42 @@ or complete repository discovery.
 
 `source.discover_declaration` starts from a prepared `target` and authoritative
 source `context`. It searches the exact declaration name, analyzes bounded hits,
-and uses discovered owner names to find separate extensions when needed. It
-publishes `inventory`, `declaration`, `related_declarations`, `limitations`,
-`queries`, and `searches`. Prospective source snapshots override matching disk
+and, by default, uses discovered owner names to find separate extensions when
+needed. Set `follow_related_declarations: false` to stop after the initial name
+search. It publishes one named `result` containing the complete typed discovery:
+`inventory`, `declaration`, `related_declarations`, `limitations`, `queries`,
+`searches`, and inspected source snapshots. Prospective snapshots override disk
 content. The initial search is not broadened by synonyms or tags; candidate caps,
 unreadable/truncated sources, and unresolved analysis remain explicit limitations.
 This composes search and analysis; ordinary `source.search` remains parser-free.
+
+`source.declaration_context` accepts that complete `discovery` result. It resolves
+an extension target to its unique definition and prepares definition/extension
+members together. Optional `excluded_visibilities` filters both the returned
+`members` and the rendered `context` before either reaches a model. Omitted or
+empty exclusions retain every visibility; no ISP policy is built into the
+operation. Outputs also include `declaration`, `kind`, `name`, and `limitations`.
+Missing or ambiguous ownership preserves limitations instead of choosing a
+definition. Each member has a stable `label` suitable for `for_each.label`,
+including when separate files have identical local declaration identities.
+
+```yaml
+- id: discover
+  type: operation
+  operation: source.discover_declaration
+  with:
+    target: "{{params.review_unit.target}}"
+    context: "{{params.source_context}}"
+    follow_related_declarations: false
+
+- id: prepare_context
+  type: operation
+  operation: source.declaration_context
+  depends_on: [discover]
+  with:
+    discovery: "{{steps.discover.outputs.result}}"
+    excluded_visibilities: [private, fileprivate]
+```
 
 | Operation | Required `with` inputs | Optional `with` inputs |
 |---|---|---|
@@ -448,7 +479,9 @@ This composes search and analysis; ordinary `source.search` remains parser-free.
 | `source.resolve_relationships` | `analyses` | — |
 | `source.match_requirements` | `inventory`, `relationship` | — |
 | `source.declaration_members` | `inventory`, `declaration` | — |
-| `source.discover_declaration` | `target`, `context` | `max_candidates`, `max_bytes_per_candidate` |
+| `source.discover_declaration` | `target`, `context` | `max_candidates`, `max_bytes_per_candidate`, `follow_related_declarations` |
+| `source.declaration_context` | `discovery` | `excluded_visibilities` |
+| `source.validate_requirement_coverage` | `matches`, `availability`, `coverage_entries` | — |
 | `source.prepare_search_targets` | `source`, `granularity` | — |
 | `source.prepare_search_query` | `target`, `generated_terms` | — |
 | `source.search` | `queries` | `excluded_units`, `context`, `included_file_extensions`, `max_candidates` |
@@ -473,9 +506,13 @@ virtual_path: Sources/Example.swift   # optional
 file_extension: .swift               # optional
 ```
 
-Operation `with` values are workflow expressions, not arbitrary YAML literals.
-Pass constants through `flow_start.params` when necessary and bind them with
-`{{params.<name>}}`.
+Operation `with` values can be fixed YAML values or runtime references. A string
+wrapped in `{{...}}` is parsed as a reference; other strings, booleans, numbers,
+nulls, arrays, and objects are fixed values. Both are validated against the
+operation's input model. Fixed values survive nested materialization and replay.
+Malformed reference wrappers are rejected rather than silently treated as text.
+Nested objects/arrays are literal data, not recursively interpolated templates.
+This does not change include `with` or `for_each` expression contracts.
 
 ### Delegate step
 

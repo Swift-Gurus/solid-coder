@@ -1,0 +1,194 @@
+# Historical proposal, superseded by workflows/review/rules/isp/workflow.yaml.
+# Not executable or distributed; the bundled workflow is the maintained contract.
+id: isp
+name: Interface Segregation Principle Review
+description: Measures exposed interface width and distinct responsibilities and stakeholders across its definition and extensions.
+max_turns: 20
+
+rule:
+  match:
+    unit_kinds:
+      included: [protocol, extension]
+
+steps:
+  - id: discover
+    type: operation
+    operation: source.discover_declaration
+    with:
+      target: "{{params.review_unit.target}}"
+      context: "{{params.source_context}}"
+      follow_related_declarations: false
+
+  - id: prepare_context
+    type: operation
+    operation: source.declaration_context
+    depends_on: [discover]
+    with:
+      discovery: "{{steps.discover.outputs}}"
+      excluded_visibilities: [private, fileprivate]
+
+  - id: width
+    type: metric
+    metric_id: ISP-1
+    depends_on: [prepare_context]
+    when: &known_interface
+      all:
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.limitations}}"
+          equals: []
+    unavailable_reason: Interface width cannot be verified while definition discovery or member ownership remains incomplete.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.prepare_context.outputs.members}}"
+      when:
+        ref: "{{item.role}}"
+        in: [declared, additional]
+      minor: {operator: greater_than_or_equal, value: 6}
+      severe: {operator: greater_than_or_equal, value: 9}
+
+  - id: classify_members
+    type: agent
+    depends_on: [prepare_context]
+    for_each:
+      source: "{{steps.prepare_context.outputs.members}}"
+      mode: batch
+      label: "{{item.reference.owner.source_identity}}#{{item.reference.member.identity}}"
+    when: *known_interface
+    prompt: |
+      Classify the exposed members of interface "{{steps.prepare_context.outputs.name}}"
+      and its extensions together, using the source supplied below.
+
+      For each listed member, classify:
+      - action: its primary externally meaningful action, as a single verb.
+      - responsibility: the independent capability it serves.
+      - stakeholder: who would request a change to that capability, or the
+        independent business concern driving that change.
+      - is_exception: whether a framework-mandated member or an applicable
+        interface exception explains this member's behavior.
+      - additional_info: reasoning for the classifications and direct source evidence.
+
+      Use the same concise responsibility and stakeholder labels for members
+      serving the same concern. Do not substitute method names for those labels.
+      Actions are not restricted to a predefined vocabulary.
+
+      A member marked implementation supplies a declared requirement. A member
+      marked additional adds exposed functionality. Consider what both do when
+      classifying their responsibilities and stakeholders.
+
+      Use verification VERIFIED when the supplied evidence supports the
+      classifications. Use UNABLE_TO_VERIFY with reasoning and evidence when
+      it does not; do not invent classification labels.
+
+      Interface exceptions: marker protocols used only for type discrimination;
+      composition protocols that only compose already narrow, compliant
+      protocols; framework-constrained @objc requirements; and test code,
+      mocks, stubs, fakes, or test helpers. Default implementations alone do
+      not exempt additional extension functionality.
+
+      {{steps.prepare_context.outputs.context}}
+    outputs:
+      - name: assessment
+        type: data
+        schema:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [verification, action, responsibility, stakeholder, is_exception, additional_info]
+              properties:
+                verification: {const: VERIFIED}
+                action: {type: string, minLength: 1}
+                responsibility: {type: string, minLength: 1}
+                stakeholder: {type: string, minLength: 1}
+                is_exception: {type: boolean}
+                additional_info: &additional_info
+                  type: object
+                  additionalProperties: false
+                  required: [reasoning, evidence]
+                  properties:
+                    reasoning: {type: string, minLength: 1}
+                    evidence: {type: string, minLength: 1}
+            - type: object
+              additionalProperties: false
+              required: [verification, additional_info]
+              properties:
+                verification: {const: UNABLE_TO_VERIFY}
+                additional_info: *additional_info
+
+  - id: unverified_members
+    type: operation
+    operation: collection.count
+    depends_on: [classify_members]
+    for_each: "{{steps.classify_members.outputs.assessment}}"
+    when:
+      ref: "{{item.verification}}"
+      equals: UNABLE_TO_VERIFY
+    with:
+      values: []
+
+  - id: responsibilities
+    type: metric
+    metric_id: ISP-3
+    depends_on: [classify_members, unverified_members]
+    when: &verified_classifications
+      all:
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.limitations}}"
+          equals: []
+        - any:
+            - ref: "{{steps.unverified_members.outputs.value}}"
+              exists: false
+            - ref: "{{steps.unverified_members.outputs.value}}"
+              equals: []
+    unavailable_reason: Independent responsibilities cannot be verified until definition ownership and every required member classification are supported by evidence.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_members.outputs.assessment}}"
+      when: &not_excepted
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: distinct_count
+        value: "{{item.responsibility}}"
+      severe: {operator: greater_than_or_equal, value: 3}
+
+  - id: stakeholders
+    type: metric
+    metric_id: ISP-5
+    depends_on: [classify_members, unverified_members]
+    when: *verified_classifications
+    unavailable_reason: Stakeholders cannot be verified until definition ownership and every required member classification are supported by evidence.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_members.outputs.assessment}}"
+      when: *not_excepted
+      reducer:
+        type: distinct_count
+        value: "{{item.stakeholder}}"
+      severe: {operator: greater_than_or_equal, value: 2}
+
+  - id: classify_exception
+    type: exception
+    depends_on: [width, responsibilities, stakeholders]
+    when:
+      any:
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: null
+    prompt: |
+      Classify whether a whole-interface exception applies to
+      "{{params.review_unit.target.name}}", using the source already supplied
+      in this session. Provide reasoning and source evidence.
+
+      Marker protocols have zero requirements and serve type discrimination.
+      Composition protocols are exempt when they only compose already narrow,
+      compliant protocols. Prefer a nominal composition protocol to a typealias
+      when direct conformance and decorators are needed.
+      Framework-constrained @objc protocols may require specific method sets.
+      Test code, mocks, stubs, fakes, and test helpers are exempt.
+
+      Default implementations do not exempt additional exposed behavior.
+      Missing source evidence is not an exception or measured compliance.
+      An ISP exception is not a judgment that an empty interface is good design.

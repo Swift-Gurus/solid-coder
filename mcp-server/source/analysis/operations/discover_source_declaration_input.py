@@ -15,5 +15,6 @@ class DiscoverSourceDeclarationInput(BaseModel):
 
     target: SourceSearchTarget
     context: SourceSearchContext
+    follow_related_declarations: bool = True
     max_candidates: int = Field(default=20, ge=1, le=100)
     max_bytes_per_candidate: int = Field(default=65_536, ge=1, le=1_048_576)

@@ -35,3 +35,4 @@ class SourceMember(BaseModel):
     visibility: SourceMemberVisibility
     span: SourceLineRange
     signature: SourceMemberSignature = Field(default_factory=SourceUnresolvedSignature)
+    code: str = ""

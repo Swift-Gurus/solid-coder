@@ -29,6 +29,9 @@ class DecisionCapturingGate:
     def log(self, message: str) -> None:
         self._logger.log(message)
 
+    def warn(self, message: str) -> None:
+        self._decision_store.record_warning(message)
+
     def allow(
         self,
         additional_context: str = "",

@@ -22,6 +22,7 @@ from solid_coder_config import SolidCoderConfig  # noqa: E402
 from code_health_check import CodeHealthCheck  # noqa: E402
 from code_health_check_service import CodeHealthCheckService  # noqa: E402
 from configured_health_checker_factory import ConfiguredHealthCheckerFactory  # noqa: E402
+from health_check_outcome import HealthCheckOutcome  # noqa: E402
 
 _ENV_KEY = "SOLID_CODER_SESSION_TYPE"
 _EXPECTED = "health_check"
@@ -114,7 +115,7 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
              patch("configured_health_checker_factory.GateLogger"), \
              patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \
              patch("hc_codex_runner.make_codex_runner", return_value=codex_runner_mock):
-            workflow_factory.return_value.make.return_value.check.return_value = []
+            workflow_factory.return_value.make.return_value.check.return_value = HealthCheckOutcome()
             CodeHealthCheck(CodeHealthCheckService(
                 checker_factory=ConfiguredHealthCheckerFactory(
                     plugin_root=Path(__file__).resolve().parents[3],

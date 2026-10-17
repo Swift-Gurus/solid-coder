@@ -1,6 +1,7 @@
 """Constructs non-terminating decision-capturing gates."""
 
 from decision_capturing_gate import DecisionCapturingGate
+from hook_context_buffer import HookContextBuffer
 from logging_protocol import Logging
 from review_decision_store import ReviewDecisionStore
 
@@ -15,5 +16,5 @@ class DecisionGateFactory:
     def create(self, logger: Logging) -> DecisionCapturingGate:
         return DecisionCapturingGate(
             logger=logger,
-            decision_store=ReviewDecisionStore(),
+            decision_store=ReviewDecisionStore(context=HookContextBuffer()),
         )

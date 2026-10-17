@@ -253,19 +253,29 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         evidence = CodexProtocolReader().read(transcripts[0])
         evidence_path = run.session.artifact_directory / "codex-protocol-evidence.json"
         evidence_path.write_text(evidence.model_dump_json(indent=2), encoding="utf-8")
+        # Code mode may print content text without the MCP envelope. Do not
+        # infer success from that text: require the same session's server ledger.
+        server_confirmed = (
+            self._has_completed_session_evidence(run)
+            and not evidence.failed_calls
+            and not evidence.unanswered_call_ids
+        )
         print(
             f"Codex protocol: discovery={len(evidence.discovery_call_ids)}, "
-            f"flow_start={len(evidence.successful_flow_start_call_ids)}/{evidence.flow_start_attempts}, "
-            f"flow_next={len(evidence.successful_flow_next_call_ids)}/{evidence.flow_next_attempts}, "
+            f"enveloped_start={len(evidence.successful_flow_start_call_ids)}/{evidence.flow_start_attempts}, "
+            f"enveloped_next={len(evidence.successful_flow_next_call_ids)}/{evidence.flow_next_attempts}, "
+            f"server_confirmed={server_confirmed}, "
             f"failed_calls={len(evidence.failed_calls)}, "
             f"unanswered_calls={len(evidence.unanswered_call_ids)}. Evidence: {evidence_path}"
         )
-        self.assertTrue(any(
-            evidence.successful_flow_start_call_ids
-        ), "Expected a successful flow_start MCP response")
-        self.assertTrue(any(
-            evidence.successful_flow_next_call_ids
-        ), "Expected a successful flow_next MCP response")
+        self.assertTrue(
+            evidence.successful_flow_start_call_ids or (server_confirmed and evidence.flow_start_attempts > 0),
+            "Expected a successful flow_start MCP response",
+        )
+        self.assertTrue(
+            evidence.successful_flow_next_call_ids or (server_confirmed and evidence.flow_next_attempts > 0),
+            "Expected a successful flow_next MCP response",
+        )
         self.assertFalse(evidence.unanswered_call_ids, "Tool calls have no recorded responses")
         source = self.FIXTURE.read_text(encoding="utf-8")
         self.assertEqual("\n".join(evidence.user_prompts).count(source), 1)
@@ -273,6 +283,21 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         self.assertNotIn(
             "Show the following output to the user exactly as-is",
             transcripts[0].read_text(encoding="utf-8"),
+        )
+
+    def _has_completed_session_evidence(self, run: PreservedLiveWorkflowRun) -> bool:
+        events_path = run.run_directory / "events.jsonl"
+        if not events_path.exists():
+            return False
+        events = [json.loads(line) for line in events_path.read_text().splitlines() if line.strip()]
+        sessions = {
+            event.get("session_id") for event in events
+            if event.get("event") == "session_step_recorded" and event.get("session_id") != "engine"
+        }
+        return bool(events) and (
+            events[0].get("event") == "run_started"
+            and events[-1].get("event") == "run_completed"
+            and sessions == {run.session.session_id}
         )
 
     def _validation_expectation(self) -> LiveRuleValidationExpectation:

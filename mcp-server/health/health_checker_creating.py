@@ -3,7 +3,7 @@
 from typing import Protocol
 
 from code_health_check_request import CodeHealthCheckRequest
-from hc_checker import HealthChecking
+from hc_checker import HealthChecking, HealthResult
 
 
 """
@@ -12,5 +12,5 @@ solid-category: abstraction
 solid-spec: [SPEC-049, SPEC-050]
 solid-description: Contract for creating request-scoped source-health checkers.
 """
-class HealthCheckerCreating(Protocol):
-    def make(self, request: CodeHealthCheckRequest) -> HealthChecking: ...
+class HealthCheckerCreating(Protocol[HealthResult]):
+    def make(self, request: CodeHealthCheckRequest) -> HealthChecking[HealthResult]: ...

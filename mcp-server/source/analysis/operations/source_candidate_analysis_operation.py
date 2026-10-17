@@ -45,10 +45,11 @@ class SourceCandidateAnalysisOperation(OperationHandling[ReadSourceCandidatesInp
             if str(result.candidate.path) not in known_paths:
                 inspected = result.accept(self._candidate_visitor)
                 analyses.extend(inspected.analyses)
+                sources.extend(inspected.sources)
                 limitations.extend(inspected.limitations)
                 known_paths.add(str(result.candidate.path))
         limitations.extend(
             f"{analysis.source_identity}:{diagnostic.line}: {diagnostic.message}"
             for analysis in analyses for diagnostic in analysis.diagnostics
         )
-        return SourceCandidateAnalyses(analyses=analyses, limitations=limitations)
+        return SourceCandidateAnalyses(analyses=analyses, sources=sources, limitations=limitations)

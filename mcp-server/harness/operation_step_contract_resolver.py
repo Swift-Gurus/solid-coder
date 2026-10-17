@@ -15,6 +15,7 @@ from harness.operation_step_contract_resolving import (
     OperationStepContractResolving,
 )
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
+from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_input_binding import WorkflowInputBinding
 
 
@@ -66,16 +67,22 @@ class OperationStepContractResolver(OperationStepContractResolving):
             raise self._error_factory.create(
                 f"Operation step '{raw.get('id')}' is missing required input '{missing[0]}'"
             )
+        bindings: list[WorkflowInputBinding] = []
+        values: list[WorkflowContextValue[object]] = []
+        for key, value in raw_bindings.items():
+            if isinstance(value, str) and (
+                value.strip().startswith("{{") or value.strip().endswith("}}")
+            ):
+                bindings.append(WorkflowInputBinding(
+                    name=key, expression=self._expression_parser.parse(value),
+                ))
+            else:
+                values.append(WorkflowContextValue(name=key, value=value))
         return OperationStepContract(
             step=OperationStep(
                 name=name,
-                input_bindings=[
-                    WorkflowInputBinding(
-                        name=key,
-                        expression=self._expression_parser.parse(value),
-                    )
-                    for key, value in raw_bindings.items()
-                ],
+                input_bindings=bindings,
+                input_values=values,
             ),
             outputs=self._output_specs_resolver.resolve(
                 registration.output_model

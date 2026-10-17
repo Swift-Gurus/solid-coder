@@ -12,6 +12,7 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_output import SourceSearchOutput
 from source.source_search_query import SourceSearchQuery
 from source.source_unit_identity import SourceUnitIdentity
+from source.text_analysis_source import TextAnalysisSource
 
 
 """
@@ -42,10 +43,11 @@ class SourceDeclarationDiscoveryOperation(OperationHandling[DiscoverSourceDeclar
         queries: list[SourceSearchQuery] = []
         searches: list[SourceSearchOutput] = []
         analyses: list[SourceAnalysis] = []
+        sources: list[TextAnalysisSource] = []
         limitations: list[str] = []
         known_paths = {snapshot.path for snapshot in operation_input.context.sources}
         known_names = {operation_input.target.name}
-        for pass_index in range(2):
+        for pass_index in range(2 if operation_input.follow_related_declarations else 1):
             if not pending:
                 break
             queries.extend(pending)
@@ -64,10 +66,14 @@ class SourceDeclarationDiscoveryOperation(OperationHandling[DiscoverSourceDeclar
                 max_bytes_per_candidate=operation_input.max_bytes_per_candidate,
             ))
             analyses.extend(inspected.analyses)
+            sources.extend(inspected.sources)
             limitations.extend(inspected.limitations)
             known_paths.update(candidate.path for candidate in candidates)
             inventory = self._relationships.resolve(analyses)
-            related = self._related_declarations.select(inventory, declaration)
+            related = (
+                self._related_declarations.select(inventory, declaration)
+                if operation_input.follow_related_declarations else []
+            )
             pending = []
             for item in related:
                 if item.declaration.name not in known_names:
@@ -79,6 +85,7 @@ class SourceDeclarationDiscoveryOperation(OperationHandling[DiscoverSourceDeclar
         )
         return SourceDeclarationDiscovery(
             inventory=inventory,
+            sources=sources,
             declaration=declaration,
             related_declarations=related,
             limitations=limitations,

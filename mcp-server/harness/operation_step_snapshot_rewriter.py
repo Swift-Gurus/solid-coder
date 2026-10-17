@@ -25,8 +25,11 @@ class OperationStepSnapshotRewriter(StepSnapshotRewriting):
         snapshot.pop("outputs", None)
         snapshot["operation"] = step.operation.name
         snapshot["with"] = {
-            binding.name: self._expression_serializer.serialize(
-                binding.expression
-            )
-            for binding in step.operation.input_bindings
+            **{entry.name: entry.value for entry in step.operation.input_values},
+            **{
+                binding.name: self._expression_serializer.serialize(
+                    binding.expression
+                )
+                for binding in step.operation.input_bindings
+            },
         }

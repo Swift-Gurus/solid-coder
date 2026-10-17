@@ -1,8 +1,9 @@
 """Defines prospective code-health request checking."""
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from code_health_check_request import CodeHealthCheckRequest
+from health_check_outcome import HealthCheckOutcome
 
 
 """
@@ -12,4 +13,4 @@ solid-description: Contract for validating one typed prospective source-health r
 solid-tags: [hook]
 """
 class CodeHealthCheckRequestChecking(Protocol):
-    def check(self, request: CodeHealthCheckRequest) -> Optional[list]: ...
+    def check(self, request: CodeHealthCheckRequest) -> HealthCheckOutcome: ...

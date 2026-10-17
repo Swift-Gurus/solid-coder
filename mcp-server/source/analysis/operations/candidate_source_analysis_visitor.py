@@ -39,9 +39,11 @@ class CandidateSourceAnalysisVisitor(CandidateSourceVisitor[SourceCandidateAnaly
             return SourceCandidateAnalyses(limitations=[
                 f"{source.candidate.path}: source exceeds the inspection limit",
             ])
-        return SourceCandidateAnalyses(analyses=[self._analyzer.execute(AnalyzeSourceInput(
-            source=TextAnalysisSource(text=source.content, virtual_path=str(source.candidate.path)),
-        ))])
+        snapshot = TextAnalysisSource(text=source.content, virtual_path=str(source.candidate.path))
+        return SourceCandidateAnalyses(
+            analyses=[self._analyzer.execute(AnalyzeSourceInput(source=snapshot))],
+            sources=[snapshot],
+        )
 
     def visit_unavailable(self, source: UnavailableCandidateSource) -> SourceCandidateAnalyses:
         return SourceCandidateAnalyses(limitations=[f"{source.candidate.path}: {source.detail}"])

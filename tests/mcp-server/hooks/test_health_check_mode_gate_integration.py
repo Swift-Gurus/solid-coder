@@ -13,6 +13,7 @@ ensure_on_path(
 )
 
 from write_gate_coordinator_factory import WriteGateCoordinatorFactory  # noqa: E402
+from health_check_outcome import HealthCheckOutcome  # noqa: E402
 
 
 """
@@ -49,7 +50,9 @@ class TestHealthCheckModeGateIntegration:
         ) as workflow, patch("configured_health_checker_factory.GateLogger"):
             selected = legacy if mode == "legacy" else workflow
             other = workflow if mode == "legacy" else legacy
-            selected.return_value.make.return_value.check.return_value = []
+            selected.return_value.make.return_value.check.return_value = (
+                [] if mode == "legacy" else HealthCheckOutcome()
+            )
 
             WriteGateCoordinatorFactory().make_coordinator(gate).run(
                 tool_name="Write",

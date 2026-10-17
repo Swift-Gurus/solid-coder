@@ -15,6 +15,7 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
 from typing import Optional
 
 from hc_checker import HealthChecking
+from health_check_outcome import HealthCheckOutcome
 from patch_review_context import PatchReviewContext
 
 
@@ -29,13 +30,13 @@ class CodeHealthCheckAdapter:
 
     def __init__(
         self,
-        checker: HealthChecking,
+        checker: HealthChecking[HealthCheckOutcome],
         patch_context: Optional[PatchReviewContext] = None,
     ) -> None:
         self._checker = checker
         self._patch_context = patch_context
 
-    def check(self, content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> Optional[list]:
+    def check(self, content: str, path: str, language: str, parent_session_id: str, cwd: str = "") -> HealthCheckOutcome:
         return self._checker.check(
             content,
             path,

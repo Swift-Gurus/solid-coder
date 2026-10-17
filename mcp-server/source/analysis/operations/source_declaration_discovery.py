@@ -5,6 +5,7 @@ from source.analysis.relationships.source_relationship_inventory import SourceRe
 from source.source_unit_identity import SourceUnitIdentity
 from source.source_search_output import SourceSearchOutput
 from source.source_search_query import SourceSearchQuery
+from source.text_analysis_source import TextAnalysisSource
 
 
 """
@@ -17,6 +18,7 @@ class SourceDeclarationDiscovery(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     inventory: SourceRelationshipInventory
+    sources: list[TextAnalysisSource] = Field(default_factory=list)
     declaration: SourceUnitIdentity
     related_declarations: list[SourceRelatedDeclaration] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)

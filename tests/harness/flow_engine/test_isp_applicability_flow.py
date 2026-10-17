@@ -77,21 +77,17 @@ class TestISPApplicabilityFlow(unittest.TestCase):
             {event["local_step_id"] for event in skipped},
             {
                 "discover",
-                "members",
+                "prepare_context",
                 "width",
-                "availability",
-                "analyze_cohesion",
-                "min_coverage",
-                "cohesion_groups",
-                "extension_availability",
-                "mixed_responsibilities",
+                "responsibilities",
+                "stakeholders",
                 "classify_exception",
             },
         )
         empty_iterations = [event for event in events if event["event"] == "step_completed"]
         self.assertEqual(
             {event["local_step_id"] for event in empty_iterations},
-            {"unresolved_members", "classify_extension_members"},
+            {"unverified_members", "classify_members"},
         )
         self.assertTrue(all(event["empty_collection"] for event in empty_iterations))
         self.assertTrue(all(event["session_id"] == "engine" for event in empty_iterations))

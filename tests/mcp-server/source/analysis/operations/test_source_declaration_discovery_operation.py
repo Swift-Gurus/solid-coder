@@ -80,3 +80,25 @@ class TestSourceDeclarationDiscoveryOperation(unittest.TestCase):
 
         self.assertEqual(result.related_declarations[0].relationship.status.value, "ambiguous")
         self.assertTrue(result.limitations)
+
+    def test_definition_discovery_does_not_follow_conformer_names(self) -> None:
+        (self.root / "Reading+Helpers.swift").write_text("extension Reading { func extra() {} }\n")
+
+        result = self.sut.execute(DiscoverSourceDeclarationInput(
+            target=self.target, context=self.context, follow_related_declarations=False,
+        ))
+
+        self.assertEqual([query.terms for query in result.queries], [["Reading"]])
+        self.assertIn(str(self.root / "Reading+Helpers.swift"), [item.source_identity for item in result.inventory.analyses])
+        self.assertNotIn(str(self.root / "Store+Helpers.swift"), [item.source_identity for item in result.inventory.analyses])
+
+    def test_discovery_preserves_the_exact_sources_that_were_analyzed(self) -> None:
+        self.interface.write_text("struct Unrelated {}\n")
+
+        result = self.discover()
+
+        self.assertEqual(
+            [source.virtual_path for source in result.sources],
+            [analysis.source_identity for analysis in result.inventory.analyses],
+        )
+        self.assertEqual(result.sources[0].text, self.context.sources[0].content)

@@ -1,12 +1,12 @@
 id: isp
 name: Interface Segregation Principle Review
-description: Measures exposed interface width, conformer coverage, usage cohesion, and extension responsibilities from bounded repository evidence.
-max_turns: 40
+description: Measures exposed interface width and distinct responsibilities and stakeholders across its definition and extensions.
+max_turns: 20
 
 rule:
   match:
     unit_kinds:
-      included: [protocol]
+      included: [protocol, extension]
 
 steps:
   - id: discover
@@ -15,184 +15,88 @@ steps:
     with:
       target: "{{params.review_unit.target}}"
       context: "{{params.source_context}}"
+      follow_related_declarations: false
 
-  - id: members
+  - id: prepare_context
     type: operation
-    operation: source.declaration_members
+    operation: source.declaration_context
     depends_on: [discover]
     with:
-      inventory: "{{steps.discover.outputs.inventory}}"
-      declaration: "{{steps.discover.outputs.declaration}}"
-
-  - id: unresolved_members
-    type: operation
-    operation: collection.count
-    depends_on: [members]
-    for_each: "{{steps.members.outputs.members}}"
-    when:
-      all:
-        - ref: "{{item.role}}"
-          equals: unresolved
-        - ref: "{{item.reference.member.visibility}}"
-          not_in: [private, fileprivate]
-    with:
-      values: "{{item.matching_declarations}}"
+      discovery: "{{steps.discover.outputs.result}}"
+      excluded_visibilities: [private, fileprivate]
 
   - id: width
     type: metric
     metric_id: ISP-1
-    depends_on: [members, unresolved_members]
-    when:
+    depends_on: [prepare_context]
+    when: &known_interface
       all:
-        - ref: "{{steps.discover.outputs.limitations}}"
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.limitations}}"
           equals: []
-        - any: &no_unresolved_members
-            - ref: "{{steps.unresolved_members.outputs.value}}"
-              exists: false
-            - ref: "{{steps.unresolved_members.outputs.value}}"
-              equals: []
-    unavailable_reason: Exposed interface width cannot be verified while discovery or member ownership remains incomplete.
+    unavailable_reason: Interface width cannot be verified while definition discovery or member ownership remains incomplete.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.members.outputs.members}}"
+      source: "{{steps.prepare_context.outputs.members}}"
       when:
-        all:
-          - ref: "{{item.role}}"
-            in: [declared, additional]
-          - ref: "{{item.reference.member.visibility}}"
-            not_in: [private, fileprivate]
+        ref: "{{item.role}}"
+        in: [declared, additional]
       minor: {operator: greater_than_or_equal, value: 6}
       severe: {operator: greater_than_or_equal, value: 9}
 
-  - include:
-      workflow: isp-candidate-review
-    as: candidate_reviews
-    depends_on: [discover]
-    for_each: "{{steps.discover.outputs.related_declarations}}"
-    with:
-      candidate: "{{item}}"
-      inventory: "{{steps.discover.outputs.inventory}}"
-      protocol_name: "{{params.review_unit.target.name}}"
-
-  - id: availability
-    type: operation
-    operation: collection.ratio
-    depends_on: [candidate_reviews]
-    with:
-      observations: "{{workflows.candidate_reviews.outputs.availability}}"
-
-  - id: analyze_cohesion
-    depends_on: [availability]
-    when: &comparable_evidence
-      all:
-        - ref: "{{steps.discover.outputs.limitations}}"
-          equals: []
-        - ref: "{{steps.availability.outputs.value}}"
-          equals: 1.0
-        - ref: "{{steps.availability.outputs.denominator_count}}"
-          not_in: [0, 1]
-    prompt: |
-      Group protocol methods by which conformers actually use them together.
-      Disjoint groups suggest the protocol should be split.
-
-      For interface "{{params.review_unit.target.name}}", use the completed
-      conformer observations already in this session. Return one record for
-      each directly declared requirement, in declaration order. Its usage
-      vector records coverage across eligible conformers in discovery order:
-      1 for a covered requirement and 0 for an uncovered requirement.
-      Identical vectors describe requirements used together.
-
-      Preserve the requirement identity, reasoning, and source evidence.
-    outputs:
-      - name: requirement_groups
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [requirement, usage_vector, reasoning, evidence]
-            properties:
-              requirement: {type: string, minLength: 1}
-              usage_vector: {type: string, minLength: 1}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
-
-  - id: min_coverage
-    type: metric
-    metric_id: ISP-2
-    depends_on: [candidate_reviews, availability]
-    when: *comparable_evidence
-    unavailable_reason: Coverage requires at least two eligible conformers with verifiable requirement evidence and no discovery limitation.
-    value: {type: number, minimum: 0, maximum: 1}
-    scoring:
-      source: "{{workflows.candidate_reviews.outputs.coverage}}"
-      reducer:
-        type: minimum
-        value: "{{item}}"
-        empty_value: 1.0
-      minor: {operator: less_than, value: 0.8}
-      severe: {operator: less_than, value: 0.6}
-
-  - id: cohesion_groups
-    type: metric
-    metric_id: ISP-3
-    depends_on: [analyze_cohesion, availability]
-    when: *comparable_evidence
-    unavailable_reason: Usage cohesion requires comparable, verifiable observations from at least two eligible conformers.
-    value: {type: integer, minimum: 0}
-    scoring:
-      source: "{{steps.analyze_cohesion.outputs.requirement_groups}}"
-      reducer:
-        type: distinct_count
-        value: "{{item.usage_vector}}"
-      severe: {operator: greater_than_or_equal, value: 2}
-
-  - id: classify_extension_members
-    depends_on: [members]
+  - id: classify_members
+    type: agent
+    depends_on: [prepare_context]
     for_each:
-      source: "{{steps.members.outputs.members}}"
+      source: "{{steps.prepare_context.outputs.members}}"
       mode: batch
-      label: "{{item.reference.member.identity}}"
-    when:
-      all:
-        - ref: "{{item.role}}"
-          in: [implementation, additional]
-        - ref: "{{item.reference.member.visibility}}"
-          not_in: [private, fileprivate]
+      label: "{{item.label}}"
+    when: *known_interface
     prompt: |
-      Classify extension member "{{item.reference.member.name}}" relative to
-      interface "{{params.review_unit.target.name}}".
-      Source: {{item.reference.owner.source_identity}}
-      Declaration: {{item.reference.member.signature}}
+      Classify the exposed members of interface "{{steps.prepare_context.outputs.name}}"
+      and its extensions together, using the source supplied below.
 
-      Inspect that member using the source already visible in this session,
-      or your normal file-reading tool when necessary.
-      SAME_RESPONSIBILITY serves the interface's responsibility.
-      INDEPENDENT_RESPONSIBILITY introduces separate behavior.
-      UNABLE_TO_VERIFY means the available source does not support a decision.
+      For each listed member, classify:
+      - action: its primary externally meaningful action, as a single verb.
+      - responsibility: the independent capability it serves.
+      - stakeholder: who would request a change to that capability, or the
+        independent business concern driving that change.
+      - is_exception: whether a framework-mandated member or an applicable
+        interface exception explains this member's behavior.
+      - additional_info: reasoning for the classifications and direct source evidence.
 
-      Its structural role is "{{item.role}}": implementation supplies a
-      declared requirement; additional introduces an exposed member.
-      A default implementation is not independently a violation.
-      Mark is_exception only when an applicable whole-interface exception
-      below or a framework-mandated member explains this behavior. Preserve
-      the applicable exception, reasoning, and evidence in additional_info.
+      Use the same concise responsibility and stakeholder labels for members
+      serving the same concern. Do not substitute method names for those labels.
+      Actions are not restricted to a predefined vocabulary.
 
-      In availability, use the member identity as observation_id and included
-      true. Set matches false for UNABLE_TO_VERIFY, otherwise true, and explain
-      the evidence supporting that availability decision.
+      A member marked implementation supplies a declared requirement. A member
+      marked additional adds exposed functionality. Consider what both do when
+      classifying their responsibilities and stakeholders.
+
+      Use verification VERIFIED when the supplied evidence supports the
+      classifications. Use UNABLE_TO_VERIFY with reasoning and evidence when
+      it does not; do not invent classification labels.
+
+      Interface exceptions: marker protocols used only for type discrimination;
+      composition protocols that only compose already narrow, compliant
+      protocols; framework-constrained @objc requirements; and test code,
+      mocks, stubs, fakes, or test helpers. Default implementations alone do
+      not exempt additional extension functionality.
+
+      {{steps.prepare_context.outputs.context}}
     outputs:
       - name: assessment
         type: data
         schema:
           type: object
           additionalProperties: false
-          required: [classification, is_exception, additional_info]
+          required: [verification, additional_info]
           properties:
-            classification:
-              type: string
-              enum: [SAME_RESPONSIBILITY, INDEPENDENT_RESPONSIBILITY, UNABLE_TO_VERIFY]
+            verification: {type: string, enum: [VERIFIED, UNABLE_TO_VERIFY]}
+            action: {type: string, minLength: 1}
+            responsibility: {type: string, minLength: 1}
+            stakeholder: {type: string, minLength: 1}
             is_exception: {type: boolean}
             additional_info:
               type: object
@@ -201,62 +105,80 @@ steps:
               properties:
                 reasoning: {type: string, minLength: 1}
                 evidence: {type: string, minLength: 1}
+          oneOf:
+            - required: [action, responsibility, stakeholder, is_exception]
+              properties:
+                verification: {const: VERIFIED}
+            - maxProperties: 2
+              properties:
+                verification: {const: UNABLE_TO_VERIFY}
 
-      - name: availability
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [observation_id, matches, included, reasoning, evidence]
-          properties:
-            observation_id: {type: string, minLength: 1}
-            matches: {type: boolean}
-            included: {const: true}
-            reasoning: {type: string, minLength: 1}
-            evidence: {type: string, minLength: 1}
-
-  - id: extension_availability
+  - id: unverified_members
     type: operation
-    operation: collection.ratio
-    depends_on: [classify_extension_members]
+    operation: collection.count
+    depends_on: [classify_members]
+    for_each: "{{steps.classify_members.outputs.assessment}}"
     when:
-      ref: "{{steps.classify_extension_members.outputs.availability}}"
-      exists: true
+      ref: "{{item.verification}}"
+      equals: UNABLE_TO_VERIFY
     with:
-      observations: "{{steps.classify_extension_members.outputs.availability}}"
+      values: []
 
-  - id: mixed_responsibilities
+  - id: responsibilities
     type: metric
-    metric_id: ISP-4
-    depends_on: [classify_extension_members, extension_availability, unresolved_members]
-    when:
+    metric_id: ISP-3
+    depends_on: [classify_members, unverified_members]
+    when: &verified_classifications
       all:
-        - ref: "{{steps.discover.outputs.limitations}}"
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.limitations}}"
           equals: []
-        - any: *no_unresolved_members
         - any:
-            - ref: "{{steps.extension_availability.outputs.value}}"
+            - ref: "{{steps.unverified_members.outputs.value}}"
               exists: false
-            - ref: "{{steps.extension_availability.outputs.value}}"
-              equals: 1.0
-    unavailable_reason: Extension responsibilities remain unverified because discovery, ownership, or a required behavioral classification is incomplete.
+            - ref: "{{steps.unverified_members.outputs.value}}"
+              equals: []
+    unavailable_reason: Independent responsibilities cannot be verified until definition ownership and every required member classification are supported by evidence.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_extension_members.outputs.assessment}}"
-      when:
-        all:
-          - ref: "{{item.classification}}"
-            equals: INDEPENDENT_RESPONSIBILITY
-          - ref: "{{item.is_exception}}"
-            equals: false
-      severe: {operator: greater_than_or_equal, value: 1}
+      source: "{{steps.classify_members.outputs.assessment}}"
+      when: &not_excepted
+        ref: "{{item.is_exception}}"
+        equals: false
+      reducer:
+        type: distinct_count
+        value: "{{item.responsibility}}"
+      severe: {operator: greater_than_or_equal, value: 3}
+
+  - id: stakeholders
+    type: metric
+    metric_id: ISP-5
+    depends_on: [classify_members, unverified_members]
+    when: *verified_classifications
+    unavailable_reason: Stakeholders cannot be verified until definition ownership and every required member classification are supported by evidence.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_members.outputs.assessment}}"
+      when: *not_excepted
+      reducer:
+        type: distinct_count
+        value: "{{item.stakeholder}}"
+      severe: {operator: greater_than_or_equal, value: 2}
 
   - id: classify_exception
     type: exception
-    depends_on: [width, min_coverage, cohesion_groups, mixed_responsibilities]
+    depends_on: [width, responsibilities, stakeholders]
+    when:
+      any:
+        - ref: "{{steps.prepare_context.outputs.kind}}"
+          equals: protocol
+        - ref: "{{steps.prepare_context.outputs.limitations}}"
+          not_equals: []
     prompt: |
       Classify whether a whole-interface exception applies to
-      "{{params.review_unit.target.name}}", with reasoning and source evidence.
+      "{{params.review_unit.target.name}}", using the source already supplied
+      in this session. Provide reasoning and source evidence.
 
       Marker protocols have zero requirements and serve type discrimination.
       Composition protocols are exempt when they only compose already narrow,
@@ -265,9 +187,6 @@ steps:
       Framework-constrained @objc protocols may require specific method sets.
       Test code, mocks, stubs, fakes, and test helpers are exempt.
 
-      These are not whole-interface exemptions:
-      - Zero or one eligible conformer leaves usage evidence unable to verify;
-        it does not make a wide interface compliant.
-      - Protocol defaults affect coverage for the requirement they actually
-        satisfy. They do not exempt additional extension behavior or width.
-      - An unavailable metric is not a measured compliant result.
+      Default implementations do not exempt additional exposed behavior.
+      Missing source evidence is not an exception or measured compliance.
+      An ISP exception is not a judgment that an empty interface is good design.

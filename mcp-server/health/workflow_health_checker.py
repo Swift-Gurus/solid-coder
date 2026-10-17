@@ -6,11 +6,15 @@ from gate_flow_prompt_building import GateFlowPromptBuilding
 from gate_review_input_building import GateReviewInputBuilding
 from harness.flow_result_rendering import FlowResultRendering
 from harness.flow_run_orchestrating import FlowRunOrchestrating
-from health_violation import HealthViolation
+from health_check_outcome import HealthCheckOutcome
+from health_review_assessor import HealthReviewAssessing
+from harness.operation_handling import OperationHandling
+from logging_protocol import Logging
 from llm.claude_runner import ClaudeRunning
 from patch_review_context import PatchReviewContext
 from review_result_reading import ReviewResultReading
-from review_violation_selecting import ReviewViolationSelecting
+from source.text_analysis_source import TextAnalysisSource
+from source.analysis.operations.source_introduction_evidence import SourceIntroductionEvidence
 
 
 _WORKFLOW_ID = "solid-gate-on-write"
@@ -29,7 +33,9 @@ class WorkflowHealthChecker:
         renderer: FlowResultRendering,
         runner: ClaudeRunning,
         result_reader: ReviewResultReading,
-        violation_selector: ReviewViolationSelecting,
+        assessor: HealthReviewAssessing,
+        introductions: OperationHandling[TextAnalysisSource, SourceIntroductionEvidence],
+        logger: Logging,
         input_builder: GateReviewInputBuilding,
         prompt_builder: GateFlowPromptBuilding,
         timeout_seconds: int,
@@ -38,7 +44,9 @@ class WorkflowHealthChecker:
         self._renderer = renderer
         self._runner = runner
         self._result_reader = result_reader
-        self._violation_selector = violation_selector
+        self._assessor = assessor
+        self._introductions = introductions
+        self._logger = logger
         self._input_builder = input_builder
         self._prompt_builder = prompt_builder
         self._timeout_seconds = timeout_seconds
@@ -51,7 +59,8 @@ class WorkflowHealthChecker:
         parent_session_id: str,
         patch_context: Optional[PatchReviewContext] = None,
         principle_names: Optional[list[str]] = None,
-    ) -> list[HealthViolation]:
+    ) -> HealthCheckOutcome:
+        introductions = self._introductions.execute(TextAnalysisSource(text=content, virtual_path=path))
         review_input = self._input_builder.build(
             content,
             path,
@@ -67,7 +76,7 @@ class WorkflowHealthChecker:
         if not started.run_id:
             raise RuntimeError("Gate workflow did not return a run ID")
         if started.status == "done":
-            return []
+            return HealthCheckOutcome(introduction_evidence=introductions)
 
         response = None
         child_error = None
@@ -103,6 +112,8 @@ class WorkflowHealthChecker:
                 "flow_next correction from the parent session or modify the source "
                 "solely because of this infrastructure failure."
             )
-        return self._violation_selector.select(
-            self._result_reader.read(started.run_id)
+        outcome = self._assessor.assess(
+            self._result_reader.read(started.run_id), introductions,
         )
+        self._logger.log(f"gate_review_outcome run_id={started.run_id} {outcome.model_dump_json()}")
+        return outcome

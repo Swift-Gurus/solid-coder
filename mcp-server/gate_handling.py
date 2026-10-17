@@ -9,6 +9,11 @@ from logging_protocol import Logging
 from hook_responding import HookResponding
 
 
+"""
+solid-name: GateHandling
+solid-category: abstraction
+solid-description: Contract for logging, retaining review warnings, and allowing or blocking hook operations.
+"""
 class GateHandling(Logging, HookResponding, Protocol):
     """Narrow gate protocol for components that need to log, allow, or block.
 
@@ -17,3 +22,7 @@ class GateHandling(Logging, HookResponding, Protocol):
     and their tests can depend on and inject any duck-typed gate — including
     test fakes — without coupling to the concrete HookGate facade.
     """
+
+    def warn(self, message: str) -> None:
+        """Retain context without authorizing or terminating a write."""
+        ...

@@ -10,9 +10,11 @@ from hc_checker_factory import LegacyHealthCheckerFactory
 from hc_config_schema import load_config
 from hc_runner_factory import select_strategy
 from health_check_mode import HealthCheckMode
+from health_check_outcome import HealthCheckOutcome
 from health_checker_creating import HealthCheckerCreating
 from hook_utils import _resolve_project_root, solid_coder_project_dir
 from json_serializer import JsonSerializer
+from legacy_health_outcome_adapter import LegacyHealthOutcomeAdapter
 from mcp_config_builder import McpConfigBuilder
 from mcp_config_profile import McpConfigProfile
 from utils.debug_logger import DebugLogger
@@ -25,11 +27,11 @@ solid-category: factory
 solid-spec: [SPEC-050]
 solid-description: Provides the configured source-health checker for a prospective request.
 """
-class ConfiguredHealthCheckerFactory(HealthCheckerCreating):
+class ConfiguredHealthCheckerFactory(HealthCheckerCreating[HealthCheckOutcome]):
     def __init__(self, plugin_root: Path) -> None:
         self._plugin_root = plugin_root
 
-    def make(self, request: CodeHealthCheckRequest) -> HealthChecking:
+    def make(self, request: CodeHealthCheckRequest) -> HealthChecking[HealthCheckOutcome]:
         project_root = (
             Path(request.cwd).resolve()
             if request.cwd
@@ -58,20 +60,17 @@ class ConfiguredHealthCheckerFactory(HealthCheckerCreating):
             f"target={request.path} source_sha256="
             f"{sha256(request.content.encode('utf-8')).hexdigest()}"
         )
-        factory = (
-            LegacyHealthCheckerFactory(
+        if mode is HealthCheckMode.LEGACY:
+            return LegacyHealthOutcomeAdapter(LegacyHealthCheckerFactory(
                 project_root=project_root,
                 config=config,
                 strategy=strategy,
                 mcp_config=mcp_config,
-            )
-            if mode is HealthCheckMode.LEGACY
-            else WorkflowHealthCheckerFactory(
-                plugin_root=self._plugin_root,
-                project_root=project_root,
-                config=config,
-                strategy=strategy,
-                mcp_config=mcp_config,
-            )
-        )
-        return factory.make(request)
+            ).make(request))
+        return WorkflowHealthCheckerFactory(
+            plugin_root=self._plugin_root,
+            project_root=project_root,
+            config=config,
+            strategy=strategy,
+            mcp_config=mcp_config,
+        ).make(request)

@@ -3,6 +3,9 @@
 from pathlib import Path
 
 from harness.operation_registration import OperationRegistration
+from harness.operations.operation_result import OperationResult
+from harness.operations.result_operation_adapter import ResultOperationAdapter
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.project_context import ProjectDirectoryReading
 from hooks.pathlib_extractor import PathlibExtractor
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
@@ -46,6 +49,7 @@ from source.validate_candidate_selection_operation import (
 from source.validate_candidate_selection_output import (
     ValidateCandidateSelectionOutput,
 )
+from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidator
 
 
 """
@@ -70,8 +74,11 @@ class SourceOperationRegistrationsFactory:
             OperationRegistration(
                 name="source.discover_declaration",
                 input_model=DiscoverSourceDeclarationInput,
-                output_model=SourceDeclarationDiscovery,
-                handler=SourceDeclarationDiscoveryOperationFactory(self._project_directory).make(),
+                output_model=OperationResult[SourceDeclarationDiscovery],
+                handler=ResultOperationAdapter(
+                    operation=SourceDeclarationDiscoveryOperationFactory(self._project_directory).make(),
+                    result_type=OperationResult[SourceDeclarationDiscovery],
+                ),
             ),
             OperationRegistration(
                 name="source.prepare_search_targets",
@@ -111,7 +118,9 @@ class SourceOperationRegistrationsFactory:
                 name="source.validate_candidate_selection",
                 input_model=ValidateCandidateSelectionInput,
                 output_model=ValidateCandidateSelectionOutput,
-                handler=ValidateCandidateSelectionOperation(),
+                handler=ValidateCandidateSelectionOperation(
+                    coverage_validator=CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+                ),
             ),
             OperationRegistration(
                 name="source.read_candidates",

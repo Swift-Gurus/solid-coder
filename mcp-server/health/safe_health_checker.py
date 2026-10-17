@@ -12,20 +12,28 @@ for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from gate_protocols import GateHandling, HealthChecking, ViolationFormatting
-from utils.debug_logger import Observing
+from gate_protocols import GateHandling, HealthChecking
+from health_check_outcome import HealthCheckOutcome
+from health_outcome_renderer import HealthOutcomeRendering
 
 
+"""
+solid-name: SafeHealthChecker
+solid-category: service
+solid-description: Safely authorizes prospective content from health outcomes, preserving review warnings and failing closed on checker errors.
+solid-tags: [hook]
+"""
 class SafeHealthChecker:
     """Invokes the health checker, handles errors, and returns True if the content is clean."""
 
-    def __init__(self, checker: HealthChecking, formatter: ViolationFormatting) -> None:
+    def __init__(self, checker: HealthChecking[HealthCheckOutcome], renderer: HealthOutcomeRendering) -> None:
         self._checker = checker
-        self._formatter = formatter
+        self._renderer = renderer
 
     def check(self, content: str, path: str, language: str, session_id: str, gate: GateHandling, file_name: str, cwd: str = "") -> bool:
         try:
-            violations = self._checker.check(content, path, language, session_id, cwd)
+            outcome = self._checker.check(content, path, language, session_id, cwd)
+            decision = self._renderer.render(outcome)
         except Exception as exc:
             gate.log(f"BLOCK {file_name}: health subprocess error: {exc}")
             gate.block(
@@ -34,12 +42,10 @@ class SafeHealthChecker:
                 f"until the subprocess issue is resolved."
             )
             return False
-        if violations:
-            gate.log(f"DENY {file_name}: {len(violations)} violation(s)")
-            parts = [
-                self._formatter.format_block_reason(violations),
-                "The file was NOT written. You MUST fix all violations above and write the corrected version before continuing.",
-            ]
-            gate.block("[health-check] " + "\n\n".join(parts))
+        if decision.additional_context:
+            gate.warn(decision.additional_context)
+        if not decision.allow:
+            gate.log(f"DENY {file_name}: {decision.reason}")
+            gate.block(decision.reason or "[health-check] Review did not authorize the write.")
             return False
         return True

@@ -6,7 +6,7 @@ solid-tags: [hook, llm]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Optional, Protocol, TypeVar
 
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
@@ -31,6 +31,7 @@ from output_path_resolver import OutputPathResolving, SessionOutputPathResolver 
 from health_check_context_writing import HealthCheckContextWriting  # noqa: F401
 from patch_review_context import PatchReviewContext  # noqa: F401
 
+HealthResult = TypeVar("HealthResult", covariant=True)
 
 """
 solid-name: HealthChecking
@@ -38,7 +39,7 @@ solid-category: abstraction
 solid-description: Contract for validating prospective source content within its request-scoped context.
 solid-tags: [hook]
 """
-class HealthChecking(Protocol):
+class HealthChecking(Protocol[HealthResult]):
     def check(
         self,
         content: str,
@@ -48,7 +49,7 @@ class HealthChecking(Protocol):
         cwd: str = "",
         patch_context: Optional[PatchReviewContext] = None,
         principle_names: Optional[list[str]] = None,
-    ) -> Optional[list]: ...
+    ) -> HealthResult: ...
 
 
 """

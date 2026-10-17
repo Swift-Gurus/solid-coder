@@ -22,6 +22,7 @@ from _gate_fixtures import (
     event,
 )
 from solid_coder_config import SolidCoderConfig
+from health_check_outcome import HealthCheckOutcome
 from test_utils import parse_hook_output
 
 
@@ -32,14 +33,14 @@ class TestGateDecisions(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def test_both_clean_allows(self):
-        with patch(FM, return_value=LONG_SWIFT_WITH_FRONTMATTER), patch(HC, return_value=[]):
+        with patch(FM, return_value=LONG_SWIFT_WITH_FRONTMATTER), patch(HC, return_value=HealthCheckOutcome()):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
     def test_health_violations_blocks_without_running_frontmatter(self):
         """Health violations deny the write — frontmatter fix is never reached."""
-        with patch(FM) as fm, patch(HC, return_value=VIOLATIONS):
+        with patch(FM) as fm, patch(HC, return_value=HealthCheckOutcome(violations=VIOLATIONS)):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
@@ -49,7 +50,7 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_frontmatter_correction_only_runs_when_health_passes(self):
         """Frontmatter runs after health check returns clean."""
-        with patch(FM, return_value=CORRECTED_FRONTMATTER) as fm, patch(HC, return_value=[]):
+        with patch(FM, return_value=CORRECTED_FRONTMATTER) as fm, patch(HC, return_value=HealthCheckOutcome()):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "allow")
@@ -58,27 +59,29 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_deny_has_no_frontmatter_blocks(self):
         """On deny, frontmatter is never run so no corrected blocks in reason."""
-        with patch(HC, return_value=VIOLATIONS):
+        with patch(HC, return_value=HealthCheckOutcome(violations=VIOLATIONS)):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         h = parse_hook_output(out)
         self.assertEqual(h["permissionDecision"], "deny")
         self.assertNotIn("corrected frontmatter", h["permissionDecisionReason"])
 
     def test_frontmatter_error_fails_open(self):
-        with patch(FM, return_value=None), patch(HC, return_value=[]):
+        with patch(FM, return_value=None), patch(HC, return_value=HealthCheckOutcome()):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         self.assertEqual(code, 0)
         self.assertEqual(out, "")
 
-    def test_health_error_fails_open(self):
-        with patch(FM, return_value=LONG_SWIFT), patch(HC, return_value=None):
+    def test_health_error_fails_closed(self):
+        with patch(FM, return_value=LONG_SWIFT), patch(HC, side_effect=RuntimeError("Health checker returned no result")):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         self.assertEqual(code, 0)
-        self.assertEqual(out, "")
+        decision = parse_hook_output(out)
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("Health checker returned no result", decision["permissionDecisionReason"])
 
     def test_edit_unreadable_file_sets_new_string_to_corrected(self):
         """When the file can't be read, new_string gets the corrected snippet."""
-        with patch(FM, return_value=CORRECTED_FRONTMATTER), patch(HC, return_value=[]):
+        with patch(FM, return_value=CORRECTED_FRONTMATTER), patch(HC, return_value=HealthCheckOutcome()):
             code, out = call_main(event("Edit", "/src/Foo.swift", LONG_SWIFT_WITH_FRONTMATTER))
         updated = parse_hook_output(out)["updatedInput"]
         self.assertIn("new_string", updated)
@@ -110,7 +113,7 @@ class TestGateDecisions(unittest.TestCase):
                 },
                 "session_id": "test",
             }
-            with patch(FM, return_value=corrected_content), patch(HC, return_value=[]):
+            with patch(FM, return_value=corrected_content), patch(HC, return_value=HealthCheckOutcome()):
                 code, out = call_main(ev)
         finally:
             os.unlink(tmp_path)
@@ -122,7 +125,7 @@ class TestGateDecisions(unittest.TestCase):
 
     def test_no_frontmatter_health_clean_allows(self):
         """No solid-description means frontmatter correction is skipped."""
-        with patch(FM) as fm, patch(HC, return_value=[]) as hc:
+        with patch(FM) as fm, patch(HC, return_value=HealthCheckOutcome()) as hc:
             code, out = call_main(event("Write", "/src/Foo.swift", SHORT_SWIFT))
         hc.assert_called_once()
         fm.assert_not_called()

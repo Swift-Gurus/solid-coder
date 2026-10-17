@@ -53,7 +53,7 @@ class SwiftMemberDecoder(SwiftMembersDecoding):
         self, item: Node, owner_kind: ReviewUnitKind, owner_identity: str,
     ) -> list[SourceMember]:
         body = item.child_by_field_name("body")
-        if body is None or owner_kind is ReviewUnitKind.FUNCTION:
+        if body is None or not owner_kind.supports_member_declarations:
             return []
         owner_access = self._access.parse(item) or SourceMemberVisibility.INTERNAL
         members: list[SourceMember] = []
@@ -75,6 +75,7 @@ class SwiftMemberDecoder(SwiftMembersDecoding):
                     kind=registration.member_kind,
                     visibility=access,
                     span=span,
+                    code=declaration.text.decode("utf-8"),
                     signature=self._signatures.parse(SwiftMemberSyntax(
                         declaration=declaration, name=name, kind=registration.member_kind,
                     )),

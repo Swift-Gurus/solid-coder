@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, TypeVar
+
+ValueT = TypeVar("ValueT", contravariant=True)
 
 
 """
 solid-name: TemplateValueRendering
 solid-category: abstraction
 solid-spec: [SPEC-037]
-solid-description: Contract for rendering one resolved workflow expression value into template text.
+solid-description: Contract for rendering a typed value into message or workflow template text.
 """
-class TemplateValueRendering(Protocol):
-    def render(self, value: object) -> str: ...
+class TemplateValueRendering(Protocol[ValueT]):
+    def render(self, value: ValueT) -> str: ...

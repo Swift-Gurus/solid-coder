@@ -15,6 +15,7 @@ for _part in ("", "health", "health/config", "health/llm", "health/codex", "gate
 from code_health_check_request import CodeHealthCheckRequest
 from code_health_check_service import CodeHealthCheckService
 from health.configured_health_checker_factory import ConfiguredHealthCheckerFactory
+from health_check_outcome import HealthCheckOutcome
 
 
 """
@@ -44,11 +45,13 @@ class TestConfiguredHealthChecker:
              patch("health.configured_health_checker_factory.GateLogger") as gate_logger:
             selected = legacy if mode == "legacy" else workflow
             other = workflow if mode == "legacy" else legacy
-            selected.return_value.make.return_value.check.return_value = []
+            selected.return_value.make.return_value.check.return_value = (
+                [] if mode == "legacy" else HealthCheckOutcome()
+            )
             service = CodeHealthCheckService(
                 checker_factory=ConfiguredHealthCheckerFactory(plugin_root=_ROOT),
             )
-            assert service.check(request) == []
+            assert service.check(request) == HealthCheckOutcome()
             other.assert_not_called()
             construction = selected.call_args.kwargs
             assert construction["config"].llm.model == "gpt-5.6-terra"

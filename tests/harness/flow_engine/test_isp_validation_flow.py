@@ -27,7 +27,7 @@ from source.source_search_context import SourceSearchContext
 solid-name: TestISPValidationFlow
 solid-category: integration-test
 solid-spec: [SPEC-039, SPEC-057]
-solid-description: Verifies the real bundled ISP rule preserves canonical measurements while using engine-owned source facts, coverage reduction, and explicit evidence availability.
+solid-description: Verifies the real bundled ISP rule scores exposed definition and extension members with engine-owned width, distinct responsibilities and stakeholders.
 """
 class TestISPValidationFlow(RuleValidationFlowContract):
     __test__ = True
@@ -37,18 +37,15 @@ class TestISPValidationFlow(RuleValidationFlowContract):
         rule_path=_PROJECT_ROOT / "references/principles/ISP/rule.md",
         fixture_path=_PROJECT_ROOT / "tests/principles/ISP/fixtures/fixture-1.swift",
         analysis=[
-            RuleAnalysisExpectation(step_id="candidate_reviews-1.classify_candidate", output={}),
-            RuleAnalysisExpectation(step_id="candidate_reviews-2.classify_candidate", output={}),
-            RuleAnalysisExpectation(step_id="analyze_cohesion", output={}),
+            RuleAnalysisExpectation(step_id="classify_members", output={}),
         ],
         metrics=[
             RuleMetricExpectation(step_id="width", metric_id="ISP-1", detection_id="ISP-1", detection_name="Protocol Width", value=10, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="min_coverage", metric_id="ISP-2", detection_id="ISP-2", detection_name="Conformer Coverage", value=0.5, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="cohesion_groups", metric_id="ISP-3", detection_id="ISP-3", detection_name="Protocol Cohesion Groups", value=2, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="mixed_responsibilities", metric_id="ISP-4", detection_id="ISP-4", detection_name="Extension Responsibilities", value=0, severity="COMPLIANT", mcp_owned=True),
+            RuleMetricExpectation(step_id="responsibilities", metric_id="ISP-3", detection_id="ISP-3", detection_name="Independent Responsibilities", value=2, severity="COMPLIANT", mcp_owned=True),
+            RuleMetricExpectation(step_id="stakeholders", metric_id="ISP-5", detection_id="ISP-5", detection_name="Stakeholders", value=1, severity="COMPLIANT", mcp_owned=True),
         ],
         final_severity="SEVERE",
-        included_unit_kinds=["protocol"],
+        included_unit_kinds=["protocol", "extension"],
     )
 
     def setUp(self) -> None:
@@ -81,46 +78,21 @@ class TestISPValidationFlow(RuleValidationFlowContract):
             prompts.extend(step.prompt for step in current.steps)
             step_ids.extend(step.step_id for step in current.steps)
             submissions = {}
-            for step in current.steps:
-                if step.step_id.endswith("classify_candidate"):
-                    matches = next(
-                        event["outputs"]["matches"] for event in self._events(run_id)
-                        if event.get("event") == "step_completed"
-                        and event.get("step_id") == step.step_id.removesuffix("classify_candidate") + "match"
-                    )
-                    self.assertEqual(len(matches), 10)
-                    name = "WorkspaceEditor" if "WorkspaceEditor" in step.prompt else "ArchiveBrowser"
-                    submissions[step.instance_id] = {
-                        "availability": {
-                            "observation_id": name, "matches": True, "included": True,
-                            "reasoning": "All direct requirements have inspected implementation evidence.",
-                            "evidence": name + " in the canonical ISP fixture.",
+            for index, step in enumerate(current.steps):
+                self.assertEqual(step.step_id, "classify_members")
+                submissions[step.batch.label] = {
+                    "assessment": {
+                        "verification": "VERIFIED",
+                        "action": "read" if index < 5 else "write",
+                        "responsibility": "reading" if index < 5 else "writing",
+                        "stakeholder": "document users",
+                        "is_exception": False,
+                        "additional_info": {
+                            "reasoning": "This declaration serves document reading or writing.",
+                            "evidence": step.batch.label,
                         },
-                        "coverage_entries": [
-                            {
-                                "observation_id": match["requirement"]["identity"],
-                                "matches": name == "WorkspaceEditor" or index < 5,
-                                "included": True,
-                                "reasoning": "MEANINGFUL implementation." if name == "WorkspaceEditor" or index < 5 else "EMPTY implementation.",
-                                "evidence": name + "." + match["requirement"]["name"],
-                            } for index, match in enumerate(matches)
-                        ],
-                    }
-                else:
-                    self.assertEqual(step.step_id, "analyze_cohesion")
-                    submissions[step.instance_id] = {
-                        "requirement_groups": [
-                            {
-                                "requirement": requirement,
-                                "usage_vector": "1,1" if index < 5 else "0,1",
-                                "reasoning": "The completed conformer observations have this coverage pattern.",
-                                "evidence": "ArchiveBrowser and WorkspaceEditor." + requirement,
-                            } for index, requirement in enumerate([
-                                "open", "list", "search", "metadata", "preview",
-                                "create", "update", "rename", "move", "delete",
-                            ])
-                        ],
-                    }
+                    },
+                }
             current = self.sut.flow_next(submissions)
             self.assertIsNone(current.error, current.error)
         self.assertEqual([step.step_id for step in current.steps], ["classify_exception"])
@@ -133,24 +105,25 @@ class TestISPValidationFlow(RuleValidationFlowContract):
         events = self._events(checkpoint.run_id)
         completed = [event for event in events if event.get("event") == "step_completed"]
         self.assertEqual([event["step_id"] for event in completed].count("discover"), 1)
-        self.assertEqual([event["step_id"] for event in completed].count("members"), 1)
-        self.assertEqual(len([event for event in completed if event["step_id"].endswith(".match")]), 2)
+        self.assertEqual([event["step_id"] for event in completed].count("prepare_context"), 1)
+        self.assertFalse(any(event["step_id"].endswith(".match") for event in completed))
         self.assertEqual(
             {event["step_id"]: event["outputs"]["value"] for event in completed
              if event["step_id"] in {metric.step_id for metric in self.SCENARIO.metrics}},
-            {"width": 10, "min_coverage": 0.5, "cohesion_groups": 2, "mixed_responsibilities": 0},
+            {"width": 10, "responsibilities": 2, "stakeholders": 1},
         )
-        self.assertIn("normal file-reading tool", " ".join(" ".join(checkpoint.prompts).split()))
+        self.assertIn("func open", " ".join(checkpoint.prompts))
 
     def test_uses_canonical_rule_detection_and_exception_instructions(self) -> None:
         checkpoint = self._complete_workflow()
         prompts = " ".join(" ".join(checkpoint.prompts).split())
-        for classification in ["MEANINGFUL", "EMPTY", "STUB", "DELEGATED", "MISSING"]:
+        for classification in ["action", "responsibility", "stakeholder", "is_exception", "UNABLE_TO_VERIFY"]:
             self.assertIn(classification, prompts)
-        self.assertIn("Group protocol methods by which conformers actually use them together.", prompts)
-        self.assertIn("A single conformer never receives artificial coverage.", prompts)
-        for exception in ["marker protocols", "composition protocols", "@objc", "test code", "protocol defaults"]:
+        for exception in ["marker protocols", "composition protocols", "@objc", "test code"]:
             self.assertIn(exception, prompts.lower())
+        self.assertIn("Default implementations do not exempt additional exposed behavior.", prompts)
+        self.assertNotIn("usage_vector", prompts)
+        self.assertNotIn("coverage_entries", prompts)
         self.assertNotIn("Calculate coverage", prompts)
         self.assertEqual(self._rule_result(checkpoint.run_id).unavailable_metrics, [])
 
