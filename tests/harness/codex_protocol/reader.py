@@ -45,6 +45,7 @@ class CodexProtocolReader:
         discovery_ids = [call.call_id for call in calls if "ALL_TOOLS" in call.input]
         starts = [call for call in calls if self._invokes(call, "flow_start")]
         nexts = [call for call in calls if self._invokes(call, "flow_next")]
+        flow_call_ids = {call.call_id for call in [*starts, *nexts]}
         failures = [output for output in outputs if self._failed(output)]
         failed_ids = {output.call_id for output in failures}
         successful_ids = {
@@ -67,7 +68,10 @@ class CodexProtocolReader:
             failed_calls=failures,
             unanswered_call_ids=[call.call_id for call in calls if not any(output.call_id == call.call_id for output in outputs)],
             user_prompts=[event.prompt for event in prompts],
-            tool_outputs=[text for output in outputs for text in output.texts],
+            flow_outputs=[
+                text for output in outputs if output.call_id in flow_call_ids
+                for text in output.texts
+            ],
         )
 
     def _invokes(self, call: CodexToolCallEvent, tool: str) -> bool:

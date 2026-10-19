@@ -74,6 +74,19 @@ guess where a contract is defined.
     search or review filter, **when** ownership is evaluated, **then** that skip
     does not classify them as third-party. Configured path exclusions record
     excluded scope; other applicability filters do not change provenance.
+11. **Given** an inspected method or function result, **when** the semantic
+    provider identifies the exact called declaration and its substituted return
+    type, **then** record separate callee and return-contract identities. An
+    SDK-owned method returning a project-owned type does not make that type external.
+12. **Given** multiple overloads or a generic return type, **when** binding the
+    call site, **then** use the selected overload and substituted semantic type
+    identity. Unsupported composite or opaque return types, mismatched identities
+    and absent provider capabilities remain explicitly unavailable.
+13. **Given** method-result queries in one prospective snapshot, **when** the
+    adapter needs the installed native semantic provider, **then** share one
+    lazily opened isolated provider session using the active compiler settings
+    and exact source overlay. Identifier-only analysis starts no native worker;
+    success, failure and timeout close all owned processes without writing the target.
 
 ## Technical Requirements
 
@@ -111,6 +124,16 @@ guess where a contract is defined.
   request on a value can resolve its variable instead; never silently substitute
   that result for the value's type. Pattern subjects also require binding, not
   fabricated operands from their textual pattern.
+- Method-result binding may use the installed native semantic library from the
+  same toolchain as the active SourceKit-LSP session. Obtain compiler settings
+  from that session and resolve compiler-authored return-type symbol references
+  independently. Do not substitute called-API ownership, parse hover prose or
+  infer ownership from type names. Missing settings, native library or supported
+  semantic references produce unavailable evidence rather than a scoring exception.
+- Keep native semantic requests in a bounded child process. Reuse existing RPC
+  framing, typed decoding and process cleanup. Open the exact source overlay
+  once per snapshot; reuse that session for return queries and stop retrying a
+  failed provider within the same snapshot. No new model-facing tool is added.
 - Do not trigger package downloads, builds, global indexing or trust bypasses
   implicitly. Missing preparation is an unresolved result with diagnostic reason.
 - Requests and session shutdown are bounded. Preserve diagnostics without
@@ -235,6 +258,18 @@ sequenceDiagram
 - When a source overlay is supplied, use it and leave the destination untouched.
 - When a request times out or the process fails, report the reason and clean up.
 - When another language strategy is registered, use the common typed result.
+- When an SDK cache call returns a broad SDK type, retain the actual returned
+  type's semantic identity separately from the SDK method and cast destination.
+- When an SDK generic method returns a project-owned interface, retain developer
+  ownership of that interface; method ownership does not determine return ownership.
+- When overloaded methods return different types, bind the selected call's exact
+  identity and return contract rather than choosing by spelling.
+- When return annotations are malformed, composite or opaque, or the callee or
+  return identity cannot be confirmed, retain an explicit unavailable result.
+- When several return queries use one snapshot, open one lazy native session,
+  use the active compiler settings and close both providers after consumer failure.
+- When a native provider fails, preserve its diagnostic reason and do not repeatedly
+  restart it for other queries in that snapshot.
 
 ### Workflow compatibility
 
@@ -270,6 +305,9 @@ sequenceDiagram
   them before presenting classifiers; replay does not repeat their analysis.
 - When the same snapshot is reviewed by locked Codex and Claude, use the real
   bundled workflow and preserve artifacts for inspection.
+- When the real write-gate fixture inspects a cache method's result, require
+  persisted verified return-contract evidence and a measured LSP-1 outcome,
+  not merely workflow completion. Preserve the existing LSP-3 severe assertion.
 
 ## Definition of Done
 
@@ -281,8 +319,10 @@ sequenceDiagram
 - [x] Source capability, operation boundary and replay tests pass.
 - [x] Full non-live and locked model compatibility checks pass.
 - [x] LSP migration scope and any unresolved semantic capabilities are recorded.
-- [ ] Validate the subsequent classification-only workflow cleanup on the full
+- [x] Validate the subsequent classification-only workflow cleanup on the full
   non-live suite and both locked live profiles.
+- [x] Validate method-result provenance on the full non-live suite, locked LSP
+  workflows and both real write-gate profiles without changing rule semantics.
 
 ## Workflow cleanup — 2026-10-19
 
@@ -328,15 +368,14 @@ existing observation identity `confirmed_partial`; unavailable evidence never
 becomes a compliant zero. LSP-2/3/4, their original locked expectations and the
 legacy health-check path are unchanged.
 
-Swift's supported semantic path resolves simple identifier operands with explicit
-parameter/property annotations through SourceKit symbol evidence. Inferred
-values, unsupported aliases, composite types, implicit pattern subjects, complex
-operands, missing tooling and missing semantic context remain unavailable rather
-than guessed. References into prospective sibling snapshots not opened by this
-session also remain unverified. The reviewed source is not written, and one
-bounded document session handles a snapshot's queries without triggering builds,
+At this milestone, Swift's semantic path resolved simple identifier operands with
+explicit parameter/property annotations through SourceKit symbol evidence. The
+method-result extension below adds call-site return binding; other unsupported
+expressions remain unavailable. References into prospective sibling snapshots not
+opened by the session also remain unverified. Reviewed source is not written,
+and bounded document sessions handle a snapshot without triggering builds,
 downloads or global indexing. Other language strategies use the same typed
-contracts; this milestone does not implement semantic providers for every language.
+contracts; this is not semantic support for every language.
 
 Acceptance tests also exposed and fixed two generic aggregation defects: child
 steps with their own batched iteration now retain materialized owner identity,
@@ -373,6 +412,41 @@ sequence and detailed validation are recorded in `ExecutionPlan.md`.
   declaration locations. Optional fields require installed-version verification.
 - [SourceKit-LSP background indexing](https://github.com/swiftlang/sourcekit-lsp/blob/main/Contributor%20Documentation/Background%20Indexing.md)
   distinguishes preparation for semantic requests from the reference index.
+- [SourceKit protocol](https://github.com/swiftlang/swift/blob/main/tools/SourceKit/docs/Protocol.md)
+  describes native document and cursor requests. The installed toolchain was
+  probed for structured return-type references and independent symbol lookup.
+
+## Method-result provenance extension — 2026-10-19
+
+The real gate fixture exposed an unsupported call operand: the cache method and
+its return contract were unknown even though the cast destination was resolved.
+The adapter now binds the exact callee, resolves its compiler-authored substituted
+return-type identity and independently establishes that type's provenance. This
+does not change LSP's classifications, scoring or unavailable-result contract.
+
+The installed toolchain's type-definition request returns no useful result for
+these calls. Its native cursor evidence supplies the required semantic reference.
+Native queries use the active session's compiler settings and exact unwritten
+source, in one lazily started isolated worker per document. Simple named return
+types, optional named types and explicit existential references are supported;
+composite, opaque or otherwise unverified return contracts remain unavailable.
+The worker does not replace the existing identifier-binding path, and method
+ownership is never used as a substitute for return-type ownership.
+
+Final validation: **2,900 non-live tests and 228 subtests passed**, with four
+existing abstract-fixture skips. All ten locked live cases passed across the
+initial run and one corrected-test rerun: original LSP, aggregate provenance,
+repository relationships, catalog compatibility and the real write gate on both
+Codex Terra and Claude Opus. The initial Codex relationship failure came from a
+test treating an explicitly instructed file read as source repetition by MCP;
+the assertion now correlates only workflow responses, with two model-free tests
+and a successful fresh live rerun. Rule expectations were not weakened.
+
+Both real gate runs resolved the cache call's return contract independently,
+completed with measured LSP-1 zero and retained the expected LSP-3 severe finding.
+The separate unresolved-binding live fixture still retained unavailable LSP-1
+coverage. Exact commands, evidence locations and the initial failure are recorded
+in `ExecutionPlan.md`.
 
 ## Historical Toolchain Checkpoint — 2026-10-17
 

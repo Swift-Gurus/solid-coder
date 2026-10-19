@@ -434,6 +434,7 @@ class FlowEngineAssemblyFactory:
                 reference_parser=step_output_reference_parser,
                 reference_resolver=step_output_reference_resolver,
                 error_factory=interpolation_error_factory,
+                nested_value_resolver=nested_value_resolver,
             ),
             nested_value_resolver=nested_value_resolver,
             error_factory=interpolation_error_factory,

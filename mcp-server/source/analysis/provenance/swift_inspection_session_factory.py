@@ -21,6 +21,7 @@ from source.analysis.provenance.swift_binding_annotation_parser import SwiftBind
 from source.analysis.provenance.swift_inspection_provenance_parser import SwiftInspectionProvenanceParser
 from source.analysis.provenance.swift_type_reference_position_parser import SwiftTypeReferencePositionParser
 from source.analysis.provenance.swift_value_contract_parser import SwiftValueContractParser
+from source.analysis.provenance.swift_value_reference_position_parser import SwiftValueReferencePositionParser
 from source.analysis.provenance.utf8_semantic_offset_resolver import UTF8SemanticOffsetResolver
 from source.analysis.tree_sitter_nodes_parser import TreeSitterNodesParser
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing, TreeSitterSyntaxParser
@@ -59,6 +60,7 @@ class SwiftInspectionSessionFactory(SemanticDocumentOpening[SourceSyntaxParsing[
         with self._documents.open(snapshot, project_root) as document:
             yield SwiftInspectionProvenanceParser(
                 tree=tree, document=document, positions=positions,
+                value_positions=SwiftValueReferencePositionParser(),
                 values=SourceKitSymbolResolutionParser(frozenset(), paths),
                 contracts=SwiftValueContractParser(
                     source=snapshot, annotations=SwiftBindingAnnotationParser(tree),

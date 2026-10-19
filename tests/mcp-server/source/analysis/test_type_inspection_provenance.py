@@ -80,6 +80,90 @@ struct Consumer {
         self.assertEqual(result.inspections[0].contract.ownership, "unknown")
         self.assertTrue(result.inspections[0].limitations)
 
+    def test_sdk_method_result_preserves_call_and_return_contract_provenance(self):
+        result = self.resolve("""import Foundation
+struct Consumer {
+    func inspect(_ cache: NSCache<NSString, AnyObject>, key: String) {
+        _ = cache.object(forKey: key as NSString) as? Data
+    }
+}
+""")
+        inspection = next(
+            item for item in result.inspections
+            if item.inspection.operand == "cache.object(forKey: key as NSString)"
+        )
+        self.assertTrue(inspection.verified, inspection.limitations)
+        self.assertEqual(inspection.value.ownership, "external")
+        self.assertEqual(inspection.contract.ownership, "external")
+        self.assertEqual(inspection.destination.ownership, "external")
+        self.assertNotEqual(
+            inspection.value.resolution.symbol_id,
+            inspection.contract.resolution.symbol_id,
+        )
+        self.assertEqual(result.limitations, [])
+
+    def test_owned_method_result_resolves_its_return_contract_not_the_receiver(self):
+        result = self.resolve("""protocol Service {}
+struct Concrete: Service {}
+struct Provider {
+    func make() -> any Service { Concrete() }
+}
+struct Consumer {
+    func inspect(_ provider: Provider) {
+        _ = provider.make() as? Concrete
+    }
+}
+""")
+        inspection = result.inspections[0]
+        self.assertTrue(inspection.verified, inspection.limitations)
+        self.assertEqual(inspection.value.ownership, "developer")
+        self.assertEqual(inspection.contract.ownership, "developer")
+        self.assertEqual(inspection.destination.ownership, "developer")
+        self.assertIn("Service", inspection.contract.resolution.symbol_id)
+        self.assertNotEqual(
+            inspection.value.resolution.symbol_id,
+            inspection.contract.resolution.symbol_id,
+        )
+
+    def test_sdk_generic_method_can_return_a_project_owned_contract(self):
+        result = self.resolve("""import Foundation
+class Service {}
+class Concrete: Service {}
+struct Consumer {
+    func inspect(_ cache: NSCache<NSString, Service>, key: String) {
+        _ = cache.object(forKey: key as NSString) as? Concrete
+    }
+}
+""")
+        inspection = next(
+            item for item in result.inspections
+            if item.inspection.operand == "cache.object(forKey: key as NSString)"
+        )
+        self.assertTrue(inspection.verified, inspection.limitations)
+        self.assertEqual(inspection.value.ownership, "external")
+        self.assertEqual(inspection.contract.ownership, "developer")
+        self.assertEqual(inspection.destination.ownership, "developer")
+        self.assertIn("Service", inspection.contract.resolution.symbol_id)
+        self.assertEqual(inspection.contract.declaration_path, self.path)
+
+    def test_overloaded_call_uses_the_selected_return_contract(self):
+        result = self.resolve("""protocol Service {}
+struct Concrete: Service {}
+struct Provider {
+    func make(_ value: Int) -> any Service { Concrete() }
+    func make(_ value: String) -> String { value }
+}
+struct Consumer {
+    func inspect(_ provider: Provider) {
+        _ = provider.make(1) as? Concrete
+    }
+}
+""")
+        inspection = result.inspections[0]
+        self.assertTrue(inspection.verified, inspection.limitations)
+        self.assertEqual(inspection.contract.ownership, "developer")
+        self.assertIn("Service", inspection.contract.resolution.symbol_id)
+
     def test_unicode_offsets_preserve_the_inspected_binding(self):
         result = self.resolve("""protocol Service {}
 struct Concrete: Service {}

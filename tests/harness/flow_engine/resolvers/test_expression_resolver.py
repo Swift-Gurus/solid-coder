@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
@@ -40,6 +41,12 @@ class TestExpressionResolver(unittest.TestCase):
             status="in_progress",
         )
         error_factory = InterpolationErrorFactory()
+        nested_values = NestedPathResolver(
+            component_accessor=NestedComponentAccessor(
+                attribute_reader=BuiltinAttributeReader()
+            ),
+            error_factory=error_factory,
+        )
         self.sut = ExpressionResolver(
             step_output_resolver=StepOutputExpressionResolver(
                 reference_parser=StepOutputReferenceParser(),
@@ -47,13 +54,9 @@ class TestExpressionResolver(unittest.TestCase):
                     error_factory
                 ),
                 error_factory=error_factory,
+                nested_value_resolver=nested_values,
             ),
-            nested_value_resolver=NestedPathResolver(
-                component_accessor=NestedComponentAccessor(
-                    attribute_reader=BuiltinAttributeReader()
-                ),
-                error_factory=error_factory,
-            ),
+            nested_value_resolver=nested_values,
             error_factory=error_factory,
         )
 
@@ -74,6 +77,39 @@ class TestExpressionResolver(unittest.TestCase):
                 "params.file_path",
                 self.context_builder.build({}, self.run_state),
             )
+
+    def test_resolves_nested_fields_of_a_named_step_output(self):
+        state = replace(self.run_state, completed={
+            "review.prepare": {
+                "review_file": {
+                    "applicability": {"file_extension": ".swift", "tags": ["unit-test"]},
+                    "optional": None,
+                },
+            },
+        })
+        context = self.context_builder.build({}, state)
+
+        for path, expected in [
+            ("applicability.file_extension", ".swift"),
+            ("applicability.tags", ["unit-test"]),
+            ("optional", None),
+        ]:
+            with self.subTest(path=path):
+                self.assertEqual(
+                    self.sut.evaluate(
+                        f"steps.review.prepare.outputs.review_file.{path}", context,
+                    ),
+                    expected,
+                )
+
+    def test_missing_nested_output_field_reports_the_complete_reference(self):
+        state = replace(self.run_state, completed={"prepare": {"review_file": {}}})
+        expression = "steps.prepare.outputs.review_file.applicability.tags"
+
+        with self.assertRaises(InterpolationError) as raised:
+            self.sut.evaluate(expression, self.context_builder.build({}, state))
+
+        self.assertIn(expression, str(raised.exception))
 
 
 if __name__ == "__main__":

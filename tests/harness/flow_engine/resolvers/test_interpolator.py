@@ -37,6 +37,12 @@ class TestInterpolator(unittest.TestCase):
 
     def setUp(self):
         error_factory = InterpolationErrorFactory()
+        nested_values = NestedPathResolver(
+            component_accessor=NestedComponentAccessor(
+                attribute_reader=BuiltinAttributeReader()
+            ),
+            error_factory=error_factory,
+        )
         expression_resolver = ExpressionResolver(
             step_output_resolver=StepOutputExpressionResolver(
                 reference_parser=StepOutputReferenceParser(),
@@ -44,13 +50,9 @@ class TestInterpolator(unittest.TestCase):
                     error_factory
                 ),
                 error_factory=error_factory,
+                nested_value_resolver=nested_values,
             ),
-            nested_value_resolver=NestedPathResolver(
-                component_accessor=NestedComponentAccessor(
-                    attribute_reader=BuiltinAttributeReader()
-                ),
-                error_factory=error_factory,
-            ),
+            nested_value_resolver=nested_values,
             error_factory=error_factory,
         )
         self.interp = Interpolator(

@@ -33,6 +33,7 @@ from llm_config import LlmConfig  # noqa: E402
 from model_profile_loader import ModelProfileLoader  # noqa: E402
 from review.normalized_review_input import NormalizedReviewInput  # noqa: E402
 from review_comparison_source_project import ReviewComparisonSourceProject  # noqa: E402
+from source.analysis.provenance.resolved_type_inspections import ResolvedTypeInspections  # noqa: E402
 
 
 """
@@ -189,6 +190,23 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
                 submitted_this_turn += 1
                 largest_submission = max(largest_submission, submitted_this_turn)
         self.assertGreater(largest_submission, 1, "No combined model submission was accepted")
+        inspected = [
+            ResolvedTypeInspections.model_validate(event.outputs)
+            for event in events
+            if event.event == "step_completed" and event.local_step_id == "prepare_type_inspections"
+        ]
+        self.assertTrue(inspected, "The gate did not run semantic type-inspection preparation")
+        for prepared_inspections in inspected:
+            self.assertEqual(prepared_inspections.limitations, [])
+        cache_calls = [
+            inspection for prepared_inspections in inspected
+            for inspection in prepared_inspections.inspections
+            if inspection.inspection.operand == "cache.object(forKey: key as NSString)"
+        ]
+        self.assertEqual(len(cache_calls), 1)
+        self.assertTrue(cache_calls[0].verified)
+        self.assertEqual(cache_calls[0].contract.ownership, "external")
+        self.assertNotEqual(cache_calls[0].value.resolution.symbol_id, cache_calls[0].contract.resolution.symbol_id)
 
     def _assert_results(self, run_directory: Path, denial: str) -> None:
         review_directory = run_directory / "results" / "review"
@@ -216,3 +234,12 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
         self.assertEqual(fatal_metrics[0].value, 1)
         self.assertEqual(fatal_metrics[0].severity, "SEVERE")
         self.assertIn("LSP-3", denial)
+        lsp_results = [
+            rule for rule in result.rule_results
+            if rule.workflow_id == "lsp" and rule.provenance.source_index == 1
+        ]
+        self.assertEqual(len(lsp_results), 1)
+        self.assertNotIn("LSP-1", [metric.metric_id for metric in lsp_results[0].unavailable_metrics])
+        type_check_metrics = [metric for metric in lsp_results[0].metrics if metric.metric_id == "LSP-1"]
+        self.assertEqual(len(type_check_metrics), 1)
+        self.assertEqual(type_check_metrics[0].observation_id, "value")

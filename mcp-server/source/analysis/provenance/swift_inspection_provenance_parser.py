@@ -4,6 +4,8 @@ from pathlib import Path
 
 from tree_sitter import Node, Tree
 
+from source.analysis.provenance.native.source_call_reference import SourceCallReference
+from source.analysis.provenance.semantic_symbol_kind import SemanticSymbolKind
 from source.analysis.provenance.source_declaration_ownership_resolver import SourceSymbolOwnershipResolving
 from source.analysis.provenance.source_symbol_ownership import SourceSymbolOwnership
 from source.analysis.provenance.source_symbol_provenance import SourceSymbolResolution
@@ -28,6 +30,7 @@ class SwiftInspectionProvenanceParser(SourceSyntaxParsing[SourceTypeInspection, 
         tree: Tree,
         document: SemanticSymbolLookingUp,
         positions: SourceSyntaxParsing[Node, int | None],
+        value_positions: SourceSyntaxParsing[Node, int | None],
         values: SourceSyntaxParsing[list[SourceKitSymbol], SourceSymbolResolution],
         contracts: SourceSyntaxParsing[list[SourceKitSymbol], SourceSymbolResolution],
         types: SourceSyntaxParsing[list[SourceKitSymbol], SourceSymbolResolution],
@@ -37,6 +40,7 @@ class SwiftInspectionProvenanceParser(SourceSyntaxParsing[SourceTypeInspection, 
         self._tree = tree
         self._document = document
         self._positions = positions
+        self._value_positions = value_positions
         self._values = values
         self._contracts = contracts
         self._types = types
@@ -44,15 +48,21 @@ class SwiftInspectionProvenanceParser(SourceSyntaxParsing[SourceTypeInspection, 
         self._project_root = project_root
 
     def parse(self, source: SourceTypeInspection) -> SourceTypeInspectionProvenance:
-        value_evidence: SourceSymbolResolution = SourceUnresolvedSymbol(reason="The inspected expression has no supported identifier binding.")
+        value_evidence: SourceSymbolResolution = SourceUnresolvedSymbol(reason="The inspected expression has no supported semantic binding.")
         contract_evidence = value_evidence
         destination_evidence: SourceSymbolResolution = SourceUnresolvedSymbol(reason="This inspection has no supported explicit destination type.")
         if source.operand_range is not None:
             operand = self._tree.root_node.descendant_for_byte_range(source.operand_range.start, source.operand_range.end)
-            if operand is not None and operand.type == "simple_identifier":
-                symbols = self._document.lookup(source.operand_range.start)
+            position = self._value_positions.parse(operand) if operand is not None else None
+            if position is not None:
+                symbols = self._document.lookup(position)
                 value_evidence = self._values.parse(symbols)
-                contract_evidence = self._contracts.parse(symbols)
+                if operand.type == "simple_identifier":
+                    contract_evidence = self._contracts.parse(symbols)
+                elif len(symbols) == 1 and symbols[0].symbol_id and symbols[0].kind in {SemanticSymbolKind.METHOD, SemanticSymbolKind.FUNCTION}:
+                    contract_evidence = self._document.return_type(SourceCallReference(offset=position, symbol_id=symbols[0].symbol_id))
+                else:
+                    contract_evidence = SourceUnresolvedSymbol(reason="The call has no unambiguous supported function or method binding.")
         if source.destination_range is not None:
             destination = self._tree.root_node.descendant_for_byte_range(source.destination_range.start, source.destination_range.end)
             position = self._positions.parse(destination) if destination is not None else None

@@ -173,6 +173,26 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
         self.assertEqual(status.status, "in_progress")
         self.assertTrue(status.pending)
 
+    def test_skips_test_rule_for_a_non_test_buffer(self) -> None:
+        target = self.project_root / "Sources" / "Profile.swift"
+        started = self.flow.flow_start(
+            "solid-gate-on-write",
+            params={
+                "target": {
+                    "kind": "text",
+                    "text": "struct Profile { let name: String }\n",
+                    "virtual_path": str(target),
+                },
+                "context_sources": [],
+            },
+            isolated=True,
+        )
+
+        self.assertIsNone(started.error, started.error)
+        self.assertEqual(started.steps, [])
+        self.assertEqual(started.status, "done")
+        self.assertFalse(target.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

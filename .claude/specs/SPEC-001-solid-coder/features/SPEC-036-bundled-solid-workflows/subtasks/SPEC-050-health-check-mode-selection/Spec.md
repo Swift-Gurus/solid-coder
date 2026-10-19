@@ -92,6 +92,32 @@ flag changed, then preserved evidence identifies both actual checker paths and
 their model calls. Compare existing timing and token evidence; do not claim
 accuracy parity merely because both processes completed.
 
+Given a proposed comparison, when its two effective rule sets are checked, then
+the experiment fixes the same reviewed target, selected principles, source and
+candidate corpus, and model profile. It records each mode's effective metric
+meanings and units, applicability, detection instructions, exceptions, and
+severity thresholds; matching principle IDs do not imply identical semantics.
+Given different rule semantics, when the results are compared, then both modes
+retain their actual rules and the report presents outcomes, tokens, and time
+alongside those differences. It does not rewrite legacy rules, require semantic
+alignment, or attribute policy differences solely to the execution engine.
+Given a comparison run, when both modes execute, then the audit
+preserves the actual legacy prompt and workflow instructions, effective scoring
+policy, rule/source hashes, exact source and candidate corpus, and locked model
+profile. Hashes identify the evidence; they do not prove semantic equivalence.
+
+### AC-6: Nested Applicability References
+
+Given a file-scoped rule whose applicability reads fields of a prepared named
+output inside a nested workflow, when those fields match, then the rule is
+scheduled once and remains pending through replay until its outputs are supplied.
+Given a nonmatching buffer, when the same rule is evaluated, then it is skipped
+without creating the prospective destination.
+Given a nested step-output expression, when its field exists, then the engine
+resolves its value, including an explicit null; a missing field retains the full
+reference in the diagnostic and remains absent for condition evaluation.
+Whole-output bindings and collection-source declaration syntax remain unchanged.
+
 ## Tests and Execution Plan
 
 1. Write failing configuration tests for default, both modes, invalid values,
@@ -105,9 +131,36 @@ accuracy parity merely because both processes completed.
 5. Exercise both modes through the existing hook integration infrastructure with
    new files, edits, severe/clean results, and multi-file atomic denial.
 6. Run all non-live tests, then the existing Codex/Claude flow-engine live tests.
-7. Run a controlled live A/B smoke through the actual hook using the same source
+7. Fix the comparison's common input, selected principles, and model profile,
+   and record differences in metric sets, detection instructions, exceptions,
+   applicability, and thresholds. Preserve both modes' actual rules.
+8. Run a controlled live A/B smoke through the actual hook using the same source
    fixture and locked model profile. Reuse existing session/fixture/evidence
    support; no alternate benchmark prompts or distributed test workflows.
+
+### Nested Applicability Tests
+
+- When a new Swift test buffer matches the file-scoped test rule through prepared
+  output fields, starting the real bundled gate schedules its aggregate review
+  once, and replay reports pending work rather than completion.
+- When a production buffer lacks test tags, starting the same filtered gate skips
+  the test rule and leaves its destination absent.
+- When a qualified step output contains nested fields or an explicit null,
+  expression resolution returns those values; a missing field reports its full
+  authored reference.
+
+### As-Is Comparison Scope — 2026-10-19
+
+The existing legacy comparison asserts principle IDs and prompt markers, which
+does not establish rule equivalence. For example, legacy ISP retains conformer
+coverage and a two-usage-group threshold; the bundled ISP workflow measures
+definition/extension width, three independent responsibilities, and two
+stakeholders. These are different review policies. The agreed experiment keeps
+them unchanged and compares actual results, tokens, and time on the same input
+and selected principles. Shared metrics are compared only where their meanings
+match; changed or mode-specific metrics are reported separately rather than
+treated as equivalent accuracy measurements. The existing real-hook workflow
+smoke is execution evidence, not this pending A/B benchmark.
 
 ### Live Workflow Gate Checkpoint
 
@@ -149,6 +202,87 @@ or the timing/token comparison required by the broader plan.
 - SPEC-049 governs object factories, cohesive packages, and retained contracts.
 
 ## Verification
+
+### Approved timeout retry — 2026-10-19
+
+- With user approval, `tests/models/claude.toml` now explicitly sets
+  `timeout = 1000`, matching the existing Codex test profile. This changes the
+  test profile only, not the production timeout default, model, prompts, rule
+  semantics, or concurrency. The earlier 300-second failure remains recorded
+  below; increasing the limit is not a review-speed optimization.
+- All non-live test roots passed again before the live retry: 2,877 passed,
+  4 skipped, and 208 subtests passed. The focused model-profile checks also
+  passed: 18 tests and 2 subtests.
+- The single Claude real-hook retry passed in 420.94 seconds. The hook audit
+  spans 418 seconds; its workflow events span 405.944 seconds and end in
+  `run_completed`, with 19 recorded turns, 102 completed internal steps, and
+  37 scored metrics. Run ID: `6f13967375b14d848ea17e35c4f11a46`.
+- The hook returned nine SEVERE findings rather than an infrastructure failure.
+  LSP-1 remained explicitly unavailable because two inspected expressions lack
+  supported identifier bindings. Completion therefore does not establish full
+  metric availability or accuracy parity.
+- The Claude transcript contains four malformed-JSON tool-input errors that
+  were corrected before completion. No failed-attempt events were recorded;
+  those events alone do not account for submission-retry overhead. Transcript:
+  `~/.claude/projects/-private-var-folders-42-g1w-3hns2js4clrz6h42v0600000gp-T-solid-coder-review-comparison-i64wq9n8/1a8c7616-ca8f-49bf-a2cc-6677dba391e9.jsonl`.
+- Preserved artifacts:
+  `.solid-coder/.artifacts/test/claude/e2e/gate/solid-gate-on-write/20261019T211220Z-903a90af/`.
+  Its `canonical-audit-path.txt` identifies the original user-level audit.
+- Parallel rule sessions remain an experiment to evaluate, not enabled behavior.
+  Reuse the existing bounded session fan-out where appropriate and verify its
+  actual MCP integration, including the open SPEC-048 delegate-capability issue,
+  before comparing isolated rule sessions with the sequential baseline. Hold
+  input, rules, and model fixed; compare wall time, summed tokens, findings,
+  completion, and retry overhead. The native legacy/workflow A/B comparison is
+  still pending.
+
+### Nested applicability fix and live recheck — 2026-10-19
+
+- Reproduced both filtered test-code gate failures before changing production
+  code. The prepared file had the correct test tags, but the expression resolver
+  rejected fields below a named step output, so applicability skipped the rule
+  and replay incorrectly reported completion.
+- Nested output expressions now reuse the shared typed step-output parser and
+  nested-value resolver. Both existing gate cases pass. Additional tests cover
+  nested fields, explicit null, full-reference missing-field diagnostics, and
+  skipping a non-test buffer without creating its destination. No rule YAML,
+  detection instructions, thresholds, or model profiles changed.
+- All non-live test roots completed: 2,877 passed, 4 skipped, and 208 subtests
+  passed, with no failures. This supersedes the unresolved applicability defect
+  recorded in the earlier real-hook checkpoint below.
+- The Codex real-hook live test passed using `tests/models/codex.toml`
+  (`gpt-5.6-terra`, 1,000-second timeout). Run ID:
+  `5fafe4c858044f3d9df1c327245ffe55`; artifact copy:
+  `.solid-coder/.artifacts/test/codex/e2e/gate/solid-gate-on-write/20261019T195917Z-bb3c9c7d/`.
+- The following Claude attempt was interrupted by the desktop/session crash
+  after 81 completed steps, without a terminal workflow result. It is not a
+  pass or a completed timing sample. Its preserved run ID is
+  `0b09218cc1764045b19cb32404a42538`; artifact directory:
+  `.solid-coder/.artifacts/test/claude/e2e/gate/solid-gate-on-write/20261019T200342Z-6aea3486/`.
+- Rerunning only the interrupted Claude test produced a genuine failure in
+  304.44 seconds: the child session timed out after 300 seconds with LSP type
+  inspection and relationship classification still pending. The hook denied
+  the write for infrastructure failure, which the test correctly rejected.
+  Run ID: `5ffe0368f6d74f65bcc3bc7dbf20f3bd`; artifact copy:
+  `.solid-coder/.artifacts/test/claude/e2e/gate/solid-gate-on-write/20261019T201353Z-0d3b479c/`.
+- At this checkpoint the live test used `tests/models/claude.toml` (`claude-opus-4-5`), whose
+  omitted timeout resolves to the production default of 300 seconds. The
+  separate `tests/harness/integration_tests/models/opus.toml` declares 600
+  seconds but was not the profile used here. Neither profile had been changed, and
+  the failed run is not counted as a successful smoke.
+- The failed Claude transcript contains 19 flow-continuation calls and two file
+  reads. The observed continuation-call round trips total 5.482 seconds (maximum
+  0.648 seconds), not the full 300-second session duration. Two submissions used
+  output names (`evidence` and `assessment`) where a ready step identity was
+  required, and one call contained malformed JSON. Claude corrected all three
+  and continued. These errors are visible in the transcript even though the
+  workflow event log contains no failed-attempt events. Comparison accounting
+  must inspect tool responses as well as workflow events for retry overhead.
+  The original transcript is
+  `~/.claude/projects/-private-var-folders-42-g1w-3hns2js4clrz6h42v0600000gp-T-solid-coder-review-comparison-tma2xla7/f88563bf-8c54-4078-9080-ce31fa3bbcaf.jsonl`.
+- Each artifact directory contains `canonical-audit-path.txt` identifying its
+  original user-level audit. The same-hook legacy/workflow result, time, and
+  token comparison remains pending; preserve both modes' native rules for it.
 
 ### Real-hook live checkpoint — 2026-10-19
 

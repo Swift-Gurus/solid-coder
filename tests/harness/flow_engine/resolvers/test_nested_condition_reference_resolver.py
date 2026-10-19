@@ -48,6 +48,7 @@ class TestNestedConditionReferenceResolver(unittest.TestCase):
                     error_factory
                 ),
                 error_factory=error_factory,
+                nested_value_resolver=nested_values,
             ),
             nested_value_resolver=nested_values,
             error_factory=error_factory,

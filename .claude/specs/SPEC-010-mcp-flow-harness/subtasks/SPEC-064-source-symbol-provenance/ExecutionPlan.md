@@ -106,11 +106,15 @@ instance. No LSP-specific behavior was added to the engine planner.
 ## Supported semantic scope
 
 Swift explicit parameter/property annotations and simple identifier operands
-resolve through SourceKit symbol evidence. Inferred values, unsupported aliases,
-composite types, implicit pattern subjects, complex operands, missing tooling
-and missing semantic context remain explicit unavailable outcomes. References
-to prospective sibling snapshots not opened by this session also remain
-unverified; stale on-disk declarations cannot certify pending buffers.
+resolve through SourceKit symbol evidence. Method/function call operands now
+also resolve when the installed compiler supplies one supported substituted
+return-type reference and independently confirms its identity. Callee ownership
+does not substitute for return-contract ownership. Inferred identifier types,
+unsupported aliases, composite or opaque returns, implicit pattern subjects,
+other unsupported expressions, missing tooling and missing semantic context
+remain explicit unavailable outcomes. References to prospective sibling snapshots
+not opened by this session also remain unverified; stale on-disk declarations
+cannot certify pending buffers.
 
 Only compact verified expressions, line numbers and role ownership reach the
 classifier. Full provenance remains in the operation event. Missing model
@@ -262,3 +266,103 @@ Apple-build/skill scripts 288. MCP and flow-engine semantic integration checks
 ran with approved access to the installed SourceKit service. The initial
 sandboxed flow run could not complete semantic queries; those additional
 failures disappeared with SourceKit access. No failing assertion was weakened.
+
+## Method-call return contract fix — 2026-10-19
+
+The real gate's `cache.object(forKey: key as NSString) as? Data` inspection was
+unavailable because the adapter only resolved identifier operands. The installed
+LSP resolves the called method, but its type-definition response does not resolve
+the call's returned type. The approved fix extends semantic binding, not LSP's
+rule semantics or the definition of external ownership.
+
+- [x] Add failing semantic tests for the exact SDK cache expression and a
+  project-owned method returning an interface; keep the target unwritten.
+- [x] Verify installed native cursor requests expose a substituted return-type
+  semantic reference, and that querying its identity resolves independent origin.
+- [x] Reuse the active LSP's compiler settings and same-toolchain native library
+  in a lazy isolated worker, with existing framed transport and bounded cleanup.
+- [x] Keep application data typed and reuse the shared syntax-parser contract,
+  symbol decoder and ownership resolver. Do not add a new model-facing tool.
+- [x] Confirm exact callee and returned-type identities before accepting evidence.
+  Retain unavailable outcomes for unsupported shapes and provider failures.
+- [x] Test SDK-generic methods returning owned types, overload selection,
+  one shared native worker, no worker for identifiers, and cleanup on failure.
+- [x] Test the real bundled LSP operation before aggregate classification,
+  scoring after submission and replay without repeating semantic analysis.
+- [x] Strengthen the real write-gate test to require verified cache-call evidence
+  and measured LSP-1, retaining its existing LSP-3 severe assertion.
+- [x] Complete all non-live suites and locked Codex/Claude LSP and write-gate checks.
+
+Focused validation: semantic provenance **9 passed**; document lifecycle
+**5 passed**; return-reference decoding **4 passed, 10 subtests**; native transport
+**3 passed**; return-contract selection **6 passed**; call-position selection
+**2 passed, 10 subtests**; real LSP integration **11 passed, 2 subtests**.
+The first semantic cases and new adapter tests failed before implementation.
+No source fixture, workflow prompt, scoring threshold or expected rule score changed.
+
+Final non-live suite after the test-evidence correction below:
+
+| Suite | Passed | Subtests | Skipped |
+|---|---:|---:|---:|
+| `tests/mcp-server --ignore-glob='*_live.py'` | 1,236 | 115 | 4 |
+| `tests/harness/flow_engine --ignore-glob='*_live.py'` | 942 | 45 | 0 |
+| `tests/harness/tests tests/hooks/stop tests/mcp/hook_dispatch` | 181 | 2 | 0 |
+| `scripts/tests` | 253 | 66 | 0 |
+| `mcp-server/build/apple/tests skills` | 288 | 0 | 0 |
+| Total | **2,900** | **228** | **4** |
+
+Each group ran with `/opt/homebrew/bin/python3.12 -m pytest ... -q`.
+The four skips are existing abstract fixtures. SourceKit integration tests ran
+with approved access to the installed toolchain, not substituted mock responses.
+
+The implementation deliberately does not use hover prose, type-name allowlists
+or called-method ownership as evidence for return ownership. Missing native
+tooling/settings remain explicit unavailable reasons; no packages are installed,
+projects built or global indexes requested. Structured compiler XML is decoded
+only at the native boundary; unsupported composite and opaque types stay unknown.
+
+### Live validation and test-evidence correction
+
+The ten-case run exercised `test_lsp_validation_live.py`,
+`test_lsp_type_inspection_live.py`, `test_lsp_repository_relationship_live.py`,
+`test_workflow_catalog_e2e_live.py` and `test_solid_gate_on_write_live.py`, with
+locked Codex Terra and Claude Opus profiles. Initial result: **9 passed, 1 failed
+in 875.50 seconds**. The remaining failure was not ignored:
+
+- Codex's relationship run returned the locked 0/1/0/0 metrics, performed the
+  selected declaration reading and then classified the new guard. It had no
+  failed or unanswered tool calls and no failed workflow attempts.
+- The shared test incorrectly prohibited the reviewed source in every tool
+  response, including an explicitly requested file read of the same file.
+- The existing transcript reader now correlates `flow_start`/`flow_next` outputs
+  separately. The no-source-repetition assertion applies to those responses;
+  instructed source reads remain permitted. Two new tests first failed and then
+  passed, proving both allowed reads and detection of source repeated by MCP.
+- Rechecking the saved run passed. A fresh Codex relationship live rerun also
+  passed in **59.36 seconds**, with the same fixture, scores and step assertions.
+  All ten live cases therefore passed across these runs. Production workflows
+  and metric expectations were not changed for the test correction.
+
+Both real write gates completed and denied the known violations. Their cache-call
+inspection resolved the called method `c:objc(cs)NSCache(im)objectForKey:` and its
+return contract `s:s9AnyObjecta` as distinct semantic identities. No inspection
+limitations remained; LSP-1 was measured as zero and LSP-3 remained one SEVERE
+violation. Neither gate event log recorded a failed step attempt. The separate
+aggregate inspection fixture retained its deliberately unresolved binding and
+unavailable LSP-1 coverage on both models.
+
+Canonical user-root gate runs:
+
+- Codex: `/Users/crowea/.solid-coder/-private-var-folders-42-g1w_3hns2js4clrz6h42v0600000gp-T-solid-coder-review-comparison-xha0gydg/runs/subagents/78cd79bd0da2443c836bc2088d404a42/`
+- Claude: `/Users/crowea/.solid-coder/-private-var-folders-42-g1w_3hns2js4clrz6h42v0600000gp-T-solid-coder-review-comparison-4rxdsag0/runs/subagents/dbf9ce6386be49a3bd1e1034f018d20f/`
+
+Preserved test copies (including hook input/output and model profile):
+
+- Codex: `.solid-coder/.artifacts/test/codex/e2e/gate/solid-gate-on-write/20261019T220848Z-a4305a5b/`
+- Claude: `.solid-coder/.artifacts/test/claude/e2e/gate/solid-gate-on-write/20261019T221053Z-3ab3ab1b/`
+- Original Codex relationship evidence: `.solid-coder/.artifacts/test/codex/e2e/review/lsp-relationships/20261019T220541Z-f9a36395/`
+- Successful fresh rerun: `.solid-coder/.artifacts/test/codex/e2e/review/lsp-relationships/20261019T221550Z-4a231c79/`
+
+The older failing checkpoints above are historical, superseded by these results.
+This fix does not address the separate malformed-JavaScript submission issue or
+claim broader semantic support beyond the explicit return-contract scope.

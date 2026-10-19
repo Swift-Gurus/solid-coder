@@ -27,4 +27,4 @@ class CodexProtocolEvidence(BaseModel):
     failed_calls: list[CodexToolOutputEvent]
     unanswered_call_ids: list[str]
     user_prompts: list[str] = Field(default_factory=list, exclude=True)
-    tool_outputs: list[str] = Field(default_factory=list, exclude=True)
+    flow_outputs: list[str] = Field(default_factory=list, exclude=True)

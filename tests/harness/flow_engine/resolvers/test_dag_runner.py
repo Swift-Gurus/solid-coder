@@ -63,18 +63,20 @@ class UnexpectedOperationInputsResolver:
 
 def _make_runner() -> DAGRunner:
     error_factory = InterpolationErrorFactory()
+    nested_values = NestedPathResolver(
+        component_accessor=NestedComponentAccessor(
+            attribute_reader=BuiltinAttributeReader()
+        ),
+        error_factory=error_factory,
+    )
     unfiltered_resolver = ExpressionResolver(
         step_output_resolver=StepOutputExpressionResolver(
             reference_parser=StepOutputReferenceParser(),
             reference_resolver=StepOutputReferenceResolver[object](error_factory),
             error_factory=error_factory,
+            nested_value_resolver=nested_values,
         ),
-        nested_value_resolver=NestedPathResolver(
-            component_accessor=NestedComponentAccessor(
-                attribute_reader=BuiltinAttributeReader()
-            ),
-            error_factory=error_factory,
-        ),
+        nested_value_resolver=nested_values,
         error_factory=error_factory,
     )
     resolver = FilteredExpressionEvaluator(

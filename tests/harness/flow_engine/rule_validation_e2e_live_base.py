@@ -279,7 +279,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         self.assertFalse(evidence.unanswered_call_ids, "Tool calls have no recorded responses")
         source = self.FIXTURE.read_text(encoding="utf-8")
         self.assertEqual("\n".join(evidence.user_prompts).count(source), 1)
-        self.assertNotIn(source, "\n".join(evidence.tool_outputs))
+        self.assertNotIn(source, "\n".join(evidence.flow_outputs))
         self.assertNotIn(
             "Show the following output to the user exactly as-is",
             transcripts[0].read_text(encoding="utf-8"),

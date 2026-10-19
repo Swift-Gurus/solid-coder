@@ -225,6 +225,29 @@ steps:
             self.assertEqual(self.inspections(), before)
             self.assertEqual(lookup.call_count, 1)
 
+    def test_aggregate_scores_sdk_call_classification_with_verified_return_contract(self):
+        with patch.object(SourceTypeInspectionOperation, "execute", autospec=True, side_effect=SourceTypeInspectionOperation.execute) as lookup:
+            ready = self.start(
+                'let cache = NSCache<NSString, AnyObject>(); '
+                '_ = cache.object(forKey: NSString(string: "key")) as? Data',
+                aggregate=True,
+            )
+            self.assertEqual(len(self.classifiers(ready)), 1)
+            before = self.inspections()
+            self.assertEqual(before.limitations, [])
+            self.assertTrue(before.inspections[0].verified)
+            self.assertEqual(before.inspections[0].contract.ownership, "external")
+            self.assertNotEqual(
+                before.inspections[0].value.resolution.symbol_id,
+                before.inspections[0].contract.resolution.symbol_id,
+            )
+            result = self.finish(ready, "REQUIRED_EXTERNAL_NARROWING")
+            metric = next(metric for metric in result.metrics if metric.metric_id == "LSP-1")
+            self.assertEqual(metric.value, 0)
+            self.assertEqual(result.unavailable_metrics, [])
+            self.assertEqual(self.inspections(), before)
+            self.assertEqual(lookup.call_count, 1)
+
     def test_real_aggregate_bundle_keeps_two_units_classifications_separate(self):
         BundledReviewRulePolicyWriter(plugin_root=ROOT, project_root=self.root).write_only("lsp")
         self.driver.workflow_path = ROOT / "workflows/review/bundles/solid-file-review-aggregate/workflow.yaml"
