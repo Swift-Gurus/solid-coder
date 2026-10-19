@@ -117,13 +117,13 @@ class TestLogHelpers(unittest.TestCase):
 
 class TestDetectBuildSystemTool(unittest.TestCase):
     def test_returns_system_and_root(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory(prefix="tq-project-") as tmp:
             Path(tmp, "Tuist.swift").write_text("")
             result = mod.detect_build_system(project_path=tmp)
-            self.assertIn("tuist", result)
-            self.assertIn(str(Path(tmp).resolve()), result)
-            self.assertNotIn("tq", result)
-            self.assertNotIn("example_command", result)
+            self.assertEqual(
+                result,
+                f"system: tuist\nroot: {Path(tmp).resolve()}",
+            )
 
     def test_no_client_paths_exposed(self):
         with tempfile.TemporaryDirectory() as tmp:
