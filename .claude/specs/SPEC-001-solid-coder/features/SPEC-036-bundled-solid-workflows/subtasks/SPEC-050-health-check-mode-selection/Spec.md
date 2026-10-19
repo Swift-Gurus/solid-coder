@@ -109,6 +109,35 @@ accuracy parity merely because both processes completed.
    fixture and locked model profile. Reuse existing session/fixture/evidence
    support; no alternate benchmark prompts or distributed test workflows.
 
+### Live Workflow Gate Checkpoint
+
+This checkpoint tests workflow mode independently of the pending A/B comparison.
+It calls the production pre-write hook with a fixed Write event; the hook launches
+the configured model using its production prompt and MCP configuration. It does
+not test an outer host's dispatch of a Write tool or multi-file apply_patch.
+
+- When the fixed comparison source is proposed at an absent production-source
+  path, running the hook with each locked Codex and Claude profile reviews the
+  exact buffer without creating the destination.
+- When workflow mode is selected in the isolated project's configuration, the
+  audit records that mode, backend, model, source hash, and one isolated
+  `solid-gate-on-write` run; no legacy fallback is accepted.
+- When the model completes the review, the run contains engine-owned preparation,
+  a combined submission completing multiple model steps, all seven applicable
+  core rule results, and a terminal completion event.
+- When the known fatal required method is reviewed, the persisted LSP-3 value is
+  one with SEVERE severity, and the hook denies the write with that finding.
+- When execution fails, times out, skips review, or produces only an infrastructure
+  denial, the live test fails rather than counting the blocked write as success.
+- When the test ends, its exact input, model profile, hook stdout/stderr, and copied
+  canonical audit remain in the established backend-specific test artifact tree;
+  the original user-level project audit remains available, including on failure.
+
+The shared live entry point is
+`tests/harness/flow_engine/test_solid_gate_on_write_live.py`. This checkpoint does
+not establish clean-buffer allowance, multi-file atomicity, rule accuracy parity,
+or the timing/token comparison required by the broader plan.
+
 ## Relationships
 
 - SPEC-036 continues to default to workflow-based gate execution. This explicit
@@ -120,6 +149,30 @@ accuracy parity merely because both processes completed.
 - SPEC-049 governs object factories, cohesive packages, and retained contracts.
 
 ## Verification
+
+### Real-hook live checkpoint — 2026-10-19
+
+- The shared live gate test passed with both existing profiles: Codex
+  `gpt-5.6-terra` and Claude `claude-opus-4-5` (2 passed, 641.55 seconds total).
+  Neither profile, production prompt, nor bundled workflow was modified.
+- Both real hook executions completed `solid-gate-on-write`, accepted combined
+  model submissions, persisted the seven applicable core rules, recorded the
+  expected LSP-3 value of one with SEVERE severity, and denied the prospective
+  buffer while its destination remained absent.
+- Canonical run IDs are `15155d89c7084a6d9d1b1ee5fdb3ba14` (Codex) and
+  `743e967e67eb4d7a841df1f41f4069ac` (Claude). Test artifact copies are under
+  `.solid-coder/.artifacts/test/<backend>/e2e/gate/solid-gate-on-write/`, in
+  `20261019T135704Z-328f7632` and `20261019T140253Z-d931f3ae` respectively.
+  Each copy includes `canonical-audit-path.txt` identifying the original
+  user-level project audit directory.
+- The complete non-live check recorded 2,869 passed, 4 skipped, and 2 failures.
+  Both failures are the already-recorded filtered test-code gate cases in
+  `TestSolidGateOnWriteWorkflow`: new-buffer review and persisted-target replay.
+  The generated applicability binding into a named output's nested fields
+  remains unresolved; this live checkpoint does not close that defect.
+- This is workflow-mode execution evidence, not the pending legacy/workflow
+  accuracy or cost comparison. Clean-buffer allowance and outer-host tool
+  dispatch are outside this checkpoint.
 
 ### Implementation checkpoint
 

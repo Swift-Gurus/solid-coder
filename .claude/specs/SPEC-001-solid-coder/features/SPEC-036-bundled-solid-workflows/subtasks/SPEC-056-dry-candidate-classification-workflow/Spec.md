@@ -213,6 +213,17 @@ reasoning and evidence
 **Then** both observations remain under metric ID `DRY-2`
 **And** the existing worst-severity rule produces one normalized DRY result.
 
+#### Scenario 4.6 — Explain empty target-analysis results
+
+**Given** target analysis returns an empty duplication or missing-abstraction
+collection
+**When** the model submits the analysis
+**Then** a required assessment-level `additional_info` contains nonempty
+`reasoning` and `evidence` explaining the result using the reviewed source
+**And** missing or empty fields are rejected before dependent scoring advances
+**And** a corrected submission is persisted and the empty collection still
+scores zero.
+
 ## Technical Requirements
 
 - Term generation returns only individual semantic terms/name variants; MCP adds
@@ -228,10 +239,23 @@ reasoning and evidence
   into workflow prompts or ask the model to classify summaries as source.
 - The child-output projection is typed from the included workflow's declared
   output schema and is valid as a collection-backed metric source.
-- DRY metrics are MCP-owned collection-backed metrics. No DRY metric prompt asks
-  the model to count or choose severity.
+- DRY metrics are MCP-owned collection-backed metrics. Neither classification
+  nor exception prompts ask the model to count or choose severity; the model
+  supplies observations and MCP derives the metric values.
+- Target-pattern analysis compares methods within the reviewed unit. Repository
+  and sibling-unit comparisons use the candidate search and inspection path,
+  rather than repeating that search inside the target-pattern prompt.
+- Target-analysis assessment evidence is declared in the workflow output schema.
+  The existing engine renders that schema into the model-facing prompt; no
+  duplicate authored prompt instructions or engine-specific DRY handling are
+  added. Per-observation evidence and collection scoring remain unchanged.
 - Whole-unit DRY exceptions remain available only when every apparent finding is
   exempt; candidate/observation exceptions are filtered before metric scoring.
+- Signature-based reuse hints are deferred. Matching argument types and return
+  types must not currently broaden discovery or annotate existing candidates;
+  neither behavior nor a feature flag is introduced by this cleanup. Whether
+  wider signature matching produces useful candidates rather than noise remains
+  an open experiment; optional-type equivalence is also outside this change.
 
 ## Connects To
 
@@ -256,6 +280,14 @@ reasoning and evidence
   and nested instance isolation.
 - Metric tests for every classification, candidate exception, unique location,
   within-unit site, empty search, and worst-severity combination.
+- When the bundled DRY prompts are rendered, canonical duplication categories
+  and missing-abstraction analysis remain present, target analysis stays within
+  the supplied unit, and no prompt asks the model to calculate counts.
+- When target-analysis assessment information is missing, lacks either required
+  field, or contains an empty reasoning or evidence string, submission is
+  rejected; correction completes with the original zero scores and one persisted
+  accepted analysis containing the explanation. The rendered schema exposes the
+  required fields automatically.
 - Controlled temporary-project E2E tests with only explicit candidate files; run
   the same locked workflow through Codex and Claude and retain transcripts,
   events, search results, dispositions, reads, classifications, tokens, and time.
@@ -285,7 +317,7 @@ reasoning and evidence
 - [x] DRY-1, DRY-2, and DRY-3 are scored by MCP without model arithmetic.
 - [x] Protocol/conformer and declaration-only false positives are covered.
 - [ ] Controlled Codex and Claude fixtures produce locked auditable results.
-- [x] All non-live tests pass.
+- [ ] All non-live tests pass.
 
 ## Validation Evidence
 
@@ -304,3 +336,58 @@ reasoning and evidence
   Codex produced no first model event, while Claude exhausted API retries with
   `ENOTFOUND`. The Claude model-profile compatibility flag successfully removed
   the separate Advisor/profile startup rejection.
+
+### Prompt cleanup checkpoint — 2026-10-19
+
+- Removed model-counting instructions from target-pattern analysis and exception
+  classification. Within-unit analysis no longer repeats repository discovery.
+  Schemas, metric definitions, thresholds, candidate search, and fixture
+  expectations are unchanged. Signature-based hints remain deferred.
+- The prompt-contract test failed on the old counting instruction before the
+  cleanup; all 12 focused DRY integration tests pass afterward.
+- Current non-live suites: **2,871 passed, 4 skipped, 199 subtests passed,
+  2 failed**. The two failures are the existing new-buffer and replay cases in
+  `test_solid_gate_on_write_workflow.py`, where nested applicability bindings
+  skip expected work. SPEC-050 records that separate outstanding issue; this
+  cleanup neither changes the engine nor weakens those assertions.
+- Live DRY checks: **2 passed, 2 failed** in 298.03 seconds. Both Codex and Claude
+  passed the existing-protocol reuse scenario, including the expected `EXACT`
+  reuse and `NOT_DUPLICATE` classification. Their local artifact copies are
+  `.solid-coder/.artifacts/test/codex/e2e/review/dry-exact-protocol-reuse/20261019T143535Z-236ef961/`
+  and
+  `.solid-coder/.artifacts/test/claude/e2e/review/dry-exact-protocol-reuse/20261019T143857Z-06f9f7b8/`.
+- Codex completed the within-unit scenario with values `0 / 0 / 2 / 0`, versus
+  the locked `0 / 0 / 2 / 1`. Its `missing_abstractions` collection was empty;
+  MCP correctly counted zero. This reproduces the discrepancy tracked in
+  SPEC-061, not an established counting defect. Evidence:
+  `.solid-coder/.artifacts/test/codex/e2e/review/dry/20261019T143745Z-9babd1fb/`.
+- Claude's within-unit session made no `flow_start` call and created no run.
+  Its startup record shows the current `plugin:solid-coder:flow-engine`
+  connected alongside failed duplicate `solid-coder-flow-engine` entries.
+  Tool discovery returned the current flow tools, but the model stopped and
+  reported the failed entries instead of calling them. This is not evidence
+  that the current flow-engine connection failed. Evidence:
+  `.solid-coder/.artifacts/test/claude/e2e/review/dry/20261019T144015Z-60d4a56e/`.
+- No fixture expectations were relaxed and no repeated run was used to conceal
+  either failure. The live matrix is not fully validated.
+
+### Schema-required assessment evidence — 2026-10-19
+
+- Added required assessment-level `additional_info` to the target-analysis output
+  schema, with nonempty `reasoning` and `evidence`. Authored prompt text, engine
+  code, scoring, and locked fixture expectations were not changed in this step.
+- Focused DRY and schema-rendering checks: **20 passed, 6 subtests passed**.
+  The six cases cover absent assessment information, absent fields, empty
+  strings, correction, zero scoring, and persistence of the accepted analysis.
+- All non-live suites: **2,871 passed, 4 skipped, 205 subtests passed, 2 failed**.
+  The same two gate-binding failures noted above remain open.
+- Both live fixture runs completed and persisted the new assessment evidence.
+  Claude matched the locked `0 / 0 / 2 / 1`; Codex returned `0 / 0 / 2 / 0`, so
+  the live score assertions are **1 passed, 1 failed**. Codex now explicitly
+  describes the repeated sequence as payroll-domain calculation logic rather
+  than a separate cross-domain abstraction. The evidence gap is closed, but the
+  SPEC-061 classification disagreement is not resolved.
+- Preserved local artifacts:
+  `.solid-coder/.artifacts/test/codex/e2e/review/dry/20261019T150909Z-6f1d165c/`
+  and
+  `.solid-coder/.artifacts/test/claude/e2e/review/dry/20261019T151201Z-3ef58406/`.

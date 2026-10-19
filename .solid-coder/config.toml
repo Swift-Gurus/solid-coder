@@ -35,6 +35,7 @@ permitted_executables = ["python3", "bash", "sh"]
 #         as JSON (status, steps[], execution, attempts_remaining,
 #         rejection_reason, error). More tokens, full structured detail.
 flow_plain_text_response = true
+health_check_mode = "legacy"
 
 # ── Hook backend ──────────────────────────────────────────────────────────────
 # Controls which LLM the pre-write health-check gate uses.

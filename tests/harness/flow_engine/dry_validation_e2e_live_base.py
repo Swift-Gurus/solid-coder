@@ -101,8 +101,14 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             str(event.get("step_id", "")).endswith("classify_candidate")
             for event in completions
         ))
-        self.assertTrue(target_analysis["outputs"]["within_unit_duplicates"])
-        self.assertTrue(target_analysis["outputs"]["missing_abstractions"])
+        self.assertEqual(
+            bool(target_analysis["outputs"]["within_unit_duplicates"]),
+            self.EXPECTED_VALUES[2] > 0,
+        )
+        self.assertEqual(
+            bool(target_analysis["outputs"]["missing_abstractions"]),
+            self.EXPECTED_VALUES[3] > 0,
+        )
         self.assertEqual(searched["session_id"], "engine")
         self.assertEqual(validated["session_id"], "engine")
         for step_id in self.EXPECTED_STEP_IDS:
@@ -110,6 +116,30 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
                 self._completion(completions, step_id)["session_id"],
                 "engine",
             )
+
+    def test_rounding_variation_exposes_shared_calculation(self) -> None:
+        self._assert_fixture_scenario(
+            _FIXTURE.with_name("fixture-3.swift"),
+            "dry-rounding-variation",
+        )
+
+    def test_extracted_helper_avoids_duplicate_findings(self) -> None:
+        self.EXPECTED_VALUES = [0, 0, 0, 0]
+        self.EXPECTED_METRIC_SEVERITIES = ["COMPLIANT"] * 4
+        self.EXPECTED_FINAL_SEVERITY = "COMPLIANT"
+        self._assert_fixture_scenario(
+            _FIXTURE.with_name("fixture-2.swift"),
+            "dry-extracted-helper",
+        )
+
+    def _assert_fixture_scenario(self, fixture: Path, artifact_scenario: str) -> None:
+        self.FIXTURE = fixture
+        self.ARTIFACT_SCENARIO = artifact_scenario
+        self._source_project.review_target.write_text(
+            fixture.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        self.assert_workflow(self._run_scenario(self.scenario))
 
     def test_existing_protocol_with_different_names_is_an_exact_reuse_miss(
         self,

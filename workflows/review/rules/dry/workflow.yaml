@@ -105,16 +105,20 @@ steps:
 
       For within-unit duplication:
 
+      Compare the algorithm separately from its business-domain names.
+      The same sequence of validation, calculation, and transformation remains
+      structurally duplicated when its differences can be expressed as parameters,
+      including different constants or rounding precision.
+
       1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
-      2. **Search other units in the same module/target** for methods with the same logical sequence:
+      2. **Compare methods within the reviewed unit** for the same logical sequence:
          - Same control flow structure (if/else, guard, switch patterns)
          - Same operation ordering (fetch → validate → transform → persist)
-         - Same algorithm with different concrete types
+         - Same algorithm with different concrete types or parameterizable values
       3. **Classify matches:**
          - IDENTICAL — same logic, same types, different names only
-         - STRUCTURAL — same algorithm, different types (candidate for generics)
+         - STRUCTURAL — same algorithm with different types or parameterizable values
          - SIMILAR — overlapping logic with meaningful differences (not a violation)
-      4. **Count** IDENTICAL and STRUCTURAL matches = inlined duplications
 
       Return one `within_unit_duplicates` observation for every participating
       implementation location classified IDENTICAL or STRUCTURAL. Two methods
@@ -125,18 +129,20 @@ steps:
       For missing abstractions:
 
       1. **Identify the domain** of the type under review — what business concept does it represent?
-      2. **Identify generic patterns** within the type — behavior, layout, or creation logic that is not specific to the domain:
+      2. **Identify generic patterns** within the type — reusable behavior, layout, or creation logic separable from its domain-specific names and parameters:
          - Behavioral patterns (retry, queue, cache, observe, poll — any reusable flow)
          - Object creation patterns (similar initialization sequences, builder logic, factory patterns repeated across types)
          - UI composition patterns (recurring view structures, repeated styling + layout combinations, common interactive elements with shared behavior)
          - Data flow patterns (transform pipelines, validation chains, mapping sequences)
       3. **Assess reuse potential** — could another part of the codebase need this same pattern?
          - If YES → missing abstraction
-         - If NO (the pattern is inherently domain-specific) → not a violation
-      4. **Count** missing abstractions
+         - If NO (the behavior is inseparable from independently evolving domain rules) → not a violation
 
-      Return one `missing_abstractions` observation for each reusable,
-      non-domain-specific pattern, with a stable source location or pattern ID.
+      A reusable pattern can exist within one business domain; reuse does not
+      require another domain.
+
+      Return one `missing_abstractions` observation for each reusable pattern
+      lacking a shared abstraction, with a stable source location or pattern ID.
 
       For every returned observation, set `is_exception` only when that specific
       finding matches one of these authored DRY exceptions:
@@ -144,6 +150,10 @@ steps:
       1. Intentionally specialized behavior with genuinely different domain semantics.
       2. Configuration or constants that must remain independently changeable.
       3. A protocol default implementation supplied only for conformance convenience.
+
+      Apply the intentional-specialization exception when evidence establishes
+      independently evolving business rules.
+      Different names or constants alone do not establish that exception.
 
       Supply independent reasoning and source evidence for every observation.
     outputs:
@@ -177,6 +187,25 @@ steps:
               is_exception: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
+      - name: additional_info
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reasoning, evidence]
+          properties:
+            reasoning:
+              type: string
+              minLength: 1
+              description: >-
+                Assessment of within-unit duplication and missing abstractions,
+                including why either collection is empty.
+            evidence:
+              type: string
+              minLength: 1
+              description: >-
+                Source locations or code excerpts supporting the assessment,
+                including when no observations are returned.
 
   - id: reuse_misses
     type: metric
@@ -272,10 +301,14 @@ steps:
       - within_unit_duplicate_sites
       - missing_abstractions
     prompt: |
-      Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Candidate-level exceptions must be excluded from metric evidence before counting. Mark the entire unit as an exception only when every apparent finding is exempt.
+      Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Mark the entire unit as an exception only when every apparent finding is exempt.
 
       1. **Intentionally specialized** — same shape but genuinely different domain semantics (e.g., two validation functions that happen to have similar structure but validate different business rules)
       2. **Configuration/constants** — repeated literal values that are intentionally independent (changing one should NOT change the other)
       3. **Protocol default implementations** — providing defaults for convenience is not duplication even if the body resembles another conformer
+
+      Apply the intentional-specialization exception when evidence establishes
+      independently evolving business rules.
+      Different names or constants alone do not establish that exception.
 
       Classify unit `{{params.review_unit.target.name}}` using the source, within-unit analysis, and repository classifications already visible in the current model session.

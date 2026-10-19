@@ -28,6 +28,25 @@ class TestDRYLiveScenarios(unittest.TestCase):
         self.assertEqual(self.case.execution_project_root, self.case._source_project.root)
         self.assertEqual(list(self.case.execution_project_root.rglob("*.swift")), [scenario.parameters.target.path])
 
+    def test_extracted_helper_uses_shared_runner_with_compliant_expectations(self) -> None:
+        with patch.object(self.case, "_run_scenario") as run, \
+             patch.object(self.case, "assert_workflow") as validate:
+            self.case.test_extracted_helper_avoids_duplicate_findings()
+
+        scenario = run.call_args.args[0]
+        self.assertEqual(scenario.workflow_id, "solid-review")
+        self.assertIsInstance(scenario.parameters, PrepareReviewInput)
+        self.assertEqual(scenario.parameters.target.path, self.case._source_project.review_target)
+        self.assertEqual(scenario.artifact_scope.scenario, "dry-extracted-helper")
+        source = self.case.FIXTURE.read_text(encoding="utf-8")
+        self.assertEqual(self.case.FIXTURE.name, "fixture-2.swift")
+        self.assertEqual(self.case._source_project.review_target.read_text(encoding="utf-8"), source)
+        self.assertIn(source, scenario.model_context)
+        self.assertEqual(self.case.EXPECTED_VALUES, [0, 0, 0, 0])
+        self.assertEqual(self.case.EXPECTED_METRIC_SEVERITIES, ["COMPLIANT"] * 4)
+        self.assertEqual(self.case.EXPECTED_FINAL_SEVERITY, "COMPLIANT")
+        validate.assert_called_once_with(run.return_value)
+
     def test_protocol_scenario_uses_the_same_root_and_review_contract(self) -> None:
         with patch.object(self.case, "_run_scenario") as run, \
              patch.object(self.case, "assert_rule_workflow"), \

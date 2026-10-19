@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.isolated_run_paths import ISOLATED_RUNS_DIRNAME
 from harness.project_context import ProjectDirectory
 from harness.rule_applicability_context import RuleApplicabilityContext
 from harness.rule_review_result import RuleReviewResult
@@ -139,7 +140,7 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertEqual(result.scoring_authority, "mcp")
         self._assert_operation_events(started.run_id)
 
-    def test_embeds_canonical_detection_and_exception_instructions(self) -> None:
+    def test_preserves_classifications_without_asking_the_model_to_count(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
         selection = self.engine.flow_next({
             step.instance_id: self._initial_output(
@@ -167,15 +168,51 @@ class TestDryValidationFlow(unittest.TestCase):
             "EXACT — existing code covers 100% of the need",
             classified.steps[0].prompt,
         )
+        duplicate_instructions = reader.detection(rule, "DRY-2", "Inlined Duplication")
+        abstraction_instructions = reader.detection(rule, "DRY-3", "Missing Abstraction")
+        prompt = target_analysis.steps[0].prompt
+        for classification in (
+            "IDENTICAL — same logic, same types, different names only",
+            "SIMILAR — overlapping logic with meaningful differences (not a violation)",
+        ):
+            self.assertIn(classification, duplicate_instructions)
+            self.assertIn(classification, prompt)
         self.assertIn(
-            reader.detection(rule, "DRY-2", "Inlined Duplication"),
-            target_analysis.steps[0].prompt,
+            "STRUCTURAL — same algorithm, different types (candidate for generics)",
+            duplicate_instructions,
         )
         self.assertIn(
-            reader.detection(rule, "DRY-3", "Missing Abstraction"),
-            target_analysis.steps[0].prompt,
+            "STRUCTURAL — same algorithm with different types or parameterizable values",
+            prompt,
         )
+        for clarification in (
+            "Compare the algorithm separately from its business-domain names.",
+            "including different constants or rounding precision",
+            "A reusable pattern can exist within one business domain",
+            "Different names or constants alone do not establish that exception.",
+        ):
+            self.assertIn(clarification, prompt)
+        for instruction in (
+            "**Identify the domain**",
+            "**Identify generic patterns**",
+            "**Assess reuse potential**",
+        ):
+            self.assertIn(instruction, abstraction_instructions)
+            self.assertIn(instruction, prompt)
+        self.assertNotIn("**Count**", prompt)
+        self.assertNotIn("Search other units in the same module/target", prompt)
+        self.assertIn("Compare methods within the reviewed unit", prompt)
+        self.assertIn('"required": ["reasoning", "evidence"]', prompt)
+        self.assertIn(
+            '"required": ["within_unit_duplicates", "missing_abstractions", "additional_info"]',
+            prompt,
+        )
+        self.assertNotIn("before counting", exception.steps[0].prompt)
         self.assertIn(reader.exceptions(rule), exception.steps[0].prompt)
+        self.assertIn(
+            "Different names or constants alone do not establish that exception.",
+            exception.steps[0].prompt,
+        )
 
     def test_dry2_uses_visible_source_without_reserializing_it(self) -> None:
         (self.project_root / "SharedTaxFormatter.swift").unlink()
@@ -340,34 +377,67 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertIn("previously submitted", classification.steps[0].prompt)
 
     def test_compliant_fixture_publishes_zero_metrics(self) -> None:
+        self.run_root = self.run_root / ISOLATED_RUNS_DIRNAME
         self.current_content = (
             _PROJECT_ROOT / "tests/principles/DRY/fixtures/fixture-2.swift"
         ).read_text(encoding="utf-8")
         self.current_path.write_text(self.current_content, encoding="utf-8")
         (self.project_root / "SharedTaxFormatter.swift").unlink()
-        started = self.engine.flow_start("dry", self._parameters())
-        selection = self.engine.flow_next({
-            started.steps[0].instance_id: self._initial_output(
-                started.steps[0].step_id,
-                "NoRepositoryCandidate",
-            )
-        })
-        target_analysis = self.engine.flow_next({
-            selection.steps[0].instance_id: {"dispositions": []}
-        })
+        for invalid_info in [
+            None,
+            {},
+            {"reasoning": "No reusable pattern found."},
+            {"evidence": "Current.swift"},
+            {"reasoning": "", "evidence": "Current.swift"},
+            {"reasoning": "No reusable pattern found.", "evidence": ""},
+        ]:
+            with self.subTest(additional_info=invalid_info):
+                started = self.engine.flow_start("dry", self._parameters(), isolated=True)
+                selection = self.engine.flow_next({
+                    started.steps[0].instance_id: self._initial_output(
+                        started.steps[0].step_id,
+                        "NoRepositoryCandidate",
+                    )
+                }, run_id=started.run_id)
+                target_analysis = self.engine.flow_next({
+                    selection.steps[0].instance_id: {"dispositions": []}
+                }, run_id=started.run_id)
+                invalid_output = self._empty_target_analysis_output()
+                invalid_output.pop("additional_info")
+                if invalid_info is not None:
+                    invalid_output["additional_info"] = invalid_info
 
-        exception = self.engine.flow_next({
-            target_analysis.steps[0].instance_id: self._empty_target_analysis_output()
-        })
-        completed = self.engine.flow_next({
-            exception.steps[0].instance_id: self._exception_output()
-        })
+                rejected = self.engine.flow_next({
+                    target_analysis.steps[0].instance_id: invalid_output
+                }, run_id=started.run_id)
 
-        self.assertEqual(completed.status, "done")
-        result = self._result(started.run_id)
-        self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0, 0])
-        self.assertEqual(result.severity, "COMPLIANT")
-        self.assertFalse(result.exception.is_exception)
+                self.assertEqual(rejected.status, "ready")
+                self.assertEqual(rejected.steps[0].step_id, "analyze_target_patterns")
+                self.assertIn("additional_info", rejected.steps[0].rejection_reason)
+                corrected_output = self._empty_target_analysis_output()
+                exception = self.engine.flow_next({
+                    rejected.steps[0].instance_id: corrected_output
+                }, run_id=started.run_id)
+                completed = self.engine.flow_next({
+                    exception.steps[0].instance_id: self._exception_output()
+                }, run_id=started.run_id)
+
+                self.assertEqual(completed.status, "done")
+                result = self._result(started.run_id)
+                self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0, 0])
+                self.assertEqual(result.severity, "COMPLIANT")
+                self.assertFalse(result.exception.is_exception)
+                events = [
+                    json.loads(line)
+                    for line in (self.run_root / started.run_id / "events.jsonl").read_text().splitlines()
+                ]
+                analysis_events = [
+                    event for event in events
+                    if event["event"] == "step_completed"
+                    and event["step_id"] == "analyze_target_patterns"
+                ]
+                self.assertEqual(len(analysis_events), 1)
+                self.assertEqual(analysis_events[0]["outputs"], corrected_output)
 
     def test_exception_preserves_observations_and_makes_result_compliant(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
@@ -658,6 +728,10 @@ class TestDryValidationFlow(unittest.TestCase):
                     "evidence": "Two methods implement the same generic pipeline.",
                 }
             ],
+            "additional_info": {
+                "reasoning": "The duplicated calculation also contains a reusable accumulation pipeline.",
+                "evidence": "Current.swift: grossWages and reimbursements repeat filtering and accumulation.",
+            },
         }
 
     @staticmethod
@@ -665,6 +739,10 @@ class TestDryValidationFlow(unittest.TestCase):
         return {
             "within_unit_duplicates": [],
             "missing_abstractions": [],
+            "additional_info": {
+                "reasoning": "The reviewed methods expose no repeated implementation or reusable non-domain pattern.",
+                "evidence": "Current.swift contains no matching implementation sequences in the reviewed unit.",
+            },
         }
 
     @staticmethod
@@ -682,9 +760,7 @@ class TestDryValidationFlow(unittest.TestCase):
     def _result(self, run_id: str) -> RuleReviewResult:
         return RuleReviewResult.model_validate_json(
             (
-                self.project_root
-                / ".solid-coder"
-                / "runs"
+                self.run_root
                 / run_id
                 / "results"
                 / "review"
