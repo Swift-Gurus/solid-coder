@@ -2,7 +2,7 @@
 
 from source.source_evidence import SourceEvidence
 from source.source_line_range import SourceLineRange
-from source.source_offset_line_resolving import SourceOffsetLineResolving
+from source.analysis.provenance.utf16_source_position_resolver import SourceCoordinateResolving
 
 
 """
@@ -13,7 +13,7 @@ solid-description: Resolves auditable source evidence spans from parsed source o
 """
 class SourceEvidenceResolver:
 
-    def __init__(self, line_resolver: SourceOffsetLineResolving) -> None:
+    def __init__(self, line_resolver: SourceCoordinateResolving[int, int]) -> None:
         self._line_resolver = line_resolver
 
     def resolve(

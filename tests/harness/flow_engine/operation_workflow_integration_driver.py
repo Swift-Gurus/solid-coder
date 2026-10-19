@@ -9,6 +9,7 @@ from harness.flow_next_result import FlowNextResult
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.flow_start_result import FlowStartResult
 from harness.operation_registration import OperationRegistration
+from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 
@@ -54,5 +55,6 @@ class OperationWorkflowIntegrationDriver:
                 project_dir_fn=lambda: self.project_root
             ),
             plugin_root=self._plugin_root,
+            project_directory=ProjectDirectory(path=self.project_root),
             operation_registrations=self._registrations,
         ).build()

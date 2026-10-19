@@ -48,6 +48,12 @@ class BatchStepPresentationBuilder(BatchStepPresentationBuilding):
         workflow_instance = step.workflow_instance
         if workflow_instance is None:
             group = BatchStepGroupIdentity(None, step.id)
+        elif step.for_each is not None:
+            group = BatchStepGroupIdentity(
+                workflow_alias=workflow_instance.alias,
+                local_step_id=workflow_instance.steps.require_execution(step.id).local_step_id,
+                owner_instance_id=workflow_instance.instance_id,
+            )
         elif workflow_instance.combined_presentation is not None:
             combined = workflow_instance.combined_presentation
             return CombinedRuleBatchStepPresentation(

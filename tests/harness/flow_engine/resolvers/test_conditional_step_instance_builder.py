@@ -18,6 +18,7 @@ from harness.conditional_step_instance_builder import ConditionalStepInstanceBui
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.models import StepDef, StepInstance
 from harness.resolved_condition_value import ResolvedConditionValue
+from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_condition_applier import StepConditionApplier
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
@@ -74,16 +75,20 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
         child_inputs = WorkflowContextValues(entries=[
             WorkflowContextValue(name="review_unit", value=source_item),
         ])
+        parent_context = WorkflowRunContext(
+            parameters=WorkflowContextValues(entries=[
+                WorkflowContextValue(name="parent_setting", value=True),
+            ]),
+            item=ResolvedWorkflowContextValue(present=True, value=source_item),
+        )
         delegate = StubInstanceBuilder()
         evaluator = StubConditionEvaluator([
             self._evidence(actual=".md", matched=False)
         ])
         sut = ConditionalStepInstanceBuilder(
             delegate=delegate,
-            condition_applier=StepConditionApplier(
-                evaluator,
-                WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
-            ),
+            condition_applier=StepConditionApplier(evaluator),
+            context_resolver=WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
         )
         step = StepDef(
             id="review.inspect",
@@ -94,6 +99,7 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
                 source_index=0,
                 source_item=source_item,
                 condition=condition,
+                condition_context=parent_context,
                 inputs=child_inputs,
             ),
         )
@@ -110,7 +116,8 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
         self.assertEqual(result.skip.condition, condition)
         self.assertEqual(result.skip.item, source_item)
         self.assertEqual(evaluator.contexts[0].item.value, source_item)
-        self.assertEqual(evaluator.contexts[0].parameters, child_inputs)
+        self.assertEqual(evaluator.contexts[0].parameters, parent_context.parameters)
+        self.assertNotEqual(evaluator.contexts[0].parameters, child_inputs)
 
     def test_matching_condition_delegates_to_the_renderer(self) -> None:
         delegate = StubInstanceBuilder()
@@ -119,10 +126,8 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
         ])
         sut = ConditionalStepInstanceBuilder(
             delegate=delegate,
-            condition_applier=StepConditionApplier(
-                evaluator,
-                WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
-            ),
+            condition_applier=StepConditionApplier(evaluator),
+            context_resolver=WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
         )
         item = {"file_extension": ".swift"}
 

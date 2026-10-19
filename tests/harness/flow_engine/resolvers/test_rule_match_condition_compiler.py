@@ -12,6 +12,8 @@ from findings.review_unit_kind import ReviewUnitKind  # noqa: E402
 from harness.all_condition import AllCondition  # noqa: E402
 from harness.comparison_condition import ComparisonCondition  # noqa: E402
 from harness.condition_operator import ConditionOperator  # noqa: E402
+from harness.condition_conjoiner import ConditionConjoiner
+from harness.flow_validation_error import FlowValidationError
 from harness.rule_match_condition_compiler import RuleMatchConditionCompiler  # noqa: E402
 from harness.rule_match_declaration import RuleMatchDeclaration  # noqa: E402
 from harness.rule_selection import RuleSelection  # noqa: E402
@@ -19,16 +21,18 @@ from harness.rule_selection_condition_compiler import (  # noqa: E402
     RuleSelectionConditionCompiler,
 )
 from harness.workflow_expression import WorkflowExpression  # noqa: E402
+from harness.workflow_input_binding import WorkflowInputBinding
 
 
 class TestRuleMatchConditionCompiler(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = RuleMatchConditionCompiler(
-            RuleSelectionConditionCompiler()
+            RuleSelectionConditionCompiler(), ConditionConjoiner(),
         )
+        self.bindings = [WorkflowInputBinding("review_unit", WorkflowExpression("params.review_unit"))]
 
     def test_empty_matcher_needs_no_runtime_condition(self) -> None:
-        self.assertIsNone(self.sut.compile(RuleMatchDeclaration()))
+        self.assertIsNone(self.sut.compile(RuleMatchDeclaration(), []))
 
     def test_compiles_every_match_dimension_with_exact_semantics(self) -> None:
         result = self.sut.compile(
@@ -45,7 +49,8 @@ class TestRuleMatchConditionCompiler(unittest.TestCase):
                     included=["ui", "swiftui"],
                     excluded=["test", "generated"],
                 ),
-            )
+            ),
+            self.bindings,
         )
 
         self.assertEqual(
@@ -93,6 +98,20 @@ class TestRuleMatchConditionCompiler(unittest.TestCase):
                 ),
             )),
         )
+
+    def test_compiles_match_against_the_explicit_parent_binding(self) -> None:
+        match = RuleMatchDeclaration(tags=RuleSelection(included=["swiftui"]))
+        for reference in ["item", "steps.prepare.outputs.review_file"]:
+            with self.subTest(reference=reference):
+                condition = self.sut.compile(match, [WorkflowInputBinding(
+                    "review_unit", WorkflowExpression(reference),
+                )])
+                self.assertEqual(condition.reference.value,
+                                 f"{reference}.applicability.tags")
+
+    def test_match_requires_an_explicit_review_unit_binding(self) -> None:
+        with self.assertRaisesRegex(FlowValidationError, "review_unit"):
+            self.sut.compile(RuleMatchDeclaration(tags=RuleSelection(included=["swiftui"])), [])
 
     def _comparison(
         self,

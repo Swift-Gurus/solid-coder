@@ -3,6 +3,7 @@
 from source.language_source_analyzer_resolving import (
     LanguageSourceAnalyzerResolving,
 )
+from source.language_source_analyzing import LanguageSourceAnalyzing
 from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.resolved_source_analyzing import ResolvedSourceAnalyzing
 from source.source_analysis import SourceAnalysis
@@ -21,7 +22,7 @@ class ResolvedSourceAnalyzer(ResolvedSourceAnalyzing):
     def __init__(
         self,
         language_detector: SourceLanguageDetecting,
-        analyzer_resolver: LanguageSourceAnalyzerResolving,
+        analyzer_resolver: LanguageSourceAnalyzerResolving[LanguageSourceAnalyzing],
         document_unit_resolver: WholeDocumentUnitResolving,
     ) -> None:
         self._language_detector = language_detector

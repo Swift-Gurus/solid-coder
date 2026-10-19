@@ -3,17 +3,18 @@
 from tree_sitter import Node, Tree
 
 from source.analysis.source_syntax_inventory import SourceSyntaxInventory
-from source.analysis.swift_parse_diagnostics_resolver import SwiftParseDiagnosticsResolving
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
+from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_evidence import SourceEvidence
+from source.source_parse_diagnostic import SourceParseDiagnostic
 from source.source_unit import SourceUnit
 
 
 """
 solid-name: TreeSitterSwiftInventoryParser
-solid-category: facade
-solid-spec: [SPEC-057]
-solid-description: Provides a consistent Swift inventory of source units, imports, syntax signals, and recoverable diagnostics.
+solid-category: service
+solid-spec: [SPEC-057, SPEC-063]
+solid-description: Provides a consistent Swift inventory of declarations, imports, syntax signals, type inspections and recoverable diagnostics.
 """
 class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInventory]):
     def __init__(
@@ -22,12 +23,14 @@ class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInvent
         units: SourceSyntaxParsing[Node, SourceUnit | None],
         imports: SourceSyntaxParsing[Node, list[SourceEvidence]],
         signals: SourceSyntaxParsing[Node, list[SourceEvidence]],
-        diagnostics: SwiftParseDiagnosticsResolving,
+        inspections: SourceSyntaxParsing[Node, list[SourceTypeInspection]],
+        diagnostics: SourceSyntaxParsing[Node, list[SourceParseDiagnostic]],
     ) -> None:
         self._syntax = syntax
         self._units = units
         self._imports = imports
         self._signals = signals
+        self._inspections = inspections
         self._diagnostics = diagnostics
 
     def parse(self, source: str) -> SourceSyntaxInventory:
@@ -39,5 +42,6 @@ class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInvent
             ],
             imports=self._imports.parse(root),
             signals=self._signals.parse(root),
-            diagnostics=self._diagnostics.resolve(root),
+            type_inspections=self._inspections.parse(root),
+            diagnostics=self._diagnostics.parse(root),
         )

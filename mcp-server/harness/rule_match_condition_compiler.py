@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from harness.all_condition import AllCondition
+from harness.condition_conjoining import ConditionConjoining
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_operator import ConditionOperator
+from harness.flow_validation_error import FlowValidationError
 from harness.rule_match_condition_compiling import RuleMatchConditionCompiling
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection_condition_compiling import (
     RuleSelectionConditionCompiling,
 )
+from harness.workflow_input_binding import WorkflowInputBinding
 
 
 """
@@ -19,43 +21,48 @@ solid-spec: [SPEC-039]
 solid-description: Compiles exact extension, unit-kind, and tag selectors into auditable workflow conditions.
 """
 class RuleMatchConditionCompiler(RuleMatchConditionCompiling):
-    _UNIT_REFERENCE = "params.review_unit.applicability.unit_kind"
-    _EXTENSION_REFERENCE = "params.review_unit.applicability.file_extension"
-    _TAGS_REFERENCE = "params.review_unit.applicability.tags"
-
     def __init__(
         self,
         selection_compiler: RuleSelectionConditionCompiling,
+        condition_conjoiner: ConditionConjoining,
     ) -> None:
         self._selection_compiler = selection_compiler
+        self._condition_conjoiner = condition_conjoiner
 
     def compile(
         self,
         declaration: RuleMatchDeclaration,
+        input_bindings: list[WorkflowInputBinding],
     ) -> ConditionDeclaration | None:
+        if declaration == RuleMatchDeclaration():
+            return None
+        subject = next((binding.expression for binding in input_bindings
+                        if binding.name == "review_unit"), None)
+        if subject is None:
+            raise FlowValidationError(
+                "Rule matching requires an explicit 'review_unit' input binding"
+            )
         conditions = [
             *self._selection_compiler.compile(
-                self._EXTENSION_REFERENCE,
+                f"{subject.value}.applicability.file_extension",
                 declaration.file_extensions.included,
                 declaration.file_extensions.excluded,
                 ConditionOperator.IN,
                 ConditionOperator.NOT_IN,
             ),
             *self._selection_compiler.compile(
-                self._UNIT_REFERENCE,
+                f"{subject.value}.applicability.unit_kind",
                 [kind.value for kind in declaration.unit_kinds.included],
                 [kind.value for kind in declaration.unit_kinds.excluded],
                 ConditionOperator.IN,
                 ConditionOperator.NOT_IN,
             ),
             *self._selection_compiler.compile(
-                self._TAGS_REFERENCE,
+                f"{subject.value}.applicability.tags",
                 list(declaration.tags.included),
                 list(declaration.tags.excluded),
                 ConditionOperator.CONTAINS,
                 ConditionOperator.NOT_CONTAINS,
             ),
         ]
-        if not conditions:
-            return None
-        return AllCondition(conditions=tuple(conditions))
+        return self._condition_conjoiner.conjoin(conditions)

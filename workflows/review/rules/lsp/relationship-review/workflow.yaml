@@ -1,26 +1,23 @@
 id: lsp-relationship-review
-name: LSP Relationship Review
-description: Inspects one selected repository candidate against the reviewed subtype.
-max_turns: 4
-
-outputs:
-  - name: assessment
-    type: data
-    value: "{{steps.classify_relationship.outputs.assessment}}"
-    schema_file: assessment.schema.json
+name: LSP Relationship Evidence
+description: Reads one selected declaration and records contract evidence for the parent classifier.
+max_turns: 2
 
 steps:
   - id: inspect_candidate
     prompt: |
-      Read `{{params.candidate.source.path}}` with your normal file-reading tool
-      and inspect only declaration `{{params.candidate.source.unit}}`. Compare it
-      only with reviewed subtype `{{params.subtype_name}}`, whose source is
-      already visible in this model session. Do not search again, inspect another
-      declaration, count violations, choose severity, or submit a finding.
+      For candidate `{{params.candidate.candidate_id}}`, read
+      `{{params.candidate.source.path}}` with your normal file-reading tool
+      and inspect only declaration `{{params.candidate.source.unit}}` for reviewed
+      subtype `{{params.subtype_name}}`, whose source is already visible in this
+      model session. Record the base contract's guards, guarantees and state
+      invariants relevant to that subtype's overrides. Identify the declaration
+      and members in the source evidence. Do not classify violations here.
 
       Return concise reasoning about whether the selected declaration is the
       concrete base or another contract required to evaluate the reviewed
-      subtype. Evidence must identify the selected path and declaration.
+      subtype. Evidence must identify the selected path and declaration. If the
+      source cannot be read, record why verification is unavailable.
 
       Candidate frontmatter description: {{params.candidate.source.description}}
     outputs:
@@ -30,38 +27,3 @@ steps:
       - name: evidence
         type: data
         schema: {type: string, minLength: 1}
-
-  - id: classify_relationship
-    depends_on: [inspect_candidate]
-    prompt: |
-      Classify only the completed inspection for selected candidate
-      `{{params.candidate.candidate_id}}` against reviewed subtype
-      `{{params.subtype_name}}`. Do not reread source, search again, count
-      violations, choose severity, or submit a finding.
-
-      Choose exactly one relationship classification:
-
-      - BASE_DECLARATION — the candidate is the concrete base declaration used
-        by the reviewed subtype.
-      - RELATED_CONTRACT — the candidate supplies another contract required to
-        evaluate the reviewed subtype.
-      - NOT_RELEVANT — the candidate does not participate in the reviewed
-        substitutability relationship.
-
-      For a relevant relationship, compare every override visible in the
-      reviewed subtype with the inspected contract and return one `violations`
-      entry for every independently evidenced:
-
-      - NEW_GUARD — the subtype strengthens a precondition.
-      - WEAKENED_POSTCONDITION — the subtype removes or relaxes a guarantee.
-      - INVARIANT_VIOLATION — the subtype exposes or bypasses protected state.
-
-      Preserve member identity, reasoning, and source evidence for every entry.
-      Return no entry when the relationship is compliant or unavailable. Copy
-      candidate ID `{{params.candidate.candidate_id}}`, location
-      `{{params.candidate.source.path}}`, and name
-      `{{params.candidate.source.unit}}` exactly.
-    outputs:
-      - name: assessment
-        type: data
-        schema_file: assessment.schema.json

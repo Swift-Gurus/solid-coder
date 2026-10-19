@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_evidence import SourceEvidence
 from source.source_parse_diagnostic import SourceParseDiagnostic
 from source.source_unit import SourceUnit
@@ -10,8 +11,8 @@ from source.source_unit import SourceUnit
 """
 solid-name: SourceSyntaxInventory
 solid-category: model
-solid-spec: [SPEC-057]
-solid-description: Carries parsed declarations, import and syntax evidence, and diagnostics without exposing parser nodes to consumers.
+solid-spec: [SPEC-057, SPEC-063]
+solid-description: Records declarations, imports, syntax evidence, type inspections and recoverable diagnostics for deterministic source analysis.
 """
 class SourceSyntaxInventory(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -19,4 +20,5 @@ class SourceSyntaxInventory(BaseModel):
     units: list[SourceUnit] = Field(default_factory=list)
     imports: list[SourceEvidence] = Field(default_factory=list)
     signals: list[SourceEvidence] = Field(default_factory=list)
+    type_inspections: list[SourceTypeInspection] = Field(default_factory=list)
     diagnostics: list[SourceParseDiagnostic] = Field(default_factory=list)

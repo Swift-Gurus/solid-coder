@@ -36,6 +36,8 @@ class AggregatePhaseStepCollector(AggregatePhaseStepCollecting):
         for candidate in flow.steps:
             if self._boundary_resolver.resolve(flow, candidate) != boundary_id:
                 continue
+            if candidate.id in settled_ids or candidate.id in state.running:
+                continue
             if candidate.metric_calculation is not None:
                 # Metrics stay engine-owned. Their position must not hide
                 # independent classifiers; consumers still wait because an
@@ -47,11 +49,6 @@ class AggregatePhaseStepCollector(AggregatePhaseStepCollecting):
                 continue
             if candidate.condition is not None:
                 break
-            if (
-                candidate.id in settled_ids
-                or candidate.id in state.running
-            ):
-                continue
             if candidate.id != first.id and (
                 first.for_each is not None or candidate.for_each is not None
             ):

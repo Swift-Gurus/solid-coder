@@ -1,8 +1,9 @@
 """Associates a normalized language with its source analyzer."""
 
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 
-from source.language_source_analyzing import LanguageSourceAnalyzing
+AnalysisCapability = TypeVar("AnalysisCapability")
 
 
 """
@@ -12,6 +13,6 @@ solid-spec: [SPEC-040]
 solid-description: Associates one normalized source language with its deterministic analysis capability.
 """
 @dataclass(frozen=True)
-class LanguageSourceAnalyzerRegistration:
+class LanguageSourceAnalyzerRegistration(Generic[AnalysisCapability]):
     language: str
-    analyzer: LanguageSourceAnalyzing
+    analyzer: AnalysisCapability

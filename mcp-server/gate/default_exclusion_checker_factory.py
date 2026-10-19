@@ -1,7 +1,21 @@
 """Constructs the production write-gate exclusion checker."""
 
-from exclusion_checking import ExclusionChecking
-from gate_exclusion_checker import GateExclusionChecker
+from pathlib import Path
+from typing import Protocol
+
+from gate.gate_exclusion_checker import GateExclusionChecker
+from utils.patterns.fnmatch_pattern_matcher import FnmatchPatternMatcher
+from utils.patterns.path_pattern_matcher import PathPatternMatcher
+
+
+"""
+solid-name: ExclusionPolicyCreating
+solid-category: abstraction
+solid-spec: [SPEC-064]
+solid-description: Contract for creating an exclusion policy from the effective configuration of a requested project.
+"""
+class ExclusionPolicyCreating(Protocol):
+    def create(self, project_root: Path | None = None) -> GateExclusionChecker: ...
 
 
 """
@@ -10,12 +24,18 @@ solid-category: factory
 solid-description: Provides a configured write-gate exclusion checker.
 solid-tags: [hook]
 """
-class DefaultExclusionCheckerFactory:
-    def create(self) -> ExclusionChecking:
-        import hc_config as health_config
-        from hook_utils import path_matches_pattern
+class DefaultExclusionCheckerFactory(ExclusionPolicyCreating):
+    def create(self, project_root: Path | None = None) -> GateExclusionChecker:
+        if project_root is None:
+            import hc_config as health_config
+
+            config = health_config.load_config()
+        else:
+            from health.config.hc_config_schema import load_config
+
+            config = load_config(cwd=project_root)
 
         return GateExclusionChecker(
-            exclude_patterns_fn=lambda: health_config.load_config().hook_exclude("pre_write_gate"),
-            path_matcher_fn=path_matches_pattern,
+            patterns=config.hook_exclude("pre_write_gate"),
+            matcher=PathPatternMatcher(FnmatchPatternMatcher()),
         )

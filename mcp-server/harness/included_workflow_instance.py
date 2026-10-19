@@ -13,6 +13,7 @@ from harness.included_workflow_step_identities import IncludedWorkflowStepIdenti
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -29,6 +30,7 @@ class IncludedWorkflowInstance:
     source_item: object
     owner_instance_id: str | None = None
     condition: ConditionDeclaration | None = None
+    condition_context: WorkflowRunContext = field(default_factory=WorkflowRunContext)
     inputs: WorkflowContextValues[object] = field(
         default_factory=WorkflowContextValues
     )

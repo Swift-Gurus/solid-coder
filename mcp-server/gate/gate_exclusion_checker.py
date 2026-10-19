@@ -4,19 +4,40 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Callable
+from typing import Protocol
+
+from gate.exclusion_checking import ExclusionChecking
+from utils.patterns.fnmatch_pattern_matcher import PatternMatching
 
 
-class GateExclusionChecker:
-    """Determines whether a file path matches any configured gate exclusion pattern."""
+"""
+solid-name: ExclusionPatternResolving
+solid-category: abstraction
+solid-spec: [SPEC-064]
+solid-description: Contract for identifying the configured path exclusion that explains an eligibility decision.
+"""
+class ExclusionPatternResolving(Protocol):
+    def matched_pattern(self, file_path: str) -> str | None: ...
+
+
+"""
+solid-name: GateExclusionChecker
+solid-category: service
+solid-spec: [SPEC-064]
+solid-description: Applies configured path exclusions and preserves the matching pattern for gate, search and ownership audit decisions.
+"""
+class GateExclusionChecker(ExclusionChecking, ExclusionPatternResolving):
 
     def __init__(
         self,
-        exclude_patterns_fn: Callable[[], list],
-        path_matcher_fn: Callable[[str, str], bool],
+        patterns: list[str],
+        matcher: PatternMatching,
     ) -> None:
-        self._get_patterns = exclude_patterns_fn
-        self._match = path_matcher_fn
+        self._patterns = list(patterns)
+        self._matcher = matcher
 
     def is_excluded(self, file_path: str) -> bool:
-        return any(self._match(file_path, pat) for pat in self._get_patterns())
+        return self.matched_pattern(file_path) is not None
+
+    def matched_pattern(self, file_path: str) -> str | None:
+        return next((pattern for pattern in self._patterns if self._matcher.matches(file_path, pattern)), None)

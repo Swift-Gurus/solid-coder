@@ -6,27 +6,68 @@ max_turns: 24
 rule: {}
 
 steps:
+  - id: prepare_type_inspections
+    type: operation
+    operation: source.resolve_type_inspections
+    with:
+      target: "{{params.review_unit.target}}"
+      context: "{{params.source_context}}"
+      file_extension: "{{params.review_unit.applicability.file_extension}}"
+
+  - id: classify_type_inspections
+    type: agent
+    depends_on: [prepare_type_inspections]
+    for_each:
+      source: "{{steps.prepare_type_inspections.outputs.inspections}}"
+      mode: batch
+      label: "{{item.inspection.identity}}"
+    when:
+      ref: "{{item.verified}}"
+      equals: true
+    prompt: |
+      Classify the purpose of each listed type inspection in unit
+      `{{params.review_unit.target.name}}`, using the source already visible
+      in this session and the recorded ownership facts below.
+
+      A type check inspects the concrete type, interface, or protocol behind
+      an abstraction. Decide whether it bypasses that abstraction's contract:
+
+      - ABSTRACTION_BYPASS: subtype-specific behavior bypasses a contract
+        controlled by the project.
+      - REQUIRED_EXTERNAL_NARROWING: an externally imposed API supplies a
+        broader contract that must be narrowed to access the intended behavior.
+      - NON_BEHAVIORAL_INSPECTION: type information is reported without selecting
+        subtype-specific behavior, including diagnostic output.
+      - UNABLE_TO_VERIFY: the available evidence cannot establish the purpose.
+
+      Choosing a built-in broad type for a project-controlled API does not make
+      that API externally imposed. Ownership describes declarations, not the
+      purpose of an inspection; an external type alone does not justify narrowing.
+      Preserve the recorded ownership facts. For each classification provide
+      additional_info with reasoning and direct source evidence.
+
+      {{steps.prepare_type_inspections.outputs.context}}
+    outputs:
+      - name: classification
+        type: data
+        schema:
+          type: string
+          enum: [ABSTRACTION_BYPASS, REQUIRED_EXTERNAL_NARROWING, NON_BEHAVIORAL_INSPECTION, UNABLE_TO_VERIFY]
+      - name: additional_info
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reasoning, evidence]
+          properties:
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
+
   - id: analyze_substitutability
     prompt: |
       Analyze only unit `{{params.review_unit.target.name}}` from the source
       already visible in this model session. Do not inspect repository
       candidates, count metrics, choose severity, or submit findings.
-
-      ## LSP-1: Type Check Count
-
-      - A "type check" is a place where client code inspects the concrete type/interfaces/protocols behind an abstraction. Each type check means the client knows about subtypes — the wrong abstraction was picked.
-
-      1. **Count typechecks** — `is`, `as?`, `as!`, `type(of:)` used with concrete types, protocols, interfaces
-      2. **Count out exceptions**
-         - see typecast-lsp-exception.swift in Examples
-         - identify the source of typecasted object
-         - search in project/local packages/local framework files
-         - if not found -> external -> exception
-         - if found -> developer-owned -> violation
-      3. **Total Count** = total type checks minus exceptions
-
-      Return one `type_checks` entry for every expression. Preserve whether its
-      checked type is developer-owned, external, or unknown with exact evidence.
 
       ## Concrete inheritance trigger
 
@@ -37,37 +78,22 @@ steps:
       relationship, set `has_inheritance` to false and return the supplied unit
       name as the sole term; MCP will skip repository relationship analysis.
 
-      ## LSP-3: Empty Methods
+      ## Contract implementations
 
       - When an object conforms to an interface/protocol and have methods non-implemented or crashing, this breaks the contract
       - Empty methods or vars. Meaning non implemented methods or var from the contract
       - Methods/vars whose entire body is a crash assertion — the method exists only to satisfy protocol conformance, not to provide real behavior.
         - fatalError, preconditionFailure, assertionFailure, fatalError("not implemented"), fatalError("abstract method"), fatalError("invalid state")
 
-      1. **Count total methods/vars in the interface**
-      2. **Count empty methods/vars** 
-      3. **Count methods with fatal-error(or any conditions that cause crash)**
-      4. **Calculate percentage of empty** - empty(non-fatal methods) methods/vars / total methods/vars
+      Classify each implementation as MEANINGFUL, EMPTY, or FATAL and identify
+      direct source evidence. EMPTY means the required behavior is unimplemented;
+      FATAL means the implementation only crashes instead of providing it.
 
       Return one `contract_implementations` entry only for implementations whose
       bodies are present inside the supplied unit. Protocol requirements declared
       without bodies are not implementations. Never inspect or report a conformer
       merely because the supplied unit declares its protocol.
     outputs:
-      - name: type_checks
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [expression, ownership, evidence]
-            properties:
-              expression: {type: string, minLength: 1}
-              ownership:
-                type: string
-                enum: [DEVELOPER, EXTERNAL, UNKNOWN]
-              evidence: {type: string, minLength: 1}
       - name: has_inheritance
         type: data
         schema: {type: boolean}
@@ -193,45 +219,27 @@ steps:
   - id: classify_relationship_violations
     depends_on: [analyze_substitutability, relationship_reviews]
     prompt: |
-      Normalize the completed repository relationship classifications for
-      reviewed subtype `{{params.review_unit.target.name}}`. Do not inspect or
-      reread source, search again, infer another relationship, count entries,
-      choose severity, or submit a finding.
+      Use the completed repository inspections to classify contract violations
+      in reviewed subtype `{{params.review_unit.target.name}}`. The inspected
+      base contracts and reviewed subtype are already visible in this session.
 
       When the submitted inheritance trigger was false, or no selected candidate
       was a relevant relationship, return an empty `observations` array. Otherwise
-      return exactly one observation for every independently classified
-      relationship violation already submitted by the child reviews. Do not omit,
-      merge, duplicate, or revise a child classification. Preserve candidate ID,
-      member, exception status, reasoning, and evidence.
+      classify each independently evidenced violation once. Identify its
+      candidate ID, member, exception status, reasoning, and source evidence.
 
       When a class inherits from another class and overrides methods, the subtype must honor the base contract: same or weaker preconditions, same or stronger postconditions, preserved invariants.
 
       **Trigger:** This metric only applies when `override` methods are detected in class inheritance. For protocol conformance without class inheritance, LSP-2 does not apply.
 
-      1. **Detect inheritance** — does the class inherit from a concrete base class (not just protocol conformance)?
-      2. **If yes** — read the base class source code
-      3. **For each `override` method, compare base vs subtype:**
+      For each override, compare the base and subtype:
 
-         **a. Precondition Changes** — new guard clauses in subtype not present in base
-
-         | Method | Base Guards | Subtype Guards | New Guards |
-         |--------|------------|----------------|------------|
-         |        |            |                |            |
-
-         **b. Postcondition Weakening** — assertions/guarantees removed or relaxed in subtype
-
-         | Method | Base Assertions | Subtype Assertions | Weakened |
-         |--------|----------------|-------------------|----------|
-         |        |                |                   |          |
-
-         **c. Invariant Violations** — protected/private state exposed with public setters, or validated state bypass
-
-         | Property | Base Access | Subtype Access | Violation |
-         |----------|------------|----------------|-----------|
-         |          |            |                |           |
-
-      4. **Count** = total contract violations (new guards + weakened postconditions + invariant violations)
+      - NEW_GUARD — new guard clauses in the subtype not present in the base
+        strengthen a precondition.
+      - WEAKENED_POSTCONDITION — assertions or guarantees removed or relaxed in
+        the subtype weaken a postcondition.
+      - INVARIANT_VIOLATION — protected/private state exposed with public setters,
+        or validated state bypass, violates an invariant.
 
       *Note*: If the base class source is not available for reading, flag as "unable to verify" rather than assuming compliant.
     outputs:
@@ -258,14 +266,34 @@ steps:
   - id: type_checks
     type: metric
     metric_id: LSP-1
-    depends_on: [analyze_substitutability]
+    depends_on: [classify_type_inspections]
+    when: &complete_type_classifications
+      all:
+        - ref: "{{steps.prepare_type_inspections.outputs.limitations}}"
+          equals: []
+        - ref: "{{steps.classify_type_inspections.outputs.classification}}"
+          not_contains: UNABLE_TO_VERIFY
+    unavailable_reason: Type-inspection coverage cannot be verified until semantic ownership and every required purpose classification are supported by evidence.
     value: {type: integer, minimum: 0}
-    scoring:
-      source: "{{steps.analyze_substitutability.outputs.type_checks}}"
+    scoring: &type_bypass_scoring
+      source: "{{steps.classify_type_inspections.outputs.classification}}"
       when:
-        ref: "{{item.ownership}}"
-        equals: DEVELOPER
+        ref: "{{item}}"
+        equals: ABSTRACTION_BYPASS
       severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: confirmed_partial_type_checks
+    type: metric
+    metric_id: LSP-1
+    observation_id: confirmed_partial
+    depends_on: [classify_type_inspections]
+    when:
+      all:
+        - not: *complete_type_classifications
+        - ref: "{{steps.classify_type_inspections.outputs.classification}}"
+          contains: ABSTRACTION_BYPASS
+    value: {type: integer, minimum: 0}
+    scoring: *type_bypass_scoring
 
   - id: contract_violations
     type: metric
@@ -305,7 +333,7 @@ steps:
 
   - id: classify_exception
     type: exception
-    depends_on: [type_checks, contract_violations, fatal_error_methods, empty_methods]
+    depends_on: [type_checks, confirmed_partial_type_checks, contract_violations, fatal_error_methods, empty_methods]
     prompt: |
       Decide whether the entire supplied unit is exempt from LSP review under this authored exception:
 

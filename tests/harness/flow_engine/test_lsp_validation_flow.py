@@ -18,6 +18,10 @@ from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
 from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
 from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
 from rule_validation_scenario import RuleValidationScenario  # noqa: E402
+from rule_instruction_block_reader import RuleInstructionBlockReader
+from review.prepare_review_input import PrepareReviewInput
+from review.prepare_review_operation_factory import PrepareReviewOperationFactory
+from source.text_analysis_source import TextAnalysisSource
 
 
 class TestLSPValidationFlow(RuleValidationFlowContract):
@@ -38,13 +42,6 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
             RuleAnalysisExpectation(
                 step_id="analyze_substitutability",
                 output={
-                    "type_checks": [
-                        {
-                            "expression": "value as? Data",
-                            "ownership": "EXTERNAL",
-                            "evidence": "LSP_SHARED_ANALYSIS_EVIDENCE",
-                        }
-                    ],
                     "has_inheritance": False,
                     "relationship_terms": ["MediaPlayer"],
                     "contract_implementations": [
@@ -102,6 +99,39 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
         final_severity="SEVERE",
     )
 
+    def setUp(self) -> None:
+        super().setUp()
+        self.prepared = PrepareReviewOperationFactory().make().execute(PrepareReviewInput(
+            target=TextAnalysisSource(text=self.review_unit, virtual_path=str(self.project_root / "Fixture.swift")),
+        ))
+        self.unit = next(unit for unit in self.prepared.units if unit.target.name == "LiveStreamPlayer")
+        self.review_unit_name = self.unit.target.name
+
+    def _start(self):
+        return self.sut.flow_start("lsp", {
+            "review_unit": self.unit.model_dump(mode="json"),
+            "source_context": self.prepared.source_context.model_dump(mode="json"),
+        })
+
+    def test_uses_canonical_rule_detection_and_exception_instructions(self) -> None:
+        checkpoint = self._complete_workflow()
+        rule = self.SCENARIO.rule_path.read_text()
+        reader = RuleInstructionBlockReader()
+        for metric in self.SCENARIO.metrics:
+            if metric.metric_id == "LSP-1":
+                continue  # SPEC-064 replaces this inventory/ownership procedure.
+            definition = reader.definition(rule, metric.detection_id, metric.detection_name)
+            if definition is not None:
+                self.assertTrue(any(definition in prompt for prompt in checkpoint.prompts))
+        prompts = "\n".join(checkpoint.prompts)
+        for classification in ["NEW_GUARD", "WEAKENED_POSTCONDITION", "INVARIANT_VIOLATION", "MEANINGFUL", "EMPTY", "FATAL"]:
+            self.assertIn(classification, prompts)
+        self.assertNotIn("**Count", prompts)
+        self.assertNotIn("**Calculate percentage", prompts)
+        self.assertTrue(any(reader.exceptions(rule) in prompt for prompt in checkpoint.prompts))
+        self.assertNotIn("if not found -> external", "\n".join(checkpoint.prompts))
+        self.assertEqual(self._rule_result(checkpoint.run_id).unavailable_metrics, [])
+
     def test_false_inheritance_trigger_skips_repository_relationship_work(self) -> None:
         started = self._start()
 
@@ -134,7 +164,7 @@ class TestLSPValidationFlow(RuleValidationFlowContract):
             for step in measured.steps
         ))
         self.assertTrue(all(
-            "completed repository relationship classifications" in step.prompt
+            "completed repository inspections" in step.prompt
             for step in measured.steps
         ))
         exception = self.sut.flow_next({

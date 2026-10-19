@@ -14,3 +14,4 @@ solid-description: Identifies sibling ready work by optional included-workflow o
 class BatchStepGroupIdentity:
     workflow_alias: Optional[str]
     local_step_id: str
+    owner_instance_id: Optional[str] = None

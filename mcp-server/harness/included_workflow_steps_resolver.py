@@ -75,6 +75,7 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
             source_item=item,
             owner_instance_id=group.runtime_owner_instance_id,
             condition=group.condition,
+            condition_context=item_context,
             inputs=child_inputs,
             steps=step_identities,
             rule_workflow=group.rule_workflow,

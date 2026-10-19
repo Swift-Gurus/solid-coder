@@ -1,6 +1,6 @@
 """Resolves deterministic source analyzers from typed registrations."""
 
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
 from source.language_source_analyzer_registration import (
     LanguageSourceAnalyzerRegistration,
@@ -8,7 +8,8 @@ from source.language_source_analyzer_registration import (
 from source.language_source_analyzer_resolving import (
     LanguageSourceAnalyzerResolving,
 )
-from source.language_source_analyzing import LanguageSourceAnalyzing
+
+AnalysisCapability = TypeVar("AnalysisCapability")
 
 
 """
@@ -17,14 +18,14 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves deterministic source analyzers through normalized typed registrations.
 """
-class LanguageSourceAnalyzerResolver(LanguageSourceAnalyzerResolving):
+class LanguageSourceAnalyzerResolver(LanguageSourceAnalyzerResolving[AnalysisCapability], Generic[AnalysisCapability]):
     def __init__(
         self,
-        registrations: list[LanguageSourceAnalyzerRegistration],
+        registrations: list[LanguageSourceAnalyzerRegistration[AnalysisCapability]],
     ) -> None:
         self._registrations = registrations
 
-    def resolve(self, language: str) -> Optional[LanguageSourceAnalyzing]:
+    def resolve(self, language: str) -> Optional[AnalysisCapability]:
         normalized = language.strip().lower()
         return next(
             (

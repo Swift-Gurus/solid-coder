@@ -6,6 +6,7 @@ from typing import Protocol
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
+from harness.workflow_input_binding import WorkflowInputBinding
 
 
 """
@@ -18,4 +19,5 @@ class RuleMatchConditionCompiling(Protocol):
     def compile(
         self,
         declaration: RuleMatchDeclaration,
+        input_bindings: list[WorkflowInputBinding],
     ) -> ConditionDeclaration | None: ...

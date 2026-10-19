@@ -12,8 +12,8 @@ from source.swift_tag_detector import SwiftTagDetecting
 """
 solid-name: SwiftSourceAnalyzer
 solid-category: service
-solid-spec: [SPEC-040]
-solid-description: Produces typed Swift source units and recoverable parse diagnostics from normalized content.
+solid-spec: [SPEC-040, SPEC-063]
+solid-description: Produces Swift declaration, type-inspection and technology facts with explicit parse completeness and recoverable diagnostics.
 """
 class SwiftSourceAnalyzer(LanguageSourceAnalyzing):
     def __init__(
@@ -36,5 +36,6 @@ class SwiftSourceAnalyzer(LanguageSourceAnalyzing):
             ),
             diagnostics=inventory.diagnostics,
             units=inventory.units,
+            type_inspections=inventory.type_inspections,
             detections=self._tag_detector.detect(inventory, source),
         )

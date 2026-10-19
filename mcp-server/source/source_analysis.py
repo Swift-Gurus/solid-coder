@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_analysis_decision import SourceAnalysisDecision
 from source.source_parse_diagnostic import SourceParseDiagnostic
 from source.source_unit import SourceUnit
@@ -11,8 +12,8 @@ from source.technology_detection import TechnologyDetection
 """
 solid-name: SourceAnalysis
 solid-category: model
-solid-spec: [SPEC-040]
-solid-description: Carries source identity, exact extension, parse outcome, recoverable diagnostics, ordered units, and tag evidence.
+solid-spec: [SPEC-040, SPEC-063]
+solid-description: Records source identity, parse completeness, ordered declarations, type-inspection facts, technology evidence and recoverable diagnostics.
 """
 class SourceAnalysis(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -22,4 +23,5 @@ class SourceAnalysis(BaseModel):
     decision: SourceAnalysisDecision
     diagnostics: list[SourceParseDiagnostic] = Field(default_factory=list)
     units: list[SourceUnit] = Field(default_factory=list)
+    type_inspections: list[SourceTypeInspection] = Field(default_factory=list)
     detections: list[TechnologyDetection] = Field(default_factory=list)

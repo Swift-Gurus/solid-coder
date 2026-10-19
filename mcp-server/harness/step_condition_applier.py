@@ -10,7 +10,6 @@ from harness.models import StepInstance
 from harness.step_condition_applying import StepConditionApplying
 from harness.step_skip import StepSkip
 from harness.workflow_run_context import WorkflowRunContext
-from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
 """
@@ -24,10 +23,8 @@ class StepConditionApplier(StepConditionApplying):
     def __init__(
         self,
         condition_evaluator: ConditionDecisionEvaluating,
-        context_resolver: WorkflowStepContextResolving,
     ) -> None:
         self._condition_evaluator = condition_evaluator
-        self._context_resolver = context_resolver
 
     def apply(
         self,
@@ -38,14 +35,9 @@ class StepConditionApplier(StepConditionApplying):
     ) -> StepInstance:
         if instance.automatic_outputs is not None:
             return instance
-        condition_context = self._context_resolver.resolve(
-            context,
-            instance.workflow_instance,
-            item,
-        )
         evidence = self._condition_evaluator.evaluate(
             condition,
-            condition_context,
+            context,
         )
         if evidence.matched:
             return instance

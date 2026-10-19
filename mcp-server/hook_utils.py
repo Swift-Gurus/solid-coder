@@ -20,6 +20,8 @@ from subprocess_error import SubprocessError  # noqa: F401 — re-exported for c
 from subprocess_running import SubprocessRunning  # noqa: F401 — re-exported for consumers
 from subprocess_json_running import SubprocessJsonRunning  # noqa: F401 — re-exported for consumers
 from event_parsing import ClaudeBareEventParsing as EventParsing  # noqa: F401 — re-exported for consumers
+from utils.patterns.fnmatch_pattern_matcher import FnmatchPatternMatcher, PatternMatching
+from utils.patterns.path_pattern_matcher import PathPatternMatcher
 
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
@@ -133,27 +135,13 @@ def parse_hook_event(raw: str) -> Optional[tuple]:
     )
 
 
-def path_matches_pattern(file_path: str, pattern: str) -> bool:
-    """Return True if file_path matches the glob pattern.
-
-    Supports ** wildcard: tests/fixtures/** matches any file anywhere under
-    that directory, whether the path is relative or absolute.
-    Falls back to fnmatch for patterns without **.
-    """
-    import fnmatch as _fnmatch
-
-    normalized = file_path.replace("\\", "/")
-    pat = pattern.replace("\\", "/")
-
-    if "**" in pat:
-        prefix = pat.split("**")[0].rstrip("/")
-        needle = "/" + prefix + "/"
-        haystack = "/" + normalized.lstrip("/")
-        return needle in haystack
-
-    return _fnmatch.fnmatch(normalized, pat) or _fnmatch.fnmatch(
-        normalized.rsplit("/", 1)[-1], pat
-    )
+def path_matches_pattern(
+    file_path: str,
+    pattern: str,
+    matcher: PatternMatching = PathPatternMatcher(FnmatchPatternMatcher()),
+) -> bool:
+    """Compatibility boundary for the shared segment-aware path matcher."""
+    return matcher.matches(file_path, pattern)
 
 
 from stdout_writer import StdoutWriter  # noqa: E402, F401 — re-exported for consumers

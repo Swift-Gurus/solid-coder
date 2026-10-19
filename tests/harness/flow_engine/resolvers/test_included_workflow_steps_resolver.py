@@ -29,6 +29,7 @@ from harness.included_workflow_step_identity_resolver import (
 )
 from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolver
 from harness.models import StepDef
+from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_output_reference import StepOutputReference
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
@@ -98,6 +99,9 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
             instance_id="review-2",
             source_index=1,
             source_item=source_item,
+            condition_context=WorkflowRunContext(
+                item=ResolvedWorkflowContextValue(present=True, value=source_item),
+            ),
             inputs=WorkflowContextValues(
                 entries=[
                     WorkflowContextValue(

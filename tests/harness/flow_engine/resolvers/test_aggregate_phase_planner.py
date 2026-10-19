@@ -184,6 +184,20 @@ class TestAggregatePhasePlanner(unittest.TestCase):
 
         self.assertEqual([phase.step_ids for phase in phases], [["prepare"]])
 
+    def test_completed_conditional_prefix_does_not_disable_later_aggregation(self) -> None:
+        flow = FlowDef(
+            id="resumed", name="Resumed aggregate", max_turns=10,
+            execution=WorkflowExecutionMode.AGGREGATE,
+            steps=[
+                StepDef(id="conditional", prompt="Earlier work.", condition=object()),
+                StepDef(id="report", prompt="Report.", depends_on=["conditional"]),
+                StepDef(id="summarize", prompt="Summarize.", depends_on=["report"]),
+            ],
+        )
+        resumed = RunState(completed={"conditional": {}}, running=[], turn_count=1, status="running")
+        phases = self.sut.plan(flow, resumed, [self._ready("report")])
+        self.assertEqual([phase.step_ids for phase in phases], [["report", "summarize"]])
+
     def test_stops_after_for_each_step_before_fan_in_dependency(self) -> None:
         flow = FlowDef(
             id="aggregate",

@@ -15,6 +15,9 @@ from source.analysis.operations.source_analysis_operation_registrations_factory 
 from source.analysis.operations.discover_source_declaration_input import DiscoverSourceDeclarationInput
 from source.analysis.operations.source_declaration_discovery import SourceDeclarationDiscovery
 from source.analysis.operations.source_declaration_discovery_operation_factory import SourceDeclarationDiscoveryOperationFactory
+from source.analysis.provenance.resolve_type_inspections_input import ResolveTypeInspectionsInput
+from source.analysis.provenance.resolved_type_inspections import ResolvedTypeInspections
+from source.analysis.provenance.source_type_inspection_operation_factory import SourceTypeInspectionOperationFactory
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.collect_changes_output import CollectChangesOutput
@@ -71,6 +74,12 @@ class SourceOperationRegistrationsFactory:
                 handler=CollectChangesOperationFactory().make(),
             ),
             *SourceAnalysisOperationRegistrationsFactory().make(),
+            OperationRegistration(
+                name="source.resolve_type_inspections",
+                input_model=ResolveTypeInspectionsInput,
+                output_model=ResolvedTypeInspections,
+                handler=SourceTypeInspectionOperationFactory(self._project_directory).make(),
+            ),
             OperationRegistration(
                 name="source.discover_declaration",
                 input_model=DiscoverSourceDeclarationInput,

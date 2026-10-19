@@ -11,6 +11,7 @@ from harness.collection_source_reference_parser import (
 )
 from harness.condition_conjoiner import ConditionConjoiner
 from harness.condition_serializer_factory import make_condition_serializer
+from harness.enrolled_rule_sources_selector import EnrolledRuleSourcesSelector
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_cycle_guard import IncludeCycleGuard
 from harness.dataclass_include_alias_group_replacer import (
@@ -51,6 +52,7 @@ from harness.rule_set_include_reference import RuleSetIncludeReference
 from harness.rule_set_include_reference_parser import RuleSetIncludeReferenceParser
 from harness.rule_set_include_source_resolver import RuleSetIncludeSourceResolver
 from harness.rule_set_member_serializer import RuleSetMemberSerializer
+from harness.rule_set_member_resolver import RuleSetMemberResolver
 from harness.rule_scope_runtime_adapter_resolver_factory import (
     RuleScopeRuntimeAdapterResolverFactory,
 )
@@ -107,13 +109,17 @@ class IncludeResolverFactory:
         self._review_policy_loader = review_policy_loader
 
     def make(self) -> IncludeResolver:
+        condition_conjoiner = ConditionConjoiner()
         catalog_rule_members = CatalogRuleSetMembersResolver(
-            catalog_resolver=self._catalog_resolver,
-            match_compiler=RuleMatchConditionCompiler(
-                RuleSelectionConditionCompiler()
+            source_selector=EnrolledRuleSourcesSelector(self._catalog_resolver),
+            member_resolver=RuleSetMemberResolver(
+                match_compiler=RuleMatchConditionCompiler(
+                    RuleSelectionConditionCompiler(),
+                    condition_conjoiner,
+                ),
+                condition_conjoiner=condition_conjoiner,
+                runtime_adapters=RuleScopeRuntimeAdapterResolverFactory().make(),
             ),
-            condition_conjoiner=ConditionConjoiner(),
-            runtime_adapters=RuleScopeRuntimeAdapterResolverFactory().make(),
         )
         rule_members = (
             catalog_rule_members

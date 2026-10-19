@@ -1,6 +1,5 @@
 """Composes deterministic analysis for resolved source content."""
 
-from gate.dict_extension_lookup import DictExtensionLookup
 from source.language_source_analyzer_registration import (
     LanguageSourceAnalyzerRegistration,
 )
@@ -8,7 +7,7 @@ from source.language_source_analyzer_resolver import (
     LanguageSourceAnalyzerResolver,
 )
 from source.resolved_source_analyzer import ResolvedSourceAnalyzer
-from source.source_language_detector import SourceLanguageDetector
+from source.source_language_detector_factory import SourceLanguageDetectorFactory
 from source.swift_source_analyzer_factory import SwiftSourceAnalyzerFactory
 from source.whole_document_unit_resolver import WholeDocumentUnitResolver
 
@@ -22,12 +21,7 @@ solid-description: Provides language-selected parsed analysis with deterministic
 class ResolvedSourceAnalyzerFactory:
     def make(self) -> ResolvedSourceAnalyzer:
         return ResolvedSourceAnalyzer(
-            language_detector=SourceLanguageDetector(
-                extension_lookup=DictExtensionLookup({
-                    ".swift": "swift",
-                    ".py": "python",
-                }),
-            ),
+            language_detector=SourceLanguageDetectorFactory().make(),
             analyzer_resolver=LanguageSourceAnalyzerResolver([
                 LanguageSourceAnalyzerRegistration(
                     language="swift",

@@ -1,15 +1,9 @@
 """Plans all enrolled catalog rules as typed include members."""
 
-from dataclasses import replace
-
-from harness.condition_conjoining import ConditionConjoining
-from harness.rule_match_condition_compiling import RuleMatchConditionCompiling
-from harness.rule_scope_runtime_adapting_resolving import (
-    RuleScopeRuntimeAdaptingResolving,
-)
+from harness.enrolled_rule_sources_selector import EnrolledRuleSourcesSelecting
 from harness.rule_set_member_include import RuleSetMemberInclude
+from harness.rule_set_member_resolver import RuleSetMemberResolving
 from harness.rule_set_members_resolving import RuleSetMembersResolving
-from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
 
@@ -22,38 +16,18 @@ solid-description: Resolves enrolled rules from one scoped catalog into stable c
 class CatalogRuleSetMembersResolver(RuleSetMembersResolving):
     def __init__(
         self,
-        catalog_resolver: WorkflowCatalogResolving,
-        match_compiler: RuleMatchConditionCompiling,
-        condition_conjoiner: ConditionConjoining,
-        runtime_adapters: RuleScopeRuntimeAdaptingResolving,
+        source_selector: EnrolledRuleSourcesSelecting,
+        member_resolver: RuleSetMemberResolving,
     ) -> None:
-        self._catalog_resolver = catalog_resolver
-        self._match_compiler = match_compiler
-        self._condition_conjoiner = condition_conjoiner
-        self._runtime_adapters = runtime_adapters
+        self._source_selector = source_selector
+        self._member_resolver = member_resolver
 
     def resolve(
         self,
         search_paths: list[str],
         runtime: WorkflowIncludeRuntime,
     ) -> list[RuleSetMemberInclude]:
-        member_runtime = replace(runtime, condition=None)
         return [
-            RuleSetMemberInclude(
-                workflow_id=source.id,
-                alias=source.id,
-                runtime=self._runtime_adapters.resolve(
-                    source.rule.scope
-                ).adapt(
-                    member_runtime
-                ),
-                condition=self._condition_conjoiner.conjoin([
-                    runtime.condition,
-                    self._match_compiler.compile(source.rule.match),
-                ]),
-            )
-            for source in self._catalog_resolver.catalog(
-                search_paths
-            ).rule_sources()
-            if source.rule is not None and source.rule.auto_include
+            self._member_resolver.resolve(source, runtime)
+            for source in self._source_selector.select(search_paths)
         ]

@@ -94,7 +94,6 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
         analysis = started.steps[0]
         selection = self.sut.flow_next({
             analysis.instance_id: {
-                "type_checks": [],
                 "has_inheritance": True,
                 "relationship_terms": ["RequestProcessor"],
                 "contract_implementations": [],
@@ -126,33 +125,12 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
                 "evidence": f"Read {selected[0].source.path}.",
             }
         })
-        normalized = self.sut.flow_next({
-            classifications.steps[0].instance_id: {
-                "assessment": {
-                    "candidate_id": selected[0].candidate_id,
-                    "location": str(selected[0].source.path),
-                    "name": selected[0].source.unit,
-                    "classification": "BASE_DECLARATION",
-                    "violations": [
-                        {
-                            "classification": "NEW_GUARD",
-                            "member": "process",
-                            "is_exception": False,
-                            "reasoning": "The subtype rejects an input accepted by the base.",
-                            "evidence": "NonEmptyRequestProcessor adds !request.isEmpty.",
-                        }
-                    ],
-                    "reasoning": "The declaration is the inspected concrete base.",
-                    "evidence": "RequestProcessor declares process(_:).",
-                }
-            }
-        })
         self.assertEqual(
-            [step.step_id for step in normalized.steps],
+            [step.step_id for step in classifications.steps],
             ["classify_relationship_violations"],
         )
         exception = self.sut.flow_next({
-            normalized.steps[0].instance_id: {
+            classifications.steps[0].instance_id: {
                 "observations": [
                     {
                         "candidate_id": selected[0].candidate_id,
@@ -178,6 +156,10 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
         )
         self.assertEqual(metric["outputs"]["value"], 1)
         self.assertIsNotNone(metric["metric_derivation"])
+        completed = [event["step_id"] for event in self._events(started.run_id)
+                     if event.get("event") == "step_completed"]
+        self.assertEqual(completed.count("classify_relationship_violations"), 1)
+        self.assertFalse(any(step.endswith(".classify_relationship") for step in completed))
 
     def _presented_candidate_ids(self, run_id: str) -> list[str]:
         event = next(

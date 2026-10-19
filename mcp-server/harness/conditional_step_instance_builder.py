@@ -6,6 +6,7 @@ from harness.models import StepDef, StepInstance
 from harness.step_condition_applying import StepConditionApplying
 from harness.step_instance_building import StepInstanceBuilding
 from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
 
 """
@@ -20,9 +21,11 @@ class ConditionalStepInstanceBuilder:
         self,
         delegate: StepInstanceBuilding,
         condition_applier: StepConditionApplying,
+        context_resolver: WorkflowStepContextResolving,
     ) -> None:
         self._delegate = delegate
         self._condition_applier = condition_applier
+        self._context_resolver = context_resolver
 
     def build(
         self,
@@ -47,7 +50,7 @@ class ConditionalStepInstanceBuilder:
                 conditioned,
                 workflow_instance.condition,
                 workflow_instance.source_item,
-                context,
+                workflow_instance.condition_context,
             )
             if conditioned.skip is not None:
                 return conditioned
@@ -56,7 +59,7 @@ class ConditionalStepInstanceBuilder:
                 conditioned,
                 step.condition,
                 item,
-                context,
+                self._context_resolver.resolve(context, workflow_instance, item),
             )
             if conditioned.skip is not None:
                 return conditioned

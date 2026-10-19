@@ -928,8 +928,8 @@ class FlowEngineAssemblyFactory:
                         ),
                         condition_applier=StepConditionApplier(
                             condition_evaluator,
-                            workflow_step_context_resolver,
                         ),
+                        context_resolver=workflow_step_context_resolver,
                     ),
                 ),
             ),
