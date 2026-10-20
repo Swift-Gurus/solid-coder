@@ -61,6 +61,14 @@ class FlowTransitionGateFactory:
         from harness.workflow_catalog_factory import WorkflowCatalogFactory
         from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
         from harness.workflow_results_context_builder_factory import WorkflowResultsContextBuilderFactory
+        from harness.collection_operation_registrations_factory import CollectionOperationRegistrationsFactory
+        from harness.flow_validation_error_factory import FlowValidationErrorFactory
+        from harness.logical_operation_name_validator import LogicalOperationNameValidator
+        from harness.operation_registry import OperationRegistry
+        from harness.project_context import McpRequestContextProjectDirectoryReader
+        from review.review_operation_registrations_factory import ReviewOperationRegistrationsFactory
+        from session.project_context import SessionProjectContextPathResolver, SessionProjectDirectoryReader
+        from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
         from pending_step_failure_recorder import PendingStepFailureRecorder
 
         active_run = ActiveRunPointerStore(
@@ -72,6 +80,20 @@ class FlowTransitionGateFactory:
         workflow_catalog = WorkflowCatalogFactory().make()
         assembly = FlowEngineAssemblyFactory().build(
             workflow_catalog_resolver=workflow_catalog,
+            operation_registry=OperationRegistry(
+                registrations=[
+                    *CollectionOperationRegistrationsFactory().make(),
+                    *SourceOperationRegistrationsFactory(
+                        project_directory=McpRequestContextProjectDirectoryReader(
+                            session_reader=StaticSessionIdReader(self._session_id),
+                            session_project_directory=SessionProjectDirectoryReader(SessionProjectContextPathResolver()),
+                        ),
+                    ).make(),
+                    *ReviewOperationRegistrationsFactory().make(),
+                ],
+                name_validator=LogicalOperationNameValidator(),
+                error_factory=FlowValidationErrorFactory(),
+            ),
         )
         resolving_flow_loader = NameResolvingFlowLoader(
             file_resolver=FlowFileResolver(

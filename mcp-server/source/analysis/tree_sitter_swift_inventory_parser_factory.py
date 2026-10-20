@@ -4,6 +4,8 @@ import tree_sitter_swift
 from tree_sitter import Language, Parser
 
 from findings.review_unit_kind_parser import ReviewUnitKindParser
+from source.analysis.declarations.tree_sitter_swift_scope_parser import TreeSitterSwiftScopeParser
+from source.analysis.declarations.tree_sitter_swift_scoped_declaration_parser import TreeSitterSwiftScopedDeclarationParser
 from source.analysis.source_syntax_collection_parser import SourceSyntaxCollectionParser
 from source.analysis.swift_member_decoder_factory import SwiftMemberDecoderFactory
 from source.analysis.swift_syntax_diagnostic_parser import SwiftSyntaxDiagnosticParser
@@ -34,15 +36,21 @@ class TreeSitterSwiftInventoryParserFactory:
             excluded_node_types=frozenset({"comment", "multiline_comment"}),
             excluded_fields=frozenset({"text"}),
         )
+        units = TreeSitterSwiftUnitParser(
+            unit_kinds=ReviewUnitKindParser(),
+            spans=spans,
+            members=SwiftMemberDecoderFactory().make(),
+            signatures=TreeSitterSwiftDeclarationSignatureParser(
+                tokens=tokens,
+                references=TreeSitterTypeReferenceParser(tokens=tokens, spans=spans),
+            ),
+        )
         return TreeSitterSwiftInventoryParser(
             syntax=TreeSitterSyntaxParser(Parser(Language(tree_sitter_swift.language()))),
-            units=TreeSitterSwiftUnitParser(
-                unit_kinds=ReviewUnitKindParser(),
-                spans=spans,
-                members=SwiftMemberDecoderFactory().make(),
-                signatures=TreeSitterSwiftDeclarationSignatureParser(
-                    tokens=tokens,
-                    references=TreeSitterTypeReferenceParser(tokens=tokens, spans=spans),
+            declarations=SourceSyntaxCollectionParser(
+                entries=nodes,
+                parser=TreeSitterSwiftScopedDeclarationParser(
+                    units=units, scopes=TreeSitterSwiftScopeParser(spans), tokens=tokens,
                 ),
             ),
             imports=TreeSitterSwiftImportsParser(spans),

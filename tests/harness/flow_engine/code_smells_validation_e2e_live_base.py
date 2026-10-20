@@ -26,6 +26,7 @@ solid-description: Supplies the file-scoped Code Smells fixture and locked MCP-s
 """
 class CodeSmellsValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "code-smells"
+    REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"
     ARTIFACT_SCENARIO = "code-smells"
     FIXTURE = _FIXTURE
     EXPECTED_STEP_IDS = [
@@ -37,4 +38,7 @@ class CodeSmellsValidationE2ELiveBase(RuleValidationE2ELiveBase):
     EXPECTED_VALUES = [1, 2, 1]
     EXPECTED_METRIC_SEVERITIES = ["SEVERE", "SEVERE", "SEVERE"]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
-    ALLOW_AUXILIARY_STEPS = True
+    EXPECTED_ANALYSIS_STEP_IDS = [
+        "analyze_source", "select_declarations", "classify_declarations", "bind_classifications",
+    ]
+    EXCEPTION_STEP_IDS = []

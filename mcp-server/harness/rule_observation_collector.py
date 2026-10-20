@@ -18,8 +18,8 @@ from harness.unavailable_rule_metric import UnavailableRuleMetric
 """
 solid-name: RuleObservationCollector
 solid-category: service
-solid-spec: [SPEC-039]
-solid-description: Collects validated observations for one executable review rule.
+solid-spec: [SPEC-039, SPEC-066]
+solid-description: Collects validated observations and authored or model-classified exception decisions for one executable review rule.
 """
 class RuleObservationCollector(RuleObservationCollecting):
     def __init__(
@@ -53,7 +53,7 @@ class RuleObservationCollector(RuleObservationCollecting):
 
         metrics: list[RuleMetricObservation] = []
         unavailable_metrics: list[UnavailableRuleMetric] = []
-        exception: RuleExceptionDecision | None = None
+        exception = instance.workflow.declaration.exception
 
         for step in instance.steps:
             if step.metric is not None:

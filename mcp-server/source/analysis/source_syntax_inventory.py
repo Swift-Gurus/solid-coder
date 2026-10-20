@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
 from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_evidence import SourceEvidence
 from source.source_parse_diagnostic import SourceParseDiagnostic
@@ -18,6 +19,7 @@ class SourceSyntaxInventory(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     units: list[SourceUnit] = Field(default_factory=list)
+    declarations: list[SourceScopedDeclaration] = Field(default_factory=list)
     imports: list[SourceEvidence] = Field(default_factory=list)
     signals: list[SourceEvidence] = Field(default_factory=list)
     type_inspections: list[SourceTypeInspection] = Field(default_factory=list)

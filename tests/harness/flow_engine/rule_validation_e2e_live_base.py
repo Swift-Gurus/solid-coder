@@ -58,6 +58,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     EXPECTED_FINAL_SEVERITY: ClassVar[str]
     REVIEW_WORKFLOW_ID: ClassVar[str] = "solid-review"
     EXPECTED_EXCEPTION: ClassVar[bool] = False
+    EXCEPTION_STEP_IDS: ClassVar[list[str]] = ["classify_exception"]
     ALLOW_AUXILIARY_STEPS: ClassVar[bool] = False
     EXPECTED_RULE_SOURCE_INDEX: ClassVar[int] = 0
     EXPECTED_RULE_RESULT_COUNT: ClassVar[int] = 1
@@ -133,7 +134,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         expected_step_ids = {
             *expectation.analysis_step_ids,
             *(metric.step_id for metric in expectation.metrics),
-            "classify_exception",
+            *self.EXCEPTION_STEP_IDS,
         }
         if expectation.allow_auxiliary_steps:
             self.assertLessEqual(expected_step_ids, completed_step_ids)
@@ -148,15 +149,11 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             self.assertEqual(completed["outputs"]["value"], metric.value)
             self.assertTrue(completed["outputs"]["additional_info"]["reasoning"])
             self.assertTrue(completed["outputs"]["additional_info"]["evidence"])
-        exception_step = next(
-            event
-            for event in completed_steps
-            if event["local_step_id"] == "classify_exception"
-        )
-        self.assertEqual(
-            exception_step["outputs"]["is_exception"],
-            expectation.is_exception,
-        )
+        for step_id in self.EXCEPTION_STEP_IDS:
+            exception_step = next(
+                event for event in completed_steps if event["local_step_id"] == step_id
+            )
+            self.assertEqual(exception_step["outputs"]["is_exception"], expectation.is_exception)
 
         workflow_instance_ids = {
             event["workflow_instance_id"] for event in completed_steps
@@ -221,6 +218,8 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         self.assertEqual(result.severity, expectation.final_severity)
         self.assertEqual(result.scoring_authority, "mcp")
         self.assertEqual(result.exception.is_exception, expectation.is_exception)
+        self.assertTrue(result.exception.additional_info.reasoning)
+        self.assertTrue(result.exception.additional_info.evidence)
         self.assertEqual(
             [metric.metric_id for metric in result.metrics],
             [metric.metric_id for metric in expectation.metrics],

@@ -11,7 +11,7 @@ from harness.rule_workflow_validation_scope import RuleWorkflowValidationScope
 """
 solid-name: RuleWorkflowStructureValidator
 solid-category: service
-solid-spec: [SPEC-039, SPEC-044]
+solid-spec: [SPEC-039, SPEC-044, SPEC-066]
 solid-description: Validates granular or aggregate rule-step structure and returns the declarations that require identity validation.
 """
 class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
@@ -29,6 +29,12 @@ class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
         assessment_steps = [
             step for step in scope.steps if step.assessment is not None
         ]
+        fixed_exception = scope.declaration.exception
+        if fixed_exception is not None and (exception_steps or assessment_steps):
+            raise self._error_factory.create(
+                f"Rule workflow '{scope.workflow_id}' must not combine a fixed "
+                "exception with a model-owned exception or aggregate assessment"
+            )
         if assessment_steps:
             if len(assessment_steps) != 1:
                 raise self._error_factory.create(
@@ -47,7 +53,7 @@ class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
             raise self._error_factory.create(
                 f"Rule workflow '{scope.workflow_id}' must declare at least one 'metric' step"
             )
-        if len(exception_steps) != 1:
+        if fixed_exception is None and len(exception_steps) != 1:
             raise self._error_factory.create(
                 f"Rule workflow '{scope.workflow_id}' must declare exactly one 'exception' step"
             )

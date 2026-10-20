@@ -24,6 +24,17 @@ from source.analysis.relationships.source_relationship_resolver import SourceRel
 from source.analyze_source_input import AnalyzeSourceInput
 from source.source_analysis import SourceAnalysis
 from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
+from source.text_analysis_source import TextAnalysisSource
+from source.analysis.operations.text_source_analysis_adapter import TextSourceAnalysisAdapter
+from source.analysis.declarations.select_source_declarations_input import SelectSourceDeclarationsInput
+from source.analysis.declarations.select_source_declarations_operation import SelectSourceDeclarationsOperation
+from source.analysis.declarations.source_declaration_inventory_renderer import SourceDeclarationInventoryRenderer
+from source.analysis.declarations.source_declaration_selection_result import SourceDeclarationSelectionResult
+from source.analysis.declarations.bind_declaration_classifications_input import BindDeclarationClassificationsInput
+from source.analysis.declarations.bind_declaration_classifications_operation import BindDeclarationClassificationsOperation
+from source.analysis.declarations.bound_declaration_classifications import BoundDeclarationClassifications
+from source.analysis.relationships.source_implementation_owners_resolver import SourceImplementationOwnersResolver
+from source.analysis.relationships.source_related_declarations_selector import SourceRelatedDeclarationsSelector
 from source.analysis.operations.validate_requirement_coverage_input import ValidateRequirementCoverageInput
 from source.analysis.operations.validate_requirement_coverage_operation import ValidateRequirementCoverageOperation
 from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidator
@@ -49,6 +60,31 @@ class SourceAnalysisOperationRegistrationsFactory:
                 handler=ResultOperationAdapter(
                     operation=SourceAnalysisOperationFactory().make(),
                     result_type=OperationResult[SourceAnalysis],
+                ),
+            ),
+            OperationRegistration(
+                name="source.analyze_text",
+                input_model=TextAnalysisSource,
+                output_model=OperationResult[SourceAnalysis],
+                handler=ResultOperationAdapter(
+                    operation=TextSourceAnalysisAdapter(SourceAnalysisOperationFactory().make()),
+                    result_type=OperationResult[SourceAnalysis],
+                ),
+            ),
+            OperationRegistration(
+                name="source.select_declarations",
+                input_model=SelectSourceDeclarationsInput,
+                output_model=SourceDeclarationSelectionResult,
+                handler=SelectSourceDeclarationsOperation(SourceDeclarationInventoryRenderer()),
+            ),
+            OperationRegistration(
+                name="source.bind_declaration_classifications",
+                input_model=BindDeclarationClassificationsInput,
+                output_model=BoundDeclarationClassifications,
+                handler=BindDeclarationClassificationsOperation(
+                    coverage=CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+                    relationships=SourceRelationshipResolver(SourceReferenceCandidateResolver()),
+                    owners=SourceImplementationOwnersResolver(SourceRelatedDeclarationsSelector()),
                 ),
             ),
             OperationRegistration(

@@ -476,6 +476,9 @@ including when separate files have identical local declaration identities.
 | `review.prepare` | `target` | `context_sources` |
 | `source.collect_changes` | `project_root` | — |
 | `source.analyze` | `source` | — |
+| `source.analyze_text` | `text` | `kind` (text), `virtual_path`, `file_extension` |
+| `source.select_declarations` | `analysis`, `selections` | — |
+| `source.bind_declaration_classifications` | `analysis`, `declarations`, `classifications` | — |
 | `source.resolve_relationships` | `analyses` | — |
 | `source.match_requirements` | `inventory`, `relationship` | — |
 | `source.declaration_members` | `inventory`, `declaration` | — |
@@ -513,6 +516,30 @@ operation's input model. Fixed values survive nested materialization and replay.
 Malformed reference wrappers are rejected rather than silently treated as text.
 Nested objects/arrays are literal data, not recursively interpolated templates.
 This does not change include `with` or `for_each` expression contracts.
+
+For an existing normalized buffer, `source.analyze_text` accepts flat bindings
+such as `text: "{{params.review_unit.target.code}}"` and
+`virtual_path: "{{params.review_unit.target.source_identity}}"`. It delegates to
+the same analyzer as `source.analyze` and returns the same named `result`.
+It does not read the destination file.
+
+`source.select_declarations` selects from that analysis using a list of selectors.
+Each selector requires `kinds` and can restrict `scopes` (`file`, `type`,
+`callable`, `closure`) and `any_modifiers`. Selectors are ORed; fields within one
+selector are ANDed. Results are source-ordered and deduplicated, with
+`declarations`, compact model-facing `context`, and `limitations` outputs.
+
+`source.bind_declaration_classifications` takes the authoritative `analysis`,
+selected `declarations`, and one evidenced classification per declaration ID.
+An `independent` classification carries `has_business_logic`; an
+`implemented_contract`, `supporting_helper`, or `cohesive_contract` classification
+instead names a `related_declaration_id`. Every entry requires
+`additional_info.reasoning` and `additional_info.evidence`. Associations point
+directly to another independent file-level type; chains and cycles are rejected.
+Missing, duplicate or unknown IDs reject the assignment before scoring and require
+one complete replacement collection. Bound `declarations` expose source facts and
+bounded implementation relationships for authored scoring filters. The operation
+does not choose metric thresholds or prove semantic cohesion.
 
 ### Delegate step
 
@@ -1070,6 +1097,7 @@ steps:
 | Field | Values | Default |
 |---|---|---|
 | `scope` | `unit`, `file` | `unit` |
+| `exception` | Authored `is_exception` and `additional_info` decision | Model exception step required |
 | `match.file_extensions` | `included` / `excluded` lowercase suffixes beginning with `.` | unrestricted |
 | `match.unit_kinds` | `class`, `struct`, `enum`, `protocol`, `extension`, `actor`, `function`, `document` | unrestricted |
 | `match.tags` | `included` / `excluded` normalized lowercase single-word tags | unrestricted |
@@ -1077,9 +1105,26 @@ steps:
 Missing `included` means all values are eligible except `excluded`. A value may
 not appear in both lists, and duplicates are rejected.
 
-Every rule workflow must contain at least one `metric` step and exactly one
-`exception` step. Metric and exception steps may not author `outputs`; the
-engine generates their audited contracts.
+Granular/co-located rule workflows require at least one metric and exactly one
+exception source: a model `type: exception` step, or an authored `rule.exception`.
+Metric and exception steps may not author `outputs`; the engine generates their
+audited contracts. Aggregate assessment steps retain their own exception contract
+and cannot be combined with an authored fixed exception.
+
+Use an authored decision only when no model judgment is needed:
+
+```yaml
+rule:
+  scope: file
+  exception:
+    is_exception: false
+    additional_info:
+      reasoning: Only metric-specific exclusions apply to this rule.
+      evidence: Exclusions are declared in the metric scoring filters.
+```
+
+Both audit strings are required. This preserves exception auditing and replay
+without an extra model turn. Do not also declare a model exception step.
 
 ### Metric declaration
 
@@ -1601,7 +1646,7 @@ Before starting a workflow, verify:
 - include callers depend on the alias, not a child step;
 - operation `with` keys match the registered operation contract;
 - command/script executors are allowlisted and print exactly one JSON object;
-- rule workflows have at least one metric and exactly one exception;
+- granular/co-located rules have at least one metric and exactly one exception source;
 - client overrides live in `.solid-coder/policies/review.yaml`.
 
 `flow_start` performs the authoritative load-time validation. Runtime values are

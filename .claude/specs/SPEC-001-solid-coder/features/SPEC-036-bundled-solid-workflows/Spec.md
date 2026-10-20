@@ -233,3 +233,19 @@ comparison path stays available; this update does not authorize its removal or
 rule alignment. Historical benchmark failures above are not current non-live
 failures, and the targeted live matrix is not a substitute for full bundle
 validation.
+
+### Code Smells completion — 2026-10-20
+
+SPEC-066 and its related CS-2 bug SPEC-051 are complete. The bundled Code Smells
+workflow now uses shared source inventories, complete evidenced classifications,
+and MCP-owned boundary reduction. Direct and extension-declared conformance,
+multiple cohesive contracts, and file-confined supporting helpers are covered.
+Legacy instructions and health-check mode selection remain unchanged.
+
+Final verification: 2,974 non-live tests and 264 subtests passed, four existing
+skips, and six targeted Codex/Claude live cases passed. Both models returned
+CS-1/2/3 values 1 / 2 / 1 for the violation fixture and 0 / 1 / 0 for the
+cohesive-boundary fixture; the two nested catalog checks also passed. Run evidence
+is in [SPEC-066's execution plan](subtasks/SPEC-066-source-backed-code-smells-classification/ExecutionPlan.md).
+These results do not close the remaining parent work listed above or replace a
+full health-gate comparison.

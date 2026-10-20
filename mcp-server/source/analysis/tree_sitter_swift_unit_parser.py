@@ -31,7 +31,9 @@ class TreeSitterSwiftUnitParser(SourceSyntaxParsing[Node, SourceUnit | None]):
 
     def parse(self, source: Node) -> SourceUnit | None:
         declaration_kind = source.child_by_field_name("declaration_kind")
-        kind = ReviewUnitKind.FUNCTION if source.type == "function_declaration" else None
+        kind = ReviewUnitKind.FUNCTION if source.type in {
+            "function_declaration", "protocol_function_declaration",
+        } else None
         if declaration_kind is not None and declaration_kind.text:
             kind = self._unit_kinds.parse(declaration_kind.text.decode("utf-8"))
         name = source.child_by_field_name("name")

@@ -19,6 +19,7 @@ from code_smells_validation_e2e_live_base import (  # noqa: E402
     CodeSmellsValidationE2ELiveBase,
 )
 from codex_test_base import CodexTestBase  # noqa: E402
+from code_smells_boundary_e2e_live_base import CodeSmellsBoundaryE2ELiveBase
 
 
 class TestCodexCodeSmellsValidationLive(
@@ -32,4 +33,12 @@ class TestClaudeCodeSmellsValidationLive(
     ClaudeTestBase,
     CodeSmellsValidationE2ELiveBase,
 ):
+    __test__ = True
+
+
+class TestCodexCodeSmellsBoundaryLive(CodexTestBase, CodeSmellsBoundaryE2ELiveBase):
+    __test__ = True
+
+
+class TestClaudeCodeSmellsBoundaryLive(ClaudeTestBase, CodeSmellsBoundaryE2ELiveBase):
     __test__ = True

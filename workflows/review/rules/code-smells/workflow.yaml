@@ -1,150 +1,209 @@
 id: code-smells
 name: Code Smells Review
-description: Measures write-time structural anti-patterns for one normalized source file.
+description: Classifies source-backed declarations; MCP measures static logic, independent file boundaries and inline types.
 max_turns: 10
 
 rule:
   scope: file
+  exception:
+    is_exception: false
+    additional_info:
+      reasoning: This rule has metric-specific exclusions, not a rule-wide exception.
+      evidence: CS-1 and CS-3 exclude build-system DSL; CS-2 applies evidenced declaration relationships and file-private helper exclusions.
 
 steps:
-  - id: classify_smell_observations
+  - id: analyze_source
+    type: operation
+    operation: source.analyze_text
+    with:
+      text: "{{params.review_unit.target.code}}"
+      virtual_path: "{{params.review_unit.target.source_identity}}"
+
+  - id: select_declarations
+    type: operation
+    operation: source.select_declarations
+    depends_on: [analyze_source]
+    with:
+      analysis: "{{steps.analyze_source.outputs.result}}"
+      selections:
+        - kinds: [class, struct, protocol]
+          scopes: [file]
+        - kinds: [function]
+          scopes: [file]
+        - kinds: [function]
+          any_modifiers: [static, class]
+        - kinds: [class, struct, protocol, enum]
+          scopes: [callable, closure]
+
+  - id: classify_declarations
     type: agent
+    depends_on: [select_declarations]
+    when: &complete_inventory
+      ref: "{{steps.select_declarations.outputs.limitations}}"
+      equals: []
     prompt: |
-      Analyze file `{{params.review_unit.target.name}}` from the source already
-      visible in this session. Apply every canonical detection procedure below.
+      Classify the listed declarations in file "{{params.review_unit.target.name}}".
+      Its source is already visible in this session.
 
-      ## CS-1: Static Logic
+      Classify whether the file is a build-system DSL.
 
-      Static functions, class methods, or module-level functions used to hold or split
-      business logic across a type — not constants, not a build-system DSL.
+      For each declaration, choose its relationship:
+      - independent: a separate declaration. For a listed function, classify
+        whether it contains business logic (branching, construction,
+        transformation), rather than pure constants. For a type, this flag is false.
+        Functions and types local to callable bodies use this classification.
+      - implemented_contract: a behavioral contract and its concrete implementation
+        belong to the same cohesive capability. Relate the contract to that
+        implementation, whether conformance is direct or declared by an extension.
+        A class that merely consumes a dependency contract is not its implementation.
+        Multiple cohesive implemented contracts can belong with one implementation.
+      - supporting_helper: a type exists solely to support the file's primary
+        implementation. Relate it to that implementation. Source visibility
+        determines whether it qualifies for the private/fileprivate helper exclusion.
+      - cohesive_contract: in a protocol-only group, this contract and the related
+        contract define the same capability, rather than independent capabilities.
 
-      Count static or class methods that contain business logic (branching, construction,
-      transformation). Exclude pure constants and build-system DSL files.
+      Each relationship points directly to an independent declaration from the
+      list. Additional independent implementations remain independent, even when
+      they implement the same contract. Private visibility alone does not establish
+      a supporting relationship.
 
-      ## CS-2: Multiple Types Per File
-
-      Count of distinct class or struct definitions in a single source file, excluding
-      private extensions that exist solely to support the file's primary type and one
-      behavioral contract colocated with its first concrete implementation for the
-      same cohesive capability.
-
-      Count top-level class and struct declarations in the file. Private extensions
-      scoped to the file's primary type do not count as separate types. Treat one
-      behavioral contract and its first concrete implementation as one cohesive type
-      boundary; additional implementations count independently.
-
-      ## CS-3: Inline Type Definition
-
-      Count of class, struct, interface, or enum definitions declared inside a function or method body rather than at module/file scope.
-
-      Scan each function and method body for nested type declarations (class, struct, enum, interface, protocol).
-      Count each such declaration. Anonymous functions/lambdas do not count.
-
-      Return one observation for every counted or explicitly excluded site, using
-      exactly one of these classifications:
-
-      - `STATIC_LOGIC`: one observation per static or class method containing
-        business logic.
-      - `TYPE_BOUNDARY`: one observation per effective top-level class or struct
-        boundary after grouping one behavioral contract with its first cohesive
-        implementation.
-      - `INLINE_TYPE`: one observation per type declared inside a function or
-        method body.
-
-      Set `is_exception` to true only when that individual candidate matches a
-      metric-specific exclusion above. Return no observation for declarations
-      outside these three candidate categories. Supply nonempty reasoning and
-      precise source evidence for every observation.
+      {{steps.select_declarations.outputs.context}}
     outputs:
-      - name: observations
+      - name: file_context
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [is_build_dsl, additional_info]
+          properties:
+            is_build_dsl: {type: boolean}
+            additional_info: &additional_info
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+      - name: classifications
         type: data
         schema:
           type: array
           items:
             type: object
             additionalProperties: false
-            required:
-              - classification
-              - location
-              - is_exception
-              - reasoning
-              - evidence
+            required: [kind, declaration_id, additional_info]
             properties:
-              classification:
-                type: string
-                enum:
-                  - STATIC_LOGIC
-                  - TYPE_BOUNDARY
-                  - INLINE_TYPE
-              location: {type: string, minLength: 1}
-              is_exception: {type: boolean}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+              kind: {enum: [independent, implemented_contract, supporting_helper, cohesive_contract]}
+              declaration_id: {type: string, minLength: 1}
+              has_business_logic: {type: boolean}
+              related_declaration_id: {type: string, minLength: 1}
+              additional_info: *additional_info
+            oneOf:
+              - required: [has_business_logic]
+                not: {required: [related_declaration_id]}
+                properties:
+                  kind: {const: independent}
+              - required: [related_declaration_id]
+                not: {required: [has_business_logic]}
+                properties:
+                  kind: {enum: [implemented_contract, supporting_helper, cohesive_contract]}
+
+  - id: bind_classifications
+    type: operation
+    operation: source.bind_declaration_classifications
+    depends_on: [classify_declarations]
+    when: *complete_inventory
+    with:
+      analysis: "{{steps.analyze_source.outputs.result}}"
+      declarations: "{{steps.select_declarations.outputs.declarations}}"
+      classifications: "{{steps.classify_declarations.outputs.classifications}}"
 
   - id: static_logic_count
     type: metric
     metric_id: CS-1
-    depends_on: [classify_smell_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [bind_classifications]
+    when: *complete_inventory
+    unavailable_reason: Static logic cannot be measured because the source declaration inventory is incomplete or unsupported.
+    value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      source: "{{steps.bind_classifications.outputs.declarations}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: STATIC_LOGIC
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.declaration.unit.kind}}"
+            equals: function
+          - ref: "{{item.has_business_logic}}"
+            equals: true
+          - ref: "{{steps.classify_declarations.outputs.file_context.is_build_dsl}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
+      severe: {operator: greater_than_or_equal, value: 1}
 
   - id: class_struct_count
     type: metric
     metric_id: CS-2
-    depends_on: [classify_smell_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [bind_classifications]
+    when: *complete_inventory
+    unavailable_reason: Independent file boundaries cannot be measured because the source declaration inventory is incomplete or unsupported.
+    value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      source: "{{steps.bind_classifications.outputs.declarations}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: TYPE_BOUNDARY
-          - ref: "{{item.is_exception}}"
-            equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 2
+          - ref: "{{item.declaration.scope_kind}}"
+            equals: file
+          - ref: "{{item.declaration.unit.kind}}"
+            in: [class, struct, protocol]
+          - not:
+              any:
+                - all:
+                    - ref: "{{item.declaration.unit.kind}}"
+                      in: [class, struct]
+                    - ref: "{{item.kind}}"
+                      equals: supporting_helper
+                    - any:
+                        - ref: "{{item.declaration.modifiers}}"
+                          contains: private
+                        - ref: "{{item.declaration.modifiers}}"
+                          contains: fileprivate
+                    - ref: "{{item.related_declaration.unit.kind}}"
+                      in: [class, struct]
+                - all:
+                    - ref: "{{item.declaration.unit.kind}}"
+                      equals: protocol
+                    - ref: "{{item.kind}}"
+                      equals: implemented_contract
+                    - ref: "{{item.declared_implementation}}"
+                      equals: true
+                    - ref: "{{item.related_declaration.unit.kind}}"
+                      in: [class, struct]
+                - all:
+                    - ref: "{{item.declaration.unit.kind}}"
+                      equals: protocol
+                    - ref: "{{item.kind}}"
+                      equals: cohesive_contract
+                    - ref: "{{item.related_declaration.unit.kind}}"
+                      equals: protocol
+                    - ref: "{{item.has_declared_implementation}}"
+                      equals: false
+                    - ref: "{{item.related_has_declared_implementation}}"
+                      equals: false
+      severe: {operator: greater_than_or_equal, value: 2}
 
   - id: inline_type_count
     type: metric
     metric_id: CS-3
-    depends_on: [classify_smell_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [bind_classifications]
+    when: *complete_inventory
+    unavailable_reason: Inline types cannot be measured because the source declaration inventory is incomplete or unsupported.
+    value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_smell_observations.outputs.observations}}"
+      source: "{{steps.bind_classifications.outputs.declarations}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: INLINE_TYPE
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.declaration.unit.kind}}"
+            in: [class, struct, protocol, enum]
+          - ref: "{{item.declaration.scope_kind}}"
+            in: [callable, closure]
+          - ref: "{{steps.classify_declarations.outputs.file_context.is_build_dsl}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
-  - id: classify_exception
-    type: exception
-    depends_on:
-      - static_logic_count
-      - class_struct_count
-      - inline_type_count
-    prompt: |
-      This rule has no rule-wide exception categories. Metric-specific exclusions are already authored in CS-1, CS-2, and CS-3 and must be applied while measuring those metrics. Return `is_exception: false` with reasoning and evidence confirming that no separate rule-wide exception was applied.
-
-      Apply this exception decision to file `{{params.review_unit.target.name}}`, whose source and preceding measurements are already visible in the current model session.
+      severe: {operator: greater_than_or_equal, value: 1}
