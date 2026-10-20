@@ -147,6 +147,48 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
             ["A", "B"],
         )
 
+    def test_operation_iteration_cannot_seed_an_independent_model_phase(self) -> None:
+        flow = FlowDef(
+            id="aggregate-flow",
+            name="Aggregate Flow",
+            max_turns=10,
+            execution=WorkflowExecutionMode.AGGREGATE,
+            steps=[
+                StepDef(
+                    id="count",
+                    type="operation",
+                    prompt="",
+                    for_each=ForEachDeclaration(
+                        source=StepOutputReference("prepare", "items")
+                    ),
+                ),
+                StepDef(id="inspect", prompt="Inspect."),
+                StepDef(id="decide", prompt="Decide.", depends_on=["inspect"]),
+            ],
+        )
+        state = RunState(completed={}, running=[], turn_count=0, status="running")
+        operation = StepInstance(
+            step_id="count",
+            instance_id="count-3",
+            item=["padding", "frame"],
+            prompt="",
+            iteration_index=2,
+        )
+        ready = [operation, StepInstance("inspect", "inspect-1", None, "Inspect.")]
+
+        expanded = self.sut.expand(flow, state, ready)
+
+        self.assertIs(expanded[0], operation)
+        self.assertEqual(
+            [instance.instance_id for instance in expanded],
+            ["count-3", "inspect-1", "decide-1"],
+        )
+        self.assertEqual(
+            [instance.iteration_index for instance in expanded],
+            [2, None, None],
+        )
+        self.assertEqual([instance.item for instance in expanded[1:]], [None, None])
+
 
 if __name__ == "__main__":
     unittest.main()

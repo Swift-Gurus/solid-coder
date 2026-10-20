@@ -21,50 +21,36 @@ steps:
       evidence for cross-file callers, previews, and conformers. Apply every
       canonical detection procedure below.
 
-      ## SUI-2: View Purity
+      ## SUI-6 / SUI-7: Preview Containment and Coverage
 
-      A view's only job is to declare UI as a function of state. Methods that fetch data, sort/filter collections, validate input, format values, or perform computation belong in a ViewModel or domain layer. This is a role-based constraint: it's not about *how many* verbs (that's SRP), it's about whether *any* verb is something a View should never do.
+      A view whose only purpose is visual validation in Xcode Previews must be
+      declared inside a #Preview block or PreviewProvider, not at file scope.
+      Production file-scope views need a preview for visual validation.
 
-      1. **List every method and computed property** in the view struct (excluding `body`)
-      2. **Classify each as:**
-         - PURE_VIEW — returns `some View`, configures view appearance, or toggles simple UI state (`showSheet = true`, `isExpanded.toggle()`)
-         - IMPURE — any of the following:
-           - DATA_FETCH — network calls, database reads, file I/O
-           - TRANSFORM — sorting, filtering, mapping, grouping collections with business logic
-           - FORMAT — string formatting, date formatting, number formatting (beyond inline `Text(value, format:)`)
-           - VALIDATE — input validation, business rule checking
-           - COMPUTE — calculations, state machine transitions, derived business state
-      3. **Count IMPURE methods/properties**
+      Classify the reviewed view only, not every view in the file:
+      - `is_preview`: this is preview-only code, such as a preview showcase or
+        a view defined exclusively for preview infrastructure. A production
+        view does not become preview-only merely because a preview uses it.
+        A missing caller in the supplied context is not proof of preview-only
+        use; classify its purpose from the code and available usage evidence.
+      - `is_file_scope`: the reviewed declaration is at file scope rather than
+        nested inside a #Preview, PreviewProvider, or another type.
+      - `has_preview`: a #Preview or PreviewProvider instantiates this view in
+        the supplied file or supplied cross-file evidence. This is independent
+        of whether the view itself is preview-only.
 
-      ## SUI-5: Preview-Only View Containment
+      Return exactly one preview_facts record for the reviewed view. Report
+      what the supplied source establishes; do not claim a repository-wide
+      search occurred. Record incomplete or ambiguous preview evidence in
+      preview_limitations rather than guessing. An empty limitations list
+      means classification is complete for the supplied review context.
+      These are context-bounded facts, not proof of every caller in the
+      repository. Missing cross-file caller evidence alone is not a limitation
+      when the supplied declaration establishes the view's purpose and scope.
+      has_preview is false when no instantiation is present in the supplied
+      evidence, without asserting that none exists elsewhere.
 
-      A view whose only purpose is visual validation in Xcode Previews (design token galleries, component showcases, layout experiments) must be defined entirely inside a `#Preview` block or `PreviewProvider` struct. The compiler strips `#Preview` blocks and `PreviewProvider` types from release builds, so code inside them never ships. Views and helper types declared at file scope — even if only referenced from `#Preview` — are included in the binary as dead code.
-
-      1. **Identify file-scope view structs** — list every `struct` conforming to `View` declared at file scope (not nested inside `#Preview`, `PreviewProvider`, or another type)
-      2. **Identify file-scope helper types** — list every `struct`, `class`, or `enum` at file scope that does NOT conform to `View` but is only referenced by a preview-only view (support models, mock data, factory types)
-      3. **For each file-scope view, check caller sites:**
-         - Search the file and codebase for references to this view outside of `#Preview` blocks and `PreviewProvider` structs
-         - If the view is referenced ONLY inside `#Preview` or `PreviewProvider` → mark as **PREVIEW_ONLY**
-         - If the view is referenced in production code (other views, app entry point, navigation) → mark as **PRODUCTION** — not a violation
-         - If the view has ZERO references anywhere (orphan) → mark as **PREVIEW_ONLY** (dead code)
-      4. **For each PREVIEW_ONLY view**, also flag its helper types (step 2) as PREVIEW_ONLY
-      5. **Score:**
-         - All file-scope views are PRODUCTION → COMPLIANT
-         - Any file-scope view is PREVIEW_ONLY → SEVERE
-
-      ## SUI-6: Preview Coverage
-
-      Every View struct declared at file scope must be instantiated in at least one `#Preview` block or `PreviewProvider` struct — either in the same file or in a separate preview file. Views without previews cannot be visually validated during development.
-
-      1. **Identify file-scope View structs** — list every `struct` conforming to `View` declared at file scope
-      2. **Search for preview instantiation** — for each View struct, search:
-         - The same file for `#Preview` blocks or `PreviewProvider` structs that instantiate it
-         - Other files in the module for `#Preview` blocks or `PreviewProvider` structs that instantiate it (e.g., dedicated preview files)
-      3. **Score:**
-         - View is instantiated in at least one preview → COMPLIANT
-         - View has no preview instantiation anywhere → SEVERE
-
-      ## SUI-7: Accessibility Identifier on Containers
+      ## SUI-8: Accessibility Identifier on Containers
 
       Container views are not exposed in the accessibility hierarchy by default. Applying `.accessibilityIdentifier(...)` alone is invisible to the accessibility tree — XCUI tests will fail to find the element. The container must first opt into the hierarchy with `.accessibilityElement(children: .contain)` (or `.combine`/`.ignore` depending on intent) before the identifier becomes discoverable.
 
@@ -75,7 +61,7 @@ steps:
          - If present → COMPLIANT
       3. **Containers without `.accessibilityIdentifier(...)`** are not in scope — no finding
 
-      ## SUI-8: Adaptive Sizing
+      ## SUI-9: Adaptive Sizing
 
       SwiftUI's layout system is built on a propose-respond model — parents propose sizes, children respond. Views that participate in layout should size proportionally or with constraints, not with hardcoded literal values. Fixed frames prevent adaptation to different window sizes, device orientations, Dynamic Type, and localization.
 
@@ -91,7 +77,11 @@ steps:
          - A view hardcoding an internal element's size → remove frame, let element adapt to parent-given space or use proportional sizing
       3. **Count** fixed-frame violations
 
-      ## SUI-9: Actor Isolation Granularity
+      ## SUI-10: Actor Isolation Granularity
+
+      Inspect the reviewed view and the ViewModel types it uses whose
+      declarations are present in the supplied source. The SwiftUI View
+      exception applies to the view itself, not to its ViewModel.
 
       Marking a whole class or protocol `@MainActor` forces every property and method onto the main thread. For ViewModels this is especially dangerous — methods that perform network calls, parsing, or heavy computation cannot run on a background thread without explicit `nonisolated` or `Task.detached` workarounds. Protocols marked `@MainActor` can be problematic — they constrain **all** conformers to the main thread. However, protocol-level `@MainActor` is correct when all production conformers are legitimately `@MainActor` (facades, UI coordinators). In Swift 6 strict concurrency, removing `@MainActor` from a protocol while keeping it on the conformer causes "crosses into main actor-isolated code" errors.
 
@@ -125,9 +115,6 @@ steps:
       Return one observation for every violation or explicitly excepted candidate,
       using exactly one of these classifications:
 
-      - `IMPURE_VIEW_MEMBER`
-      - `PREVIEW_ONLY_TYPE`
-      - `VIEW_WITHOUT_PREVIEW`
       - `BAD_CONTAINER_ACCESSIBILITY`
       - `FIXED_FRAME`
       - `OVER_ISOLATED`
@@ -135,12 +122,47 @@ steps:
       Set `is_exception` to true only when the individual observation matches an
       authored exception. Supply nonempty reasoning and precise source evidence
       for every observation. Return no observation for a compliant category.
-      For SUI-8, emit one `FIXED_FRAME` observation per offending `.frame(...)`
+      For SUI-9, emit one `FIXED_FRAME` observation per offending `.frame(...)`
       call. When the same call supplies both a literal width and a literal
       height, combine both dimensions in that observation's evidence rather
       than emitting one observation per argument.
+
+      Exceptions apply to only the relevant observation:
+      - Preview providers are outside production checks.
+      - A custom container that applies accessibilityElement internally already
+        supplies the accessibility behavior; confirm its implementation.
+      - Frame constraints, flexible fill, proportional sizing, GeometryReader
+        sizing, and a size explicitly required by the user are not fixed-frame
+        violations.
+      - SwiftUI View structs, UIKit/AppKit representable types, and app entry
+        points are exempt from type-level actor-isolation findings.
       Repository evidence: No MCP-owned repository evidence was supplied.
     outputs:
+      - name: preview_limitations
+        type: data
+        schema:
+          type: array
+          items: {type: string, minLength: 1}
+      - name: preview_facts
+        type: data
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [is_preview, is_file_scope, has_preview, reasoning, evidence]
+            properties:
+              is_preview:
+                type: boolean
+                description: The reviewed view is preview-only code, not merely a production view with a preview.
+              is_file_scope: {type: boolean}
+              has_preview:
+                type: boolean
+                description: A preview instantiation is present in the supplied source or cross-file evidence.
+              reasoning: {type: string, minLength: 1}
+              evidence: {type: string, minLength: 1}
       - name: observations
         type: data
         schema:
@@ -158,9 +180,6 @@ steps:
               classification:
                 type: string
                 enum:
-                  - IMPURE_VIEW_MEMBER
-                  - PREVIEW_ONLY_TYPE
-                  - VIEW_WITHOUT_PREVIEW
                   - BAD_CONTAINER_ACCESSIBILITY
                   - FIXED_FRAME
                   - OVER_ISOLATED
@@ -176,21 +195,19 @@ steps:
       already visible in this session. Return observations, not maxima, counts,
       severities, or findings.
 
-      ## SUI-1: Body Complexity
+      ## SUI-1 / SUI-2: Builder Nesting and View Expressions
 
       Even moderately nested view hierarchies should be decomposed into extracted subviews. Complexity doesn't disappear when moved from `body` into helper `var`s — each view-returning property is measured independently.
 
       1. **Identify all view-returning properties** — `body` plus any `var`/`func` that returns `some View`
-      2. **For each view-returning property, measure:**
-         - Max nesting depth of view builder expressions (each View/container that takes a `@ViewBuilder` closure adds one level)
-         - Count of distinct view expressions (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
+      2. **For each view-returning property, identify:**
+         - The deepest builder-only path (each View/container that takes a `@ViewBuilder` closure adds one level)
+         - All view expression occurrences (`Text`, `Image`, `Button`, `HStack`, `VStack`, `List`, custom view calls, etc.)
       3. **Exclude modifiers** — `.padding()`, `.font()`, `.background()` do NOT add nesting or count as separate expressions
-      4. **Score per property** — if ANY view-returning property exceeds thresholds, it triggers a finding
-
       Return one `view_properties` entry for every view-returning property.
-      Nesting depth includes the leaf view expression on the deepest builder
-      path: for example, `VStack { HStack { Text(...) } }` has depth 3, not 2.
-      Count only expressions that produce a SwiftUI `View`. Action closures and
+      A leaf view adds no builder level: the deepest path in
+      `VStack { HStack { Text(...) } }` is ["VStack", "HStack"].
+      Include only expressions that produce a SwiftUI `View`. Action closures and
       other non-`@ViewBuilder` closures, including a `Task` created inside a
       `Button` action, add neither a view expression nor a nesting level. Count
       expression occurrences rather than unique view types, so two separate
@@ -199,7 +216,10 @@ steps:
       Copy the deepest ordered path into `deepest_path` and every ordered
       occurrence into `expressions`. Preserve duplicate expression names as
       separate array entries. Use empty arrays only when the property genuinely
-      contains no View expression. Do not submit either collection's length.
+      contains no View expression. A leaf-only member has an empty deepest_path
+      but still has an expression. Mark preview context and app-entry context
+      separately; the app-entry exception concerns nesting only.
+      is_preview means preview-only code, not a production view that has a preview.
 
       ## SUI-3: Modifier Chain Length
 
@@ -209,11 +229,12 @@ steps:
 
       1. **For each `@ViewBuilder` closure** in `body` and view-returning properties
       2. **For each child view expression** inside that closure (not the outermost container)
-      3. **Count chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
-      4. **Flag** if modifier count >= 2
+      3. **Identify chained modifiers** (`.font()`, `.padding()`, `.background()`, `.foregroundColor()`, `.frame()`, `.overlay()`, `.clipShape()`, etc.)
 
-      Return one `modifier_chains` entry for every nested child with at least one
-      modifier. Copy every modifier call into `modifiers` in source order; one
+      Return one `modifier_chains` entry for every expression with at least one
+      modifier, including the outermost expression. Mark whether it is a
+      nested child and whether it is in preview context.
+      Copy every modifier call into `modifiers` in source order; one
       `.frame(width:height:)` call is one modifier. Preserve equal chains as
       independent evidence and do not submit the chain length. Do not prefilter
       entries using the violation threshold: one-modifier chains are required
@@ -222,11 +243,19 @@ steps:
       A container nested inside another builder is still a child even when it
       opens its own builder closure. For example, in
       `VStack { HStack { ... }.accessibilityIdentifier(...) }`, include the
-      `HStack` modifier chain because only the outermost `VStack` is excluded.
-      Set
-      `is_exception` only for an individually applicable authored exception.
-      Supply nonempty reasoning and precise source evidence for every entry.
+      `HStack` modifier chain as nested; the outermost `VStack` is not nested.
+
+      Extraction into a named property, named subview, or modifier serves
+      readability first. No demonstrated reuse is required.
+      Record unresolved builder or modifier semantics in limitations rather
+      than treating an incomplete inventory as empty. An empty limitations
+      list means the structural inventory is complete.
     outputs:
+      - name: limitations
+        type: data
+        schema:
+          type: array
+          items: {type: string, minLength: 1}
       - name: view_properties
         type: data
         schema:
@@ -234,7 +263,7 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [location, deepest_path, expressions, is_exception, reasoning, evidence]
+            required: [location, deepest_path, expressions, is_preview, is_app_entry_point, reasoning, evidence]
             properties:
               location: {type: string, minLength: 1}
               deepest_path:
@@ -243,7 +272,8 @@ steps:
               expressions:
                 type: array
                 items: {type: string, minLength: 1}
-              is_exception: {type: boolean}
+              is_preview: {type: boolean}
+              is_app_entry_point: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
       - name: modifier_chains
@@ -253,16 +283,96 @@ steps:
           items:
             type: object
             additionalProperties: false
-            required: [location, modifiers, is_exception, reasoning, evidence]
+            required: [location, modifiers, is_preview, is_nested_child, reasoning, evidence]
             properties:
               location: {type: string, minLength: 1}
               modifiers:
                 type: array
                 minItems: 1
                 items: {type: string, minLength: 1}
-              is_exception: {type: boolean}
+              is_preview: {type: boolean}
+              is_nested_child: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
+
+  - id: classify_view_purity
+    type: agent
+    prompt: |
+      A view's only job is to declare UI as a function of state. Data access,
+      business transformations, separate formatting logic, validation, and
+      calculations belong in a ViewModel or domain layer. This is a role
+      constraint, not a count of responsibilities.
+
+      Classify behavior in view unit `{{params.review_unit.target.name}}`
+      from the source already visible in this session:
+      - Every method and computed property, including `body` and view helpers.
+      - Inline expressions, Button actions, .task closures, lifecycle callbacks,
+        and other nested closures.
+
+      Use the innermost owning member or closure as the location. An expression
+      belongs to its containing scope. A closure implementing an operation such
+      as filter or map belongs to that operation's scope; a separate action or
+      lifecycle callback owns its behavior. Do not attribute a nested scope's
+      behavior again to its parent. Multiple behaviors in one scope use the
+      same location. Include every applicable behavior, not just the scope's
+      primary purpose: view composition can coexist with business operations
+      or formatting inside its argument expressions.
+      For each scope, inspect both the UI constructors and the expressions
+      building their arguments. Classify those operations separately even
+      when they share one location. A VIEW_COMPOSITION record for a constructor
+      does not classify the argument-building operations within it.
+
+      Classifications:
+      - VIEW_COMPOSITION: declares or returns UI, including mapping state to
+        child views without business transformations.
+      - APPEARANCE: configures view appearance.
+      - PRESENTATION_STATE: toggles simple UI state such as showing a sheet.
+      - ACTION_FORWARDING: simple action forwarding to the ViewModel with no
+        additional business logic, including awaiting the forwarded action.
+      - NATIVE_FORMAT: SwiftUI-native formatting such as Text(value, format:).
+      - DATA_FETCH: network calls, database reads, or file I/O.
+      - TRANSFORM: business sorting, filtering, mapping, or grouping.
+      - FORMAT: string, date, or number formatting outside SwiftUI-native APIs.
+      - VALIDATE: input validation or business-rule checking.
+      - COMPUTE: calculations, state-machine transitions, or derived business state.
+
+      A return type of some View does not exempt business logic inside a helper.
+      Classify the operation, not merely the presence of map, a closure, or await.
+      Building a display string using string, date, or number operations before
+      passing it to a view is FORMAT, including inline expressions in body.
+      NATIVE_FORMAT applies to SwiftUI's own formatting API, not to any value
+      that eventually appears in Text.
+      Task lifecycle and detachment are separate concurrency checks; awaiting
+      a forwarded action alone does not make a view impure.
+
+      Mark preview-only code per behavior; having a preview does not exempt
+      production behavior. Record missing evidence that prevents
+      classification in limitations; an empty list means the inventory is complete.
+    outputs:
+      - name: limitations
+        type: data
+        schema:
+          type: array
+          items: {type: string, minLength: 1}
+      - name: behaviors
+        type: data
+        schema:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [classification, location, is_preview, reasoning, evidence]
+            properties:
+              classification:
+                type: string
+                enum: [VIEW_COMPOSITION, APPEARANCE, PRESENTATION_STATE, ACTION_FORWARDING, NATIVE_FORMAT, DATA_FETCH, TRANSFORM, FORMAT, VALIDATE, COMPUTE]
+              location: {type: string, minLength: 1}
+              is_preview: {type: boolean}
+              reasoning: {type: string, minLength: 1}
+              evidence:
+                type: string
+                minLength: 1
+                description: Cite the specific classified operation, including argument-building expressions, rather than abbreviating the whole body.
 
   - id: count_nesting_paths
     type: operation
@@ -270,8 +380,11 @@ steps:
     depends_on: [classify_extrema_observations]
     for_each: "{{steps.classify_extrema_observations.outputs.view_properties}}"
     when:
-      ref: "{{item.is_exception}}"
-      equals: false
+      all:
+        - ref: "{{item.is_preview}}"
+          equals: false
+        - ref: "{{item.is_app_entry_point}}"
+          equals: false
     with:
       values: "{{item.deepest_path}}"
 
@@ -281,7 +394,7 @@ steps:
     depends_on: [classify_extrema_observations]
     for_each: "{{steps.classify_extrema_observations.outputs.view_properties}}"
     when:
-      ref: "{{item.is_exception}}"
+      ref: "{{item.is_preview}}"
       equals: false
     with:
       values: "{{item.expressions}}"
@@ -292,16 +405,22 @@ steps:
     depends_on: [classify_extrema_observations]
     for_each: "{{steps.classify_extrema_observations.outputs.modifier_chains}}"
     when:
-      ref: "{{item.is_exception}}"
-      equals: false
+      all:
+        - ref: "{{item.is_preview}}"
+          equals: false
+        - ref: "{{item.is_nested_child}}"
+          equals: true
     with:
       values: "{{item.modifiers}}"
 
   - id: body_nesting_depth
     type: metric
     metric_id: SUI-1
-    observation_id: body_nesting_depth
     depends_on: [count_nesting_paths]
+    when:
+      ref: "{{steps.classify_extrema_observations.outputs.limitations}}"
+      equals: []
+    unavailable_reason: The view structure could not be completely classified.
     value: {type: integer, minimum: 0}
     scoring:
       source: "{{steps.count_nesting_paths.outputs.value}}"
@@ -313,9 +432,12 @@ steps:
 
   - id: view_expression_count
     type: metric
-    metric_id: SUI-1
-    observation_id: view_expression_count
+    metric_id: SUI-2
     depends_on: [count_view_expressions]
+    when:
+      ref: "{{steps.classify_extrema_observations.outputs.limitations}}"
+      equals: []
+    unavailable_reason: The view structure could not be completely classified.
     value: {type: integer, minimum: 0}
     scoring:
       source: "{{steps.count_view_expressions.outputs.value}}"
@@ -325,25 +447,14 @@ steps:
         empty_value: 0
       severe: {operator: greater_than_or_equal, value: 5}
 
-  - id: impure_count
-    type: metric
-    metric_id: SUI-2
-    depends_on: [classify_countable_observations]
-    value: {type: integer, minimum: 0}
-    scoring:
-      source: "{{steps.classify_countable_observations.outputs.observations}}"
-      when:
-        all:
-          - ref: "{{item.classification}}"
-            equals: IMPURE_VIEW_MEMBER
-          - ref: "{{item.is_exception}}"
-            equals: false
-      severe: {operator: greater_than_or_equal, value: 1}
-
   - id: max_modifier_chain
     type: metric
     metric_id: SUI-3
     depends_on: [count_modifier_chains]
+    when:
+      ref: "{{steps.classify_extrema_observations.outputs.limitations}}"
+      equals: []
+    unavailable_reason: The view structure could not be completely classified.
     value: {type: integer, minimum: 0}
     scoring:
       source: "{{steps.count_modifier_chains.outputs.value}}"
@@ -353,9 +464,31 @@ steps:
         empty_value: 0
       severe: {operator: greater_than_or_equal, value: 2}
 
-  - id: vm_injection_style
+  - id: impure_count
     type: metric
     metric_id: SUI-4
+    depends_on: [classify_view_purity]
+    when:
+      ref: "{{steps.classify_view_purity.outputs.limitations}}"
+      equals: []
+    unavailable_reason: View behavior could not be completely classified.
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.classify_view_purity.outputs.behaviors}}"
+      when:
+        all:
+          - ref: "{{item.classification}}"
+            in: [DATA_FETCH, TRANSFORM, FORMAT, VALIDATE, COMPUTE]
+          - ref: "{{item.is_preview}}"
+            equals: false
+      reducer:
+        type: distinct_count
+        value: "{{item.location}}"
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: vm_injection_style
+    type: metric
+    metric_id: SUI-5
     prompt: |
       When a view delegates logic or data access to a ViewModel, that dependency must be injected via protocol interfaces — a State protocol (what the view reads) and an Actions protocol (what the view triggers). A view referencing a concrete ViewModel class is sealed to that implementation.
 
@@ -382,37 +515,47 @@ steps:
 
   - id: preview_only_count
     type: metric
-    metric_id: SUI-5
+    metric_id: SUI-6
     depends_on: [classify_countable_observations]
+    when:
+      ref: "{{steps.classify_countable_observations.outputs.preview_limitations}}"
+      equals: []
+    unavailable_reason: Preview facts could not be established from the supplied review context.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_countable_observations.outputs.observations}}"
+      source: "{{steps.classify_countable_observations.outputs.preview_facts}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: PREVIEW_ONLY_TYPE
-          - ref: "{{item.is_exception}}"
-            equals: false
+          - ref: "{{item.is_preview}}"
+            equals: true
+          - ref: "{{item.is_file_scope}}"
+            equals: true
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: views_without_preview_count
     type: metric
-    metric_id: SUI-6
+    metric_id: SUI-7
     depends_on: [classify_countable_observations]
+    when:
+      ref: "{{steps.classify_countable_observations.outputs.preview_limitations}}"
+      equals: []
+    unavailable_reason: Preview facts could not be established from the supplied review context.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_countable_observations.outputs.observations}}"
+      source: "{{steps.classify_countable_observations.outputs.preview_facts}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: VIEW_WITHOUT_PREVIEW
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.is_preview}}"
+            equals: false
+          - ref: "{{item.is_file_scope}}"
+            equals: true
+          - ref: "{{item.has_preview}}"
             equals: false
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: bad_accessibility_count
     type: metric
-    metric_id: SUI-7
+    metric_id: SUI-8
     depends_on: [classify_countable_observations]
     value: {type: integer, minimum: 0}
     scoring:
@@ -427,7 +570,7 @@ steps:
 
   - id: fixed_frame_count
     type: metric
-    metric_id: SUI-8
+    metric_id: SUI-9
     depends_on: [classify_countable_observations]
     value: {type: integer, minimum: 0}
     scoring:
@@ -442,7 +585,7 @@ steps:
 
   - id: over_isolated_count
     type: metric
-    metric_id: SUI-9
+    metric_id: SUI-10
     depends_on: [classify_countable_observations]
     value: {type: integer, minimum: 0}
     scoring:
@@ -458,19 +601,14 @@ steps:
   - id: classify_exception
     type: exception
     prompt: |
-      1. **App entry point** — `@main` struct with `WindowGroup`/`Scene` composition. High nesting is expected at the app root.
-      2. **Preview providers** — `#Preview` blocks and `PreviewProvider` structs are not production code.
-      3. **Inline format specifiers** — `Text(price, format: .currency(code: "USD"))` and similar SwiftUI-native format APIs used directly in `body` are idiomatic, not impurity.
-      4. **Simple action forwarding** — A method that only calls one ViewModel method with no additional logic (e.g., `func retry() { viewModel.retry() }`) is PURE_VIEW.
-      5. **Top-level modifier chains** — Modifiers on the outermost view expression returned by `body` or a computed property are not flagged by SUI-3. Only nested child views inside closures are scoped.
-      6. **Custom container wrappers** — If a custom view wraps a container internally and applies `.accessibilityElement(children:)` inside its own `body`, callers adding `.accessibilityIdentifier(...)` externally are COMPLIANT — the element is already in the hierarchy.
-      7. **Frame Constraints** - `frame(minWidth:)`, `frame(maxWidth:)`, `frame(idealWidth:)` and height equivalents — constraints, not fixed sizes
-      8. **Flexible Modifier** - `frame(maxWidth: .infinity)` and height equivalents — explicit flexible fill
-      9. **Proportional Modifier** - `containerRelativeFrame` — proportional by definition
-      10. **Geometry Reader** - `GeometryReader`-based calculations — adaptive by definition
-      11. **Explicit in instructions** - if prompt, instructions says to use explicit size.
-      12. **View structs** — SwiftUI `View` structs are value types that only live during `body` evaluation. `@MainActor` on a View struct is harmless and often compiler-inferred — not a SUI-9 violation.
-      13. **UIKit/AppKit interop types** — `UIViewRepresentable`, `UIViewControllerRepresentable`, and their AppKit equivalents are inherently main-thread. Type-level `@MainActor` is expected.
+      Classify the whole-unit exception for view unit
+      `{{params.review_unit.target.name}}` using the source already visible
+      in this session.
 
-      Classify exceptions for view unit `{{params.review_unit.target.name}}` using the source already visible in this session.
-      Repository evidence: No MCP-owned repository evidence was supplied.
+      A unit defined entirely inside #Preview or a PreviewProvider is preview
+      infrastructure and is exempt. Otherwise there is no rule-wide exception.
+      A production view with a preview is not exempt. A preview-only view
+      declared at file scope is not exempt from its containment check.
+      App-entry nesting, root modifier chains, action forwarding, native
+      formatting, accessibility wrappers, sizing, and actor-isolation exceptions
+      affect only the relevant observation, not every metric for the view.

@@ -53,7 +53,7 @@ class AggregateReadyStepExpander(AggregateReadyStepExpanding):
                 ),
                 None,
             )
-            if phase is None:
+            if phase is None or instance.step_id not in phase.step_ids:
                 expanded.append(instance)
             elif boundary_id not in handled_boundaries or (
                 instance.iteration_index is not None

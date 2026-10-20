@@ -98,7 +98,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertEqual(self._rule_step_count(identities, "ocp"), 2)
         self.assertEqual(self._rule_step_count(identities, "lsp"), 2)
         self.assertEqual(self._rule_step_count(identities, "dry"), 2)
-        self.assertEqual(self._rule_step_count(identities, "swiftui"), 4)
+        self.assertEqual(self._rule_step_count(identities, "swiftui"), 5)
         self.assertEqual(
             self._rule_step_count(identities, "structured-concurrency"),
             12,

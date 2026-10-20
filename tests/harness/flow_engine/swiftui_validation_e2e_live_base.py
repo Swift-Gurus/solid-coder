@@ -29,13 +29,19 @@ solid-description: Supplies the first SwiftUI review-unit result and locked mixe
 """
 class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "swiftui"
-    ARTIFACT_SCENARIO = "swiftui"
+    ARTIFACT_SCENARIO = "swiftui-aggregate"
+    REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"
     FIXTURE = _FIXTURE
+    EXPECTED_ANALYSIS_STEP_IDS = [
+        "classify_countable_observations",
+        "classify_extrema_observations",
+        "classify_view_purity",
+    ]
     EXPECTED_STEP_IDS = [
         "body_nesting_depth",
         "view_expression_count",
-        "impure_count",
         "max_modifier_chain",
+        "impure_count",
         "vm_injection_style",
         "preview_only_count",
         "views_without_preview_count",
@@ -45,7 +51,6 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
     ]
     EXPECTED_METRIC_IDS = [
         "SUI-1",
-        "SUI-1",
         "SUI-2",
         "SUI-3",
         "SUI-4",
@@ -54,21 +59,10 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "SUI-7",
         "SUI-8",
         "SUI-9",
+        "SUI-10",
     ]
-    EXPECTED_OBSERVATION_IDS = [
-        "body_nesting_depth",
-        "view_expression_count",
-        "value",
-        "value",
-        "value",
-        "value",
-        "value",
-        "value",
-        "value",
-        "value",
-    ]
-    EXPECTED_VALUES = [3, 8, 1, 2, "concrete", 1, 2, 1, 1, 1]
-    EXPECTED_METRIC_SEVERITIES = ["SEVERE"] * 10
+    EXPECTED_VALUES = [2, 8, 2, 2, "concrete", 0, 1, 1, 1, 1]
+    EXPECTED_METRIC_SEVERITIES = ["SEVERE"] * 5 + ["COMPLIANT"] + ["SEVERE"] * 4
     EXPECTED_FINAL_SEVERITY = "SEVERE"
     EXPECTED_RULE_SOURCE_INDEX = 1
     EXPECTED_RULE_RESULT_COUNT = 2
@@ -89,6 +83,17 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
             == self.EXPECTED_RULE_SOURCE_INDEX
             and self._belongs_to_rule(event.get("workflow_instance_id"))
         ]
+        countable = next(
+            event
+            for event in completed
+            if event.get("local_step_id") == "classify_countable_observations"
+        )
+        self.assertEqual(countable["outputs"]["preview_limitations"], [])
+        preview_facts = countable["outputs"]["preview_facts"]
+        self.assertEqual(len(preview_facts), 1)
+        self.assertFalse(preview_facts[0]["is_preview"])
+        self.assertTrue(preview_facts[0]["is_file_scope"])
+        self.assertFalse(preview_facts[0]["has_preview"])
         extrema = next(
             event
             for event in completed
@@ -99,7 +104,18 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
             self.assertNotIn("expression_count", observation)
         for observation in extrema["outputs"]["modifier_chains"]:
             self.assertNotIn("length", observation)
-        self._assert_ordered_counts(completed, "count_nesting_paths", [3])
+        self.assertEqual(extrema["outputs"]["limitations"], [])
+        purity = next(
+            event
+            for event in completed
+            if event.get("local_step_id") == "classify_view_purity"
+        )
+        self.assertEqual(purity["outputs"]["limitations"], [])
+        self.assertIn(
+            "ACTION_FORWARDING",
+            [behavior["classification"] for behavior in purity["outputs"]["behaviors"]],
+        )
+        self._assert_ordered_counts(completed, "count_nesting_paths", [2])
         self._assert_ordered_counts(completed, "count_view_expressions", [8])
         self._assert_ordered_counts(
             completed,
