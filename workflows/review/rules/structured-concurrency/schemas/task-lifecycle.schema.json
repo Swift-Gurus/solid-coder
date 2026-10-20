@@ -1,0 +1,47 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "kind",
+      "has_stored_handle",
+      "has_cancellation_path",
+      "is_test_code",
+      "location",
+      "reasoning",
+      "evidence"
+    ],
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "TASK",
+          "DETACHED_TASK",
+          "SWIFTUI_TASK"
+        ]
+      },
+      "has_stored_handle": {
+        "type": "boolean"
+      },
+      "has_cancellation_path": {
+        "type": "boolean"
+      },
+      "is_test_code": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reasoning": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

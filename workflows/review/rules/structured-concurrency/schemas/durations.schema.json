@@ -1,0 +1,34 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "uses_nanosecond_sleep",
+      "is_raw_integer_duration",
+      "location",
+      "reasoning",
+      "evidence"
+    ],
+    "properties": {
+      "uses_nanosecond_sleep": {
+        "type": "boolean"
+      },
+      "is_raw_integer_duration": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reasoning": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

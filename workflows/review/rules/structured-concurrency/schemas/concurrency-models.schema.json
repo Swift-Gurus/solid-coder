@@ -1,0 +1,43 @@
+{
+  "type": "array",
+  "maxItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "has_async",
+      "has_gcd",
+      "has_async_callbacks",
+      "legacy_bridge_only",
+      "location",
+      "reasoning",
+      "evidence"
+    ],
+    "properties": {
+      "has_async": {
+        "type": "boolean"
+      },
+      "has_gcd": {
+        "type": "boolean"
+      },
+      "has_async_callbacks": {
+        "type": "boolean"
+      },
+      "legacy_bridge_only": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reasoning": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

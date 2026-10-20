@@ -223,7 +223,13 @@ was changed as part of this LSP cleanup. Preserve this registration evidence
 separately from rule accuracy or engine scoring results:
 `.solid-coder/.artifacts/test/claude/e2e/flow-engine/workflow-catalog/20261019T115351Z-47f9ec75/claude-result.json`.
 
-### Nested-condition acceptance failure — 2026-10-19
+### Nested-condition acceptance failure — 2026-10-19 (resolved)
+
+Closed in `64770ef`: nested step-output binding and file-rule applicability are
+fixed. The final validation below supersedes this intermediate failing
+checkpoint: 2,900 non-live tests, 228 subtests and all ten targeted live cases
+passed, with four existing abstract-fixture skips. The original failure evidence
+is retained below; it is not an outstanding task.
 
 The new live inheritance checks reached the locked 0/1/0/0 scores on both
 models but failed the required declaration-reading assertion. Audit events
@@ -246,13 +252,12 @@ under Claude test artifacts. The Claude catalog retry passed.
   binding instead of relying on accidental child-parameter visibility.
 - [x] Separate enrolled-source selection from single-member materialization as
   required by the gate, reusing the existing condition conjunction and scope adapters.
-- [ ] Resolve the remaining file-rule filter limitation before declaring the
-  scope fix complete: step-output references currently select one named output,
-  not nested fields within it. The generated file filter therefore sees an
-  absent value for `steps.prepare_review.outputs.review_file.applicability.tags`.
-- [ ] Rerun all non-live suites and the eight locked live cases after that fix.
+- [x] Resolve the file-rule filter limitation through shared nested step-output
+  binding, including `steps.prepare_review.outputs.review_file.applicability.tags`.
+- [x] Rerun all non-live suites and the locked live cases after that fix; the final
+  matrix contains ten cases, including both real write-gate profiles.
 
-The focused rerun has 17 passing tests, 2 passing subtests, and 2 failing
+At the intermediate checkpoint, the focused rerun had 17 passing tests, 2 passing subtests, and 2 failing
 prospective-write gate tests. These failures must not be waived or have their
 expected rule activation changed. Shared nested-output reference support has
 been proposed to the user; it is not implemented at this checkpoint. This is

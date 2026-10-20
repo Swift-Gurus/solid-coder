@@ -413,11 +413,11 @@ The implementation accepted gate findings that identified real mixed responsibil
 
 ## Definition of Done
 
-- [ ] Flow definitions accept and validate the same declarative `when` grammar at workflow, include-invocation, and step scopes.
+- [x] Flow definitions accept and validate the same declarative `when` grammar at workflow, include-invocation, and step scopes.
 - [ ] Workflow-level conditions evaluate against validated declared inputs and can skip a complete top-level or included workflow instance.
 - [x] Step-level conditions evaluate after dependencies and per-instance `for_each` expansion, skipping only the addressed step instance.
 - [x] Conditional workflow includes support dependency waiting and per-item fan-out without executing false branches.
-- [ ] Each transition uses one executable runtime snapshot for dynamic readiness, execution, validation, retries, dependency release, replay, and completion.
+- [x] Each transition uses one executable runtime snapshot for dynamic readiness, execution, validation, retries, dependency release, replay, and completion.
 - [ ] Workflow inputs and include `with` mappings provide explicit, schema-validated child values without ambient parent-context access.
 - [x] Skipped outcomes are durable, replayable, terminal for dependency joins, and visible through flow status.
 - [x] Workflow packages can declare schema-validated outputs exposed through stable alias result collections.
@@ -426,8 +426,25 @@ The implementation accepted gate findings that identified real mixed responsibil
 - [ ] The health-check integration proves SwiftUI routing by language and unit kind followed by normalized result aggregation.
 - [ ] Shared Codex and Claude live E2E tests prove that prompt-file content can be swapped without changing workflow YAML or exposing test expectations in the launch prompt, and that model-produced categories deterministically select the matching conditional branch.
 - [ ] A live E2E fan-out case proves per-item `for_each` condition evaluation with mixed categories, completed matching instances, and durable non-matching skips.
-- [ ] Deterministic integration tests prove bounded concurrent `mode: session` delegate fan-out, typed result validation, instance-scoped retry, ordered fan-in, empty input, and replay without relaunch.
+- [x] Deterministic integration tests prove bounded concurrent `mode: session` delegate fan-out, typed result validation, instance-scoped retry, ordered fan-in, empty input, and replay without relaunch.
 - [ ] Shared Codex and Claude live E2E tests prove multiple session delegates complete and feed one downstream join without using subagents.
+
+## Status reconciliation — 2026-10-19
+
+Conditional execution, durable skip evidence, nested materialization, ordered
+workflow results and deterministic session fan-out are implemented. Coverage
+includes `test_nested_include_condition_scope.py`,
+`test_workflow_output_aggregation.py`, `test_session_delegate_for_each_integration.py`
+and the condition resolver/coordinator suites in `tests/harness/flow_engine/`.
+The latest full non-live checkpoint is 2,900 tests and 228 subtests passed, with
+four existing skips; SPEC-064 records the commands and evidence.
+
+This spec remains `in-progress`: the remaining input-contract and routing/live
+acceptance checkboxes require explicit close-out, and SPEC-048 still tracks the
+delegated-session MCP path. Passing the real write gate or the LSP live matrix
+does not prove this spec's complete delegated-session and swappable-prompt matrix.
+SPEC-033 subagent Stop enforcement remains separately deferred, not a requirement
+to implement again as part of these completed conditional-routing mechanics.
 - [x] Shared Codex and Claude live E2E tests prove engine-owned source preparation materializes one complete included child DAG per item, preserves source association, resolves internal child outputs, and releases the downstream alias join.
 - [x] Live Codex and Claude flow-engine runs preserve the effective workflow, flow events, final response, and backend-native evidence before cleanup and report the artifact directory.
 - [x] Typed local output references, readiness-time child prompt rendering, explicit child event identities, and replay restoration avoid runtime execution-ID parsing.

@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "reasoning",
+    "evidence"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "VERIFIED",
+        "UNABLE_TO_VERIFY"
+      ]
+    },
+    "reasoning": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

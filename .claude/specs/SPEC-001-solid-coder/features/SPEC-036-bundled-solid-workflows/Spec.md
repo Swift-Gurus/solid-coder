@@ -213,5 +213,23 @@ Before rerunning the comparison:
 - [x] Multi-file patches preserve one immutable prospective snapshot collection across every isolated per-file review and produce one aggregate fail-closed gate decision before any write is authorized.
 - [ ] Test code is classified deterministically, test-specific exceptions are auditable, and the temporary blanket `tests/**` gate exclusion is narrowed or removed without excluding production code.
 - [ ] `solid-refactor` includes `solid-review` for both initial and verification analysis.
-- [ ] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.
+- [x] Client packages cannot override bundled workflow IDs; collisions fail with actionable diagnostics.
 - [ ] Live gate/review/refactor tests and token/time/accuracy evidence pass on the locked model profile.
+
+## Current completion state — 2026-10-19
+
+File/buffer review, aggregate execution, policy-driven rule selection and the
+real pre-write workflow gate are implemented. SPEC-057's reducer/ISP work and
+SPEC-064's LSP provenance work are complete. The latest verification records
+2,900 non-live tests and 228 subtests passed, four existing skips, and ten targeted
+Codex/Claude live cases passed, including both real write-gate profiles.
+
+Keep this parent `in-progress`. Remaining closure work is the `solid-refactor`
+composition, broader target coverage in SPEC-041, the test-exclusion acceptance
+item above, rule-by-rule live validation in SPEC-055/056, and the controlled
+legacy/workflow result/token/time comparison in SPEC-050. DRY discrepancies
+remain tracked in SPEC-061 and the explicitly deferred SPEC-065. The legacy
+comparison path stays available; this update does not authorize its removal or
+rule alignment. Historical benchmark failures above are not current non-live
+failures, and the targeted live matrix is not a substitute for full bundle
+validation.

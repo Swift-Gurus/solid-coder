@@ -12,7 +12,24 @@ blocking: [SPEC-036]
 
 ## Implementation Progress
 
-Completed:
+### Current status — 2026-10-19
+
+The executable-rule, policy and scoring mechanics are implemented. Project
+policy takes precedence during rule selection and metric scoring; file/buffer
+normalization, file/unit applicability, child rule identity and persisted
+results are exercised by the real review/gate workflows. The latest non-live
+checkpoint is green (2,900 tests, 228 subtests, four existing skips), and SPEC-064
+records the targeted Codex/Claude live validation.
+
+This spec remains `in-progress` for the remaining migration/validation scope
+below, not for another implementation of policy or `rules: all`. The original
+migration checkpoints that follow preserve historical evidence; their step
+shapes and ISP/LSP/DRY observations are not the current rule contract. Current
+contracts and evidence are tracked in SPEC-055/056/057/064. SPEC-050 retains the
+legacy path intentionally for the native-rule A/B comparison; this status update
+does not authorize removing it or aligning its rules to the workflow rules.
+
+Completed migration checkpoints (historical):
 
 - `rule: {}` plus optional typed `scope` and `match` selectors is parsed and validated; exact file-extension, typed unit-kind, and tag included/excluded selectors compile into reusable workflow conditions.
 - Rule discovery reuses the recursive project/plugin workflow catalog, its stable workflow IDs, provenance, and collision rejection.
@@ -51,12 +68,18 @@ Completed:
 
 Remaining:
 
-- Apply the effective project policy during rule materialization so disabled metrics start no session and effective scoring bands reach the finalizer.
-- Consume normalized review targets from SPEC-041 and exact extension, typed unit kind, and auditable tags/evidence from SPEC-040; the review-domain matcher materializes ordered rule/unit instances internally.
 - Replace the remaining legacy flat rule-tag callers with the typed `match` declaration.
-- Integrate the effective policy with `rules: all` materialization so policy disablement and scoring overrides are applied before child sessions start.
-- Complete replay projection and idempotent result publication from snapshots/events, including skipped-rule and retry audit identities.
-- Migrate the remaining bundled review, gate, and refactor workflows, then remove the legacy runtime rule/severity loaders after parity evidence exists for every migrated rule.
+- Reconcile the remaining rule-by-rule live coverage under SPEC-055 and resolve
+  the open DRY classification discrepancies under SPEC-056/061; SPEC-065 remains
+  explicitly deferred.
+- Complete the `solid-refactor` composition and broader review-target work
+  tracked by SPEC-036/041. File/buffer review and the real write gate already run.
+- Retire legacy runtime rule/severity loaders only after their callers migrate
+  and the preserved legacy comparison path is no longer required; do not remove
+  them as part of status cleanup.
+- Close the remaining replay/audit and full live-matrix acceptance records with
+  explicit evidence rather than treating the targeted LSP/gate matrix as coverage
+  of every criterion in this parent contract.
 
 ## Description
 
@@ -609,20 +632,20 @@ flowchart TD
 
 ## Definition of Done
 
-- [ ] Workflow YAML supports typed `metric` and `exception` steps with generated validated response contracts.
-- [ ] Every executable V1 review rule has at least one unique metric and exactly one exception classifier.
-- [ ] MCP owns severity, finalization, and normalized review results; authored rules contain no scoring prompt or root result boilerplate.
-- [ ] Discovery reuses the existing catalog and never auto-runs workflows outside explicit review selection.
-- [ ] `solid-unit-review` explicitly expands all and only catalog workflows marked with `rule:` through `include: { rules: all }` without assigning runtime semantics to folder names.
-- [ ] Review applies exact-extension, typed-unit-kind, MCP-owned-tag, and project-precedence policy before materializing independent rule/unit instances.
+- [x] Workflow YAML supports typed `metric` and `exception` steps with generated validated response contracts.
+- [x] Every executable V1 review rule has at least one unique metric and exactly one exception classifier.
+- [x] MCP owns severity, finalization, and normalized review results; authored rules contain no scoring prompt or root result boilerplate.
+- [x] Discovery reuses the existing catalog and never auto-runs workflows outside explicit review selection.
+- [x] `solid-file-review` explicitly expands all and only catalog workflows marked with `rule:` through `include: { rules: all }` without assigning runtime semantics to folder names.
+- [x] Review applies exact-extension, typed-unit-kind, MCP-owned-tag, and project-precedence policy before materializing independent rule/unit instances.
 - [x] Typed rule scope materializes unit rules once per unit and file rules once per normalized file with stable audit identities.
-- [ ] One optional review policy controls only rule/metric enablement and complete metric band replacement.
+- [x] One optional review policy controls only rule/metric enablement and complete metric band replacement.
 - [ ] Effective plans and events preserve source hashes, observations, exceptions, scoring, overrides, skips, retries, and publication.
 - [ ] Replay uses only run snapshots/events and never rereads current workflow or policy state.
 - [ ] Bundled SRP executes from YAML and can be compared with the current health-check fixture on accuracy, time, and token usage.
 - [x] SRP, OCP, LSP, ISP, DRY, code-smells, frontmatter, SwiftUI, structured-concurrency, unit-testing, and ui-testing each execute from one bundled rule workflow with preserved detection, exception, observation, schema, band, and activation semantics; unit-testing and ui-testing execute once per applicable file.
 - [x] Every rule migration has focused parity evidence before the next rule begins, and ambiguous legacy contracts are resolved explicitly rather than normalized silently.
-- [ ] The temporary flat SRP POC is removed after its tests resolve the bundled SRP package.
+- [x] The temporary flat SRP POC is removed after its tests resolve the bundled SRP package.
 - [ ] Gate and refactor reuse the same review workflow/results.
 - [ ] Legacy `rule.md` and severity-band runtime readers are removed after all callers migrate.
 - [ ] Focused, full non-live, and Codex/Claude flow-engine E2E tests pass.

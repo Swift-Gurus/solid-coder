@@ -181,10 +181,26 @@ The scalar syntax maps to `INDIVIDUAL` with no label. The persisted workflow sna
 
 ## Definition of Done
 
-- [ ] Scalar `for_each` behavior remains backward compatible.
-- [ ] Typed batch declarations work for ordinary steps and included workflows.
-- [ ] The model sees one shared rule prompt/schema and only domain unit identity.
-- [ ] MCP rejects or retains every missing, unknown, duplicate, ambiguous, or invalid item without internal IDs leaking to the model.
-- [ ] Existing per-instance validation, attempts, completion events, ordered fan-in, replay, conditions, and workflow outputs remain authoritative.
-- [ ] Experimental per-rule review workflows can batch all applicable units into one model-facing submission.
+- [x] Scalar `for_each` behavior remains backward compatible.
+- [x] Typed batch declarations work for ordinary steps and included workflows.
+- [x] The model sees one shared rule prompt/schema and only domain unit identity.
+- [x] MCP rejects or retains every missing, unknown, duplicate, ambiguous, or invalid item without internal IDs leaking to the model.
+- [x] Existing per-instance validation, attempts, completion events, ordered fan-in, replay, conditions, and workflow outputs remain authoritative.
+- [x] Experimental per-rule review workflows can batch all applicable units into one model-facing submission.
 - [ ] Focused tests, all non-live tests, and Codex/Claude live composite validation pass.
+
+## Status reconciliation — 2026-10-19
+
+Batch presentation is implemented; the unchecked item is validation close-out,
+not a request for another batching engine. Deterministic coverage includes
+`test_for_each_declaration_parser.py`, `test_batched_for_each_flow_integration.py`,
+`test_single_prompt_review_batching.py`, `test_nested_batch_scope.py` and
+`test_workflow_output_aggregation.py` under `tests/harness/flow_engine/` (the parser
+test is under `resolvers/`). These suites are included in the latest full
+non-live checkpoint recorded by SPEC-064: 2,900 tests and 228 subtests passed,
+with four existing skips.
+
+Keep this spec `in-progress` until the requested per-rule composite live
+comparison, including its turn/token/timing evidence, is reconciled against this
+test plan. SPEC-064's successful targeted live matrix does not by itself close
+that comparison requirement.

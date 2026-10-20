@@ -227,7 +227,7 @@ SPEC-027 owns process steps and attempts. SPEC-028 owns delegate modes and isola
 - `{{params.<name>}}` — parameter passed to `flow_start`
 - `{{item}}` — current item in a `for_each` expansion
 
-SPEC-037 owns the pending extension for nested item paths such as `{{item.language}}` and declarative conditions.
+SPEC-037 owns the implemented nested item paths such as `{{item.language}}` and declarative conditions; its remaining acceptance close-out is recorded separately below.
 
 ### Active Run Pointer
 
@@ -330,7 +330,7 @@ MCP validates the DAG at `flow_start` time:
 - Unit/integration: session-scoped main pointers do not collide and isolated runs require explicit `run_id`
 - Integration: the shared Stop dispatcher blocks an abandoned main flow and exhausts attempts through the common failure path
 - Deferred SPEC-033 follow-up: a subagent cannot abandon an in-progress isolated child flow
-- Pending SPEC-037: deterministic conditions, skipped-state replay, explicit child-workflow inputs/outputs, and ordered branch aggregation
+- SPEC-037 coverage: deterministic conditions, skipped-state replay, explicit child-workflow inputs/outputs, and ordered branch aggregation; see its checklist for remaining acceptance close-out
 
 ## Design Decisions
 
@@ -346,14 +346,32 @@ MCP validates the DAG at `flow_start` time:
 - **Snapshotted definitions** — each run persists its fully resolved workflow and parameters so plugin/package changes do not alter an in-progress run.
 - **Collision rejection, not overrides** — project and plugin workflow IDs share one catalog and duplicates fail deterministically.
 
-## Completion State
+## Completion State — 2026-10-19
 
 Completed child contracts: SPEC-030 core engine and `for_each` lifecycle, SPEC-031 MCP tools and session-scoped locks, SPEC-032 main-agent Stop enforcement, and SPEC-035 workflow packages/discovery. SPEC-027 and SPEC-028 additionally provide process steps, attempts, delegate modes, and isolated runs.
 
-Remaining main-flow work:
+Combined presentation/aggregate execution and scoring are implemented under
+SPEC-043/044/045. SPEC-052 covers aggregate partial-submission recovery, while
+SPEC-053/054/058/059 cover deterministic collection scoring, reducers and
+co-located metrics. SPEC-062/063 source analysis and SPEC-064 provenance are also
+complete. Model-facing lifecycle registration and typed internal operation
+dispatch are implemented; they are not outstanding construction work.
 
-- SPEC-037 — deterministic conditional routing, skipped branch state, explicit included-workflow inputs/outputs, and result aggregation.
-- Move model-facing lifecycle registration into the `flow-engine` server as `start`/`next`, retain status and lock recovery internally, and add typed namespaced operation-step dispatch for general MCP-owned workflow capabilities.
+Keep this parent `in-progress` for the remaining acceptance and child-spec scope:
+
+- SPEC-037 — reconcile remaining input/routing/live acceptance evidence and the
+  delegated-session MCP issue tracked by SPEC-048. Conditions, durable skips,
+  nested execution and result aggregation are already implemented.
+- SPEC-042 — batching is implemented and non-live validated; its requested
+  composite live comparison and measurement evidence still need close-out.
+- SPEC-040 — broader source-namespace scope remains open; the source operations
+  already used by review are implemented, not another engine to build.
+
+The latest full non-live checkpoint is 2,900 tests and 228 subtests passed, with
+four existing abstract-fixture skips. SPEC-064's execution plan records all ten
+targeted live cases passing across the initial run and corrected-test rerun on
+Codex Terra and Claude Opus. This validates the listed cases, not every outstanding
+child-spec live test plan.
 
 Deferred follow-up, not a SPEC-010 completion condition:
 
@@ -367,8 +385,8 @@ Deferred follow-up, not a SPEC-010 completion condition:
 - [x] Main runs are session-scoped; isolated child runs are explicitly addressed and cannot collide with main locks.
 - [x] The main-agent Stop check blocks abandoned active flows through the shared dispatcher.
 - [x] Project and plugin workflow packages compose through collision-checked stable IDs.
-- [ ] Only `flow-engine.start` and `flow-engine.next` are model-facing; status and lock recovery are internal.
-- [ ] Engine-owned workflows invoke typed namespaced operations without MCP transport names or executable paths.
+- [x] Only `flow-engine.start` and `flow-engine.next` are model-facing; status and lock recovery are internal.
+- [x] Engine-owned workflows invoke typed namespaced operations without MCP transport names or executable paths.
 - [x] Subagent Stop enforcement is tracked as separate deferred work in SPEC-033 and does not block the main-flow harness.
 - [ ] Conditional workflow routing and aggregation are complete per SPEC-037.
 - [ ] All active main-flow child-spec test plans pass, including their required Claude/Codex live coverage.

@@ -247,6 +247,22 @@ actionable retry message
 
 ## Implementation Status
 
+### Current status — 2026-10-19
+
+All in-scope count-based migrations are implemented. Keep `in-progress` for
+rule-by-rule live-validation close-out, not missing scoring mechanics. The latest
+full non-live checkpoint is 2,900 tests and 228 subtests passed, with four existing
+skips. SPEC-057 records the later reducer/ISP migration; SPEC-064 records the
+completed LSP provenance migration and its ten-case Codex/Claude live matrix,
+including both real write-gate profiles.
+
+The dated checkpoints below retain earlier rule shapes, expected values and
+validation gaps as history. In particular, their old model-owned LSP and SwiftUI
+reducer notes are superseded by SPEC-057/064. Do not reopen that completed work
+or infer complete coverage of every migrated rule from the targeted LSP matrix.
+
+### Migration checkpoints
+
 OCP remains the reference collection-backed migration. The agreed SRP draft is
 now the bundled `workflows/review/rules/srp/workflow.yaml`. It has three
 independent typed classifiers: `classify_actions`, `classify_variable_usage`,
@@ -286,7 +302,7 @@ Latest SRP validation checkpoint (2026-10-02 UTC):
   run's transcript and flow artifacts. Discovery and recovered script failures
   remain visible separately from successful MCP execution and exact scoring.
 
-The next rule under review is **OCP**, before Structured Concurrency. Initial
+At the SRP checkpoint, the next rule under review was **OCP**, before Structured Concurrency. Initial
 inspection confirms one dependency classifier, four MCP-owned metric outputs,
 and a separate whole-unit exception step. Its focused deterministic workflow
 and legacy exception-prompt checks pass: **9 tests**. The shared live OCP

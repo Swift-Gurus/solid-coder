@@ -317,9 +317,26 @@ scores zero.
 - [x] DRY-1, DRY-2, and DRY-3 are scored by MCP without model arithmetic.
 - [x] Protocol/conformer and declaration-only false positives are covered.
 - [ ] Controlled Codex and Claude fixtures produce locked auditable results.
-- [ ] All non-live tests pass.
+- [x] All non-live tests pass.
 
 ## Validation Evidence
+
+### Current status — 2026-10-19
+
+The candidate-disposition, inspection-evidence and MCP-scoring mechanics are
+implemented. The latest full non-live checkpoint recorded by SPEC-064 is green:
+2,900 tests and 228 subtests passed, with four existing abstract-fixture skips.
+The two gate applicability failures and environment-blocked runs in the older
+checkpoints below are retained as history, not current non-live failures.
+
+Keep this spec `in-progress`: the full locked DRY live matrix is not green.
+SPEC-061 tracks the missing-abstraction classification disagreement; SPEC-065
+tracks Claude counting calls to an already-extracted shared helper as duplication
+and is explicitly deferred by the user. Signature-hint experiments also remain
+deferred. Successful LSP/gate live runs do not close these DRY accuracy cases;
+their expectations and failure evidence remain intact.
+
+### Earlier checkpoints
 
 - The DRY integration contract passes with complete disposition retry,
   inspected-candidate fan-out, ordered child projection, two independent DRY-2

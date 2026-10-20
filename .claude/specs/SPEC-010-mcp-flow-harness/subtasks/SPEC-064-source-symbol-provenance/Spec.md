@@ -2,13 +2,24 @@
 number: SPEC-064
 feature: source-symbol-provenance
 type: subtask
-status: in-progress
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-040, SPEC-062, SPEC-063]
 blocking: []
 ---
 
 # Language-Selected Source Symbol Provenance
+
+## Status — 2026-10-19
+
+Complete for the agreed scope, including method-result provenance. Commit
+`64770ef` records the latest fix and verification: 2,900 non-live tests and
+228 subtests passed, with four existing abstract-fixture skips; all ten locked
+Codex/Claude live cases passed across the initial run and corrected-test rerun.
+See the method-result extension and `ExecutionPlan.md` for exact evidence.
+Unsupported or unverified contracts still return an explicit unavailable outcome;
+this completion does not claim semantic support for every expression or language.
+The A/B benchmark and malformed model submissions remain separate SPEC-050 work.
 
 ## Description
 

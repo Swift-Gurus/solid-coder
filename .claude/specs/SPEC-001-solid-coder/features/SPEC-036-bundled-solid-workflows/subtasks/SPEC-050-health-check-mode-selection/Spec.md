@@ -203,6 +203,20 @@ or the timing/token comparison required by the broader plan.
 
 ## Verification
 
+### Current status — 2026-10-19
+
+Selection, nested applicability and real workflow-gate execution are implemented
+and verified. SPEC-064's final checkpoint supersedes the intermediate failures
+below: 2,900 non-live tests and 228 subtests passed, with four existing skips;
+the ten targeted live cases include successful real gate runs on Codex Terra
+and Claude Opus. The cache method-return gap is fixed without changing LSP rules.
+
+Keep `in-progress` for the controlled native-rule legacy/workflow A/B comparison.
+Malformed model submissions and their recovery overhead remain a separate
+investigation, not a completed fix inferred from terminal gate success. Preserve
+both modes' rules and report differing semantics separately when comparing their
+results, timing and tokens. Historical checkpoints below remain audit evidence.
+
 ### Approved timeout retry — 2026-10-19
 
 - With user approval, `tests/models/claude.toml` now explicitly sets

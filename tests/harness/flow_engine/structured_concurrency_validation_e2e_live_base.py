@@ -27,8 +27,17 @@ solid-description: Supplies the Structured Concurrency scenario and locked MCP-s
 """
 class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "structured-concurrency"
-    ARTIFACT_SCENARIO = "structured-concurrency"
+    ARTIFACT_SCENARIO = "structured-concurrency-aggregate"
+    REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"
     FIXTURE = _FIXTURE
+    EXPECTED_ANALYSIS_STEP_IDS = [
+        "classify_concurrency_models",
+        "classify_task_lifecycle",
+        "classify_safety_bypasses",
+        "classify_sequential_awaits",
+        "classify_bridges",
+        "classify_durations",
+    ]
     EXPECTED_STEP_IDS = [
         "model_mixing",
         "orphaned_tasks",
@@ -48,4 +57,4 @@ class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
     EXPECTED_VALUES = [1, 1, 1, 3, 1, 1]
     EXPECTED_METRIC_SEVERITIES = ["SEVERE"] * 6
     EXPECTED_FINAL_SEVERITY = "SEVERE"
-    ALLOW_AUXILIARY_STEPS = True
+    ALLOW_AUXILIARY_STEPS = False

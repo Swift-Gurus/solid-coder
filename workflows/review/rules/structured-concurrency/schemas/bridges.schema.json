@@ -1,0 +1,66 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "kind",
+      "location",
+      "reasoning",
+      "evidence"
+    ],
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "BLOCKING_WAIT",
+          "CONTINUATION"
+        ]
+      },
+      "blocks_async_execution": {
+        "type": "boolean"
+      },
+      "native_async_available": {
+        "type": "boolean"
+      },
+      "resumes_exactly_once": {
+        "type": "boolean"
+      },
+      "location": {
+        "type": "string",
+        "minLength": 1
+      },
+      "reasoning": {
+        "type": "string",
+        "minLength": 1
+      },
+      "evidence": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "oneOf": [
+      {
+        "properties": {
+          "kind": {
+            "const": "BLOCKING_WAIT"
+          }
+        },
+        "required": [
+          "blocks_async_execution"
+        ]
+      },
+      {
+        "properties": {
+          "kind": {
+            "const": "CONTINUATION"
+          }
+        },
+        "required": [
+          "native_async_available",
+          "resumes_exactly_once"
+        ]
+      }
+    ]
+  }
+}
