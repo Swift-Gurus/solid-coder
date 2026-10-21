@@ -2,9 +2,11 @@
 
 from typing import Protocol
 
+from harness.aggregate_phase import AggregateExpansion
 from harness.flow_def import FlowDef
 from harness.run_state import RunState
 from harness.step_instance import StepInstance
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -19,4 +21,5 @@ class AggregateReadyStepExpanding(Protocol):
         flow: FlowDef,
         state: RunState,
         ready: list[StepInstance],
-    ) -> list[StepInstance]: ...
+        context: WorkflowRunContext = WorkflowRunContext(),
+    ) -> AggregateExpansion: ...

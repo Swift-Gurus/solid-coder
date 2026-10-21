@@ -148,6 +148,8 @@ class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
                 raw,
                 WorkflowPresentationMode.INDIVIDUAL,
             ),
+            execution_declared=raw.get("execution_declared", False),
+            presentation_declared=raw.get("presentation_declared", False),
             combined_presentation=(
                 self._combined_presentation_decoder.decode(
                     raw["combined_presentation"],

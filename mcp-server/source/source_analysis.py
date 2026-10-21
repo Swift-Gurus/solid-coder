@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.analysis.calls.source_call import SourceCall
 from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
 from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_analysis_decision import SourceAnalysisDecision
@@ -26,4 +27,5 @@ class SourceAnalysis(BaseModel):
     units: list[SourceUnit] = Field(default_factory=list)
     declarations: list[SourceScopedDeclaration] = Field(default_factory=list)
     type_inspections: list[SourceTypeInspection] = Field(default_factory=list)
+    calls: list[SourceCall] = Field(default_factory=list)
     detections: list[TechnologyDetection] = Field(default_factory=list)

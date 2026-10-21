@@ -1,5 +1,7 @@
 """Recursively traverses workflow include sources."""
 
+from dataclasses import replace
+
 from harness.include_resolution import IncludeResolution
 from harness.include_resolution_merging import IncludeResolutionMerging
 from harness.include_source_expansion_preparing import IncludeSourceExpansionPreparing
@@ -48,6 +50,7 @@ class IncludeTraverser(IncludeTraversing):
                 resolution = self._resolution_merger.append_step(resolution, entry)
                 continue
             nested_context = self._expansion_preparer.prepare(source, context)
+            source = replace(source, runtime=nested_context.runtime)
             nested = self.traverse(source.steps, search_paths, nested_context)
             qualified = self._nested_qualifier.qualify(source.alias, nested)
             resolution = self._resolution_merger.merge(

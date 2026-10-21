@@ -8,6 +8,7 @@ from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_replacing import IncludeAliasGroupReplacing
 from harness.nested_include_child_group_policy import NestedIncludeChildGroupPolicy
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -27,5 +28,10 @@ class DataclassIncludeAliasGroupReplacer(IncludeAliasGroupReplacing):
             group,
             owner_alias=policy.owner_alias,
             execution=policy.execution,
-            combined_presentation=presentation,
+            presentation=policy.presentation,
+            execution_declared=policy.execution_declared,
+            presentation_declared=policy.presentation_declared,
+            combined_presentation=(
+                presentation if policy.presentation is WorkflowPresentationMode.COMBINED else None
+            ),
         )

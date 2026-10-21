@@ -60,13 +60,15 @@ class RunSnapshotResolver(RunSnapshotResolving):
                 context,
             ),
         )
-        ready = self._aggregate_ready_steps.expand(
+        expansion = self._aggregate_ready_steps.expand(
             executable_flow,
             run_state,
             self._dag_runner.ready_steps(executable_flow, run_state, context),
+            context,
         )
         return RunSnapshot(
             run_state=run_state,
             flow_def=executable_flow,
-            ready=ready,
+            ready=expansion.ready,
+            aggregate_phases=expansion.phases,
         )

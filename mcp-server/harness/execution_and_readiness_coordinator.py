@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from harness.aggregate_phase_audit_recorder import AggregatePhaseAuditRecording
 from harness.execution_and_readiness_coordinating import ExecutionAndReadinessCoordinating
 from harness.execution_outcome import ExecutionOutcome
 from harness.interpolation_guarding import InterpolationGuarding
@@ -29,12 +30,14 @@ class ExecutionAndReadinessCoordinator(ExecutionAndReadinessCoordinating):
         interpolation_guard: InterpolationGuarding,
         run_snapshot_resolver: RunSnapshotResolving,
         completion_checker: RunCompletionChecking,
+        phase_audit: AggregatePhaseAuditRecording,
     ) -> None:
         self._step_execution_coordinator = step_execution_coordinator
         self._step_result_builder = step_result_builder
         self._interpolation_guard = interpolation_guard
         self._run_snapshot_resolver = run_snapshot_resolver
         self._completion_checker = completion_checker
+        self._phase_audit = phase_audit
 
     def coordinate(
         self,
@@ -76,4 +79,5 @@ class ExecutionAndReadinessCoordinator(ExecutionAndReadinessCoordinating):
         )
         if error is not None:
             return ExecutionOutcome(error=error)
+        self._phase_audit.record(events_path, snapshot)
         return ExecutionOutcome(steps=steps)

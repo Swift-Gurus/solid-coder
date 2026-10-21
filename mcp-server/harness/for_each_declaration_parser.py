@@ -43,7 +43,9 @@ class ForEachDeclarationParser(ForEachDeclarationParsing):
             return ForEachDeclaration(
                 source=self._reference_parser.parse(step_id, raw),
             )
-        unknown_fields = sorted(fields - _AUTHORED_FIELDS)
+        snapshot = isinstance(raw.get("source"), Mapping)
+        allowed_fields = _AUTHORED_FIELDS | {"mode_declared"} if snapshot else _AUTHORED_FIELDS
+        unknown_fields = sorted(fields - allowed_fields)
         if unknown_fields:
             raise FlowValidationError(
                 f"Step '{step_id}' for_each contains unknown fields: "
@@ -68,6 +70,7 @@ class ForEachDeclarationParser(ForEachDeclarationParsing):
         return ForEachDeclaration(
             source=self._reference_parser.parse(step_id, source),
             mode=mode,
+            mode_declared=raw.get("mode_declared", False) if snapshot else "mode" in raw,
             label=(
                 self._expression_parser.parse(raw_label)
                 if raw_label is not None

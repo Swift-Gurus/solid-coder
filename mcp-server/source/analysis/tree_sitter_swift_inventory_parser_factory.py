@@ -4,6 +4,7 @@ import tree_sitter_swift
 from tree_sitter import Language, Parser
 
 from findings.review_unit_kind_parser import ReviewUnitKindParser
+from source.analysis.calls.tree_sitter_swift_call_parser import TreeSitterSwiftCallParser
 from source.analysis.declarations.tree_sitter_swift_scope_parser import TreeSitterSwiftScopeParser
 from source.analysis.declarations.tree_sitter_swift_scoped_declaration_parser import TreeSitterSwiftScopedDeclarationParser
 from source.analysis.source_syntax_collection_parser import SourceSyntaxCollectionParser
@@ -58,6 +59,10 @@ class TreeSitterSwiftInventoryParserFactory:
             inspections=SourceSyntaxCollectionParser(
                 entries=nodes,
                 parser=TreeSitterSwiftTypeInspectionParser(spans=spans, tokens=tokens),
+            ),
+            calls=SourceSyntaxCollectionParser(
+                entries=nodes,
+                parser=TreeSitterSwiftCallParser(spans=spans, tokens=tokens),
             ),
             diagnostics=SourceSyntaxCollectionParser(
                 entries=TreeSitterNodesParser(

@@ -7,6 +7,9 @@ from harness.include_resolving import IncludeResolving
 from harness.include_traversal_context import IncludeTraversalContext
 from harness.include_traversing import IncludeTraversing
 from harness.path_canonicalizing import PathCanonicalizing
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_include_runtime import WorkflowIncludeRuntime
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -31,6 +34,8 @@ class IncludeResolver(IncludeResolving):
         flow_file_path: str,
         search_paths: list[str] | None = None,
         root_workflow_id: str | None = None,
+        execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR,
+        presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL,
     ) -> IncludeResolution:
         root_path = self._path_canonicalizer.canonicalize(flow_file_path)
         return self._traverser.traverse(
@@ -40,5 +45,9 @@ class IncludeResolver(IncludeResolving):
                 flow_file_path=flow_file_path,
                 ancestor_identities=[root_path],
                 ancestor_labels=[root_workflow_id or root_path],
+                runtime=WorkflowIncludeRuntime(
+                    execution=execution,
+                    presentation=presentation,
+                ),
             ),
         )

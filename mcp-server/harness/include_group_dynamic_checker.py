@@ -23,4 +23,6 @@ class IncludeGroupDynamicChecker(IncludeGroupDynamicChecking):
             or group.outputs
             or group.execution is not WorkflowExecutionMode.GRANULAR
             or group.presentation is not WorkflowPresentationMode.INDIVIDUAL
+            or group.execution_declared
+            or group.presentation_declared
         )

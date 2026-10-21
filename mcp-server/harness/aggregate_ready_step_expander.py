@@ -1,5 +1,6 @@
 """Expands planned aggregate phases over a ready model frontier."""
 
+from harness.aggregate_phase import AggregateExpansion, AggregatePhase
 from harness.aggregate_phase_materializing import AggregatePhaseMaterializing
 from harness.aggregate_phase_planner import AggregatePhasePlanner
 from harness.aggregate_ready_step_expanding import AggregateReadyStepExpanding
@@ -7,6 +8,7 @@ from harness.flow_def import FlowDef
 from harness.run_state import RunState
 from harness.step_instance import StepInstance
 from harness.step_instance_boundary_resolving import StepInstanceBoundaryResolving
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -31,17 +33,19 @@ class AggregateReadyStepExpander(AggregateReadyStepExpanding):
         flow: FlowDef,
         state: RunState,
         ready: list[StepInstance],
-    ) -> list[StepInstance]:
+        context: WorkflowRunContext = WorkflowRunContext(),
+    ) -> AggregateExpansion:
         if any(
             instance.skip is not None or instance.automatic_outputs is not None
             for instance in ready
         ):
-            return ready
+            return AggregateExpansion(ready=ready)
         phases = self._planner.plan(flow, state, ready)
         if not phases:
-            return ready
+            return AggregateExpansion(ready=ready)
 
         expanded: list[StepInstance] = []
+        materialized_phases: list[AggregatePhase] = []
         handled_boundaries: list[str] = []
         for instance in ready:
             boundary_id = self._boundary_resolver.resolve(flow, instance)
@@ -55,11 +59,14 @@ class AggregateReadyStepExpander(AggregateReadyStepExpanding):
             )
             if phase is None or instance.step_id not in phase.step_ids:
                 expanded.append(instance)
-            elif boundary_id not in handled_boundaries or (
-                instance.iteration_index is not None
-                and instance.step_id == phase.step_ids[0]
-            ):
-                expanded.extend(self._materializer.materialize(flow, phase, instance))
-                if boundary_id not in handled_boundaries:
-                    handled_boundaries.append(boundary_id)
-        return expanded
+            elif boundary_id not in handled_boundaries:
+                phase_ready = [
+                    candidate for candidate in ready
+                    if candidate.step_id in phase.step_ids
+                    and self._boundary_resolver.resolve(flow, candidate) == boundary_id
+                ]
+                materialized = self._materializer.materialize(flow, phase, phase_ready, context)
+                expanded.extend(materialized.ready)
+                materialized_phases.extend(materialized.phases)
+                handled_boundaries.append(boundary_id)
+        return AggregateExpansion(ready=expanded, phases=materialized_phases)

@@ -57,6 +57,28 @@ class BindDeclarationClassificationsOperation(OperationHandling[BindDeclarationC
                         f"Invalid related declaration {classification.related_declaration_id}. "
                         "Choose another displayed file-level type and resubmit the complete classifications collection."
                     )
+                if classification.kind == "implemented_contract" and (
+                    declaration.unit.kind not in {ReviewUnitKind.PROTOCOL, ReviewUnitKind.CLASS}
+                    or related.unit.kind not in {
+                        ReviewUnitKind.CLASS, ReviewUnitKind.STRUCT, ReviewUnitKind.ENUM, ReviewUnitKind.ACTOR,
+                    }
+                ):
+                    raise FlowValidationError(
+                        f"Invalid implemented_contract relationship from {declaration.unit.name} "
+                        f"({declaration.unit.kind.value}) to {related.unit.name} ({related.unit.kind.value}). "
+                        "Relate the protocol or base-class contract to its concrete implementation, "
+                        "not the implementation to its contract. Resubmit a complete replacement classifications collection."
+                    )
+                if classification.kind == "cohesive_contract" and (
+                    declaration.unit.kind is not ReviewUnitKind.PROTOCOL
+                    or related.unit.kind is not ReviewUnitKind.PROTOCOL
+                ):
+                    raise FlowValidationError(
+                        f"Invalid cohesive_contract relationship from {declaration.unit.name} "
+                        f"to {related.unit.name}: both declarations must be protocols. "
+                        "Use implemented_contract from a contract to its concrete implementation, "
+                        "or independent for separate declarations. Resubmit a complete replacement classifications collection."
+                    )
                 related_classification = next(entry for entry in classifications if entry.declaration_id == related.identity)
                 if not isinstance(related_classification, IndependentDeclarationClassification):
                     raise FlowValidationError(

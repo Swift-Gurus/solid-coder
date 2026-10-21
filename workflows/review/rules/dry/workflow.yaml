@@ -128,6 +128,13 @@ steps:
 
       For missing abstractions:
 
+      Evaluate missing abstractions independently of duplication.
+      A single inline occurrence can be a missing abstraction when its reusable
+      behavior can be separated from the surrounding domain-specific policy.
+      Absence of duplicated methods does not establish absence of that pattern.
+      Distinguish an inline implementation from a call to an existing shared
+      abstraction that already provides the behavior.
+
       1. **Identify the domain** of the type under review — what business concept does it represent?
       2. **Identify generic patterns** within the type — reusable behavior, layout, or creation logic separable from its domain-specific names and parameters:
          - Behavioral patterns (retry, queue, cache, observe, poll — any reusable flow)
@@ -199,7 +206,7 @@ steps:
               minLength: 1
               description: >-
                 Assessment of within-unit duplication and missing abstractions,
-                including why either collection is empty.
+                assessed independently, including why either collection is empty.
             evidence:
               type: string
               minLength: 1

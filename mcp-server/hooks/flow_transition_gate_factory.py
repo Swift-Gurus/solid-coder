@@ -130,7 +130,7 @@ class FlowTransitionGateFactory:
                     assembly.schema_validator
                 ),
                 dag_runner=assembly.dag_runner,
-                aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(),
+                aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(assembly.interpolator),
             ),
             condition_serializer=make_condition_serializer(),
         )

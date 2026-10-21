@@ -72,8 +72,17 @@ class TestForEachDeclarationParser(unittest.TestCase):
                 ),
                 mode=ForEachMode.BATCH,
                 label=WorkflowExpression(value="item.target.name"),
+                mode_declared=True,
             ),
         )
+
+    def test_omitted_and_explicit_individual_modes_remain_distinguishable(self) -> None:
+        omitted = self.sut.parse("review", "{{steps.prepare.outputs.units}}")
+        explicit = self.sut.parse("review", {
+            "source": "{{steps.prepare.outputs.units}}", "mode": "individual",
+        })
+        self.assertFalse(omitted.mode_declared)
+        self.assertTrue(explicit.mode_declared)
 
     def test_rejects_batch_mode_without_a_label(self) -> None:
         with self.assertRaisesRegex(

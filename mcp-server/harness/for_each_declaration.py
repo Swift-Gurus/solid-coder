@@ -21,3 +21,4 @@ class ForEachDeclaration:
     source: StepOutputReference
     mode: ForEachMode = ForEachMode.INDIVIDUAL
     label: Optional[WorkflowExpression] = None
+    mode_declared: bool = False

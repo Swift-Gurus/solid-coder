@@ -4,6 +4,7 @@ from harness.include_cycle_guarding import IncludeCycleGuarding
 from harness.include_source import IncludeSource
 from harness.include_source_expansion_preparing import IncludeSourceExpansionPreparing
 from harness.include_traversal_context import IncludeTraversalContext
+from harness.workflow_include_policy_resolver import WorkflowIncludePolicyResolving, WorkflowIncludePolicyResolver
 
 
 """
@@ -14,8 +15,10 @@ solid-description: Validates and prepares traversal context for a nested include
 """
 class IncludeSourceExpansionPreparer(IncludeSourceExpansionPreparing):
 
-    def __init__(self, cycle_guard: IncludeCycleGuarding) -> None:
+    def __init__(self, cycle_guard: IncludeCycleGuarding,
+                 policy: WorkflowIncludePolicyResolving = WorkflowIncludePolicyResolver()) -> None:
         self._cycle_guard = cycle_guard
+        self._policy = policy
 
     def prepare(
         self,
@@ -36,4 +39,5 @@ class IncludeSourceExpansionPreparer(IncludeSourceExpansionPreparing):
             flow_file_path=source.flow_path,
             ancestor_identities=identities,
             ancestor_labels=labels,
+            runtime=self._policy.resolve(source.runtime, parent.runtime),
         )

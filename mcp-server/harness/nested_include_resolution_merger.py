@@ -48,6 +48,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
                 group,
                 source,
                 transparent_aliases,
+                nested.alias_groups,
             )
             for group in nested.alias_groups
         ]
@@ -71,6 +72,8 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             outputs=source.outputs,
             execution=source.runtime.execution,
             presentation=source.runtime.presentation,
+            execution_declared=source.runtime.execution_declared,
+            presentation_declared=source.runtime.presentation_declared,
         )
         alias_groups = [
             group

@@ -14,6 +14,10 @@ from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
 from harness.active_run_lock_clearer import ActiveRunLockClearer
 from harness.active_run_pointer_store import ActiveRunPointerStore
+from harness.aggregate_phase_audit import AggregatePhaseAuditEnvelope
+from harness.aggregate_phase_audit_recorder import AggregatePhaseAuditRecorder
+from harness.event_replayer import EventParser
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.aggregate_ready_step_expander_factory import (
     AggregateReadyStepExpanderFactory,
 )
@@ -122,6 +126,7 @@ from json_serializer import JsonSerializer
 from mcp_config_builder import McpConfigBuilder
 from mcp_config_profile import McpConfigProfile
 from subprocess_adapter import SubprocessAdapter
+from utils.prompt_builder import PlainTextFileReader
 
 _DELEGATE_SESSION_TIMEOUT_SECONDS = 300
 _DELEGATE_SESSION_MAX_WORKERS = 4
@@ -202,7 +207,7 @@ class FlowRunOrchestratorFactory:
                 assembly.schema_validator
             ),
             dag_runner=assembly.dag_runner,
-            aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(),
+            aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(assembly.interpolator),
         )
         condition_serializer = make_condition_serializer()
         output_recorder = OutputRecorder(
@@ -261,7 +266,7 @@ class FlowRunOrchestratorFactory:
         session_delegate_runner = self._session_delegate_runner or SessionDelegateRunner(
             mcp_config=McpConfigBuilder(
                 project_root=self._plugin_root,
-                profile=McpConfigProfile.LEGACY_HEALTH,
+                profile=McpConfigProfile.GATE_FLOW,
                 serializer=JsonSerializer(),
             ).build(),
             timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
@@ -339,6 +344,12 @@ class FlowRunOrchestratorFactory:
             interpolation_guard=interpolation_guard,
             run_snapshot_resolver=run_snapshot_resolver,
             completion_checker=completion_checker,
+            phase_audit=AggregatePhaseAuditRecorder(
+                reader=PlainTextFileReader(),
+                parser=EventParser(),
+                decoder=PydanticModelDecoder(AggregatePhaseAuditEnvelope),
+                appender=assembly.event_appender,
+            ),
         )
         flow_initializer = FlowInitializer(
             startup_context=StartupContextResolver(

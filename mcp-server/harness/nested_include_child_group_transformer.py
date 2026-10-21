@@ -36,11 +36,13 @@ class NestedIncludeChildGroupTransformer(NestedIncludeChildGroupTransforming):
         group: IncludeAliasGroup,
         source: IncludeSource,
         transparent_aliases: set[str],
+        groups: list[IncludeAliasGroup],
     ) -> IncludeAliasGroup:
         policy = self._policy_selector.select(
             group,
             source,
             transparent_aliases,
+            groups,
         )
         if policy is None:
             return group

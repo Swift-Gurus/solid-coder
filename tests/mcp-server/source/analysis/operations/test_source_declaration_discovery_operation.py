@@ -58,6 +58,22 @@ class TestSourceDeclarationDiscoveryOperation(unittest.TestCase):
         self.assertEqual(len(identities), len(set(identities)))
         self.assertEqual(identities.count(str(self.interface)), 1)
 
+    def test_implementation_discovery_follows_only_declared_contract_names(self) -> None:
+        prepared = PrepareSearchTargetsOperationFactory().make().execute(PrepareSearchTargetsInput(
+            source=FileAnalysisSource(path=self.root / "Store.swift"),
+            granularity=SearchTargetGranularity.UNIT,
+        ))
+        result = self.sut.execute(DiscoverSourceDeclarationInput(
+            target=prepared.targets[0],
+            context=SourceSearchContext(sources=[prepared.snapshot]),
+            follow_related_declarations=False,
+            follow_inherited_declarations=True,
+        ))
+
+        self.assertEqual([query.terms for query in result.queries], [["Store"], ["Reading"]])
+        self.assertIn(str(self.interface), [item.source_identity for item in result.inventory.analyses])
+        self.assertEqual(result.limitations, [])
+
     def test_prospective_interface_snapshot_wins_over_changed_disk(self) -> None:
         self.interface.write_text("struct Unrelated {}\n")
 

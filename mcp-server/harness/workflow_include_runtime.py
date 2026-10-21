@@ -25,3 +25,5 @@ class WorkflowIncludeRuntime:
     condition: ConditionDeclaration | None = None
     execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR
     presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
+    execution_declared: bool = False
+    presentation_declared: bool = False

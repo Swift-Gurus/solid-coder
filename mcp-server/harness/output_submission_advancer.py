@@ -13,6 +13,7 @@ from harness.step_handler_resolving import StepHandlerResolving
 from harness.step_output_submission_mapping import StepOutputSubmissionMapping
 from harness.submission_outcome import SubmissionOutcome
 from harness.turn_advancing import TurnAdvancing
+from harness.validation_result import ValidationResult
 
 
 """
@@ -76,7 +77,19 @@ class OutputSubmissionAdvancer:
         for instance in addressed:
             step_def = step_map[instance.step_id]
             handler = self._step_handler_resolver.resolve(step_def.type)
+            pending_dependencies = [
+                dependency.instance_id for dependency in ready
+                if dependency.step_id in step_def.depends_on
+                and dependency not in valid_instances
+            ]
             validation = handler.validate(instance, step_outputs[instance.instance_id], flow_def)
+            if pending_dependencies:
+                validation = ValidationResult(ok=False, errors=[*validation.errors,
+                    "Prerequisite outputs were not accepted: "
+                    + ", ".join(pending_dependencies)
+                    + ". Resubmit this result together with the pending prerequisites; "
+                    "accepted independent results are already saved."
+                ])
             if validation.ok:
                 valid_instances.append(instance)
                 valid_outputs[instance.instance_id] = step_outputs[instance.instance_id]

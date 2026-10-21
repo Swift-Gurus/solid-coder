@@ -104,6 +104,8 @@ class FlowDefinitionResolver:
             path,
             search_paths,
             root_workflow_id=workflow_id,
+            execution=execution,
+            presentation=presentation,
         )
         restored_alias_groups = self._alias_group_snapshot_parser.parse(
             raw.get("alias_groups")

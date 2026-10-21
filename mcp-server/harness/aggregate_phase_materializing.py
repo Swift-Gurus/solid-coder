@@ -2,9 +2,10 @@
 
 from typing import Protocol
 
-from harness.aggregate_phase import AggregatePhase
+from harness.aggregate_phase import AggregateExpansion, AggregatePhase
 from harness.flow_def import FlowDef
 from harness.step_instance import StepInstance
+from harness.workflow_run_context import WorkflowRunContext
 
 
 """
@@ -18,5 +19,6 @@ class AggregatePhaseMaterializing(Protocol):
         self,
         flow: FlowDef,
         phase: AggregatePhase,
-        seed: StepInstance,
-    ) -> list[StepInstance]: ...
+        ready: list[StepInstance],
+        context: WorkflowRunContext,
+    ) -> AggregateExpansion: ...

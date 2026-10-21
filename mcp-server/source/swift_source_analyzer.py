@@ -38,5 +38,6 @@ class SwiftSourceAnalyzer(LanguageSourceAnalyzing):
             units=inventory.units,
             declarations=inventory.declarations,
             type_inspections=inventory.type_inspections,
+            calls=inventory.calls,
             detections=self._tag_detector.detect(inventory, source),
         )

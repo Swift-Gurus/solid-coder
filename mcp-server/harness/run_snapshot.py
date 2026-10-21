@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from harness.aggregate_phase import AggregatePhase
 from harness.models import FlowDef, RunState, StepInstance
 
 
@@ -18,3 +19,4 @@ class RunSnapshot:
     run_state: RunState
     flow_def: FlowDef
     ready: list[StepInstance] = field(default_factory=list)
+    aggregate_phases: list[AggregatePhase] = field(default_factory=list)

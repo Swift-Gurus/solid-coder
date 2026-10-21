@@ -45,9 +45,6 @@ from harness.collection_metric_step_instance_builder import (
 from harness.combined_rule_presentation import CombinedRulePresentation
 from harness.comparison_condition_parser import ComparisonConditionParser
 from harness.comparison_operation_parser import ComparisonOperationParser
-from harness.combined_presentation_group_validator import (
-    CombinedPresentationGroupValidator,
-)
 from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_comparator import ConditionComparator
 from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
@@ -485,7 +482,6 @@ class FlowEngineAssemblyFactory:
                 cycle_detector=cycle_detector,
                 error_factory=error_factory,
             ),
-            combined_presentation_validator=CombinedPresentationGroupValidator(),
         )
 
         uses_resolver = UsesResolver(

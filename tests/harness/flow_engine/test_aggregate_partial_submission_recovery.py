@@ -73,7 +73,7 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
         )
 
         self.assertIsNone(remaining.error, remaining.error)
-        self.assertEqual(len(remaining.steps), 4)
+        self.assertEqual(len(remaining.steps), 6)
         addresses = [
             self._address(step.batch)
             for step in remaining.steps
@@ -84,8 +84,10 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
             [
                 ("AlphaType", "sample-rule", "secondary_count"),
                 ("AlphaType", "sample-rule", "stakeholder_count"),
+                ("AlphaType", "sample-rule", "classify_exception"),
                 ("BetaType", "sample-rule", "secondary_count"),
                 ("BetaType", "sample-rule", "stakeholder_count"),
+                ("BetaType", "sample-rule", "classify_exception"),
             ],
         )
         self.assertEqual(len(addresses), len(set(addresses)))
@@ -95,7 +97,7 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
             if event["event"] == "step_completed"
             and event["instance_id"] in {step.instance_id for step in ready.steps}
         ]
-        self.assertEqual(len(completed), 4)
+        self.assertEqual(len(completed), 2)
 
     def test_nested_item_specific_for_each_stays_outside_aggregate_compilation(self) -> None:
         workflow = self._write_nested_for_each_workflow()
@@ -149,7 +151,7 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
             workflow = schema["properties"][item]["properties"]["sample-rule"]
             self.assertEqual(
                 workflow["required"],
-                ["secondary_count", "stakeholder_count"],
+                ["secondary_count", "stakeholder_count", "classify_exception"],
             )
 
         finished = self.orchestrator.flow_next(

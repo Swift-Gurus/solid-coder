@@ -228,7 +228,8 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
         fatal_metrics = [
             metric for rule in result.rule_results
             if rule.workflow_id == "lsp" and rule.provenance.source_index == 1
-            for metric in rule.metrics if metric.metric_id == "LSP-3"
+            for metric in rule.metrics
+            if metric.metric_id == "LSP-3" and metric.observation_id == "fatal_calls"
         ]
         self.assertEqual(len(fatal_metrics), 1)
         self.assertEqual(fatal_metrics[0].value, 1)
@@ -243,3 +244,17 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
         type_check_metrics = [metric for metric in lsp_results[0].metrics if metric.metric_id == "LSP-1"]
         self.assertEqual(len(type_check_metrics), 1)
         self.assertEqual(type_check_metrics[0].observation_id, "value")
+        code_smells = next(rule for rule in result.rule_results if rule.workflow_id == "code-smells")
+        boundary = next(metric for metric in code_smells.metrics if metric.metric_id == "CS-2")
+        self.assertEqual(boundary.value, 1, "The contract and its implementation form one boundary")
+        self.assertEqual(boundary.severity, "COMPLIANT")
+        class_dry = next(
+            rule for rule in result.rule_results
+            if rule.workflow_id == "dry" and rule.provenance.source_index == 1
+        )
+        abstractions = next(metric for metric in class_dry.metrics if metric.metric_id == "DRY-3")
+        self.assertGreaterEqual(
+            abstractions.value, 1,
+            "Inline cache-to-storage fallback remains reusable without duplicated methods",
+        )
+        self.assertEqual(abstractions.severity, "SEVERE")

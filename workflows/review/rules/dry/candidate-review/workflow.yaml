@@ -12,7 +12,7 @@ outputs:
 steps:
   - id: inspect_candidate
     prompt: |
-      Read the selected file at `{{params.candidate.source.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.source.unit}}`. Do not classify it yet, ask MCP to load it, search again, count findings, or decide severity.
+      Read the selected file at `{{params.candidate.source.path}}` with your normal file-reading tool and inspect only the declaration named `{{params.candidate.source.unit}}`. Complete this inspection before classifying the candidate. Do not ask MCP to load it, search again, count findings, or decide severity.
 
       Return concise reasoning about what the inspected declaration actually implements and evidence quoting or precisely citing its relevant executable statements. If it contains only declarations or signatures, state that explicitly in both reasoning and evidence. Evidence must identify the inspected candidate path.
 
@@ -58,7 +58,7 @@ steps:
       2. Configuration or constants that must remain independently changeable.
       3. A protocol default implementation supplied only for conformance convenience.
 
-      Copy candidate ID `{{params.candidate.candidate_id}}` and location `{{params.candidate.source.path}}` exactly into the assessment. Apply the classifications to candidate `{{params.candidate.source.unit}}` against reviewed unit `{{params.target.name}}`, using the source inspection you previously submitted. Do not restate or revise that inspection.
+      Copy candidate ID `{{params.candidate.candidate_id}}` and location `{{params.candidate.source.path}}` exactly into the assessment. Apply the classifications to candidate `{{params.candidate.source.unit}}` against reviewed unit `{{params.target.name}}`, using the completed inspection for this candidate. Do not restate or revise that inspection.
     outputs:
       - name: assessment
         type: data

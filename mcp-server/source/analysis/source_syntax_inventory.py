@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from source.analysis.calls.source_call import SourceCall
 from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
 from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
 from source.source_evidence import SourceEvidence
@@ -22,5 +23,6 @@ class SourceSyntaxInventory(BaseModel):
     declarations: list[SourceScopedDeclaration] = Field(default_factory=list)
     imports: list[SourceEvidence] = Field(default_factory=list)
     signals: list[SourceEvidence] = Field(default_factory=list)
+    calls: list[SourceCall] = Field(default_factory=list)
     type_inspections: list[SourceTypeInspection] = Field(default_factory=list)
     diagnostics: list[SourceParseDiagnostic] = Field(default_factory=list)

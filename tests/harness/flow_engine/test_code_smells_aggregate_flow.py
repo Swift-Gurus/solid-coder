@@ -129,3 +129,26 @@ steps:
         done = self.submit(rejected.steps[0], self.response())
         self.assertEqual(done.status, "done", done.error)
         self.assert_results()
+
+    def test_invalid_contract_relationship_reopens_only_affected_assignment(self):
+        first, second = self.started.steps
+        accepted = self.submit(first, self.response())
+        invalid = self.response()
+        source = next(entry for entry in invalid["classifications"]
+                      if entry["additional_info"]["evidence"] == "ReportComposer")
+        target = next(entry for entry in invalid["classifications"]
+                      if entry["additional_info"]["evidence"] == "ReportEnvelope")
+        source.pop("has_business_logic")
+        source["kind"] = "cohesive_contract"
+        source["related_declaration_id"] = target["declaration_id"]
+
+        rejected = self.submit(accepted.steps[0], invalid)
+
+        self.assertEqual([step.instance_id for step in rejected.steps], [second.instance_id])
+        self.assertIn("both declarations must be protocols", rejected.steps[0].rejection_reason)
+        self.assertIn("complete replacement", rejected.steps[0].rejection_reason)
+        resumed = self.driver.advance()
+        self.assertEqual([step.instance_id for step in resumed.steps], [second.instance_id])
+        done = self.submit(resumed.steps[0], self.response())
+        self.assertEqual(done.status, "done", done.error)
+        self.assert_results()

@@ -148,6 +148,17 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
             [step.step_id for step in exception.steps],
             ["classify_exception"],
         )
+        self.assertFalse(any(event.get("step_id") == "contract_violations"
+                             and event.get("event") == "step_completed"
+                             for event in self._events(started.run_id)))
+        finished = self.sut.flow_next({exception.steps[0].instance_id: {
+            "is_exception": False,
+            "additional_info": {
+                "reasoning": "The processor is not a NoOp.",
+                "evidence": "process adds a guard before forwarding the request.",
+            },
+        }})
+        self.assertEqual(finished.status, "done", finished.error)
         metric = next(
             event
             for event in self._events(started.run_id)

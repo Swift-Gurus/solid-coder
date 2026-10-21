@@ -21,6 +21,10 @@ class RuleSetMemberSerializer(RuleSetMemberSerializing):
             "include": {"workflow": member.workflow_id},
             "as": member.alias,
         }
+        if runtime.execution_declared:
+            result["execution"] = {"mode": runtime.execution.value}
+        if runtime.presentation_declared:
+            result["presentation"] = {"mode": runtime.presentation.value}
         if runtime.depends_on:
             result["depends_on"] = list(runtime.depends_on)
         if runtime.for_each is not None:
@@ -30,6 +34,7 @@ class RuleSetMemberSerializer(RuleSetMemberSerializing):
                     "output_name": runtime.for_each.source.output_name,
                 },
                 "mode": runtime.for_each.mode.value,
+                "mode_declared": runtime.for_each.mode_declared,
             }
             if runtime.for_each.label is not None:
                 for_each["label"] = {

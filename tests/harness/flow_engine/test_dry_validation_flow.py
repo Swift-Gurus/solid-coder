@@ -189,6 +189,8 @@ class TestDryValidationFlow(unittest.TestCase):
             "Compare the algorithm separately from its business-domain names.",
             "including different constants or rounding precision",
             "A reusable pattern can exist within one business domain",
+            "Evaluate missing abstractions independently of duplication.",
+            "A single inline occurrence can be a missing abstraction",
             "Different names or constants alone do not establish that exception.",
         ):
             self.assertIn(clarification, prompt)
@@ -236,6 +238,17 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertNotIn("func reimbursements", duplicate_prompt)
         self.assertIn("within-unit duplication", duplicate_prompt.lower())
         self.assertNotIn("repository candidate", duplicate_prompt.lower())
+        output = self._target_analysis_output()
+        output["within_unit_duplicates"] = []
+        exception = self.engine.flow_next({target_analysis.steps[0].instance_id: output})
+        completed = self.engine.flow_next({
+            exception.steps[0].instance_id: self._exception_output(),
+        })
+
+        self.assertEqual(completed.status, "done", completed.error)
+        result = self._result(started.run_id)
+        self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0, 1])
+        self.assertEqual(result.metrics[-1].severity, "SEVERE")
 
     def test_term_generation_requires_individual_lexical_words(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
@@ -374,7 +387,7 @@ class TestDryValidationFlow(unittest.TestCase):
             "SharedTaxFormatter.swift contains formatTax()",
             classification.steps[0].prompt,
         )
-        self.assertIn("previously submitted", classification.steps[0].prompt)
+        self.assertIn("completed inspection for this candidate", classification.steps[0].prompt)
 
     def test_compliant_fixture_publishes_zero_metrics(self) -> None:
         self.run_root = self.run_root / ISOLATED_RUNS_DIRNAME

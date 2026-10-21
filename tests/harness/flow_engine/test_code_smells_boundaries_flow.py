@@ -70,3 +70,40 @@ def test_structural_candidate_scopes_and_literals(scenario, source, expected):
     done = scenario.sut.flow_next({ready.steps[0].instance_id: scenario._response(ready.run_id)})
     assert done.status == "done", done.error
     assert [metric.value for metric in scenario._rule_result(ready.run_id).metrics] == expected
+
+
+@pytest.mark.parametrize("relationship", ["implemented_contract", "cohesive_contract"])
+def test_reversed_contract_relationship_rejects_then_corrected_submission_scores(scenario, relationship):
+    scenario.review_unit = "protocol Loading {}\nclass Loader: Loading {}"
+    ready = scenario._start()
+    declarations = scenario._selection(ready.run_id).declarations
+    contract, implementation = declarations
+    output = scenario._response(ready.run_id)
+    output["classifications"][1] = {
+        "kind": relationship,
+        "declaration_id": implementation.identity,
+        "related_declaration_id": contract.identity,
+        "additional_info": {"reasoning": "Same capability.", "evidence": "class Loader: Loading"},
+    }
+
+    rejected = scenario.sut.flow_next({ready.steps[0].instance_id: output})
+
+    assert rejected.status == "ready", rejected.error
+    assert [step.step_id for step in rejected.steps] == ["classify_declarations"]
+    assert "contract" in rejected.steps[0].rejection_reason
+    assert "complete replacement" in rejected.steps[0].rejection_reason
+    assert not (scenario.project_root / "runs" / ready.run_id / "results/review/result.json").exists()
+
+    corrected = scenario._response(ready.run_id)
+    corrected["classifications"][0] = {
+        "kind": "implemented_contract",
+        "declaration_id": contract.identity,
+        "related_declaration_id": implementation.identity,
+        "additional_info": {"reasoning": "The contract belongs with its implementation.", "evidence": "class Loader: Loading"},
+    }
+    completed = scenario.sut.flow_next({rejected.steps[0].instance_id: corrected})
+
+    assert completed.status == "done", completed.error
+    metric = next(entry for entry in scenario._rule_result(ready.run_id).metrics if entry.metric_id == "CS-2")
+    assert metric.value == 1
+    assert metric.severity == "COMPLIANT"

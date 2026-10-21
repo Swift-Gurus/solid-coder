@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Protocol
 
 from harness.include_resolution import IncludeResolution
+from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 """
@@ -21,4 +23,6 @@ class IncludeResolving(Protocol):
         flow_file_path: str,
         search_paths: list[str] | None = None,
         root_workflow_id: str | None = None,
+        execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR,
+        presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL,
     ) -> IncludeResolution: ...

@@ -50,7 +50,10 @@ class TestSessionDelegateRunner(unittest.TestCase):
         self.assertEqual(outcome.outputs, {"finding": "delegate complete"})
         self.assertEqual(factory_calls, [{
             "mcp_config": "config-for:/plugin",
-            "allowed_tools": "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status",
+            "allowed_tools": (
+                "mcp__solid-coder-flow-engine__flow_start,"
+                "mcp__solid-coder-flow-engine__flow_next"
+            ),
             "cwd": "/project",
         }])
         self.assertEqual(runner.calls, [(

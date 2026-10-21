@@ -51,7 +51,10 @@ class RuleSetIncludeSourceResolver:
             ],
             flow_path=flow_file_path,
             runtime=WorkflowIncludeRuntime(
+                execution=runtime.execution,
                 presentation=runtime.presentation,
+                execution_declared=runtime.execution_declared,
+                presentation_declared=runtime.presentation_declared,
             ),
             identity="rules:all",
             label="rules:all",

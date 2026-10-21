@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from harness.include_alias_group import IncludeAliasGroup
+from harness.for_each_mode import ForEachMode
 from harness.include_source import IncludeSource
 from harness.nested_include_child_group_policy import NestedIncludeChildGroupPolicy
 from harness.nested_include_child_group_policy_selecting import (
     NestedIncludeChildGroupPolicySelecting,
 )
-from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
@@ -26,28 +26,30 @@ class NestedIncludeChildGroupPolicySelector(
         group: IncludeAliasGroup,
         source: IncludeSource,
         transparent_aliases: set[str],
+        groups: list[IncludeAliasGroup],
     ) -> NestedIncludeChildGroupPolicy | None:
         owns_group = (
             group.owner_alias is None and group.alias not in transparent_aliases
         ) or group.owner_alias in transparent_aliases
-        presents_group = (
-            group.owner_alias is None
-            and source.runtime.presentation is WorkflowPresentationMode.COMBINED
-        )
-        if not owns_group and not presents_group:
-            return None
-        execution = group.execution
-        if (
-            source.propagates_policy
-            and source.runtime.execution is WorkflowExecutionMode.AGGREGATE
-        ):
-            execution = WorkflowExecutionMode.AGGREGATE
+        combines = source.runtime.presentation is WorkflowPresentationMode.COMBINED
+        ancestor: IncludeAliasGroup | None = group
+        visited: set[str] = set()
+        while ancestor is not None and ancestor.alias not in visited:
+            visited.add(ancestor.alias)
+            combines = combines and (
+                ancestor.presentation is WorkflowPresentationMode.COMBINED
+                and not (
+                    ancestor.for_each is not None
+                    and ancestor.for_each.mode_declared
+                    and ancestor.for_each.mode is ForEachMode.INDIVIDUAL
+                )
+            )
+            ancestor = next((candidate for candidate in groups if candidate.alias == ancestor.owner_alias), None)
         return NestedIncludeChildGroupPolicy(
             owner_alias=source.alias if owns_group else group.owner_alias,
-            execution=execution,
-            combines_presentation=(
-                presents_group
-                or owns_group
-                and source.runtime.presentation is WorkflowPresentationMode.COMBINED
-            ),
+            execution=group.execution,
+            presentation=group.presentation,
+            execution_declared=group.execution_declared,
+            presentation_declared=group.presentation_declared,
+            combines_presentation=combines,
         )

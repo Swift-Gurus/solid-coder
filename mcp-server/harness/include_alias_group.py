@@ -36,6 +36,8 @@ class IncludeAliasGroup:
     execution: WorkflowExecutionMode = WorkflowExecutionMode.GRANULAR
     presentation: WorkflowPresentationMode = WorkflowPresentationMode.INDIVIDUAL
     combined_presentation: CombinedRulePresentation | None = None
+    execution_declared: bool = False
+    presentation_declared: bool = False
 
     def __post_init__(self) -> None:
         if not self.authored_alias:

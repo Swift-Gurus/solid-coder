@@ -21,4 +21,5 @@ class NestedIncludeChildGroupPolicySelecting(Protocol):
         group: IncludeAliasGroup,
         source: IncludeSource,
         transparent_aliases: set[str],
+        groups: list[IncludeAliasGroup],
     ) -> NestedIncludeChildGroupPolicy | None: ...

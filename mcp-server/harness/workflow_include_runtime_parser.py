@@ -120,4 +120,12 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
                 raw,
                 defaults.presentation,
             ),
+            execution_declared=(
+                "execution" in raw
+                or policy_source is not None and "execution" in policy_source
+            ),
+            presentation_declared=(
+                "presentation" in raw
+                or policy_source is not None and "presentation" in policy_source
+            ),
         )

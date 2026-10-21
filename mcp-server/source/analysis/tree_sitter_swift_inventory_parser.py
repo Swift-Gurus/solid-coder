@@ -2,6 +2,7 @@
 
 from tree_sitter import Node, Tree
 
+from source.analysis.calls.source_call import SourceCall
 from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
 from source.analysis.source_syntax_inventory import SourceSyntaxInventory
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
@@ -23,6 +24,7 @@ class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInvent
         imports: SourceSyntaxParsing[Node, list[SourceEvidence]],
         signals: SourceSyntaxParsing[Node, list[SourceEvidence]],
         inspections: SourceSyntaxParsing[Node, list[SourceTypeInspection]],
+        calls: SourceSyntaxParsing[Node, list[SourceCall]],
         diagnostics: SourceSyntaxParsing[Node, list[SourceParseDiagnostic]],
         declarations: SourceSyntaxParsing[Node, list[SourceScopedDeclaration]],
     ) -> None:
@@ -30,6 +32,7 @@ class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInvent
         self._imports = imports
         self._signals = signals
         self._inspections = inspections
+        self._calls = calls
         self._diagnostics = diagnostics
         self._declarations = declarations
 
@@ -46,5 +49,6 @@ class TreeSitterSwiftInventoryParser(SourceSyntaxParsing[str, SourceSyntaxInvent
             declarations=declarations,
             signals=self._signals.parse(root),
             type_inspections=self._inspections.parse(root),
+            calls=self._calls.parse(root),
             diagnostics=self._diagnostics.parse(root),
         )

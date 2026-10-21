@@ -161,6 +161,25 @@ class TestAggregatePhasePlanner(unittest.TestCase):
 
         self.assertEqual([phase.step_ids for phase in phases], [["inspect"]])
 
+    def test_ready_condition_and_independent_branch_join_across_operation(self) -> None:
+        flow = FlowDef(
+            id="known", name="Known frontier", max_turns=10,
+            execution=WorkflowExecutionMode.AGGREGATE,
+            steps=[
+                StepDef(id="inspect", prompt="Inspect."),
+                StepDef(id="prepare", type="operation", prompt="", depends_on=["inspect"]),
+                StepDef(id="blocked", prompt="Wait.", depends_on=["prepare"]),
+                StepDef(id="known", prompt="Condition already true.", condition=object()),
+                StepDef(id="independent", prompt="Independent."),
+            ],
+        )
+
+        phases = self.sut.plan(flow, self.state, [
+            self._ready("inspect"), self._ready("known"), self._ready("independent"),
+        ])
+
+        self.assertEqual([phase.step_ids for phase in phases], [["inspect", "known", "independent"]])
+
     def test_stops_before_unmaterialized_for_each_step(self) -> None:
         flow = FlowDef(
             id="aggregate",

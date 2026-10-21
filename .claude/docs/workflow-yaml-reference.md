@@ -767,9 +767,25 @@ Execution and presentation are independent:
 
 `combined` is not a scoring mode and `aggregate` does not flatten the DAG.
 Dependencies, conditions, retries, audit events, replay identities, and child
-workflow ownership remain intact. A nested workflow may declare its own modes;
-an explicitly owned boundary applies within its own scope rather than silently
-rewriting unrelated parent or child execution.
+workflow ownership remain intact.
+
+Omitted modes inherit independently from the enclosing workflow/group. With no
+configured ancestor, the defaults are granular execution and individual
+presentation. An explicit include-site setting wins over the included workflow's
+root setting; either wins over inheritance. A deeper explicit setting remains
+local: a child opt-in cannot combine work across an enclosing individual boundary.
+
+In a combined scope, omitted `for_each.mode` permits already-materialized items
+to share a presentation. Explicit `mode: individual` opts out; explicit
+`mode: batch` retains its label requirement. These choices do not change the
+identity or required outputs of any item.
+
+An already-resolved condition or collection is not itself a phase boundary.
+Unknown conditions, unknown collections, and prompts needing unsubmitted values
+still wait. An MCP operation or calculated metric blocks its consumers, not
+independent ready classifiers. Partial submissions retain accepted independent
+results; a dependent result cannot be accepted while its submitted producer is
+invalid or missing.
 
 ## Conditions
 

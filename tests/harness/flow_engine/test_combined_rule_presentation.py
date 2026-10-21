@@ -222,7 +222,7 @@ class TestCombinedRulePresentation(unittest.TestCase):
         with self.assertRaises(FlowValidationError):
             self.sut.flow_start(str(invalid))
 
-    def test_rejects_non_batched_child_of_combined_group(self) -> None:
+    def test_non_batched_child_inherits_combined_group(self) -> None:
         invalid = self.project_root / "invalid-child.yaml"
         invalid.write_text(
             textwrap.dedent(
@@ -242,11 +242,10 @@ class TestCombinedRulePresentation(unittest.TestCase):
             encoding="utf-8",
         )
 
-        with self.assertRaisesRegex(
-            FlowValidationError,
-            "batch",
-        ):
-            self.sut.flow_start(str(invalid))
+        started = self.sut.flow_start(str(invalid))
+        self.assertIsNone(started.error, started.error)
+        self.assertEqual(len(started.steps), 1)
+        self.assertIsNotNone(started.steps[0].batch)
 
     def _start_combined_review(self):
         return self._start_combined_review_with_run()[1]

@@ -8,6 +8,9 @@ from harness.aggregate_step_eligibility_checker import AggregateStepEligibilityC
 from harness.step_instance_boundary_resolver import StepInstanceBoundaryResolver
 from harness.workflow_step_boundary_resolver import WorkflowStepBoundaryResolver
 from harness.workflow_step_finder import WorkflowStepFinder
+from harness.interpolator import TemplateRendering
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_results_visibility_selector import WorkflowResultsVisibilitySelector
 
 
 """
@@ -17,7 +20,7 @@ solid-spec: [SPEC-045]
 solid-description: Assembles aggregate phase planning and original-step instance materialization.
 """
 class AggregateReadyStepExpanderFactory:
-    def make(self) -> AggregateReadyStepExpander:
+    def make(self, renderer: TemplateRendering) -> AggregateReadyStepExpander:
         step_finder = WorkflowStepFinder()
         boundary_resolver = StepInstanceBoundaryResolver()
         return AggregateReadyStepExpander(
@@ -30,5 +33,9 @@ class AggregateReadyStepExpanderFactory:
                 ),
             ),
             boundary_resolver=boundary_resolver,
-            materializer=AggregatePhaseMaterializer(step_finder=step_finder),
+            materializer=AggregatePhaseMaterializer(
+                step_finder=step_finder,
+                renderer=renderer,
+                context_resolver=WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
+            ),
         )

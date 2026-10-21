@@ -42,6 +42,8 @@ steps:
 
 `execution.mode: aggregate` controls compilation of compatible steps within each included workflow instance. `presentation.mode: combined` controls whether compatible compiled workflow instances share one model-facing turn. Either mode may be used independently.
 
+The nested omission rules are refined by [SPEC-067](../../features/SPEC-067-nested-aggregate-turn-reduction/Spec.md): each axis inherits independently, with an explicit include-site value taking precedence over the child's explicit root value and then the enclosing value. Without a configured ancestor, omission retains the granular/individual defaults. An explicit individual boundary is not crossed by a deeper combined opt-in. Known conditions and materialized collections can combine; unresolved bindings and required MCP-owned outputs remain phase boundaries.
+
 ## Input / Output
 
 | | Detail |
@@ -63,7 +65,7 @@ As a workflow author, I want to select aggregate execution on existing workflows
 **When** all external dependencies of that workflow instance are satisfied
 **Then** MCP creates one aggregate assignment containing the three steps in topological order
 **And** it does not modify or duplicate the source workflow definition
-**And** granular execution remains available when aggregate mode is omitted.
+**And** granular execution remains available through an explicit granular override, or omission outside an aggregate ancestor.
 
 #### Scenario 1.2 — Preserve transport-neutral authored instructions
 
@@ -322,6 +324,7 @@ As a platform maintainer, I want review scoring and ordinary workflow completion
 | Upstream | SPEC-043 Combined Rule Presentation | Supplies deduplicated multi-workflow rendering and nested submission mapping |
 | Optional consumer | SPEC-044 Aggregate Rule Scoring | Finalizes review-rule outputs without coupling scoring to compilation |
 | Downstream | SPEC-036 Bundled SOLID Workflows | Enables gate/review experiments from canonical granular rules without duplicate single-prompt workflows |
+| Follow-up | SPEC-067 Nested Aggregate Turn Reduction | Clarifies recursive omission inheritance and reduces unnecessary phases while retaining original submission identities and real MCP boundaries |
 
 ## Execution Plan
 

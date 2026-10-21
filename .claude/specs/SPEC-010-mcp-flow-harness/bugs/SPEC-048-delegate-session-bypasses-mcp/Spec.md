@@ -2,7 +2,7 @@
 number: SPEC-048
 feature: delegate-session-bypasses-mcp
 type: bug
-status: draft
+status: in-progress
 parent: SPEC-010
 blocked-by: []
 blocking: [SPEC-037]
@@ -108,6 +108,22 @@ Given valid MCP-backed session delegates fan out over multiple items, when they 
 - Full non-live suite and existing flow-engine live contracts remain green.
 
 ## Affected Components
+
+### Capability-wiring checkpoint — 2026-10-21
+
+The shared Claude live case reproduced this bug in run `f5a3546267ef4a5da173cc7980eaac77`. Both delegated instances exhausted two attempts with `Delegated session must return one JSON object`. Child transcripts show that they lacked flow tools, inspected source files, and described an expected result rather than completing the child through MCP. This is not evidence of a defect in JSON parsing.
+
+The default `FlowRunOrchestratorFactory` selected `McpConfigProfile.LEGACY_HEALTH`, exposing docs/pipeline servers, while `SessionDelegateRunner` allowed obsolete `mcp__pipeline__flow_*` names. The focused fix reuses the existing dedicated flow-engine configuration and allows its `flow_start`/`flow_next` names; internal status is not exposed.
+
+`tests/harness/flow_engine/test_session_delegate_capabilities_integration.py` now exercises the real default composition, mocking only the model-runner boundary. It failed first on the legacy server selection and then on the stale allowlist. The runner and fan-out tests pass with both corrected. The full non-live run passed 3,044 tests and 270 subtests (four abstract-base skips); the subsequent shared Codex/Claude live-flow suite passed all ten cases in 432.02 seconds, including both delegated fan-out cases per backend.
+
+Manual inspection of the successful child transcripts confirms flow-start/flow-next calls. Claude child sessions `07d4a89b-ae2f-45d5-a972-5875b3a1d6a5` and `f2fc6162-6b38-4486-9a55-18d02b7fe5e7` made exactly those three MCP calls and returned `{"child_value": 42}`, with no Bash/Read fallback. The successful Claude parent artifacts are `.solid-coder/.artifacts/test/claude/e2e/flow-engine/workflow-contract/20261021T161745Z-c2ca5d47/` and `20261021T161838Z-22956b40/` in the same directory. Manual evidence is not a substitute for the still-required automated transcript and child-completion assertions.
+
+This is partial implementation, not closure: strict backend capability enforcement, explicit project-context injection, independent child-run correlation, and complete transcript assertions remain required by AC-2 through AC-6. The fix does not weaken strict JSON parsing or accept simulated child results.
+
+Evidence: `.solid-coder/.artifacts/test/claude/e2e/flow-engine/workflow-contract/20261021T155524Z-ffd7adaf/`; child transcripts include `/Users/crowea/.claude/projects/-Users-crowea-Developer-Swift-Gurus-solid-coder/d78d0c46-60d4-4aab-9915-9dc6b092c8be.jsonl` and `e65f48ec-008d-4233-820b-acdb9db010fe.jsonl` in the same directory.
+
+### Components
 
 - `mcp-server/harness/session_delegate_runner.py`
 - `mcp-server/harness/delegate_instruction_builder.py`

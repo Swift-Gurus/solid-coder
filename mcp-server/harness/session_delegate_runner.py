@@ -29,7 +29,10 @@ from harness.session_delegate_running import SessionDelegateRunning
 from harness.step_run_outcome import StepRunOutcome
 
 RunnerFactory = Callable[..., ClaudeRunning]
-_FLOW_TOOLS = "mcp__pipeline__flow_start,mcp__pipeline__flow_next,mcp__pipeline__flow_status"
+_FLOW_TOOLS = (
+    "mcp__solid-coder-flow-engine__flow_start,"
+    "mcp__solid-coder-flow-engine__flow_next"
+)
 
 
 """

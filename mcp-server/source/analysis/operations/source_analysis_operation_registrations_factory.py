@@ -12,6 +12,10 @@ from source.analysis.operations.match_source_requirements_input import MatchSour
 from source.analysis.operations.resolve_source_relationships_input import ResolveSourceRelationshipsInput
 from source.analysis.operations.source_declaration_members_input import SourceDeclarationMembersInput
 from source.analysis.operations.source_declaration_members_operation import SourceDeclarationMembersOperation
+from source.analysis.operations.source_contract_members_operation import SourceContractMembersOperation
+from source.analysis.matching.source_contract_members import SourceContractMembers
+from source.analysis.operations.bind_member_classifications_input import BindMemberClassificationsInput
+from source.analysis.operations.bind_member_classifications_operation import BindMemberClassificationsOperation
 from source.analysis.operations.source_declaration_context import SourceDeclarationContext
 from source.analysis.operations.source_declaration_context_input import SourceDeclarationContextInput
 from source.analysis.operations.source_declaration_context_operation import SourceDeclarationContextOperation
@@ -53,6 +57,20 @@ class SourceAnalysisOperationRegistrationsFactory:
             signatures=SwiftMemberSignatureMatcherFactory().make(),
         )
         return [
+            OperationRegistration(
+                name="source.contract_members",
+                input_model=SourceDeclarationMembersInput,
+                output_model=SourceContractMembers,
+                handler=SourceContractMembersOperation(SourceRequirementMatcherFactory().make()),
+            ),
+            OperationRegistration(
+                name="source.bind_member_classifications",
+                input_model=BindMemberClassificationsInput,
+                output_model=BindMemberClassificationsInput,
+                handler=BindMemberClassificationsOperation(
+                    CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+                ),
+            ),
             OperationRegistration(
                 name="source.analyze",
                 input_model=AnalyzeSourceInput,

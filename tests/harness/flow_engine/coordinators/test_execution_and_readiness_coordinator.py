@@ -66,6 +66,14 @@ class StubCompletionChecker:
         return self.result
 
 
+class StubPhaseAuditRecorder:
+    def __init__(self):
+        self.calls = []
+
+    def record(self, events_path, snapshot):
+        self.calls.append((events_path, snapshot))
+
+
 class ExecutionAndReadinessCoordinatorFactory:
     def __init__(self) -> None:
         self.step_execution_coordinator = StubStepExecutionCoordinator(None)
@@ -77,6 +85,7 @@ class ExecutionAndReadinessCoordinatorFactory:
             RunSnapshot(run_state=run_state, flow_def=flow_def, ready=[])
         )
         self.completion_checker = StubCompletionChecker()
+        self.phase_audit = StubPhaseAuditRecorder()
 
     def with_step_execution_coordinator(self, coordinator) -> "ExecutionAndReadinessCoordinatorFactory":
         self.step_execution_coordinator = coordinator
@@ -97,6 +106,7 @@ class ExecutionAndReadinessCoordinatorFactory:
             interpolation_guard=self.interpolation_guard,
             run_snapshot_resolver=self.run_snapshot_resolver,
             completion_checker=self.completion_checker,
+            phase_audit=self.phase_audit,
         )
 
 
@@ -196,6 +206,7 @@ class TestExecutionAndReadinessCoordinator(unittest.TestCase):
         self.assertEqual(step_result_builder.calls, [
             (snapshot.ready, snapshot.flow_def, snapshot.run_state),
         ])
+        self.assertEqual(factory.phase_audit.calls, [("/runs/run-1/events.jsonl", snapshot)])
 
 
 if __name__ == "__main__":

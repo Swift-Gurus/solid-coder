@@ -5,6 +5,7 @@ from source.analysis.operations.source_declaration_discovery import SourceDeclar
 from source.analysis.relationships.source_related_declarations_selector import SourceRelatedDeclarationsSelecting
 from source.analysis.relationships.source_relationship_resolver import SourceRelationshipsResolving
 from source.analysis.relationships.source_relationship_status import SourceRelationshipStatus
+from source.analysis.relationships.source_relationship_kind import SourceRelationshipKind
 from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.source_analysis import SourceAnalysis
 from source.source_search_context import SourceSearchContext
@@ -47,7 +48,9 @@ class SourceDeclarationDiscoveryOperation(OperationHandling[DiscoverSourceDeclar
         limitations: list[str] = []
         known_paths = {snapshot.path for snapshot in operation_input.context.sources}
         known_names = {operation_input.target.name}
-        for pass_index in range(2 if operation_input.follow_related_declarations else 1):
+        for pass_index in range(2 if (
+            operation_input.follow_related_declarations or operation_input.follow_inherited_declarations
+        ) else 1):
             if not pending:
                 break
             queries.extend(pending)
@@ -79,6 +82,19 @@ class SourceDeclarationDiscoveryOperation(OperationHandling[DiscoverSourceDeclar
                 if item.declaration.name not in known_names:
                     pending.append(SourceSearchQuery(id=item.declaration.identity, terms=[item.declaration.name]))
                     known_names.add(item.declaration.name)
+            if operation_input.follow_inherited_declarations:
+                owners = [declaration, *[
+                    link.reference.owner for link in inventory.relationships
+                    if link.reference.kind is SourceRelationshipKind.EXTENSION_TARGET
+                    and declaration in link.candidates
+                ]]
+                for link in inventory.relationships:
+                    if link.reference.owner not in owners or link.reference.kind is not SourceRelationshipKind.INHERITED_TYPE:
+                        continue
+                    name = "".join(link.reference.target.tokens)
+                    if name not in known_names:
+                        pending.append(SourceSearchQuery(id=name, terms=[name]))
+                        known_names.add(name)
         limitations.extend(
             item.relationship.reason for item in related
             if item.relationship.status is not SourceRelationshipStatus.CANDIDATE

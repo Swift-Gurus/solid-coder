@@ -19,6 +19,7 @@ from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
 from harness.workflow_persister_factory import WorkflowPersisterFactory
+from harness.workflow_presentation_mode import WorkflowPresentationMode
 
 
 class TestRuleWorkflowLoading(unittest.TestCase):
@@ -155,11 +156,7 @@ class TestRuleWorkflowLoading(unittest.TestCase):
             self._rule_source("srp", ".swift", "service"),
         )
 
-        with self.assertRaisesRegex(
-            FlowValidationError,
-            "Combined presentation rule 'srp' must contain exactly one agent step",
-        ):
-            self.loader.load(
+        flow = self.loader.load(
                 self._write_package(
                     "combined-review",
                     """
@@ -191,7 +188,11 @@ class TestRuleWorkflowLoading(unittest.TestCase):
                     """,
                 ),
                 [str(self.directory)],
-            )
+        )
+        rules = [group for group in flow.alias_groups if group.rule_workflow is not None]
+        self.assertEqual(len(rules), 1)
+        self.assertIs(rules[0].presentation, WorkflowPresentationMode.COMBINED)
+        self.assertEqual(len(rules[0].member_ids), 2)
 
     def test_rejects_invalid_included_rule_under_its_own_identity(self) -> None:
         self._write_package(

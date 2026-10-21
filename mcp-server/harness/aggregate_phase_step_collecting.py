@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from harness.aggregate_phase import AggregatePhase
 from harness.flow_def import FlowDef
 from harness.run_state import RunState
 from harness.step_def import StepDef
+from harness.step_instance import StepInstance
 
 
 """
@@ -22,4 +24,5 @@ class AggregatePhaseStepCollecting(Protocol):
         state: RunState,
         first: StepDef,
         boundary_id: str,
-    ) -> list[str]: ...
+        ready: list[StepInstance],
+    ) -> AggregatePhase: ...

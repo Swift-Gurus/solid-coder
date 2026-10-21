@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.dynamic_workflow_materialization import DynamicWorkflowMaterialization
+from harness.aggregate_phase import AggregateExpansion
 from harness.models import FlowDef, RunState, StepDef, StepInstance
 from harness.run_snapshot_resolver import RunSnapshotResolver
 from harness.workflow_context_value import WorkflowContextValue
@@ -25,9 +26,10 @@ class StubAggregateReadyStepExpander:
     def __init__(self) -> None:
         self.calls = []
 
-    def expand(self, flow, state, ready):
+    def expand(self, flow, state, ready, context):
         self.calls.append((flow, state, ready))
-        return ready
+        self.context = context
+        return AggregateExpansion(ready=ready)
 
 
 class StubEventReplayer:

@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
+from harness.aggregate_batch_step_presentation import AggregateBatchStepPresentation
 from harness.review_result import ReviewResult
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
 
@@ -99,10 +100,13 @@ class TestFixedRuleException(unittest.TestCase):
         resumed = self.driver.advance()
         self.assertEqual(resumed.steps[0].instance_id, started.steps[0].instance_id)
 
-        completed = self.driver.advance({resumed.steps[0].instance_id: {
+        batch = resumed.steps[0].batch
+        self.assertIsInstance(batch, AggregateBatchStepPresentation)
+        self.assertEqual(batch, started.steps[0].batch)
+        completed = self.driver.advance({batch.label: {batch.workflow_alias: {batch.authored_step.step_id: {
             "value": 0,
             "additional_info": {"reasoning": "No observations.", "evidence": "The target is empty."},
-        }})
+        }}}})
 
         self.assertEqual(completed.status, "done", completed.error)
         result = ReviewResult.model_validate_json(

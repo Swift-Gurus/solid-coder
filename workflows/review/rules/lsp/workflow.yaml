@@ -3,9 +3,31 @@ name: Liskov Substitution Principle Review
 description: Measures type checks, inheritance contract violations, and unsupported protocol behavior from durable typed evidence.
 max_turns: 24
 
-rule: {}
+rule:
+  exception:
+    is_exception: false
+    additional_info:
+      reasoning: NoOp exclusions apply to individual observations; actual fatalError calls are never exempt.
+      evidence: The fatal_calls observation uses source-backed call facts independently of model classifications.
 
 steps:
+  - id: discover_contracts
+    type: operation
+    operation: source.discover_declaration
+    with:
+      target: "{{params.review_unit.target}}"
+      context: "{{params.source_context}}"
+      follow_related_declarations: false
+      follow_inherited_declarations: true
+
+  - id: prepare_contract_members
+    type: operation
+    operation: source.contract_members
+    depends_on: [discover_contracts]
+    with:
+      inventory: "{{steps.discover_contracts.outputs.result.inventory}}"
+      declaration: "{{steps.discover_contracts.outputs.result.declaration}}"
+
   - id: prepare_type_inspections
     type: operation
     operation: source.resolve_type_inspections
@@ -64,6 +86,7 @@ steps:
             evidence: {type: string, minLength: 1}
 
   - id: analyze_substitutability
+    depends_on: [prepare_contract_members]
     prompt: |
       Analyze only unit `{{params.review_unit.target.name}}` from the source
       already visible in this model session. Do not inspect repository
@@ -87,12 +110,22 @@ steps:
 
       Classify each implementation as MEANINGFUL, EMPTY, or FATAL and identify
       direct source evidence. EMPTY means the required behavior is unimplemented;
-      FATAL means the implementation only crashes instead of providing it.
+      FATAL includes actual fatalError calls, directly or through a supported
+      helper call path, even when conditional or accompanied by other behavior.
 
-      Return one `contract_implementations` entry only for implementations whose
+      Return one `contract_implementations` entry for each listed member ID,
+      copying its ID into `member`. These are implementations whose
       bodies are present inside the supplied unit. Protocol requirements declared
       without bodies are not implementations. Never inspect or report a conformer
       merely because the supplied unit declares its protocol.
+
+      Consider helper behavior invoked by each listed implementation. Preserve
+      the supported call path in evidence when the implementation delegates to
+      a crashing helper. Every actual fatalError call is a violation, including
+      conditional calls; intentional or allegedly unreachable calls are not exempt.
+      Comments and literal text mentioning fatalError are not calls.
+
+      {{steps.prepare_contract_members.outputs.context}}
     outputs:
       - name: has_inheritance
         type: data
@@ -120,6 +153,14 @@ steps:
                 type: string
                 enum: [MEANINGFUL, EMPTY, FATAL]
               evidence: {type: string, minLength: 1}
+
+  - id: bind_contract_classifications
+    type: operation
+    operation: source.bind_member_classifications
+    depends_on: [analyze_substitutability]
+    with:
+      members: "{{steps.prepare_contract_members.outputs.members}}"
+      classifications: "{{steps.analyze_substitutability.outputs.contract_implementations}}"
 
   - id: prepare_relationship_query
     type: operation
@@ -218,13 +259,16 @@ steps:
 
   - id: classify_relationship_violations
     depends_on: [analyze_substitutability, relationship_reviews]
+    when:
+      ref: "{{steps.analyze_substitutability.outputs.has_inheritance}}"
+      equals: true
     prompt: |
       Use the completed repository inspections to classify contract violations
       in reviewed subtype `{{params.review_unit.target.name}}`. The inspected
       base contracts and reviewed subtype are already visible in this session.
 
-      When the submitted inheritance trigger was false, or no selected candidate
-      was a relevant relationship, return an empty `observations` array. Otherwise
+      When no selected candidate was a relevant relationship, return an empty
+      `observations` array. Otherwise
       classify each independently evidenced violation once. Identify its
       candidate ID, member, exception status, reasoning, and source evidence.
 
@@ -266,7 +310,7 @@ steps:
   - id: type_checks
     type: metric
     metric_id: LSP-1
-    depends_on: [classify_type_inspections]
+    depends_on: [classify_type_inspections, classify_exception]
     when: &complete_type_classifications
       all:
         - ref: "{{steps.prepare_type_inspections.outputs.limitations}}"
@@ -278,15 +322,18 @@ steps:
     scoring: &type_bypass_scoring
       source: "{{steps.classify_type_inspections.outputs.classification}}"
       when:
-        ref: "{{item}}"
-        equals: ABSTRACTION_BYPASS
+        all:
+          - ref: "{{item}}"
+            equals: ABSTRACTION_BYPASS
+          - ref: "{{steps.classify_exception.outputs.is_exception}}"
+            equals: false
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: confirmed_partial_type_checks
     type: metric
     metric_id: LSP-1
     observation_id: confirmed_partial
-    depends_on: [classify_type_inspections]
+    depends_on: [classify_type_inspections, classify_exception]
     when:
       all:
         - not: *complete_type_classifications
@@ -298,44 +345,76 @@ steps:
   - id: contract_violations
     type: metric
     metric_id: LSP-2
-    depends_on: [classify_relationship_violations]
+    depends_on: [classify_relationship_violations, classify_exception]
     value: {type: integer, minimum: 0}
     scoring:
       source: "{{steps.classify_relationship_violations.outputs.observations}}"
       when:
-        ref: "{{item.is_exception}}"
-        equals: false
+        all:
+          - ref: "{{item.is_exception}}"
+            equals: false
+          - ref: "{{steps.classify_exception.outputs.is_exception}}"
+            equals: false
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: fatal_error_methods
     type: metric
     metric_id: LSP-3
-    depends_on: [analyze_substitutability]
+    depends_on: [bind_contract_classifications, classify_exception]
+    when: &complete_contracts
+      all:
+        - ref: "{{steps.discover_contracts.outputs.result.limitations}}"
+          equals: []
+        - ref: "{{steps.prepare_contract_members.outputs.limitations}}"
+          equals: []
+    unavailable_reason: Contract implementation coverage is unresolved; a missing or ambiguous contract is not evidence of compliance.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.analyze_substitutability.outputs.contract_implementations}}"
+      source: "{{steps.bind_contract_classifications.outputs.classifications}}"
       when:
-        ref: "{{item.classification}}"
-        equals: FATAL
+        all:
+          - ref: "{{item.classification}}"
+            equals: FATAL
+          - ref: "{{steps.classify_exception.outputs.is_exception}}"
+            equals: false
+      severe: {operator: greater_than_or_equal, value: 1}
+
+  - id: fatal_calls
+    type: metric
+    metric_id: LSP-3
+    observation_id: fatal_calls
+    depends_on: [prepare_contract_members]
+    value: {type: integer, minimum: 0}
+    scoring:
+      source: "{{steps.prepare_contract_members.outputs.calls}}"
+      when:
+        ref: "{{item.callee}}"
+        in: [fatalError, Swift.fatalError]
       severe: {operator: greater_than_or_equal, value: 1}
 
   - id: empty_methods
     type: metric
     metric_id: LSP-4
-    depends_on: [analyze_substitutability]
+    depends_on: [bind_contract_classifications, classify_exception]
+    when: *complete_contracts
+    unavailable_reason: Empty implementation coverage is unresolved; a missing or ambiguous contract is not evidence of compliance.
     value: {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.analyze_substitutability.outputs.contract_implementations}}"
+      source: "{{steps.bind_contract_classifications.outputs.classifications}}"
       when:
-        ref: "{{item.classification}}"
-        equals: EMPTY
+        all:
+          - ref: "{{item.classification}}"
+            equals: EMPTY
+          - ref: "{{steps.classify_exception.outputs.is_exception}}"
+            equals: false
       minor: {operator: greater_than_or_equal, value: 1}
 
   - id: classify_exception
-    type: exception
-    depends_on: [type_checks, confirmed_partial_type_checks, contract_violations, fatal_error_methods, empty_methods]
+    type: agent
+    depends_on: [classify_type_inspections, bind_contract_classifications, classify_relationship_violations]
     prompt: |
-      Decide whether the entire supplied unit is exempt from LSP review under this authored exception:
+      Classify whether the supplied unit is a NoOp object. This exclusion does
+      not apply to actual fatalError calls, which are always violations.
 
       1. **NoOp objects** — objects that provide no-op default behaviour (turn-off for testing, or when not initialized)
          - consider NoOps object if the name states it and 100% of methods/var from the contract are empty, or resolved to default values
@@ -343,3 +422,16 @@ steps:
       Classify unit `{{params.review_unit.target.name}}` using only the completed
       type-check, relationship, and contract-implementation analyses. Do not
       inspect source again, recalculate a metric, or revise an earlier decision.
+    outputs:
+      - name: is_exception
+        type: data
+        schema: {type: boolean}
+      - name: additional_info
+        type: data
+        schema:
+          type: object
+          additionalProperties: false
+          required: [reasoning, evidence]
+          properties:
+            reasoning: {type: string, minLength: 1}
+            evidence: {type: string, minLength: 1}
