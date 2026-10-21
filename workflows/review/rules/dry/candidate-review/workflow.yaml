@@ -39,8 +39,8 @@ steps:
       Reuse classification — choose exactly one:
       - EXACT — existing code covers 100% of the need, could be used directly.
       - EXTENSIBLE — existing code covers the core need, could be extended (via protocol extension, overload, or configuration) to cover the rest.
-      - PARTIAL — existing code covers some overlap but serves a genuinely different purpose.
-      - NOT_SUITABLE — source inspection disproves the summary-level match and the candidate is not suitable for reuse.
+      - PARTIAL — the implementations share a concrete portion of behavior that can be extracted into a common abstraction, while their remaining behavior stays separate. Identify that shared portion and the differences, with source evidence.
+      - NOT_SUITABLE — source inspection establishes only coincidental similarity or behavior that must remain separate; the candidate is not suitable for reuse.
 
       Implementation-duplication classification — choose exactly one:
       - IDENTICAL — the same logic and concrete types appear with names or locations changed only.

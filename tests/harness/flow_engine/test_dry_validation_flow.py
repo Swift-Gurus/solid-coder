@@ -18,6 +18,11 @@ from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
 from rule_instruction_block_reader import RuleInstructionBlockReader
+from dry_candidate_assessment import DRYCandidateAssessment
+from dry_duplication_assessment import DRYDuplicationAssessment
+from dry_duplication_classification import DRYDuplicationClassification
+from dry_reuse_assessment import DRYReuseAssessment
+from dry_reuse_classification import DRYReuseClassification
 from review.normalized_review_unit import NormalizedReviewUnit
 from source.file_analysis_source import FileAnalysisSource
 from source.text_analysis_source import TextAnalysisSource
@@ -133,9 +138,9 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertEqual(result.workflow_id, "dry")
         self.assertEqual(
             [metric.metric_id for metric in result.metrics],
-            ["DRY-1", "DRY-2", "DRY-2", "DRY-3"],
+            ["DRY-1", "DRY-2", "DRY-2"],
         )
-        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 2, 1])
+        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 2])
         self.assertEqual(result.severity, "SEVERE")
         self.assertEqual(result.scoring_authority, "mcp")
         self._assert_operation_events(started.run_id)
@@ -169,7 +174,6 @@ class TestDryValidationFlow(unittest.TestCase):
             classified.steps[0].prompt,
         )
         duplicate_instructions = reader.detection(rule, "DRY-2", "Inlined Duplication")
-        abstraction_instructions = reader.detection(rule, "DRY-3", "Missing Abstraction")
         prompt = target_analysis.steps[0].prompt
         for classification in (
             "IDENTICAL — same logic, same types, different names only",
@@ -188,25 +192,21 @@ class TestDryValidationFlow(unittest.TestCase):
         for clarification in (
             "Compare the algorithm separately from its business-domain names.",
             "including different constants or rounding precision",
-            "A reusable pattern can exist within one business domain",
-            "Evaluate missing abstractions independently of duplication.",
-            "A single inline occurrence can be a missing abstraction",
             "Different names or constants alone do not establish that exception.",
         ):
             self.assertIn(clarification, prompt)
-        for instruction in (
-            "**Identify the domain**",
-            "**Identify generic patterns**",
-            "**Assess reuse potential**",
+        for removed_instruction in (
+            "could another part of the codebase need this same pattern",
+            "missing_abstractions",
+            "A single inline occurrence can be a missing abstraction",
         ):
-            self.assertIn(instruction, abstraction_instructions)
-            self.assertIn(instruction, prompt)
+            self.assertNotIn(removed_instruction, prompt)
         self.assertNotIn("**Count**", prompt)
         self.assertNotIn("Search other units in the same module/target", prompt)
         self.assertIn("Compare methods within the reviewed unit", prompt)
         self.assertIn('"required": ["reasoning", "evidence"]', prompt)
         self.assertIn(
-            '"required": ["within_unit_duplicates", "missing_abstractions", "additional_info"]',
+            '"required": ["within_unit_duplicates", "additional_info"]',
             prompt,
         )
         self.assertNotIn("before counting", exception.steps[0].prompt)
@@ -247,8 +247,8 @@ class TestDryValidationFlow(unittest.TestCase):
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id)
-        self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0, 1])
-        self.assertEqual(result.metrics[-1].severity, "SEVERE")
+        self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0])
+        self.assertEqual(result.severity, "COMPLIANT")
 
     def test_term_generation_requires_individual_lexical_words(self) -> None:
         started = self.engine.flow_start("dry", self._parameters())
@@ -311,6 +311,12 @@ class TestDryValidationFlow(unittest.TestCase):
         prompt = classification.steps[0].prompt
         self.assertTrue(classification.steps[0].step_id.endswith("classify_candidate"))
         self.assertIn("NOT_SUITABLE", prompt)
+        self.assertIn(
+            "PARTIAL — the implementations share a concrete portion of behavior that can be extracted into a common abstraction",
+            prompt,
+        )
+        self.assertIn("Identify that shared portion and the differences, with source evidence.", prompt)
+        self.assertNotIn("some overlap but serves a genuinely different purpose", prompt)
         self.assertIn("NOT_DUPLICATE", prompt)
         self.assertIn(
             "A conformer is not a reusable replacement for its protocol",
@@ -437,7 +443,7 @@ class TestDryValidationFlow(unittest.TestCase):
 
                 self.assertEqual(completed.status, "done")
                 result = self._result(started.run_id)
-                self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0, 0])
+                self.assertEqual([metric.value for metric in result.metrics], [0, 0, 0])
                 self.assertEqual(result.severity, "COMPLIANT")
                 self.assertFalse(result.exception.is_exception)
                 events = [
@@ -481,10 +487,10 @@ class TestDryValidationFlow(unittest.TestCase):
         self.assertEqual(completed.status, "done")
         result = self._result(started.run_id)
         self.assertTrue(result.exception.is_exception)
-        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 2, 1])
+        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 2])
         self.assertEqual(
             [metric.severity for metric in result.metrics],
-            ["COMPLIANT", "COMPLIANT", "COMPLIANT", "COMPLIANT"],
+            ["COMPLIANT", "COMPLIANT", "COMPLIANT"],
         )
         self.assertEqual(result.severity, "COMPLIANT")
 
@@ -619,12 +625,63 @@ class TestDryValidationFlow(unittest.TestCase):
 
         self.assertEqual(completed.status, "done")
         result = self._result(started.run_id)
-        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 0, 0])
+        self.assertEqual([metric.value for metric in result.metrics], [1, 0, 0])
         self.assertEqual(
             [metric.severity for metric in result.metrics],
-            ["SEVERE", "COMPLIANT", "COMPLIANT", "COMPLIANT"],
+            ["SEVERE", "COMPLIANT", "COMPLIANT"],
         )
         self.assertEqual(result.severity, "SEVERE")
+
+    def test_candidate_reuse_scoring_counts_partial_unless_excepted(self) -> None:
+        for classification in DRYReuseClassification:
+            for is_exception in [False, True]:
+                with self.subTest(classification=classification, is_exception=is_exception):
+                    started = self.engine.flow_start("dry", self._parameters())
+                    selection = self.engine.flow_next({
+                        started.steps[0].instance_id: {"generated_terms": ["SharedTaxFormatter"]}
+                    })
+                    inspection = self.engine.flow_next({
+                        selection.steps[0].instance_id: self._shared_formatter_dispositions()
+                    })
+                    classified = self.engine.flow_next({
+                        inspection.steps[0].instance_id: self._inspection_output()
+                    })
+                    assessment = DRYCandidateAssessment(
+                        candidate_id="candidate-1",
+                        location=str(self.project_root / "SharedTaxFormatter.swift"),
+                        reuse=DRYReuseAssessment(
+                            classification=classification,
+                            is_exception=is_exception,
+                            reasoning="Controlled reuse classification for scoring validation.",
+                            evidence="Current.swift and SharedTaxFormatter.swift comparison.",
+                        ),
+                        duplication=DRYDuplicationAssessment(
+                            classification=DRYDuplicationClassification.NOT_DUPLICATE,
+                            is_exception=False,
+                            reasoning="Reuse is scored independently of implementation duplication.",
+                            evidence="No duplicated implementation submitted in this scenario.",
+                        ),
+                    )
+                    analysis = self.engine.flow_next({
+                        classified.steps[0].instance_id: {
+                            "assessment": assessment.model_dump(mode="json")
+                        }
+                    })
+                    exception = self.engine.flow_next({
+                        analysis.steps[0].instance_id: self._empty_target_analysis_output()
+                    })
+                    completed = self.engine.flow_next({
+                        exception.steps[0].instance_id: self._exception_output()
+                    })
+
+                    self.assertEqual(completed.status, "done", completed.error)
+                    result = self._result(started.run_id)
+                    expected_count = int(
+                        classification is not DRYReuseClassification.NOT_SUITABLE
+                        and not is_exception
+                    )
+                    self.assertEqual([metric.value for metric in result.metrics], [expected_count, 0, 0])
+                    self.assertEqual(result.severity, "SEVERE" if expected_count else "COMPLIANT")
 
     def _parameters(self) -> dict[str, object]:
         prepared = PrepareSearchTargetsOperationFactory().make().execute(
@@ -732,17 +789,8 @@ class TestDryValidationFlow(unittest.TestCase):
                     "evidence": "The method filters, maps, and reduces payroll values.",
                 },
             ],
-            "missing_abstractions": [
-                {
-                    "location": "Current.swift:PayrollLedger",
-                    "pattern": "payroll accumulation",
-                    "is_exception": False,
-                    "reasoning": "The reusable accumulation pipeline remains inline.",
-                    "evidence": "Two methods implement the same generic pipeline.",
-                }
-            ],
             "additional_info": {
-                "reasoning": "The duplicated calculation also contains a reusable accumulation pipeline.",
+                "reasoning": "The methods duplicate a calculation pipeline.",
                 "evidence": "Current.swift: grossWages and reimbursements repeat filtering and accumulation.",
             },
         }
@@ -751,9 +799,8 @@ class TestDryValidationFlow(unittest.TestCase):
     def _empty_target_analysis_output() -> dict[str, object]:
         return {
             "within_unit_duplicates": [],
-            "missing_abstractions": [],
             "additional_info": {
-                "reasoning": "The reviewed methods expose no repeated implementation or reusable non-domain pattern.",
+                "reasoning": "The reviewed methods expose no repeated implementation.",
                 "evidence": "Current.swift contains no matching implementation sequences in the reviewed unit.",
             },
         }

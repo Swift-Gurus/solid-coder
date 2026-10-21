@@ -23,13 +23,6 @@
       "observation_id": "within_unit_duplicate_location_count",
       "value": 0,
       "severity": "COMPLIANT"
-    },
-    {
-      "step_id": "missing_abstractions",
-      "metric_id": "DRY-3",
-      "observation_id": "missing_abstraction_count",
-      "value": 0,
-      "severity": "COMPLIANT"
     }
   ],
   "is_exception": false,

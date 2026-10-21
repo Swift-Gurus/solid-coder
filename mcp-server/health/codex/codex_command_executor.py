@@ -2,6 +2,7 @@
 
 from codex_execution_validating import CodexExecutionValidating
 from subprocess_running import SubprocessRunning
+from utils.debug_logger import DebugLogging
 
 
 """
@@ -15,9 +16,11 @@ class CodexCommandExecutor:
         self,
         subprocess_runner: SubprocessRunning,
         execution_validator: CodexExecutionValidating,
+        logger: DebugLogging,
     ) -> None:
         self._subprocess_runner = subprocess_runner
         self._execution_validator = execution_validator
+        self._logger = logger
 
     def execute(
         self,
@@ -32,4 +35,6 @@ class CodexCommandExecutor:
             stdin=stdin,
             cwd=cwd or None,
         )
+        self._logger.log("codex.stdout", stdout)
+        self._logger.log("codex.stderr", stderr)
         self._execution_validator.validate(succeeded, stdout, stderr)

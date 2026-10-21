@@ -31,4 +31,6 @@ class CodexMcpConfigArgumentBuilder(CodexConfigArgumentBuilding):
             server_arguments = self._serializer.serialize(server.get("args", []))
             arguments.extend(["-c", f"{prefix}.command={command}"])
             arguments.extend(["-c", f"{prefix}.args={server_arguments}"])
+            arguments.extend(["-c", f"{prefix}.required=true"])
+            arguments.extend(["-c", f"{prefix}.startup_timeout_sec=30"])
         return arguments

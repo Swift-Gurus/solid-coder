@@ -179,8 +179,13 @@ model counting.
 
 **Given** projected child assessments
 **When** MCP derives DRY-1
-**Then** it counts reuse classifications `EXACT` and `EXTENSIBLE`
+**Then** it counts reuse classifications `EXACT`, `EXTENSIBLE`, and `PARTIAL`
 **And** excludes candidate-level authored exceptions.
+
+PARTIAL identifies a concrete shared portion of implementation that can be
+extracted into a common abstraction while the remaining behavior stays separate.
+Its reasoning and evidence identify the shared portion and the differences;
+coincidental similarity or behavior that must remain separate is NOT_SUITABLE.
 
 #### Scenario 4.2 — Score repository duplication
 
@@ -199,12 +204,13 @@ the reviewed unit
 **Then** it counts participating locations once
 **And** two or more locations are severe.
 
-#### Scenario 4.4 — Score missing abstractions
+#### Scenario 4.4 — Omit speculative missing-abstraction analysis
 
-**Given** target analysis returns reusable non-domain-specific patterns with
-reasoning and evidence
-**When** MCP derives DRY-3
-**Then** it counts non-excepted missing-abstraction observations.
+**Given** a DRY workflow reviews a unit
+**When** it requests classifications and finalizes its result
+**Then** it does not ask whether hypothetical future code might reuse a pattern
+**And** it does not require a missing-abstraction observation collection
+**And** it produces no DRY-3 metric.
 
 #### Scenario 4.5 — Preserve one rule result
 
@@ -215,8 +221,7 @@ reasoning and evidence
 
 #### Scenario 4.6 — Explain empty target-analysis results
 
-**Given** target analysis returns an empty duplication or missing-abstraction
-collection
+**Given** target analysis returns an empty duplication collection
 **When** the model submits the analysis
 **Then** a required assessment-level `additional_info` contains nonempty
 `reasoning` and `evidence` explaining the result using the reviewed source
@@ -280,8 +285,8 @@ scores zero.
   and nested instance isolation.
 - Metric tests for every classification, candidate exception, unique location,
   within-unit site, empty search, and worst-severity combination.
-- When the bundled DRY prompts are rendered, canonical duplication categories
-  and missing-abstraction analysis remain present, target analysis stays within
+- When the bundled DRY prompts are rendered, duplication categories remain
+  present, missing-abstraction analysis is absent, target analysis stays within
   the supplied unit, and no prompt asks the model to calculate counts.
 - When target-analysis assessment information is missing, lacks either required
   field, or contains an empty reasoning or evidence string, submission is
@@ -298,11 +303,10 @@ scores zero.
    from sparse selections to complete candidate dispositions.
 2. Add failing generic child-output projection tests, then implement typed ordered
    projection without exposing workflow result envelopes.
-3. Add target-analysis observations for within-unit duplicates and missing
-   abstractions.
+3. Keep target-analysis observations for within-unit duplicates only.
 4. Keep the existing candidate child workflow but harden read-path and evidence
    validation for every INSPECT candidate.
-5. Replace DRY-1/2/3 model-owned metric prompts with collection-backed metric
+5. Replace DRY-1/2 model-owned metric prompts with collection-backed metric
    declarations over target observations and projected child assessments.
 6. Add policy, exception, audit, replay, Stop, aggregate, and prospective-buffer
    coverage.
@@ -314,12 +318,22 @@ scores zero.
 - [x] Only INSPECT candidates are read and classified.
 - [x] Every selected candidate has source-grounded reuse and duplication evidence.
 - [x] Ordered child outputs are available through a typed generic projection.
-- [x] DRY-1, DRY-2, and DRY-3 are scored by MCP without model arithmetic.
+- [x] DRY-1 and DRY-2 are scored by MCP without model arithmetic; DRY-3 is omitted.
 - [x] Protocol/conformer and declaration-only false positives are covered.
 - [ ] Controlled Codex and Claude fixtures produce locked auditable results.
 - [x] All non-live tests pass.
 
 ## Validation Evidence
+
+### Policy change — 2026-10-21
+
+The user removed the separate DRY-3 check for now. Comparison-based reuse
+classification covers direct reuse, extension, and partial extraction instead.
+SPEC-061 preserves the withdrawn check's investigation as history; its old
+expectations are not current workflow requirements. Legacy rule documents
+remain unchanged. The shared-helper DRY-2 false positive in SPEC-065 remains
+independent and unresolved. Source fixtures and remaining metric thresholds
+are unchanged.
 
 ### Current status — 2026-10-19
 

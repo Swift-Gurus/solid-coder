@@ -22,10 +22,11 @@ from codex_prompt_artifact_user import CodexPromptArtifactUser  # noqa: E402
 from codex_prompt_executing import CodexPromptExecuting  # noqa: E402
 from codex_prompt_executor import CodexPromptExecutor  # noqa: E402
 from codex_temp_file_manager import CodexTempFileManager  # noqa: E402
-from hook_utils import SubprocessAdapter  # noqa: E402
+from hook_utils import SubprocessAdapter, solid_coder_project_dir  # noqa: E402
 from llama.json_deserializer import JsonDeserializer  # noqa: E402
 from llama.json_serializer import JsonSerializer  # noqa: E402
 from subprocess_error_factory import SubprocessErrorFactory  # noqa: E402
+from utils.debug_logger import DebugLogger  # noqa: E402
 
 
 """
@@ -69,6 +70,10 @@ def make_codex_runner(
                 subprocess_runner=SubprocessAdapter(),
                 execution_validator=CodexExecutionValidator(
                     error_factory=SubprocessErrorFactory(),
+                ),
+                logger=DebugLogger(
+                    project_dir_fn=lambda: solid_coder_project_dir(Path(cwd) if cwd else None),
+                    filename="codex-execution.log",
                 ),
             ),
             cwd=cwd,

@@ -60,6 +60,7 @@ def _prompt_executor(subprocess_runner, cwd: str = "") -> CodexPromptExecutor:
             execution_validator=CodexExecutionValidator(
                 error_factory=SubprocessErrorFactory(),
             ),
+            logger=MagicMock(),
         ),
         cwd=cwd,
     )
@@ -85,7 +86,29 @@ class TestCodexMcpConfigArgumentBuilder(unittest.TestCase):
         self.assertIn('mcp_servers.pipeline.args=["/repo/pipeline.py"]', arguments)
         self.assertIn('mcp_servers.docs.command="python3"', arguments)
         self.assertIn('mcp_servers.docs.args=["/repo/docs.py"]', arguments)
-        self.assertEqual(arguments.count("-c"), 4)
+        self.assertEqual(arguments.count("-c"), 8)
+
+    def test_configured_servers_are_required_before_model_execution(self):
+        arguments = _config_argument_builder().build(_MCP_CONFIG)
+
+        for server in ("pipeline", "docs"):
+            with self.subTest(server=server):
+                self.assertIn(f"mcp_servers.{server}.required=true", arguments)
+                self.assertIn(f"mcp_servers.{server}.startup_timeout_sec=30", arguments)
+
+    def test_real_gate_profile_requires_the_flow_server_without_changing_shared_json(self):
+        from mcp_config_builder import McpConfigBuilder
+        from mcp_config_profile import McpConfigProfile
+
+        configuration = McpConfigBuilder(
+            Path("/plugin/root"), McpConfigProfile.GATE_FLOW, JsonSerializer(),
+        ).build()
+        command = _command_builder(mcp_config=configuration).build(Path("/tmp/result.txt"))
+
+        self.assertIn("mcp_servers.solid-coder-flow-engine.required=true", command)
+        self.assertIn("mcp_servers.solid-coder-flow-engine.startup_timeout_sec=30", command)
+        self.assertNotIn("required", configuration)
+        self.assertNotIn("startup_timeout_sec", configuration)
 
     def test_empty_configuration_adds_no_overrides(self):
         self.assertEqual(_config_argument_builder().build(""), [])
@@ -167,6 +190,28 @@ class TestCodexPromptExecution(TempDirTestBase):
 
 
 class TestMakeCodexRunner(TempDirTestBase):
+    def test_retains_child_output_in_the_target_project_audit_directory(self):
+        process = _subprocess_with_result("Reviewed")
+        run = process.run.side_effect
+
+        def completed(*arguments, **keywords):
+            run(*arguments, **keywords)
+            return True, '{"thread_id":"child-session"}', "server startup warning"
+
+        process.run.side_effect = completed
+        audit = self.output_dir / "audit"
+        with (
+            patch("hc_codex_runner.SubprocessAdapter", return_value=process),
+            patch("hc_codex_runner.solid_coder_project_dir", return_value=audit) as project_audit,
+        ):
+            result = make_codex_runner(cwd="/target/project").run("prompt", timeout=30)
+
+        self.assertEqual(result, "Reviewed")
+        project_audit.assert_called_with(Path("/target/project"))
+        diagnostics = (audit / "codex-execution.log").read_text()
+        self.assertIn('codex.stdout {"thread_id":"child-session"}', diagnostics)
+        self.assertIn("codex.stderr server startup warning", diagnostics)
+
     def test_returns_runner_without_writing_persistent_profile(self):
         runner = make_codex_runner(mcp_config=_MCP_CONFIG)
 

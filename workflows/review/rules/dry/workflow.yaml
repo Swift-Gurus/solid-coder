@@ -1,6 +1,6 @@
 id: dry
 name: Don't Repeat Yourself Review
-description: Measures reuse misses, duplicated source sites, and missing abstractions from local and repository evidence.
+description: Measures reuse misses and duplicated source sites from local and repository comparisons.
 max_turns: 60
 
 rule: {}
@@ -99,7 +99,7 @@ steps:
     depends_on: [candidate_reviews]
     prompt: |
       Analyze reviewed unit `{{params.review_unit.target.name}}` for within-unit
-      duplication and missing abstractions. Its source is already visible in the
+      duplication. Its source is already visible in the
       current model session. Do not search the repository, inspect candidate
       files, count observations, or choose severity.
 
@@ -125,31 +125,6 @@ steps:
       containing one repeated sequence therefore produce two observations. Use
       a stable source location such as `Current.swift:Type.method` and do not
       return SIMILAR or declaration-only observations.
-
-      For missing abstractions:
-
-      Evaluate missing abstractions independently of duplication.
-      A single inline occurrence can be a missing abstraction when its reusable
-      behavior can be separated from the surrounding domain-specific policy.
-      Absence of duplicated methods does not establish absence of that pattern.
-      Distinguish an inline implementation from a call to an existing shared
-      abstraction that already provides the behavior.
-
-      1. **Identify the domain** of the type under review — what business concept does it represent?
-      2. **Identify generic patterns** within the type — reusable behavior, layout, or creation logic separable from its domain-specific names and parameters:
-         - Behavioral patterns (retry, queue, cache, observe, poll — any reusable flow)
-         - Object creation patterns (similar initialization sequences, builder logic, factory patterns repeated across types)
-         - UI composition patterns (recurring view structures, repeated styling + layout combinations, common interactive elements with shared behavior)
-         - Data flow patterns (transform pipelines, validation chains, mapping sequences)
-      3. **Assess reuse potential** — could another part of the codebase need this same pattern?
-         - If YES → missing abstraction
-         - If NO (the behavior is inseparable from independently evolving domain rules) → not a violation
-
-      A reusable pattern can exist within one business domain; reuse does not
-      require another domain.
-
-      Return one `missing_abstractions` observation for each reusable pattern
-      lacking a shared abstraction, with a stable source location or pattern ID.
 
       For every returned observation, set `is_exception` only when that specific
       finding matches one of these authored DRY exceptions:
@@ -180,20 +155,6 @@ steps:
               is_exception: {type: boolean}
               reasoning: {type: string, minLength: 1}
               evidence: {type: string, minLength: 1}
-      - name: missing_abstractions
-        type: data
-        schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required: [location, pattern, is_exception, reasoning, evidence]
-            properties:
-              location: {type: string, minLength: 1}
-              pattern: {type: string, minLength: 1}
-              is_exception: {type: boolean}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
       - name: additional_info
         type: data
         schema:
@@ -205,8 +166,8 @@ steps:
               type: string
               minLength: 1
               description: >-
-                Assessment of within-unit duplication and missing abstractions,
-                assessed independently, including why either collection is empty.
+                Assessment of within-unit duplication, including why the
+                collection is empty.
             evidence:
               type: string
               minLength: 1
@@ -231,6 +192,8 @@ steps:
                 equals: EXACT
               - ref: "{{item.reuse.classification}}"
                 equals: EXTENSIBLE
+              - ref: "{{item.reuse.classification}}"
+                equals: PARTIAL
           - ref: "{{item.reuse.is_exception}}"
             equals: false
       severe:
@@ -283,30 +246,12 @@ steps:
         operator: greater_than_or_equal
         value: 2
 
-  - id: missing_abstractions
-    type: metric
-    metric_id: DRY-3
-    observation_id: missing_abstraction_count
-    depends_on: [analyze_target_patterns]
-    value:
-      type: integer
-      minimum: 0
-    scoring:
-      source: "{{steps.analyze_target_patterns.outputs.missing_abstractions}}"
-      when:
-        ref: "{{item.is_exception}}"
-        equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
   - id: classify_exception
     type: exception
     depends_on:
       - reuse_misses
       - repository_duplicate_sites
       - within_unit_duplicate_sites
-      - missing_abstractions
     prompt: |
       Decide whether all apparent DRY findings for the supplied unit are exempt under these authored exceptions. Mark the entire unit as an exception only when every apparent finding is exempt.
 

@@ -252,9 +252,7 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
             rule for rule in result.rule_results
             if rule.workflow_id == "dry" and rule.provenance.source_index == 1
         )
-        abstractions = next(metric for metric in class_dry.metrics if metric.metric_id == "DRY-3")
-        self.assertGreaterEqual(
-            abstractions.value, 1,
-            "Inline cache-to-storage fallback remains reusable without duplicated methods",
+        self.assertCountEqual(
+            [metric.metric_id for metric in class_dry.metrics],
+            ["DRY-1", "DRY-2", "DRY-2"],
         )
-        self.assertEqual(abstractions.severity, "SEVERE")

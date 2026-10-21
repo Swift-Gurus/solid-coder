@@ -280,9 +280,91 @@ Four focused integration tests cover missing render inputs, engine/condition/col
 
 The [fresh measurement report](resources/2026-10-21-measurements.md) preserves the requested measurement-before-investigation ordering, native transcripts, phase audit, timing/token methodology, and failures. Codex completed five accepted submissions versus the earlier 22, with 269,558 input tokens versus 1,007,342, but its DRY-3 accuracy assertion failed. Claude was interrupted after eight malformed tool-input JSON submissions and did not finish. The real gate test suite therefore remains **two failures**, not a successful accuracy comparison.
 
-Subsequent controlled Codex probes reproduced a missing initial tool when the delayed MCP server was optional, and an available tool when the same server was required. The production adapter currently forwards only command/arguments and leaves the essential server optional. This establishes a startup race mechanism consistent with the older failures; missing historical startup logs prevent proving their precise cause. No production registration or continuation instructions were changed. The report records the proposed narrow follow-up: required startup, forwarded startup settings, retained startup diagnostics, and delayed/failing-start tests.
+Subsequent controlled Codex probes reproduced a missing initial tool when the delayed MCP server was optional, and an available tool when the same server was required. At that checkpoint, the production adapter forwarded only command/arguments and left the essential server optional. This establishes a startup race mechanism consistent with the older failures; missing historical startup logs prevent proving their precise cause. No production registration or continuation instructions had been changed. The report records the proposed narrow follow-up: required startup, forwarded startup settings, retained startup diagnostics, and delayed/failing-start tests.
 
-Remaining before closing the entire spec: resolve the recorded real-gate failures and validate the proposed Codex startup correction. SPEC-048 separately retains strict capability enforcement and authoritative child-completion follow-ups; passing delegate JSON is not proof of those stronger guarantees.
+### Required Codex startup follow-up — 2026-10-21
+
+The user authorized this correction after accepting the five-submission baseline;
+parallel-session experiments remain deferred. Codex must wait for essential
+injected MCP servers before model execution, or fail startup with diagnostics.
+The Codex adapter now marks those servers required with a 30-second startup
+timeout. This applies to both workflow and explicitly selected legacy profiles.
+Shared MCP JSON remains transport-neutral: Claude receives no Codex-only keys.
+No CLI/model upgrade, global config edit, schema, or continuation-prompt change
+is part of this fix. The behavior is documented by the
+[Codex MCP configuration reference](https://learn.chatgpt.com/docs/extend/mcp#other-configuration-options).
+
+Completed child-process stdout and stderr are retained before exit validation
+through the existing logger at the target project's user-level audit directory,
+in `codex-execution.log`. This includes native thread IDs for transcript
+correlation and full failed-start details instead of only the short gate error.
+It is an execution diagnostic, not a new workflow state or live-stream logger.
+
+| Given | When | Expected |
+|---|---|---|
+| A gate or legacy Codex configuration | Its CLI arguments are built | Every injected essential server is required and has the 30-second timeout; shared JSON is unchanged |
+| A successful or failed child process | Exit status is validated | Complete stdout/stderr have already been retained under the target-project audit directory |
+| The actual flow server deliberately starts after 15 seconds | A locked Codex child probes its first available capabilities | The first probe finds a callable flow tool, with no discovery/retry required |
+| The injected essential server exits during initialization | The locked child starts | Startup fails before model execution and retains the failure diagnostics |
+
+The configuration and diagnostic assertions were written failing first and now
+pass through the production composition. Permanent delayed/failed-start live
+tests reuse the model-profile and artifact infrastructure under
+`tests/harness/test_codex_mcp_startup_live.py`. The independent DRY-3 wording experiment and its unchanged locked
+expectations are recorded in SPEC-061, not treated as an aggregation fix.
+
+Validation of this follow-up:
+
+- All non-live groups passed: **3,052 tests, 274 subtests, four abstract-base
+  skips**. Group counts are 1,298 MCP/source tests, 1,047 flow-engine tests,
+  159 remaining harness/hook tests, 253 script tests, and 295 build/skill tests.
+- Both permanent live startup checks passed in **34.60 seconds**. The delayed
+  server's first native tool call evaluates the actual callable and returns
+  `function`; failed initialization produces no model turn. Artifacts:
+  `.solid-coder/.artifacts/test/codex/e2e/gate/mcp-startup/20261021T185331Z-61be97a8/`
+  and `20261021T185403Z-611b8328/` under the same root. Delayed-probe child:
+  `01a15fcf-bdc9-7d73-b9c5-39f96fcce639`.
+- The real gate suite remains **two failures**. Codex run
+  `82f99e298309400e92b6c9f28249a299` completed with six accepted submissions in
+  303.93 seconds but still returned DRY-3 = 0 for the class. Its tool was
+  available; two JavaScript syntax failures occurred before MCP, and one
+  incomplete candidate disposition was rejected by MCP and corrected. A recovery
+  request for the initial assignment was wrapper-truncated; the later DRY
+  clarification was actually delivered untruncated. Input tokens: 581,864,
+  cached subset: 538,624, output: 12,773. Child transcript:
+  `01a15fd0-89b6-7b92-a76e-253490a21b2f`. Artifacts:
+  `.solid-coder/.artifacts/test/codex/e2e/gate/solid-gate-on-write/20261021T185419Z-5ff3d994/`.
+- Claude run `ccb60772aee2475fa8892749cf41e2bb` was intentionally stopped after
+  repeated malformed-JSON submissions without advancing past two accepted
+  turns; five parser errors were persisted by termination. It has no final
+  accuracy result and is not a successful timing sample. Preserved usage totals
+  are 249,640 input tokens including cache, 212,371 cached-input tokens, and
+  26,104 output tokens, deduplicated by assistant message ID. Child transcript:
+  `2cfd47a8-745c-413f-b9c0-c9ef7f3b02dd`. Artifacts:
+  `.solid-coder/.artifacts/test/claude/e2e/gate/solid-gate-on-write/20261021T185930Z-84f02884/`.
+
+The four targeted DRY rule checks subsequently reported three passes and one
+failure. Both backends passed the original positive fixture, but Claude still
+misclassified the extracted-helper fixture and additionally flagged its rounding
+as a missing abstraction. The experimental wording and its three prompt-string
+assertions were withdrawn; the bundled DRY workflow is unchanged from the
+committed baseline. SPEC-061 preserves the full experiment and evidence.
+
+The final retained tree was then revalidated: **3,052 non-live tests and 274
+subtests passed**, with the same four abstract-base skips. The generic live
+flow-engine suite passed **10/10 in 425.29 seconds**, five cases per backend,
+covering scoring, reducers, nested workflows, conditional routing, and delegated
+sessions. Artifacts are under
+`.solid-coder/.artifacts/test/{codex,claude}/e2e/flow-engine/workflow-contract/`,
+from `20261021T191634Z-593e1e4c` through `20261021T192251Z-e9b08741`.
+These successful mechanics checks do not reclassify either full-gate failure
+as a pass, nor validate the withdrawn prompt experiment for release.
+
+Remaining before closing the entire spec: resolve the recorded real-gate
+submission/classification failures. Required startup is now tested, not claimed
+to solve either of those separate issues. SPEC-048 separately retains strict
+capability enforcement and authoritative child-completion follow-ups; passing
+delegate JSON is not proof of those stronger guarantees.
 
 ## Definition of Done
 

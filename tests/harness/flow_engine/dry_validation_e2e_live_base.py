@@ -52,20 +52,17 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "reuse_misses",
         "repository_duplicate_sites",
         "within_unit_duplicate_sites",
-        "missing_abstractions",
     ]
-    EXPECTED_METRIC_IDS = ["DRY-1", "DRY-2", "DRY-2", "DRY-3"]
+    EXPECTED_METRIC_IDS = ["DRY-1", "DRY-2", "DRY-2"]
     EXPECTED_OBSERVATION_IDS = [
         "repository_reuse_miss_count",
         "repository_duplicate_location_count",
         "within_unit_duplicate_location_count",
-        "missing_abstraction_count",
     ]
-    EXPECTED_VALUES = [0, 0, 2, 1]
+    EXPECTED_VALUES = [0, 0, 2]
     EXPECTED_METRIC_SEVERITIES = [
         "COMPLIANT",
         "COMPLIANT",
-        "SEVERE",
         "SEVERE",
     ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
@@ -105,10 +102,7 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             bool(target_analysis["outputs"]["within_unit_duplicates"]),
             self.EXPECTED_VALUES[2] > 0,
         )
-        self.assertEqual(
-            bool(target_analysis["outputs"]["missing_abstractions"]),
-            self.EXPECTED_VALUES[3] > 0,
-        )
+        self.assertNotIn("missing_abstractions", target_analysis["outputs"])
         self.assertEqual(searched["session_id"], "engine")
         self.assertEqual(validated["session_id"], "engine")
         for step_id in self.EXPECTED_STEP_IDS:
@@ -123,10 +117,7 @@ class DRYValidationE2ELiveBase(RuleValidationE2ELiveBase):
             "dry-rounding-variation",
         )
 
-    def test_extracted_helper_avoids_duplicate_findings(self) -> None:
-        self.EXPECTED_VALUES = [0, 0, 0, 0]
-        self.EXPECTED_METRIC_SEVERITIES = ["COMPLIANT"] * 4
-        self.EXPECTED_FINAL_SEVERITY = "COMPLIANT"
+    def test_identical_wrappers_are_duplicate_sites(self) -> None:
         self._assert_fixture_scenario(
             _FIXTURE.with_name("fixture-2.swift"),
             "dry-extracted-helper",

@@ -44,7 +44,7 @@ steps:
   - id: assess_dry
     depends_on: [present_candidates]
     prompt: |
-      Complete every DRY candidate classification, all three measurements, and the exception decision for unit `{{params.review_unit.target.name}}`. Its source is already visible in this session. Return every field required by the output schema.
+      Complete every DRY candidate classification, both measurements, and the exception decision for unit `{{params.review_unit.target.name}}`. Its source is already visible in this session. Return every field required by the output schema.
 
       Select only promising summaries below. Read every selected path with your normal file-reading tool before classifying it. Return an empty `candidate_assessments` array when no summary warrants inspection. Never classify a candidate you did not read.
 
@@ -52,11 +52,12 @@ steps:
       - Reuse: EXACT, EXTENSIBLE, PARTIAL, or NOT_SUITABLE.
       - Duplication: IDENTICAL, STRUCTURAL, SIMILAR, or NOT_DUPLICATE.
 
+      PARTIAL means the implementations share a concrete portion of behavior that can be extracted into a common abstraction, while their remaining behavior stays separate. Identify that shared portion and the differences, with source evidence.
+
       IDENTICAL or STRUCTURAL requires cited executable statements from concrete implementation bodies on both sides. Similar names, responsibilities, declarations, signatures, and protocol/conformer relationships are not implementation duplication. A conformer is not a reusable replacement for its protocol.
 
-      DRY-1 `reuse_misses`: count candidate reuse decisions classified EXACT or EXTENSIBLE that were not reused.
+      DRY-1 `reuse_misses`: count candidate reuse decisions classified EXACT, EXTENSIBLE, or PARTIAL that were not reused.
       DRY-2 `duplicate_sites`: count every within-unit implementation location participating in an IDENTICAL or STRUCTURAL repeated logical sequence, plus deduplicated candidate locations classified IDENTICAL or STRUCTURAL. Do not count pairs, declarations, signatures, SIMILAR results, or infer duplication from reuse.
-      DRY-3 `missing_abstractions`: count reusable behavioral, construction, UI-composition, or data-flow patterns that remain embedded in domain code and could reasonably serve another part of the codebase.
 
       Exclude intentionally specialized domain behavior, intentionally independent configuration/constants, and protocol default implementations. Mark the entire unit as an exception only when every apparent DRY finding is exempt.
 
@@ -107,15 +108,6 @@ steps:
                 reasoning: {type: string, minLength: 1}
                 evidence: {type: string, minLength: 1}
       - name: duplicate_sites
-        type: data
-        schema:
-          type: object
-          additionalProperties: false
-          required: [value, additional_info]
-          properties:
-            value: {type: integer, minimum: 0}
-            additional_info: *audit
-      - name: missing_abstractions
         type: data
         schema:
           type: object
