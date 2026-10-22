@@ -7,6 +7,28 @@ from flow_continuation_instruction_building import (
 
 _FLOW_NEXT_TOOL = "tools.mcp__solid_coder_flow_engine__flow_next"
 
+NESTED_SUBMISSION_SCAFFOLD = (
+    "const outputs = {};\n"
+    "const assign = (path, value) => {\n"
+    "  let cursor = outputs;\n"
+    "  for (let index = 0; index < path.length - 1; index += 1) {\n"
+    "    cursor[path[index]] ??= {};\n"
+    "    cursor = cursor[path[index]];\n"
+    "  }\n"
+    "  cursor[path[path.length - 1]] = value;\n"
+    "};\n\n"
+    "// Add one assign call for every required schema leaf, using the "
+    "exact path rendered by the current instruction.\n"
+    "// assign([\"exact\", \"schema\", \"path\"], value);\n\n"
+)
+
+FLAT_SUBMISSION_SCAFFOLD = (
+    "const outputs = {submissions: []};\n"
+    "const assign = (id, result) => outputs.submissions.push({id, result});\n\n"
+    "// Add one assign call per pending assignment with its complete named outputs.\n"
+    "// assign(\"<assignment ID>\", {\"<named output>\": value});\n\n"
+)
+
 
 """
 solid-name: CodexFlowContinuationInstructionBuilder
@@ -17,22 +39,14 @@ solid-description: Produces deferred flow-continuation guidance for model sessio
 class CodexFlowContinuationInstructionBuilder(
     FlowContinuationInstructionBuilding,
 ):
+    def __init__(self, scaffold: str = NESTED_SUBMISSION_SCAFFOLD) -> None:
+        self._scaffold = scaffold
+
     def build(self, run_id: str) -> str:
         return (
             "Inside functions.exec, construct the requested outputs incrementally "
             "with this generic JavaScript scaffold:\n\n"
-            "const outputs = {};\n"
-            "const assign = (path, value) => {\n"
-            "  let cursor = outputs;\n"
-            "  for (let index = 0; index < path.length - 1; index += 1) {\n"
-            "    cursor[path[index]] ??= {};\n"
-            "    cursor = cursor[path[index]];\n"
-            "  }\n"
-            "  cursor[path[path.length - 1]] = value;\n"
-            "};\n\n"
-            "// Add one assign call for every required schema leaf, using the "
-            "exact path rendered by the current instruction.\n"
-            "// assign([\"exact\", \"schema\", \"path\"], value);\n\n"
+            f"{self._scaffold}"
             f"const result = await {_FLOW_NEXT_TOOL}({{\n"
             f'  run_id: "{run_id}", outputs\n'
             "});\n"

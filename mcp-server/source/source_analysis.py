@@ -8,6 +8,7 @@ from source.analysis.type_inspections.source_type_inspection import SourceTypeIn
 from source.source_analysis_decision import SourceAnalysisDecision
 from source.source_parse_diagnostic import SourceParseDiagnostic
 from source.source_unit import SourceUnit
+from source.source_evidence import SourceEvidence
 from source.technology_detection import TechnologyDetection
 
 
@@ -26,6 +27,7 @@ class SourceAnalysis(BaseModel):
     diagnostics: list[SourceParseDiagnostic] = Field(default_factory=list)
     units: list[SourceUnit] = Field(default_factory=list)
     declarations: list[SourceScopedDeclaration] = Field(default_factory=list)
+    imports: list[SourceEvidence] = Field(default_factory=list)
     type_inspections: list[SourceTypeInspection] = Field(default_factory=list)
     calls: list[SourceCall] = Field(default_factory=list)
     detections: list[TechnologyDetection] = Field(default_factory=list)

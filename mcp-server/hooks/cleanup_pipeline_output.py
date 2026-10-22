@@ -14,44 +14,22 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Callable, Protocol, runtime_checkable
+from flow_transition_handler import FlowStopApplicabilityChecking
+from harness.structured_model_decoding import StructuredModelDecoding
+from hc_config import SolidCoderConfigLoader
+from hc_config_debug_reader import HcConfigDebugReader
+from pipeline_cleanup.pipeline_cleanup_applicability_checker import PipelineCleanupApplicabilityChecker
+from pipeline_cleanup.pipeline_cleanup_handler import PipelineCleanupHandler, PipelineCleanupHandling
+from pipeline_cleanup.pipeline_output_cleanup import PipelineOutputCleanup
+from transcript_content.tool_result_output_root_decoder import ToolResultOutputRootDecoder
 
 _SAFE_ROOT = Path.home() / ".solid-coder"
 
 
-@runtime_checkable
-class DebugModeReading(Protocol):
-    def is_debug(self) -> bool: ...
-
-
-class HcConfigDebugReader:
-    """Reads debug mode from hc_config.load_config().llm.debug."""
-
-    def is_debug(self) -> bool:
-        import hc_config  # noqa: PLC0415
-        return hc_config.load_config().llm.debug
-
-
-def _extract_output_root(content) -> str:
-    """Extract output_root value from a tool_result content field."""
-    text = ""
-    if isinstance(content, str):
-        text = content
-    elif isinstance(content, list):
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text = block.get("text", "")
-                break
-    try:
-        data = json.loads(text)
-        if isinstance(data, dict):
-            return data.get("output_root", "")
-    except (json.JSONDecodeError, ValueError, TypeError):
-        pass
-    return ""
-
-
-def _parse_output_roots(transcript_path: str) -> list:
+def _parse_output_roots(
+    transcript_path: str,
+    output_decoder: StructuredModelDecoding[str] = ToolResultOutputRootDecoder(),
+) -> list[str]:
     """Return deduplicated output_root paths from get_output_path results in the transcript."""
     seen: set = set()
     roots: list = []
@@ -65,7 +43,7 @@ def _parse_output_roots(transcript_path: str) -> list:
                     for block in obj.get("message", {}).get("content", []):
                         if block.get("type") != "tool_result":
                             continue
-                        root = _extract_output_root(block.get("content", ""))
+                        root = output_decoder.decode(block.get("content", ""), "transcript tool result")
                         if root and root not in seen:
                             seen.add(root)
                             roots.append(root)
@@ -84,22 +62,32 @@ def _is_safe_path(path: str) -> bool:
         return False
 
 
+"""
+solid-name: PipelineOutputCleaner
+solid-category: service
+solid-description: Coordinates pipeline-output cleanup for eligible host stop events.
+"""
 class PipelineOutputCleaner:
     """StopHandler — deletes pipeline output directories after each turn."""
 
-    def __init__(self, debug_reader: DebugModeReading | None = None) -> None:
-        self._debug_reader = debug_reader if debug_reader is not None else HcConfigDebugReader()
+    def __init__(
+        self,
+        applicability: FlowStopApplicabilityChecking = PipelineCleanupApplicabilityChecker(),
+        handler: PipelineCleanupHandling = PipelineCleanupHandler(
+            cleanup=PipelineOutputCleanup(
+                debug_reader=HcConfigDebugReader(SolidCoderConfigLoader()),
+                roots_reader=_parse_output_roots,
+                path_safety=_is_safe_path,
+                remover=shutil.rmtree,
+                diagnostics=sys.stderr,
+            ),
+        ),
+    ) -> None:
+        self._applicability = applicability
+        self._handler = handler
 
     def should_handle(self, event: dict) -> bool:
-        return bool(event.get("transcript_path", ""))
+        return self._applicability.applies(event)
 
     def handle(self, event: dict) -> None:
-        if self._debug_reader.is_debug():
-            return
-        for root in _parse_output_roots(event.get("transcript_path", "")):
-            if _is_safe_path(root):
-                shutil.rmtree(root, ignore_errors=True)
-            else:
-                sys.stderr.write(
-                    f"cleanup_pipeline_output: skipping unsafe path {root!r}\n"
-                )
+        return self._handler.handle(event)

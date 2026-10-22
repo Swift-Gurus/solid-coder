@@ -1,6 +1,7 @@
 """Tests the packaged review bundle through real flow orchestration."""
 
 import tempfile
+import json
 import textwrap
 import unittest
 import sys
@@ -83,7 +84,18 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("'tag_evidence':" in prompt for prompt in prompts))
         identities = [step.step_id for step in started.steps]
         self.assertTrue(any("code-smells" in identity for identity in identities))
-        self.assertTrue(any("frontmatter" in identity for identity in identities))
+        self.assertFalse(any("frontmatter" in identity for identity in identities))
+        events = [json.loads(line) for line in
+                  (self.run_root / "runs" / self.run_id / "events.jsonl").read_text().splitlines()]
+        frontmatter_metrics = [event for event in events
+                               if event.get("event") == "step_completed"
+                               and ".rule_reviews.frontmatter-" in event.get("step_id", "")
+                               and event.get("metric_derivation") is not None]
+        self.assertEqual(
+            {event["local_step_id"]: event["outputs"]["value"] for event in frontmatter_metrics},
+            {"missing_frontmatter_count": 2, "name_mismatch_count": 0,
+             "invalid_category_count": 0, "incorrect_stack_count": 0, "bad_description_count": 0},
+        )
         self.assertTrue(any("srp" in identity for identity in identities))
         self.assertTrue(any("dry" in identity for identity in identities))
         self.assertTrue(any("swiftui" in identity for identity in identities))
@@ -93,7 +105,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.assertFalse(any("unit-testing" in identity for identity in identities))
         self.assertFalse(any("ui-testing" in identity for identity in identities))
         self.assertEqual(self._rule_step_count(identities, "code-smells"), 1)
-        self.assertEqual(self._rule_step_count(identities, "frontmatter"), 1)
+        self.assertEqual(self._rule_step_count(identities, "frontmatter"), 0)
         self.assertEqual(self._rule_step_count(identities, "srp"), 6)
         self.assertEqual(self._rule_step_count(identities, "ocp"), 2)
         self.assertEqual(self._rule_step_count(identities, "lsp"), 2)
@@ -171,6 +183,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
 
     def _start_review(self, target: dict):
         started = self.sut.flow_start("solid-review")
+        self.run_id = started.run_id
         self.assertIsNone(started.error, started.error)
         self.assertEqual(len(started.steps), 1)
         return self.sut.flow_next({

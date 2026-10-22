@@ -5,6 +5,8 @@ from pathlib import Path
 from code_health_check_request import CodeHealthCheckRequest
 from codex_flow_continuation_instruction_builder import (
     CodexFlowContinuationInstructionBuilder,
+    FLAT_SUBMISSION_SCAFFOLD,
+    NESTED_SUBMISSION_SCAFFOLD,
 )
 from flow_review_result_reader import FlowReviewResultReader
 from gate_flow_prompt_builder import GateFlowPromptBuilder
@@ -12,6 +14,7 @@ from gate_review_input_builder import GateReviewInputBuilder
 from gate_logger import GateLogger
 from health_review_assessor import HealthReviewAssessor
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.flow_submission_format import FlowSubmissionFormat
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
@@ -74,6 +77,7 @@ class WorkflowHealthCheckerFactory(HealthCheckerCreating):
         flow = FlowRunOrchestratorFactory(
             base_dir_resolver=runs,
             plugin_root=self._plugin_root,
+            submission_format=config.feature_flags.flow_submission_format,
             project_directory=project_directory,
             session_reader=StaticSessionIdReader(request.parent_session_id),
             session_delegate_max_workers=(
@@ -87,7 +91,11 @@ class WorkflowHealthCheckerFactory(HealthCheckerCreating):
             ],
         ).build()
         continuation_instruction_builder = (
-            CodexFlowContinuationInstructionBuilder()
+            CodexFlowContinuationInstructionBuilder(
+                scaffold=(FLAT_SUBMISSION_SCAFFOLD
+                          if config.feature_flags.flow_submission_format is FlowSubmissionFormat.FLAT_ARRAY
+                          else NESTED_SUBMISSION_SCAFFOLD),
+            )
             if config.llm.backend.lower() == "codex"
             else NativeFlowContinuationInstructionBuilder()
         )

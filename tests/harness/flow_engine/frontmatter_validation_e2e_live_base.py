@@ -45,4 +45,6 @@ class FrontmatterValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "COMPLIANT",
     ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
+    EXPECTED_ANALYSIS_STEP_IDS = ["analyze_source", "prepare_frontmatter", "bind_descriptions"]
+    EXCEPTION_STEP_IDS = []
     ALLOW_AUXILIARY_STEPS = True

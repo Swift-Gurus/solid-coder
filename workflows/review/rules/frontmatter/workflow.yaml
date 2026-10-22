@@ -1,234 +1,165 @@
 id: frontmatter
 name: Frontmatter Review
-description: Measures required solid-frontmatter presence and metadata correctness for one normalized source file.
+description: Validates source-backed metadata mechanically and classifies description quality for MCP scoring.
 max_turns: 12
 
 rule:
   scope: file
+  exception:
+    is_exception: false
+    additional_info:
+      reasoning: This rule has structural metric exclusions, not a rule-wide exception.
+      evidence: FM-1 excludes short private helpers and conformance-only extensions without new members.
 
 steps:
-  - id: classify_frontmatter_observations
+  - id: analyze_source
+    type: operation
+    operation: source.analyze_text
+    with:
+      text: "{{params.review_unit.target.code}}"
+      virtual_path: "{{params.review_unit.target.source_identity}}"
+
+  - id: prepare_frontmatter
+    type: operation
+    operation: source.prepare_frontmatter
+    depends_on: [analyze_source]
+    with:
+      analysis: "{{steps.analyze_source.outputs.result}}"
+
+  - id: classify_descriptions
     type: agent
+    depends_on: [prepare_frontmatter]
+    when: &complete_inventory
+      ref: "{{steps.prepare_frontmatter.outputs.limitations}}"
+      equals: []
+    for_each:
+      source: "{{steps.prepare_frontmatter.outputs.descriptions}}"
+      mode: batch
+      label: "{{item.label}}"
     prompt: |
-      Analyze file `{{params.review_unit.target.name}}` from the source already
-      visible in this session. Apply every canonical detection procedure below.
+      Classify the solid-description for declaration "{{item.name}}" in file
+      "{{params.review_unit.target.name}}". Its source is already visible in this session.
 
-      ## FM-1: Missing Frontmatter
+      solid-description describes what the type does, when to use it, and what
+      problem it solves, so someone searching for related concepts can find it.
 
-      solid-frontmatter is a structured doc-comment block (`solid-name`, `solid-category`,
-      optional `solid-stack`/`solid-spec`, `solid-description`) placed immediately above a
-      type declaration, in the language's doc-comment syntax (`/** ... */` in Swift, a
-      module-level docstring in Python). Every top-level type declaration must carry one.
+      Classify as:
+      - CAPABILITY: describes the capability at the interface level. Would the
+        sentence still be true if the implementation changed entirely?
+      - IMPLEMENTATION_DETAIL: names concrete implementation types, variables,
+        APIs, values, colors, layout details, composition steps, or wiring.
+      - VAGUE: lacks substance, such as "A view", "A service", or "Handles data".
 
-      For each top-level class, struct, protocol, enum, or member-adding extension declaration,
-      check the comment immediately preceding it for a solid-frontmatter block. Count each
-      declaration missing one. Do not count private/fileprivate helper types under 10 lines,
-      or extensions that only add protocol conformance with no new members.
-
-      ## FM-2: Name Mismatch
-
-      `solid-name` is the frontmatter field naming the unit declared immediately below it —
-      it makes the type findable by name when grepping frontmatter blocks.
-
-      For each type with an existing frontmatter block, compare `solid-name` against the
-      actual declared type/class/struct/protocol/enum name. Count each mismatch.
-
-      ## FM-3: Invalid Category
-
-      `solid-category` is a frontmatter field tagging the type with a single domain role
-      from a fixed vocabulary: `abstraction` (protocols, interfaces, generic type
-      constraints), `network` (API clients, request/response handling, endpoints),
-      `viewmodel` (presentation logic driving UI), `model` (data models, DTOs, entities,
-      value objects), `view-component` (reusable UI element — row, card, button, cell),
-      `screen` (full screen / page), `modifier` (styling or behavior modifier), `crud`
-      (object that reads, writes, updates, deletes data), `utility` (pure functions,
-      formatters, helpers, convenience extensions), `navigation` (routing, coordinators,
-      deep linking), `service` (business logic not covered above), `unit-test` (unit
-      tests, test helpers, fixtures), `ui-test` (UI, snapshot, accessibility tests).
-
-      For each type with an existing frontmatter block, check `solid-category` against the
-      vocabulary above. A category outside this list is acceptable only if it clearly names
-      a distinct domain role by the same convention (lowercase, hyphenated, noun-like).
-      Blank, placeholder ("TODO"), or vague values ("misc", "other", "stuff") count as
-      violations. Count each violation.
-
-      ## FM-4: Incorrect Stack
-
-      `solid-stack` is a frontmatter field tagging the frameworks/technologies the type
-      actually imports or depends on, from a fixed vocabulary: `swiftui`, `uikit`, `appkit`,
-      `combine`, `structured-concurrency`, `gcd`, `tca` (The Composable Architecture),
-      `core-data`, `swift-data`, `grdb`. These tags feed directly into rule activation
-      (e.g. `swiftui` activates SwiftUI review rules) and are omitted entirely when the
-      type is pure language with no framework dependency.
-
-      For each type with an existing frontmatter block, compare `solid-stack` against the
-      type's actual imports/usages. Flag: a listed entry the code doesn't import/use, or a
-      clear dependency on one of the fixed-vocabulary technologies that is missing from the
-      list. Do not flag omission of `solid-stack` entirely when the type has no framework
-      dependency — that is correct, not a violation. Count each violation.
-
-      ## FM-5: Bad Description
-
-      `solid-description` is a keyword-rich frontmatter field describing what the type
-      does, when to use it, and what problem it solves — written so that someone grepping
-      for related concepts finds it. It is the primary field used for discovery via grep.
-
-      For each type with an existing frontmatter block, check `solid-description`:
-      - Must describe the CAPABILITY at the interface level — ask "would this sentence still
-        be true if the implementation changed entirely?" If not, it's implementation, not capability.
-      - Must NOT name any concrete implementation thing: types, variables, APIs, values,
-        colors, layout details, composition steps, wiring to other components.
-      - Must NOT be vague: "A view", "A service", "Handles data" with no substance.
-      - For `abstraction` category: MUST start with "Contract for..." or "Contract that defines...".
-      Count each frontmatter block whose description fails any of the above.
-
-      Return one observation for every violation or explicitly excluded candidate,
-      using exactly one of these classifications:
-
-      - `MISSING_FRONTMATTER`
-      - `NAME_MISMATCH`
-      - `INVALID_CATEGORY`
-      - `INCORRECT_STACK`
-      - `BAD_DESCRIPTION`
-
-      Set `is_exception` to true only when that individual candidate matches a
-      metric-specific exclusion above. Return no observation for a compliant field.
-      Supply nonempty reasoning and precise source evidence for every observation.
+      Declaration ID: {{item.declaration_id}}
+      Category: {{item.category}}
+      Description: {{item.description}}
     outputs:
-      - name: observations
+      - name: classification
         type: data
         schema:
-          type: array
-          items:
-            type: object
-            additionalProperties: false
-            required:
-              - classification
-              - location
-              - is_exception
-              - reasoning
-              - evidence
-            properties:
-              classification:
-                type: string
-                enum:
-                  - MISSING_FRONTMATTER
-                  - NAME_MISMATCH
-                  - INVALID_CATEGORY
-                  - INCORRECT_STACK
-                  - BAD_DESCRIPTION
-              location: {type: string, minLength: 1}
-              is_exception: {type: boolean}
-              reasoning: {type: string, minLength: 1}
-              evidence: {type: string, minLength: 1}
+          type: object
+          additionalProperties: false
+          required: [declaration_id, classification, additional_info]
+          properties:
+            declaration_id: {type: string, minLength: 1}
+            classification: {enum: [CAPABILITY, IMPLEMENTATION_DETAIL, VAGUE]}
+            additional_info:
+              type: object
+              additionalProperties: false
+              required: [reasoning, evidence]
+              properties:
+                reasoning: {type: string, minLength: 1}
+                evidence: {type: string, minLength: 1}
+
+  - id: bind_descriptions
+    type: operation
+    operation: source.bind_frontmatter_descriptions
+    depends_on: [classify_descriptions]
+    when: *complete_inventory
+    with:
+      entries: "{{steps.prepare_frontmatter.outputs.entries}}"
+      targets: "{{steps.prepare_frontmatter.outputs.descriptions}}"
+      classifications: "{{steps.classify_descriptions.outputs.classification}}"
 
   - id: missing_frontmatter_count
     type: metric
     metric_id: FM-1
-    depends_on: [classify_frontmatter_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [prepare_frontmatter]
+    when: *complete_inventory
+    unavailable_reason: Metadata cannot be verified because source analysis or attached metadata is incomplete or malformed.
+    value: &count_value {type: integer, minimum: 0}
     scoring:
-      source: "{{steps.classify_frontmatter_observations.outputs.observations}}"
+      source: "{{steps.prepare_frontmatter.outputs.entries}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: MISSING_FRONTMATTER
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.has_frontmatter}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
+          - ref: "{{item.missing_exempt}}"
+            equals: false
+      severe: &severe {operator: greater_than_or_equal, value: 1}
 
   - id: name_mismatch_count
     type: metric
     metric_id: FM-2
-    depends_on: [classify_frontmatter_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [prepare_frontmatter]
+    when: *complete_inventory
+    unavailable_reason: Metadata names cannot be verified because the source or metadata inventory is incomplete.
+    value: *count_value
     scoring:
-      source: "{{steps.classify_frontmatter_observations.outputs.observations}}"
+      source: "{{steps.prepare_frontmatter.outputs.entries}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: NAME_MISMATCH
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.has_frontmatter}}"
+            equals: true
+          - ref: "{{item.name_matches}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
+      severe: *severe
 
   - id: invalid_category_count
     type: metric
     metric_id: FM-3
-    depends_on: [classify_frontmatter_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [prepare_frontmatter]
+    when: *complete_inventory
+    unavailable_reason: Metadata categories cannot be verified because the source or metadata inventory is incomplete.
+    value: *count_value
     scoring:
-      source: "{{steps.classify_frontmatter_observations.outputs.observations}}"
+      source: "{{steps.prepare_frontmatter.outputs.entries}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: INVALID_CATEGORY
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.has_frontmatter}}"
+            equals: true
+          - ref: "{{item.category_registered}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
+      severe: *severe
 
   - id: incorrect_stack_count
     type: metric
     metric_id: FM-4
-    depends_on: [classify_frontmatter_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [prepare_frontmatter]
+    when: *complete_inventory
+    unavailable_reason: Metadata stack tags cannot be verified because the source or metadata inventory is incomplete.
+    value: *count_value
     scoring:
-      source: "{{steps.classify_frontmatter_observations.outputs.observations}}"
+      source: "{{steps.prepare_frontmatter.outputs.entries}}"
       when:
         all:
-          - ref: "{{item.classification}}"
-            equals: INCORRECT_STACK
-          - ref: "{{item.is_exception}}"
+          - ref: "{{item.has_frontmatter}}"
+            equals: true
+          - ref: "{{item.stack_matches}}"
             equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
+      severe: *severe
 
   - id: bad_description_count
     type: metric
     metric_id: FM-5
-    depends_on: [classify_frontmatter_observations]
-    value:
-      type: integer
-      minimum: 0
+    depends_on: [bind_descriptions]
+    when: *complete_inventory
+    unavailable_reason: Descriptions cannot be verified because the source or metadata inventory is incomplete.
+    value: *count_value
     scoring:
-      source: "{{steps.classify_frontmatter_observations.outputs.observations}}"
+      source: "{{steps.bind_descriptions.outputs.descriptions}}"
       when:
-        all:
-          - ref: "{{item.classification}}"
-            equals: BAD_DESCRIPTION
-          - ref: "{{item.is_exception}}"
-            equals: false
-      severe:
-        operator: greater_than_or_equal
-        value: 1
-
-  - id: classify_exception
-    type: exception
-    depends_on:
-      - missing_frontmatter_count
-      - name_mismatch_count
-      - invalid_category_count
-      - incorrect_stack_count
-      - bad_description_count
-    prompt: |
-      This rule has no rule-wide exception categories. Metric-specific exclusions are already
-      authored in FM-1 through FM-5 and must be applied while measuring those metrics. Return
-      `is_exception: false` with reasoning and evidence confirming that no separate rule-wide
-      exception was applied.
-
-      Apply this exception decision to file `{{params.review_unit.target.name}}`, whose source and preceding measurements are already visible in the current model session.
+        not:
+          ref: "{{item.classification}}"
+          equals: CAPABILITY
+      severe: *severe

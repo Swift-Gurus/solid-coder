@@ -10,7 +10,7 @@ from _path_bootstrap import ensure_on_path
 ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
 from _config_section_stub import ConfigSectionStub  # noqa: E402
-from hc_config_schema import load_config  # noqa: E402
+from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
 from solid_coder_config import SolidCoderConfig  # noqa: E402
 from solid_coder_config_error import SolidCoderConfigError  # noqa: E402
 
@@ -21,19 +21,19 @@ class TestValidationCatchesMistakes(unittest.TestCase):
     def test_wrong_type_raises_with_field_name(self):
         with ConfigSectionStub(llm={"timeout": "soon"}):
             with self.assertRaises(SolidCoderConfigError) as ctx:
-                load_config()
+                SolidCoderConfigLoader().load()
         self.assertIn("llm.timeout", str(ctx.exception))
 
     def test_unknown_key_raises_instead_of_being_ignored(self):
         with ConfigSectionStub(llm={"tiemout": 5}):
             with self.assertRaises(SolidCoderConfigError) as ctx:
-                load_config()
+                SolidCoderConfigLoader().load()
         self.assertIn("tiemout", str(ctx.exception))
 
     def test_unknown_key_in_hook_section_raises(self):
         with ConfigSectionStub(hooks={"pre_write_gate": {"exclud": ["x"]}}):
             with self.assertRaises(SolidCoderConfigError):
-                load_config()
+                SolidCoderConfigLoader().load()
 
     def test_unknown_top_level_section_raises(self):
         with self.assertRaises(Exception):
@@ -41,28 +41,28 @@ class TestValidationCatchesMistakes(unittest.TestCase):
 
     def test_flow_engine_permitted_executables_loads(self):
         with ConfigSectionStub(flow_engine={"permitted_executables": ["python3"]}):
-            config = load_config()
+            config = SolidCoderConfigLoader().load()
         self.assertEqual(config.flow_engine.permitted_executables, ["python3"])
 
     def test_unknown_key_in_flow_engine_section_raises(self):
         with ConfigSectionStub(flow_engine={"permited_executables": ["python3"]}):
             with self.assertRaises(SolidCoderConfigError):
-                load_config()
+                SolidCoderConfigLoader().load()
 
     def test_feature_flags_flow_plain_text_response_loads(self):
         with ConfigSectionStub(feature_flags={"flow_plain_text_response": False}):
-            config = load_config()
+            config = SolidCoderConfigLoader().load()
         self.assertEqual(config.feature_flags.flow_plain_text_response, False)
 
     def test_feature_flags_flow_plain_text_response_defaults_to_true(self):
         with ConfigSectionStub():
-            config = load_config()
+            config = SolidCoderConfigLoader().load()
         self.assertEqual(config.feature_flags.flow_plain_text_response, True)
 
     def test_unknown_key_in_feature_flags_section_raises(self):
         with ConfigSectionStub(feature_flags={"flow_plain_text_respons": True}):
             with self.assertRaises(SolidCoderConfigError):
-                load_config()
+                SolidCoderConfigLoader().load()
 
 
 if __name__ == "__main__":

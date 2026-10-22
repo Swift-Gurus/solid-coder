@@ -49,6 +49,11 @@ from tool_content_extractor import ToolContentExtractor  # noqa: E402
 _FRONTMATTER_PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts" / "frontmatter"
 
 
+"""
+solid-name: FrontmatterPromptBuilder
+solid-category: utility
+solid-description: Assembles frontmatter-correction prompts for prospective source changes.
+"""
 class FrontmatterPromptBuilder(BasePromptBuilder):
     """Assembles the LLM frontmatter-correction prompt from files on disk."""
 
@@ -77,7 +82,7 @@ def _default_correction_service(builder: Optional[FrontmatterPromptBuilder] = No
     """Composition root: wires the production PromptCorrecting implementation (OCP factory exception)."""
     session_runner = LlmSessionRunner(
         runner_factory=make_llm_runner,
-        config_provider=HcConfigTimeoutProvider(hc_config.load_config),
+        config_provider=HcConfigTimeoutProvider(hc_config.SolidCoderConfigLoader().load),
     )
     return LlmPromptCorrectionService(builder=builder or FrontmatterPromptBuilder(), session_runner=session_runner)
 

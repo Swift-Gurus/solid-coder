@@ -5,7 +5,7 @@ solid-category: unit-test
 
 from unittest.mock import patch
 
-import hc_config_schema
+import solid_coder_config_loader
 
 
 class ConfigSectionStub:
@@ -27,7 +27,7 @@ class ConfigSectionStub:
 
     def __enter__(self):
         self._patcher = patch.multiple(
-            hc_config_schema,
+            solid_coder_config_loader,
             read_llm_section=lambda _cwd=None: self._llm,
             read_section=lambda name, _cwd=None: self._sections.get(name, {}),
             read_root_section=lambda _cwd=None: self._root,

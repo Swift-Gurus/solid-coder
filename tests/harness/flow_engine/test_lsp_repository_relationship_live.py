@@ -24,8 +24,15 @@ class LSPRepositoryRelationshipLiveBase(LSPValidationE2ELiveBase):
     __test__ = False
     FIXTURE = ROOT / "tests/principles/LSP/fixtures/fixture-3.swift"
     ARTIFACT_SCENARIO = "lsp-relationships"
-    EXPECTED_VALUES = [0, 1, 0, 0]
-    EXPECTED_METRIC_SEVERITIES = ["COMPLIANT", "SEVERE", "COMPLIANT", "COMPLIANT"]
+    EXPECTED_STEP_IDS = [
+        "type_checks", "contract_violations", "fatal_error_methods",
+        "fatal_calls", "empty_methods",
+    ]
+    EXPECTED_METRIC_IDS = ["LSP-1", "LSP-2", "LSP-3", "LSP-3", "LSP-4"]
+    EXPECTED_OBSERVATION_IDS = ["value", "value", "value", "fatal_calls", "value"]
+    EXPECTED_VALUES = [0, 1, 0, 0, 0]
+    EXPECTED_METRIC_SEVERITIES = ["COMPLIANT", "SEVERE", "COMPLIANT", "COMPLIANT", "COMPLIANT"]
+    EXPECTED_UNAVAILABLE_METRIC_IDS = []
     EXPECTED_ANALYSIS_STEP_IDS = [
         "analyze_substitutability", "select_relationship_candidates",
         "classify_relationship_violations",

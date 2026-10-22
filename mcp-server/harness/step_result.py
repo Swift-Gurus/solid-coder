@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from harness.batch_step_presentation import BatchStepPresentation
+from harness.authored_step_coordinate import AuthoredStepCoordinate
 
 
 @dataclass(frozen=True)
@@ -20,3 +21,5 @@ class StepResult:
     execution: dict
     rejection_reason: str | None = None
     batch: BatchStepPresentation | None = None
+    submission_id: str | None = None
+    authored_step: AuthoredStepCoordinate | None = None

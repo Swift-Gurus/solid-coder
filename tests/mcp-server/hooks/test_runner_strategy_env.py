@@ -71,29 +71,29 @@ class TestSelectStrategy(unittest.TestCase):
         _clear_env()
 
     def test_claude_backend_returns_claude_strategy(self):
-        with patch("hc_config.load_config", return_value=_config(backend="claude")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="claude")):
             self.assertIsInstance(select_strategy(), ClaudeRunnerStrategy)
 
     def test_local_backend_returns_local_strategy(self):
-        with patch("hc_config.load_config", return_value=_config(backend="local", model="local")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="local", model="local")):
             self.assertIsInstance(select_strategy(), LocalRunnerStrategy)
 
     def test_codex_backend_returns_codex_strategy(self):
-        with patch("hc_config.load_config", return_value=_config(backend="codex")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="codex")):
             self.assertIsInstance(select_strategy(), CodexRunnerStrategy)
 
     def test_select_strategy_apply_env_sets_health_check_for_claude(self):
-        with patch("hc_config.load_config", return_value=_config(backend="claude")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="claude")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
     def test_select_strategy_apply_env_sets_health_check_for_local(self):
-        with patch("hc_config.load_config", return_value=_config(backend="local", model="local")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="local", model="local")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
     def test_select_strategy_apply_env_sets_health_check_for_codex(self):
-        with patch("hc_config.load_config", return_value=_config(backend="codex")):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend="codex")):
             select_strategy().apply_env()
         self.assertEqual(os.environ.get(_ENV_KEY), _EXPECTED)
 
@@ -109,8 +109,8 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
 
     def _run_check_with_backend(self, backend: str):
         codex_runner_mock = MagicMock()
-        with patch("hc_config.load_config", return_value=_config(backend=backend)), \
-             patch("configured_health_checker_factory.load_config", return_value=_config(backend=backend)), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=_config(backend=backend)), \
+             patch("configured_health_checker_factory.SolidCoderConfigLoader.load", return_value=_config(backend=backend)), \
              patch("configured_health_checker_factory.WorkflowHealthCheckerFactory") as workflow_factory, \
              patch("configured_health_checker_factory.GateLogger"), \
              patch("local_runner_strategy.make_llama_server_runner", return_value=MagicMock()), \

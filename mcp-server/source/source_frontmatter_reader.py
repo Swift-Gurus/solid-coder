@@ -1,73 +1,39 @@
-"""Reads comment-wrapped solid frontmatter through the YAML boundary."""
-
-import yaml
+"""Reads discovered source metadata through injected document and decoding boundaries."""
 
 from harness.flow_validation_error import FlowValidationError
-from harness.structured_model_decoding import StructuredModelDecoding
-from harness.yaml_support import YamlParsing
+from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 from source.source_frontmatter import SourceFrontmatter
 from source.source_frontmatter_reading import SourceFrontmatterReading
-
-_UNIT_START = "solid-name:"
-_SUPPORTED_FIELDS = (
-    "solid-name:",
-    "solid-description:",
-    "solid-category:",
-    "solid-tags:",
-    "solid-stack:",
-    "solid-spec:",
-)
-_COMMENT_WRAPPER_CHARACTERS = frozenset(" \t/#*<!-;")
 
 
 """
 solid-name: SourceFrontmatterReader
-solid-category: boundary-adapter
-solid-spec: [SPEC-040]
-solid-description: Discovers structured metadata declared in comment-wrapped source content.
+solid-category: service
+solid-spec: [SPEC-040, SPEC-069]
+solid-description: Provides ordered source metadata with strict declaration validation and tolerant repository discovery.
 """
-class SourceFrontmatterReader(SourceFrontmatterReading):
+class SourceFrontmatterReader(SourceFrontmatterReading, SourceSyntaxParsing[str, SourceFrontmatter | None]):
     def __init__(
         self,
-        yaml_parser: YamlParsing,
-        model_decoder: StructuredModelDecoding[SourceFrontmatter],
+        documents: SourceSyntaxParsing[str, list[str]],
+        decoder: SourceSyntaxParsing[str, SourceFrontmatter],
     ) -> None:
-        self._yaml_parser = yaml_parser
-        self._model_decoder = model_decoder
+        self._documents = documents
+        self._decoder = decoder
 
     def read(self, content: str) -> list[SourceFrontmatter]:
-        blocks: list[list[str]] = []
-        current: list[str] = []
-        for line in content.splitlines():
-            normalized_line = line.casefold()
-            field_indexes = [
-                normalized_line.find(field)
-                for field in _SUPPORTED_FIELDS
-                if normalized_line.find(field) >= 0
-                and all(
-                    character in _COMMENT_WRAPPER_CHARACTERS
-                    for character in normalized_line[
-                        :normalized_line.find(field)
-                    ]
-                )
-            ]
-            if not field_indexes:
-                continue
-            field_index = min(field_indexes)
-            yaml_line = line[field_index:].strip()
-            if yaml_line.casefold().startswith(_UNIT_START) and current:
-                blocks.append(current)
-                current = []
-            current.append(yaml_line)
-        if current:
-            blocks.append(current)
         frontmatters: list[SourceFrontmatter] = []
-        for block in blocks:
+        for document in self._documents.parse(content):
             try:
-                frontmatters.append(self._model_decoder.decode(
-                    self._yaml_parser.parse("\n".join(block)),
-                    "source frontmatter",
-                ))
-            except (yaml.YAMLError, FlowValidationError):
+                frontmatters.append(self._decoder.parse(document))
+            except FlowValidationError:
                 continue
         return frontmatters
+
+    def parse(self, source: str) -> SourceFrontmatter | None:
+        documents = self._documents.parse(source)
+        if not documents:
+            return None
+        if len(documents) != 1:
+            raise FlowValidationError("Expected one frontmatter block attached to this declaration")
+        return self._decoder.parse(documents[0])

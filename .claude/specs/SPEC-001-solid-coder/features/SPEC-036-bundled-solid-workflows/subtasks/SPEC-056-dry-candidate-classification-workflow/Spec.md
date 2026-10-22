@@ -2,7 +2,7 @@
 number: SPEC-056
 feature: dry-candidate-classification-workflow
 type: subtask
-status: in-progress
+status: done
 parent: SPEC-036
 blocked-by: [SPEC-053, SPEC-040]
 blocking: []
@@ -320,10 +320,41 @@ scores zero.
 - [x] Ordered child outputs are available through a typed generic projection.
 - [x] DRY-1 and DRY-2 are scored by MCP without model arithmetic; DRY-3 is omitted.
 - [x] Protocol/conformer and declaration-only false positives are covered.
-- [ ] Controlled Codex and Claude fixtures produce locked auditable results.
+- [x] Controlled Codex and Claude fixtures produce locked auditable results.
 - [x] All non-live tests pass.
 
 ## Validation Evidence
+
+### Completed migration close-out — 2026-10-22 UTC
+
+All existing rule families have bundled workflows; this close-out validates
+their current contracts rather than creating another set of rules. The DRY
+fixture remains unchanged. Its two identical forwarding bodies are expected
+to produce two within-unit DRY-2 observations under the user's approved policy.
+SPEC-065's older compliant expectation is superseded and its historical report
+is retained with an explicit resolution.
+
+The initial current Codex run returned `0 / 0 / 0` instead of `0 / 0 / 2`,
+reasoning that the shared callee already centralizes the calculation. Claude
+returned the expected two observations. The authored workflow now clarifies:
+"Forwarding calls are operations too: identical forwarding bodies are IDENTICAL
+even when their callee already contains the shared algorithm."
+This changes neither the fixture nor scoring, exception criteria, schema, or
+candidate-search behavior. The existing prompt-contract test failed before
+the clarification and passed afterward. Final non-live validation is
+**3,069 passed, 4 existing skips**. All eight existing DRY case configurations
+now have passing fresh Codex/Claude evidence, including protocol reuse,
+identical forwarding bodies, rounding variation, and within-unit duplication.
+Both models return `0 / 0 / 2` for the identical-wrapper fixture.
+
+The affected-rule live command reported 13 passes and one Claude startup
+failure before any `flow_start`; a single retry of that case passed. The
+current flow server was connected, but the model stopped after seeing a failed
+stale plugin entry. That failed attempt and the earlier Codex classification
+miss are preserved in the [validation report](../SPEC-055-count-based-rule-workflow-migration/resources/RuleMigrationValidation-2026-10-22.md).
+This completion establishes the locked fixture contracts; intermittent CLI
+startup interpretation and broader repeated-sample accuracy remain observable
+limitations. The checkpoints below are historical and superseded by this record.
 
 ### Policy change — 2026-10-21
 
@@ -331,11 +362,11 @@ The user removed the separate DRY-3 check for now. Comparison-based reuse
 classification covers direct reuse, extension, and partial extraction instead.
 SPEC-061 preserves the withdrawn check's investigation as history; its old
 expectations are not current workflow requirements. Legacy rule documents
-remain unchanged. The shared-helper DRY-2 false positive in SPEC-065 remains
-independent and unresolved. Source fixtures and remaining metric thresholds
-are unchanged.
+remain unchanged. SPEC-065's original shared-helper expectation was subsequently
+superseded by the approved identical-wrapper policy recorded above. Source
+fixtures and remaining metric thresholds are unchanged.
 
-### Current status — 2026-10-19
+### Earlier checkpoint — 2026-10-19
 
 The candidate-disposition, inspection-evidence and MCP-scoring mechanics are
 implemented. The latest full non-live checkpoint recorded by SPEC-064 is green:

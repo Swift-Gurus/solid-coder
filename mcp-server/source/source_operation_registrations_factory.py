@@ -21,6 +21,7 @@ from source.analysis.provenance.source_type_inspection_operation_factory import 
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.collect_changes_output import CollectChangesOutput
+from source.frontmatter.frontmatter_operation_registrations_factory import FrontmatterOperationRegistrationsFactory
 from source.exact_source_tokens_resolver_factory import (
     ExactSourceTokensResolverFactory,
 )
@@ -74,6 +75,7 @@ class SourceOperationRegistrationsFactory:
                 handler=CollectChangesOperationFactory().make(),
             ),
             *SourceAnalysisOperationRegistrationsFactory().make(),
+            *FrontmatterOperationRegistrationsFactory(self._project_directory).make(),
             OperationRegistration(
                 name="source.resolve_type_inspections",
                 input_model=ResolveTypeInspectionsInput,

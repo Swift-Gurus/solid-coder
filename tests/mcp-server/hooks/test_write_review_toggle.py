@@ -16,7 +16,7 @@ from solid_coder_config import SolidCoderConfig
 class TestWriteReviewToggle(unittest.TestCase):
     def test_allows_without_check_when_disabled(self):
         stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=False)
-        with patch("hc_config.load_config", return_value=stub_config), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
              patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
              patch(HC) as hc, patch(FM) as fm:
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
@@ -27,7 +27,7 @@ class TestWriteReviewToggle(unittest.TestCase):
 
     def test_proceeds_when_enabled_and_key_present(self):
         stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True)
-        with patch("hc_config.load_config", return_value=stub_config), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
              patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
              patch(HC, return_value=[]) as hc:
             call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
@@ -35,7 +35,7 @@ class TestWriteReviewToggle(unittest.TestCase):
 
     def test_allows_without_check_when_enabled_but_no_api_key(self):
         stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True)
-        with patch("hc_config.load_config", return_value=stub_config), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
              patch.dict(os.environ, {}, clear=True), \
              patch(HC) as hc, patch(FM) as fm:
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
@@ -49,7 +49,7 @@ class TestDefaultToggleAcrossBackends(unittest.TestCase):
 
     def _assert_skips_by_default(self, backend, env):
         stub_config = SolidCoderConfig(llm=LlmConfig(backend=backend))
-        with patch("hc_config.load_config", return_value=stub_config), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
              patch.dict(os.environ, env, clear=True), \
              patch(HC) as hc, patch(FM) as fm:
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
@@ -74,7 +74,7 @@ class TestDefaultToggleAcrossBackends(unittest.TestCase):
         """Known gap: ApiKeyGuard has no Codex credential check, so enabling the flag with
         backend=codex proceeds straight to the health check regardless of Codex auth state."""
         stub_config = SolidCoderConfig(llm=LlmConfig(backend="codex"), code_review_on_write_enabled=True)
-        with patch("hc_config.load_config", return_value=stub_config), \
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
              patch.dict(os.environ, {}, clear=True), \
              patch(HC, return_value=[]) as hc:
             call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))

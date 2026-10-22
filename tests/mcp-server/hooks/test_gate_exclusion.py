@@ -19,7 +19,7 @@ class TestGateExclusion(unittest.TestCase):
             hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])},
             code_review_on_write_enabled=True,
         )
-        with patch("hc_config.load_config", return_value=stub_config), patch(HC) as hc:
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), patch(HC) as hc:
             code, out = call_main(event("Write", "/project/tests/fixtures/SRP/srp2-severe.swift", LONG_SWIFT))
         hc.assert_not_called()
         self.assertEqual(code, 0)
@@ -30,14 +30,14 @@ class TestGateExclusion(unittest.TestCase):
             hooks={"pre_write_gate": HookConfig(exclude=["tests/fixtures/**"])},
             code_review_on_write_enabled=True,
         )
-        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
             _, out = call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
         self.assertEqual(out, "")
 
     def test_no_exclusions_runs_health_normally(self):
         stub_config = SolidCoderConfig(code_review_on_write_enabled=True)
-        with patch("hc_config.load_config", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), patch(HC, return_value=HealthCheckOutcome()) as hc:
             _, out = call_main(event("Write", "/src/Main.swift", LONG_SWIFT))
         hc.assert_called_once()
         self.assertEqual(out, "")

@@ -21,12 +21,25 @@ class OCPValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "ocp"
     ARTIFACT_SCENARIO = "ocp"
     FIXTURE = _FIXTURE
+    EXPECTED_ANALYSIS_STEP_IDS = ["analyze_dependencies"]
     EXPECTED_STEP_IDS = [
         "sealed_variation_points",
-        "untestable_dependencies",
-        "testable_direct_count",
+        "hardcoded_behavior_selection_count",
+        "untestable_concrete_dependencies",
+        "testable_concrete_dependencies",
     ]
-    EXPECTED_METRIC_IDS = ["OCP-1", "OCP-2", "OCP-3"]
-    EXPECTED_VALUES = [2, 0, 0]
-    EXPECTED_METRIC_SEVERITIES = ["SEVERE", "COMPLIANT", "COMPLIANT"]
+    EXPECTED_METRIC_IDS = ["OCP-1", "OCP-1", "OCP-2", "OCP-3"]
+    EXPECTED_OBSERVATION_IDS = [
+        "direct_non_injected_count",
+        "hardcoded_behavior_selection_count",
+        "untestable_concrete_count",
+        "testable_concrete_count",
+    ]
+    EXPECTED_VALUES = [2, 0, 0, 0]
+    EXPECTED_METRIC_SEVERITIES = [
+        "SEVERE",
+        "COMPLIANT",
+        "COMPLIANT",
+        "COMPLIANT",
+    ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"

@@ -60,10 +60,10 @@ _STRATEGY_FACTORIES = {
 def select_strategy(config_loader: Optional[Callable] = None) -> RunnerStrategyBase:
     """Return the configured RunnerStrategy based on [llm] backend in solid-coder-local.toml.
 
-    config_loader defaults to hc_config.load_config, looked up at call time so
-    tests can patch hc_config.load_config or inject a fake loader directly.
+    config_loader defaults to the configuration loader's load method, resolved at call time so
+    tests can patch the loader or inject a fake loading operation directly.
     """
-    loader = config_loader or hc_config.load_config
+    loader = config_loader or hc_config.SolidCoderConfigLoader().load
     llm = loader().llm
     factory = _STRATEGY_FACTORIES.get(llm.backend.lower(), _make_claude_strategy)
     return factory(llm)

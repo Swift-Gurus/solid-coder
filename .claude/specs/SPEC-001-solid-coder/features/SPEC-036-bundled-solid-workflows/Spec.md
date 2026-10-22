@@ -14,6 +14,40 @@ blocking: []
 
 Ship three stable workflows—`solid-review`, `solid-gate-on-write`, and `solid-refactor`—through the workflow package system. `solid-refactor` composes `solid-review`. The pre-write code-quality gate stops constructing and sending its own aggregated health-check prompt; it deterministically prepares the candidate code as normalized review input, starts `solid-gate-on-write` as an isolated run, and drives that run through the configured LLM backend until the workflow returns an allow/deny result.
 
+## Rule migration checkpoint — 2026-10-22 UTC
+
+All eleven existing review-rule families are bundled under
+`workflows/review/rules/`: SRP, OCP, LSP, ISP, DRY, Code Smells, Structured
+Concurrency, SwiftUI, Frontmatter, Unit Testing, and UI Testing. Their current
+locked scenarios have passing Codex and Claude evidence through the shared
+review harness. Numeric measurements are derived and scored by MCP from typed
+observations; unavailable measurements retain explicit audited outcomes.
+
+SPEC-055 and SPEC-056 are complete. The final non-live checkpoint is 3,069 passed
+with four existing skips. Close-out repaired stale OCP/LSP live contracts,
+consistent Codex recovery auditing, and the approved DRY identical-forwarding
+classification. Initial failures and the one Claude startup retry remain in the
+[validation report](subtasks/SPEC-055-count-based-rule-workflow-migration/resources/RuleMigrationValidation-2026-10-22.md).
+No source fixture or scoring threshold was changed.
+
+This parent remains in progress for the broader review-target, fix/refactor,
+and benchmark deliverables recorded below; those are separate from rule transfer.
+
+### Source-backed Frontmatter completion — 2026-10-22
+
+[SPEC-069](subtasks/SPEC-069-source-backed-frontmatter-validation/Spec.md) is done.
+MCP now owns metadata discovery, mechanical validation and scoring; the model
+only classifies description quality with complete evidenced identity coverage.
+Project TOML extends the category registry, declaration-level syntax grounds stack
+requirements, and the existing project review policy retains scoring precedence.
+
+Final verification passed 3,142 non-live tests and 308 subtests with four existing
+skips, six locked Codex/Claude Frontmatter scenarios, and ten shared live
+flow-engine checks. SPEC-069 preserves the initial Claude startup failure and
+unchanged passing retry, plus exact run IDs. Shared configuration/import and
+cleanup-hook repairs were validated without changing legacy rule semantics.
+This does not close the remaining parent deliverables below.
+
 ## Input / Output
 
 | Workflow | Input | Output |

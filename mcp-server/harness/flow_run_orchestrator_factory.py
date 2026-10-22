@@ -82,6 +82,8 @@ from harness.run_context_builder import RunContextBuilder
 from harness.run_directory_scaffolder import RunDirectoryScaffolder
 from harness.run_initializer import RunInitializer
 from harness.run_metadata_store import RunMetadataStore
+from harness.flow_submission_format import FlowSubmissionFormat
+from harness.run_submission_assignment_annotator import RunSubmissionAssignmentAnnotator
 from harness.run_provisioner import RunProvisioner
 from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
 from harness.run_snapshot_resolver import RunSnapshotResolver
@@ -149,8 +151,10 @@ class FlowRunOrchestratorFactory:
         session_delegate_runner: Optional[SessionDelegateRunning] = None,
         session_delegate_max_workers: int = _DELEGATE_SESSION_MAX_WORKERS,
         operation_registrations: Optional[list[OperationRegistration]] = None,
+        submission_format: FlowSubmissionFormat = FlowSubmissionFormat.NESTED,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
+        self._submission_format = submission_format
         self._plugin_root = plugin_root
         self._project_directory = (
             project_directory
@@ -186,6 +190,7 @@ class FlowRunOrchestratorFactory:
             path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
         )
         metadata_store = RunMetadataStore()
+        submission_assignments = RunSubmissionAssignmentAnnotator(metadata_store)
         step_result_builder = StepResultBuilder()
         run_locator = ActiveRunLocator(base_dir_resolver=self._base_dir_resolver, active_run=active_run)
         resolving_flow_loader = NameResolvingFlowLoader(
@@ -371,6 +376,7 @@ class FlowRunOrchestratorFactory:
                     ),
                 ),
                 metadata_store=metadata_store,
+                submission_format=self._submission_format,
             ),
             path_resolver=IsolatedRunPathResolver(),
             location_assembler=ActiveRunLocationAssembler(),
@@ -380,6 +386,7 @@ class FlowRunOrchestratorFactory:
             initializer=flow_initializer,
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
             result_builder=FlowStartResultBuilder(),
+            submission_assignments=submission_assignments,
         )
         stepper = FlowStepper(
             run_locator=run_locator,
@@ -396,6 +403,7 @@ class FlowRunOrchestratorFactory:
             ),
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
             interpolation_guard=interpolation_guard,
+            submission_assignments=submission_assignments,
         )
         status_reader = FlowStatusReader(
             run_locator=run_locator,

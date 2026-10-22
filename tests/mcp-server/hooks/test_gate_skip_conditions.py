@@ -14,7 +14,7 @@ from health_check_outcome import HealthCheckOutcome
 
 class TestGateSkipConditions(unittest.TestCase):
     def setUp(self):
-        patcher = patch("hc_config.load_config", return_value=SolidCoderConfig(code_review_on_write_enabled=True))
+        patcher = patch("hc_config.SolidCoderConfigLoader.load", return_value=SolidCoderConfig(code_review_on_write_enabled=True))
         patcher.start()
         self.addCleanup(patcher.stop)
 

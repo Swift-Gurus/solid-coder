@@ -6,6 +6,8 @@ from tree_sitter import Language, Parser
 from findings.review_unit_kind_parser import ReviewUnitKindParser
 from source.analysis.calls.tree_sitter_swift_call_parser import TreeSitterSwiftCallParser
 from source.analysis.declarations.tree_sitter_swift_scope_parser import TreeSitterSwiftScopeParser
+from source.analysis.declarations.source_scope_kind_resolver import SourceScopeKindResolver
+from source.analysis.declarations.tree_sitter_leading_comments_parser import TreeSitterLeadingCommentsParser
 from source.analysis.declarations.tree_sitter_swift_scoped_declaration_parser import TreeSitterSwiftScopedDeclarationParser
 from source.analysis.source_syntax_collection_parser import SourceSyntaxCollectionParser
 from source.analysis.swift_member_decoder_factory import SwiftMemberDecoderFactory
@@ -37,6 +39,7 @@ class TreeSitterSwiftInventoryParserFactory:
             excluded_node_types=frozenset({"comment", "multiline_comment"}),
             excluded_fields=frozenset({"text"}),
         )
+        signals = TreeSitterSwiftSignalsParser(spans=spans, nodes=nodes)
         units = TreeSitterSwiftUnitParser(
             unit_kinds=ReviewUnitKindParser(),
             spans=spans,
@@ -52,10 +55,16 @@ class TreeSitterSwiftInventoryParserFactory:
                 entries=nodes,
                 parser=TreeSitterSwiftScopedDeclarationParser(
                     units=units, scopes=TreeSitterSwiftScopeParser(spans), tokens=tokens,
+                    comments=TreeSitterLeadingCommentsParser(
+                        spans=spans,
+                        comment_node_types=frozenset({"comment", "multiline_comment"}),
+                    ),
+                    signals=signals,
+                    scope_kinds=SourceScopeKindResolver(),
                 ),
             ),
             imports=TreeSitterSwiftImportsParser(spans),
-            signals=TreeSitterSwiftSignalsParser(spans=spans, nodes=nodes),
+            signals=signals,
             inspections=SourceSyntaxCollectionParser(
                 entries=nodes,
                 parser=TreeSitterSwiftTypeInspectionParser(spans=spans, tokens=tokens),

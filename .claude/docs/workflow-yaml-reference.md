@@ -80,6 +80,44 @@ that step, submit its values under the returned ID:
 Never construct or predict an instance ID. Always use the ID returned by the
 latest `flow_start` or `flow_next` response.
 
+### Experimental flat submissions
+
+No workflow YAML changes are required. Select the submission envelope in the
+project's existing `.solid-coder/config.toml`:
+
+```toml
+[feature_flags]
+flow_submission_format = "flat_array"
+```
+
+The default is `"nested"`. A run retains its selected format and assignment IDs
+across retries and restarts; changing the configuration affects new runs only.
+The flag does not change rule instructions, schemas, scoring, or execution phases.
+
+Flat responses show the pending assignment IDs, their instructions, and each
+instruction's result schema. Submit the original named outputs inside `result`:
+
+```json
+{
+  "outputs": {
+    "submissions": [
+      {"id": "a1", "result": {"name": "Alex"}},
+      {"id": "a2", "result": {"actions": []}}
+    ]
+  }
+}
+```
+
+Use only the IDs actually returned for that run's current phase. The example is
+a shape illustration, not permission to submit a later step. For isolated runs,
+continue passing the returned `run_id` as the other `flow_next` argument.
+
+Valid partial results remain saved. Correct only pending or rejected assignments,
+but provide each assignment's complete named outputs, not a field-level patch.
+Duplicate IDs, unknown/stale IDs, and malformed envelopes are rejected before
+recording any result. The experiment measures whether simpler addressing helps;
+it does not promise fewer classification requirements or lower token usage.
+
 ## Why `type: string` fails
 
 The output declaration has two type layers:
@@ -477,6 +515,8 @@ including when separate files have identical local declaration identities.
 | `source.collect_changes` | `project_root` | — |
 | `source.analyze` | `source` | — |
 | `source.analyze_text` | `text` | `kind` (text), `virtual_path`, `file_extension` |
+| `source.prepare_frontmatter` | `analysis` | — |
+| `source.bind_frontmatter_descriptions` | `entries`, `targets` | `classifications` (empty by default) |
 | `source.select_declarations` | `analysis`, `selections` | — |
 | `source.bind_declaration_classifications` | `analysis`, `declarations`, `classifications` | — |
 | `source.resolve_relationships` | `analyses` | — |
@@ -522,6 +562,30 @@ such as `text: "{{params.review_unit.target.code}}"` and
 `virtual_path: "{{params.review_unit.target.source_identity}}"`. It delegates to
 the same analyzer as `source.analyze` and returns the same named `result`.
 It does not read the destination file.
+
+`source.prepare_frontmatter` consumes the named analysis `result`. It publishes
+ordered `entries`, compact description targets in `descriptions`, effective
+`categories`, `stack_registrations`, and explicit `limitations`. MCP checks missing
+metadata, names, categories, declaration-level stack evidence, and description
+formatting. Imports alone do not impose stack tags on unrelated declarations.
+The bundled `frontmatter` rule asks the model only to classify eligible descriptions
+as `CAPABILITY`, `IMPLEMENTATION_DETAIL`, or `VAGUE`, with reasoning and evidence.
+`source.bind_frontmatter_descriptions` validates exact target identity coverage,
+preserves those classifications, and adds MCP-owned `INVALID_FORMAT` outcomes for
+mechanical description failures. Its named `descriptions` output feeds FM-5;
+MCP counts non-`CAPABILITY` outcomes. With no eligible descriptions, no model turn
+is needed. Incomplete or unsupported source evidence remains unavailable.
+
+Projects extend the bundled category registry in their existing TOML:
+
+```toml
+[frontmatter]
+additional_categories = ["domain-role"]
+```
+
+Additions must be meaningful lowercase hyphenated names. Existing root-to-leaf
+and local TOML precedence selects the effective additions; bundled categories
+remain available. Metric overrides still belong in `.solid-coder/policies/review.yaml`.
 
 `source.select_declarations` selects from that analysis using a list of selectors.
 Each selector requires `kinds` and can restrict `scopes` (`file`, `type`,

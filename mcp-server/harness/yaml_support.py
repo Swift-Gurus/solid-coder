@@ -9,7 +9,14 @@ from typing import Any, Protocol
 
 import yaml
 
+from harness.flow_validation_error import FlowValidationError
 
+
+"""
+solid-name: YamlParsing
+solid-category: abstraction
+solid-description: Contract for parsing YAML text with shared validation errors.
+"""
 class YamlParsing(Protocol):
     """
     solid-description: Contract for parsing YAML-formatted text into Python objects.
@@ -19,6 +26,12 @@ class YamlParsing(Protocol):
     def parse(self, text: str) -> Any: ...
 
 
+"""
+solid-name: SafeYamlParser
+solid-category: boundary-adapter
+solid-spec: [SPEC-069]
+solid-description: Parses YAML documents and reports malformed input through the shared validation contract.
+"""
 class SafeYamlParser:
     """
     solid-description: Parses YAML-formatted text into Python objects.
@@ -26,5 +39,8 @@ class SafeYamlParser:
     """
 
     def parse(self, text: str) -> Any:
-        result = yaml.safe_load(text)
+        try:
+            result = yaml.safe_load(text)
+        except yaml.YAMLError as error:
+            raise FlowValidationError(f"Malformed YAML: {error}") from error
         return result if result is not None else {}

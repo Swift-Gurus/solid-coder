@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from source.analysis.declarations.source_scope import SourceScope
 from source.analysis.declarations.source_scope_kind import SourceScopeKind
 from source.source_unit import SourceUnit
+from source.source_evidence import SourceEvidence
 
 
 """
@@ -20,4 +21,6 @@ class SourceScopedDeclaration(BaseModel):
     unit: SourceUnit
     scopes: list[SourceScope] = Field(default_factory=list)
     modifiers: list[str] = Field(default_factory=list)
+    leading_comments: list[SourceEvidence] = Field(default_factory=list)
+    signals: list[SourceEvidence] = Field(default_factory=list)
     scope_kind: SourceScopeKind = SourceScopeKind.FILE

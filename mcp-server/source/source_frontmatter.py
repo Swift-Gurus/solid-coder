@@ -26,7 +26,7 @@ solid-spec: [SPEC-040]
 solid-description: Carries typed name, responsibility, classification, tags, stack, and specification metadata from one source frontmatter block.
 """
 class SourceFrontmatter(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
     name: str = Field(default="", validation_alias="solid-name")
     description: str = Field(

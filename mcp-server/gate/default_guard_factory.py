@@ -20,10 +20,10 @@ class DefaultGuardFactory:
 
         return CompositeGuard([
             ConfigFeatureToggle(
-                enabled_fn=lambda: health_config.load_config().code_review_on_write_enabled,
+                enabled_fn=lambda: health_config.SolidCoderConfigLoader().load().code_review_on_write_enabled,
             ),
             ApiKeyGuard(
-                backend_fn=lambda: health_config.load_config().llm.backend,
+                backend_fn=lambda: health_config.SolidCoderConfigLoader().load().llm.backend,
                 api_key_fn=lambda: os.environ.get("ANTHROPIC_API_KEY", ""),
             ),
         ])

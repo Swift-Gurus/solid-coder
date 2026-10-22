@@ -2,13 +2,34 @@
 number: SPEC-065
 feature: dry-shared-helper-call-false-positive
 type: bug
-status: draft
+status: done
 parent: SPEC-056
 blocked-by: []
 blocking: []
 ---
 
 # Claude flags calls to an extracted shared helper as DRY duplication
+
+## Resolution — superseded by the approved wrapper policy
+
+The user subsequently reviewed this fixture and confirmed that the two
+identical forwarding bodies should be flagged: different method names do not
+justify retaining identical implementations. The current shared live test is
+`test_identical_wrappers_are_duplicate_sites`, with locked values `0 / 0 / 2`
+and final SEVERE severity. The fixture itself is unchanged; DRY-3 was separately
+removed from the workflow.
+
+This closes the original false-positive report as a superseded expectation,
+not as a code fix. The older zero-count expectation and instructions below
+are historical and must not be restored as the current rule. A new Codex run
+on 2026-10-22 UTC returned zero and described the forwarding bodies as compliant;
+that is a miss against the current policy, tracked in SPEC-056's validation
+close-out. Its evidence is preserved at
+`.solid-coder/.artifacts/test/codex/e2e/review/dry-extracted-helper/20261022T031618Z-c8fe7a4a/`.
+
+The workflow now clarifies that forwarding calls are operations and identical
+forwarding bodies remain IDENTICAL when their callee contains shared logic.
+MCP scoring and the source fixture retain their existing contracts.
 
 ## Description
 

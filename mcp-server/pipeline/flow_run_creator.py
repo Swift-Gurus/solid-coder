@@ -10,7 +10,7 @@ from harness.project_context import (
 )
 from harness.mcp_request_context_session_reader import McpRequestContextSessionReader
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
-from hc_config_schema import load_config
+from solid_coder_config_loader import SolidCoderConfigLoader
 from hook_utils import solid_coder_project_dir
 from message_transport_running import MessageTransportRunning
 from pipeline.flow_run_creating import FlowRunCreating
@@ -39,13 +39,14 @@ class FlowRunCreator(FlowRunCreating):
     def __init__(
         self,
         plugin_root: Path,
-        config_loader: ConfigLoading = load_config,
+        config_loader: ConfigLoading = SolidCoderConfigLoader().load,
     ) -> None:
         self._plugin_root = plugin_root
         self._config_loader = config_loader
 
     def create(self, transport: MessageTransportRunning) -> FlowRunOrchestrating:
-        flow_engine_config = self._config_loader().flow_engine
+        config = self._config_loader()
+        flow_engine_config = config.flow_engine
         session_reader = McpRequestContextSessionReader(
             call_meta_provider=transport
         )
@@ -62,6 +63,7 @@ class FlowRunCreator(FlowRunCreating):
                 )
             ),
             plugin_root=self._plugin_root,
+            submission_format=config.feature_flags.flow_submission_format,
             project_directory=project_directory_reader,
             session_reader=session_reader,
             session_delegate_max_workers=(

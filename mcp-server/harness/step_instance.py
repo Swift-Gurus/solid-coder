@@ -32,6 +32,7 @@ class StepInstance:
     workflow_instance: IncludedWorkflowInstance | None = None
     batch: Optional[BatchStepPresentation] = None
     authored_prompt: str | None = None
+    submission_id: str | None = None
 
     @property
     def is_for_each(self) -> bool:

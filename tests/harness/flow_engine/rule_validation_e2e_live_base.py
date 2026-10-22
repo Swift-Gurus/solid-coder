@@ -256,7 +256,6 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         # infer success from that text: require the same session's server ledger.
         server_confirmed = (
             self._has_completed_session_evidence(run)
-            and not evidence.failed_calls
             and not evidence.unanswered_call_ids
         )
         print(

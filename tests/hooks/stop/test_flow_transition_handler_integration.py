@@ -18,6 +18,7 @@ from flow_transition_gate_factory import FlowTransitionGateFactory
 from flow_transition_handler import FlowStopEvaluator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.flow_submission_format import FlowSubmissionFormat
 
 _TWO_STEP_FLOW_YAML = textwrap.dedent("""
     name: two_step
@@ -158,6 +159,28 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         self.assertFalse(allow)
         self.assertIn("decide", reason)
         self.assertNotIn("inspect", reason)
+
+    def test_flat_partial_submission_keeps_stop_blocked_until_remaining_result(self):
+        aggregate_flow = Path(self._tmpdir) / "aggregate-flat.yaml"
+        aggregate_flow.write_text(_AGGREGATE_FLOW_YAML, encoding="utf-8")
+        engine = FlowRunOrchestratorFactory(
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: Path(self._tmpdir)),
+            plugin_root=Path(self._tmpdir),
+            submission_format=FlowSubmissionFormat.FLAT_ARRAY,
+        ).build()
+        started = engine.flow_start(str(aggregate_flow))
+        remaining = engine.flow_next({"submissions": [
+            {"id": started.steps[0].submission_id, "result": {}},
+        ]})
+        decision = self.evaluator.evaluate_stop({})
+        self.assertFalse(decision.allow)
+        self.assertIn("decide", decision.reason)
+        self.assertNotIn("inspect", decision.reason)
+        completed = engine.flow_next({"submissions": [
+            {"id": remaining.steps[0].submission_id, "result": {}},
+        ]})
+        self.assertEqual(completed.status, "done")
+        self.assertTrue(self.evaluator.evaluate_stop({}).allow)
 
     def test_compact_metric_drains_internally_without_becoming_a_stop_target(self):
         workflow = Path(self._tmpdir) / "compact-metric.yaml"

@@ -44,7 +44,7 @@ def _violation(issue: str) -> HealthViolation:
 class TestApplyPatchGateFanout(unittest.TestCase):
     def setUp(self):
         config = SolidCoderConfig(code_review_on_write_enabled=True)
-        patcher = patch("hc_config.load_config", return_value=config)
+        patcher = patch("hc_config.SolidCoderConfigLoader.load", return_value=config)
         patcher.start()
         self.addCleanup(patcher.stop)
 

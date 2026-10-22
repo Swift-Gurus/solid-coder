@@ -192,6 +192,8 @@ class TestDryValidationFlow(unittest.TestCase):
         for clarification in (
             "Compare the algorithm separately from its business-domain names.",
             "including different constants or rounding precision",
+            "Forwarding calls are operations too: identical forwarding bodies",
+            "are IDENTICAL even when their callee already contains the shared algorithm.",
             "Different names or constants alone do not establish that exception.",
         ):
             self.assertIn(clarification, prompt)

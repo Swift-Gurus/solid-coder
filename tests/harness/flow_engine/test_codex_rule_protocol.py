@@ -186,6 +186,30 @@ class TestCodexRuleProtocol(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "successful flow_start"):
             self.case._assert_codex_protocol(self.run)
 
+    def test_recovered_error_with_unwrapped_responses_preserves_completed_server_evidence(self) -> None:
+        self._write_transcript(
+            self._call("start", "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);"),
+            self._output("start", "Classify the supplied unit.", as_blocks=True),
+            self._call("broken", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}));"),
+            self._output("broken", "Script failed\nScript error:\nSyntaxError: Unexpected token ')'"),
+            self._call("retry", "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);"),
+            self._output("retry", "Flow complete.", as_blocks=True),
+        )
+        self.run.run_directory.mkdir()
+        (self.run.run_directory / "events.jsonl").write_text("\n".join([
+            '{"event":"run_started"}',
+            '{"event":"session_step_recorded","session_id":"child"}',
+            '{"event":"run_completed"}',
+        ]))
+
+        self.case._assert_codex_protocol(self.run)
+
+        evidence = CodexProtocolEvidence.model_validate_json(
+            (self.root / "codex-protocol-evidence.json").read_text()
+        )
+        self.assertEqual([event.call_id for event in evidence.failed_calls], ["broken"])
+        self.assertIn("SyntaxError", evidence.failed_calls[0].texts[0])
+
     def _write_transcript(self, *events: str) -> None:
         source = json.dumps(self.case.FIXTURE.read_text())
         prompt = (

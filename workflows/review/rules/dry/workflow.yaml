@@ -110,6 +110,9 @@ steps:
       structurally duplicated when its differences can be expressed as parameters,
       including different constants or rounding precision.
 
+      Forwarding calls are operations too: identical forwarding bodies
+      are IDENTICAL even when their callee already contains the shared algorithm.
+
       1. **For each function or method** in the unit under review, identify its logical sequence — what operations does it perform, in what order?
       2. **Compare methods within the reviewed unit** for the same logical sequence:
          - Same control flow structure (if/else, guard, switch patterns)

@@ -11,6 +11,7 @@ from harness.interpolation_guarding import InterpolationGuarding
 from harness.output_submission_advancing import OutputSubmissionAdvancing
 from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
+from harness.run_submission_assignment_annotator import RunSubmissionAssignmentAnnotating
 
 
 """
@@ -29,6 +30,7 @@ class FlowStepper(FlowStepping):
         submission_advancer: OutputSubmissionAdvancing,
         execution_and_readiness_coordinator: ExecutionAndReadinessCoordinating,
         interpolation_guard: InterpolationGuarding,
+        submission_assignments: RunSubmissionAssignmentAnnotating,
     ) -> None:
         self._run_locator = run_locator
         self._metadata_store = metadata_store
@@ -37,6 +39,7 @@ class FlowStepper(FlowStepping):
         self._submission_advancer = submission_advancer
         self._execution_and_readiness_coordinator = execution_and_readiness_coordinator
         self._interpolation_guard = interpolation_guard
+        self._submission_assignments = submission_assignments
 
     def flow_next(self, outputs: dict | None = None, run_id: str | None = None) -> FlowNextResult:
         location = self._run_locator.locate(run_id)
@@ -53,7 +56,7 @@ class FlowStepper(FlowStepping):
             location.events_path,
             location.base_dir,
             location.run_id,
-            snapshot.ready,
+            self._submission_assignments.annotate(location.run_dir, snapshot.ready),
             outputs or {},
             snapshot.flow_def,
         )
@@ -67,4 +70,7 @@ class FlowStepper(FlowStepping):
             return FlowNextResult(status="ready", error=execution.error)
         if execution.terminal is not None:
             return execution.terminal
-        return FlowNextResult(status="ready", steps=execution.steps)
+        return FlowNextResult(
+            status="ready",
+            steps=self._submission_assignments.annotate(location.run_dir, execution.steps),
+        )

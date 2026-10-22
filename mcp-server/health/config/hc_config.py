@@ -12,7 +12,7 @@ for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hc_config_schema import load_config  # noqa: F401
+from solid_coder_config_loader import SolidCoderConfigLoader
 from hook_config import HookConfig  # noqa: F401
 from inference_config import InferenceConfig  # noqa: F401
 from llm_config import LlmConfig  # noqa: F401

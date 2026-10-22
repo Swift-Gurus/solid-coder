@@ -8,7 +8,10 @@ solid-description: Provides persistent storage and retrieval of run metadata.
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from pathlib import Path
+
+from pydantic import TypeAdapter
 
 from harness.run_metadata import RunMetadata
 from harness.run_metadata_persisting import RunMetadataPersisting
@@ -17,8 +20,9 @@ from harness.run_metadata_persisting import RunMetadataPersisting
 class RunMetadataStore(RunMetadataPersisting):
 
     def write(self, run_dir: Path, metadata: RunMetadata) -> None:
-        (run_dir / "run-metadata.json").write_text(json.dumps({"params": metadata.params}))
+        (run_dir / "run-metadata.json").write_text(json.dumps(asdict(metadata)))
 
     def read(self, run_dir: Path) -> RunMetadata:
-        data = json.loads((run_dir / "run-metadata.json").read_text())
-        return RunMetadata(params=data["params"])
+        return TypeAdapter(RunMetadata).validate_json(
+            (run_dir / "run-metadata.json").read_text()
+        )

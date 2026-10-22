@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
@@ -135,6 +136,7 @@ class FlowStepperFactory:
             submission_advancer=self.submission_advancer,
             execution_and_readiness_coordinator=self.execution_and_readiness_coordinator,
             interpolation_guard=self.interpolation_guard,
+            submission_assignments=Mock(annotate=lambda run_dir, steps: steps),
         )
 
 

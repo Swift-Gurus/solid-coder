@@ -7,7 +7,7 @@ from code_health_check_request import CodeHealthCheckRequest
 from gate_logger import GateLogger
 from hc_checker import HealthChecking
 from hc_checker_factory import LegacyHealthCheckerFactory
-from hc_config_schema import load_config
+from solid_coder_config_loader import SolidCoderConfigLoader
 from hc_runner_factory import select_strategy
 from health_check_mode import HealthCheckMode
 from health_check_outcome import HealthCheckOutcome
@@ -37,7 +37,7 @@ class ConfiguredHealthCheckerFactory(HealthCheckerCreating[HealthCheckOutcome]):
             if request.cwd
             else _resolve_project_root().resolve()
         )
-        config = load_config(project_root)
+        config = SolidCoderConfigLoader().load(project_root)
         strategy = select_strategy(config_loader=lambda: config)
         strategy.apply_env()
         mode = config.feature_flags.health_check_mode

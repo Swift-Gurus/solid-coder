@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+from unittest.mock import Mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
@@ -92,6 +93,7 @@ class FlowStarterFactory:
             initializer=self.initializer,
             execution_and_readiness_coordinator=self.execution_and_readiness_coordinator,
             result_builder=self.result_builder,
+            submission_assignments=Mock(annotate=lambda run_dir, steps: steps),
         )
 
 
@@ -141,7 +143,7 @@ class TestFlowStarter(unittest.TestCase):
 
         result = factory.make_sut().flow_start("code_review")
 
-        self.assertIs(result, expected)
+        self.assertEqual(result, expected)
 
 
 if __name__ == "__main__":

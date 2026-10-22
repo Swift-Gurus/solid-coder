@@ -15,10 +15,10 @@ if HOOKS_DIR not in sys.path:
 
 from cleanup_pipeline_output import (
     PipelineOutputCleaner,
-    _extract_output_root,
     _is_safe_path,
     _parse_output_roots,
 )
+from pipeline_output_cleaner_test_factory import PipelineOutputCleanerTestFactory
 
 
 # ---------------------------------------------------------------------------
@@ -48,31 +48,6 @@ def _write_transcript(lines):
         f.write(line + "\n")
     f.close()
     return f.name
-
-
-# ---------------------------------------------------------------------------
-# _extract_output_root
-# ---------------------------------------------------------------------------
-
-class TestExtractOutputRoot(unittest.TestCase):
-    def test_string_content(self):
-        self.assertEqual(
-            _extract_output_root(json.dumps({"output_root": "/a/b"})),
-            "/a/b",
-        )
-
-    def test_list_content(self):
-        content = [{"type": "text", "text": json.dumps({"output_root": "/x"})}]
-        self.assertEqual(_extract_output_root(content), "/x")
-
-    def test_missing_key_returns_empty(self):
-        self.assertEqual(_extract_output_root(json.dumps({"other": "val"})), "")
-
-    def test_malformed_json_returns_empty(self):
-        self.assertEqual(_extract_output_root("not json"), "")
-
-    def test_empty_string_returns_empty(self):
-        self.assertEqual(_extract_output_root(""), "")
 
 
 # ---------------------------------------------------------------------------
@@ -137,11 +112,11 @@ class TestIsSafePath(unittest.TestCase):
 
 class TestPipelineOutputCleanerShouldHandle(unittest.TestCase):
     def test_returns_true_when_transcript_path_present(self):
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
+        c = PipelineOutputCleanerTestFactory().make(DebugOff())
         self.assertTrue(c.should_handle({"transcript_path": "/some/path.jsonl"}))
 
     def test_returns_false_when_transcript_path_absent(self):
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
+        c = PipelineOutputCleanerTestFactory().make(DebugOff())
         self.assertFalse(c.should_handle({}))
 
 
@@ -163,26 +138,26 @@ class TestPipelineOutputCleanerHandle(TempDirTestBase):
     def test_deletes_safe_path_when_debug_off(self):
         d = self._make_safe_dir()
         path = _write_transcript([_tool_result_line(d)])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
+        c = PipelineOutputCleanerTestFactory().make(DebugOff())
         c.handle({"transcript_path": path})
         self.assertFalse(Path(d).exists())
 
     def test_preserves_path_when_debug_on(self):
         d = self._make_safe_dir()
         path = _write_transcript([_tool_result_line(d)])
-        c = PipelineOutputCleaner(debug_reader=DebugOn())
+        c = PipelineOutputCleanerTestFactory().make(DebugOn())
         c.handle({"transcript_path": path})
         self.assertTrue(Path(d).exists())
         Path(d).rmdir()
 
     def test_skips_unsafe_path(self):
         path = _write_transcript([_tool_result_line("/tmp/should-not-delete")])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
+        c = PipelineOutputCleanerTestFactory().make(DebugOff())
         c.handle({"transcript_path": path})  # must not raise
 
     def test_no_op_when_no_tool_results(self):
         path = _write_transcript([json.dumps({"type": "assistant", "message": {"content": []}})])
-        c = PipelineOutputCleaner(debug_reader=DebugOff())
+        c = PipelineOutputCleanerTestFactory().make(DebugOff())
         c.handle({"transcript_path": path})  # must not raise
 
 

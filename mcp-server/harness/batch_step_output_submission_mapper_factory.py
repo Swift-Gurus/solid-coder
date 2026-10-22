@@ -28,6 +28,9 @@ from harness.ordinary_batch_output_submission_mapper import (
 )
 from harness.rejected_step_output_mapping_builder import RejectedStepOutputMappingBuilder
 from harness.successful_step_output_mapping_builder import SuccessfulStepOutputMappingBuilder
+from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.submissions.flat_submission_envelope import FlatSubmissionEnvelope
+from harness.submissions.flat_step_output_submission_mapper import FlatStepOutputSubmissionMapper
 
 
 """
@@ -39,6 +42,7 @@ solid-description: Assembles batch output-submission mapping for every supported
 class BatchStepOutputSubmissionMapperFactory:
     def make(self) -> BatchStepOutputSubmissionMapper:
         return BatchStepOutputSubmissionMapper(
+            flat_mapper=FlatStepOutputSubmissionMapper(PydanticModelDecoder(FlatSubmissionEnvelope)),
             mappers=BatchPresentationCapabilityResolver(
                 registrations=[
                     BatchPresentationCapabilityRegistration(

@@ -2,7 +2,7 @@
 number: SPEC-055
 feature: count-based-rule-workflow-migration
 type: subtask
-status: in-progress
+status: done
 parent: SPEC-036
 blocked-by: [SPEC-053]
 blocking: []
@@ -242,12 +242,34 @@ actionable retry message
 - [x] Canonical detection, exceptions, IDs, thresholds, and applicability remain
       unchanged and are covered by tests.
 - [x] Incomplete observations cannot trigger partial scoring.
-- [ ] The shared Codex/Claude harness validates every migrated rule.
-- [ ] All non-live suites and locked live rule scenarios pass after each migration.
+- [x] The shared Codex/Claude harness validates every migrated rule.
+- [x] All non-live suites and locked live rule scenarios pass after each migration.
 
 ## Implementation Status
 
-### Current status — 2026-10-19
+### Completed — 2026-10-22 UTC
+
+Every in-scope count-based rule migration is implemented and validated through
+the shared Codex/Claude harness. The final non-live checkpoint is **3,069 passed,
+4 existing skips**. Current live evidence covers SRP, OCP, LSP, Structured
+Concurrency, SwiftUI, Code Smells, Frontmatter, Unit Testing, and UI Testing.
+ISP and DRY remain owned by SPEC-057 and SPEC-056 respectively.
+
+Close-out corrected OCP and LSP live expectations that had drifted from their
+existing deterministic scenarios. LSP retains explicit unavailable observations
+where the fixture's inferred property type prevents complete contract coverage.
+A shared non-live check now catches OCP/LSP metric-contract drift. The Codex
+protocol assertion also consistently accepts recovered errors with completed
+same-session server evidence while preserving every error in the transcript
+diagnostics; failed, missing, unrelated, and unanswered calls remain tested.
+
+The [validation report](resources/RuleMigrationValidation-2026-10-22.md) records
+the initial failures, current metric contracts, full non-live groups, preserved
+artifacts, and affected-case verification. No source fixture or severity band
+was changed during this close-out. The dated checkpoints below retain earlier
+states and are superseded by this completion record.
+
+### Earlier checkpoint — 2026-10-19
 
 All in-scope count-based migrations are implemented. Keep `in-progress` for
 rule-by-rule live-validation close-out, not missing scoring mechanics. The latest

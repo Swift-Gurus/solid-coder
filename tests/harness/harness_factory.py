@@ -35,7 +35,7 @@ import hook_utils  # noqa: E402
 from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
 from hc_checker import HealthChecking  # noqa: E402
 from hc_checker_factory import LegacyHealthCheckerFactory  # noqa: E402
-from hc_config_schema import load_config  # noqa: E402
+from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
 from hc_runner_factory import select_strategy  # noqa: E402
 from patch_review_context import PatchReviewContext  # noqa: E402
 
@@ -92,7 +92,7 @@ class DirectHealthChecker(HealthChecking):
             patch_context=patch_context,
             principle_names=principle_names or [],
         )
-        config = load_config(self._project_root)
+        config = SolidCoderConfigLoader().load(self._project_root)
         strategy = select_strategy(config_loader=lambda: config)
         strategy.apply_env()
         return LegacyHealthCheckerFactory(

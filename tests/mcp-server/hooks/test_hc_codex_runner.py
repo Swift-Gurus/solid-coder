@@ -229,7 +229,7 @@ class TestMakeCodexRunner(TempDirTestBase):
             timeout=300,
             codex_home=str(self.output_dir),
         ))
-        with patch("hc_config.load_config", return_value=stub_config):
+        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config):
             runner = make_llm_runner(mcp_config=_MCP_CONFIG, allowed_tools="")
 
         self.assertIsInstance(runner, CodexRunner)

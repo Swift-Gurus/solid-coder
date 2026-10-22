@@ -9,7 +9,7 @@ sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server" / "health" / "config"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "mcp-server" / "hooks"))
 
 from _config_section_stub import ConfigSectionStub  # noqa: E402
-from hc_config_schema import load_config  # noqa: E402
+from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
 
 
 """
@@ -21,7 +21,7 @@ solid-description: Verifies the default bounded session concurrency setting.
 class TestFlowEngineParallelSessionConfigDefault(unittest.TestCase):
     def test_defaults_max_parallel_sessions_to_four(self) -> None:
         with ConfigSectionStub():
-            config = load_config()
+            config = SolidCoderConfigLoader().load()
 
         self.assertEqual(config.flow_engine.max_parallel_sessions, 4)
 

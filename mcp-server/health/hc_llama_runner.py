@@ -96,7 +96,7 @@ def make_llama_server_runner(
     Factory function — constructing and wiring concrete dependencies is this
     function's sole responsibility (OCP Factory exception).
     """
-    invoker = GatewayCommandRunner(gateway, timeout=hc_config.load_config().llm.timeout)
+    invoker = GatewayCommandRunner(gateway, timeout=hc_config.SolidCoderConfigLoader().load().llm.timeout)
     observer: Optional[LLMSessionObserving] = None
     if session_id:
         log_dir = solid_coder_project_dir() / "llm-sessions" / session_id
@@ -136,7 +136,7 @@ def make_llama_server_runner(
     orchestrator = ToolCallOrchestrator(dispatcher=dispatcher, arg_parser=arg_parser)
     thinker = ThinkingExtractor()
     loop = AgentLoopExecutor(
-        client=LlamaHttpClient(host=host, model=model, inference_params=hc_config.load_config().inference.model_dump()),
+        client=LlamaHttpClient(host=host, model=model, inference_params=hc_config.SolidCoderConfigLoader().load().inference.model_dump()),
         orchestrator=orchestrator,
         thinker=thinker,
         max_rounds=_MAX_TOOL_ROUNDS,

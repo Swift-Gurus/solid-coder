@@ -61,7 +61,7 @@ class FlowEngineApplication:
                 "properties": {
                     "outputs": {
                         "type": "object",
-                        "description": "Current output keyed by the instance ID returned by the flow.",
+                        "description": "Output object matching the submission shape returned by the current flow instruction. Use its exact assignment IDs and named-output schemas.",
                     },
                     "run_id": {
                         "type": "string",

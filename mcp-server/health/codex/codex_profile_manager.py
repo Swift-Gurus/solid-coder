@@ -77,7 +77,7 @@ class CodexProfileManager:
         codex_home: str = "",
         plugin_root: Path = _DEFAULT_PLUGIN_ROOT,
         home_resolver: Callable[[], str] = lambda: os.environ.get("CODEX_HOME", str(Path.home() / ".codex")),
-        config_loader: Callable = hc_config.load_config,
+        config_loader: Callable = hc_config.SolidCoderConfigLoader().load,
         path_builder: PathBuilding = PathBuilder(),
         writer: TextFileWriting = Utf8TextFileWriter(),
     ) -> None:

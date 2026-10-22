@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 from typing import ClassVar
@@ -45,6 +46,7 @@ solid-description: Verifies that the real write hook reviews an absent destinati
 class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
+    SUBMISSION_FORMAT: ClassVar[str] = "nested"
 
     def setUp(self) -> None:
         self.project = ReviewComparisonSourceProject.create()
@@ -55,7 +57,8 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
         configuration.parent.mkdir()
         configuration.write_text(
             'code_review_on_write_enabled = true\n'
-            '[feature_flags]\nhealth_check_mode = "workflow"\n',
+            '[feature_flags]\nhealth_check_mode = "workflow"\n'
+            f'flow_submission_format = "{self.SUBMISSION_FORMAT}"\n',
             encoding="utf-8",
         )
         self.profile = ModelProfileLoader(
@@ -107,6 +110,7 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
             (self.artifacts / "hook-stdout.json").open("w") as stdout,
             (self.artifacts / "hook-stderr.log").open("w") as stderr,
         ):
+            started_at = time.perf_counter()
             try:
                 completed = subprocess.run(
                     [sys.executable, str(_PROJECT_ROOT / "mcp-server/hooks/pre_write_gate.py")],
@@ -120,6 +124,9 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
                     check=False,
                 )
             finally:
+                (self.artifacts / "hook-elapsed-seconds.txt").write_text(
+                    str(time.perf_counter() - started_at), encoding="utf-8",
+                )
                 if self.audit.exists():
                     shutil.copytree(self.audit, self.artifacts / "audit")
 
@@ -144,6 +151,10 @@ class SolidGateOnWriteE2ELiveBase(LiveTestBase, unittest.TestCase):
         event_paths = list((self.audit / "runs" / "subagents").glob("*/events.jsonl"))
         self.assertEqual(len(event_paths), 1, f"Unexpected gate runs: {event_paths}")
         events_path = event_paths[0]
+        metadata = json.loads((events_path.parent / "run-metadata.json").read_text())
+        self.assertEqual(metadata["submission_format"], self.SUBMISSION_FORMAT)
+        if self.SUBMISSION_FORMAT == "flat_array":
+            self.assertTrue(metadata["submission_targets"])
         self.assertEqual(
             events_path.read_bytes(),
             (self.artifacts / "audit" / events_path.relative_to(self.audit)).read_bytes(),

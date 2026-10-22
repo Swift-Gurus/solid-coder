@@ -29,11 +29,11 @@ class DefaultExclusionCheckerFactory(ExclusionPolicyCreating):
         if project_root is None:
             import hc_config as health_config
 
-            config = health_config.load_config()
+            config = health_config.SolidCoderConfigLoader().load()
         else:
-            from health.config.hc_config_schema import load_config
+            from health.config.solid_coder_config_loader import SolidCoderConfigLoader
 
-            config = load_config(cwd=project_root)
+            config = SolidCoderConfigLoader().load(cwd=project_root)
 
         return GateExclusionChecker(
             patterns=config.hook_exclude("pre_write_gate"),
