@@ -3,6 +3,7 @@ solid-category: unit-test
 """
 
 import unittest
+
 from helpers import make_handler
 
 
@@ -17,7 +18,10 @@ class TestLoadFixInstructions(unittest.TestCase):
 
     def test_known_metric_id_result_has_no_yaml_frontmatter(self):
         result = self.handler.load_fix_instructions("SRP-1")
-        self.assertFalse(result.startswith("---"), "Result must not start with YAML frontmatter delimiter")
+        self.assertFalse(
+            result.startswith("---"),
+            "Result must not start with YAML frontmatter delimiter",
+        )
 
     def test_known_metric_id_result_contains_metric_id_in_header(self):
         result = self.handler.load_fix_instructions("SRP-1")
@@ -30,7 +34,10 @@ class TestLoadFixInstructions(unittest.TestCase):
 
     def test_unknown_metric_id_result_does_not_start_with_hash(self):
         result = self.handler.load_fix_instructions("UNKNOWN-99")
-        self.assertFalse(result.startswith("# "), "Error response must not start with a markdown header")
+        self.assertFalse(
+            result.startswith("# "),
+            "Error response must not start with a markdown header",
+        )
 
 
 if __name__ == "__main__":

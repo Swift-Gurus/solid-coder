@@ -3,12 +3,13 @@
 from gateway_arguments import GatewayArguments
 from gateway_arguments_normalizing import GatewayArgumentsNormalizing
 
-
 """
 solid-name: SearchGatewayArgumentsNormalizer
 solid-category: boundary-adapter
 solid-description: Applies search-command compatibility rules to parsed gateway arguments.
 """
+
+
 class SearchGatewayArgumentsNormalizer(GatewayArgumentsNormalizing):
     def normalize(self, arguments: GatewayArguments) -> GatewayArguments:
         if arguments.tool_name != "search_codebase":

@@ -6,15 +6,15 @@ from harness.resolved_step_resources_applying import ResolvedStepResourcesApplyi
 from harness.resolved_step_resources_creating import ResolvedStepResourcesCreating
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: ResolvedOutputsApplier
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Applies resolved outputs to a workflow-step declaration.
 """
-class ResolvedOutputsApplier(ResolvedOutputsApplying):
 
+
+class ResolvedOutputsApplier(ResolvedOutputsApplying):
     def __init__(
         self,
         resources_factory: ResolvedStepResourcesCreating,

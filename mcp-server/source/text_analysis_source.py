@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Optional, TypeVar
+from typing import TYPE_CHECKING, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -18,13 +18,15 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Carries source text and optional path or exact extension identity for deterministic analysis.
 """
+
+
 class TextAnalysisSource(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: Literal["text"] = "text"
     text: str
-    virtual_path: Optional[str] = None
-    file_extension: Optional[str] = None
+    virtual_path: str | None = None
+    file_extension: str | None = None
 
     def accept(
         self,

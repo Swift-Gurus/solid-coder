@@ -6,7 +6,8 @@ solid-tags: [hook]
 
 import re
 from pathlib import Path
-from typing import Optional
+
+from logging_protocol import Logging
 
 
 class BashReadGate:
@@ -17,9 +18,22 @@ class BashReadGate:
     """
 
     _SOURCE_EXTENSIONS = (
-        ".py", ".swift", ".kt", ".java", ".js", ".ts",
-        ".json", ".md", ".toml", ".yaml", ".yml", ".sh",
+        ".py",
+        ".swift",
+        ".kt",
+        ".java",
+        ".js",
+        ".ts",
+        ".json",
+        ".md",
+        ".toml",
+        ".yaml",
+        ".yml",
+        ".sh",
     )
+
+    def __init__(self, logger: Logging) -> None:
+        self._logger = logger
 
     def _looks_like_source_file(self, command: str) -> bool:
         if not any(ext in command for ext in self._SOURCE_EXTENSIONS):
@@ -34,8 +48,11 @@ class BashReadGate:
                 resolved = Path(token).resolve()
                 if not str(resolved).startswith(str(project_root)):
                     return False  # outside the project — allow
-            except Exception:
-                pass  # malformed path → treat as project file to be safe
+            except Exception as exc:  # noqa: BLE001 — Disabled legacy source-read gate retains its logged resolution fallback for re-enabling.
+                self._logger.log(
+                    f"Failed to resolve Bash source path: path={token}; treating as project file; "
+                    f"{type(exc).__name__}: {exc}"
+                )
         return True
 
     def _is_heredoc(self, command: str) -> bool:
@@ -47,7 +64,7 @@ class BashReadGate:
     def _is_pipeline_target(self, command: str, cmd_name: str) -> bool:
         return bool(re.search(rf"\|\s*{cmd_name}\b", command))
 
-    def check(self, command: str) -> Optional[str]:
+    def check(self, command: str) -> str | None:
         """Return the read-command name if it reads a source file, else None."""
         if not self._looks_like_source_file(command):
             return None

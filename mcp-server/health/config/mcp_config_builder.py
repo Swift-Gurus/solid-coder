@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
@@ -18,13 +19,14 @@ for _d in (_MCP_DIR, _MODULE_DIR):
 from json_serializer import JsonSerializing
 from mcp_config_profile import McpConfigProfile
 
-
 """
 solid-name: McpConfigBuilder
 solid-category: boundary
 solid-spec: [SPEC-014, SPEC-036]
 solid-description: Provides the selected MCP capability configuration for an isolated model session.
 """
+
+
 class McpConfigBuilder:
     def __init__(
         self,
@@ -65,10 +67,7 @@ class McpConfigBuilder:
                     "command": self._executable,
                     "args": [
                         str(
-                            self._project_root
-                            / "mcp-server"
-                            / "pipeline"
-                            / "server.py"
+                            self._project_root / "mcp-server" / "pipeline" / "server.py"
                         )
                     ],
                 },

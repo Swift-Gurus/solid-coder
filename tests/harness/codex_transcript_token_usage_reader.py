@@ -2,11 +2,9 @@
 
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from codex_token_usage import CodexTokenUsage
 from codex_transcript_token_event import CodexTranscriptTokenEvent
-
+from pydantic import ValidationError
 
 """
 solid-name: CodexTranscriptTokenUsageReader
@@ -14,6 +12,8 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Returns the final cumulative token event from a preserved rollout while making absent usage explicit.
 """
+
+
 class CodexTranscriptTokenUsageReader:
     def read(self, transcript: Path) -> CodexTokenUsage:
         latest = CodexTokenUsage.unavailable()

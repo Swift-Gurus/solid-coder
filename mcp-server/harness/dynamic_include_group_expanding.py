@@ -7,13 +7,14 @@ from harness.include_group_tree_materialization import IncludeGroupTreeMateriali
 from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: DynamicIncludeGroupExpanding
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for recursively materializing one dynamic include-group root and its owned descendants.
 """
+
+
 class DynamicIncludeGroupExpanding(Protocol):
     def expand(
         self,

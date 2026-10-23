@@ -11,7 +11,6 @@ from harness.step_instance_execution import StepInstanceExecution
 from harness.step_run_outcome import StepRunOutcome
 from harness.step_submission_validator_resolving import StepSubmissionValidatorResolving
 
-
 _ENGINE_SESSION_ID = "engine"
 
 
@@ -21,6 +20,8 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Advances engine-owned workflow-step batches through validation, durable completion, and instance failure handling.
 """
+
+
 class StepExecutionBatchAdvancer(StepExecutionBatchAdvancing):
     def __init__(
         self,

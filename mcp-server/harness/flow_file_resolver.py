@@ -7,14 +7,11 @@ solid-description: Resolves a flow identifier to its file path, returning the or
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from harness.path_checking import PathChecking
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 
 
 class FlowFileResolver:
-
     def __init__(
         self,
         path_checker: PathChecking,

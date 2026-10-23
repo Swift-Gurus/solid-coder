@@ -17,13 +17,12 @@ from harness.included_workflow_steps_resolving import IncludedWorkflowStepsResol
 from harness.materialized_workflow_instances_collecting import (
     MaterializedWorkflowInstancesCollecting,
 )
-from harness.models import FlowDef, RunState, StepDef
+from harness.models import FlowDef, RunState
 from harness.owned_include_dependencies_rebasing import (
     OwnedIncludeDependenciesRebasing,
 )
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
-
 
 """
 solid-name: RecursiveDynamicIncludeGroupMaterializer
@@ -31,9 +30,9 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Materializes one dynamic include group and recursively expands descendants for each parent instance.
 """
-class RecursiveDynamicIncludeGroupMaterializer(
-    DynamicIncludeGroupMaterializing
-):
+
+
+class RecursiveDynamicIncludeGroupMaterializer(DynamicIncludeGroupMaterializing):
     def __init__(
         self,
         readiness_checker: IncludeGroupReadinessChecking,

@@ -12,13 +12,14 @@ from harness.condition_serializing import ConditionSerializing
 from harness.condition_variant_serializing import ConditionVariantSerializing
 from harness.not_condition import NotCondition
 
-
 """
 solid-name: ConditionSerializer
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Routes typed workflow conditions to their durable serializers.
 """
+
+
 class ConditionSerializer(ConditionSerializing):
     def __init__(
         self,

@@ -7,17 +7,18 @@ solid-tags: [hook]
 
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Protocol
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 for _d in (_MCP_DIR, _MCP_DIR / "session"):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_decision import HookDecision  # noqa: E402
-from hook_handling import HookHandling  # noqa: E402
-from session_registry import validate_session_stop  # noqa: E402
+from hook_decision import HookDecision
+from hook_handling import HookHandling
+from session_registry import validate_session_stop
 
 
 class SessionStopApplicabilityChecking(Protocol):
@@ -51,10 +52,21 @@ class SessionStopValidator(SessionStopValidating):
     def validate(self, event: dict) -> HookDecision:
         transcript_path = event.get("transcript_path") or None
         cwd = event.get("cwd") or self._cwd_provider()
-        result = self._validate(session_id=event["session_id"], transcript_path=transcript_path, cwd=cwd)
+        result = self._validate(
+            session_id=event["session_id"], transcript_path=transcript_path, cwd=cwd
+        )
         if not result.get("allow", True):
-            return HookDecision(allow=False, reason=result.get("reason", "Required MCP tools were not called."))
+            return HookDecision(
+                allow=False,
+                reason=result.get("reason", "Required MCP tools were not called."),
+            )
         return HookDecision(allow=True)
+
+
+_DEFAULT_APPLICABILITY: SessionStopApplicabilityChecking = (
+    SessionStopApplicabilityChecker()
+)
+_DEFAULT_VALIDATOR: SessionStopValidating = SessionStopValidator()
 
 
 class SessionValidationHandler(HookHandling):
@@ -62,8 +74,8 @@ class SessionValidationHandler(HookHandling):
 
     def __init__(
         self,
-        applicability: SessionStopApplicabilityChecking = SessionStopApplicabilityChecker(),
-        validator: SessionStopValidating = SessionStopValidator(),
+        applicability: SessionStopApplicabilityChecking = _DEFAULT_APPLICABILITY,
+        validator: SessionStopValidating = _DEFAULT_VALIDATOR,
     ) -> None:
         self._applicability = applicability
         self._validator = validator

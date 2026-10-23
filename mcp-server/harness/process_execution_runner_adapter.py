@@ -7,13 +7,14 @@ from harness.process_execution_running import ProcessExecutionRunning
 from harness.script_execution_result import ScriptExecutionResult
 from subprocess_running import SubprocessRunning
 
-
 """
 solid-name: ProcessExecutionRunnerAdapter
 solid-category: adapter
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Runs typed workflow process requests through the established subprocess execution boundary.
 """
+
+
 class ProcessExecutionRunnerAdapter(ProcessExecutionRunning):
     def __init__(self, runner: SubprocessRunning) -> None:
         self._runner = runner

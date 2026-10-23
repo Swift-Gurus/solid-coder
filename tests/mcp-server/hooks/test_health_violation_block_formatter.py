@@ -5,17 +5,15 @@ from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from health_violation import HealthViolation  # noqa: E402
-from health_violation_block_formatter import (  # noqa: E402
+from health_violation import HealthViolation
+from health_violation_block_formatter import (
     HealthViolationBlockFormatter,
 )
-
 
 """
 solid-name: TestHealthViolationBlockFormatter
@@ -23,6 +21,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036]
 solid-description: Proves typed gate violations render correction guidance without exposing audit evidence or removing it from the finding.
 """
+
+
 class TestHealthViolationBlockFormatter(unittest.TestCase):
     def test_formats_correction_guidance_without_audit_evidence(self) -> None:
         violation = HealthViolation(

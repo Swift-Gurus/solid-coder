@@ -2,10 +2,11 @@
 
 from unittest import TestCase
 
-from tree_sitter import Language, Parser
 import tree_sitter_swift
-
-from source.analysis.provenance.swift_value_reference_position_parser import SwiftValueReferencePositionParser
+from source.analysis.provenance.swift_value_reference_position_parser import (
+    SwiftValueReferencePositionParser,
+)
+from tree_sitter import Language, Parser
 
 
 class TestSwiftValueReferencePositionParser(TestCase):
@@ -22,11 +23,17 @@ class TestSwiftValueReferencePositionParser(TestCase):
         ]:
             with self.subTest(source=source):
                 node = syntax.parse(source.encode()).root_node.named_children[0]
-                self.assertEqual(parser.parse(node), source.encode().rindex(identifier.encode()))
+                self.assertEqual(
+                    parser.parse(node), source.encode().rindex(identifier.encode())
+                )
 
     def test_compound_non_call_operands_remain_unresolved(self):
         parser = SwiftValueReferencePositionParser()
         syntax = Parser(Language(tree_sitter_swift.language()))
         for source in ["left + right", "(left, right)", "42", "provider.value"]:
             with self.subTest(source=source):
-                self.assertIsNone(parser.parse(syntax.parse(source.encode()).root_node.named_children[0]))
+                self.assertIsNone(
+                    parser.parse(
+                        syntax.parse(source.encode()).root_node.named_children[0]
+                    )
+                )

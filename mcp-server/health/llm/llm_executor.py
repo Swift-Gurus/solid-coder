@@ -3,8 +3,10 @@ solid-description: Invokes the LLM session and returns the raw result, logging a
 solid-category: service
 solid-tags: [hook, llm]
 """
+
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
@@ -12,27 +14,31 @@ for _d in (_MCP_DIR, _MODULE_DIR):
         sys.path.insert(0, str(_d))
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
-from hook_utils import Logging
 from claude_runner import ClaudeRunning
+from hook_utils import Logging
 
 
 class LLMExecuting(Protocol):
-    def execute(self, prompt: str, path: str) -> Optional[str]: ...
+    def execute(self, prompt: str, path: str) -> str | None: ...
 
 
 class LLMExecutor:
     """Invokes the LLM session and returns the raw result. Logs and re-raises on exception."""
 
-    def __init__(self, runner: ClaudeRunning, logger: Logging, timeout: int = 300) -> None:
+    def __init__(
+        self, runner: ClaudeRunning, logger: Logging, timeout: int = 300
+    ) -> None:
         self._runner = runner
         self._logger = logger
         self._timeout = timeout
 
-    def execute(self, prompt: str, path: str) -> Optional[str]:
+    def execute(self, prompt: str, path: str) -> str | None:
         try:
             return self._runner.run(prompt, timeout=self._timeout)
         except Exception as exc:
-            self._logger.log(f"HEALTH_ERR {Path(path).name}: {type(exc).__name__}: {exc}")
+            self._logger.log(
+                f"HEALTH_ERR {Path(path).name}: {type(exc).__name__}: {exc}"
+            )
             raise

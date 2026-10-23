@@ -2,12 +2,13 @@
 
 from rules.schema_minimal_value_resolving import SchemaMinimalValueResolving
 
-
 """
 solid-name: SchemaMinimalValueResolver
 solid-category: service
 solid-description: Resolves recursive JSON Schema value declarations into deterministic minimal example values.
 """
+
+
 class SchemaMinimalValueResolver(SchemaMinimalValueResolving):
     def resolve(self, schema: dict):
         value_type = schema.get("type", "string")

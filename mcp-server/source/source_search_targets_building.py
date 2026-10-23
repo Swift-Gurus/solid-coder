@@ -6,13 +6,14 @@ from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.source_analysis import SourceAnalysis
 from source.source_search_target import SourceSearchTarget
 
-
 """
 solid-name: SourceSearchTargetsBuilding
 solid-category: abstraction
 solid-spec: [SPEC-040]
 solid-description: Contract for one file-or-unit source-search target construction policy.
 """
+
+
 class SourceSearchTargetsBuilding(Protocol):
     def build(
         self,

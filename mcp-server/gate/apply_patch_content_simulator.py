@@ -4,13 +4,14 @@ from patch_entry_selecting import PatchEntrySelecting
 from patch_entry_simulating import PatchEntrySimulating
 from patch_file_simulation import PatchFileSimulation
 
-
 """
 solid-name: ApplyPatchContentSimulator
 solid-category: service
 solid-description: Coordinates prospective content simulation for every file in one apply-patch request.
 solid-tags: [hook]
 """
+
+
 class ApplyPatchContentSimulator:
     def __init__(
         self,

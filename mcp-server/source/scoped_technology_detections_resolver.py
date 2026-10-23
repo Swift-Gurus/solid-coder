@@ -5,13 +5,14 @@ from source.technology_detections_resolving import (
     TechnologyDetectionsResolving,
 )
 
-
 """
 solid-name: ScopedTechnologyDetectionsResolver
 solid-category: service
 solid-spec: [SPEC-040, SPEC-041]
 solid-description: Retains ordered technology evidence whose recorded scope belongs to an accepted source identity.
 """
+
+
 class ScopedTechnologyDetectionsResolver(TechnologyDetectionsResolving):
     def resolve(
         self,

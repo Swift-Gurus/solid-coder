@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Merge heuristic.json, skeleton.json, and cohesion.json into scope-assessment.json.
 
 Usage:
@@ -7,6 +6,7 @@ Usage:
 Reads the three measurement JSONs from <output-dir> and writes scope-assessment.json
 to the same directory. Pure deterministic logic — no LLM, no judgment.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -84,13 +84,17 @@ def synthesize(heuristic: dict, skeleton: dict, cohesion: dict) -> dict:
     # Candidate subtasks
     candidate_subtasks: list[dict] = []
     if driver == "cohesion" and cohesion_group_count > 0:
-        per_group_loc = consensus_loc // cohesion_group_count if cohesion_group_count else 0
+        per_group_loc = (
+            consensus_loc // cohesion_group_count if cohesion_group_count else 0
+        )
         for group in cohesion_groups:
-            candidate_subtasks.append({
-                "title": group.get("label", "Unlabelled group"),
-                "acs": group.get("acs", []),
-                "estimated_size_band": estimated_size_band(per_group_loc),
-            })
+            candidate_subtasks.append(
+                {
+                    "title": group.get("label", "Unlabelled group"),
+                    "acs": group.get("acs", []),
+                    "estimated_size_band": estimated_size_band(per_group_loc),
+                }
+            )
     # driver == "size" or "none" → empty candidate_subtasks
 
     return {

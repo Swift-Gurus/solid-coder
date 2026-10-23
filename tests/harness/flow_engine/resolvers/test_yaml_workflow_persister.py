@@ -15,16 +15,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
-from harness.workflow_expression import WorkflowExpression
 from harness.flow_def import FlowDef
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.include_alias_group import IncludeAliasGroup
 from harness.step_def import StepDef
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_persister_factory import WorkflowPersisterFactory
 
 
 class TestYamlWorkflowPersister(unittest.TestCase):
-
     def test_persists_workflow_and_step_conditions_using_public_when_grammar(self):
         workflow_condition = ComparisonCondition(
             reference=WorkflowExpression(value="params.enabled"),
@@ -32,9 +31,7 @@ class TestYamlWorkflowPersister(unittest.TestCase):
             expected=True,
         )
         step_condition = ComparisonCondition(
-            reference=WorkflowExpression(
-                value="steps.inspect.outputs.language"
-            ),
+            reference=WorkflowExpression(value="steps.inspect.outputs.language"),
             operator=ConditionOperator.EQUALS,
             expected="swift",
         )
@@ -64,9 +61,13 @@ class TestYamlWorkflowPersister(unittest.TestCase):
             WorkflowPersisterFactory().make().persist(run_directory, flow)
             workflow_path = run_directory / "workflow.yaml"
             snapshot = yaml.safe_load(workflow_path.read_text())
-            reloaded = FlowEngineAssemblyFactory().build().flow_loader.load(
-                str(workflow_path),
-                [],
+            reloaded = (
+                FlowEngineAssemblyFactory()
+                .build()
+                .flow_loader.load(
+                    str(workflow_path),
+                    [],
+                )
             )
 
         self.assertEqual(

@@ -13,13 +13,14 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
 
-
 """
 solid-name: TestCodebaseSearchSummary
 solid-category: unit-test
 solid-spec: [SPEC-040]
 solid-description: Verifies search scan totals remain distinct from matched units, eligibility thresholds, and candidate limits.
 """
+
+
 class TestCodebaseSearchSummary(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -46,11 +47,14 @@ class TestCodebaseSearchSummary(unittest.TestCase):
     def test_scan_summary_includes_documented_files_that_do_not_match(self) -> None:
         result = self.searcher.search_raw(sources_dir=str(self.root), tags=["alpha"])
 
-        self.assertEqual(result["summary"], {
-            "total_files_scanned": 3,
-            "files_with_frontmatter": 2,
-            "files_matched": 1,
-        })
+        self.assertEqual(
+            result["summary"],
+            {
+                "total_files_scanned": 3,
+                "files_with_frontmatter": 2,
+                "files_matched": 1,
+            },
+        )
 
     def test_no_matches_preserves_scan_summary(self) -> None:
         result = self.searcher.search_raw(sources_dir=str(self.root), tags=["absent"])
@@ -60,16 +64,22 @@ class TestCodebaseSearchSummary(unittest.TestCase):
 
     def test_threshold_filter_does_not_change_scan_summary(self) -> None:
         result = self.searcher.search_raw(
-            sources_dir=str(self.root), tags=["shared"], min_matches=2,
+            sources_dir=str(self.root),
+            tags=["shared"],
+            min_matches=2,
         )
 
         self.assertEqual(result["matches"], [])
         self.assertEqual(result["summary"]["files_with_frontmatter"], 2)
 
     def test_multiple_matching_units_count_as_one_matched_file(self) -> None:
-        result = self.searcher.search_raw(sources_dir=str(self.root), tags=["alpha", "beta"])
+        result = self.searcher.search_raw(
+            sources_dir=str(self.root), tags=["alpha", "beta"]
+        )
 
-        self.assertEqual([match["unit"] for match in result["matches"]], ["Alpha", "Beta"])
+        self.assertEqual(
+            [match["unit"] for match in result["matches"]], ["Alpha", "Beta"]
+        )
         self.assertEqual(result["summary"]["files_matched"], 1)
 
     def test_candidate_limit_does_not_change_scan_summary(self) -> None:
@@ -77,10 +87,12 @@ class TestCodebaseSearchSummary(unittest.TestCase):
             ProjectDirectory(path=self.root),
         )
 
-        result = operation.execute(SourceSearchInput(
-            queries=[SourceSearchQuery(id="shared", terms=["shared"])],
-            max_candidates=1,
-        ))
+        result = operation.execute(
+            SourceSearchInput(
+                queries=[SourceSearchQuery(id="shared", terms=["shared"])],
+                max_candidates=1,
+            )
+        )
 
         self.assertEqual(len(result.candidates), 1)
         self.assertEqual(result.files_scanned, 3)

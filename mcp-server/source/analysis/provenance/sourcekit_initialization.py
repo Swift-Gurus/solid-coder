@@ -4,13 +4,14 @@ from typing import Literal
 
 from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SourceKitInitialization
 solid-category: model
 solid-spec: [SPEC-064]
 solid-description: Records the negotiated semantic position encoding.
 """
+
+
 class SourceKitInitialization(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

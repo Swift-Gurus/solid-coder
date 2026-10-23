@@ -4,12 +4,11 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
-from hook_utils import GateHandling
 from coordinator_running import CoordinatorRunning
+from hook_utils import GateHandling
 from patch_review_context import PatchReviewContext
-
 
 """
 solid-name: CoordinatorMaking
@@ -17,9 +16,11 @@ solid-description: Contract for constructing a write coordinator with its prospe
 solid-category: abstraction
 solid-tags: [hook]
 """
+
+
 class CoordinatorMaking(Protocol):
     def make_coordinator(
         self,
         gate: GateHandling,
-        patch_context: Optional[PatchReviewContext] = None,
+        patch_context: PatchReviewContext | None = None,
     ) -> CoordinatorRunning: ...

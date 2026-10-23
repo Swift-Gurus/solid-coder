@@ -15,13 +15,14 @@ from harness.workflow_publication_state_resolver import (
 from harness.workflow_result_envelope_builder import WorkflowResultEnvelopeBuilder
 from harness.workflow_results_context_builder import WorkflowResultsContextBuilder
 
-
 """
 solid-name: WorkflowResultsContextBuilderFactory
 solid-category: factory
 solid-spec: [SPEC-037]
 solid-description: Assembles workflow-results context construction with terminal-state and output-validation collaborators.
 """
+
+
 class WorkflowResultsContextBuilderFactory:
     def make(
         self,

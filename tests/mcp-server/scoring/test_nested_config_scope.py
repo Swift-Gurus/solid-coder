@@ -6,7 +6,6 @@ from pathlib import Path
 
 from project_root_test_context import ProjectRootTestContext
 
-
 _CONTEXT = ProjectRootTestContext(Path(__file__).resolve().parents[3] / "references")
 
 
@@ -15,6 +14,8 @@ solid-name: NestedConfigScopeTests
 solid-category: unit-test
 solid-description: Verifies nested configuration applies only within its containing directory.
 """
+
+
 class NestedConfigScopeTests(unittest.TestCase):
     def test_nested_config_applies_only_to_files_in_subdirectory(self):
         scorer = _CONTEXT.make_scorer()

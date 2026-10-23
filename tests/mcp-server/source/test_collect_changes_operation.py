@@ -9,12 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.source_change_kind import SourceChangeKind
 from source.source_operation_error import SourceOperationError
-from git_working_tree_fixture import GitWorkingTreeFixture
-
 
 """
 solid-name: TestCollectChangesOperation
@@ -22,6 +21,8 @@ solid-category: unit-test
 solid-spec: [SPEC-040]
 solid-description: Validates deterministic typed Git working-tree change collection.
 """
+
+
 class TestCollectChangesOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -47,8 +48,10 @@ class TestCollectChangesOperation(unittest.TestCase):
         )
         self.git.write("Untracked.swift", "first\nsecond\n")
 
-        result = CollectChangesOperationFactory().make().execute(
-            CollectChangesInput(project_root=str(self.project_root))
+        result = (
+            CollectChangesOperationFactory()
+            .make()
+            .execute(CollectChangesInput(project_root=str(self.project_root)))
         )
 
         self.assertEqual(
@@ -60,10 +63,18 @@ class TestCollectChangesOperation(unittest.TestCase):
                 "Untracked.swift",
             ],
         )
-        deleted = next(change for change in result.files if change.path == "Deleted.swift")
-        modified = next(change for change in result.files if change.path == "Modified.swift")
-        renamed = next(change for change in result.files if change.path == "Renamed.swift")
-        untracked = next(change for change in result.files if change.path == "Untracked.swift")
+        deleted = next(
+            change for change in result.files if change.path == "Deleted.swift"
+        )
+        modified = next(
+            change for change in result.files if change.path == "Modified.swift"
+        )
+        renamed = next(
+            change for change in result.files if change.path == "Renamed.swift"
+        )
+        untracked = next(
+            change for change in result.files if change.path == "Untracked.swift"
+        )
         self.assertEqual(deleted.kind, SourceChangeKind.DELETED)
         self.assertEqual(modified.kind, SourceChangeKind.MODIFIED)
         self.assertEqual(modified.added_ranges[0].start, 3)
@@ -77,8 +88,10 @@ class TestCollectChangesOperation(unittest.TestCase):
         self.assertEqual(untracked.added_ranges[0].end, 2)
 
     def test_clean_repository_returns_an_empty_typed_collection(self) -> None:
-        result = CollectChangesOperationFactory().make().execute(
-            CollectChangesInput(project_root=str(self.project_root))
+        result = (
+            CollectChangesOperationFactory()
+            .make()
+            .execute(CollectChangesInput(project_root=str(self.project_root)))
         )
 
         self.assertEqual(result.files, [])
@@ -107,6 +120,7 @@ class TestCollectChangesOperation(unittest.TestCase):
 
         self.assertIn(str(non_repository), str(raised.exception))
         self.assertIn("collecting tracked additions", str(raised.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from codex_token_usage import CodexTokenUsage
 from codex_transcript_prompt_event import CodexTranscriptPromptEvent
 from codex_transcript_timestamped_token_event import (
@@ -15,8 +13,8 @@ from codex_transcript_timestamped_token_event import (
 from codex_transcript_tool_completion_event import (
     CodexTranscriptToolCompletionEvent,
 )
+from pydantic import ValidationError
 from review_comparison_stage_evidence import ReviewComparisonStageEvidence
-
 
 """
 solid-name: CodexReviewStageEvidenceReader
@@ -24,8 +22,9 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Measures a Codex review stage between its executed prompt and successful terminal MCP operation using cumulative transcript usage.
 """
-class CodexReviewStageEvidenceReader:
 
+
+class CodexReviewStageEvidenceReader:
     def read(
         self,
         transcript: Path,

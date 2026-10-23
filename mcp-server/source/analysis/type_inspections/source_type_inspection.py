@@ -1,11 +1,11 @@
 """Auditable source-local type-inspection facts."""
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from source.analysis.type_inspections.source_type_inspection_kind import SourceTypeInspectionKind
+from source.analysis.type_inspections.source_type_inspection_kind import (
+    SourceTypeInspectionKind,
+)
 from source.source_byte_range import SourceByteRange
 from source.source_line_range import SourceLineRange
-
 
 """
 solid-name: SourceTypeInspection
@@ -13,6 +13,8 @@ solid-category: model
 solid-spec: [SPEC-063]
 solid-description: Provides an auditable record of a source-local type inspection for deterministic analysis and review.
 """
+
+
 class SourceTypeInspection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

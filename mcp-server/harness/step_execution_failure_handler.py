@@ -12,13 +12,14 @@ from harness.script_failure_attributing import ScriptFailureAttributing
 from harness.step_execution_failure_handling import StepExecutionFailureHandling
 from harness.step_instance_execution import StepInstanceExecution
 
-
 """
 solid-name: StepExecutionFailureHandler
 solid-category: service
 solid-spec: [SPEC-010, SPEC-027]
 solid-description: Attributes failed workflow executions and delegates attempt-state handling to the configured policy.
 """
+
+
 class StepExecutionFailureHandler(StepExecutionFailureHandling):
     def __init__(
         self,
@@ -49,15 +50,10 @@ class StepExecutionFailureHandler(StepExecutionFailureHandling):
                 AttemptFailure(
                     step_id=target_step_id,
                     reason=(
-                        failure.outcome.rejection_reason
-                        or "Step produced no outputs"
+                        failure.outcome.rejection_reason or "Step produced no outputs"
                     ),
                     reopen=reopen,
-                    attempt_id=(
-                        failure.instance.instance_id
-                        if not reopen
-                        else None
-                    ),
+                    attempt_id=(failure.instance.instance_id if not reopen else None),
                 )
                 for failure in failures
             ],

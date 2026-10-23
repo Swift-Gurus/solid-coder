@@ -7,13 +7,14 @@ from typing import Protocol
 from harness.collection_metric_reducer import CollectionMetricReducer
 from harness.metric_value_type import MetricValueType
 
-
 """
 solid-name: CollectionMetricReducerDecoding
 solid-category: abstraction
 solid-spec: [SPEC-054]
 solid-description: Contract for decoding a collection reducer from workflow input.
 """
+
+
 class CollectionMetricReducerDecoding(Protocol):
     def decode(
         self,

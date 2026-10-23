@@ -9,17 +9,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.comparison_condition import ComparisonCondition
 from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.collection_metric_reducer import CollectionMetricReducer
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
+from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
 from harness.include_alias_group import IncludeAliasGroup
-from harness.included_workflow_dependencies_resolver import (
-    IncludedWorkflowDependenciesResolver,
-)
 from harness.included_metric_calculation_resolver import (
     IncludedMetricCalculationResolver,
+)
+from harness.included_workflow_dependencies_resolver import (
+    IncludedWorkflowDependenciesResolver,
 )
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
@@ -31,9 +31,9 @@ from harness.included_workflow_steps_resolver import IncludedWorkflowStepsResolv
 from harness.models import StepDef
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_output_reference import StepOutputReference
-from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_run_context import WorkflowRunContext
 
 
@@ -60,8 +60,9 @@ solid-category: unit-test
 solid-spec: [SPEC-037]
 solid-description: Verifies that every materialized child step retains its owning workflow instance and source-item association.
 """
-class TestIncludedWorkflowStepsResolver(unittest.TestCase):
 
+
+class TestIncludedWorkflowStepsResolver(unittest.TestCase):
     def test_associates_each_child_step_with_its_source_item(self) -> None:
         sut = IncludedWorkflowStepsResolver(
             input_resolver=StubInputResolver(),
@@ -129,7 +130,9 @@ class TestIncludedWorkflowStepsResolver(unittest.TestCase):
             [step.workflow_instance for step in steps],
             [expected_instance, expected_instance],
         )
-        self.assertEqual([step.id for step in steps], ["review-2.inspect", "review-2.report"])
+        self.assertEqual(
+            [step.id for step in steps], ["review-2.inspect", "review-2.report"]
+        )
         self.assertEqual(steps[1].depends_on, ["review-2.inspect"])
         self.assertEqual(
             [step.prompt for step in steps],

@@ -3,9 +3,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
 from review_comparison_stage_evidence import ReviewComparisonStageEvidence
-
 
 """
 solid-name: ReviewComparisonRunEvidence
@@ -13,6 +11,8 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Records identity, accuracy inputs, performance, usage, and completion evidence for one comparable review run.
 """
+
+
 class ReviewComparisonRunEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

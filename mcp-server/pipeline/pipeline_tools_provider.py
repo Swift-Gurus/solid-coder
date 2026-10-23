@@ -2,12 +2,13 @@
 
 from pipeline.pipeline_tool_callables_creating import PipelineToolCallablesCreating
 
-
 """
 solid-name: PipelineToolsProvider
 solid-category: service
 solid-description: Provides configured pipeline callables to command-line clients.
 """
+
+
 class PipelineToolsProvider:
     def __init__(self, callables_factory: PipelineToolCallablesCreating) -> None:
         self._callables_factory = callables_factory

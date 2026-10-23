@@ -5,13 +5,14 @@ from enum import Enum
 
 from harness.step_instance import StepInstance
 
-
 """
 solid-name: AggregateDeferralReason
 solid-category: model
 solid-spec: [SPEC-067]
 solid-description: Identifies the actual planning or materialization boundary keeping work out of an aggregate phase.
 """
+
+
 class AggregateDeferralReason(str, Enum):
     WORKFLOW_BOUNDARY = "workflow_boundary"
     EXECUTION_POLICY = "execution_policy"
@@ -28,6 +29,8 @@ solid-category: model
 solid-spec: [SPEC-067]
 solid-description: Records a deferred original step, its effective scope, and the unresolved dependencies or binding error.
 """
+
+
 @dataclass(frozen=True)
 class AggregatePhaseDeferral:
     step_id: str
@@ -43,6 +46,8 @@ solid-category: model
 solid-spec: [SPEC-045]
 solid-description: Identifies an ordered set of original model-owned steps compiled within one workflow boundary.
 """
+
+
 @dataclass(frozen=True)
 class AggregatePhase:
     boundary_id: str
@@ -57,6 +62,8 @@ solid-category: model
 solid-spec: [SPEC-067]
 solid-description: Keeps executable instances separate from internal phase-planning audit evidence.
 """
+
+
 @dataclass(frozen=True)
 class AggregateExpansion:
     ready: list[StepInstance] = field(default_factory=list)

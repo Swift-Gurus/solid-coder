@@ -7,13 +7,14 @@ from typing import Protocol
 from harness.models import RunState
 from harness.step_terminal_state import StepTerminalState
 
-
 """
 solid-name: StepTerminalStateResolving
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for resolving a workflow step's completed, skipped, or pending state.
 """
+
+
 class StepTerminalStateResolving(Protocol):
     def resolve(
         self,

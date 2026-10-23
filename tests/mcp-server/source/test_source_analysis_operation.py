@@ -7,9 +7,9 @@ import textwrap
 import unittest
 from pathlib import Path
 
+from findings.review_unit_kind import ReviewUnitKind
 from source.analyze_source_input import AnalyzeSourceInput
 from source.file_analysis_source import FileAnalysisSource
-from findings.review_unit_kind import ReviewUnitKind
 from source.source_analysis_decision import SourceAnalysisDecision
 from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
 from source.technology_detection_scope import TechnologyDetectionScope
@@ -71,7 +71,10 @@ class TestSourceAnalysisOperation(unittest.TestCase):
         self.assertEqual(result.file_extension, ".swift")
         self.assertEqual(result.decision, SourceAnalysisDecision.PARSED)
         self.assertEqual(
-            [(unit.kind, unit.name, unit.span.start, unit.span.end) for unit in result.units],
+            [
+                (unit.kind, unit.name, unit.span.start, unit.span.end)
+                for unit in result.units
+            ],
             [
                 (ReviewUnitKind.CLASS, "Controller", 3, 5),
                 (ReviewUnitKind.STRUCT, "DashboardView", 6, 8),
@@ -105,9 +108,7 @@ class TestSourceAnalysisOperation(unittest.TestCase):
             ["ui", "swiftui", "concurrency", "structured-concurrency"],
         )
         view_detection = next(
-            detection
-            for detection in result.detections
-            if detection.tag == "view"
+            detection for detection in result.detections if detection.tag == "view"
         )
         dashboard = next(unit for unit in result.units if unit.name == "DashboardView")
         self.assertEqual(view_detection.scope, TechnologyDetectionScope.UNIT)
@@ -156,9 +157,7 @@ class TestSourceAnalysisOperation(unittest.TestCase):
 
     def test_unpathed_text_returns_a_document_with_an_empty_extension(self) -> None:
         result = self.operation.execute(
-            AnalyzeSourceInput(
-                source=TextAnalysisSource(text="Review this text.\n")
-            )
+            AnalyzeSourceInput(source=TextAnalysisSource(text="Review this text.\n"))
         )
 
         self.assertEqual(result.file_extension, "")

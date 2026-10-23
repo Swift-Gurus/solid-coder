@@ -4,13 +4,14 @@ from patch_file_simulation import PatchFileSimulation
 from patch_parsing import PatchParsing
 from path_file_system_reader import FileSystemReading
 
-
 """
 solid-name: PatchEntrySimulator
 solid-category: service
 solid-description: Derives post-change content and risk metadata for one added or updated file.
 solid-tags: [hook]
 """
+
+
 class PatchEntrySimulator:
     def __init__(
         self,

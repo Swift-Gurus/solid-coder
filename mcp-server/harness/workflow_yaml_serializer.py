@@ -5,13 +5,12 @@ from __future__ import annotations
 from harness.condition_field_rewriting import ConditionFieldRewriting
 from harness.flow_def import FlowDef
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
-from harness.workflow_snapshot_converting import WorkflowSnapshotConverting
-from harness.workflow_yaml_serializing import WorkflowYamlSerializing
 from harness.workflow_output_snapshot_serializing import (
     WorkflowOutputSnapshotSerializing,
 )
+from harness.workflow_snapshot_converting import WorkflowSnapshotConverting
+from harness.workflow_yaml_serializing import WorkflowYamlSerializing
 from harness.yaml_dumping import YamlDumping
-
 
 """
 solid-name: WorkflowYamlSerializer
@@ -19,8 +18,9 @@ solid-category: boundary
 solid-spec: [SPEC-031, SPEC-037, SPEC-039]
 solid-description: Coordinates conversion of resolved workflows into durable YAML snapshots.
 """
-class WorkflowYamlSerializer(WorkflowYamlSerializing):
 
+
+class WorkflowYamlSerializer(WorkflowYamlSerializing):
     def __init__(
         self,
         snapshot_converter: WorkflowSnapshotConverting,

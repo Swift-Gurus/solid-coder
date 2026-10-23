@@ -1,14 +1,15 @@
 """Builds typed source-search input from codebase-search boundary arguments."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
+
+from source.source_search_input import SourceSearchInput
+from source.source_search_query import SourceSearchQuery
 
 from search.codebase_search_input_building import CodebaseSearchInputBuilding
 from search.codebase_search_input_resolution import CodebaseSearchInputResolution
 from search.codebase_search_query_kind import CodebaseSearchQueryKind
 from search.codebase_search_terms_resolving import CodebaseSearchTermsResolving
-from source.source_search_input import SourceSearchInput
-from source.source_search_query import SourceSearchQuery
 
 """
 solid-name: CodebaseSearchInputBuilder
@@ -16,8 +17,9 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Translates codebase-search arguments into validated source-search input.
 """
-class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
 
+
+class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
     def __init__(
         self,
         current_directory: Callable[[], Path],
@@ -30,15 +32,13 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
 
     def build(
         self,
-        sources_dir: Optional[str],
-        plan_path: Optional[str],
-        tags: Optional[list[str]],
-        spec_numbers: Optional[list[str]],
+        sources_dir: str | None,
+        plan_path: str | None,
+        tags: list[str] | None,
+        spec_numbers: list[str] | None,
         min_matches: int,
     ) -> CodebaseSearchInputResolution:
-        project_root = (
-            Path(sources_dir) if sources_dir else self._current_directory()
-        )
+        project_root = Path(sources_dir) if sources_dir else self._current_directory()
         if not project_root.is_dir():
             raise ValueError(f"sources_dir not found: {project_root}")
         resolved_terms = self._terms.resolve(
@@ -49,15 +49,19 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
 
         queries: list[SourceSearchQuery] = []
         if resolved_terms.terms:
-            queries.append(SourceSearchQuery(
-                id=self._query_kinds.TERMS.value,
-                terms=resolved_terms.terms,
-            ))
+            queries.append(
+                SourceSearchQuery(
+                    id=self._query_kinds.TERMS.value,
+                    terms=resolved_terms.terms,
+                )
+            )
         if resolved_terms.specifications:
-            queries.append(SourceSearchQuery(
-                id=self._query_kinds.SPECIFICATIONS.value,
-                terms=resolved_terms.specifications,
-            ))
+            queries.append(
+                SourceSearchQuery(
+                    id=self._query_kinds.SPECIFICATIONS.value,
+                    terms=resolved_terms.specifications,
+                )
+            )
         if not queries:
             raise ValueError("provide plan_path, tags, or spec_numbers to search.")
         return CodebaseSearchInputResolution(

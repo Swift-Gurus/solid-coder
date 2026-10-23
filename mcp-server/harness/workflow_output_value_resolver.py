@@ -10,15 +10,15 @@ from harness.workflow_output_value import WorkflowOutputValue
 from harness.workflow_output_value_resolving import WorkflowOutputValueResolving
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowOutputValueResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves and validates one declared output from a completed workflow instance.
 """
-class WorkflowOutputValueResolver(WorkflowOutputValueResolving):
 
+
+class WorkflowOutputValueResolver(WorkflowOutputValueResolving):
     def __init__(self, schema_validator: SchemaValidator) -> None:
         self._schema_validator = schema_validator
 

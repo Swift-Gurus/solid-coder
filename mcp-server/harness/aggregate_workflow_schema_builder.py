@@ -6,13 +6,14 @@ from harness.aggregate_workflow_schema_building import AggregateWorkflowSchemaBu
 from harness.strict_object_schema import StrictObjectSchema
 from harness.strict_object_schema_building import StrictObjectSchemaBuilding
 
-
 """
 solid-name: AggregateWorkflowSchemaBuilder
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Builds a strict step-addressed schema for one aggregate workflow assignment.
 """
+
+
 class AggregateWorkflowSchemaBuilder(AggregateWorkflowSchemaBuilding):
     def __init__(
         self,

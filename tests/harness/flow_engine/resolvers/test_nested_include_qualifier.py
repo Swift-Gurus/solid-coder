@@ -9,23 +9,23 @@ from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.comparison_condition import ComparisonCondition  # noqa: E402
-from harness.combined_rule_presentation import CombinedRulePresentation  # noqa: E402
-from harness.condition_operator import ConditionOperator  # noqa: E402
-from harness.for_each_declaration import ForEachDeclaration  # noqa: E402
-from harness.include_alias_group import IncludeAliasGroup  # noqa: E402
-from harness.include_resolution import IncludeResolution  # noqa: E402
-from harness.local_nested_identity_qualifier import (  # noqa: E402
+from harness.combined_rule_presentation import CombinedRulePresentation
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
+from harness.for_each_declaration import ForEachDeclaration
+from harness.include_alias_group import IncludeAliasGroup
+from harness.include_resolution import IncludeResolution
+from harness.local_nested_identity_qualifier import (
     LocalNestedIdentityQualifier,
 )
-from harness.nested_include_alias_group_qualifier import (  # noqa: E402
+from harness.nested_include_alias_group_qualifier import (
     NestedIncludeAliasGroupQualifier,
 )
-from harness.nested_include_qualifier import NestedIncludeQualifier  # noqa: E402
-from harness.step_output_reference import StepOutputReference  # noqa: E402
-from harness.step_qualifier import StepQualifier  # noqa: E402
-from harness.workflow_expression import WorkflowExpression  # noqa: E402
-from harness.workflow_input_binding import WorkflowInputBinding  # noqa: E402
+from harness.nested_include_qualifier import NestedIncludeQualifier
+from harness.step_output_reference import StepOutputReference
+from harness.step_qualifier import StepQualifier
+from harness.workflow_expression import WorkflowExpression
+from harness.workflow_input_binding import WorkflowInputBinding
 
 
 class TestNestedIncludeQualifier(unittest.TestCase):

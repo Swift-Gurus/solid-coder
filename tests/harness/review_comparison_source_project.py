@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-
 _TEMPLATE = (
     Path(__file__).resolve().parent
     / "flow_engine"
@@ -23,8 +22,9 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Owns one isolated copy of the locked source-only project shared by legacy and workflow review comparisons.
 """
-class ReviewComparisonSourceProject:
 
+
+class ReviewComparisonSourceProject:
     def __init__(
         self,
         temporary_directory: TemporaryDirectory[str],

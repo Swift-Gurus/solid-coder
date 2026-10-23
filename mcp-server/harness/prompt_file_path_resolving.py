@@ -7,13 +7,14 @@ from typing import Protocol
 
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: PromptFilePathResolving
 solid-category: abstraction
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Contract for resolving a step prompt-file reference from its declaring workflow file.
 """
+
+
 class PromptFilePathResolving(Protocol):
     def resolve(
         self,

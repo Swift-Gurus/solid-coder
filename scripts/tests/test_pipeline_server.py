@@ -1,4 +1,5 @@
 """Tests for mcp-server/pipeline/server.py"""
+
 import sys
 import tempfile
 import unittest
@@ -9,23 +10,35 @@ SEARCH_FIXTURES = ROOT / "skills" / "validate-plan" / "scripts" / "test_fixtures
 sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "pipeline"))
 
+from health.config.solid_coder_config_loader import SolidCoderConfigLoader
 from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
 from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
 from pipeline.flow_run_creator import FlowRunCreator
 
-tools = ApplicationBootstrapperFactory(
-    plugin_root=ROOT,
-    skills_root=ROOT / "skills",
-    flow_run_creator=FlowRunCreator(ROOT),
-    flow_renderer_creator=FlowResultRendererCreator(),
-).make_tool_callables().build()
+tools = (
+    ApplicationBootstrapperFactory(
+        plugin_root=ROOT,
+        skills_root=ROOT / "skills",
+        flow_run_creator=FlowRunCreator(ROOT, config_loader=SolidCoderConfigLoader()),
+        flow_renderer_creator=FlowResultRendererCreator(),
+    )
+    .make_tool_callables()
+    .build()
+)
 
 
 class TestHandshake(unittest.TestCase):
     def test_all_tools_registered(self):
-        for name in ("check_severity", "validate_findings", "load_synthesis_context",
-                     "generate_report", "validate_architecture", "split_implementation_plan",
-                     "search_codebase", "prepare_review_input"):
+        for name in (
+            "check_severity",
+            "validate_findings",
+            "load_synthesis_context",
+            "generate_report",
+            "validate_architecture",
+            "split_implementation_plan",
+            "search_codebase",
+            "prepare_review_input",
+        ):
             self.assertIn(name, tools, f"missing tool: {name}")
 
 
@@ -34,9 +47,12 @@ class TestCollectReviewResults(unittest.TestCase):
         rules = Path(tmp) / "rules" / principle
         rules.mkdir(parents=True)
         import json
-        (rules / "review-output.json").write_text(json.dumps({
-            "files": [{"units": [{"violations": [{"severity": severity}]}]}]
-        }))
+
+        (rules / "review-output.json").write_text(
+            json.dumps(
+                {"files": [{"units": [{"violations": [{"severity": severity}]}]}]}
+            )
+        )
 
     def test_no_rules_dir_returns_error(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -74,7 +90,7 @@ class TestCheckSeverity(unittest.TestCase):
                 tools["check_severity"](output_root=tmp)
             except FileNotFoundError:
                 pass  # expected — no rules/ subdir
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 — Legacy pipeline test reports unexpected exceptions as explicit test failures.
                 self.fail(f"Unexpected exception: {e}")
 
     def test_all_compliant_dir(self):
@@ -129,7 +145,9 @@ class TestSearchCodebase(unittest.TestCase):
 
     def test_tag_search_returns_text(self):
         result = tools["search_codebase"](
-            sources_dir=str(SEARCH_FIXTURES), tags=["network", "product", "fetches"], min_matches=1,
+            sources_dir=str(SEARCH_FIXTURES),
+            tags=["network", "product", "fetches"],
+            min_matches=1,
         )
         self.assertIsInstance(result, str)
         self.assertIn("unit: ProductFetchService.swift\n", result)
@@ -137,35 +155,58 @@ class TestSearchCodebase(unittest.TestCase):
 
     def test_plan_path_extracts_terms(self):
         import json
-        arch = {"components": [{"name": "ProductFetchService", "category": "network",
-                                "interfaces": ["ProductReading"], "stack": [], "dependencies": []}]}
+
+        arch = {
+            "components": [
+                {
+                    "name": "ProductFetchService",
+                    "category": "network",
+                    "interfaces": ["ProductReading"],
+                    "stack": [],
+                    "dependencies": [],
+                }
+            ]
+        }
         with tempfile.TemporaryDirectory() as temporary:
             plan_path = Path(temporary) / "architecture.json"
             plan_path.write_text(json.dumps(arch), encoding="utf-8")
             result = tools["search_codebase"](
-                sources_dir=str(SEARCH_FIXTURES), plan_path=str(plan_path), min_matches=1,
+                sources_dir=str(SEARCH_FIXTURES),
+                plan_path=str(plan_path),
+                min_matches=1,
             )
         self.assertIsInstance(result, str)
         self.assertIn("unit: ProductFetchService.swift\n", result)
 
     def test_no_matches_returns_message(self):
         result = tools["search_codebase"](
-            sources_dir=str(SEARCH_FIXTURES), tags=["zzz_nonexistent_term"], min_matches=1,
+            sources_dir=str(SEARCH_FIXTURES),
+            tags=["zzz_nonexistent_term"],
+            min_matches=1,
         )
-        self.assertEqual(result, f"No files matched in {SEARCH_FIXTURES} (7 files scanned).")
+        self.assertEqual(
+            result, f"No files matched in {SEARCH_FIXTURES} (7 files scanned)."
+        )
 
     def test_output_has_candidate_summary(self):
         result = tools["search_codebase"](
-            sources_dir=str(SEARCH_FIXTURES), tags=["network"], min_matches=1,
+            sources_dir=str(SEARCH_FIXTURES),
+            tags=["network"],
+            min_matches=1,
         )
-        self.assertEqual(result, "\n".join([
-            "Here is what we found:",
-            "",
-            "candidate_id: candidate-1",
-            "unit: ProductFetchService.swift",
-            "description: Fetches product data from REST API with pagination",
-            f"path: {SEARCH_FIXTURES / 'ProductFetchService.swift'}",
-        ]))
+        self.assertEqual(
+            result,
+            "\n".join(
+                [
+                    "Here is what we found:",
+                    "",
+                    "candidate_id: candidate-1",
+                    "unit: ProductFetchService.swift",
+                    "description: Fetches product data from REST API with pagination",
+                    f"path: {SEARCH_FIXTURES / 'ProductFetchService.swift'}",
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":

@@ -11,8 +11,8 @@ from harness.run_state_builder import RunStateBuilder
 from harness.run_state_event_router import RunStateEventRouter
 from harness.run_state_reconstructor import RunStateReconstructor
 from harness.run_status_transition import RunStatusTransition
-from harness.step_completed_transition import StepCompletedTransition
 from harness.step_completed_event import StepCompletedEvent
+from harness.step_completed_transition import StepCompletedTransition
 from harness.step_instance_output_aggregator import StepInstanceOutputAggregator
 from harness.step_outputs_builder import StepOutputsBuilder
 from harness.step_rejected_transition import StepRejectedTransition
@@ -57,7 +57,9 @@ def make_run_state_reconstructor() -> RunStateReconstructor:
                 "run_completed": RunStatusTransition(status="done"),
                 "run_timed_out": RunStatusTransition(status="timed_out"),
                 "step_attempt_failed": attempt_failed,
-                "step_rejected": StepRejectedTransition(attempt_transition=attempt_failed),
+                "step_rejected": StepRejectedTransition(
+                    attempt_transition=attempt_failed
+                ),
                 "run_failed": RunStatusTransition(status="failed"),
             }
         ),

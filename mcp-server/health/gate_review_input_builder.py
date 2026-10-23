@@ -8,13 +8,14 @@ from patch_review_context import PatchReviewContext
 from review.prepare_review_input import PrepareReviewInput
 from source.text_analysis_source import TextAnalysisSource
 
-
 """
 solid-name: GateReviewInputBuilder
 solid-category: service
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Prepares typed prospective source input for review.
 """
+
+
 class GateReviewInputBuilder:
     def build(
         self,

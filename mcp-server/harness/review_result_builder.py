@@ -5,13 +5,14 @@ from harness.review_result_building import ReviewResultBuilding
 from harness.review_severity_selecting import ReviewSeveritySelecting
 from harness.rule_review_result import RuleReviewResult
 
-
 """
 solid-name: ReviewResultBuilder
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Builds an ordered review aggregate with deterministic worst-severity selection across rule metrics.
 """
+
+
 class ReviewResultBuilder(ReviewResultBuilding):
     def __init__(self, severity_selector: ReviewSeveritySelecting) -> None:
         self._severity_selector = severity_selector

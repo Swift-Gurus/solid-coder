@@ -4,13 +4,14 @@ from code_health_check_request import CodeHealthCheckRequest
 from health_check_outcome import HealthCheckOutcome
 from health_checker_creating import HealthCheckerCreating
 
-
 """
 solid-name: CodeHealthCheckService
 solid-category: service
 solid-description: Coordinates configured health validation for prospective source requests.
 solid-tags: [hook]
 """
+
+
 class CodeHealthCheckService:
     def __init__(
         self,

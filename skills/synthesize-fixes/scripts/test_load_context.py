@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Tests for load-context.py"""
 
 import json
@@ -11,24 +10,28 @@ import unittest
 _LOAD_CONTEXT_SCRIPT = os.path.join(os.path.dirname(__file__), "load-context.py")
 
 
-def _write_load_context_fixture(by_file_dir: str, filename: str, principles: list) -> None:
+def _write_load_context_fixture(
+    by_file_dir: str, filename: str, principles: list
+) -> None:
     """Write a by-file output JSON for load-context.py tests."""
-    json.dump(
-        {
-            "file_path": f"/project/{filename.replace('.output.json', '')}",
-            "timestamp": "2026-04-03T00:00:00Z",
-            "principles": principles,
-        },
-        open(os.path.join(by_file_dir, filename), "w"),
-    )
+    with open(os.path.join(by_file_dir, filename), "w") as f:
+        json.dump(
+            {
+                "file_path": f"/project/{filename.replace('.output.json', '')}",
+                "timestamp": "2026-04-03T00:00:00Z",
+                "principles": principles,
+            },
+            f,
+        )
 
 
 class TestLoadContext(unittest.TestCase):
-
     def _run(self, *args):
         return subprocess.run(
             [sys.executable, _LOAD_CONTEXT_SCRIPT, *args],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
     def test_no_args(self):
@@ -59,9 +62,18 @@ class TestLoadContext(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             by_file = os.path.join(tmp, "by-file")
             os.makedirs(by_file)
-            _write_load_context_fixture(by_file, "Foo.swift.output.json", [
-                {"principle": "SRP", "severity": "COMPLIANT", "violations": [], "suggestions": []},
-            ])
+            _write_load_context_fixture(
+                by_file,
+                "Foo.swift.output.json",
+                [
+                    {
+                        "principle": "SRP",
+                        "severity": "COMPLIANT",
+                        "violations": [],
+                        "suggestions": [],
+                    },
+                ],
+            )
             data = json.loads(self._run(tmp).stdout)
             self.assertTrue(data["all_compliant"])
             self.assertEqual(data["active_principles"], [])
@@ -71,17 +83,26 @@ class TestLoadContext(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             by_file = os.path.join(tmp, "by-file")
             os.makedirs(by_file)
-            _write_load_context_fixture(by_file, "Bar.swift.output.json", [
-                {
-                    "principle": "OCP",
-                    "severity": "SEVERE",
-                    "violations": [{"rule_id": "OCP-1", "severity": "SEVERE"}],
-                    "suggestions": [
-                        {"id": "fix-001", "addresses": ["OCP-1"],
-                         "severity": "SEVERE", "suggested_fix": "...", "todo_items": ["step1"]}
-                    ],
-                }
-            ])
+            _write_load_context_fixture(
+                by_file,
+                "Bar.swift.output.json",
+                [
+                    {
+                        "principle": "OCP",
+                        "severity": "SEVERE",
+                        "violations": [{"rule_id": "OCP-1", "severity": "SEVERE"}],
+                        "suggestions": [
+                            {
+                                "id": "fix-001",
+                                "addresses": ["OCP-1"],
+                                "severity": "SEVERE",
+                                "suggested_fix": "...",
+                                "todo_items": ["step1"],
+                            }
+                        ],
+                    }
+                ],
+            )
             data = json.loads(self._run(tmp).stdout)
             self.assertFalse(data["all_compliant"])
             self.assertEqual(data["active_principles"], ["OCP"])
@@ -96,24 +117,39 @@ class TestLoadContext(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             by_file = os.path.join(tmp, "by-file")
             os.makedirs(by_file)
-            _write_load_context_fixture(by_file, "A.swift.output.json", [
-                {
-                    "principle": "SRP", "severity": "SEVERE",
-                    "violations": [
-                        {"rule_id": "SRP-1", "severity": "SEVERE"},
-                        {"rule_id": "SRP-2", "severity": "MINOR"},
-                    ],
-                    "suggestions": [],
-                },
-                {"principle": "OCP", "severity": "COMPLIANT", "violations": [], "suggestions": []},
-            ])
-            _write_load_context_fixture(by_file, "B.swift.output.json", [
-                {
-                    "principle": "SwiftUI", "severity": "SEVERE",
-                    "violations": [{"rule_id": "SUI-1", "severity": "SEVERE"}],
-                    "suggestions": [],
-                },
-            ])
+            _write_load_context_fixture(
+                by_file,
+                "A.swift.output.json",
+                [
+                    {
+                        "principle": "SRP",
+                        "severity": "SEVERE",
+                        "violations": [
+                            {"rule_id": "SRP-1", "severity": "SEVERE"},
+                            {"rule_id": "SRP-2", "severity": "MINOR"},
+                        ],
+                        "suggestions": [],
+                    },
+                    {
+                        "principle": "OCP",
+                        "severity": "COMPLIANT",
+                        "violations": [],
+                        "suggestions": [],
+                    },
+                ],
+            )
+            _write_load_context_fixture(
+                by_file,
+                "B.swift.output.json",
+                [
+                    {
+                        "principle": "SwiftUI",
+                        "severity": "SEVERE",
+                        "violations": [{"rule_id": "SUI-1", "severity": "SEVERE"}],
+                        "suggestions": [],
+                    },
+                ],
+            )
             data = json.loads(self._run(tmp).stdout)
             self.assertFalse(data["all_compliant"])
             self.assertEqual(sorted(data["active_principles"]), ["SRP", "SwiftUI"])
@@ -138,14 +174,24 @@ class TestLoadContext(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             by_file = os.path.join(tmp, "by-file")
             os.makedirs(by_file)
-            _write_load_context_fixture(by_file, "C.swift.output.json", [
-                {
-                    "principle": "SRP", "severity": "SEVERE",
-                    "violations": [{"rule_id": "SRP-1", "severity": "SEVERE"}],
-                    "suggestions": [],
-                },
-                {"principle": "LSP", "severity": "COMPLIANT", "violations": [], "suggestions": []},
-            ])
+            _write_load_context_fixture(
+                by_file,
+                "C.swift.output.json",
+                [
+                    {
+                        "principle": "SRP",
+                        "severity": "SEVERE",
+                        "violations": [{"rule_id": "SRP-1", "severity": "SEVERE"}],
+                        "suggestions": [],
+                    },
+                    {
+                        "principle": "LSP",
+                        "severity": "COMPLIANT",
+                        "violations": [],
+                        "suggestions": [],
+                    },
+                ],
+            )
             data = json.loads(self._run(tmp).stdout)
             self.assertEqual(data["active_principles"], ["SRP"])
 

@@ -15,13 +15,14 @@ from harness.output_spec_schema_serializer import OutputSpecSchemaSerializer
 from harness.strict_object_schema_builder import StrictObjectSchemaBuilder
 from json_serializer import JsonSerializer
 
-
 """
 solid-name: AggregateBatchStepRendererFactory
 solid-category: factory
 solid-spec: [SPEC-045, SPEC-052]
 solid-description: Assembles aggregate assignment rendering and strict response-schema construction.
 """
+
+
 class AggregateBatchStepRendererFactory:
     def make(self) -> AggregateBatchStepRenderer:
         object_schema_builder = StrictObjectSchemaBuilder()

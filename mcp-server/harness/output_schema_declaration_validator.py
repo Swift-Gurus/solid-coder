@@ -4,15 +4,15 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.output_spec import OutputSpec
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: OutputSchemaDeclarationValidator
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Validates that an output declares at most one inline or file-backed schema source.
 """
-class OutputSchemaDeclarationValidator:
 
+
+class OutputSchemaDeclarationValidator:
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 

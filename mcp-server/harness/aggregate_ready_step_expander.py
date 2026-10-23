@@ -10,13 +10,14 @@ from harness.step_instance import StepInstance
 from harness.step_instance_boundary_resolving import StepInstanceBoundaryResolving
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: AggregateReadyStepExpander
 solid-category: service
 solid-spec: [SPEC-045]
-solid-description: Replaces eligible ready boundaries with their planned original-step aggregate instances.
+solid-description: Expands ready workflow steps into aggregate execution phases when applicable.
 """
+
+
 class AggregateReadyStepExpander(AggregateReadyStepExpanding):
     def __init__(
         self,
@@ -33,7 +34,7 @@ class AggregateReadyStepExpander(AggregateReadyStepExpanding):
         flow: FlowDef,
         state: RunState,
         ready: list[StepInstance],
-        context: WorkflowRunContext = WorkflowRunContext(),
+        context: WorkflowRunContext,
     ) -> AggregateExpansion:
         if any(
             instance.skip is not None or instance.automatic_outputs is not None
@@ -61,11 +62,14 @@ class AggregateReadyStepExpander(AggregateReadyStepExpanding):
                 expanded.append(instance)
             elif boundary_id not in handled_boundaries:
                 phase_ready = [
-                    candidate for candidate in ready
+                    candidate
+                    for candidate in ready
                     if candidate.step_id in phase.step_ids
                     and self._boundary_resolver.resolve(flow, candidate) == boundary_id
                 ]
-                materialized = self._materializer.materialize(flow, phase, phase_ready, context)
+                materialized = self._materializer.materialize(
+                    flow, phase, phase_ready, context
+                )
                 expanded.extend(materialized.ready)
                 materialized_phases.extend(materialized.phases)
                 handled_boundaries.append(boundary_id)

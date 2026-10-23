@@ -4,13 +4,14 @@ from handler_dispatching import HandlerDispatching
 from hook_decision import HookDecision
 from patch_handler_planning import PatchHandlerPlanning
 
-
 """
 solid-name: ApplyPatchReviewer
 solid-category: service
 solid-description: Dispatches planned per-file reviews and returns their single aggregated authorization decision.
 solid-tags: [hook]
 """
+
+
 class ApplyPatchReviewer:
     def __init__(
         self,

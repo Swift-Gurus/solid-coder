@@ -11,7 +11,6 @@ from harness.step_instance import StepInstance
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 _MODEL_OWNED_STEP_TYPES = frozenset({"agent", "metric", "exception"})
 
 
@@ -21,6 +20,8 @@ solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Selects steps eligible for aggregate model execution.
 """
+
+
 class AggregateStepEligibilityChecker(AggregateStepEligibilityChecking):
     def is_eligible(
         self,
@@ -33,14 +34,11 @@ class AggregateStepEligibilityChecker(AggregateStepEligibilityChecking):
         if instance.workflow_instance is not None:
             execution = instance.workflow_instance.execution
             presentation = instance.workflow_instance.presentation
-        combined = (
-            presentation is WorkflowPresentationMode.COMBINED
-            and (
-                instance.batch is None
-                or instance.batch.mode is not BatchStepPresentationMode.COMBINED_RULES
-                or instance.workflow_instance is not None
-                and len(instance.workflow_instance.steps.entries) > 1
-            )
+        combined = presentation is WorkflowPresentationMode.COMBINED and (
+            instance.batch is None
+            or instance.batch.mode is not BatchStepPresentationMode.COMBINED_RULES
+            or instance.workflow_instance is not None
+            and len(instance.workflow_instance.steps.entries) > 1
         )
         return (
             (execution is WorkflowExecutionMode.AGGREGATE or combined)
@@ -48,6 +46,9 @@ class AggregateStepEligibilityChecker(AggregateStepEligibilityChecking):
             and not (
                 step.for_each is not None
                 and step.for_each.mode is ForEachMode.INDIVIDUAL
-                and (step.for_each.mode_declared or (instance.workflow_instance is not None and not combined))
+                and (
+                    step.for_each.mode_declared
+                    or (instance.workflow_instance is not None and not combined)
+                )
             )
         )

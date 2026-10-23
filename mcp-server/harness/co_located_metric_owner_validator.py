@@ -6,13 +6,14 @@ from harness.co_located_metric_owner_validating import (
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: CoLocatedMetricOwnerValidator
 solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Enforces identified non-iterating agent ownership for co-located measurements.
 """
+
+
 class CoLocatedMetricOwnerValidator(CoLocatedMetricOwnerValidating):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory

@@ -9,33 +9,51 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 import code_health_check as hook
 import test_utils
-from test_utils import make_subprocess_mock
 from claude_runner_strategy import ClaudeRunnerStrategy
 from code_health_check_request import CodeHealthCheckRequest
-from hc_violation_parser import ViolationParser
+from hc_checker import (
+    HealthPromptBuilder,
+    LLMExecutor,
+    LLMReviewer,
+    PrinciplesLoader,
+    ResponseParser,
+    TextBasedOutputHandler,
+)
 from hc_checker_factory import LegacyHealthCheckerFactory
 from hc_tag_detector import TagDetector
+from hc_violation_parser import ViolationParser
 from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader
 from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader
 from health.gateway.gateway_rule_loader import GatewayRuleLoader
 from health_violation import HealthViolation
 from llm_config import LlmConfig
 from solid_coder_config import SolidCoderConfig
-from hc_checker import (
-    HealthPromptBuilder, PrinciplesLoader, LLMReviewer,
-    LLMExecutor, TextBasedOutputHandler, ResponseParser,
-)
+from test_utils import make_subprocess_mock
 
 LONG_SWIFT = test_utils.LONG_SWIFT
 SHORT_SWIFT = test_utils.SHORT_SWIFT
 
 VIOLATIONS = [
-    {"principle": "SRP", "issue": "Two concerns.", "fix": "Extract one.", "metric_id": "SRP-2"},
-    {"principle": "OCP", "issue": "Sealed point.", "fix": "Inject protocol.", "metric_id": "OCP-1"},
+    {
+        "principle": "SRP",
+        "issue": "Two concerns.",
+        "fix": "Extract one.",
+        "metric_id": "SRP-2",
+    },
+    {
+        "principle": "OCP",
+        "issue": "Sealed point.",
+        "fix": "Inject protocol.",
+        "metric_id": "OCP-1",
+    },
 ]
 
 
@@ -86,15 +104,25 @@ def _make_reviewer(runner_result=None, runner_raises=None, parse_result=None):
     parser.parse.return_value = parse_result
     reviewer = LLMReviewer(
         executor=LLMExecutor(runner=runner, logger=logger),
-        output_handler=TextBasedOutputHandler(ResponseParser(parser=parser, logger=logger)),
+        output_handler=TextBasedOutputHandler(
+            ResponseParser(parser=parser, logger=logger)
+        ),
     )
     return reviewer, logger
 
 
 def _make_check_pipeline(output_dir: Path):
     tags_mock = _gateway_tags([])
-    detection_mock = _gateway_detection_rules([{"name": "srp", "content": "rules",
-                                                "principle_name": "SRP", "metrics_example": {}}])
+    detection_mock = _gateway_detection_rules(
+        [
+            {
+                "name": "srp",
+                "content": "rules",
+                "principle_name": "SRP",
+                "metrics_example": {},
+            }
+        ]
+    )
     output_path_mock = make_subprocess_mock(0, {"output_root": str(output_dir)})
     claude_mock = make_subprocess_mock(0, [{"type": "result", "result": ""}])
     seq = [tags_mock, detection_mock, output_path_mock, claude_mock]
@@ -151,7 +179,9 @@ class TestViolationParser(unittest.TestCase):
         self.assertIsNone(self.parser.parse(json.dumps({"violations": "bad"})))
 
     def test_format_block_reason_includes_count(self):
-        self.assertIn("2 SEVERE violation(s)", self.parser.format_block_reason(VIOLATIONS))
+        self.assertIn(
+            "2 SEVERE violation(s)", self.parser.format_block_reason(VIOLATIONS)
+        )
 
     def test_format_block_reason_includes_each_principle(self):
         reason = self.parser.format_block_reason(VIOLATIONS)
@@ -171,16 +201,24 @@ class TestTagDetector(unittest.TestCase):
         self.assertIn("swiftui", self.detector.detect("import SwiftUI", ["swiftui"]))
 
     def test_detects_swiftui_from_view_conformance(self):
-        self.assertIn("swiftui", self.detector.detect("struct Foo: View {", ["swiftui"]))
+        self.assertIn(
+            "swiftui", self.detector.detect("struct Foo: View {", ["swiftui"])
+        )
 
     def test_detects_swiftui_from_some_view(self):
-        self.assertIn("swiftui", self.detector.detect("var body: some View {", ["swiftui"]))
+        self.assertIn(
+            "swiftui", self.detector.detect("var body: some View {", ["swiftui"])
+        )
 
     def test_does_not_false_positive_swiftui_from_uitableview(self):
-        self.assertNotIn("swiftui", self.detector.detect("let v: UITableView", ["swiftui"]))
+        self.assertNotIn(
+            "swiftui", self.detector.detect("let v: UITableView", ["swiftui"])
+        )
 
     def test_does_not_false_positive_swiftui_from_plain_view_word(self):
-        self.assertNotIn("swiftui", self.detector.detect("func reviewData() {}", ["swiftui"]))
+        self.assertNotIn(
+            "swiftui", self.detector.detect("func reviewData() {}", ["swiftui"])
+        )
 
     def test_detects_structured_concurrency_from_async(self):
         self.assertIn(
@@ -196,7 +234,10 @@ class TestTagDetector(unittest.TestCase):
 
     def test_does_not_false_positive_sc_from_urlsession_datatask(self):
         content = "let task = session.dataTask(with: url) { data, _, _ in }"
-        self.assertNotIn("structured-concurrency", self.detector.detect(content, ["structured-concurrency"]))
+        self.assertNotIn(
+            "structured-concurrency",
+            self.detector.detect(content, ["structured-concurrency"]),
+        )
 
     def test_detects_structured_concurrency_from_actor_declaration(self):
         self.assertIn(
@@ -258,30 +299,41 @@ class TestGatewayRuleLoader(unittest.TestCase):
 
 class TestPrinciplesLoader(unittest.TestCase):
     def test_returns_principles_list_when_rules_load_succeeds(self):
-        rules = _make_rules_mock(rules_data={"principles": [{"name": "srp", "content": "..."}]})
+        rules = _make_rules_mock(
+            rules_data={"principles": [{"name": "srp", "content": "..."}]}
+        )
         loader = PrinciplesLoader(rules=rules, tags=_make_tags_mock())
         result = loader.load("code", "/src/Foo.swift")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "srp")
 
     def test_returns_none_when_rules_load_fails(self):
-        loader = PrinciplesLoader(rules=_make_rules_mock(rules_data=None), tags=_make_tags_mock())
+        loader = PrinciplesLoader(
+            rules=_make_rules_mock(rules_data=None), tags=_make_tags_mock()
+        )
         self.assertIsNone(loader.load("code", "/src/Foo.swift"))
 
     def test_returns_empty_list_when_no_principles_active(self):
-        loader = PrinciplesLoader(rules=_make_rules_mock(rules_data={"principles": []}), tags=_make_tags_mock())
+        loader = PrinciplesLoader(
+            rules=_make_rules_mock(rules_data={"principles": []}),
+            tags=_make_tags_mock(),
+        )
         self.assertEqual(loader.load("code", "/src/Foo.swift"), [])
 
     def test_passes_detected_tags_to_rules_loader(self):
         rules = _make_rules_mock(rules_data={"principles": []})
-        loader = PrinciplesLoader(rules=rules, tags=_make_tags_mock(matched=["swiftui"]))
+        loader = PrinciplesLoader(
+            rules=rules, tags=_make_tags_mock(matched=["swiftui"])
+        )
         loader.load("import SwiftUI", "/src/Foo.swift")
         rules.load_detection_rules.assert_called_once_with(["swiftui"])
 
 
 class TestLLMReviewer(unittest.TestCase):
     def test_returns_violations_when_runner_and_parser_succeed(self):
-        reviewer, _ = _make_reviewer(runner_result='{"violations": []}', parse_result=[])
+        reviewer, _ = _make_reviewer(
+            runner_result='{"violations": []}', parse_result=[]
+        )
         self.assertEqual(reviewer.review("prompt", "/src/Foo.swift"), [])
 
     def test_raises_and_logs_when_runner_returns_empty(self):
@@ -297,7 +349,7 @@ class TestLLMReviewer(unittest.TestCase):
         logger.log.assert_called_once()
 
     def test_returns_none_and_logs_when_parser_returns_none(self):
-        reviewer, logger = _make_reviewer(runner_result='bad json', parse_result=None)
+        reviewer, logger = _make_reviewer(runner_result="bad json", parse_result=None)
         result = reviewer.review("prompt", "/src/Foo.swift")
         self.assertIsNone(result)
         logger.log.assert_called_once()
@@ -368,8 +420,16 @@ class TestCheck(test_utils.TempDirTestBase):
                 fix="Call mcp__docs__load_fix_for_violation(OCP-1) for guidance.",
             ),
         ]
-        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline(self.output_dir / "health-test")), \
-             patch("hc_checker.FileOutputReader.read_violations", return_value=mock_violations):
+        with (
+            patch(
+                "hook_utils.subprocess.run",
+                side_effect=_make_check_pipeline(self.output_dir / "health-test"),
+            ),
+            patch(
+                "hc_checker.FileOutputReader.read_violations",
+                return_value=mock_violations,
+            ),
+        ):
             result = _make_legacy_checker().check(
                 LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
             )
@@ -378,8 +438,13 @@ class TestCheck(test_utils.TempDirTestBase):
         self.assertEqual(result[0].principle, "SRP")
 
     def test_returns_empty_list_when_no_findings(self):
-        with patch("hook_utils.subprocess.run", side_effect=_make_check_pipeline(self.output_dir / "health-test")), \
-             patch("hc_checker.FileOutputReader.read_violations", return_value=[]):
+        with (
+            patch(
+                "hook_utils.subprocess.run",
+                side_effect=_make_check_pipeline(self.output_dir / "health-test"),
+            ),
+            patch("hc_checker.FileOutputReader.read_violations", return_value=[]),
+        ):
             result = _make_legacy_checker().check(
                 LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
             )
@@ -388,11 +453,16 @@ class TestCheck(test_utils.TempDirTestBase):
 
     def test_raises_on_gateway_failure(self):
         from hook_utils import SubprocessError
-        with patch("hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})):
-            with self.assertRaises(SubprocessError):
-                _make_legacy_checker().check(
-                    LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
-                )
+
+        with (
+            patch(
+                "hook_utils.subprocess.run", return_value=make_subprocess_mock(1, {})
+            ),
+            self.assertRaises(SubprocessError),
+        ):
+            _make_legacy_checker().check(
+                LONG_SWIFT, "/src/Foo.swift", "Swift", "test-session"
+            )
 
 
 class TestSupportedExtensions(unittest.TestCase):

@@ -3,11 +3,9 @@
 import unittest
 from unittest.mock import Mock
 
-from tree_sitter import Point
-
 from source.analysis.swift_syntax_diagnostic_parser import SwiftSyntaxDiagnosticParser
 from source.analysis.syntax_diagnostic_node_reading import SyntaxDiagnosticNodeReading
-
+from tree_sitter import Point
 
 """
 solid-name: TestSwiftSyntaxDiagnosticParser
@@ -15,6 +13,8 @@ solid-category: unit-test
 solid-spec: [SPEC-063]
 solid-description: Verifies recoverable syntax diagnostics using substitutable error and location evidence.
 """
+
+
 class TestSwiftSyntaxDiagnosticParser(unittest.TestCase):
     def setUp(self) -> None:
         self.parser = SwiftSyntaxDiagnosticParser()
@@ -43,7 +43,9 @@ class TestSwiftSyntaxDiagnosticParser(unittest.TestCase):
     def test_explicit_error_is_reported(self) -> None:
         self.node.is_error = True
 
-        self.assertEqual(self.parser.parse(self.node).message, "Unrecognized Swift syntax")
+        self.assertEqual(
+            self.parser.parse(self.node).message, "Unrecognized Swift syntax"
+        )
 
     def test_opaque_missing_leaf_is_reported(self) -> None:
         self.node.has_error = True

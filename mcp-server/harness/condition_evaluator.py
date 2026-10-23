@@ -6,11 +6,10 @@ from harness.comparison_condition import ComparisonCondition
 from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_decision_evaluating import ConditionDecisionEvaluating
 from harness.condition_declaration import ConditionDeclaration
-from harness.condition_evidence import ConditionEvidence
 from harness.condition_evaluating import ConditionEvaluating
+from harness.condition_evidence import ConditionEvidence
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
-
 
 """
 solid-name: ConditionEvaluator
@@ -18,6 +17,8 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Delegates typed condition dispatch and runtime comparison.
 """
+
+
 class ConditionEvaluator(ConditionDecisionEvaluating, ConditionRuntime):
     def __init__(
         self,

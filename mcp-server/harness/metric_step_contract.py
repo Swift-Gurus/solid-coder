@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.metric_declaration import MetricDeclaration
-
 
 """
 solid-name: MetricStepContract
@@ -15,7 +13,9 @@ solid-category: model
 solid-spec: [SPEC-053]
 solid-description: Represents the complete typed contract for a metric workflow step.
 """
+
+
 @dataclass(frozen=True)
 class MetricStepContract:
     metric: MetricDeclaration
-    calculation: Optional[CollectionMetricCalculation] = None
+    calculation: CollectionMetricCalculation | None = None

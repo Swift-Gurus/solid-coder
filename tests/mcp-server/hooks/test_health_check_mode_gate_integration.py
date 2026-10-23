@@ -4,7 +4,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from _path_bootstrap import ensure_on_path
 
 ensure_on_path(
@@ -12,9 +11,8 @@ ensure_on_path(
     Path(__file__).resolve().parent,
 )
 
-from write_gate_coordinator_factory import WriteGateCoordinatorFactory  # noqa: E402
-from health_check_outcome import HealthCheckOutcome  # noqa: E402
-
+from health_check_outcome import HealthCheckOutcome
+from write_gate_coordinator_factory import WriteGateCoordinatorFactory
 
 """
 solid-name: TestHealthCheckModeGateIntegration
@@ -22,6 +20,8 @@ solid-category: integration-test
 solid-spec: [SPEC-050]
 solid-description: Verifies the write gate routes prospective content through the checker selected by project TOML.
 """
+
+
 class TestHealthCheckModeGateIntegration:
     @pytest.mark.parametrize("mode", ["legacy", "workflow"])
     @pytest.mark.parametrize("relative_directory", [".", "ios/Tools/BuildInsights"])
@@ -43,11 +43,15 @@ class TestHealthCheckModeGateIntegration:
         content = "struct ProspectiveView {\n" + "    let value = 1\n" * 40 + "}\n"
         gate = MagicMock()
 
-        with patch(
-            "configured_health_checker_factory.LegacyHealthCheckerFactory"
-        ) as legacy, patch(
-            "configured_health_checker_factory.WorkflowHealthCheckerFactory"
-        ) as workflow, patch("configured_health_checker_factory.GateLogger"):
+        with (
+            patch(
+                "configured_health_checker_factory.LegacyHealthCheckerFactory"
+            ) as legacy,
+            patch(
+                "configured_health_checker_factory.WorkflowHealthCheckerFactory"
+            ) as workflow,
+            patch("configured_health_checker_factory.GateLogger"),
+        ):
             selected = legacy if mode == "legacy" else workflow
             other = workflow if mode == "legacy" else legacy
             selected.return_value.make.return_value.check.return_value = (

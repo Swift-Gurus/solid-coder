@@ -1,4 +1,5 @@
 """Tests for mcp-server/specs/server.py"""
+
 import sys
 import unittest
 from pathlib import Path
@@ -8,6 +9,7 @@ sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "specs"))
 
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "specs_server", ROOT / "mcp-server" / "specs" / "server.py"
 )

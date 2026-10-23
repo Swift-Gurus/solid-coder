@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol, TypeVar
 
-ValueT = TypeVar("ValueT", contravariant=True)
+ValueT_contra = TypeVar("ValueT_contra", contravariant=True)
 
 
 """
@@ -13,5 +13,7 @@ solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for rendering a typed value into message or workflow template text.
 """
-class TemplateValueRendering(Protocol[ValueT]):
-    def render(self, value: ValueT) -> str: ...
+
+
+class TemplateValueRendering(Protocol[ValueT_contra]):
+    def render(self, value: ValueT_contra) -> str: ...

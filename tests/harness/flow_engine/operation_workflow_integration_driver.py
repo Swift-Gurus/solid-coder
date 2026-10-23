@@ -12,13 +12,14 @@ from harness.operation_registration import OperationRegistration
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: OperationWorkflowIntegrationDriver
 solid-category: test-support
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Reuses real flow-engine setup for logical-operation integration scenarios.
 """
+
+
 class OperationWorkflowIntegrationDriver:
     def __init__(
         self,

@@ -7,53 +7,49 @@ solid-category: unit-test
 import sys
 import unittest
 from pathlib import Path
-from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.batch_step_presentation_builder import BatchStepPresentationBuilder
 from harness.batch_step_presentation_resolver import BatchStepPresentationResolver
+from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
 from harness.dag_runner import DAGRunner
 from harness.expression_resolver import ExpressionResolver
-from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.filter_resolver import FilterResolver
+from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_items_resolver import ForEachItemsResolver
 from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
-from harness.scalar_template_value_renderer import ScalarTemplateValueRenderer
 from harness.models import FlowDef, OutputSpec, RunState, StepDef, StepOutputs
 from harness.nested_component_accessor import NestedComponentAccessor
 from harness.nested_path_resolver import NestedPathResolver
 from harness.run_context_builder import RunContextBuilder
+from harness.scalar_template_value_renderer import ScalarTemplateValueRenderer
 from harness.step_dependency_checker import StepDependencyChecker
-from harness.step_instance_completion import StepInstanceCompletion
-from harness.step_instance_builder import StepInstanceBuilder
-from harness.step_instance_expander import StepInstanceExpander
 from harness.step_for_each_declaration_resolver import StepForEachDeclarationResolver
+from harness.step_instance_builder import StepInstanceBuilder
+from harness.step_instance_completion import StepInstanceCompletion
+from harness.step_instance_expander import StepInstanceExpander
 from harness.step_output_expression_resolver import StepOutputExpressionResolver
 from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_output_reference_resolver import StepOutputReferenceResolver
 from harness.step_readiness_checker import StepReadinessChecker
-from harness.step_status_checker import StepStatusChecker
 from harness.step_skip import StepSkip
+from harness.step_status_checker import StepStatusChecker
 from harness.unavailable_condition_evidence import UnavailableConditionEvidence
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
-from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_expression import WorkflowExpression
-from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
 )
+from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
-
-_CONTEXT_BUILDER = RunContextBuilder(
-    values_mapper=WorkflowContextValuesMapper()
-)
+_CONTEXT_BUILDER = RunContextBuilder(values_mapper=WorkflowContextValuesMapper())
 
 
 class UnexpectedOperationInputsResolver:
@@ -83,9 +79,7 @@ def _make_runner() -> DAGRunner:
         expression_evaluator=unfiltered_resolver,
         filter_resolver=FilterResolver(),
     )
-    context_resolver = WorkflowStepContextResolver(
-        WorkflowResultsVisibilitySelector()
-    )
+    context_resolver = WorkflowStepContextResolver(WorkflowResultsVisibilitySelector())
     return DAGRunner(
         readiness_checker=StepReadinessChecker(
             status_checker=StepStatusChecker(),
@@ -116,7 +110,6 @@ def _make_runner() -> DAGRunner:
 
 
 class TestDAGRunner(unittest.TestCase):
-
     def setUp(self):
         self.runner = _make_runner()
 
@@ -126,10 +119,12 @@ class TestDAGRunner(unittest.TestCase):
     def _step(
         self,
         sid: str,
-        depends_on: Optional[List[str]] = None,
-        for_each: Optional[ForEachDeclaration] = None,
+        depends_on: list[str] | None = None,
+        for_each: ForEachDeclaration | None = None,
     ) -> StepDef:
-        return StepDef(id=sid, prompt=f"Do {sid}", depends_on=depends_on or [], for_each=for_each)
+        return StepDef(
+            id=sid, prompt=f"Do {sid}", depends_on=depends_on or [], for_each=for_each
+        )
 
     def _for_each(self, step_id: str, output_name: str) -> ForEachDeclaration:
         return ForEachDeclaration(
@@ -139,7 +134,9 @@ class TestDAGRunner(unittest.TestCase):
             )
         )
 
-    def _state(self, completed: Optional[List[str]] = None, turn_count: int = 0) -> RunState:
+    def _state(
+        self, completed: list[str] | None = None, turn_count: int = 0
+    ) -> RunState:
         return RunState(
             completed={s: StepOutputs(values={}) for s in (completed or [])},
             running=[],
@@ -149,16 +146,29 @@ class TestDAGRunner(unittest.TestCase):
 
     def test_ready_and_blocked_steps(self):
         flow = self._flow(self._step("a"), self._step("b", depends_on=["a"]))
-        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())}
+        ids = {
+            i.step_id
+            for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())
+        }
         self.assertIn("a", ids)
         self.assertNotIn("b", ids)
-        ids_after = {i.step_id for i in self.runner.ready_steps(flow, self._state(completed=["a"]), WorkflowRunContext())}
+        ids_after = {
+            i.step_id
+            for i in self.runner.ready_steps(
+                flow, self._state(completed=["a"]), WorkflowRunContext()
+            )
+        }
         self.assertIn("b", ids_after)
         self.assertNotIn("a", ids_after)
 
     def test_completed_step_not_returned(self):
         flow = self._flow(self._step("a"))
-        self.assertEqual(self.runner.ready_steps(flow, self._state(completed=["a"]), WorkflowRunContext()), [])
+        self.assertEqual(
+            self.runner.ready_steps(
+                flow, self._state(completed=["a"]), WorkflowRunContext()
+            ),
+            [],
+        )
 
     def test_skipped_step_is_terminal_and_unlocks_its_dependent(self):
         condition = ComparisonCondition(
@@ -182,7 +192,10 @@ class TestDAGRunner(unittest.TestCase):
         )
         flow = self._flow(self._step("a"), self._step("b", depends_on=["a"]))
 
-        ids = {instance.step_id for instance in self.runner.ready_steps(flow, state, WorkflowRunContext())}
+        ids = {
+            instance.step_id
+            for instance in self.runner.ready_steps(flow, state, WorkflowRunContext())
+        }
 
         self.assertEqual(ids, {"b"})
 
@@ -235,7 +248,9 @@ class TestDAGRunner(unittest.TestCase):
         )
         flow = self._flow(self._step("load"), step)
         outputs = StepOutputs(values={"principles": ["SRP", "OCP", "LSP"]})
-        state = RunState(completed={"load": outputs}, running=[], turn_count=0, status="in_progress")
+        state = RunState(
+            completed={"load": outputs}, running=[], turn_count=0, status="in_progress"
+        )
         instances = self.runner.ready_steps(
             flow,
             state,
@@ -350,11 +365,19 @@ class TestDAGRunner(unittest.TestCase):
 
     def test_returns_empty_when_max_turns_reached(self):
         flow = self._flow(self._step("a"), max_turns=2)
-        self.assertEqual(self.runner.ready_steps(flow, self._state(turn_count=2), WorkflowRunContext()), [])
+        self.assertEqual(
+            self.runner.ready_steps(
+                flow, self._state(turn_count=2), WorkflowRunContext()
+            ),
+            [],
+        )
 
     def test_parallel_steps_all_returned(self):
         flow = self._flow(self._step("a"), self._step("b"), self._step("c"))
-        ids = {i.step_id for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())}
+        ids = {
+            i.step_id
+            for i in self.runner.ready_steps(flow, self._state(), WorkflowRunContext())
+        }
         self.assertEqual(ids, {"a", "b", "c"})
 
 

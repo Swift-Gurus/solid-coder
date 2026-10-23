@@ -12,12 +12,11 @@ from pydantic import ValidationError
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.project_context import ProjectDirectory
+from source.search_target_granularity import SearchTargetGranularity
 from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
 from source.source_unit_identity import SourceUnitIdentity
-from source.search_target_granularity import SearchTargetGranularity
-
 
 """
 solid-name: TestSourceSearchOperation
@@ -25,6 +24,8 @@ solid-category: unit-test
 solid-spec: [SPEC-040]
 solid-description: Validates typed repository search provenance, exclusions, ordering, and query validation.
 """
+
+
 class TestSourceSearchOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -54,19 +55,23 @@ class TestSourceSearchOperation(unittest.TestCase):
         )
 
     def test_returns_stable_candidates_with_query_and_match_provenance(self) -> None:
-        result = self.operation.execute(SourceSearchInput(
-            queries=[
-                SourceSearchQuery(
-                    id="invoice-tax",
-                    terms=["InvoiceTaxCalculator", "Foundation", "invoice"],
-                )
-            ],
-            excluded_units=[SourceUnitIdentity(
-                source_identity="Sources/Current.swift",
-                unit_identity="struct:InvoiceTaxCalculator:1",
-                granularity=SearchTargetGranularity.FILE,
-            )],
-        ))
+        result = self.operation.execute(
+            SourceSearchInput(
+                queries=[
+                    SourceSearchQuery(
+                        id="invoice-tax",
+                        terms=["InvoiceTaxCalculator", "Foundation", "invoice"],
+                    )
+                ],
+                excluded_units=[
+                    SourceUnitIdentity(
+                        source_identity="Sources/Current.swift",
+                        unit_identity="struct:InvoiceTaxCalculator:1",
+                        granularity=SearchTargetGranularity.FILE,
+                    )
+                ],
+            )
+        )
 
         self.assertEqual(
             [candidate.source_identity for candidate in result.candidates],
@@ -124,9 +129,11 @@ class TestSourceSearchOperation(unittest.TestCase):
             """,
         )
 
-        result = self.operation.execute(SourceSearchInput(
-            queries=[SourceSearchQuery(id="payment", terms=["PaymentAuthorizer"])],
-        ))
+        result = self.operation.execute(
+            SourceSearchInput(
+                queries=[SourceSearchQuery(id="payment", terms=["PaymentAuthorizer"])],
+            )
+        )
 
         combined = [
             candidate
@@ -140,7 +147,9 @@ class TestSourceSearchOperation(unittest.TestCase):
             "Authorizes invoice payments.",
         )
 
-    def test_limits_candidates_to_requested_source_extensions_and_directories(self) -> None:
+    def test_limits_candidates_to_requested_source_extensions_and_directories(
+        self,
+    ) -> None:
         excluded_files = [
             ".claude/specs/InvoiceTaxCalculator.md",
             ".pytest_cache/v/cache/InvoiceTaxCalculator.swift",
@@ -155,15 +164,17 @@ class TestSourceSearchOperation(unittest.TestCase):
             "InvoiceTaxCalculator documentation",
         )
 
-        result = self.operation.execute(SourceSearchInput(
-            queries=[
-                SourceSearchQuery(
-                    id="invoice-tax",
-                    terms=["InvoiceTaxCalculator"],
-                )
-            ],
-            included_file_extensions=[".swift"],
-        ))
+        result = self.operation.execute(
+            SourceSearchInput(
+                queries=[
+                    SourceSearchQuery(
+                        id="invoice-tax",
+                        terms=["InvoiceTaxCalculator"],
+                    )
+                ],
+                included_file_extensions=[".swift"],
+            )
+        )
 
         self.assertEqual(
             [candidate.source_identity for candidate in result.candidates],
@@ -180,9 +191,11 @@ class TestSourceSearchOperation(unittest.TestCase):
         outside_path.write_text("struct Escaped {}\n", encoding="utf-8")
         (self.project_root / "Escaped.swift").symlink_to(outside_path)
 
-        result = self.operation.execute(SourceSearchInput(
-            queries=[SourceSearchQuery(id="escaped", terms=["Escaped"])],
-        ))
+        result = self.operation.execute(
+            SourceSearchInput(
+                queries=[SourceSearchQuery(id="escaped", terms=["Escaped"])],
+            )
+        )
 
         self.assertEqual(result.candidates, [])
 

@@ -13,10 +13,10 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
-from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
-from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
-from rule_validation_scenario import RuleValidationScenario  # noqa: E402
+from rule_analysis_expectation import RuleAnalysisExpectation
+from rule_metric_expectation import RuleMetricExpectation
+from rule_validation_flow_contract import RuleValidationFlowContract
+from rule_validation_scenario import RuleValidationScenario
 
 
 class TestOCPValidationFlow(RuleValidationFlowContract):
@@ -119,21 +119,26 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
             [step.step_id for step in started.steps],
             ["analyze_dependencies"],
         )
-        dependency_analysis = self.sut.flow_next({
-            started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
-        })
+        dependency_analysis = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
+            }
+        )
 
         self.assertEqual(
             {step.step_id for step in dependency_analysis.steps},
             {"classify_exception"},
         )
-        self.assertTrue(all(
-            "OCP_USER_DEFAULTS_EVIDENCE" not in step.prompt
-            and "OCP_NOTIFICATION_CENTER_EVIDENCE" not in step.prompt
-            for step in dependency_analysis.steps
-        ))
+        self.assertTrue(
+            all(
+                "OCP_USER_DEFAULTS_EVIDENCE" not in step.prompt
+                and "OCP_NOTIFICATION_CENTER_EVIDENCE" not in step.prompt
+                for step in dependency_analysis.steps
+            )
+        )
         exception_step = next(
-            step for step in dependency_analysis.steps
+            step
+            for step in dependency_analysis.steps
             if step.step_id == "classify_exception"
         )
         self.assertIn(
@@ -161,9 +166,11 @@ class TestOCPValidationFlow(RuleValidationFlowContract):
         self.assertIn("can_substitute_without_modifying_unit", analysis_prompt)
         self.assertIn("can_subclass", analysis_prompt)
 
-        advanced = self.sut.flow_next({
-            started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
-        })
+        advanced = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: self.SCENARIO.analysis[0].output,
+            }
+        )
         exception_prompt = advanced.steps[0].prompt
         self.assertIn("ENTIRE class is exempt from OCP-1 and", exception_prompt)
         self.assertIn("Do NOT flag individual instantiations", exception_prompt)

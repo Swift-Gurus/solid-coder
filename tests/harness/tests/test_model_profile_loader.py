@@ -18,13 +18,15 @@ _PROJECT_ROOT = _HERE.parents[2]
 _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 _HOOKS_DIR = _PROJECT_ROOT / "hooks"
-ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config")
+ensure_on_path(
+    _HARNESS_DIR, _HERE, _HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config"
+)
 
-from interfaces import TomlLoading  # noqa: E402
-from hook_utils import load_toml  # noqa: E402
-from llm_config import LlmConfig  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
-from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
+from hook_utils import load_toml
+from interfaces import TomlLoading
+from llm_config import LlmConfig
+from model_profile_loader import ModelProfileLoader
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
 
 
 class FakeTomlLoader(TomlLoading):
@@ -39,7 +41,12 @@ class TestModelProfileLoader(unittest.TestCase):
     def test_repository_codex_profiles_are_pinned_to_terra(self):
         profiles = (
             _PROJECT_ROOT / "tests" / "models" / "codex.toml",
-            _PROJECT_ROOT / "tests" / "harness" / "integration_tests" / "models" / "codex.toml",
+            _PROJECT_ROOT
+            / "tests"
+            / "harness"
+            / "integration_tests"
+            / "models"
+            / "codex.toml",
         )
         for profile_path in profiles:
             with self.subTest(profile=profile_path):
@@ -55,7 +62,9 @@ class TestModelProfileLoader(unittest.TestCase):
             models_dir.mkdir(parents=True)
             qwen_toml = models_dir / "qwen.toml"
             qwen_toml.touch()
-            loader = FakeTomlLoader({str(qwen_toml): {"llm": {"backend": "qwen"}, "inference": {}}})
+            loader = FakeTomlLoader(
+                {str(qwen_toml): {"llm": {"backend": "qwen"}, "inference": {}}}
+            )
             profile = ModelProfileLoader(root, loader).load("qwen")
             self.assertEqual(profile.output_dir_name, "qwen")
             self.assertEqual(profile.llm.get("backend"), "qwen")
@@ -75,20 +84,24 @@ class TestModelProfileLoader(unittest.TestCase):
             claude_dir.mkdir()
             project_toml = claude_dir / CONFIG_LOCAL_TOML
             project_toml.touch()
-            loader = FakeTomlLoader({
-                str(project_toml): {"llm": {"backend": "claude"}, "inference": {}}
-            })
+            loader = FakeTomlLoader(
+                {str(project_toml): {"llm": {"backend": "claude"}, "inference": {}}}
+            )
             profile = ModelProfileLoader(root, loader).load(None)
             self.assertEqual(profile.output_dir_name, "claude")
 
-    def test_named_profile_missing_timeout_defaults_to_production_llm_config_timeout(self):
+    def test_named_profile_missing_timeout_defaults_to_production_llm_config_timeout(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             models_dir = root / "tests" / "models"
             models_dir.mkdir(parents=True)
             claude_toml = models_dir / "claude.toml"
             claude_toml.touch()
-            loader = FakeTomlLoader({str(claude_toml): {"llm": {"backend": "claude"}, "inference": {}}})
+            loader = FakeTomlLoader(
+                {str(claude_toml): {"llm": {"backend": "claude"}, "inference": {}}}
+            )
 
             profile = ModelProfileLoader(root, loader).load("claude")
 
@@ -101,9 +114,14 @@ class TestModelProfileLoader(unittest.TestCase):
             models_dir.mkdir(parents=True)
             codex_toml = models_dir / "codex.toml"
             codex_toml.touch()
-            loader = FakeTomlLoader({
-                str(codex_toml): {"llm": {"backend": "codex", "timeout": 300}, "inference": {}}
-            })
+            loader = FakeTomlLoader(
+                {
+                    str(codex_toml): {
+                        "llm": {"backend": "codex", "timeout": 300},
+                        "inference": {},
+                    }
+                }
+            )
 
             profile = ModelProfileLoader(root, loader).load("codex")
 

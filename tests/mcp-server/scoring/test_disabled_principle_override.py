@@ -5,7 +5,6 @@ from pathlib import Path
 
 from config_override_test_context import ConfigOverrideTestContext
 
-
 _CONTEXT = ConfigOverrideTestContext(Path(__file__).resolve().parents[3] / "references")
 
 
@@ -14,10 +13,15 @@ solid-name: DisabledPrincipleOverrideTests
 solid-category: unit-test
 solid-description: Verifies disabled principle overrides make every configured metric compliant.
 """
+
+
 class DisabledPrincipleOverrideTests(unittest.TestCase):
     def test_disabled_principle_forces_all_metrics_compliant(self):
         seen: set[str] = set()
-        for (config_key, metric_id, variable), (bands, rule_path) in _CONTEXT.metrics.items():
+        for (config_key, metric_id, variable), (
+            bands,
+            rule_path,
+        ) in _CONTEXT.metrics.items():
             if config_key in seen:
                 continue
             seen.add(config_key)

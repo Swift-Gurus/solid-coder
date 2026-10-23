@@ -5,7 +5,6 @@ solid-description: Executes tool invocation requests and returns their results w
 """
 
 import json
-from typing import Optional
 
 from call_meta_providing import CallMetaProviding
 from handler_storing import HandlerStoring
@@ -14,8 +13,9 @@ from tools_call_handling import ToolsCallHandling
 
 
 class ToolsCallHandler(ToolsCallHandling, CallMetaProviding):
-
-    def __init__(self, handlers: HandlerStoring, result_formatter: ToolResultFormatting) -> None:
+    def __init__(
+        self, handlers: HandlerStoring, result_formatter: ToolResultFormatting
+    ) -> None:
         self._handlers = handlers
         self._result_formatter = result_formatter
         self._current_call_meta: dict = {}
@@ -23,13 +23,16 @@ class ToolsCallHandler(ToolsCallHandling, CallMetaProviding):
     def get_current_call_meta(self) -> dict:
         return self._current_call_meta
 
-    def handle(self, name: str, arguments: dict, meta: Optional[dict]) -> dict:
+    def handle(self, name: str, arguments: dict, meta: dict | None) -> dict:
         self._current_call_meta = meta or {}
         handler = self._handlers.get(name)
         if handler is None:
             raise LookupError(f"Unknown tool: {name}")
         try:
             result = handler(**arguments)
-        except Exception as e:
-            return {"content": [{"type": "text", "text": json.dumps({"error": str(e)})}], "isError": True}
+        except Exception as e:  # noqa: BLE001 — MCP boundary serializes arbitrary registered-handler failures as explicit error responses.
+            return {
+                "content": [{"type": "text", "text": json.dumps({"error": str(e)})}],
+                "isError": True,
+            }
         return self._result_formatter.format(result)

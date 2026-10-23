@@ -5,10 +5,9 @@ from pathlib import Path
 from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.loaded_candidate_source import LoadedCandidateSource
 from source.read_source_candidates_output import CandidateSourceReadResult
-from source.source_search_context import SourceSearchContext
 from source.source_search_candidate import SourceSearchCandidate
+from source.source_search_context import SourceSearchContext
 from source.unavailable_candidate_source import UnavailableCandidateSource
-
 
 """
 solid-name: ProposedCandidateSourceResolver
@@ -16,6 +15,8 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves bounded candidate content from authoritative prospective source context.
 """
+
+
 class ProposedCandidateSourceResolver:
     def resolve(
         self,
@@ -35,7 +36,7 @@ class ProposedCandidateSourceResolver:
         snapshot = next(
             (
                 source
-            for source in context.sources
+                for source in context.sources
                 if source.path.resolve() == candidate.path.resolve()
             ),
             None,

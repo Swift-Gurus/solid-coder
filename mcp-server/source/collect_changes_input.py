@@ -4,13 +4,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-
 """
 solid-name: CollectChangesInput
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Identifies the project whose Git working-tree changes must be collected.
 """
+
+
 class CollectChangesInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

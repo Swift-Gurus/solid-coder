@@ -8,15 +8,15 @@ from typing import Protocol
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef
 
-
 """
 solid-name: AttemptFailureHandling
 solid-category: abstraction
 solid-spec: [SPEC-027]
 solid-description: Contract for handling a failed step attempt by optionally reopening the step and determining the flow's next state.
 """
-class AttemptFailureHandling(Protocol):
 
+
+class AttemptFailureHandling(Protocol):
     def handle(
         self,
         step_id: str,

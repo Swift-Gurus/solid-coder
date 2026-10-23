@@ -6,13 +6,14 @@ from harness.aggregate_assignment_recovery_reading import (
     AggregateAssignmentRecoveryReading,
 )
 
-
 """
 solid-name: AggregateSubmissionInstructionRendering
 solid-category: abstraction
 solid-spec: [SPEC-052]
-solid-description: Contract for rendering initial and corrective aggregate submission guidance.
+solid-description: Contract for presenting aggregate submission guidance.
 """
+
+
 class AggregateSubmissionInstructionRendering(Protocol):
     def render(
         self,

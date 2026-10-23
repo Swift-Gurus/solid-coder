@@ -18,9 +18,11 @@ _CLI = str(_PROJECT_ROOT / "tests" / "run_principle_tests.py")
 class TestRunPrincipleTestsCLI(unittest.TestCase):
     def _run(self, extra_args: list[str]) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, _CLI, "--principle", "references/principles/SRP"] + extra_args,
+            [sys.executable, _CLI, "--principle", "references/principles/SRP"]
+            + extra_args,
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_e2e_mode_exits_1_with_deferral_message(self):

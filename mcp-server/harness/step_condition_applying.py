@@ -8,13 +8,14 @@ from harness.condition_declaration import ConditionDeclaration
 from harness.models import StepInstance
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: StepConditionApplying
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for applying a workflow condition decision to one expanded step instance.
 """
+
+
 class StepConditionApplying(Protocol):
     def apply(
         self,

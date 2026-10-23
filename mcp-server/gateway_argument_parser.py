@@ -1,16 +1,16 @@
 """Parses gateway command-line arguments."""
 
-from pydantic import TypeAdapter
-
 from gateway_argument_parsing import GatewayArgumentParsing
 from gateway_arguments import GatewayArguments
-
+from pydantic import TypeAdapter
 
 """
 solid-name: GatewayArgumentParser
 solid-category: boundary-adapter
 solid-description: Parses a gateway tool name and its command-line argument values.
 """
+
+
 class GatewayArgumentParser(GatewayArgumentParsing):
     def __init__(self, arguments_adapter: TypeAdapter) -> None:
         self._arguments_adapter = arguments_adapter
@@ -23,7 +23,9 @@ class GatewayArgumentParser(GatewayArgumentParsing):
             argument = arguments[index]
             if argument.startswith("--"):
                 key = argument[2:].replace("-", "_")
-                if index + 1 < len(arguments) and not arguments[index + 1].startswith("--"):
+                if index + 1 < len(arguments) and not arguments[index + 1].startswith(
+                    "--"
+                ):
                     value = arguments[index + 1]
                     values[key] = (
                         [item.strip() for item in value.split(",")]

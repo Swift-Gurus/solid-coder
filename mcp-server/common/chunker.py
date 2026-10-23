@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Utility that transparently handles oversized text and JSON responses by offloading large content to external storage and returning retrieval instructions.
 solid-category: utility
@@ -34,7 +33,10 @@ class Chunker:
             return content
 
         ts = int(time.time())
-        chunks = [content[i:i + self._chunk_size] for i in range(0, len(content), self._chunk_size)]
+        chunks = [
+            content[i : i + self._chunk_size]
+            for i in range(0, len(content), self._chunk_size)
+        ]
         paths = []
         for n, part in enumerate(chunks, 1):
             path = self._make_temp_path(prefix, ts, f"-{n}of{len(chunks)}")

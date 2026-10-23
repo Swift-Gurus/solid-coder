@@ -11,15 +11,14 @@ for _directory in (_HARNESS, _PROJECT_ROOT / "mcp-server"):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from codex_test_base import CodexTestBase  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase  # noqa: E402
-from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
-from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
-from review.prepare_review_input import PrepareReviewInput  # noqa: E402
-from review_comparison_source_project import ReviewComparisonSourceProject  # noqa: E402
-from source.file_analysis_source import FileAnalysisSource  # noqa: E402
-
+from codex_test_base import CodexTestBase
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase
+from live_workflow_scenario import LiveWorkflowScenario
+from preserved_live_workflow_run import PreservedLiveWorkflowRun
+from review.prepare_review_input import PrepareReviewInput
+from review_comparison_source_project import ReviewComparisonSourceProject
+from source.file_analysis_source import FileAnalysisSource
 
 """
 solid-name: TestCodexRulePromptReviewComparisonLive
@@ -27,6 +26,8 @@ solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Proves the YAML-only aggregate-rule experiment completes the controlled full-review fixture with a bounded model-step count.
 """
+
+
 class TestCodexRulePromptReviewComparisonLive(
     CodexTestBase,
     LiveWorkflowE2ELiveBase,
@@ -77,16 +78,18 @@ class TestCodexRulePromptReviewComparisonLive(
         ]
         self.assertEqual(
             Counter(model_steps),
-            Counter({
-                "assess_code_smells": 1,
-                "assess_frontmatter": 1,
-                "assess_srp": 1,
-                "assess_ocp": 2,
-                "assess_lsp": 2,
-                "assess_isp": 1,
-                "generate_terms": 2,
-                "assess_dry": 2,
-            }),
+            Counter(
+                {
+                    "assess_code_smells": 1,
+                    "assess_frontmatter": 1,
+                    "assess_srp": 1,
+                    "assess_ocp": 2,
+                    "assess_lsp": 2,
+                    "assess_isp": 1,
+                    "generate_terms": 2,
+                    "assess_dry": 2,
+                }
+            ),
         )
 
 

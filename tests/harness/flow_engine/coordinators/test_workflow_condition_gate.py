@@ -14,15 +14,15 @@ from harness.comparison_condition import ComparisonCondition
 from harness.comparison_condition_evidence import ComparisonConditionEvidence
 from harness.condition_operator import ConditionOperator
 from harness.flow_def import FlowDef
-from harness.run_state import RunState
 from harness.resolved_condition_value import ResolvedConditionValue
+from harness.run_state import RunState
 from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_gate_result import WorkflowConditionGateResult
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
-from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_expression import WorkflowExpression
+from harness.workflow_run_context import WorkflowRunContext
 
 
 class StubContextBuilder:
@@ -91,15 +91,12 @@ def _state(decision=None) -> RunState:
 
 
 class TestWorkflowConditionGate(unittest.TestCase):
-
     def test_evaluates_and_records_the_first_workflow_decision(self):
         condition = _condition()
         context_builder = StubContextBuilder(
             WorkflowRunContext(
                 parameters=WorkflowContextValues(
-                    entries=[
-                        WorkflowContextValue(name="enabled", value=False)
-                    ]
+                    entries=[WorkflowContextValue(name="enabled", value=False)]
                 )
             )
         )

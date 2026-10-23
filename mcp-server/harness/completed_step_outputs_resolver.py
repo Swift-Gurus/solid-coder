@@ -5,13 +5,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.run_state import RunState
 from harness.step_outputs import StepOutputs
 
-
 """
 solid-name: CompletedStepOutputsResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Resolves required completed step outputs or reports missing runtime evidence.
 """
+
+
 class CompletedStepOutputsResolver(CompletedStepOutputsResolving):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory

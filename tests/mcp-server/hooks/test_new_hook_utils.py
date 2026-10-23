@@ -10,7 +10,7 @@ from pathlib import Path
 HOOKS_DIR = Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
-from hook_utils import SubprocessError, SubprocessJsonRunner, SubprocessAdapter
+from hook_utils import SubprocessAdapter, SubprocessError, SubprocessJsonRunner
 
 
 class TestSubprocessError(unittest.TestCase):
@@ -23,8 +23,10 @@ class TestSubprocessError(unittest.TestCase):
 class TestStrictCall(unittest.TestCase):
     def _make_boom_adapter(self):
         from hook_callable import CallableAdapting
+
         def boom():
             raise SubprocessError("subprocess died")
+
         return CallableAdapting(fn=boom)
 
     def test_strict_call_propagates_exception(self):
@@ -38,6 +40,7 @@ class TestStrictCall(unittest.TestCase):
 
     def test_strict_call_returns_value(self):
         from hook_callable import CallableAdapting
+
         adapter = CallableAdapting(fn=lambda x: x * 2)
         self.assertEqual(adapter._strict_call(5), 10)
 
@@ -55,9 +58,7 @@ class TestSubprocessJsonRunner(unittest.TestCase):
 
     def test_raises_on_invalid_json(self):
         with self.assertRaises(SubprocessError) as ctx:
-            self.runner.run(
-                [sys.executable, "-c", "print('not json')"], timeout=10
-            )
+            self.runner.run([sys.executable, "-c", "print('not json')"], timeout=10)
         self.assertIn("invalid JSON", str(ctx.exception))
 
     def test_returns_parsed_json_on_success(self):

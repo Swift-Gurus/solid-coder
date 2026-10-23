@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SourceParseDiagnostic
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Records a recoverable source parse issue with stable code and line evidence.
 """
+
+
 class SourceParseDiagnostic(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

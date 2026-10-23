@@ -6,13 +6,14 @@ from harness.rule_set_member_resolver import RuleSetMemberResolving
 from harness.rule_set_members_resolving import RuleSetMembersResolving
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
-
 """
 solid-name: CatalogRuleSetMembersResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Resolves enrolled rules from one scoped catalog into stable conditioned include members.
 """
+
+
 class CatalogRuleSetMembersResolver(RuleSetMembersResolving):
     def __init__(
         self,

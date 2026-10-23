@@ -8,13 +8,14 @@ from harness.operation_step_running import OperationStepRunning
 from harness.step_run_outcome import StepRunOutcome
 from harness.step_running import StepRunning
 
-
 """
 solid-name: OperationStepRunnerAdapter
 solid-category: adapter
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Adapts validated operation step instances to the generic engine runner contract.
 """
+
+
 class OperationStepRunnerAdapter(StepRunning):
     def __init__(
         self,

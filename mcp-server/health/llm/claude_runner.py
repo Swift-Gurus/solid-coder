@@ -6,22 +6,24 @@ solid-tags: [hook, llm]
 
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable, Optional, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from hook_callable import CallableAdapting
 from utils.debug_logger import Observing
 
-ClaudeCallable = Callable[..., Optional[str]]
+ClaudeCallable = Callable[..., str | None]
 
 
 class ClaudeRunning(Protocol):
-    def run(self, prompt: str, timeout: int) -> Optional[str]: ...
+    def run(self, prompt: str, timeout: int) -> str | None: ...
 
 
 class ClaudeRunner(CallableAdapting):
@@ -42,7 +44,7 @@ class ClaudeRunner(CallableAdapting):
         self._cwd = cwd
 
     @Observing("runner.claude_runner.run")
-    def run(self, prompt: str, timeout: int) -> Optional[str]:
+    def run(self, prompt: str, timeout: int) -> str | None:
         return self._strict_call(
             prompt,
             mcp_config=self._mcp_config,

@@ -4,13 +4,14 @@ from harness.batch_step_group_validating import BatchStepGroupValidating
 from harness.flow_validation_error import FlowValidationError
 from harness.step_result import StepResult
 
-
 """
 solid-name: OrdinaryBatchStepGroupValidator
 solid-category: service
 solid-spec: [SPEC-042]
 solid-description: Enforces unique domain labels and one shared prompt for an ordinary sibling batch.
 """
+
+
 class OrdinaryBatchStepGroupValidator(BatchStepGroupValidating):
     def validate(self, steps: list[StepResult]) -> None:
         labels = [step.batch.label for step in steps if step.batch is not None]

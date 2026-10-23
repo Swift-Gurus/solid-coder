@@ -10,13 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 
-
 """
 solid-name: TestComponentMetricLoading
 solid-category: unit-test
 solid-spec: [SPEC-059]
 solid-description: Verifies pairwise reducer declaration and source-schema rejection before workflow execution.
 """
+
+
 class TestComponentMetricLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -52,13 +53,23 @@ class TestComponentMetricLoading(unittest.TestCase):
             ("right.resources", "right.name", "relation.right.*array"),
             ("items: {type: string}", "items: {type: object}", "scalar"),
             ("value: {type: integer, minimum: 0}", "value: {type: number}", "integer"),
-            ("operator: intersects", "operator: intersects\n              unexpected: true", "unexpected"),
-            ("type: component_count", 'type: component_count\n            value: "{{item}}"', r"component_count\.value\s+Extra inputs are not permitted"),
+            (
+                "operator: intersects",
+                "operator: intersects\n              unexpected: true",
+                "unexpected",
+            ),
+            (
+                "type: component_count",
+                'type: component_count\n            value: "{{item}}"',
+                r"component_count\.value\s+Extra inputs are not permitted",
+            ),
         ]
         for original, replacement, diagnostic in replacements:
-            with self.subTest(replacement=replacement):
-                with self.assertRaisesRegex(FlowValidationError, diagnostic):
-                    self._load(self.source.replace(original, replacement))
+            with (
+                self.subTest(replacement=replacement),
+                self.assertRaisesRegex(FlowValidationError, diagnostic),
+            ):
+                self._load(self.source.replace(original, replacement))
 
     def test_rejects_missing_relation(self) -> None:
         start = self.source.index("            relation:\n")

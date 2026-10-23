@@ -4,7 +4,8 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Callable, Optional, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from violation_extractor import ViolationExtracting
 
@@ -23,12 +24,13 @@ class FileOutputReader:
     def __init__(
         self,
         extractor: ViolationExtracting,
-        path_cls: Optional[Callable] = None,
-        rmtree_fn: Optional[Callable] = None,
+        path_cls: Callable | None = None,
+        rmtree_fn: Callable | None = None,
         debug: bool = False,
     ) -> None:
         import shutil as _shutil
         from pathlib import Path
+
         self._extractor = extractor
         self._path_cls = path_cls or Path
         self._rmtree_fn = rmtree_fn or _shutil.rmtree

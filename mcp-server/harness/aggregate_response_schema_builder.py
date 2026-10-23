@@ -5,13 +5,14 @@ from harness.aggregate_item_schema_building import AggregateItemSchemaBuilding
 from harness.aggregate_response_schema_building import AggregateResponseSchemaBuilding
 from harness.strict_object_schema_building import StrictObjectSchemaBuilding
 
-
 """
 solid-name: AggregateResponseSchemaBuilder
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Serializes typed item-level aggregate contracts into a strict model-response schema.
 """
+
+
 class AggregateResponseSchemaBuilder(AggregateResponseSchemaBuilding):
     def __init__(
         self,

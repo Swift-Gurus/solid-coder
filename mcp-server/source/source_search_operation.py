@@ -14,13 +14,14 @@ from source.source_search_matches_resolving import SourceSearchMatchesResolving
 from source.source_search_output import SourceSearchOutput
 from source.source_unit_exclusion_checking import SourceUnitExclusionChecking
 
-
 """
 solid-name: SourceSearchOperation
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Searches repository source units for exact query matches and returns bounded, deterministically ranked candidates.
 """
+
+
 class SourceSearchOperation:
     def __init__(
         self,
@@ -39,8 +40,7 @@ class SourceSearchOperation:
     def execute(self, operation_input: SourceSearchInput) -> SourceSearchOutput:
         root = self._project_directory.read().resolve()
         proposed_paths = {
-            snapshot.path.resolve()
-            for snapshot in operation_input.context.sources
+            snapshot.path.resolve() for snapshot in operation_input.context.sources
         }
         proposed_snapshots = [
             snapshot
@@ -67,7 +67,9 @@ class SourceSearchOperation:
             ],
         ]:
             units = self._units.resolve(snapshot)
-            files_with_frontmatter += int(any(unit.frontmatter.description for unit in units))
+            files_with_frontmatter += int(
+                any(unit.frontmatter.description for unit in units)
+            )
             for unit in units:
                 if self._exclusion.is_excluded(
                     root,
@@ -78,16 +80,18 @@ class SourceSearchOperation:
                     continue
                 matches = self._matches.resolve(unit, operation_input.queries)
                 if matches:
-                    candidates.append(SourceSearchCandidate(
-                        unit=unit.unit,
-                        unit_identity=unit.unit_identity,
-                        description=unit.description,
-                        path=unit.path,
-                        source_identity=unit.source_identity,
-                        content_sha256=unit.content_sha256,
-                        origin=origin,
-                        matches=matches,
-                    ))
+                    candidates.append(
+                        SourceSearchCandidate(
+                            unit=unit.unit,
+                            unit_identity=unit.unit_identity,
+                            description=unit.description,
+                            path=unit.path,
+                            source_identity=unit.source_identity,
+                            content_sha256=unit.content_sha256,
+                            origin=origin,
+                            matches=matches,
+                        )
+                    )
         ordered = sorted(
             candidates,
             key=lambda candidate: (
@@ -97,10 +101,7 @@ class SourceSearchOperation:
             ),
         )
         return SourceSearchOutput(
-            candidates=ordered[:operation_input.max_candidates],
-            files_scanned=(
-                len(proposed_snapshots)
-                + len(repository_snapshots)
-            ),
+            candidates=ordered[: operation_input.max_candidates],
+            files_scanned=(len(proposed_snapshots) + len(repository_snapshots)),
             files_with_frontmatter=files_with_frontmatter,
         )

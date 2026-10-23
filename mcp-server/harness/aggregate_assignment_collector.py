@@ -8,13 +8,14 @@ from harness.aggregate_assignment_presentation import AggregateAssignmentPresent
 from harness.aggregate_step_rejection import AggregateStepRejection
 from harness.step_result import StepResult
 
-
 """
 solid-name: AggregateAssignmentCollector
 solid-category: service
 solid-spec: [SPEC-045, SPEC-052]
 solid-description: Groups original aggregate step results by opaque item label and workflow alias.
 """
+
+
 class AggregateAssignmentCollector(AggregateAssignmentCollecting):
     def collect(self, steps: list[StepResult]) -> list[AggregateAssignment]:
         assignments: list[AggregateAssignment] = []

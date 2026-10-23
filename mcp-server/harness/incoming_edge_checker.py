@@ -3,15 +3,15 @@
 from harness.directed_graph import DirectedGraph
 from harness.incoming_edge_checking import IncomingEdgeChecking
 
-
 """
 solid-name: IncomingEdgeChecker
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Detects an incoming edge from a selected set of graph nodes.
 """
-class IncomingEdgeChecker(IncomingEdgeChecking):
 
+
+class IncomingEdgeChecker(IncomingEdgeChecking):
     def has_incoming_edge(
         self,
         node_id: str,

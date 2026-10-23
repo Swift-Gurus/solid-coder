@@ -7,13 +7,14 @@ from harness.rule_selection_condition_compiling import (
 )
 from harness.workflow_expression import WorkflowExpression
 
-
 """
 solid-name: RuleSelectionConditionCompiler
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Translates included and excluded selector values into typed comparison clauses.
 """
+
+
 class RuleSelectionConditionCompiler(RuleSelectionConditionCompiling):
     def compile(
         self,

@@ -10,16 +10,14 @@ _MODULE_DIR = Path(__file__).resolve().parent
 if str(_MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(_MODULE_DIR))
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from feature_flags_config import FeatureFlagsConfig
 from flow_engine_config import FlowEngineConfig
 from frontmatter_config import FrontmatterConfig
 from hook_config import HookConfig
 from inference_config import InferenceConfig
 from llm_config import LlmConfig
+from pydantic import BaseModel, ConfigDict, Field
 from server_config import ServerConfig
-
 
 """
 solid-name: SolidCoderConfig
@@ -27,6 +25,8 @@ solid-category: model
 solid-spec: [SPEC-069]
 solid-description: Provides unified configuration for all system subsystems.
 """
+
+
 class SolidCoderConfig(BaseModel):
     """Root config model — one section field per top-level TOML table."""
 

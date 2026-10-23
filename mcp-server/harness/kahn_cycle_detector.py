@@ -4,15 +4,15 @@ from harness.cycle_detecting import CycleDetecting
 from harness.directed_graph import DirectedGraph
 from harness.incoming_edge_checking import IncomingEdgeChecking
 
-
 """
 solid-name: KahnCycleDetector
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Determines whether a typed directed graph contains a cycle.
 """
-class KahnCycleDetector(CycleDetecting):
 
+
+class KahnCycleDetector(CycleDetecting):
     def __init__(self, incoming_edge_checker: IncomingEdgeChecking) -> None:
         self._incoming_edge_checker = incoming_edge_checker
 

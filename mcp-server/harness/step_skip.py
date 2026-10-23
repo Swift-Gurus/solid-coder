@@ -8,13 +8,14 @@ from typing import Any
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_evidence import ConditionEvidence
 
-
 """
 solid-name: StepSkip
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Captures a durable workflow-step skip decision, including its identity, context, and governing condition.
 """
+
+
 @dataclass(frozen=True)
 class StepSkip:
     step_id: str

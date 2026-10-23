@@ -9,13 +9,14 @@ from harness.rule_workflow_validation_planning import (
     RuleWorkflowValidationPlanning,
 )
 
-
 """
 solid-name: RuleWorkflowValidator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Validates rule enrollment, required observation steps, and unique metric identities.
 """
+
+
 class RuleWorkflowValidator(RuleWorkflowValidating):
     def __init__(
         self,

@@ -6,12 +6,13 @@ solid-category: unit-test
 import json
 import unittest
 from pathlib import Path
+
 from helpers import (
     SubmitFindingsTestBase,
-    make_schema_srp_partial,
-    make_schema_srp_severe_metrics,
     make_ocp_partial,
     make_ocp_partial_bad_files,
+    make_schema_srp_partial,
+    make_schema_srp_severe_metrics,
 )
 
 
@@ -83,28 +84,43 @@ class TestSubmitBatchFindings(SubmitFindingsTestBase):
         self.assertEqual(result.get("violations"), [])
 
     def test_severe_violations_include_instructions_message(self):
-        severe_partial = make_schema_srp_partial(units=[{
-            "unit_name": "Foo", "unit_kind": "class",
-            "metrics": make_schema_srp_severe_metrics(),
-        }])
-        result = self.handler.submit_batch_findings(self.tmp.name, {"SRP": severe_partial})
+        severe_partial = make_schema_srp_partial(
+            units=[
+                {
+                    "unit_name": "Foo",
+                    "unit_kind": "class",
+                    "metrics": make_schema_srp_severe_metrics(),
+                }
+            ]
+        )
+        result = self.handler.submit_batch_findings(
+            self.tmp.name, {"SRP": severe_partial}
+        )
         if result.get("violations"):
             self.assertIn("message", result)
             self.assertIn("output_dir", result)
 
     def test_compliant_submissions_no_message_field(self):
         result = self.handler.submit_batch_findings(
-            self.tmp.name, {"SRP": make_schema_srp_partial()},
+            self.tmp.name,
+            {"SRP": make_schema_srp_partial()},
         )
         if not result.get("violations"):
             self.assertNotIn("message", result)
 
     def test_violation_entry_includes_file_path_and_unit_name(self):
-        severe_partial = make_schema_srp_partial(units=[{
-            "unit_name": "Bar", "unit_kind": "class",
-            "metrics": make_schema_srp_severe_metrics(),
-        }])
-        result = self.handler.submit_batch_findings(self.tmp.name, {"SRP": severe_partial})
+        severe_partial = make_schema_srp_partial(
+            units=[
+                {
+                    "unit_name": "Bar",
+                    "unit_kind": "class",
+                    "metrics": make_schema_srp_severe_metrics(),
+                }
+            ]
+        )
+        result = self.handler.submit_batch_findings(
+            self.tmp.name, {"SRP": severe_partial}
+        )
         violations = result.get("violations", [])
         if violations:
             v = violations[0]

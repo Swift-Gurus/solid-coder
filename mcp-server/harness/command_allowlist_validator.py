@@ -7,13 +7,14 @@ from harness.executable_step_field_reading import ExecutableStepFieldReading
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.step_executable_resolving import StepExecutableResolving
 
-
 """
 solid-name: CommandAllowlistValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates workflow process executables against the permitted-executable allowlist.
 """
+
+
 class CommandAllowlistValidator(CommandAllowlistValidating):
     def __init__(
         self,

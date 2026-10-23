@@ -5,7 +5,6 @@ from typing import Generic, TypeVar
 
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
 
-
 Capability = TypeVar("Capability")
 
 
@@ -13,8 +12,10 @@ Capability = TypeVar("Capability")
 solid-name: BatchPresentationCapabilityRegistration
 solid-category: model
 solid-spec: [SPEC-042, SPEC-043]
-solid-description: Associates one batch-presentation mode with a typed runtime capability.
+solid-description: Represents a presentation option and its associated capability.
 """
+
+
 @dataclass(frozen=True)
 class BatchPresentationCapabilityRegistration(Generic[Capability]):
     mode: BatchStepPresentationMode

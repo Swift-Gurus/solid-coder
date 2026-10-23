@@ -12,16 +12,15 @@ from source.nul_delimited_paths_parser import NulDelimitedPathsParser
 from source.readable_whole_file_range_resolver import (
     ReadableWholeFileRangeResolver,
 )
-from source.source_line_ranges_coalescer import SourceLineRangesCoalescer
-from source.source_operation_error_factory import SourceOperationErrorFactory
 from source.rename_precedence_changed_paths_normalizer import (
     RenamePrecedenceChangedPathsNormalizer,
 )
+from source.source_line_ranges_coalescer import SourceLineRangesCoalescer
+from source.source_operation_error_factory import SourceOperationErrorFactory
 from source.unified_diff_added_line_ranges_parser import (
     UnifiedDiffAddedLineRangesParser,
 )
 from utils.prompt_builder import PlainTextFileReader
-
 
 """
 solid-name: CollectChangesOperationFactory
@@ -29,18 +28,16 @@ solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Composes the typed collaborators required for deterministic Git change collection.
 """
+
+
 class CollectChangesOperationFactory:
     def make(self) -> CollectChangesOperation:
-        git = GitQueryExecutor(
-            ProcessExecutionRunnerAdapter(SubprocessAdapter())
-        )
+        git = GitQueryExecutor(ProcessExecutionRunnerAdapter(SubprocessAdapter()))
         return CollectChangesOperation(
             paths=GitChangedPathsReader(
                 git=git,
                 paths_parser=NulDelimitedPathsParser(),
-                renames_parser=GitRenameRecordsParser(
-                    SourceOperationErrorFactory()
-                ),
+                renames_parser=GitRenameRecordsParser(SourceOperationErrorFactory()),
                 normalizer=RenamePrecedenceChangedPathsNormalizer(),
             ),
             added_ranges=GitAddedLineRangesReader(
@@ -50,7 +47,5 @@ class CollectChangesOperationFactory:
                     ranges=SourceLineRangesCoalescer(),
                 ),
             ),
-            whole_file_range=ReadableWholeFileRangeResolver(
-                PlainTextFileReader()
-            ),
+            whole_file_range=ReadableWholeFileRangeResolver(PlainTextFileReader()),
         )

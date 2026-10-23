@@ -6,7 +6,7 @@ solid-tags: [hook, utility]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1]
 _SESSION_DIR = Path(__file__).resolve().parent
@@ -20,20 +20,26 @@ class SessionRegistering(Protocol):
 
 
 class SessionValidating(Protocol):
-    def validate(self, session_id: str, transcript_path: Optional[str], cwd: str) -> dict: ...
+    def validate(
+        self, session_id: str, transcript_path: str | None, cwd: str
+    ) -> dict: ...
 
 
 class SessionRegistry:
     """Facade: coordinates registration and stop-validation via protocol-typed subsystems."""
 
-    def __init__(self, registrar: SessionRegistering, validator: SessionValidating) -> None:
+    def __init__(
+        self, registrar: SessionRegistering, validator: SessionValidating
+    ) -> None:
         self._registrar = registrar
         self._validator = validator
 
     def register(self, session_id: str, session_type: str, cwd: str) -> dict:
         return self._registrar.register(session_id, session_type, cwd)
 
-    def validate_stop(self, session_id: str, transcript_path: Optional[str], cwd: str) -> dict:
+    def validate_stop(
+        self, session_id: str, transcript_path: str | None, cwd: str
+    ) -> dict:
         return self._validator.validate(session_id, transcript_path, cwd)
 
 
@@ -43,13 +49,17 @@ def _make_registry() -> SessionRegistry:
     from session_registry_accessor import SessionRegistryAccessor
     from session_stop_validator import SessionStopValidator
     from session_store import SessionStore
-    from tool_call_checker import ToolCallChecker
+    from tool_call_checker import DefaultRequiredTools, ToolCallChecker
+
     store = SessionStore()
     return SessionRegistry(
         registrar=SessionRegistrar(store=store),
         validator=SessionStopValidator(
             registry=SessionRegistryAccessor(store=store),
-            checker=ToolCallChecker(reader=make_mcp_tool_call_reader()),
+            checker=ToolCallChecker(
+                reader=make_mcp_tool_call_reader(),
+                required_tools=DefaultRequiredTools(),
+            ),
         ),
     )
 
@@ -59,6 +69,8 @@ def register_session(session_id: str, session_type: str, cwd: str) -> dict:
     return _make_registry().register(session_id, session_type, cwd)
 
 
-def validate_session_stop(session_id: str, transcript_path: Optional[str], cwd: str) -> dict:
+def validate_session_stop(
+    session_id: str, transcript_path: str | None, cwd: str
+) -> dict:
     """Gateway-callable: validate a session stop."""
     return _make_registry().validate_stop(session_id, transcript_path, cwd)

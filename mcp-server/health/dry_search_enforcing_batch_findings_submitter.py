@@ -5,12 +5,13 @@ from findings.batch_submission_parse_result import BatchSubmissionParseResult
 from health.dry_search_completion_checking import DrySearchCompletionChecking
 from health.dry_search_completion_status import DrySearchCompletionStatus
 
-
 """
 solid-name: DrySearchEnforcingBatchFindingsSubmitter
 solid-category: service
 solid-description: Enforces successful DRY-search completion before accepting a typed health-check findings batch.
 """
+
+
 class DrySearchEnforcingBatchFindingsSubmitter(BatchSubmissionHandling):
     def __init__(
         self,
@@ -30,10 +31,7 @@ class DrySearchEnforcingBatchFindingsSubmitter(BatchSubmissionHandling):
             principle.label.casefold() == "dry"
             for principle in parse_result.submission.principles
         )
-        if (
-            requires_dry_search
-            and status is DrySearchCompletionStatus.MISSING
-        ):
+        if requires_dry_search and status is DrySearchCompletionStatus.MISSING:
             return {
                 "error": "dry_search_required",
                 "message": (

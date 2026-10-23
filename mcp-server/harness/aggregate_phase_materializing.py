@@ -7,13 +7,14 @@ from harness.flow_def import FlowDef
 from harness.step_instance import StepInstance
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: AggregatePhaseMaterializing
 solid-category: abstraction
 solid-spec: [SPEC-045]
-solid-description: Contract for materializing one planned aggregate phase as original workflow-step instances.
+solid-description: Contract for expanding aggregate workflow phases into executable steps.
 """
+
+
 class AggregatePhaseMaterializing(Protocol):
     def materialize(
         self,

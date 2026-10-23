@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
-
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _MCP_SERVER_DIRECTORY = _REPOSITORY_ROOT / "mcp-server"
 for _directory in (
@@ -23,9 +22,8 @@ for _directory in (
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from code_health_check_adapter import CodeHealthCheckAdapter  # noqa: E402
-from health_check_outcome import HealthCheckOutcome  # noqa: E402
-
+from code_health_check_adapter import CodeHealthCheckAdapter
+from health_check_outcome import HealthCheckOutcome
 
 """
 solid-name: TestCodeHealthCheckAdapter
@@ -33,8 +31,9 @@ solid-category: unit-test
 solid-spec: [SPEC-049]
 solid-description: Proves patch-context adaptation preserves the injected health-checking object.
 """
-class TestCodeHealthCheckAdapter(unittest.TestCase):
 
+
+class TestCodeHealthCheckAdapter(unittest.TestCase):
     def test_delegates_to_the_health_checker_object(self) -> None:
         checker = MagicMock()
         outcome = HealthCheckOutcome()

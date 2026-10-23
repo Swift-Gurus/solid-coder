@@ -2,10 +2,9 @@
 
 from harness.models import FlowDef, StepDef, StepInstance, ValidationResult
 from harness.step_handling import StepHandling
-from harness.step_running import StepRunning
 from harness.step_run_outcome import StepRunOutcome
+from harness.step_running import StepRunning
 from harness.step_submission_validating import StepSubmissionValidating
-
 
 """
 solid-name: ProcessStepHandler
@@ -13,6 +12,8 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Coordinates execution and submission validation for process-backed workflow steps.
 """
+
+
 class ProcessStepHandler(StepHandling):
     def __init__(
         self,

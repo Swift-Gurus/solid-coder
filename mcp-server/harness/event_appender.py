@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 
@@ -46,7 +46,7 @@ class EventSerializer:
 
     def serialize(self, event_type: str, payload: dict[str, Any]) -> str:
         record: dict[str, Any] = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
             "event": event_type,
         }
         record.update(payload)
@@ -73,7 +73,9 @@ class EventAppender:
     solid-category: service
     """
 
-    def __init__(self, serializer: EventSerializing, file_appender: FileLineAppending) -> None:
+    def __init__(
+        self, serializer: EventSerializing, file_appender: FileLineAppending
+    ) -> None:
         self._serializer = serializer
         self._file_appender = file_appender
 

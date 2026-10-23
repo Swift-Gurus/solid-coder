@@ -1,19 +1,18 @@
 """Collects typed observations from completed executable rule steps."""
 
-from harness.completed_step_outputs_resolving import CompletedStepOutputsResolving
 from findings.metric_additional_info import MetricAdditionalInfo
+from harness.completed_step_outputs_resolving import CompletedStepOutputsResolving
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
-from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_assessment_observations_decoding import (
     RuleAssessmentObservationsDecoding,
 )
 from harness.rule_exception_decision import RuleExceptionDecision
+from harness.rule_execution_instance import RuleExecutionInstance
 from harness.rule_metric_observation import RuleMetricObservation
 from harness.rule_observation_collecting import RuleObservationCollecting
 from harness.rule_observations import RuleObservations
 from harness.run_state import RunState
 from harness.unavailable_rule_metric import UnavailableRuleMetric
-
 
 """
 solid-name: RuleObservationCollector
@@ -21,6 +20,8 @@ solid-category: service
 solid-spec: [SPEC-039, SPEC-066]
 solid-description: Collects validated observations and authored or model-classified exception decisions for one executable review rule.
 """
+
+
 class RuleObservationCollector(RuleObservationCollecting):
     def __init__(
         self,
@@ -38,11 +39,7 @@ class RuleObservationCollector(RuleObservationCollecting):
         run_state: RunState,
     ) -> RuleObservations:
         assessment_step = next(
-            (
-                step
-                for step in instance.steps
-                if step.assessment is not None
-            ),
+            (step for step in instance.steps if step.assessment is not None),
             None,
         )
         if assessment_step is not None and assessment_step.assessment is not None:
@@ -60,14 +57,16 @@ class RuleObservationCollector(RuleObservationCollecting):
                 skipped = run_state.skipped.get(step.id)
                 if skipped is not None:
                     if step.metric.unavailable_reason is not None:
-                        unavailable_metrics.append(UnavailableRuleMetric(
-                            metric_id=step.metric.metric_id,
-                            observation_id=step.metric.observation_id,
-                            additional_info=MetricAdditionalInfo(
-                                reasoning=step.metric.unavailable_reason,
-                                evidence=skipped.evidence.model_dump_json(),
-                            ),
-                        ))
+                        unavailable_metrics.append(
+                            UnavailableRuleMetric(
+                                metric_id=step.metric.metric_id,
+                                observation_id=step.metric.observation_id,
+                                additional_info=MetricAdditionalInfo(
+                                    reasoning=step.metric.unavailable_reason,
+                                    evidence=skipped.evidence.model_dump_json(),
+                                ),
+                            )
+                        )
                     continue
                 outputs = self._outputs_resolver.resolve(step.id, run_state)
                 metrics.append(

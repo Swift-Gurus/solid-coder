@@ -2,13 +2,14 @@
 
 from typing import Protocol
 
-
 """
 solid-name: AggregateStepRejectionReading
 solid-category: abstraction
 solid-spec: [SPEC-052]
-solid-description: Contract for reading an aggregate step identifier and correction reason.
+solid-description: Contract for representing rejection details during aggregate recovery.
 """
+
+
 class AggregateStepRejectionReading(Protocol):
     step_id: str
     reason: str

@@ -23,7 +23,11 @@ from harness.step_result import StepResult
 
 
 class StubStepExecutionCoordinator:
-    def __init__(self, result: FlowNextResult | None = None, error: InterpolationError | None = None) -> None:
+    def __init__(
+        self,
+        result: FlowNextResult | None = None,
+        error: InterpolationError | None = None,
+    ) -> None:
         self._result = result
         self._error = error
         self.calls: list[tuple] = []
@@ -36,7 +40,11 @@ class StubStepExecutionCoordinator:
 
 
 class StubStepResultBuilder:
-    def __init__(self, steps: list[StepResult] | None = None, error: InterpolationError | None = None) -> None:
+    def __init__(
+        self,
+        steps: list[StepResult] | None = None,
+        error: InterpolationError | None = None,
+    ) -> None:
         self._steps = steps or []
         self._error = error
         self.calls: list[tuple] = []
@@ -79,7 +87,9 @@ class ExecutionAndReadinessCoordinatorFactory:
         self.step_execution_coordinator = StubStepExecutionCoordinator(None)
         self.step_result_builder = StubStepResultBuilder([])
         self.interpolation_guard = InterpolationGuard()
-        run_state = RunState(completed={}, running=[], turn_count=0, status="in_progress")
+        run_state = RunState(
+            completed={}, running=[], turn_count=0, status="in_progress"
+        )
         flow_def = FlowDef(name="flow", max_turns=10, steps=[])
         self.run_snapshot_resolver = StubRunSnapshotResolver(
             RunSnapshot(run_state=run_state, flow_def=flow_def, ready=[])
@@ -87,15 +97,21 @@ class ExecutionAndReadinessCoordinatorFactory:
         self.completion_checker = StubCompletionChecker()
         self.phase_audit = StubPhaseAuditRecorder()
 
-    def with_step_execution_coordinator(self, coordinator) -> "ExecutionAndReadinessCoordinatorFactory":
+    def with_step_execution_coordinator(
+        self, coordinator
+    ) -> ExecutionAndReadinessCoordinatorFactory:
         self.step_execution_coordinator = coordinator
         return self
 
-    def with_step_result_builder(self, builder) -> "ExecutionAndReadinessCoordinatorFactory":
+    def with_step_result_builder(
+        self, builder
+    ) -> ExecutionAndReadinessCoordinatorFactory:
         self.step_result_builder = builder
         return self
 
-    def with_completion_checker(self, checker) -> "ExecutionAndReadinessCoordinatorFactory":
+    def with_completion_checker(
+        self, checker
+    ) -> ExecutionAndReadinessCoordinatorFactory:
         self.completion_checker = checker
         return self
 
@@ -114,14 +130,22 @@ _FLOW_DEF = FlowDef(name="code_review", max_turns=10, steps=[])
 
 
 class TestExecutionAndReadinessCoordinator(unittest.TestCase):
+    def test_returns_the_terminal_result_when_step_execution_coordinator_reports_one(
+        self,
+    ):
+        terminal = FlowNextResult(
+            status="failed",
+            error="Flow failed — step 'doomed' exhausted all 2 attempt(s).",
+        )
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_execution_coordinator(StubStepExecutionCoordinator(terminal))
+            .make_sut()
+        )
 
-    def test_returns_the_terminal_result_when_step_execution_coordinator_reports_one(self):
-        terminal = FlowNextResult(status="failed", error="Flow failed — step 'doomed' exhausted all 2 attempt(s).")
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_execution_coordinator(
-            StubStepExecutionCoordinator(terminal)
-        ).make_sut()
-
-        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        result = sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertIs(result.terminal, terminal)
         self.assertEqual(result.steps, [])
@@ -129,32 +153,53 @@ class TestExecutionAndReadinessCoordinator(unittest.TestCase):
 
     def test_does_not_build_step_results_when_a_terminal_result_is_reported(self):
         step_result_builder = StubStepResultBuilder([])
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_execution_coordinator(
-            StubStepExecutionCoordinator(FlowNextResult(status="failed"))
-        ).with_step_result_builder(step_result_builder).make_sut()
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_execution_coordinator(
+                StubStepExecutionCoordinator(FlowNextResult(status="failed"))
+            )
+            .with_step_result_builder(step_result_builder)
+            .make_sut()
+        )
 
-        sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertEqual(step_result_builder.calls, [])
 
-    def test_returns_an_error_when_step_execution_coordinator_raises_interpolation_error(self):
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_execution_coordinator(
-            StubStepExecutionCoordinator(error=InterpolationError("bad reference"))
-        ).make_sut()
+    def test_returns_an_error_when_step_execution_coordinator_raises_interpolation_error(
+        self,
+    ):
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_execution_coordinator(
+                StubStepExecutionCoordinator(error=InterpolationError("bad reference"))
+            )
+            .make_sut()
+        )
 
-        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        result = sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertEqual(result.error, "bad reference")
         self.assertIsNone(result.terminal)
         self.assertEqual(result.steps, [])
 
     def test_returns_the_resolved_steps_when_no_terminal_result(self):
-        step = StepResult(step_id="a", instance_id="a-1", prompt="Do a", execution={"mode": "inline"})
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_result_builder(
-            StubStepResultBuilder([step])
-        ).make_sut()
+        step = StepResult(
+            step_id="a", instance_id="a-1", prompt="Do a", execution={"mode": "inline"}
+        )
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_result_builder(StubStepResultBuilder([step]))
+            .make_sut()
+        )
 
-        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        result = sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertEqual(result.steps, [step])
         self.assertIsNone(result.terminal)
@@ -164,49 +209,90 @@ class TestExecutionAndReadinessCoordinator(unittest.TestCase):
         terminal = FlowNextResult(status="done")
         step_result_builder = StubStepResultBuilder([])
         checker = StubCompletionChecker(terminal)
-        sut = ExecutionAndReadinessCoordinatorFactory().with_completion_checker(
-            checker
-        ).with_step_result_builder(step_result_builder).make_sut()
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_completion_checker(checker)
+            .with_step_result_builder(step_result_builder)
+            .make_sut()
+        )
 
-        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        result = sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertIs(result.terminal, terminal)
         self.assertEqual(step_result_builder.calls, [])
         self.assertIsNotNone(checker.run_state)
 
     def test_returns_an_error_when_step_result_builder_raises_interpolation_error(self):
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_result_builder(
-            StubStepResultBuilder(error=InterpolationError("bad reference"))
-        ).make_sut()
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_result_builder(
+                StubStepResultBuilder(error=InterpolationError("bad reference"))
+            )
+            .make_sut()
+        )
 
-        result = sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {})
+        result = sut.coordinate(
+            Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {}
+        )
 
         self.assertEqual(result.error, "bad reference")
 
     def test_passes_the_given_arguments_through_to_the_step_execution_coordinator(self):
         step_execution_coordinator = StubStepExecutionCoordinator(None)
-        sut = ExecutionAndReadinessCoordinatorFactory().with_step_execution_coordinator(
-            step_execution_coordinator
-        ).make_sut()
+        sut = (
+            ExecutionAndReadinessCoordinatorFactory()
+            .with_step_execution_coordinator(step_execution_coordinator)
+            .make_sut()
+        )
 
-        sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {"key": "value"})
+        sut.coordinate(
+            Path("/runs"),
+            "run-1",
+            "/runs/run-1/events.jsonl",
+            _FLOW_DEF,
+            {"key": "value"},
+        )
 
-        self.assertEqual(step_execution_coordinator.calls, [
-            (Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {"key": "value"}),
-        ])
+        self.assertEqual(
+            step_execution_coordinator.calls,
+            [
+                (
+                    Path("/runs"),
+                    "run-1",
+                    "/runs/run-1/events.jsonl",
+                    _FLOW_DEF,
+                    {"key": "value"},
+                ),
+            ],
+        )
 
     def test_passes_the_resolved_snapshot_to_the_step_result_builder(self):
         step_result_builder = StubStepResultBuilder([])
-        factory = ExecutionAndReadinessCoordinatorFactory().with_step_result_builder(step_result_builder)
+        factory = ExecutionAndReadinessCoordinatorFactory().with_step_result_builder(
+            step_result_builder
+        )
         snapshot = factory.run_snapshot_resolver.snapshot
         sut = factory.make_sut()
 
-        sut.coordinate(Path("/runs"), "run-1", "/runs/run-1/events.jsonl", _FLOW_DEF, {"key": "value"})
+        sut.coordinate(
+            Path("/runs"),
+            "run-1",
+            "/runs/run-1/events.jsonl",
+            _FLOW_DEF,
+            {"key": "value"},
+        )
 
-        self.assertEqual(step_result_builder.calls, [
-            (snapshot.ready, snapshot.flow_def, snapshot.run_state),
-        ])
-        self.assertEqual(factory.phase_audit.calls, [("/runs/run-1/events.jsonl", snapshot)])
+        self.assertEqual(
+            step_result_builder.calls,
+            [
+                (snapshot.ready, snapshot.flow_def, snapshot.run_state),
+            ],
+        )
+        self.assertEqual(
+            factory.phase_audit.calls, [("/runs/run-1/events.jsonl", snapshot)]
+        )
 
 
 if __name__ == "__main__":

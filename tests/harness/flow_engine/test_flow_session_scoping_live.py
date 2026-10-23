@@ -18,9 +18,9 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from flow_session_scoping_e2e_live_base import (  # noqa: E402
+from claude_test_base import ClaudeTestBase
+from codex_test_base import CodexTestBase
+from flow_session_scoping_e2e_live_base import (
     FlowSessionScopingE2ELiveBase,
 )
 
@@ -29,7 +29,6 @@ class TestCodexFlowSessionScopingLive(
     CodexTestBase,
     FlowSessionScopingE2ELiveBase,
 ):
-
     __test__ = True
 
 
@@ -37,5 +36,4 @@ class TestClaudeFlowSessionScopingLive(
     ClaudeTestBase,
     FlowSessionScopingE2ELiveBase,
 ):
-
     __test__ = True

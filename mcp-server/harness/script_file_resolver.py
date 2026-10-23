@@ -5,8 +5,9 @@ from harness.script_file_resolving import ScriptFileResolving
 from harness.step_declaration import StepDeclaration
 from harness.step_declaring_file_resolving import StepDeclaringFileResolving
 from harness.workflow_resource_path_resolving import WorkflowResourcePathResolving
-from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
-
+from harness.workflow_resource_reference_creating import (
+    WorkflowResourceReferenceCreating,
+)
 
 """
 solid-name: ScriptFileResolver
@@ -14,6 +15,8 @@ solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Resolves a workflow step's script-file reference into a contained executable filesystem path.
 """
+
+
 class ScriptFileResolver(ScriptFileResolving):
     def __init__(
         self,

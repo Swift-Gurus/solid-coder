@@ -4,10 +4,10 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class HookEventParsing(Protocol):
     """Parses the raw PreToolUse stdin payload into (tool_name, tool_input, file_path, session_id, cwd)."""
 
-    def parse(self, raw: str) -> Optional[tuple]: ...
+    def parse(self, raw: str) -> tuple | None: ...

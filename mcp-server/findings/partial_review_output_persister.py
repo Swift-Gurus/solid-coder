@@ -7,12 +7,13 @@ from findings.partial_review_output_persisting import PartialReviewOutputPersist
 from findings.partial_review_output_rendering import PartialReviewOutputRendering
 from findings.text_file_writing import TextFileWriting
 
-
 """
 solid-name: PartialReviewOutputPersister
 solid-category: service
 solid-description: Persists a rendered immutable review output at its requested destination.
 """
+
+
 class PartialReviewOutputPersister(PartialReviewOutputPersisting):
     def __init__(
         self,

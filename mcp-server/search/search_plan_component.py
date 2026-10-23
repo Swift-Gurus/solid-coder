@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SearchPlanComponent
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Carries component terms that can seed a repository source search.
 """
+
+
 class SearchPlanComponent(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

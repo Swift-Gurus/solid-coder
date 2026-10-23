@@ -19,7 +19,7 @@ class CallableAdapting:
         """Delegate to self._fn, returning default on any exception."""
         try:
             return self._fn(*args, **kwargs)
-        except Exception:
+        except Exception:  # noqa: BLE001 — Legacy safe callable adapter explicitly returns its default on any collaborator failure.
             return default
 
     def _strict_call(self, *args, **kwargs):

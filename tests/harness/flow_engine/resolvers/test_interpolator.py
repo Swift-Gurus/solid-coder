@@ -12,8 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.builtin_attribute_reader import BuiltinAttributeReader
 from harness.expression_resolver import ExpressionResolver
-from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.filter_resolver import FilterResolver
+from harness.filtered_expression_evaluator import FilteredExpressionEvaluator
 from harness.interpolation_error import InterpolationError
 from harness.interpolation_error_factory import InterpolationErrorFactory
 from harness.interpolator import Interpolator
@@ -29,12 +29,10 @@ from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.step_output_reference_resolver import StepOutputReferenceResolver
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 
-
 _MISSING_ITEM = object()
 
 
 class TestInterpolator(unittest.TestCase):
-
     def setUp(self):
         error_factory = InterpolationErrorFactory()
         nested_values = NestedPathResolver(
@@ -46,9 +44,7 @@ class TestInterpolator(unittest.TestCase):
         expression_resolver = ExpressionResolver(
             step_output_resolver=StepOutputExpressionResolver(
                 reference_parser=StepOutputReferenceParser(),
-                reference_resolver=StepOutputReferenceResolver[object](
-                    error_factory
-                ),
+                reference_resolver=StepOutputReferenceResolver[object](error_factory),
                 error_factory=error_factory,
                 nested_value_resolver=nested_values,
             ),
@@ -88,12 +84,16 @@ class TestInterpolator(unittest.TestCase):
 
     def test_renders_steps_outputs_reference(self):
         ctx = self._ctx(load_principles={"principles": ["SRP", "OCP"]})
-        result = self.interp.render("Found: {{steps.load_principles.outputs.principles}}", ctx)
+        result = self.interp.render(
+            "Found: {{steps.load_principles.outputs.principles}}", ctx
+        )
         self.assertIn("SRP", result)
 
     def test_renders_length_filter(self):
         ctx = self._ctx(load_principles={"principles": ["SRP", "OCP", "LSP"]})
-        result = self.interp.render("Count: {{steps.load_principles.outputs.principles | length}}", ctx)
+        result = self.interp.render(
+            "Count: {{steps.load_principles.outputs.principles | length}}", ctx
+        )
         self.assertEqual(result, "Count: 3")
 
     def test_renders_item_in_context(self):

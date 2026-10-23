@@ -14,15 +14,15 @@ from harness.run_snapshot import RunSnapshot
 from harness.run_snapshot_resolving import RunSnapshotResolving
 from harness.workflow_results_context_building import WorkflowResultsContextBuilding
 
-
 """
 solid-name: RunSnapshotResolver
 solid-category: service
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Resolves run state, the executable workflow definition, and ready instances as one consistent snapshot.
 """
-class RunSnapshotResolver(RunSnapshotResolving):
 
+
+class RunSnapshotResolver(RunSnapshotResolving):
     def __init__(
         self,
         event_replayer: EventReplaying,

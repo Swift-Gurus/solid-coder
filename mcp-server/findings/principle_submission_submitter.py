@@ -8,12 +8,13 @@ from findings.principle_submission_result import PrincipleSubmissionResult
 from findings.principle_submission_scoring import PrincipleSubmissionScoring
 from findings.principle_submission_submitting import PrincipleSubmissionSubmitting
 
-
 """
 solid-name: PrincipleSubmissionSubmitter
 solid-category: service
 solid-description: Coordinates typed server-authoritative scoring and persistence for one immutable principle submission.
 """
+
+
 class PrincipleSubmissionSubmitter(PrincipleSubmissionSubmitting):
     def __init__(
         self,

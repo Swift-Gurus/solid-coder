@@ -6,7 +6,6 @@ from harness.interpolation_error_creating import InterpolationErrorCreating
 from harness.step_output_reference import StepOutputReference
 from harness.workflow_run_context import WorkflowRunContext
 
-
 Value = TypeVar("Value")
 
 
@@ -16,6 +15,8 @@ solid-category: service
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Resolves a typed local step-output reference from the completed outputs visible in one workflow scope.
 """
+
+
 class StepOutputReferenceResolver(Generic[Value]):
     def __init__(self, error_factory: InterpolationErrorCreating) -> None:
         self._error_factory = error_factory
@@ -25,9 +26,7 @@ class StepOutputReferenceResolver(Generic[Value]):
         reference: StepOutputReference,
         context: WorkflowRunContext,
     ) -> Value:
-        expression = (
-            f"steps.{reference.step_id}.outputs.{reference.output_name}"
-        )
+        expression = f"steps.{reference.step_id}.outputs.{reference.output_name}"
         completed_step = context.completed_steps.find(reference.step_id)
         if not completed_step.present or completed_step.value is None:
             raise self._error_factory.create(expression)

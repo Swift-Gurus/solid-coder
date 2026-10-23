@@ -4,13 +4,14 @@ from harness.aggregate_assignment_recovery_reading import (
     AggregateAssignmentRecoveryReading,
 )
 
-
 """
 solid-name: AggregateSubmissionInstructionRenderer
 solid-category: service
 solid-spec: [SPEC-052]
 solid-description: Explains how the model submits or corrects aggregate results.
 """
+
+
 class AggregateSubmissionInstructionRenderer:
     def render(
         self,

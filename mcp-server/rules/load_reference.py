@@ -20,7 +20,6 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import List
 
 
 def strip_frontmatter(content: str) -> str:
@@ -37,9 +36,9 @@ def strip_frontmatter(content: str) -> str:
     return content[body_start:]
 
 
-def collect_files(paths: List[str]) -> List[Path]:
+def collect_files(paths: list[str]) -> list[Path]:
     """Expand paths — directories become their children, files pass through."""
-    files: List[Path] = []
+    files: list[Path] = []
     for p in paths:
         pp = Path(p)
         if pp.is_dir():
@@ -51,11 +50,10 @@ def collect_files(paths: List[str]) -> List[Path]:
     return files
 
 
-
 # --- Public API ---
 
 
-def load(file_paths: List[str]) -> List[dict]:
+def load(file_paths: list[str]) -> list[dict]:
     """Load reference files, stripping frontmatter.
 
     Returns list of {path: str, content: str} dicts.
@@ -66,10 +64,12 @@ def load(file_paths: List[str]) -> List[dict]:
     for f in files:
         content = f.read_text(encoding="utf-8", errors="replace")
         body = strip_frontmatter(content)
-        results.append({
-            "path": str(f.resolve()),
-            "content": body,
-        })
+        results.append(
+            {
+                "path": str(f.resolve()),
+                "content": body,
+            }
+        )
     return results
 
 

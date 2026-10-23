@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Unit tests for search-codebase.py using fixture files."""
 
 import json
@@ -15,11 +14,11 @@ def run_script(synonyms=None, sources=None, specs=None, min_matches=None):
     cmd = [sys.executable, SCRIPT, "--sources", sources or FIXTURES]
     if synonyms is not None:
         cmd += ["--synonyms", json.dumps(synonyms)]
-    for spec in (specs or []):
+    for spec in specs or []:
         cmd += ["--spec", spec]
     if min_matches is not None:
         cmd += ["--min-matches", str(min_matches)]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode == 0:
         return 0, json.loads(result.stdout)
     return result.returncode, result.stderr.strip()
@@ -30,7 +29,9 @@ def test_matches_network_synonyms():
     code, out = run_script(["fetches", "network", "product", "retrieve", "load"])
     assert code == 0
     paths = [m["path"] for m in out["matches"]]
-    assert any("ProductFetchService.swift" in p for p in paths), f"Expected ProductFetchService in {paths}"
+    assert any("ProductFetchService.swift" in p for p in paths), (
+        f"Expected ProductFetchService in {paths}"
+    )
     match = next(m for m in out["matches"] if "ProductFetchService" in m["path"])
     assert "fetches" in match["matched_terms"]
     assert "network" in match["matched_terms"]
@@ -42,7 +43,9 @@ def test_matches_cart_synonyms():
     code, out = run_script(["cart", "checkout", "viewmodel"])
     assert code == 0
     paths = [m["path"] for m in out["matches"]]
-    assert any("CartViewModel.swift" in p for p in paths), f"Expected CartViewModel in {paths}"
+    assert any("CartViewModel.swift" in p for p in paths), (
+        f"Expected CartViewModel in {paths}"
+    )
 
 
 def test_matches_cache_with_persistence():
@@ -50,7 +53,9 @@ def test_matches_cache_with_persistence():
     code, out = run_script(["persistence", "cached"])
     assert code == 0
     paths = [m["path"] for m in out["matches"]]
-    assert any("CacheService.swift" in p for p in paths), f"Expected CacheService in {paths}"
+    assert any("CacheService.swift" in p for p in paths), (
+        f"Expected CacheService in {paths}"
+    )
 
 
 def test_no_frontmatter_matches_symbols_with_explicit_missing_description():
@@ -78,7 +83,9 @@ def test_summary_counts():
     assert code == 0
     assert out["summary"]["total_files_scanned"] == 7  # 6 original + MultiSpecService
     assert out["summary"]["files_with_frontmatter"] == 6  # 6 files have frontmatter
-    assert out["summary"]["files_matched"] == 1  # only ProductFetchService has category "network"
+    assert (
+        out["summary"]["files_matched"] == 1
+    )  # only ProductFetchService has category "network"
 
 
 def test_spec_matches_single():
@@ -86,8 +93,12 @@ def test_spec_matches_single():
     code, out = run_script(specs=["SPEC-010"])
     assert code == 0
     paths = [m["path"] for m in out["matches"]]
-    assert any("ProductFetchService.swift" in p for p in paths), f"Expected ProductFetchService in {paths}"
-    assert any("MultiSpecService.swift" in p for p in paths), f"Expected MultiSpecService in {paths}"
+    assert any("ProductFetchService.swift" in p for p in paths), (
+        f"Expected ProductFetchService in {paths}"
+    )
+    assert any("MultiSpecService.swift" in p for p in paths), (
+        f"Expected MultiSpecService in {paths}"
+    )
     match = next(m for m in out["matches"] if "ProductFetchService" in m["path"])
     assert "SPEC-010" in match["matched_specs"]
 
@@ -130,7 +141,7 @@ def test_spec_and_synonyms_combined():
 def test_no_args_exits_with_error():
     """Running with neither --synonyms nor --spec should exit 1."""
     cmd = [sys.executable, SCRIPT, "--sources", FIXTURES]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     assert result.returncode == 1
     assert "required" in result.stderr.lower()
 
@@ -145,16 +156,39 @@ def test_invalid_sources_path():
 def test_invalid_synonyms_json():
     """Invalid JSON for synonyms should exit 1."""
     cmd = [sys.executable, SCRIPT, "--sources", FIXTURES, "--synonyms", "not-json"]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     assert result.returncode == 1
     assert "invalid" in result.stderr.lower()
 
 
+def test_synonyms_object_reports_error_without_traceback():
+    """Valid JSON with the wrong shape keeps the CLI error and exit contract."""
+    cmd = [
+        sys.executable,
+        SCRIPT,
+        "--sources",
+        FIXTURES,
+        "--synonyms",
+        '{"keyword": "fetch"}',
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert (
+        result.stderr == "Error: invalid synonyms JSON: synonyms must be a JSON array\n"
+    )
+
+
 def test_multiple_matches_single_run():
     """Broad synonyms should match multiple files."""
-    code, out = run_script(["fetch", "network", "cart", "checkout", "persistence", "cached", "viewmodel"])
+    code, out = run_script(
+        ["fetch", "network", "cart", "checkout", "persistence", "cached", "viewmodel"]
+    )
     assert code == 0
-    assert out["summary"]["files_matched"] >= 3  # at least the original 3 frontmatter files
+    assert (
+        out["summary"]["files_matched"] >= 3
+    )  # at least the original 3 frontmatter files
 
 
 def test_block_comment_frontmatter():
@@ -162,7 +196,9 @@ def test_block_comment_frontmatter():
     code, out = run_script(["service", "authentication", "session", "tokens"])
     assert code == 0
     paths = [m["path"] for m in out["matches"]]
-    assert any("BlockCommentService.swift" in p for p in paths), f"Expected BlockCommentService in {paths}"
+    assert any("BlockCommentService.swift" in p for p in paths), (
+        f"Expected BlockCommentService in {paths}"
+    )
     match = next(m for m in out["matches"] if "BlockCommentService" in m["path"])
     assert "service" in match["matched_terms"]
     assert "session" in match["matched_terms"]
@@ -212,15 +248,22 @@ def test_min_matches_filters_single_term_hits():
     paths1 = [m["path"] for m in out1["matches"]]
     paths2 = [m["path"] for m in out2["matches"]]
     assert any("ProductFetchService" in p for p in paths1), "Should match at min=1"
-    assert not any("ProductFetchService" in p for p in paths2), "Should be filtered at min=2"
+    assert not any("ProductFetchService" in p for p in paths2), (
+        "Should be filtered at min=2"
+    )
 
 
 def test_min_matches_retains_strong_matches():
     """Files matching many synonyms survive high --min-matches thresholds."""
     # ProductFetchService matches: 'network' (category), 'fetches', 'product', 'data', 'rest', 'api', 'pagination'
-    _, out = run_script(["network", "fetches", "product", "data", "rest", "api", "pagination"], min_matches=3)
+    _, out = run_script(
+        ["network", "fetches", "product", "data", "rest", "api", "pagination"],
+        min_matches=3,
+    )
     paths = [m["path"] for m in out["matches"]]
-    assert any("ProductFetchService" in p for p in paths), f"Strong match should survive min=3: {paths}"
+    assert any("ProductFetchService" in p for p in paths), (
+        f"Strong match should survive min=3: {paths}"
+    )
 
 
 def test_min_matches_does_not_filter_spec_matches():
@@ -228,23 +271,6 @@ def test_min_matches_does_not_filter_spec_matches():
     # ProductFetchService has solid-spec: [SPEC-010] but may have few synonym hits
     _, out = run_script(synonyms=["quantum"], specs=["SPEC-010"], min_matches=5)
     paths = [m["path"] for m in out["matches"]]
-    assert any("ProductFetchService" in p for p in paths), "Spec match should bypass min-matches filter"
-
-
-if __name__ == "__main__":
-    tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
-    passed = 0
-    failed = 0
-    for t in tests:
-        try:
-            t()
-            print(f"  PASS  {t.__name__}")
-            passed += 1
-        except AssertionError as e:
-            print(f"  FAIL  {t.__name__}: {e}")
-            failed += 1
-        except Exception as e:
-            print(f"  ERROR {t.__name__}: {e}")
-            failed += 1
-    print(f"\n{passed} passed, {failed} failed")
-    sys.exit(1 if failed else 0)
+    assert any("ProductFetchService" in p for p in paths), (
+        "Spec match should bypass min-matches filter"
+    )

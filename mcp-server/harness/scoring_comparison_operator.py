@@ -2,13 +2,14 @@
 
 from enum import Enum
 
-
 """
 solid-name: ScoringComparisonOperator
 solid-category: model
 solid-spec: [SPEC-012, SPEC-039]
 solid-description: Enumerates the closed comparison operations accepted by engine-owned score bands.
 """
+
+
 class ScoringComparisonOperator(str, Enum):
     GREATER_THAN = "greater_than"
     GREATER_THAN_OR_EQUAL = "greater_than_or_equal"

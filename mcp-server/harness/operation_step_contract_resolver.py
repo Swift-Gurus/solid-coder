@@ -14,10 +14,9 @@ from harness.operation_step_contract import OperationStepContract
 from harness.operation_step_contract_resolving import (
     OperationStepContractResolving,
 )
-from harness.workflow_expression_parsing import WorkflowExpressionParsing
 from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_expression_parsing import WorkflowExpressionParsing
 from harness.workflow_input_binding import WorkflowInputBinding
-
 
 """
 solid-name: OperationStepContractResolver
@@ -25,6 +24,8 @@ solid-category: boundary
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Decodes authored operation fields into typed logical steps and registered output contracts.
 """
+
+
 class OperationStepContractResolver(OperationStepContractResolving):
     def __init__(
         self,
@@ -73,9 +74,12 @@ class OperationStepContractResolver(OperationStepContractResolving):
             if isinstance(value, str) and (
                 value.strip().startswith("{{") or value.strip().endswith("}}")
             ):
-                bindings.append(WorkflowInputBinding(
-                    name=key, expression=self._expression_parser.parse(value),
-                ))
+                bindings.append(
+                    WorkflowInputBinding(
+                        name=key,
+                        expression=self._expression_parser.parse(value),
+                    )
+                )
             else:
                 values.append(WorkflowContextValue(name=key, value=value))
         return OperationStepContract(
@@ -84,7 +88,5 @@ class OperationStepContractResolver(OperationStepContractResolving):
                 input_bindings=bindings,
                 input_values=values,
             ),
-            outputs=self._output_specs_resolver.resolve(
-                registration.output_model
-            ),
+            outputs=self._output_specs_resolver.resolve(registration.output_model),
         )

@@ -11,19 +11,23 @@ from live_session_request import LiveSessionRequest
 from live_session_result import LiveSessionResult
 from live_session_running import LiveSessionRunning
 
-
 """
 solid-name: ClaudeLiveSessionRunner
 solid-category: adapter
 solid-description: Adapts Claude Code CLI execution with checkout plugin loading, explicit MCP configuration, model selection, and validated final output.
 """
-class ClaudeLiveSessionRunner(LiveSessionRunning):
 
+
+class ClaudeLiveSessionRunner(LiveSessionRunning):
     def __init__(
         self,
-        artifact_directory_creator: LiveSessionArtifactDirectoryCreator = LiveSessionArtifactDirectoryCreator(),
+        artifact_directory_creator: LiveSessionArtifactDirectoryCreator | None = None,
     ) -> None:
-        self._artifact_directory_creator = artifact_directory_creator
+        self._artifact_directory_creator = (
+            artifact_directory_creator
+            if artifact_directory_creator is not None
+            else LiveSessionArtifactDirectoryCreator()
+        )
 
     def run(self, request: LiveSessionRequest) -> LiveSessionResult:
         artifact_directory = self._artifact_directory_creator.create(
@@ -52,6 +56,7 @@ class ClaudeLiveSessionRunner(LiveSessionRunning):
                 timeout=request.timeout,
                 cwd=str(request.project_root),
                 stdin=subprocess.DEVNULL,
+                check=False,
             )
             (artifact_directory / "claude-result.json").write_text(
                 process.stdout,
@@ -69,9 +74,7 @@ class ClaudeLiveSessionRunner(LiveSessionRunning):
                 raise RuntimeError("Claude session returned no final output")
             return self._parse_result(process.stdout, artifact_directory)
         except Exception as error:
-            raise RuntimeError(
-                f"{error}. Artifacts: {artifact_directory}"
-            ) from error
+            raise RuntimeError(f"{error}. Artifacts: {artifact_directory}") from error
 
     def _parse_result(
         self,

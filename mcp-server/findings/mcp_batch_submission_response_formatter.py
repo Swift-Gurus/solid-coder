@@ -3,16 +3,19 @@
 from findings.batch_coverage_failure import BatchCoverageFailure
 from findings.batch_persistence_result import BatchPersistenceResult
 from findings.batch_submission_parse_failure import BatchSubmissionParseFailure
-from findings.batch_submission_response_formatting import BatchSubmissionResponseFormatting
+from findings.batch_submission_response_formatting import (
+    BatchSubmissionResponseFormatting,
+)
 from findings.violation_reader import ViolationReading
 from findings.violation_response_formatting import ViolationResponseFormatting
-
 
 """
 solid-name: McpBatchSubmissionResponseFormatter
 solid-category: boundary-adapter
 solid-description: Renders typed batch findings outcomes and severe violations as model-facing MCP responses.
 """
+
+
 class McpBatchSubmissionResponseFormatter(BatchSubmissionResponseFormatting):
     def __init__(
         self,

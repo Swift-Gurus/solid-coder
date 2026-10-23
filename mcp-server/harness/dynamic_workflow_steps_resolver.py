@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from harness.dynamic_workflow_materialization import DynamicWorkflowMaterialization
-from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
 from harness.dynamic_workflow_materializing import DynamicWorkflowMaterializing
+from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
 from harness.group_dependency_expanding import GroupDependencyExpanding
 from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
-
 
 """
 solid-name: DynamicWorkflowStepsResolver
@@ -16,8 +15,9 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves ready dynamic workflow groups alongside ordinary executable steps.
 """
-class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
 
+
+class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
     def __init__(
         self,
         materializer: DynamicWorkflowMaterializing,
@@ -52,7 +52,8 @@ class DynamicWorkflowStepsResolver(DynamicWorkflowStepsResolving):
                 group
                 for group in flow.alias_groups
                 if group.alias not in materialization.authored_group_aliases
-            ] + materialization.groups,
+            ]
+            + materialization.groups,
             authored_group_aliases=materialization.authored_group_aliases,
             authored_member_ids=materialization.authored_member_ids,
         )

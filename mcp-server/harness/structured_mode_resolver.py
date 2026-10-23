@@ -8,7 +8,6 @@ from typing import Generic, Protocol, TypeVar
 
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 Mode = TypeVar("Mode")
 
 
@@ -18,6 +17,8 @@ solid-category: abstraction
 solid-spec: [SPEC-045]
 solid-description: Contract for structured declarations that expose a typed mode.
 """
+
+
 class ModeDeclaration(Protocol[Mode]):
     mode: Mode
 
@@ -31,6 +32,8 @@ solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Resolves one explicitly authored structured mode or returns its inherited typed default.
 """
+
+
 class StructuredModeResolver(Generic[Declaration, Mode]):
     def __init__(
         self,

@@ -24,14 +24,22 @@ _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 ensure_on_path(_HARNESS_DIR, _HERE)
 
-from llm_config import LlmConfig  # noqa: E402
-from models import DiffEntry, Expectation, ExpectedFinding, FixturePair, ModelProfile, OutputPaths  # noqa: E402
-from test_harness_runner import TestHarnessRunner  # noqa: E402
+from llm_config import LlmConfig
+from models import (
+    DiffEntry,
+    Expectation,
+    FixturePair,
+    ModelProfile,
+    OutputPaths,
+)
+from test_harness_runner import TestHarnessRunner
 
 
 def _make_output_paths(tmp: Path) -> OutputPaths:
     log = tmp / "log"
-    return OutputPaths(log_dir=log, reasoning_path=log / "r.txt", review_output_path=log / "o.json")
+    return OutputPaths(
+        log_dir=log, reasoning_path=log / "r.txt", review_output_path=log / "o.json"
+    )
 
 
 def _make_profile() -> ModelProfile:
@@ -94,7 +102,9 @@ def _make_runner(
 class TestHarnessRunnerPropagation(unittest.TestCase):
     """Infrastructure errors must propagate — they must never be silently swallowed."""
 
-    def _runner_with_health_error(self, exc: Exception) -> tuple[TestHarnessRunner, Path]:
+    def _runner_with_health_error(
+        self, exc: Exception
+    ) -> tuple[TestHarnessRunner, Path]:
         tmp_ctx = tempfile.TemporaryDirectory()
         tmp = Path(tmp_ctx.name)
         self.addCleanup(tmp_ctx.cleanup)
@@ -125,7 +135,9 @@ class TestHarnessRunnerPropagation(unittest.TestCase):
         return runner, tmp
 
     def test_runtime_error_propagates(self):
-        runner, tmp = self._runner_with_health_error(RuntimeError("codex config broken"))
+        runner, _tmp = self._runner_with_health_error(
+            RuntimeError("codex config broken")
+        )
         with self.assertRaises(RuntimeError, msg="RuntimeError must not be swallowed"):
             runner.run(
                 principle_path="principles/SRP",
@@ -136,7 +148,7 @@ class TestHarnessRunnerPropagation(unittest.TestCase):
             )
 
     def test_timeout_error_propagates(self):
-        runner, tmp = self._runner_with_health_error(TimeoutError("took too long"))
+        runner, _tmp = self._runner_with_health_error(TimeoutError("took too long"))
         with self.assertRaises(TimeoutError, msg="TimeoutError must not be swallowed"):
             runner.run(
                 principle_path="principles/SRP",
@@ -164,9 +176,18 @@ class TestHarnessRunnerPropagation(unittest.TestCase):
             expectation_loader=MagicMock(load=MagicMock(return_value=Expectation())),
             model_profile_loader=MagicMock(load=MagicMock(return_value=profile)),
             output_path_builder=MagicMock(build=MagicMock(return_value=out)),
-            finding_comparer=MagicMock(compare=MagicMock(return_value=[
-                DiffEntry(kind="missing", unit_name="Foo", metric_id="SRP-1", severity="major")
-            ])),
+            finding_comparer=MagicMock(
+                compare=MagicMock(
+                    return_value=[
+                        DiffEntry(
+                            kind="missing",
+                            unit_name="Foo",
+                            metric_id="SRP-1",
+                            severity="major",
+                        )
+                    ]
+                )
+            ),
             finding_normalizer=MagicMock(normalize=MagicMock(return_value=([], []))),
             result_formatter=MagicMock(
                 format_status=MagicMock(return_value=""),
@@ -234,7 +255,9 @@ class TestHarnessRunnerTimeoutResolution(unittest.TestCase):
         self.addCleanup(tmp_ctx.cleanup)
 
         pair = _make_pair(tmp)
-        profile = ModelProfile(output_dir_name="test", profile_path=None, llm=llm, inference={})
+        profile = ModelProfile(
+            output_dir_name="test", profile_path=None, llm=llm, inference={}
+        )
         out = _make_output_paths(tmp)
 
         health_invoker = MagicMock()

@@ -31,15 +31,15 @@ from model_profile_environment import model_profile_environment
 from model_profile_loader import ModelProfileLoader
 from preserved_live_workflow_run import PreservedLiveWorkflowRun
 
-
 """
 solid-name: LiveWorkflowE2ELiveBase
 solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Executes any typed workflow scenario through a selected live model backend and recursively preserves its canonical MCP run for scenario-specific assertions.
 """
-class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
 
+
+class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     FLOW_START_TOOL: ClassVar[str]
@@ -137,9 +137,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
 
     def _prompt(self, scenario: LiveWorkflowScenario) -> str:
         model_context = (
-            f"{scenario.model_context}\n\n"
-            if scenario.model_context
-            else ""
+            f"{scenario.model_context}\n\n" if scenario.model_context else ""
         )
         return (
             f"# spawned-by: {self.parent_session_id}\n\n"
@@ -170,9 +168,7 @@ class LiveWorkflowE2ELiveBase(unittest.TestCase, ABC):
 
     def _assert_exact_copy(self, source: Path, preserved: Path) -> None:
         source_files = sorted(
-            path.relative_to(source)
-            for path in source.rglob("*")
-            if path.is_file()
+            path.relative_to(source) for path in source.rglob("*") if path.is_file()
         )
         preserved_files = sorted(
             path.relative_to(preserved)

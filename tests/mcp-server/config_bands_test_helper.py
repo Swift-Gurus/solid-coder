@@ -5,8 +5,8 @@ solid-category: unit-test
 
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
 
@@ -34,7 +34,7 @@ class ConfigBandsTestHelper:
         config: dict,
         unit_metrics: dict,
         metric_id: str,
-        project_root_override: Optional[str] = None,
+        project_root_override: str | None = None,
     ) -> dict:
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "src" / "Foo.swift"

@@ -10,13 +10,14 @@ from source.git_querying import GitQuerying
 from source.git_rename_records_parsing import GitRenameRecordsParsing
 from source.nul_delimited_paths_parsing import NulDelimitedPathsParsing
 
-
 """
 solid-name: GitChangedPathsReader
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Reads staged, unstaged, untracked, deleted, and renamed project-relative paths from Git.
 """
+
+
 class GitChangedPathsReader(GitChangedPathsReading):
     def __init__(
         self,
@@ -31,44 +32,46 @@ class GitChangedPathsReader(GitChangedPathsReading):
         self._normalizer = normalizer
 
     def read(self, project_root: Path) -> GitChangedPaths:
-        return self._normalizer.normalize(GitChangedPaths(
-            tracked_added=self._paths(
-                project_root,
-                ["diff", "--name-only", "-z", "--diff-filter=A", "HEAD"],
-                "collecting tracked additions",
-            ),
-            untracked=self._paths(
-                project_root,
-                ["ls-files", "--others", "--exclude-standard", "-z"],
-                "collecting untracked files",
-            ),
-            modified=self._paths(
-                project_root,
-                ["diff", "--name-only", "-z", "--diff-filter=M", "HEAD"],
-                "collecting modified files",
-            ),
-            deleted=self._paths(
-                project_root,
-                ["diff", "--name-only", "-z", "--diff-filter=D", "HEAD"],
-                "collecting deleted files",
-            ),
-            renamed=self._renames_parser.parse(
-                self._git.query(
+        return self._normalizer.normalize(
+            GitChangedPaths(
+                tracked_added=self._paths(
                     project_root,
-                    GitProcessExecution(
-                        [
-                            "diff",
-                            "--name-status",
-                            "-z",
-                            "--find-renames",
-                            "--diff-filter=R",
-                            "HEAD",
-                        ]
-                    ),
-                    "collecting renamed files",
-                )
-            ),
-        ))
+                    ["diff", "--name-only", "-z", "--diff-filter=A", "HEAD"],
+                    "collecting tracked additions",
+                ),
+                untracked=self._paths(
+                    project_root,
+                    ["ls-files", "--others", "--exclude-standard", "-z"],
+                    "collecting untracked files",
+                ),
+                modified=self._paths(
+                    project_root,
+                    ["diff", "--name-only", "-z", "--diff-filter=M", "HEAD"],
+                    "collecting modified files",
+                ),
+                deleted=self._paths(
+                    project_root,
+                    ["diff", "--name-only", "-z", "--diff-filter=D", "HEAD"],
+                    "collecting deleted files",
+                ),
+                renamed=self._renames_parser.parse(
+                    self._git.query(
+                        project_root,
+                        GitProcessExecution(
+                            [
+                                "diff",
+                                "--name-status",
+                                "-z",
+                                "--find-renames",
+                                "--diff-filter=R",
+                                "HEAD",
+                            ]
+                        ),
+                        "collecting renamed files",
+                    )
+                ),
+            )
+        )
 
     def _paths(
         self,

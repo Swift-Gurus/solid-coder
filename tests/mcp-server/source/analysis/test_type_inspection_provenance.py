@@ -1,15 +1,19 @@
 """Exercises semantic binding on exact prospective buffers, without writing them."""
 
+import unittest
 from pathlib import Path
 from shutil import which
 from tempfile import TemporaryDirectory
-import unittest
 
 from harness.project_context import ProjectDirectory
 from review.prepare_review_input import PrepareReviewInput
 from review.prepare_review_operation_factory import PrepareReviewOperationFactory
-from source.analysis.provenance.resolve_type_inspections_input import ResolveTypeInspectionsInput
-from source.analysis.provenance.source_type_inspection_operation_factory import SourceTypeInspectionOperationFactory
+from source.analysis.provenance.resolve_type_inspections_input import (
+    ResolveTypeInspectionsInput,
+)
+from source.analysis.provenance.source_type_inspection_operation_factory import (
+    SourceTypeInspectionOperationFactory,
+)
 from source.text_analysis_source import TextAnalysisSource
 
 
@@ -21,17 +25,28 @@ class TestTypeInspectionProvenance(unittest.TestCase):
         self.root = Path(temporary.name).resolve()
         (self.root / ".git").mkdir()
         self.path = self.root / "Unwritten.swift"
-        self.operation = SourceTypeInspectionOperationFactory(ProjectDirectory(path=self.root)).make()
+        self.operation = SourceTypeInspectionOperationFactory(
+            ProjectDirectory(path=self.root)
+        ).make()
 
     def resolve(self, source):
-        prepared = PrepareReviewOperationFactory().make().execute(PrepareReviewInput(
-            target=TextAnalysisSource(text=source, virtual_path=str(self.path)),
-        ))
+        prepared = (
+            PrepareReviewOperationFactory()
+            .make()
+            .execute(
+                PrepareReviewInput(
+                    target=TextAnalysisSource(text=source, virtual_path=str(self.path)),
+                )
+            )
+        )
         unit = next(unit for unit in prepared.units if unit.target.name == "Consumer")
-        result = self.operation.execute(ResolveTypeInspectionsInput(
-            target=unit.target, context=prepared.source_context,
-            file_extension=unit.applicability.file_extension,
-        ))
+        result = self.operation.execute(
+            ResolveTypeInspectionsInput(
+                target=unit.target,
+                context=prepared.source_context,
+                file_extension=unit.applicability.file_extension,
+            )
+        )
         self.assertFalse(self.path.exists())
         return result
 
@@ -48,8 +63,14 @@ struct Consumer {
         inspection = result.inspections[0]
         self.assertEqual(inspection.contract.ownership, "developer")
         self.assertEqual(inspection.destination.ownership, "developer")
-        self.assertNotEqual(inspection.contract.resolution.symbol_id, inspection.value.resolution.symbol_id)
-        self.assertNotEqual(inspection.contract.resolution.symbol_id, inspection.destination.resolution.symbol_id)
+        self.assertNotEqual(
+            inspection.contract.resolution.symbol_id,
+            inspection.value.resolution.symbol_id,
+        )
+        self.assertNotEqual(
+            inspection.contract.resolution.symbol_id,
+            inspection.destination.resolution.symbol_id,
+        )
         self.assertTrue(inspection.verified)
         self.assertEqual(inspection.contract.declaration_path, self.path)
 
@@ -89,7 +110,8 @@ struct Consumer {
 }
 """)
         inspection = next(
-            item for item in result.inspections
+            item
+            for item in result.inspections
             if item.inspection.operand == "cache.object(forKey: key as NSString)"
         )
         self.assertTrue(inspection.verified, inspection.limitations)
@@ -136,7 +158,8 @@ struct Consumer {
 }
 """)
         inspection = next(
-            item for item in result.inspections
+            item
+            for item in result.inspections
             if item.inspection.operand == "cache.object(forKey: key as NSString)"
         )
         self.assertTrue(inspection.verified, inspection.limitations)

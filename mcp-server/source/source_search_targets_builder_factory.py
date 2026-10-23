@@ -33,13 +33,14 @@ from source.unit_source_search_targets_builder import (
 )
 from source.utf8_source_slice_resolver import UTF8SourceSliceResolver
 
-
 """
 solid-name: SourceSearchTargetsBuilderFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Provides registered complete-file and parsed-unit search-target construction capabilities.
 """
+
+
 class SourceSearchTargetsBuilderFactory:
     def make(self) -> SourceSearchTargetsBuilder:
         terms = SourceSearchTargetTermsResolver(
@@ -49,24 +50,26 @@ class SourceSearchTargetsBuilderFactory:
         return SourceSearchTargetsBuilder(
             content_hasher=Sha256ContentHasher(),
             paths=PathBuilder(),
-            builders=SourceSearchTargetsBuilderResolver([
-                SourceSearchTargetsBuilderRegistration(
-                    granularity=SearchTargetGranularity.FILE,
-                    builder=FileSourceSearchTargetsBuilder(terms),
-                ),
-                SourceSearchTargetsBuilderRegistration(
-                    granularity=SearchTargetGranularity.UNIT,
-                    builder=UnitSourceSearchTargetsBuilder(
-                        SourceUnitSearchTargetBuilder(
-                            tags=SourceUnitTagsResolver(
-                                inherited_scope=TechnologyDetectionScopeMatcher(
-                                    TechnologyDetectionScope.FILE
-                                )
-                            ),
-                            terms=terms,
-                            source_slice=UTF8SourceSliceResolver(),
-                        )
+            builders=SourceSearchTargetsBuilderResolver(
+                [
+                    SourceSearchTargetsBuilderRegistration(
+                        granularity=SearchTargetGranularity.FILE,
+                        builder=FileSourceSearchTargetsBuilder(terms),
                     ),
-                ),
-            ])
+                    SourceSearchTargetsBuilderRegistration(
+                        granularity=SearchTargetGranularity.UNIT,
+                        builder=UnitSourceSearchTargetsBuilder(
+                            SourceUnitSearchTargetBuilder(
+                                tags=SourceUnitTagsResolver(
+                                    inherited_scope=TechnologyDetectionScopeMatcher(
+                                        TechnologyDetectionScope.FILE
+                                    )
+                                ),
+                                terms=terms,
+                                source_slice=UTF8SourceSliceResolver(),
+                            )
+                        ),
+                    ),
+                ]
+            ),
         )

@@ -1,9 +1,7 @@
-from pydantic import JsonValue
-from referencing import Registry
-
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.structured_model_decoding import StructuredModelDecoding
-
+from pydantic import JsonValue
+from referencing import Registry
 
 """
 solid-name: ReferencingJsonSchemaExpander
@@ -11,6 +9,8 @@ solid-category: adapter
 solid-spec: [SPEC-057]
 solid-description: Resolves schema references for addressable nested output fields while preserving recursive definitions and literal annotations.
 """
+
+
 class ReferencingJsonSchemaExpander(StructuredModelDecoding[JsonValue]):
     def __init__(
         self,
@@ -22,7 +22,9 @@ class ReferencingJsonSchemaExpander(StructuredModelDecoding[JsonValue]):
 
     def decode(self, value: object, description: str) -> JsonValue:
         if not isinstance(value, dict):
-            raise self._error_factory.create(f"Invalid {description}: expected a schema object")
+            raise self._error_factory.create(
+                f"Invalid {description}: expected a schema object"
+            )
         registry = self._registries.decode(value, description)
         pending = [registry["urn:solid-coder:operation-schema"]]
         schema_nodes: set[int] = set()
@@ -42,7 +44,9 @@ class ReferencingJsonSchemaExpander(StructuredModelDecoding[JsonValue]):
         schema_nodes: set[int],
     ) -> JsonValue:
         if isinstance(value, list):
-            return [self._expand(item, registry, active, schema_nodes) for item in value]
+            return [
+                self._expand(item, registry, active, schema_nodes) for item in value
+            ]
         if not isinstance(value, dict):
             return value
         is_schema = id(value) in schema_nodes
@@ -50,13 +54,20 @@ class ReferencingJsonSchemaExpander(StructuredModelDecoding[JsonValue]):
         if is_schema and isinstance(reference, str):
             if reference in active:
                 return value
-            target = registry.resolver("urn:solid-coder:operation-schema").lookup(reference).contents
+            target = (
+                registry.resolver("urn:solid-coder:operation-schema")
+                .lookup(reference)
+                .contents
+            )
             if not isinstance(target, dict):
-                raise self._error_factory.create(f"Operation schema reference '{reference}' must resolve to an object")
+                raise self._error_factory.create(
+                    f"Operation schema reference '{reference}' must resolve to an object"
+                )
             value = {**target, **value}
             active = active | {reference}
         return {
-            name: item if is_schema and name == "$defs"
+            name: item
+            if is_schema and name == "$defs"
             else self._expand(item, registry, active, schema_nodes)
             for name, item in value.items()
         }

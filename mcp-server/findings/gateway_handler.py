@@ -1,18 +1,20 @@
 """Provides the model-facing gateway for scoring, findings, rules, and fixes."""
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
+
+from rules.rules_handler import RulesLoading
 
 from findings.fix_submitter import FixSubmitting
 from findings.mcp_batch_submission_handling import McpBatchSubmissionHandling
-from findings.submit_orchestrator import ResolveAndScoring, SubmitOrchestrating
-from rules.rules_handler import RulesLoading
-
+from findings.submit_orchestrator import SubmitOrchestrating
 
 """
 solid-name: ScoringSeverity
 solid-category: abstraction
 solid-description: Contract for producing server-authoritative severity results from review measurements.
 """
+
+
 class ScoringSeverity(Protocol):
     def score_severity(self, partial_outputs: list) -> dict: ...
 
@@ -22,6 +24,8 @@ solid-name: GatewayHandling
 solid-category: abstraction
 solid-description: Contract for the model-facing scoring and rule-loading gateway capabilities.
 """
+
+
 class GatewayHandling(ScoringSeverity, RulesLoading, Protocol):
     """Composed protocol for all gateway tool operations."""
 
@@ -41,6 +45,8 @@ solid-name: GatewayHandler
 solid-category: service
 solid-description: Routes model-facing gateway requests to dedicated application capabilities.
 """
+
+
 class GatewayHandler:
     """Pure facade over protocol-typed gateway capabilities."""
 
@@ -75,7 +81,9 @@ class GatewayHandler:
         return self._fix_submitter.submit_fix(output_dir, fixes)
 
     def load_detection_rules(
-        self, principle: Optional[str] = None, matched_tags: Optional[list] = None,
+        self,
+        principle: str | None = None,
+        matched_tags: list | None = None,
     ) -> dict[str, Any]:
         return self._rules.load_detection_rules(principle, matched_tags)
 

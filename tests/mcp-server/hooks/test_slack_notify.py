@@ -2,7 +2,7 @@
 
 import sys
 import unittest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 
 HOOKS_DIR = str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks")
@@ -14,9 +14,9 @@ from slack_notify import (
     EnvConfigReader,
     JSONLTranscriptParser,
     ModeClassifier,
+    SkillCallsReader,
     SlackPayloadBuilder,
     SlackStopNotifier,
-    SkillCallsReader,
     TomlThresholdReader,
     TranscriptElapsedReader,
     TranscriptReader,
@@ -24,10 +24,10 @@ from slack_notify import (
     _normalize_content_text,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test doubles
 # ---------------------------------------------------------------------------
+
 
 class FakeEnv:
     def __init__(self, values):
@@ -77,35 +77,47 @@ class FailingHttpSender:
 
 def _assistant_text_line(text):
     import json
-    return json.dumps({
-        "type": "assistant",
-        "message": {"content": [{"type": "text", "text": text}]},
-    })
+
+    return json.dumps(
+        {
+            "type": "assistant",
+            "message": {"content": [{"type": "text", "text": text}]},
+        }
+    )
 
 
 def _skill_line(skill):
     import json
-    return json.dumps({
-        "type": "assistant",
-        "message": {"content": [
-            {"type": "tool_use", "name": "Skill", "input": {"skill": skill}}
-        ]},
-    })
+
+    return json.dumps(
+        {
+            "type": "assistant",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "name": "Skill", "input": {"skill": skill}}
+                ]
+            },
+        }
+    )
 
 
 def _command_message_line(command, args=""):
     import json
+
     text = f"<command-message>{command}</command-message>\n<command-name>/{command}</command-name>"
     if args:
         text += f"\n<command-args>{args}</command-args>"
-    return json.dumps({
-        "type": "user",
-        "message": {"content": [{"type": "text", "text": text}]},
-    })
+    return json.dumps(
+        {
+            "type": "user",
+            "message": {"content": [{"type": "text", "text": text}]},
+        }
+    )
 
 
 def _plain_user_line(text, timestamp=None):
     import json
+
     obj = {"type": "user", "message": {"content": [{"type": "text", "text": text}]}}
     if timestamp:
         obj["timestamp"] = timestamp
@@ -120,12 +132,15 @@ def _make_parser(lines):
 # _normalize_content_text
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeContentText(unittest.TestCase):
     def test_string_passthrough(self):
         self.assertEqual(_normalize_content_text("hello"), "hello")
 
     def test_list_with_text_block(self):
-        self.assertEqual(_normalize_content_text([{"type": "text", "text": "hi"}]), "hi")
+        self.assertEqual(
+            _normalize_content_text([{"type": "text", "text": "hi"}]), "hi"
+        )
 
     def test_empty_list(self):
         self.assertEqual(_normalize_content_text([]), "")
@@ -137,6 +152,7 @@ class TestNormalizeContentText(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # JSONLTranscriptParser
 # ---------------------------------------------------------------------------
+
 
 class TestJSONLTranscriptParser(unittest.TestCase):
     def test_parses_valid_lines(self):
@@ -159,6 +175,7 @@ class TestJSONLTranscriptParser(unittest.TestCase):
 # EnvConfigReader
 # ---------------------------------------------------------------------------
 
+
 class TestEnvConfigReader(unittest.TestCase):
     def test_is_enabled_when_url_present(self):
         r = EnvConfigReader(env=FakeEnv({"CLAUDE_SLACK_NOTIFY": "https://x"}))
@@ -177,6 +194,7 @@ class TestEnvConfigReader(unittest.TestCase):
 # TomlThresholdReader
 # ---------------------------------------------------------------------------
 
+
 class TestTomlThresholdReader(unittest.TestCase):
     def test_uses_injected_fn(self):
         r = TomlThresholdReader(threshold_fn=lambda: 60)
@@ -191,6 +209,7 @@ class TestTomlThresholdReader(unittest.TestCase):
 # AssistantTextReader
 # ---------------------------------------------------------------------------
 
+
 class TestAssistantTextReader(unittest.TestCase):
     def _make(self, lines):
         return AssistantTextReader("ignored", _make_parser(lines))
@@ -204,9 +223,15 @@ class TestAssistantTextReader(unittest.TestCase):
 
     def test_skips_whitespace_only_blocks(self):
         import json
+
         lines = [
             _assistant_text_line("hello"),
-            json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "  "}]}}),
+            json.dumps(
+                {
+                    "type": "assistant",
+                    "message": {"content": [{"type": "text", "text": "  "}]},
+                }
+            ),
         ]
         self.assertEqual(self._make(lines).last_assistant_text(), "hello")
 
@@ -219,6 +244,7 @@ class TestAssistantTextReader(unittest.TestCase):
 # SkillCallsReader
 # ---------------------------------------------------------------------------
 
+
 class TestSkillCallsReaderCommandMessage(unittest.TestCase):
     def _make(self, lines):
         return SkillCallsReader("ignored", _make_parser(lines))
@@ -228,7 +254,12 @@ class TestSkillCallsReaderCommandMessage(unittest.TestCase):
         self.assertEqual(r.skill_calls(), ["solid-coder:implement"])
 
     def test_command_message_beats_tool_use(self):
-        r = self._make([_command_message_line("solid-coder:review"), _skill_line("solid-coder:implement")])
+        r = self._make(
+            [
+                _command_message_line("solid-coder:review"),
+                _skill_line("solid-coder:implement"),
+            ]
+        )
         self.assertEqual(r.skill_calls(), ["solid-coder:review"])
 
     def test_falls_through_to_tool_use(self):
@@ -243,6 +274,7 @@ class TestSkillCallsReaderCommandMessage(unittest.TestCase):
 # TranscriptElapsedReader
 # ---------------------------------------------------------------------------
 
+
 class TestTranscriptElapsedReader(unittest.TestCase):
     def _make(self, lines, now_utc):
         return TranscriptElapsedReader(
@@ -251,13 +283,13 @@ class TestTranscriptElapsedReader(unittest.TestCase):
         )
 
     def test_returns_elapsed_seconds(self):
-        now = datetime(2026, 6, 9, 10, 0, 30, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 9, 10, 0, 30, tzinfo=UTC)
         lines = [_plain_user_line("hi", timestamp="2026-06-09T10:00:00.000Z")]
         r = self._make(lines, now)
         self.assertAlmostEqual(r.elapsed_seconds("ignored"), 30.0, places=0)
 
     def test_uses_last_user_timestamp(self):
-        now = datetime(2026, 6, 9, 10, 1, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 9, 10, 1, 0, tzinfo=UTC)
         lines = [
             _plain_user_line("first", timestamp="2026-06-09T10:00:00.000Z"),
             _plain_user_line("last", timestamp="2026-06-09T10:00:50.000Z"),
@@ -266,24 +298,27 @@ class TestTranscriptElapsedReader(unittest.TestCase):
         self.assertAlmostEqual(r.elapsed_seconds("ignored"), 10.0, places=0)
 
     def test_no_timestamp_returns_inf(self):
-        now = datetime(2026, 6, 9, 10, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 9, 10, 0, 0, tzinfo=UTC)
         r = self._make([_plain_user_line("no timestamp")], now)
         self.assertEqual(r.elapsed_seconds("ignored"), float("inf"))
 
     def test_empty_transcript_returns_inf(self):
-        now = datetime(2026, 6, 9, 10, 0, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 6, 9, 10, 0, 0, tzinfo=UTC)
         r = self._make([], now)
         self.assertEqual(r.elapsed_seconds("ignored"), float("inf"))
 
     def test_tool_result_messages_are_ignored(self):
         import json
-        now = datetime(2026, 6, 9, 10, 1, 0, tzinfo=timezone.utc)
+
+        now = datetime(2026, 6, 9, 10, 1, 0, tzinfo=UTC)
         human_msg = _plain_user_line("fix this", timestamp="2026-06-09T10:00:00.000Z")
-        tool_result_msg = json.dumps({
-            "type": "user",
-            "timestamp": "2026-06-09T10:00:59.000Z",  # 59s later — would give 1s elapsed
-            "message": {"content": [{"type": "tool_result", "content": "ok"}]},
-        })
+        tool_result_msg = json.dumps(
+            {
+                "type": "user",
+                "timestamp": "2026-06-09T10:00:59.000Z",  # 59s later — would give 1s elapsed
+                "message": {"content": [{"type": "tool_result", "content": "ok"}]},
+            }
+        )
         r = self._make([human_msg, tool_result_msg], now)
         # elapsed should be measured from the HUMAN message (60s), not the tool_result (1s)
         self.assertAlmostEqual(r.elapsed_seconds("ignored"), 60.0, places=0)
@@ -292,6 +327,7 @@ class TestTranscriptElapsedReader(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # ModeClassifier
 # ---------------------------------------------------------------------------
+
 
 class TestModeClassifier(unittest.TestCase):
     def setUp(self):
@@ -307,23 +343,30 @@ class TestModeClassifier(unittest.TestCase):
         self.assertEqual(self.c.classify(["solid-coder:refactor"]), "refactor")
 
     def test_command_with_args_matches(self):
-        self.assertEqual(self.c.classify(["solid-coder:refactor --iterations 1"]), "refactor")
+        self.assertEqual(
+            self.c.classify(["solid-coder:refactor --iterations 1"]), "refactor"
+        )
 
     def test_vibe_default(self):
         self.assertEqual(self.c.classify([]), "vibe")
 
     def test_first_match_wins(self):
-        self.assertEqual(self.c.classify(["solid-coder:review", "solid-coder:implement"]), "review")
+        self.assertEqual(
+            self.c.classify(["solid-coder:review", "solid-coder:implement"]), "review"
+        )
 
 
 # ---------------------------------------------------------------------------
 # SlackPayloadBuilder
 # ---------------------------------------------------------------------------
 
+
 class TestSlackPayloadBuilder(unittest.TestCase):
     def _build(self, mode="vibe", last_message="", cwd="/projects/myapp"):
         return SlackPayloadBuilder(
-            {"cwd": cwd}, mode=mode, last_message=last_message,
+            {"cwd": cwd},
+            mode=mode,
+            last_message=last_message,
             path_namer=FakePathNamer("myapp"),
         ).build()
 
@@ -342,8 +385,12 @@ class TestSlackPayloadBuilder(unittest.TestCase):
         self.assertEqual(payload["text"], "Task done.")
 
     def test_icon_in_header_for_each_mode(self):
-        cases = [("review", ":mag:"), ("implement", ":hammer_and_wrench:"),
-                 ("refactor", ":recycle:"), ("vibe", ":magic_wand:")]
+        cases = [
+            ("review", ":mag:"),
+            ("implement", ":hammer_and_wrench:"),
+            ("refactor", ":recycle:"),
+            ("vibe", ":magic_wand:"),
+        ]
         for mode, icon in cases:
             with self.subTest(mode=mode):
                 header = self._build(mode=mode)["blocks"][0]["text"]["text"]
@@ -362,7 +409,9 @@ class TestSlackPayloadBuilder(unittest.TestCase):
 
     def test_message_truncated_at_500(self):
         payload = self._build(last_message="x" * 600)
-        sections = [b["text"]["text"] for b in payload["blocks"] if b.get("type") == "section"]
+        sections = [
+            b["text"]["text"] for b in payload["blocks"] if b.get("type") == "section"
+        ]
         self.assertTrue(sections[-1].endswith("…"))
         self.assertLessEqual(len(sections[-1]), 502)
 
@@ -371,12 +420,14 @@ class TestSlackPayloadBuilder(unittest.TestCase):
 # WebhookDispatcher
 # ---------------------------------------------------------------------------
 
+
 class TestWebhookDispatcher(unittest.TestCase):
     def test_posts_json_to_url(self):
         import json as _json
+
         sender = RecordingHttpSender()
         WebhookDispatcher("https://x.com/hook", http_sender=sender).send({"text": "hi"})
-        url, data, headers, _ = sender.calls[0]
+        url, data, _headers, _ = sender.calls[0]
         self.assertEqual(url, "https://x.com/hook")
         self.assertEqual(_json.loads(data)["text"], "hi")
 
@@ -388,16 +439,21 @@ class TestWebhookDispatcher(unittest.TestCase):
 # SlackStopNotifier
 # ---------------------------------------------------------------------------
 
+
 class TestSlackStopNotifierShouldHandle(unittest.TestCase):
     def _notifier(self, enabled=True, threshold=0, elapsed=float("inf")):
-        config = EnvConfigReader(env=FakeEnv(
-            {"CLAUDE_SLACK_NOTIFY": "https://x"} if enabled else {}
-        ))
+        config = EnvConfigReader(
+            env=FakeEnv({"CLAUDE_SLACK_NOTIFY": "https://x"} if enabled else {})
+        )
         return SlackStopNotifier(
             config=config,
             threshold_reader=TomlThresholdReader(threshold_fn=lambda: threshold),
-            elapsed_reader=type("E", (), {"elapsed_seconds": lambda self, p: elapsed})(),
-            dispatcher_factory=lambda url: WebhookDispatcher(url, http_sender=RecordingHttpSender()),
+            elapsed_reader=type(
+                "E", (), {"elapsed_seconds": lambda self, p: elapsed}
+            )(),
+            dispatcher_factory=lambda url: WebhookDispatcher(
+                url, http_sender=RecordingHttpSender()
+            ),
         )
 
     def test_disabled_when_no_webhook(self):
@@ -413,7 +469,9 @@ class TestSlackStopNotifierShouldHandle(unittest.TestCase):
         self.assertFalse(self._notifier(threshold=30, elapsed=10).should_handle({}))
 
     def test_fires_when_no_transcript_inf_elapsed(self):
-        self.assertTrue(self._notifier(threshold=30, elapsed=float("inf")).should_handle({}))
+        self.assertTrue(
+            self._notifier(threshold=30, elapsed=float("inf")).should_handle({})
+        )
 
 
 class TestSlackStopNotifierHandle(unittest.TestCase):
@@ -436,23 +494,32 @@ class TestSlackStopNotifierHandle(unittest.TestCase):
         return SlackStopNotifier(
             config=EnvConfigReader(env=FakeEnv({"CLAUDE_SLACK_NOTIFY": "https://x"})),
             transcript_reader_factory=reader_factory,
-            dispatcher_factory=lambda url: WebhookDispatcher(url, http_sender=self._sender),
+            dispatcher_factory=lambda url: WebhookDispatcher(
+                url, http_sender=self._sender
+            ),
             threshold_reader=TomlThresholdReader(threshold_fn=lambda: 0),
         )
 
     def _payload(self):
         import json as _j
+
         return _j.loads(self._sender.calls[0][1])
 
     def test_implement_sets_implement_icon(self):
         n = self._make(command="solid-coder:implement")
         n.handle({"cwd": "/p", "transcript_path": "fake.jsonl"})
-        self.assertIn(":hammer_and_wrench:", self._payload()["blocks"][0]["text"]["text"])
+        self.assertIn(
+            ":hammer_and_wrench:", self._payload()["blocks"][0]["text"]["text"]
+        )
 
     def test_last_message_in_payload(self):
         n = self._make(last_text="Task complete")
         n.handle({"cwd": "/p", "transcript_path": "fake.jsonl"})
-        texts = [b["text"]["text"] for b in self._payload()["blocks"] if b.get("type") == "section"]
+        texts = [
+            b["text"]["text"]
+            for b in self._payload()["blocks"]
+            if b.get("type") == "section"
+        ]
         self.assertTrue(any("Task complete" in t for t in texts))
 
     def test_vibe_default_without_transcript(self):

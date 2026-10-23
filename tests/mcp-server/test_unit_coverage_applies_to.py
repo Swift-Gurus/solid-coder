@@ -5,6 +5,7 @@ solid-description: Verifies selective enforcement of principle requirements on d
 """
 
 import unittest
+
 from findings.unit_coverage_validator import UnitCoverageValidator
 
 _APPLIES_TO = {"isp": ["protocol"]}
@@ -13,10 +14,15 @@ _APPLIES_TO = {"isp": ["protocol"]}
 def _payload(units_with_kinds: list) -> dict:
     return {
         "timestamp": "2026-01-01T00:00:00Z",
-        "files": [{"file_path": "/F.swift", "units": [
-            {"unit_name": n, "unit_kind": k, "metrics": {}}
-            for n, k in units_with_kinds
-        ]}],
+        "files": [
+            {
+                "file_path": "/F.swift",
+                "units": [
+                    {"unit_name": n, "unit_kind": k, "metrics": {}}
+                    for n, k in units_with_kinds
+                ],
+            }
+        ],
     }
 
 
@@ -31,48 +37,60 @@ class TestUnitCoverageAppliesTo(unittest.TestCase):
     # --- cross-principle ---
 
     def test_isp_empty_classes_only_passes(self):
-        result = self._v._validate_cross_principle({
-            "srp": _payload([("Foo", "class"), ("Bar", "class")]),
-            "isp": _empty(),
-        })
+        result = self._v._validate_cross_principle(
+            {
+                "srp": _payload([("Foo", "class"), ("Bar", "class")]),
+                "isp": _empty(),
+            }
+        )
         self.assertIsNone(result)
 
     def test_isp_empty_function_only_passes(self):
-        result = self._v._validate_cross_principle({
-            "srp": _payload([("_helper", "function")]),
-            "isp": _empty(),
-        })
+        result = self._v._validate_cross_principle(
+            {
+                "srp": _payload([("_helper", "function")]),
+                "isp": _empty(),
+            }
+        )
         self.assertIsNone(result)
 
     def test_isp_empty_protocol_present_rejected(self):
-        result = self._v._validate_cross_principle({
-            "srp": _payload([("MyProtocol", "protocol")]),
-            "isp": _empty(),
-        })
+        result = self._v._validate_cross_principle(
+            {
+                "srp": _payload([("MyProtocol", "protocol")]),
+                "isp": _empty(),
+            }
+        )
         self.assertIsNotNone(result)
         self.assertIn("isp", result["principles_with_no_units"])
 
     def test_isp_empty_mixed_with_protocol_rejected(self):
-        result = self._v._validate_cross_principle({
-            "srp": _payload([("Foo", "class"), ("Proto", "protocol")]),
-            "isp": _empty(),
-        })
+        result = self._v._validate_cross_principle(
+            {
+                "srp": _payload([("Foo", "class"), ("Proto", "protocol")]),
+                "isp": _empty(),
+            }
+        )
         self.assertIsNotNone(result)
 
     def test_unrestricted_principle_still_required(self):
-        result = self._v._validate_cross_principle({
-            "srp": _payload([("Foo", "class")]),
-            "dry": _empty(),
-        })
+        result = self._v._validate_cross_principle(
+            {
+                "srp": _payload([("Foo", "class")]),
+                "dry": _empty(),
+            }
+        )
         self.assertIsNotNone(result)
         self.assertIn("dry", result["principles_with_no_units"])
 
     def test_no_applies_to_preserves_original_behaviour(self):
         v = UnitCoverageValidator()
-        result = v._validate_cross_principle({
-            "srp": _payload([("Foo", "class")]),
-            "isp": _empty(),
-        })
+        result = v._validate_cross_principle(
+            {
+                "srp": _payload([("Foo", "class")]),
+                "isp": _empty(),
+            }
+        )
         self.assertIsNotNone(result)
 
     # --- validate_against_expected ---

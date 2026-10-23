@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from harness.include_alias_group import IncludeAliasGroup
 from harness.for_each_mode import ForEachMode
+from harness.include_alias_group import IncludeAliasGroup
 from harness.include_source import IncludeSource
 from harness.nested_include_child_group_policy import NestedIncludeChildGroupPolicy
 from harness.nested_include_child_group_policy_selecting import (
@@ -11,16 +11,15 @@ from harness.nested_include_child_group_policy_selecting import (
 )
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: NestedIncludeChildGroupPolicySelector
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035, SPEC-045]
 solid-description: Resolves nested ownership and inherited inline-group execution policy.
 """
-class NestedIncludeChildGroupPolicySelector(
-    NestedIncludeChildGroupPolicySelecting
-):
+
+
+class NestedIncludeChildGroupPolicySelector(NestedIncludeChildGroupPolicySelecting):
     def select(
         self,
         group: IncludeAliasGroup,
@@ -44,7 +43,14 @@ class NestedIncludeChildGroupPolicySelector(
                     and ancestor.for_each.mode is ForEachMode.INDIVIDUAL
                 )
             )
-            ancestor = next((candidate for candidate in groups if candidate.alias == ancestor.owner_alias), None)
+            ancestor = next(
+                (
+                    candidate
+                    for candidate in groups
+                    if candidate.alias == ancestor.owner_alias
+                ),
+                None,
+            )
         return NestedIncludeChildGroupPolicy(
             owner_alias=source.alias if owns_group else group.owner_alias,
             execution=group.execution,

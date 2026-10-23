@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Generic, TypeVar
-
+from typing import Generic, TypeVar
 
 Value = TypeVar("Value")
 MappedValue = TypeVar("MappedValue")
@@ -15,6 +15,8 @@ solid-name: OptionalValue
 solid-category: value
 solid-description: Chains typed transformations and side effects without exposing repeated nullable-value branches.
 """
+
+
 @dataclass(frozen=True)
 class OptionalValue(Generic[Value]):
     _value: Value | None

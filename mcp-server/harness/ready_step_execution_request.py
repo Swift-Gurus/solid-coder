@@ -7,13 +7,14 @@ from pathlib import Path
 
 from harness.run_snapshot import RunSnapshot
 
-
 """
 solid-name: ReadyStepExecutionRequest
 solid-category: model
 solid-spec: [SPEC-010, SPEC-027]
 solid-description: Carries run location, workflow definition, and snapshot state for one ready-step execution attempt.
 """
+
+
 @dataclass(frozen=True)
 class ReadyStepExecutionRequest:
     snapshot: RunSnapshot

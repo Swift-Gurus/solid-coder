@@ -9,15 +9,15 @@ from harness.review_policy_target_validating import ReviewPolicyTargetValidating
 from harness.rule_plan_entry_building import RulePlanEntryBuilding
 from harness.workflow_catalog import WorkflowCatalog
 
-
 """
 solid-name: EffectiveRulePlanBuilder
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Coordinates validation and ordered construction of an auditable effective review-rule plan.
 """
-class EffectiveRulePlanBuilder:
 
+
+class EffectiveRulePlanBuilder:
     def __init__(
         self,
         target_validator: ReviewPolicyTargetValidating,

@@ -12,14 +12,13 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from codex_apply_patch_transcript_reader import (  # noqa: E402
+from codex_apply_patch_call import CodexApplyPatchCall
+from codex_apply_patch_transcript_reader import (
     CodexApplyPatchTranscriptReader,
 )
-from codex_apply_patch_call import CodexApplyPatchCall  # noqa: E402
 
 
 class TestCodexApplyPatchTranscriptReader(unittest.TestCase):
-
     def test_reads_one_exec_wrapped_multi_file_patch(self) -> None:
         patch_content = (
             "*** Begin Patch\n"
@@ -54,6 +53,18 @@ class TestCodexApplyPatchTranscriptReader(unittest.TestCase):
         calls = self._read("const result = await tools.some_other_tool();")
 
         self.assertEqual(calls, [])
+
+    def test_rejects_non_string_patch_assignments(self) -> None:
+        for encoded in ("null", "42", "[]", "{}"):
+            with (
+                self.subTest(encoded=encoded),
+                self.assertRaisesRegex(TypeError, "assignment was not a string"),
+            ):
+                self._read(f"const patch = {encoded}; await tools.apply_patch(patch);")
+
+    def test_missing_patch_assignment_keeps_runtime_error(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "without a patch assignment"):
+            self._read("await tools.apply_patch(patch);")
 
     def _read(self, tool_input: str) -> list[CodexApplyPatchCall]:
         with tempfile.TemporaryDirectory() as directory:

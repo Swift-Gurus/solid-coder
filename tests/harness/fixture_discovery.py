@@ -16,8 +16,8 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import FixtureDiscovering  # noqa: E402
-from models import FixturePair  # noqa: E402
+from interfaces import FixtureDiscovering
+from models import FixturePair
 
 
 class FixtureDiscovery(FixtureDiscovering):

@@ -8,13 +8,14 @@ from harness.workflow_input_bindings_rebinding import (
     WorkflowInputBindingsRebinding,
 )
 
-
 """
 solid-name: FileRuleScopeRuntimeAdapter
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Removes unit fan-out and supplies the normalized file expression to a file-scoped rule.
 """
+
+
 class FileRuleScopeRuntimeAdapter(RuleScopeRuntimeAdapting):
     def __init__(
         self,
@@ -31,7 +32,5 @@ class FileRuleScopeRuntimeAdapter(RuleScopeRuntimeAdapting):
         return replace(
             runtime,
             for_each=None,
-            input_bindings=self._input_bindings.rebind(
-                runtime.input_bindings
-            ),
+            input_bindings=self._input_bindings.rebind(runtime.input_bindings),
         )

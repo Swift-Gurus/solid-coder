@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """solid-coder specs MCP server — spec file operations for subagents.
 
 Tools:
@@ -10,7 +9,6 @@ Tools:
 No external dependencies. Python 3.9+.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -23,9 +21,9 @@ FIND_SPEC_SCRIPT = SKILLS_ROOT / "find-spec" / "scripts" / "find-spec-query.py"
 BUILD_SPEC_SCRIPT = SKILLS_ROOT / "build-spec" / "scripts" / "build-spec-query.py"
 
 sys.path.insert(0, str(MCP_DIR))
-from spec import parse_frontmatter
 from hook_utils import SubprocessAdapter, SubprocessError, SubprocessJsonRunner
 from mcp_server_factory import MCPServerFactory
+from spec import parse_frontmatter
 
 server = MCPServerFactory().build("solid-coder-specs", "1.0.0")
 
@@ -43,13 +41,14 @@ def _run_json_tool(cmd: list):
 def _parse_frontmatter_or_error(file_path):
     try:
         return parse_frontmatter.parse(file_path), None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — Legacy specs tooling converts parser failures into explicit tool-facing error results.
         return None, str(e)
 
 
 # ---------------------------------------------------------------------------
 # Tool: parse_spec
 # ---------------------------------------------------------------------------
+
 
 @server.tool(
     name="parse_spec",
@@ -71,24 +70,33 @@ def _parse_frontmatter_or_error(file_path):
 def parse_spec(file_path):
     p = Path(file_path)
     if not p.exists():
-        return (f"File not found: {file_path}. "
-                "The input must be a spec markdown file. Use `/build-spec` to create one.")
+        return (
+            f"File not found: {file_path}. "
+            "The input must be a spec markdown file. Use `/build-spec` to create one."
+        )
     if p.suffix != ".md":
-        return (f"Not a markdown file: {file_path}. "
-                "The input must be a spec .md file with YAML frontmatter.")
+        return (
+            f"Not a markdown file: {file_path}. "
+            "The input must be a spec .md file with YAML frontmatter."
+        )
     fm, err = _parse_frontmatter_or_error(file_path)
     if err is not None:
-        return (f"No YAML frontmatter found in {file_path}: {err}. "
-                "Spec files must start with a --- frontmatter block. Use `/build-spec` to create one.")
+        return (
+            f"No YAML frontmatter found in {file_path}: {err}. "
+            "Spec files must start with a --- frontmatter block. Use `/build-spec` to create one."
+        )
     if "number" not in fm:
-        return (f"Frontmatter in {file_path} is missing the required `number` field. "
-                "Use `/build-spec` to generate a properly structured spec.")
+        return (
+            f"Frontmatter in {file_path} is missing the required `number` field. "
+            "Use `/build-spec` to generate a properly structured spec."
+        )
     return fm
 
 
 # ---------------------------------------------------------------------------
 # Tool: query_specs
 # ---------------------------------------------------------------------------
+
 
 @server.tool(
     name="query_specs",
@@ -101,7 +109,15 @@ def parse_spec(file_path):
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["scan", "children", "ancestors", "next-number", "types", "statuses", "resolve-path"],
+                "enum": [
+                    "scan",
+                    "children",
+                    "ancestors",
+                    "next-number",
+                    "types",
+                    "statuses",
+                    "resolve-path",
+                ],
                 "description": "Which query to run.",
             },
             "args": {
@@ -115,7 +131,11 @@ def parse_spec(file_path):
 )
 def query_specs(action, args=None):
     args = args or []
-    script = FIND_SPEC_SCRIPT if action in ("scan", "children", "ancestors", "next-number") else BUILD_SPEC_SCRIPT
+    script = (
+        FIND_SPEC_SCRIPT
+        if action in ("scan", "children", "ancestors", "next-number")
+        else BUILD_SPEC_SCRIPT
+    )
     _, result = _run_json_tool([sys.executable, str(script), action] + args)
     return result
 
@@ -123,6 +143,7 @@ def query_specs(action, args=None):
 # ---------------------------------------------------------------------------
 # Tool: load_spec_context
 # ---------------------------------------------------------------------------
+
 
 def _resolve_spec_number(spec_number, file_path):
     """Returns (spec_number, error_message)."""
@@ -209,6 +230,7 @@ def load_spec_context(spec_number=None, file_path=None, blocked=False):
 # Tool: update_spec_status
 # ---------------------------------------------------------------------------
 
+
 @server.tool(
     name="update_spec_status",
     description=(
@@ -231,7 +253,9 @@ def load_spec_context(spec_number=None, file_path=None, blocked=False):
     },
 )
 def update_spec_status(spec_number, status):
-    _, result = _run_json_tool([sys.executable, str(BUILD_SPEC_SCRIPT), "update-status", spec_number, status])
+    _, result = _run_json_tool(
+        [sys.executable, str(BUILD_SPEC_SCRIPT), "update-status", spec_number, status]
+    )
     return result
 
 

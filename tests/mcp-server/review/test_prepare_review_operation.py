@@ -10,13 +10,14 @@ from review.prepare_review_operation_factory import PrepareReviewOperationFactor
 from source.file_analysis_source import FileAnalysisSource
 from source.text_analysis_source import TextAnalysisSource
 
-
 """
 solid-name: TestPrepareReviewOperation
 solid-category: unit-test
 solid-spec: [SPEC-041]
 solid-description: Proves prospective review buffers become typed files, units, applicability, evidence, and source context without stale disk reads.
 """
+
+
 class TestPrepareReviewOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -42,11 +43,15 @@ class TestPrepareReviewOperation(unittest.TestCase):
         ).lstrip()
 
     def test_buffer_content_drives_every_normalized_review_fact(self) -> None:
-        result = PrepareReviewOperationFactory().make().execute(
-            PrepareReviewInput(
-                target=TextAnalysisSource(
-                    text=self.prospective_source,
-                    virtual_path=str(self.target_path),
+        result = (
+            PrepareReviewOperationFactory()
+            .make()
+            .execute(
+                PrepareReviewInput(
+                    target=TextAnalysisSource(
+                        text=self.prospective_source,
+                        virtual_path=str(self.target_path),
+                    )
                 )
             )
         )
@@ -66,9 +71,7 @@ class TestPrepareReviewOperation(unittest.TestCase):
         self.assertIn("swiftui", view.applicability.tags)
         self.assertIn("view", view.applicability.tags)
         self.assertTrue(view.tag_evidence)
-        self.assertTrue(
-            all(detection.evidence for detection in view.tag_evidence)
-        )
+        self.assertTrue(all(detection.evidence for detection in view.tag_evidence))
         self.assertEqual(len(result.source_context.sources), 1)
         self.assertEqual(
             result.source_context.sources[0].content,
@@ -85,9 +88,13 @@ class TestPrepareReviewOperation(unittest.TestCase):
             encoding="utf-8",
         )
 
-        result = PrepareReviewOperationFactory().make().execute(
-            PrepareReviewInput(
-                target=FileAnalysisSource(path=self.target_path),
+        result = (
+            PrepareReviewOperationFactory()
+            .make()
+            .execute(
+                PrepareReviewInput(
+                    target=FileAnalysisSource(path=self.target_path),
+                )
             )
         )
 
@@ -105,18 +112,22 @@ class TestPrepareReviewOperation(unittest.TestCase):
         sibling_path = self.project_root / "Sibling.swift"
         sibling_source = "struct ProspectiveSibling {}\n"
 
-        result = PrepareReviewOperationFactory().make().execute(
-            PrepareReviewInput(
-                target=TextAnalysisSource(
-                    text=self.prospective_source,
-                    virtual_path=str(self.target_path),
-                ),
-                context_sources=[
-                    TextAnalysisSource(
-                        text=sibling_source,
-                        virtual_path=str(sibling_path),
-                    )
-                ],
+        result = (
+            PrepareReviewOperationFactory()
+            .make()
+            .execute(
+                PrepareReviewInput(
+                    target=TextAnalysisSource(
+                        text=self.prospective_source,
+                        virtual_path=str(self.target_path),
+                    ),
+                    context_sources=[
+                        TextAnalysisSource(
+                            text=sibling_source,
+                            virtual_path=str(sibling_path),
+                        )
+                    ],
+                )
             )
         )
 

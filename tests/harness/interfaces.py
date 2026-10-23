@@ -15,10 +15,10 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from models import (  # noqa: E402
+from models import (
     DiffEntry,
-    ExpectedFinding,
     Expectation,
+    ExpectedFinding,
     FixturePair,
     ModelProfile,
     OutputPaths,
@@ -83,15 +83,21 @@ class OutputPathBuilding(ABC):
 
 class FindingComparing(ABC):
     @abstractmethod
-    def compare(self, expected: list[ExpectedFinding], actual: list[dict]) -> list[DiffEntry]: ...
+    def compare(
+        self, expected: list[ExpectedFinding], actual: list[dict]
+    ) -> list[DiffEntry]: ...
 
 
 class ResultFormatting(ABC):
     @abstractmethod
-    def format_status(self, passed: bool, model: str, category_path: str, stem: str, flow: str) -> str: ...
+    def format_status(
+        self, passed: bool, model: str, category_path: str, stem: str, flow: str
+    ) -> str: ...
 
     @abstractmethod
-    def format_failures(self, diffs: list[DiffEntry], reasoning_path: Path) -> list[str]: ...
+    def format_failures(
+        self, diffs: list[DiffEntry], reasoning_path: Path
+    ) -> list[str]: ...
 
 
 class FlowInvoking(ABC):
@@ -137,7 +143,9 @@ class FindingsReading(ABC):
     def read_findings(self, path: Path) -> list[dict]: ...
 
 
-class ReviewArtifactHandling(ReviewInputBuilding, ReasoningWriting, FindingsReading, ABC):
+class ReviewArtifactHandling(
+    ReviewInputBuilding, ReasoningWriting, FindingsReading, ABC
+):
     """Composition protocol — kept for backward compatibility with factory and tests."""
 
 

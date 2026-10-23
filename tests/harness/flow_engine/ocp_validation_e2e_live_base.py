@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase
 
-
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
-_FIXTURE = _PROJECT_ROOT / "tests" / "principles" / "OCP" / "fixtures" / "fixture-1.swift"
+_FIXTURE = (
+    _PROJECT_ROOT / "tests" / "principles" / "OCP" / "fixtures" / "fixture-1.swift"
+)
 
 
 """
@@ -17,26 +19,28 @@ solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Supplies the OCP scenario and exact observations to the shared live executable-rule contract.
 """
+
+
 class OCPValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "ocp"
     ARTIFACT_SCENARIO = "ocp"
     FIXTURE = _FIXTURE
-    EXPECTED_ANALYSIS_STEP_IDS = ["analyze_dependencies"]
-    EXPECTED_STEP_IDS = [
+    EXPECTED_ANALYSIS_STEP_IDS: ClassVar[list[str]] = ["analyze_dependencies"]
+    EXPECTED_STEP_IDS: ClassVar[list[str]] = [
         "sealed_variation_points",
         "hardcoded_behavior_selection_count",
         "untestable_concrete_dependencies",
         "testable_concrete_dependencies",
     ]
-    EXPECTED_METRIC_IDS = ["OCP-1", "OCP-1", "OCP-2", "OCP-3"]
-    EXPECTED_OBSERVATION_IDS = [
+    EXPECTED_METRIC_IDS: ClassVar[list[str]] = ["OCP-1", "OCP-1", "OCP-2", "OCP-3"]
+    EXPECTED_OBSERVATION_IDS: ClassVar[list[str]] = [
         "direct_non_injected_count",
         "hardcoded_behavior_selection_count",
         "untestable_concrete_count",
         "testable_concrete_count",
     ]
-    EXPECTED_VALUES = [2, 0, 0, 0]
-    EXPECTED_METRIC_SEVERITIES = [
+    EXPECTED_VALUES: ClassVar[list[int]] = [2, 0, 0, 0]
+    EXPECTED_METRIC_SEVERITIES: ClassVar[list[str]] = [
         "SEVERE",
         "COMPLIANT",
         "COMPLIANT",

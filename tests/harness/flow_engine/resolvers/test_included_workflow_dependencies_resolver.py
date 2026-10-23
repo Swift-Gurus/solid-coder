@@ -16,15 +16,15 @@ from harness.included_workflow_step_identities import IncludedWorkflowStepIdenti
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
 from harness.models import StepDef
 
-
 """
 solid-name: TestIncludedWorkflowDependenciesResolver
 solid-category: unit-test
 solid-spec: [SPEC-037]
 solid-description: Verifies child dependencies resolve through typed identities whose execution values have no parseable naming convention.
 """
-class TestIncludedWorkflowDependenciesResolver(unittest.TestCase):
 
+
+class TestIncludedWorkflowDependenciesResolver(unittest.TestCase):
     def test_resolves_internal_dependency_to_opaque_execution_identity(self) -> None:
         identities = IncludedWorkflowStepIdentities(
             entries=[

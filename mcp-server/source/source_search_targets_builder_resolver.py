@@ -10,16 +10,15 @@ from source.source_search_targets_building_resolving import (
     SourceSearchTargetsBuildingResolving,
 )
 
-
 """
 solid-name: SourceSearchTargetsBuilderResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves registered search-target construction behavior without hardcoded granularity branches.
 """
-class SourceSearchTargetsBuilderResolver(
-    SourceSearchTargetsBuildingResolving
-):
+
+
+class SourceSearchTargetsBuilderResolver(SourceSearchTargetsBuildingResolving):
     def __init__(
         self,
         registrations: list[SourceSearchTargetsBuilderRegistration],

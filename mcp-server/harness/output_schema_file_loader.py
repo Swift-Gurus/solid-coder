@@ -6,8 +6,9 @@ from pathlib import Path
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
-from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
-
+from harness.workflow_resource_reference_creating import (
+    WorkflowResourceReferenceCreating,
+)
 
 """
 solid-name: OutputSchemaFileLoader
@@ -15,8 +16,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Resolves and loads a required output schema while reporting invalid or missing resources.
 """
-class OutputSchemaFileLoader:
 
+
+class OutputSchemaFileLoader:
     def __init__(
         self,
         resource_loader: WorkflowConfigResourceLoading,
@@ -27,7 +29,9 @@ class OutputSchemaFileLoader:
         self._reference_factory = reference_factory
         self._error_factory = error_factory
 
-    def load(self, declaring_file: Path, reference: str, step_id: str, output_name: str) -> dict:
+    def load(
+        self, declaring_file: Path, reference: str, step_id: str, output_name: str
+    ) -> dict:
         resource_reference = self._reference_factory.create(reference)
         resource = self._resource_loader.load(declaring_file, resource_reference)
         if resource is None:

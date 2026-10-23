@@ -2,7 +2,6 @@
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from callable_file_name_resolver import CallableFileNameResolver
 from callable_frontmatter_description_detector import (
@@ -18,11 +17,10 @@ from edit_classifier import EditClassifier
 from edit_content_simulator import EditContentSimulator
 from frontmatter_adapter import FrontmatterAdapter
 from gate_handling import GateHandling
-from path_file_system_reader import PathFileSystemReader
 from patch_review_context import PatchReviewContext
+from path_file_system_reader import PathFileSystemReader
 from write_content_simulator import WriteContentSimulator
 from write_gate_coordinator import WriteGateCoordinator
-
 
 """
 solid-name: WriteGateCoordinatorFactory
@@ -30,40 +28,44 @@ solid-category: factory
 solid-description: Prepares write operations for health and metadata validation.
 solid-tags: [hook]
 """
+
+
 class WriteGateCoordinatorFactory(CoordinatorMaking):
     def make_coordinator(
         self,
         gate: GateHandling,
-        patch_context: Optional[PatchReviewContext] = None,
+        patch_context: PatchReviewContext | None = None,
     ) -> CoordinatorRunning:
         import code_health_check as health
         import validate_swift_frontmatter as frontmatter
-        from health_violation_block_formatter import HealthViolationBlockFormatter
         from health_outcome_renderer import HealthOutcomeRenderer
-        from unavailable_health_metric_renderer import UnavailableHealthMetricRenderer
+        from health_violation_block_formatter import HealthViolationBlockFormatter
         from safe_frontmatter_fixer import SafeFrontmatterFixer
         from safe_health_checker import SafeHealthChecker
         from tool_input_updater import ToolInputUpdater
+        from unavailable_health_metric_renderer import UnavailableHealthMetricRenderer
 
         classifier = EditClassifier()
         reader = PathFileSystemReader()
-        simulator = ContentSimulator(registrations=[
-            ContentSimulatorRegistration(
-                tool_name="Write",
-                simulator=WriteContentSimulator(
-                    file_reader=reader,
-                    classifier=classifier,
-                    chunker=DiffChunkerFactory().make(),
+        simulator = ContentSimulator(
+            registrations=[
+                ContentSimulatorRegistration(
+                    tool_name="Write",
+                    simulator=WriteContentSimulator(
+                        file_reader=reader,
+                        classifier=classifier,
+                        chunker=DiffChunkerFactory().make(),
+                    ),
                 ),
-            ),
-            ContentSimulatorRegistration(
-                tool_name="Edit",
-                simulator=EditContentSimulator(
-                    file_reader=reader,
-                    classifier=classifier,
+                ContentSimulatorRegistration(
+                    tool_name="Edit",
+                    simulator=EditContentSimulator(
+                        file_reader=reader,
+                        classifier=classifier,
+                    ),
                 ),
-            ),
-        ])
+            ]
+        )
         return WriteGateCoordinator(
             health_gate=SafeHealthChecker(
                 checker=CodeHealthCheckAdapter(
@@ -85,10 +87,13 @@ class WriteGateCoordinatorFactory(CoordinatorMaking):
                 lambda file_path: Path(file_path).name
             ),
             frontmatter_detector=CallableFrontmatterDescriptionDetector(
-                lambda content: re.search(
-                    r"^\s*solid-description:\s*\S",
-                    content,
-                    re.MULTILINE,
-                ) is not None
+                lambda content: (
+                    re.search(
+                        r"^\s*solid-description:\s*\S",
+                        content,
+                        re.MULTILINE,
+                    )
+                    is not None
+                )
             ),
         )

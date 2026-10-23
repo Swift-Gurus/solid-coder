@@ -6,13 +6,14 @@ solid-description: Validates that SOLID principle submissions cover all code uni
 
 from __future__ import annotations
 
-from typing import Optional, Protocol
+from typing import Protocol
 
+from logging_protocol import Logging
 
 _SOLID_PRINCIPLES = frozenset({"srp", "ocp", "lsp", "isp", "dry"})
 
 
-def load_applies_to(refs_root) -> dict:
+def load_applies_to(refs_root, logger: Logging) -> dict:
     """Load applies_to constraints from each principle's rule.md frontmatter.
 
     Returns a dict mapping lowercase principle name → list of unit_kinds, for every
@@ -20,6 +21,7 @@ def load_applies_to(refs_root) -> dict:
     from the result (i.e. they apply to all unit kinds).
     """
     from pathlib import Path as _Path
+
     result: dict = {}
     principles_root = _Path(refs_root) / "principles"
     if not principles_root.is_dir():
@@ -36,8 +38,12 @@ def load_applies_to(refs_root) -> dict:
             applies_to = _parse_applies_to(fm_text, rule_md.parent.name)
             if applies_to is not None:
                 result[rule_md.parent.name.lower()] = applies_to
-        except Exception:
-            continue
+        except Exception as exc:
+            logger.log(
+                f"Unit applicability loading failed: principle={rule_md.parent.name}, "
+                f"rule={rule_md}; {type(exc).__name__}: {exc}"
+            )
+            raise
     return result
 
 
@@ -48,7 +54,7 @@ def _parse_applies_to(frontmatter_text: str, principle_name: str) -> list:
     for line in frontmatter_text.splitlines():
         stripped = line.strip()
         if stripped.startswith("applies_to:"):
-            value = stripped[len("applies_to:"):].strip()
+            value = stripped[len("applies_to:") :].strip()
             if value.startswith("[") and value.endswith("]"):
                 inner = value[1:-1].strip()
                 return [v.strip() for v in inner.split(",")] if inner else []
@@ -63,14 +69,14 @@ def _parse_applies_to(frontmatter_text: str, principle_name: str) -> list:
 
 
 class HookContextLoading(Protocol):
-    def load(self) -> Optional[dict]: ...
+    def load(self) -> dict | None: ...
 
 
 class UnitCoverageValidating(Protocol):
-    def validate(self, submissions: dict) -> Optional[dict]: ...
+    def validate(self, submissions: dict) -> dict | None: ...
 
 
-def _extract_unit_names(principle_payload: dict) -> Optional[list]:
+def _extract_unit_names(principle_payload: dict) -> list | None:
     """Return submitted unit names, or None if the payload is structurally invalid.
 
     None  = malformed (let schema validator handle it; exclude from coverage check).
@@ -125,13 +131,13 @@ class UnitCoverageValidator(UnitCoverageValidating):
 
     def __init__(
         self,
-        context_loader: Optional[HookContextLoading] = None,
-        applies_to: Optional[dict] = None,
+        context_loader: HookContextLoading | None = None,
+        applies_to: dict | None = None,
     ) -> None:
         self._context_loader = context_loader
         self._applies_to: dict = applies_to or {}
 
-    def validate(self, submissions: dict) -> Optional[dict]:
+    def validate(self, submissions: dict) -> dict | None:
         if self._context_loader is not None:
             ctx = self._context_loader.load()
             if ctx is not None:
@@ -140,7 +146,9 @@ class UnitCoverageValidator(UnitCoverageValidating):
                     return self._validate_against_expected(submissions, expected)
         return self._validate_cross_principle(submissions)
 
-    def _validate_against_expected(self, submissions: dict, expected: list) -> Optional[dict]:
+    def _validate_against_expected(
+        self, submissions: dict, expected: list
+    ) -> dict | None:
         if not expected:
             return None
         skipped = self._find_skipped(submissions)
@@ -148,7 +156,7 @@ class UnitCoverageValidator(UnitCoverageValidating):
             return None
         return self._rejection(skipped, expected, ", ".join(expected))
 
-    def _validate_cross_principle(self, submissions: dict) -> Optional[dict]:
+    def _validate_cross_principle(self, submissions: dict) -> dict | None:
         known_units: set[str] = set()
         for label, payload in submissions.items():
             if label.lower() in _SOLID_PRINCIPLES:
@@ -160,12 +168,15 @@ class UnitCoverageValidator(UnitCoverageValidating):
         skipped = self._find_skipped(submissions)
         if not skipped:
             return None
-        return self._rejection(skipped, sorted(known_units), ", ".join(sorted(known_units)))
+        return self._rejection(
+            skipped, sorted(known_units), ", ".join(sorted(known_units))
+        )
 
     def _find_skipped(self, submissions: dict) -> list:
         """Return SOLID principles that submitted empty units and are not exempt."""
         return [
-            label for label, payload in submissions.items()
+            label
+            for label, payload in submissions.items()
             if label.lower() in _SOLID_PRINCIPLES
             and _extract_unit_names(payload) == []
             and not self._exempt_empty(label, submissions)

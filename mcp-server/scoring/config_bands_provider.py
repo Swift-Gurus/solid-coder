@@ -4,11 +4,9 @@ solid-category: service
 solid-tags: [utility, service]
 """
 
-from typing import Optional
-
-from scoring.frontmatter_bands_provider import BandsProviding
-from scoring.config_path_collector import ConfigCollecting
 from scoring.config_merger import ConfigMerging
+from scoring.config_path_collector import ConfigCollecting
+from scoring.frontmatter_bands_provider import BandsProviding
 
 
 class ConfigBandsProvider:
@@ -19,7 +17,7 @@ class ConfigBandsProvider:
         base: BandsProviding,
         collector: ConfigCollecting,
         merger: ConfigMerging,
-        project_root: Optional[str] = None,
+        project_root: str | None = None,
     ) -> None:
         self._base = base
         self._collector = collector
@@ -28,7 +26,9 @@ class ConfigBandsProvider:
 
     def metric_variables(self, metric_id: str, file_path: str = "") -> dict:
         merged = self._base.metric_variables(metric_id, file_path)
-        principle = metric_id.split("-")[0].upper() if "-" in metric_id else metric_id.upper()
+        principle = (
+            metric_id.split("-")[0].upper() if "-" in metric_id else metric_id.upper()
+        )
 
         for cfg in self._collector.collect(file_path, self._project_root):
             principle_cfg = cfg.get(principle, {})

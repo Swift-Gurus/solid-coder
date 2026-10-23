@@ -1,7 +1,5 @@
 """Renders collection metric derivation audit payloads."""
 
-from typing import Optional
-
 from harness.collection_metric_calculation import CollectionMetricCalculation
 from harness.collection_source_reference import CollectionSourceReference
 from harness.condition_serializing import ConditionSerializing
@@ -9,13 +7,14 @@ from harness.metric_derivation_rendering import MetricDerivationRendering
 from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
 from harness.pydantic_type_adapter_encoder import StructuredModelEncoding
 
-
 """
 solid-name: MetricDerivationRenderer
 solid-category: boundary
 solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Renders durable collection metric derivation audit payloads.
 """
+
+
 class MetricDerivationRenderer(MetricDerivationRendering):
     def __init__(
         self,
@@ -27,17 +26,15 @@ class MetricDerivationRenderer(MetricDerivationRendering):
 
     def render(
         self,
-        calculation: Optional[CollectionMetricCalculation],
-    ) -> Optional[dict]:
+        calculation: CollectionMetricCalculation | None,
+    ) -> dict | None:
         if calculation is None:
             return None
         condition = calculation.condition
         reducer = calculation.reducer
         return {
             "kind": (
-                "collection_reducer"
-                if reducer is not None
-                else "collection_count"
+                "collection_reducer" if reducer is not None else "collection_count"
             ),
             "source": self._source_encoder.encode(calculation.source),
             "source_size": calculation.source_size,
@@ -65,9 +62,7 @@ class MetricDerivationRenderer(MetricDerivationRendering):
                         else None
                     ),
                     "value": (
-                        reducer.value.value
-                        if reducer.value is not None
-                        else None
+                        reducer.value.value if reducer.value is not None else None
                     ),
                     "empty_value": reducer.empty_value,
                     "numerator_when": (

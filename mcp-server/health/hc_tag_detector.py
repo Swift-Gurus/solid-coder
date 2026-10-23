@@ -6,14 +6,21 @@ solid-tags: [hook, detection]
 
 import sys
 from pathlib import Path
+
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
 import re
-from typing import Protocol
+from typing import ClassVar, Protocol
 
 
 class TagDetecting(Protocol):
@@ -23,11 +30,11 @@ class TagDetecting(Protocol):
 class TagDetector:
     """Identifies active principle tags by scanning content for import and usage patterns."""
 
-    _PATTERNS: dict = {
+    _PATTERNS: ClassVar[dict[str, list[str]]] = {
         "swiftui": [
             r"\bimport\s+SwiftUI\b",
-            r":\s*View\b",           # conforming to View protocol
-            r"\bsome\s+View\b",      # returning some View
+            r":\s*View\b",  # conforming to View protocol
+            r"\bsome\s+View\b",  # returning some View
             r"\b@State\b",
             r"\b@StateObject\b",
             r"\b@ObservedObject\b",
@@ -36,8 +43,8 @@ class TagDetector:
         "structured-concurrency": [
             r"\basync\b",
             r"\bawait\b",
-            r"\bTask\s*[{<(.]",      # Task { }, Task<T>, Task(, Task.detached — not URLSessionTask
-            r"\bactor\s+\w",         # actor keyword declaration, not Actor type
+            r"\bTask\s*[{<(.]",  # Task { }, Task<T>, Task(, Task.detached — not URLSessionTask
+            r"\bactor\s+\w",  # actor keyword declaration, not Actor type
         ],
         "unit-test": [r"\bimport\s+Testing\b", r"\bXCTestCase\b", r"@Test\b"],
         "ui-test": [r"\bXCUIApplication\b", r"\bXCUIElement\b"],
@@ -46,7 +53,8 @@ class TagDetector:
 
     def detect(self, content: str, candidate_tags: list) -> list:
         matched = [
-            tag for tag in candidate_tags
+            tag
+            for tag in candidate_tags
             if any(re.search(p, content) for p in self._PATTERNS.get(tag, []))
         ]
         if "ui-test" in matched:

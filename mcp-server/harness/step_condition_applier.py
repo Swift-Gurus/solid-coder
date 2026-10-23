@@ -11,15 +11,15 @@ from harness.step_condition_applying import StepConditionApplying
 from harness.step_skip import StepSkip
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: StepConditionApplier
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Applies deterministic workflow-condition policy to one expanded step instance.
 """
-class StepConditionApplier(StepConditionApplying):
 
+
+class StepConditionApplier(StepConditionApplying):
     def __init__(
         self,
         condition_evaluator: ConditionDecisionEvaluating,

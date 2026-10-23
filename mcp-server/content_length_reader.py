@@ -5,15 +5,13 @@ solid-description: Reads a message from the input stream and returns the parsed 
 """
 
 import json
-from typing import Optional
 
 from message_reading import MessageReading
 from stdin_source import StdinSource
 
 
 class ContentLengthReader(MessageReading):
-
-    def read(self, stdin: StdinSource, peeked: bytes) -> Optional[dict]:
+    def read(self, stdin: StdinSource, peeked: bytes) -> dict | None:
         headers = {}
         first = peeked
         while True:

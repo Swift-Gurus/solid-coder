@@ -15,13 +15,14 @@ from harness.runtime_include_identity_qualifying import (
 )
 from harness.step_output_reference import StepOutputReference
 
-
 """
 solid-name: NestedIncludeGroupRuntimeBuilder
 solid-category: service
 solid-spec: [SPEC-037, SPEC-056]
 solid-description: Builds a nested include group and its templates for one exact materialized parent instance.
 """
+
+
 class NestedIncludeGroupRuntimeBuilder(IncludeGroupRuntimeRebasing):
     def __init__(
         self,
@@ -108,8 +109,7 @@ class NestedIncludeGroupRuntimeBuilder(IncludeGroupRuntimeRebasing):
                             template.metric_calculation.source,
                             StepOutputReference,
                         )
-                        and template.metric_calculation.source.step_id
-                        in scoped_ids
+                        and template.metric_calculation.source.step_id in scoped_ids
                         else template.metric_calculation
                     ),
                 )

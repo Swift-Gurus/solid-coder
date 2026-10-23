@@ -4,9 +4,8 @@ from pathlib import Path
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-
-from source.source_search_match import SourceSearchMatch
 from source.source_candidate_origin import SourceCandidateOrigin
+from source.source_search_match import SourceSearchMatch
 
 SourceIdentity = Annotated[
     str,
@@ -24,6 +23,8 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Represents candidate metadata and provenance for a file the caller may inspect after source search.
 """
+
+
 class SourceSearchCandidate(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

@@ -14,18 +14,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.output_collection_resolver import OutputCollectionResolver
-from harness.output_spec import OutputSpec
 from harness.output_schema_declaration_validator import OutputSchemaDeclarationValidator
 from harness.output_schema_file_loader import OutputSchemaFileLoader
 from harness.output_schema_reference_resolver import OutputSchemaReferenceResolver
 from harness.output_schema_resolver import OutputSchemaResolver
+from harness.output_spec import OutputSpec
 from harness.path_builder import PathBuilder
 from harness.resolved_output_schema_applier import ResolvedOutputSchemaApplier
 from harness.resolved_outputs_applier import ResolvedOutputsApplier
 from harness.resolved_step_resources_applier import ResolvedStepResourcesApplier
 from harness.resolved_step_resources_factory import ResolvedStepResourcesFactory
-from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_declaration import StepDeclaration
+from harness.step_declaring_file_resolver import StepDeclaringFileResolver
 from harness.step_identity_resolver import StepIdentityResolver
 from harness.workflow_config_resource_loader import WorkflowConfigResourceLoader
 from harness.workflow_package_root_locator import WorkflowPackageRootLocator
@@ -75,7 +75,6 @@ def _make_resolver(loader: StubFileLoader) -> OutputSchemaResolver:
 
 
 class TestOutputSchemaResolver(unittest.TestCase):
-
     def test_resolves_schema_file_relative_to_flow_file(self):
         flow_path = "/flows/my_flow.yaml"
         schema_path = str(Path("/flows/greeting_schema.json"))
@@ -96,7 +95,9 @@ class TestOutputSchemaResolver(unittest.TestCase):
 
         self.assertEqual(resolved.outputs[0].schema, {"type": "string"})
 
-    def test_removes_schema_file_key_once_resolved_so_the_output_survives_a_round_trip(self):
+    def test_removes_schema_file_key_once_resolved_so_the_output_survives_a_round_trip(
+        self,
+    ):
         flow_path = "/flows/my_flow.yaml"
         schema_path = str(Path("/flows/greeting_schema.json"))
         loader = StubFileLoader({schema_path: {"type": "string"}})

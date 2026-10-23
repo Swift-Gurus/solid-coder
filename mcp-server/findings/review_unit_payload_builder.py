@@ -6,12 +6,13 @@ from findings.principle_metrics_payload_building import (
 from findings.review_unit import ReviewUnit
 from findings.review_unit_payload_building import ReviewUnitPayloadBuilding
 
-
 """
 solid-name: ReviewUnitPayloadBuilder
 solid-category: boundary-adapter
 solid-description: Builds the persisted identity, measurements, and violations for one reviewed unit.
 """
+
+
 class ReviewUnitPayloadBuilder(ReviewUnitPayloadBuilding):
     def __init__(self, metrics_builder: PrincipleMetricsPayloadBuilding) -> None:
         self._metrics_builder = metrics_builder

@@ -19,16 +19,16 @@ for _directory in [_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG]:
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from live_session_running import LiveSessionRunning  # noqa: E402
-from mcp_utils import McpConfigBuilder  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from claude_test_base import ClaudeTestBase
+from codex_test_base import CodexTestBase
+from harness_factory import HookUtilsTomlLoader
+from hook_utils import solid_coder_project_dir
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
+from live_session_running import LiveSessionRunning
+from mcp_utils import McpConfigBuilder
+from model_profile_environment import model_profile_environment
+from model_profile_loader import ModelProfileLoader
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 
@@ -39,8 +39,9 @@ solid-category: test-support
 solid-spec: [SPEC-058]
 solid-description: Runs one test-owned live agent step and proves MCP derives two co-located metrics from its single observation submission.
 """
-class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
 
+
+class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     ALLOWED_FLOW_TOOLS: ClassVar[str]
@@ -78,14 +79,9 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
             events = self._run_live_workflow(workflow_path)
 
         completed = [
-            event
-            for event in events
-            if event.get("event") == "step_completed"
+            event for event in events if event.get("event") == "step_completed"
         ]
-        completed_by_step = {
-            event["step_id"]: event
-            for event in completed
-        }
+        completed_by_step = {event["step_id"]: event for event in completed}
         self.assertEqual(
             [event["step_id"] for event in completed],
             [
@@ -106,11 +102,7 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
             [0, 1, 2],
         )
         self.assertEqual(
-            len([
-                event
-                for event in completed
-                if event.get("session_id") != "engine"
-            ]),
+            len([event for event in completed if event.get("session_id") != "engine"]),
             2,
         )
         self.assertFalse(
@@ -131,12 +123,19 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
 
         events = self._run_live_workflow(workflow_path)
 
-        completed = [event for event in events if event.get("event") == "step_completed"]
+        completed = [
+            event for event in events if event.get("event") == "step_completed"
+        ]
         self.assertEqual(
             [event["step_id"] for event in completed],
             [
-                "classify_actions", "classify_variable_usage", "classify_stakeholders",
-                "action_count", "cohesion_groups", "stakeholder_count", "classify_exception",
+                "classify_actions",
+                "classify_variable_usage",
+                "classify_stakeholders",
+                "action_count",
+                "cohesion_groups",
+                "stakeholder_count",
+                "classify_exception",
             ],
         )
         metrics = [event for event in completed if event.get("session_id") == "engine"]
@@ -158,7 +157,11 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
         self.assertEqual([event["value"] for event in scored], [2, 2, 2])
         self.assertEqual([event["severity"] for event in scored], ["SEVERE"] * 3)
         self.assertEqual(
-            [event["total"] for event in events if event.get("event") == "turn_counted"],
+            [
+                event["total"]
+                for event in events
+                if event.get("event") == "turn_counted"
+            ],
             [1, 2],
             "One combined classification submission, then one dependent exception submission.",
         )
@@ -289,12 +292,10 @@ class CoLocatedMetricE2ELiveBase(unittest.TestCase, ABC):
 
 
 class TestCodexCoLocatedMetricE2ELive(CodexTestBase, CoLocatedMetricE2ELiveBase):
-
     __test__ = True
 
 
 class TestClaudeCoLocatedMetricE2ELive(ClaudeTestBase, CoLocatedMetricE2ELiveBase):
-
     __test__ = True
 
 

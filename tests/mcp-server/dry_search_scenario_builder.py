@@ -3,15 +3,16 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from health.dry_search_service_factory import DrySearchServiceFactory
 from dry_search_scenario import DrySearchScenario
-
+from health.dry_search_service_factory import DrySearchServiceFactory
 
 """
 solid-name: DrySearchScenarioBuilder
 solid-category: test-support
 solid-description: Prepares isolated collaborators for a DRY-search enforcement scenario.
 """
+
+
 class DrySearchScenarioBuilder:
     def build(self, output_dir: Path) -> DrySearchScenario:
         (output_dir / "hook-input.json").write_text("{}\n", encoding="utf-8")

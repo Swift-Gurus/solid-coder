@@ -8,13 +8,14 @@ from harness.graph_step_field_reading import GraphStepFieldReading
 from harness.models import RunState
 from harness.step_dependency_checking import StepDependencyChecking
 
-
 """
 solid-name: StepDependencyChecker
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030, SPEC-037]
 solid-description: Determines whether every declared dependency of a workflow step is terminal.
 """
+
+
 class StepDependencyChecker(StepDependencyChecking):
     def dependencies_met(
         self,

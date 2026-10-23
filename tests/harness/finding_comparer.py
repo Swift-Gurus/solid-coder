@@ -14,8 +14,8 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import FindingComparing, FindingNormalizing  # noqa: E402
-from models import DiffEntry, ExpectedFinding  # noqa: E402
+from interfaces import FindingComparing, FindingNormalizing
+from models import DiffEntry, ExpectedFinding
 
 
 def _key(unit_name: str, metric_id: str, severity: str) -> tuple[str, str, str]:
@@ -23,10 +23,14 @@ def _key(unit_name: str, metric_id: str, severity: str) -> tuple[str, str, str]:
 
 
 class FindingComparer(FindingComparing):
-    def compare(self, expected: list[ExpectedFinding], actual: list[dict]) -> list[DiffEntry]:
+    def compare(
+        self, expected: list[ExpectedFinding], actual: list[dict]
+    ) -> list[DiffEntry]:
         actual_by_key: dict[tuple[str, str, str], dict] = {}
         for a in actual:
-            k = _key(a.get("unit_name", ""), a.get("metric_id", ""), a.get("severity", ""))
+            k = _key(
+                a.get("unit_name", ""), a.get("metric_id", ""), a.get("severity", "")
+            )
             actual_by_key[k] = a
 
         matched_keys: set[tuple[str, str, str]] = set()
@@ -95,7 +99,9 @@ class FlowFindingNormalizer(FindingNormalizing):
             return expected, actual
 
         normalized_expected = [
-            ExpectedFinding(unit_name="", metric_id=f.metric_id, severity="", metrics=None)
+            ExpectedFinding(
+                unit_name="", metric_id=f.metric_id, severity="", metrics=None
+            )
             for f in expected
         ]
         normalized_actual = [

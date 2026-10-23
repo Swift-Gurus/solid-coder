@@ -15,15 +15,15 @@ from harness.workflow_result_envelope import WorkflowResultEnvelope
 from harness.workflow_result_envelope_building import WorkflowResultEnvelopeBuilding
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowResultEnvelopeBuilder
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Builds the published result envelope for one included-workflow instance.
 """
-class WorkflowResultEnvelopeBuilder(WorkflowResultEnvelopeBuilding):
 
+
+class WorkflowResultEnvelopeBuilder(WorkflowResultEnvelopeBuilding):
     def __init__(
         self,
         publication_state_resolver: WorkflowPublicationStateResolving,

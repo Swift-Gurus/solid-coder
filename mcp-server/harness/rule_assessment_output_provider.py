@@ -9,13 +9,14 @@ from harness.rule_assessment_output_providing import (
     RuleAssessmentOutputProviding,
 )
 
-
 """
 solid-name: RuleAssessmentOutputProvider
 solid-category: boundary
 solid-spec: [SPEC-044]
 solid-description: Renders typed aggregate metric and exception declarations as JSON-schema workflow outputs.
 """
+
+
 class RuleAssessmentOutputProvider(RuleAssessmentOutputProviding):
     def __init__(
         self,

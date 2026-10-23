@@ -12,21 +12,24 @@ from source.source_analysis import SourceAnalysis
 from source.source_analysis_operation_factory import SourceAnalysisOperationFactory
 from source.text_analysis_source import TextAnalysisSource
 
-
 """
 solid-name: TestSourceDeclarationScopes
 solid-category: unit-test
 solid-spec: [SPEC-066]
 solid-description: Checks structural declaration scope, modifiers, stable identities, and prospective-source analysis without changing top-level review units.
 """
+
+
 class TestSourceDeclarationScopes(unittest.TestCase):
     def setUp(self) -> None:
         self.operation = SourceAnalysisOperationFactory().make()
 
     def analyze(self, source: str, path: str = "Example.swift"):
-        return self.operation.execute(AnalyzeSourceInput(
-            source=TextAnalysisSource(virtual_path=path, text=source),
-        ))
+        return self.operation.execute(
+            AnalyzeSourceInput(
+                source=TextAnalysisSource(virtual_path=path, text=source),
+            )
+        )
 
     def test_local_and_nested_types_have_distinct_enclosing_scopes(self) -> None:
         source = """struct Outer {
@@ -46,9 +49,19 @@ func free() { enum LocalEnum { case one } }
             ["Outer", "make", "Local", "InClosure", "Nested", "free", "LocalEnum"],
         )
         self.assertEqual(
-            [[scope.kind.value for scope in entry.scopes] for entry in result.declarations],
-            [[], ["type"], ["type", "callable"],
-             ["type", "callable", "closure"], ["type"], [], ["callable"]],
+            [
+                [scope.kind.value for scope in entry.scopes]
+                for entry in result.declarations
+            ],
+            [
+                [],
+                ["type"],
+                ["type", "callable"],
+                ["type", "callable", "closure"],
+                ["type"],
+                [],
+                ["callable"],
+            ],
         )
         self.assertEqual(result.declarations[1].modifiers, ["static"])
         self.assertEqual(result.declarations[2].scopes[-1].name, "make")
@@ -68,7 +81,12 @@ func free() { enum LocalEnum { case one } }
             [entry.unit.name for entry in local],
             ["DuringInit", "InGetter", "ExplicitGetter", "DuringDeinit"],
         )
-        self.assertTrue(all(any(scope.kind.value == "callable" for scope in entry.scopes) for entry in local))
+        self.assertTrue(
+            all(
+                any(scope.kind.value == "callable" for scope in entry.scopes)
+                for entry in local
+            )
+        )
 
     def test_same_line_overloads_and_local_names_keep_unique_identities(self) -> None:
         source = "func f(_ x: Int) { struct Local {} }; func f(_ x: String) { struct Local {} }"
@@ -81,26 +99,38 @@ func free() { enum LocalEnum { case one } }
         self.assertEqual(identities, [entry.identity for entry in second.declarations])
 
     def test_comments_literals_and_closures_are_not_type_declarations(self) -> None:
-        result = self.analyze('''// struct Fake {}
+        result = self.analyze("""// struct Fake {}
 struct Real {
     let text = "class Fake {}"
     let work = { 1 }
 }
-''')
+""")
 
         self.assertEqual([entry.unit.name for entry in result.declarations], ["Real"])
 
     def test_protocol_methods_and_class_modifiers_are_preserved(self) -> None:
-        result = self.analyze("protocol P { static func make() }\nclass C { class func make() {} }")
+        result = self.analyze(
+            "protocol P { static func make() }\nclass C { class func make() {} }"
+        )
 
-        methods = [entry for entry in result.declarations if entry.unit.kind.value == "function"]
+        methods = [
+            entry
+            for entry in result.declarations
+            if entry.unit.kind.value == "function"
+        ]
         self.assertEqual(len(methods), 2)
-        self.assertEqual([entry.modifiers for entry in methods], [["static"], ["class"]])
+        self.assertEqual(
+            [entry.modifiers for entry in methods], [["static"], ["class"]]
+        )
         self.assertEqual([entry.scopes[-1].name for entry in methods], ["P", "C"])
 
     def test_inventory_reuses_one_syntax_parse(self) -> None:
-        with patch.object(TreeSitterSyntaxParser, "parse", autospec=True,
-                          side_effect=TreeSitterSyntaxParser.parse) as parse:
+        with patch.object(
+            TreeSitterSyntaxParser,
+            "parse",
+            autospec=True,
+            side_effect=TreeSitterSyntaxParser.parse,
+        ) as parse:
             result = self.analyze("func run() { struct Local {} }")
 
         self.assertEqual(parse.call_count, 1)
@@ -111,7 +141,9 @@ struct Real {
             path = Path(directory) / "Missing.swift"
             result = self.analyze("func run() { struct Local {} }", str(path))
             self.assertFalse(path.exists())
-            self.assertEqual([entry.unit.name for entry in result.declarations], ["run", "Local"])
+            self.assertEqual(
+                [entry.unit.name for entry in result.declarations], ["run", "Local"]
+            )
 
     def test_unsupported_language_has_no_invented_declaration_inventory(self) -> None:
         result = self.analyze("class Example: pass", "Example.py")
@@ -124,7 +156,9 @@ struct Real {
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "Example.swift"
             path.write_text(source, encoding="utf-8")
-            on_disk = self.operation.execute(AnalyzeSourceInput(source=FileAnalysisSource(path=path)))
+            on_disk = self.operation.execute(
+                AnalyzeSourceInput(source=FileAnalysisSource(path=path))
+            )
             in_memory = self.analyze(source, str(path))
             self.assertEqual(on_disk.declarations, in_memory.declarations)
 
@@ -141,7 +175,9 @@ struct Real {
         self.assertEqual(restored, original)
         self.assertEqual(restored.declarations[1].scopes[0].kind.value, "callable")
 
-    def test_partial_syntax_keeps_diagnostics_instead_of_claiming_completeness(self) -> None:
+    def test_partial_syntax_keeps_diagnostics_instead_of_claiming_completeness(
+        self,
+    ) -> None:
         result = self.analyze("struct Outer { func run() { let value = } }")
 
         self.assertEqual(result.decision.value, "partial")
@@ -153,7 +189,9 @@ struct Real {
         self.assertEqual(result.declarations[0].modifiers, ["public"])
         self.assertEqual(result.declarations[1].modifiers, ["class"])
 
-    def test_file_confined_helpers_preserve_visibility_without_losing_declarations(self) -> None:
+    def test_file_confined_helpers_preserve_visibility_without_losing_declarations(
+        self,
+    ) -> None:
         result = self.analyze("""class Loader {}
 private class PrivateHelper {}
 fileprivate struct FileHelper {}
@@ -164,7 +202,14 @@ struct DefaultHelper {}
 
         self.assertEqual(
             [entry.unit.name for entry in result.declarations],
-            ["Loader", "PrivateHelper", "FileHelper", "SharedHelper", "PublicHelper", "DefaultHelper"],
+            [
+                "Loader",
+                "PrivateHelper",
+                "FileHelper",
+                "SharedHelper",
+                "PublicHelper",
+                "DefaultHelper",
+            ],
         )
         self.assertEqual(
             [entry.modifiers for entry in result.declarations],
@@ -173,7 +218,9 @@ struct DefaultHelper {}
         self.assertTrue(all(not entry.scopes for entry in result.declarations))
         self.assertEqual([entry.unit for entry in result.declarations], result.units)
 
-    def test_inventory_distinguishes_extension_conformance_from_consumed_contract(self) -> None:
+    def test_inventory_distinguishes_extension_conformance_from_consumed_contract(
+        self,
+    ) -> None:
         result = self.analyze("""protocol UserLoading { func load() }
 protocol UserCacheReading { func read() }
 class UserLoader { let cache: any UserCacheReading }

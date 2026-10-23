@@ -9,7 +9,6 @@ from harness.aggregate_envelope_rejection_renderer import (
 from harness.aggregate_envelope_submission_rejector import (
     AggregateEnvelopeSubmissionRejector,
 )
-from harness.batch_submission_target_resolver import BatchSubmissionTargetResolver
 from harness.batch_presentation_capability_registration import (
     BatchPresentationCapabilityRegistration,
 )
@@ -20,18 +19,24 @@ from harness.batch_step_output_submission_mapper import (
     BatchStepOutputSubmissionMapper,
 )
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
+from harness.batch_submission_target_resolver import BatchSubmissionTargetResolver
 from harness.combined_rule_batch_output_submission_mapper import (
     CombinedRuleBatchOutputSubmissionMapper,
 )
 from harness.ordinary_batch_output_submission_mapper import (
     OrdinaryBatchOutputSubmissionMapper,
 )
-from harness.rejected_step_output_mapping_builder import RejectedStepOutputMappingBuilder
-from harness.successful_step_output_mapping_builder import SuccessfulStepOutputMappingBuilder
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.rejected_step_output_mapping_builder import (
+    RejectedStepOutputMappingBuilder,
+)
+from harness.submissions.flat_step_output_submission_mapper import (
+    FlatStepOutputSubmissionMapper,
+)
 from harness.submissions.flat_submission_envelope import FlatSubmissionEnvelope
-from harness.submissions.flat_step_output_submission_mapper import FlatStepOutputSubmissionMapper
-
+from harness.successful_step_output_mapping_builder import (
+    SuccessfulStepOutputMappingBuilder,
+)
 
 """
 solid-name: BatchStepOutputSubmissionMapperFactory
@@ -39,10 +44,14 @@ solid-category: factory
 solid-spec: [SPEC-042, SPEC-043]
 solid-description: Assembles batch output-submission mapping for every supported presentation mode.
 """
+
+
 class BatchStepOutputSubmissionMapperFactory:
     def make(self) -> BatchStepOutputSubmissionMapper:
         return BatchStepOutputSubmissionMapper(
-            flat_mapper=FlatStepOutputSubmissionMapper(PydanticModelDecoder(FlatSubmissionEnvelope)),
+            flat_mapper=FlatStepOutputSubmissionMapper(
+                PydanticModelDecoder(FlatSubmissionEnvelope)
+            ),
             mappers=BatchPresentationCapabilityResolver(
                 registrations=[
                     BatchPresentationCapabilityRegistration(
@@ -65,5 +74,5 @@ class BatchStepOutputSubmissionMapperFactory:
                         ),
                     ),
                 ]
-            )
+            ),
         )

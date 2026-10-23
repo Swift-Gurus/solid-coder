@@ -14,12 +14,13 @@ from harness.atomic_file_writing import AtomicFileWriting
 from harness.json_loading import JsonLoader, JsonLoading
 from harness.posix_atomic_file_writer import POSIXAtomicFileWriter
 from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
-from harness.session_scoped_active_path_resolving import SessionScopedActivePathResolving
+from harness.session_scoped_active_path_resolving import (
+    SessionScopedActivePathResolving,
+)
 from json_serializer import JsonSerializer, JsonSerializing
 
 
 class ActiveRunPointerStore:
-
     def __init__(
         self,
         writer: AtomicFileWriting | None = None,
@@ -28,7 +29,9 @@ class ActiveRunPointerStore:
         serializer: JsonSerializing | None = None,
     ) -> None:
         self._writer: AtomicFileWriting = writer or POSIXAtomicFileWriter()
-        self._path_resolver: SessionScopedActivePathResolving = path_resolver or SessionScopedActivePathResolver()
+        self._path_resolver: SessionScopedActivePathResolving = (
+            path_resolver or SessionScopedActivePathResolver()
+        )
         self._loader: JsonLoading = loader or JsonLoader()
         self._serializer: JsonSerializing = serializer or JsonSerializer()
 

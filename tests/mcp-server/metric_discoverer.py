@@ -6,8 +6,8 @@ solid-category: unit-test
 from pathlib import Path
 
 import yaml
-from spec.parse_frontmatter import extract_frontmatter
 from common.xml_block_parser import parse as parse_xml_blocks
+from spec.parse_frontmatter import extract_frontmatter
 
 
 class MetricDiscoverer:
@@ -27,7 +27,11 @@ class MetricDiscoverer:
             if not isinstance(fm, dict) or "bands" not in fm:
                 continue
             for metric_id, vars_dict in fm["bands"].items():
-                cfg_key = metric_id.split("-")[0].upper() if "-" in metric_id else metric_id.upper()
+                cfg_key = (
+                    metric_id.split("-")[0].upper()
+                    if "-" in metric_id
+                    else metric_id.upper()
+                )
                 for var_name, bands in vars_dict.items():
                     found[(cfg_key, metric_id, var_name)] = (bands, rule_path)
         return found
@@ -35,7 +39,9 @@ class MetricDiscoverer:
     def xml_metric_ids(self, rule_path: Path) -> set:
         """Return all metric_ids defined in <definition> or <detection> XML blocks in rule_path."""
         blocks = parse_xml_blocks(rule_path.read_text(encoding="utf-8"))
-        return set(blocks.get("definition", {}).keys()) | set(blocks.get("detection", {}).keys())
+        return set(blocks.get("definition", {}).keys()) | set(
+            blocks.get("detection", {}).keys()
+        )
 
     def frontmatter_metric_ids(self, rule_path: Path) -> set:
         """Return all metric_ids defined in the frontmatter bands: section of rule_path."""

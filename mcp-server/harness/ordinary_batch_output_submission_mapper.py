@@ -7,13 +7,14 @@ from harness.step_output_submission_mapping_result import (
     StepOutputSubmissionMappingResult,
 )
 
-
 """
 solid-name: OrdinaryBatchOutputSubmissionMapper
 solid-category: service
 solid-spec: [SPEC-042]
 solid-description: Translates ordinary domain-labelled batch outputs into existing ready workflow instances.
 """
+
+
 class OrdinaryBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
     def map(
         self,

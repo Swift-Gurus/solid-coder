@@ -2,9 +2,10 @@
 
 from pathlib import Path
 
-from harness.workflow_resource_path_classification import WorkflowResourcePathClassification
+from harness.workflow_resource_path_classification import (
+    WorkflowResourcePathClassification,
+)
 from harness.workflow_resource_reference_kind import WorkflowResourceReferenceKind
-
 
 """
 solid-name: WorkflowResourcePathClassifier
@@ -12,6 +13,8 @@ solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Identifies the resolution anchor and normalized path represented by a workflow resource declaration.
 """
+
+
 class WorkflowResourcePathClassifier:
     _PACKAGE_PREFIX = "$package/"
 

@@ -9,13 +9,14 @@ from harness.rule_review_provenance import RuleReviewProvenance
 from harness.rule_review_result import RuleReviewResult
 from harness.rule_review_result_building import RuleReviewResultBuilding
 
-
 """
 solid-name: RuleReviewResultBuilder
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Builds authoritative metric and aggregate severity decisions for one review rule.
 """
+
+
 class RuleReviewResultBuilder(RuleReviewResultBuilding):
     def __init__(
         self,
@@ -43,28 +44,26 @@ class RuleReviewResultBuilder(RuleReviewResultBuilding):
                 matching_band = observation.declaration.scoring.severe
             elif raw_severity is ReviewSeverity.MINOR:
                 matching_band = observation.declaration.scoring.minor
-            decisions.append(RuleMetricDecision(
-                metric_id=observation.declaration.metric_id,
-                observation_id=observation.declaration.observation_id,
-                value=observation.value,
-                severity=(
-                    ReviewSeverity.COMPLIANT
-                    if observations.exception.is_exception
-                    else raw_severity
-                ),
-                additional_info=observation.additional_info,
-                derivation=observation.derivation,
-                raw_severity=(
-                    raw_severity
-                    if observation.derivation is not None
-                    else None
-                ),
-                matching_band=(
-                    matching_band
-                    if observation.derivation is not None
-                    else None
-                ),
-            ))
+            decisions.append(
+                RuleMetricDecision(
+                    metric_id=observation.declaration.metric_id,
+                    observation_id=observation.declaration.observation_id,
+                    value=observation.value,
+                    severity=(
+                        ReviewSeverity.COMPLIANT
+                        if observations.exception.is_exception
+                        else raw_severity
+                    ),
+                    additional_info=observation.additional_info,
+                    derivation=observation.derivation,
+                    raw_severity=(
+                        raw_severity if observation.derivation is not None else None
+                    ),
+                    matching_band=(
+                        matching_band if observation.derivation is not None else None
+                    ),
+                )
+            )
         return RuleReviewResult(
             workflow_id=workflow_id,
             rule_instance_id=rule_instance_id,

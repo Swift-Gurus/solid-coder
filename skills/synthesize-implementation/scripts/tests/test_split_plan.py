@@ -13,6 +13,7 @@ Contract:
   - Shared fields (spec_summary, matched_tags, acceptance_criteria) in every chunk
   - Empty plan exits 0 cleanly
 """
+
 import json
 import subprocess
 import sys
@@ -30,13 +31,19 @@ def run_script(plan_data, arch_data=None):
         plan_path.write_text(json.dumps(plan_data), encoding="utf-8")
         out_dir = tmp / "chunks"
 
-        cmd = [sys.executable, str(SCRIPT), str(plan_path), "--output-dir", str(out_dir)]
+        cmd = [
+            sys.executable,
+            str(SCRIPT),
+            str(plan_path),
+            "--output-dir",
+            str(out_dir),
+        ]
         if arch_data is not None:
             arch_path = tmp / "arch.json"
             arch_path.write_text(json.dumps(arch_data), encoding="utf-8")
             cmd += ["--arch", str(arch_path)]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
 
         chunks = {}
         if out_dir.exists():
@@ -46,7 +53,9 @@ def run_script(plan_data, arch_data=None):
         return result.returncode, chunks, result.stderr
 
 
-def make_plan(items, spec_summary="test spec", matched_tags=None, acceptance_criteria=None):
+def make_plan(
+    items, spec_summary="test spec", matched_tags=None, acceptance_criteria=None
+):
     return {
         "spec_summary": spec_summary,
         "matched_tags": matched_tags or ["srp"],
@@ -78,9 +87,14 @@ def make_arch(*components):
         "spec_summary": "test",
         "components": [
             {
-                "name": name, "category": cat, "stack": [],
-                "responsibility": "", "interfaces": [],
-                "dependencies": [], "produces": [], "fields": [],
+                "name": name,
+                "category": cat,
+                "stack": [],
+                "responsibility": "",
+                "interfaces": [],
+                "dependencies": [],
+                "produces": [],
+                "fields": [],
             }
             for name, cat in components
         ],
@@ -90,7 +104,13 @@ def make_arch(*components):
 
 
 def unit_tc():
-    return {"type": "unit", "description": "t", "given": "g", "when": "w", "expect": "e"}
+    return {
+        "type": "unit",
+        "description": "t",
+        "given": "g",
+        "when": "w",
+        "expect": "e",
+    }
 
 
 def ui_tc():
@@ -106,7 +126,9 @@ class TestNoArch(unittest.TestCase):
         self.assertEqual(list(chunks), ["01-implementations.json"])
 
     def test_two_independent_items_stay_in_one_chunk(self):
-        rc, chunks, _ = run_script(make_plan([make_item("plan-001"), make_item("plan-002")]))
+        rc, chunks, _ = run_script(
+            make_plan([make_item("plan-001"), make_item("plan-002")])
+        )
         self.assertEqual(rc, 0)
         self.assertEqual(len(chunks["01-implementations.json"]["plan_items"]), 2)
 
@@ -120,14 +142,22 @@ class TestNoArch(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(
             list(chunks),
-            ["01-implementations.json", "02-implementations.json", "03-implementations.json"],
+            [
+                "01-implementations.json",
+                "02-implementations.json",
+                "03-implementations.json",
+            ],
         )
 
     def test_shared_fields_copied_into_every_chunk(self):
         items = [make_item("plan-001"), make_item("plan-002", depends_on=["plan-001"])]
         rc, chunks, _ = run_script(
-            make_plan(items, spec_summary="My spec", matched_tags=["swiftui"],
-                      acceptance_criteria=["criterion A"])
+            make_plan(
+                items,
+                spec_summary="My spec",
+                matched_tags=["swiftui"],
+                acceptance_criteria=["criterion A"],
+            )
         )
         self.assertEqual(rc, 0)
         for chunk in chunks.values():
@@ -171,7 +201,9 @@ class TestWithArch(unittest.TestCase):
 
     def test_unit_test_item_goes_to_tests(self):
         rc, chunks, _ = run_script(
-            make_plan([make_item("plan-001", component="Tests", test_cases=[unit_tc()])]),
+            make_plan(
+                [make_item("plan-001", component="Tests", test_cases=[unit_tc()])]
+            ),
             make_arch(("Tests", "test")),
         )
         self.assertEqual(rc, 0)
@@ -179,7 +211,9 @@ class TestWithArch(unittest.TestCase):
 
     def test_ui_test_item_goes_to_ui_tests(self):
         rc, chunks, _ = run_script(
-            make_plan([make_item("plan-001", component="UITests", test_cases=[ui_tc()])]),
+            make_plan(
+                [make_item("plan-001", component="UITests", test_cases=[ui_tc()])]
+            ),
             make_arch(("UITests", "test")),
         )
         self.assertEqual(rc, 0)
@@ -187,7 +221,13 @@ class TestWithArch(unittest.TestCase):
 
     def test_mixed_test_cases_ui_wins(self):
         rc, chunks, _ = run_script(
-            make_plan([make_item("plan-001", component="Mixed", test_cases=[unit_tc(), ui_tc()])]),
+            make_plan(
+                [
+                    make_item(
+                        "plan-001", component="Mixed", test_cases=[unit_tc(), ui_tc()]
+                    )
+                ]
+            ),
             make_arch(("Mixed", "test")),
         )
         self.assertEqual(rc, 0)
@@ -218,7 +258,9 @@ class TestWithArch(unittest.TestCase):
         items = [
             make_item("plan-001", component="ProductModel"),
             make_item("plan-002", component="ProductService", depends_on=["plan-001"]),
-            make_item("plan-003", component="ProductViewModel", depends_on=["plan-002"]),
+            make_item(
+                "plan-003", component="ProductViewModel", depends_on=["plan-002"]
+            ),
             make_item("plan-004", component="ProductTests", test_cases=[unit_tc()]),
             make_item("plan-005", component="ProductUITests", test_cases=[ui_tc()]),
         ]
@@ -234,9 +276,9 @@ class TestWithArch(unittest.TestCase):
         """An impl item that depends only on a foundation should be level 0,
         not level 1 — foundation deps don't inflate implementation chunk count."""
         arch = make_arch(
-            ("ModelA", "model"),          # foundation
-            ("ServiceA", "service"),       # impl, depends on ModelA
-            ("ServiceB", "service"),       # impl, depends on ServiceA
+            ("ModelA", "model"),  # foundation
+            ("ServiceA", "service"),  # impl, depends on ModelA
+            ("ServiceB", "service"),  # impl, depends on ServiceA
         )
         items = [
             make_item("plan-001", component="ModelA"),
@@ -248,11 +290,14 @@ class TestWithArch(unittest.TestCase):
         # ServiceA depends only on a foundation → impl level 0
         # ServiceB depends on ServiceA (impl level 0) → impl level 1
         # So: 01-foundations, 02-implementations (ServiceA), 03-implementations (ServiceB)
-        self.assertEqual(list(chunks), [
-            "01-foundations.json",
-            "02-implementations.json",
-            "03-implementations.json",
-        ])
+        self.assertEqual(
+            list(chunks),
+            [
+                "01-foundations.json",
+                "02-implementations.json",
+                "03-implementations.json",
+            ],
+        )
         impl0 = chunks["02-implementations.json"]["plan_items"]
         impl1 = chunks["03-implementations.json"]["plan_items"]
         self.assertEqual([i["component"] for i in impl0], ["ServiceA"])
@@ -288,9 +333,18 @@ class TestEdgeCases(unittest.TestCase):
             plan_path.write_text(json.dumps(make_plan([make_item("plan-001")])))
             out_dir = tmp / "chunks"
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(plan_path),
-                 "--output-dir", str(out_dir), "--arch", str(tmp / "nonexistent.json")],
-                capture_output=True, text=True,
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(plan_path),
+                    "--output-dir",
+                    str(out_dir),
+                    "--arch",
+                    str(tmp / "nonexistent.json"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
             )
             self.assertEqual(result.returncode, 0)
             self.assertTrue((out_dir / "01-implementations.json").exists())

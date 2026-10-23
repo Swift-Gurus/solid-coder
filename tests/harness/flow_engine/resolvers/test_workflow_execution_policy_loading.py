@@ -16,13 +16,14 @@ from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_persister_factory import WorkflowPersisterFactory
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: TestWorkflowExecutionPolicyLoading
 solid-category: unit-test
 solid-spec: [SPEC-045]
 solid-description: Proves aggregate execution and combined presentation retain explicit lexical ownership through loading and include expansion.
 """
+
+
 class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -100,7 +101,9 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
         )
 
         loaded = self.loader.load(str(workflow), [])
-        group = next(group for group in loaded.alias_groups if group.alias == "selected")
+        group = next(
+            group for group in loaded.alias_groups if group.alias == "selected"
+        )
 
         self.assertIs(group.execution, WorkflowExecutionMode.AGGREGATE)
         self.assertIs(group.presentation, WorkflowPresentationMode.COMBINED)
@@ -169,7 +172,9 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
 
         loaded = self.loader.load(str(parent), [])
         child = next(group for group in loaded.alias_groups if group.alias == "child")
-        inner = next(group for group in loaded.alias_groups if group.alias == "child.inner")
+        inner = next(
+            group for group in loaded.alias_groups if group.alias == "child.inner"
+        )
 
         self.assertIs(child.execution, WorkflowExecutionMode.AGGREGATE)
         self.assertIs(child.presentation, WorkflowPresentationMode.COMBINED)
@@ -214,19 +219,27 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
         self.assertIs(child.presentation, WorkflowPresentationMode.COMBINED)
 
     def test_omitted_policy_inherits_through_nested_workflow_includes(self) -> None:
-        self._write("leaf.yaml", """
+        self._write(
+            "leaf.yaml",
+            """
             id: leaf
             steps:
               - id: inspect
                 prompt: Inspect.
-        """)
-        self._write("child.yaml", """
+        """,
+        )
+        self._write(
+            "child.yaml",
+            """
             id: child
             steps:
               - include: leaf.yaml
                 as: leaf
-        """)
-        parent = self._write("parent.yaml", """
+        """,
+        )
+        parent = self._write(
+            "parent.yaml",
+            """
             id: parent
             steps:
               - group: combined
@@ -235,10 +248,15 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
                 steps:
                   - include: child.yaml
                     as: child
-        """)
+        """,
+        )
 
         loaded = self.loader.load(str(parent), [])
-        leaf = next(group for group in loaded.alias_groups if group.alias == "combined.child.leaf")
+        leaf = next(
+            group
+            for group in loaded.alias_groups
+            if group.alias == "combined.child.leaf"
+        )
 
         self.assertIs(leaf.execution, WorkflowExecutionMode.AGGREGATE)
         self.assertIs(leaf.presentation, WorkflowPresentationMode.COMBINED)
@@ -246,15 +264,20 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
         self.assertEqual(leaf.combined_presentation.group_alias, "combined")
 
     def test_explicit_nested_opt_out_survives_enclosing_aggregate_group(self) -> None:
-        self._write("child.yaml", """
+        self._write(
+            "child.yaml",
+            """
             id: child
             execution: {mode: granular}
             presentation: {mode: individual}
             steps:
               - id: inspect
                 prompt: Inspect separately.
-        """)
-        parent = self._write("parent.yaml", """
+        """,
+        )
+        parent = self._write(
+            "parent.yaml",
+            """
             id: parent
             steps:
               - group: combined
@@ -263,31 +286,42 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
                 steps:
                   - include: child.yaml
                     as: child
-        """)
+        """,
+        )
 
         loaded = self.loader.load(str(parent), [])
-        child = next(group for group in loaded.alias_groups if group.alias == "combined.child")
+        child = next(
+            group for group in loaded.alias_groups if group.alias == "combined.child"
+        )
 
         self.assertIs(child.execution, WorkflowExecutionMode.GRANULAR)
         self.assertIs(child.presentation, WorkflowPresentationMode.INDIVIDUAL)
         self.assertIsNone(child.combined_presentation)
 
     def test_inner_combined_opt_in_cannot_escape_an_individual_parent(self) -> None:
-        self._write("leaf.yaml", """
+        self._write(
+            "leaf.yaml",
+            """
             id: leaf
             presentation: {mode: combined}
             steps:
               - id: inspect
                 prompt: Inspect.
-        """)
-        self._write("child.yaml", """
+        """,
+        )
+        self._write(
+            "child.yaml",
+            """
             id: child
             presentation: {mode: individual}
             steps:
               - include: leaf.yaml
                 as: leaf
-        """)
-        parent = self._write("parent.yaml", """
+        """,
+        )
+        parent = self._write(
+            "parent.yaml",
+            """
             id: parent
             steps:
               - group: combined
@@ -296,14 +330,21 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
                 steps:
                   - include: child.yaml
                     as: child
-        """)
+        """,
+        )
 
         loaded = self.loader.load(str(parent), [])
-        leaf = next(group for group in loaded.alias_groups if group.alias == "combined.child.leaf")
+        leaf = next(
+            group
+            for group in loaded.alias_groups
+            if group.alias == "combined.child.leaf"
+        )
 
         self.assertIs(leaf.presentation, WorkflowPresentationMode.COMBINED)
-        self.assertTrue(leaf.combined_presentation is None
-                        or leaf.combined_presentation.group_alias != "combined")
+        self.assertTrue(
+            leaf.combined_presentation is None
+            or leaf.combined_presentation.group_alias != "combined"
+        )
 
     def test_snapshot_reload_preserves_root_and_nested_policy(self) -> None:
         workflow = self._write(
@@ -327,7 +368,9 @@ class TestWorkflowExecutionPolicyLoading(unittest.TestCase):
         WorkflowPersisterFactory().make().persist(run_directory, loaded)
 
         restored = self.loader.load(str(run_directory / "workflow.yaml"), [])
-        group = next(group for group in restored.alias_groups if group.alias == "selected")
+        group = next(
+            group for group in restored.alias_groups if group.alias == "selected"
+        )
 
         self.assertIs(restored.execution, WorkflowExecutionMode.AGGREGATE)
         self.assertIs(restored.presentation, WorkflowPresentationMode.INDIVIDUAL)

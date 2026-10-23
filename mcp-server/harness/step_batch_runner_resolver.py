@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from harness.models import StepDef
-from harness.step_batch_running import StepBatchRunning
 from harness.step_batch_runner_registration import StepBatchRunnerRegistration
 from harness.step_batch_runner_resolving import StepBatchRunnerResolving
-
+from harness.step_batch_running import StepBatchRunning
 
 """
 solid-name: StepBatchRunnerResolver
@@ -14,6 +13,8 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves the batch execution capability registered for a workflow step type and mode.
 """
+
+
 class StepBatchRunnerResolver(StepBatchRunnerResolving):
     def __init__(self, registrations: list[StepBatchRunnerRegistration]) -> None:
         self._registrations = registrations

@@ -6,13 +6,14 @@ from harness.dynamic_workflow_materialization import DynamicWorkflowMaterializat
 from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: DynamicWorkflowMaterializing
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for materializing dynamic include-group hierarchies for one workflow snapshot.
 """
+
+
 class DynamicWorkflowMaterializing(Protocol):
     def materialize(
         self,

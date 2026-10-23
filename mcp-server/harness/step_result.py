@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from harness.batch_step_presentation import BatchStepPresentation
 from harness.authored_step_coordinate import AuthoredStepCoordinate
+from harness.batch_step_presentation import BatchStepPresentation
 
 
 @dataclass(frozen=True)

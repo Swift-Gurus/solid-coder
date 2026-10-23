@@ -1,20 +1,21 @@
 """Parses agent-start hook input into a typed event."""
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from harness.flow_validation_error import FlowValidationError
 from harness.json_loading import JsonLoading
 from harness.structured_model_decoding import StructuredModelDecoding
 from session.agent_start.event import AgentStartEvent
 
-
 """
 solid-name: AgentStartEventParsing
 solid-category: abstraction
 solid-description: Contract for parsing typed agent-start hook events.
 """
+
+
 class AgentStartEventParsing(Protocol):
-    def parse(self, raw: str, default_cwd: str) -> Optional[AgentStartEvent]: ...
+    def parse(self, raw: str, default_cwd: str) -> AgentStartEvent | None: ...
 
 
 """
@@ -22,8 +23,9 @@ solid-name: AgentStartEventParser
 solid-category: service
 solid-description: Coordinates agent-start JSON loading and typed event decoding.
 """
-class AgentStartEventParser(AgentStartEventParsing):
 
+
+class AgentStartEventParser(AgentStartEventParsing):
     def __init__(
         self,
         json_loader: JsonLoading,
@@ -36,7 +38,7 @@ class AgentStartEventParser(AgentStartEventParsing):
         self,
         raw: str,
         default_cwd: str,
-    ) -> Optional[AgentStartEvent]:
+    ) -> AgentStartEvent | None:
         try:
             event = self._event_decoder.decode(
                 self._json_loader.safe_load(raw),

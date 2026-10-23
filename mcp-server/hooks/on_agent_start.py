@@ -12,10 +12,10 @@ for _d in (_MCP_DIR,):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from harness.json_loading import JsonLoader  # noqa: E402
-from harness.os_env_reader import OsEnvReader  # noqa: E402
-from harness.pydantic_model_decoder import PydanticModelDecoder  # noqa: E402
-from session.agent_start import (  # noqa: E402
+from harness.json_loading import JsonLoader
+from harness.os_env_reader import OsEnvReader
+from harness.pydantic_model_decoder import PydanticModelDecoder
+from session.agent_start import (
     AgentStartApplication,
     AgentStartEvent,
     AgentStartEventParser,
@@ -23,12 +23,13 @@ from session.agent_start import (  # noqa: E402
     ProcessCurrentDirectoryReader,
     StdinAgentStartInputReader,
 )
-from session.project_context import (  # noqa: E402
+from session.project_context import (
+    DEFAULT_SESSION_ROOT,
     SessionProjectContextPathResolver,
     SessionProjectDirectoryRecorder,
 )
-from session.session_registrar import SessionRegistrar  # noqa: E402
-from session.session_store import SessionStore  # noqa: E402
+from session.session_registrar import SessionRegistrar
+from session.session_store import SessionStore
 
 
 def main() -> None:
@@ -42,7 +43,7 @@ def main() -> None:
         ),
         handler=AgentStartHandler(
             project_directory_recorder=SessionProjectDirectoryRecorder(
-                SessionProjectContextPathResolver()
+                SessionProjectContextPathResolver(root_directory=DEFAULT_SESSION_ROOT)
             ),
             session_registrar=SessionRegistrar(SessionStore()),
         ),

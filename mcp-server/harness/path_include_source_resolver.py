@@ -9,9 +9,10 @@ from harness.step_declaring_file_resolving import StepDeclaringFileResolving
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
-from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
 from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
-
+from harness.workflow_resource_reference_creating import (
+    WorkflowResourceReferenceCreating,
+)
 
 """
 solid-name: PathIncludeSourceResolver
@@ -19,8 +20,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Resolves a declaring-file-relative workflow include into an annotated include source.
 """
-class PathIncludeSourceResolver:
 
+
+class PathIncludeSourceResolver:
     def __init__(
         self,
         entry_reader: PathIncludeEntryReading,
@@ -41,7 +43,9 @@ class PathIncludeSourceResolver:
         self._output_parser = output_parser
         self._error_factory = error_factory
 
-    def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
+    def resolve(
+        self, entry: dict, flow_file_path: str, search_paths: list[str]
+    ) -> IncludeSource | None:
         path_entry = self._entry_reader.read(entry)
         if path_entry is None:
             return None
@@ -61,7 +65,9 @@ class PathIncludeSourceResolver:
         source_path = str(resource.path)
         return IncludeSource(
             alias=path_entry.alias,
-            steps=self._source_annotator.annotate(resource.content.get("steps") or [], source_path),
+            steps=self._source_annotator.annotate(
+                resource.content.get("steps") or [], source_path
+            ),
             flow_path=source_path,
             runtime=self._runtime_parser.parse(entry, resource.content),
             identity=source_path,

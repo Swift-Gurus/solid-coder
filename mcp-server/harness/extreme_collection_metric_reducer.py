@@ -14,13 +14,14 @@ from harness.collection_metric_value_selecting import (
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.selected_collection_metric_entry import SelectedCollectionMetricEntry
 
-
 """
 solid-name: ExtremeCollectionMetricReducer
 solid-category: service
 solid-spec: [SPEC-054]
 solid-description: Derives an auditable numeric extreme through an injected selection policy.
 """
+
+
 class ExtremeCollectionMetricReducer(CollectionMetricReducing):
     def __init__(
         self,

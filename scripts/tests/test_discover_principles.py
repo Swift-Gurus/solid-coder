@@ -1,26 +1,22 @@
-#!/usr/bin/env python3
 """Tests for discover-principles.py."""
 
 import json
-import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
-import pytest
-
 SCRIPT = str(
-    Path(__file__).resolve().parents[2] / "mcp-server" / "rules" / "discover_principles.py"
+    Path(__file__).resolve().parents[2]
+    / "mcp-server"
+    / "rules"
+    / "discover_principles.py"
 )
 
 
 def _run(*args: str) -> tuple:
     """Run discover-principles.py with args, return (returncode, stdout, stderr)."""
     result = subprocess.run(
-        [sys.executable, SCRIPT, *args],
-        capture_output=True,
-        text=True,
+        [sys.executable, SCRIPT, *args], capture_output=True, text=True, check=False
     )
     return result.returncode, result.stdout, result.stderr
 
@@ -52,7 +48,9 @@ class TestDiscovery:
 
     def test_discovers_with_tags(self, tmp_path):
         _make_rule(tmp_path, "SRP", "name: srp")
-        _make_rule(tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui")
+        _make_rule(
+            tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui"
+        )
 
         rc, out, _ = _run("--refs-root", str(tmp_path))
         assert rc == 0
@@ -106,7 +104,9 @@ class TestFiltering:
 
     def test_matching_tag_activates(self, tmp_path):
         _make_rule(tmp_path, "SRP", "name: srp")
-        _make_rule(tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui")
+        _make_rule(
+            tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui"
+        )
 
         rc, out, _ = _run("--refs-root", str(tmp_path), "--matched-tags", "swiftui")
         assert rc == 0
@@ -116,7 +116,9 @@ class TestFiltering:
 
     def test_no_matching_tag_skips(self, tmp_path):
         _make_rule(tmp_path, "SRP", "name: srp")
-        _make_rule(tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui")
+        _make_rule(
+            tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui"
+        )
 
         rc, out, _ = _run("--refs-root", str(tmp_path), "--matched-tags", "combine")
         assert rc == 0
@@ -147,7 +149,9 @@ class TestFiltering:
         assert data["skipped_principles"] == []
 
     def test_partial_match_activates(self, tmp_path):
-        _make_rule(tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui")
+        _make_rule(
+            tmp_path, "SwiftUI", "name: swiftui-views\ntags:\n  - swiftui\n  - ui"
+        )
 
         # Only one of the two tags matches
         rc, out, _ = _run("--refs-root", str(tmp_path), "--matched-tags", "ui")
@@ -236,7 +240,9 @@ class TestReviewInput:
         assert len(data["skipped_principles"]) == 1
 
     def test_missing_review_input_file(self, tmp_path):
-        rc, _, err = _run("--refs-root", str(tmp_path), "--review-input", "/nonexistent.json")
+        rc, _, err = _run(
+            "--refs-root", str(tmp_path), "--review-input", "/nonexistent.json"
+        )
         assert rc == 1
         assert "not found" in err
 
@@ -268,13 +274,13 @@ class TestProfileFilter:
     def test_profile_list_excludes_other_profiles(self, tmp_path):
         _make_rule(tmp_path, "CodeSmells", "name: code-smells\nprofile:\n  - code")
 
-        rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "review")
+        _rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "review")
         data = json.loads(out)
         assert len(data["active_principles"]) == 0
         assert len(data["skipped_principles"]) == 1
         assert "profile 'review'" in data["skipped_principles"][0]["reason"]
 
-        rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "code")
+        _rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", "code")
         data = json.loads(out)
         assert [p["name"] for p in data["active_principles"]] == ["code-smells"]
 
@@ -282,7 +288,7 @@ class TestProfileFilter:
         _make_rule(tmp_path, "X", "name: x\nprofile: [code, review]")
 
         for profile in ("review", "code"):
-            rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", profile)
+            _rc, out, _ = _run("--refs-root", str(tmp_path), "--profile", profile)
             data = json.loads(out)
             assert [p["name"] for p in data["active_principles"]] == ["x"]
 
@@ -290,19 +296,24 @@ class TestProfileFilter:
         _make_rule(tmp_path, "CodeOnly", "name: co\nprofile:\n  - code")
         _make_rule(tmp_path, "Normal", "name: normal")
 
-        rc, out, _ = _run("--refs-root", str(tmp_path))
+        _rc, out, _ = _run("--refs-root", str(tmp_path))
         data = json.loads(out)
         names = sorted(p["name"] for p in data["active_principles"])
         assert names == ["co", "normal"]
 
     def test_profile_combines_with_tag_filter(self, tmp_path):
-        _make_rule(tmp_path, "Tagged", "name: tagged\ntags: [swiftui]\nprofile: [review]")
+        _make_rule(
+            tmp_path, "Tagged", "name: tagged\ntags: [swiftui]\nprofile: [review]"
+        )
         _make_rule(tmp_path, "Other", "name: other\ntags: [swiftui]\nprofile: [code]")
 
-        rc, out, _ = _run(
-            "--refs-root", str(tmp_path),
-            "--matched-tags", "swiftui",
-            "--profile", "review",
+        _rc, out, _ = _run(
+            "--refs-root",
+            str(tmp_path),
+            "--matched-tags",
+            "swiftui",
+            "--profile",
+            "review",
         )
         data = json.loads(out)
         assert [p["name"] for p in data["active_principles"]] == ["tagged"]

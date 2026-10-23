@@ -6,24 +6,24 @@ from unittest.mock import MagicMock
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from harness.flow_start_result import FlowStartResult  # noqa: E402
-from harness.flow_status_result import FlowStatusResult  # noqa: E402
-from codex_flow_continuation_instruction_builder import (  # noqa: E402
+from codex_flow_continuation_instruction_builder import (
     CodexFlowContinuationInstructionBuilder,
 )
-from gate_flow_prompt_builder import GateFlowPromptBuilder  # noqa: E402
-from review.prepare_review_input import PrepareReviewInput  # noqa: E402
-from source.text_analysis_source import TextAnalysisSource  # noqa: E402
-from workflow_health_checker import WorkflowHealthChecker  # noqa: E402
+from gate_flow_prompt_builder import GateFlowPromptBuilder
+from harness.flow_start_result import FlowStartResult
+from harness.flow_status_result import FlowStatusResult
 from health_check_outcome import HealthCheckOutcome
-from source.analysis.operations.source_introduction_evidence import SourceIntroductionEvidence
-
+from review.prepare_review_input import PrepareReviewInput
+from source.analysis.operations.source_introduction_evidence import (
+    SourceIntroductionEvidence,
+)
+from source.text_analysis_source import TextAnalysisSource
+from workflow_health_checker import WorkflowHealthChecker
 
 """
 solid-name: TestWorkflowHealthChecker
@@ -31,6 +31,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Proves the gate owns flow startup and trusts only terminal persisted review results.
 """
+
+
 class TestWorkflowHealthChecker(unittest.TestCase):
     def setUp(self) -> None:
         self.flow = MagicMock()
@@ -40,7 +42,9 @@ class TestWorkflowHealthChecker(unittest.TestCase):
         self.assessor = MagicMock()
         self.introductions = MagicMock()
         self.logger = MagicMock()
-        self.proof = SourceIntroductionEvidence(reasoning="Compared source versions.", evidence="Source hashes.")
+        self.proof = SourceIntroductionEvidence(
+            reasoning="Compared source versions.", evidence="Source hashes."
+        )
         self.introductions.execute.return_value = self.proof
         self.input_builder = MagicMock()
         self.continuation_builder = CodexFlowContinuationInstructionBuilder()
@@ -88,7 +92,9 @@ class TestWorkflowHealthChecker(unittest.TestCase):
             timeout_seconds=321,
         )
 
-    def test_returns_assessed_terminal_result_with_source_verification_audit(self) -> None:
+    def test_returns_assessed_terminal_result_with_source_verification_audit(
+        self,
+    ) -> None:
         result = self.sut.check(
             content="struct NewFeature {}",
             path="/project/Sources/NewFeature.swift",
@@ -132,7 +138,12 @@ class TestWorkflowHealthChecker(unittest.TestCase):
         calls.attach_mock(self.introductions.execute, "verify")
         calls.attach_mock(self.runner.run, "run")
 
-        self.sut.check("struct NewFeature {}", "/project/Sources/NewFeature.swift", "Swift", "parent")
+        self.sut.check(
+            "struct NewFeature {}",
+            "/project/Sources/NewFeature.swift",
+            "Swift",
+            "parent",
+        )
 
         self.assertEqual([call[0] for call in calls.mock_calls], ["verify", "run"])
 

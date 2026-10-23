@@ -6,6 +6,7 @@ solid-tags: [hook, utility]
 
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
@@ -14,9 +15,9 @@ for _d in (_MCP_DIR, _MODULE_DIR):
 
 import tempfile
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Optional
 
 
 class _TempPathProvider:
@@ -40,7 +41,7 @@ class _TempFileIO:
         with open(path, encoding="utf-8") as fh:
             yield fh
 
-    def read(self, path: Path) -> Optional[str]:
+    def read(self, path: Path) -> str | None:
         return path.read_text(encoding="utf-8").strip() if path.exists() else None
 
     def unlink(self, *paths: Path) -> None:
@@ -70,7 +71,7 @@ class CodexTempFileManager:
     def prompt_stdin(self, path: Path):
         return self._io.stdin(path)
 
-    def read_result(self, path: Path) -> Optional[str]:
+    def read_result(self, path: Path) -> str | None:
         return self._io.read(path)
 
     def cleanup(self, *paths: Path) -> None:

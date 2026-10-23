@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
-
-from pydantic import Field, StringConstraints
+from typing import Annotated
 
 from harness.metric_scoring_declaration import MetricScoringDeclaration
-
+from pydantic import Field, StringConstraints
 
 LocalOutputName = Annotated[
     str,
@@ -21,11 +19,13 @@ solid-category: model
 solid-spec: [SPEC-058]
 solid-description: Extends deterministic severity scoring with an owning-step output source.
 """
+
+
 class CoLocatedMetricScoringDeclaration(MetricScoringDeclaration):
     source: LocalOutputName
-    condition: Optional[object] = Field(
+    condition: object | None = Field(
         default=None,
         validation_alias="when",
         serialization_alias="when",
     )
-    reducer: Optional[object] = None
+    reducer: object | None = None

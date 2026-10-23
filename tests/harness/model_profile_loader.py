@@ -17,10 +17,10 @@ for _p in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from interfaces import ModelProfileLoading, TomlLoading  # noqa: E402
-from llm_config import LlmConfig  # noqa: E402
-from models import ModelProfile  # noqa: E402
-from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
+from interfaces import ModelProfileLoading, TomlLoading
+from llm_config import LlmConfig
+from models import ModelProfile
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
 
 
 class ModelProfileLoader(ModelProfileLoading):
@@ -32,7 +32,7 @@ class ModelProfileLoader(ModelProfileLoading):
         self,
         project_root: Path,
         toml_loader: TomlLoading,
-        profile_dir: "Path | None" = None,
+        profile_dir: Path | None = None,
     ) -> None:
         self._project_root = project_root
         self._toml_loader = toml_loader

@@ -6,13 +6,14 @@ from harness.output_spec_schema_serializing import OutputSpecSchemaSerializing
 from harness.strict_object_schema import StrictObjectSchema
 from harness.strict_object_schema_building import StrictObjectSchemaBuilding
 
-
 """
 solid-name: AggregateStepSchemaBuilder
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Builds a strict named-output schema for one authored aggregate step.
 """
+
+
 class AggregateStepSchemaBuilder(AggregateStepSchemaBuilding):
     def __init__(
         self,

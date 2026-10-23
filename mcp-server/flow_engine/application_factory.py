@@ -9,7 +9,6 @@ from pipeline.flow_run_creating import FlowRunCreating
 from pipeline.flow_tool_callables_assembler import FlowToolCallablesAssembler
 from pipeline.tool_registry import ToolRegistry
 
-
 _INSTRUCTIONS = (
     "Run named workflows with flow_start. Complete the single step returned by "
     "flow_start or flow_next, then submit its schema-matching output with flow_next. "
@@ -23,8 +22,9 @@ solid-name: FlowEngineApplicationFactory
 solid-category: factory
 solid-description: Assembles workflow execution, rendering, registration, and transport capabilities.
 """
-class FlowEngineApplicationFactory:
 
+
+class FlowEngineApplicationFactory:
     def __init__(
         self,
         plugin_root: Path,

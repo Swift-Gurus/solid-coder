@@ -15,23 +15,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.command_allowlist_resolver import CommandAllowlistResolver
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
-from harness.workflow_expression import WorkflowExpression
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_loader import FlowLoader
 from harness.models import FlowValidationError
+from harness.workflow_expression import WorkflowExpression
 
 
 def _loader_with_allowlist(allowlist: list[str]) -> FlowLoader:
     resolver = CommandAllowlistResolver(
         section_reader=lambda name: {"permitted_executables": allowlist}
     )
-    return FlowEngineAssemblyFactory().build(
-        command_allowlist_resolver=resolver
-    ).flow_loader
+    return (
+        FlowEngineAssemblyFactory()
+        .build(command_allowlist_resolver=resolver)
+        .flow_loader
+    )
 
 
 class TestFlowLoader(unittest.TestCase):
-
     def setUp(self):
         self.assembly = FlowEngineAssemblyFactory().build()
         self.loader = self.assembly.flow_loader
@@ -43,13 +44,16 @@ class TestFlowLoader(unittest.TestCase):
         return path
 
     def test_loads_minimal_valid_flow(self):
-        path = self._write("flow.yaml", """
+        path = self._write(
+            "flow.yaml",
+            """
             name: my_flow
             max_turns: 5
             steps:
               - id: step_a
                 prompt: Do something
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
         self.assertEqual(flow.name, "my_flow")
         self.assertEqual(flow.max_turns, 5)
@@ -57,7 +61,9 @@ class TestFlowLoader(unittest.TestCase):
         self.assertEqual(flow.steps[0].id, "step_a")
 
     def test_loads_workflow_level_when_as_a_typed_condition(self):
-        path = self._write("conditional.yaml", """
+        path = self._write(
+            "conditional.yaml",
+            """
             name: conditional
             when:
               ref: "{{params.enabled}}"
@@ -65,7 +71,8 @@ class TestFlowLoader(unittest.TestCase):
             steps:
               - id: step_a
                 prompt: Do something
-        """)
+        """,
+        )
 
         flow = self.loader.load(path, [])
 
@@ -83,30 +90,38 @@ class TestFlowLoader(unittest.TestCase):
             self.loader.load("/nonexistent/flow.yaml", [])
 
     def test_raises_on_duplicate_step_ids(self):
-        path = self._write("dupe.yaml", """
+        path = self._write(
+            "dupe.yaml",
+            """
             name: dupe
             steps:
               - id: a
                 prompt: First
               - id: a
                 prompt: Second
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 
     def test_raises_on_unknown_dependency(self):
-        path = self._write("bad_dep.yaml", """
+        path = self._write(
+            "bad_dep.yaml",
+            """
             name: bad
             steps:
               - id: a
                 prompt: p
                 depends_on: [nonexistent]
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 
     def test_raises_on_dependency_cycle(self):
-        path = self._write("cycle.yaml", """
+        path = self._write(
+            "cycle.yaml",
+            """
             name: cyclic
             steps:
               - id: a
@@ -115,50 +130,62 @@ class TestFlowLoader(unittest.TestCase):
               - id: b
                 prompt: p
                 depends_on: [a]
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 
     def test_loads_a_script_step_with_permitted_command(self):
-        path = self._write("script_flow.yaml", """
+        path = self._write(
+            "script_flow.yaml",
+            """
             name: with_script
             steps:
               - id: gate
                 type: script
                 command: [python3, run.py]
                 timeout_seconds: 30
-        """)
+        """,
+        )
         flow = _loader_with_allowlist(["python3"]).load(path, [])
 
         self.assertEqual(flow.steps[0].type, "script")
         self.assertEqual(flow.steps[0].command, ["python3", "run.py"])
 
     def test_raises_when_script_command_not_on_allowlist(self):
-        path = self._write("script_flow.yaml", """
+        path = self._write(
+            "script_flow.yaml",
+            """
             name: with_script
             steps:
               - id: gate
                 type: script
                 command: [curl, evil.example]
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             _loader_with_allowlist(["python3"]).load(path, [])
 
     def test_resolves_prompt_file_for_agent_step(self):
         self._write("prompt.md", "Rendered prompt text")
-        path = self._write("prompt_file_flow.yaml", """
+        path = self._write(
+            "prompt_file_flow.yaml",
+            """
             name: with_prompt_file
             steps:
               - id: a
                 prompt_file: prompt.md
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual(flow.steps[0].prompt, "Rendered prompt text")
 
     def test_resolves_schema_file_for_output_spec(self):
         self._write("greeting_schema.json", '{"type": "string"}')
-        path = self._write("schema_file_flow.yaml", """
+        path = self._write(
+            "schema_file_flow.yaml",
+            """
             name: with_schema_file
             steps:
               - id: a
@@ -167,13 +194,16 @@ class TestFlowLoader(unittest.TestCase):
                   - name: greeting
                     type: data
                     schema_file: greeting_schema.json
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual(flow.steps[0].outputs[0].schema, {"type": "string"})
 
     def test_folds_output_schema_into_the_step_prompt(self):
-        path = self._write("schema_prompt_flow.yaml", """
+        path = self._write(
+            "schema_prompt_flow.yaml",
+            """
             name: with_schema_in_prompt
             steps:
               - id: a
@@ -183,7 +213,8 @@ class TestFlowLoader(unittest.TestCase):
                     type: data
                     schema:
                       type: string
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual(
@@ -191,16 +222,20 @@ class TestFlowLoader(unittest.TestCase):
             "Produce a short greeting.\n\n"
             "Return only one JSON object matching this schema. Do not wrap it in "
             "Markdown fences or include any other text: "
-            "{\"type\": \"object\", \"properties\": {\"greeting\": "
-            "{\"type\": \"string\"}}, \"required\": [\"greeting\"], "
-            "\"additionalProperties\": false}",
+            '{"type": "object", "properties": {"greeting": '
+            '{"type": "string"}}, "required": ["greeting"], '
+            '"additionalProperties": false}',
         )
 
-    def test_loading_an_already_resolved_workflow_snapshot_does_not_double_the_folded_schema(self):
+    def test_loading_an_already_resolved_workflow_snapshot_does_not_double_the_folded_schema(
+        self,
+    ):
         # Mirrors YamlWorkflowPersister: the run engine persists the fully-resolved FlowDef (prompt
         # already schema-annotated, schema still present) to workflow.yaml, then reloads it on every
         # subsequent flow_next() call through this same loader — that reload must be a no-op.
-        path = self._write("already_resolved_flow.yaml", """
+        path = self._write(
+            "already_resolved_flow.yaml",
+            """
             name: already_resolved
             steps:
               - id: a
@@ -213,7 +248,8 @@ class TestFlowLoader(unittest.TestCase):
                     type: data
                     schema:
                       type: string
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual(
@@ -221,13 +257,15 @@ class TestFlowLoader(unittest.TestCase):
             "Produce a short greeting.\n\n"
             "Return only one JSON object matching this schema. Do not wrap it in "
             "Markdown fences or include any other text: "
-            "{\"type\": \"object\", \"properties\": {\"greeting\": "
-            "{\"type\": \"string\"}}, \"required\": [\"greeting\"], "
-            "\"additionalProperties\": false}",
+            '{"type": "object", "properties": {"greeting": '
+            '{"type": "string"}}, "required": ["greeting"], '
+            '"additionalProperties": false}',
         )
 
     def test_raises_when_schema_file_missing(self):
-        path = self._write("missing_schema_flow.yaml", """
+        path = self._write(
+            "missing_schema_flow.yaml",
+            """
             name: with_missing_schema_file
             steps:
               - id: a
@@ -236,45 +274,60 @@ class TestFlowLoader(unittest.TestCase):
                   - name: greeting
                     type: data
                     schema_file: missing.json
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 
     def test_loads_a_flow_with_an_aliased_include(self):
-        self._write("sub.yaml", """
+        self._write(
+            "sub.yaml",
+            """
             steps:
               - id: step_a
                 prompt: Do sub step
-        """)
-        path = self._write("parent.yaml", """
+        """,
+        )
+        path = self._write(
+            "parent.yaml",
+            """
             name: parent
             steps:
               - include: sub.yaml
                 as: sub
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual([s.id for s in flow.steps], ["sub.step_a"])
 
     def test_raises_when_include_alias_collides_with_existing_step_id(self):
-        self._write("sub.yaml", """
+        self._write(
+            "sub.yaml",
+            """
             steps:
               - id: step_a
                 prompt: p
-        """)
-        path = self._write("parent.yaml", """
+        """,
+        )
+        path = self._write(
+            "parent.yaml",
+            """
             name: parent
             steps:
               - id: sub
                 prompt: p
               - include: sub.yaml
                 as: sub
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 
     def test_loads_a_flow_with_an_inline_group_alongside_top_level_steps(self):
-        path = self._write("inline_group.yaml", """
+        path = self._write(
+            "inline_group.yaml",
+            """
             name: inline_group
             steps:
               - id: setup
@@ -290,18 +343,24 @@ class TestFlowLoader(unittest.TestCase):
               - id: finish
                 prompt: p
                 depends_on: [review]
-        """)
+        """,
+        )
         flow = self.loader.load(path, [])
 
         self.assertEqual(flow.steps[0].id, "setup")
         self.assertEqual(flow.steps[-1].id, "finish")
         self.assertEqual(
-            sorted(s.id for s in flow.steps), ["finish", "review.approve", "review.draft", "setup"]
+            sorted(s.id for s in flow.steps),
+            ["finish", "review.approve", "review.draft", "setup"],
         )
-        self.assertEqual(sorted(flow.steps[-1].depends_on), ["review.approve", "review.draft"])
+        self.assertEqual(
+            sorted(flow.steps[-1].depends_on), ["review.approve", "review.draft"]
+        )
 
     def test_raises_when_inline_group_alias_collides_with_existing_step_id(self):
-        path = self._write("inline_collision.yaml", """
+        path = self._write(
+            "inline_collision.yaml",
+            """
             name: inline_collision
             steps:
               - id: review
@@ -310,7 +369,8 @@ class TestFlowLoader(unittest.TestCase):
                 steps:
                   - id: draft
                     prompt: p
-        """)
+        """,
+        )
         with self.assertRaises(FlowValidationError):
             self.loader.load(path, [])
 

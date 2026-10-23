@@ -6,13 +6,14 @@ from harness.attempt_exhaustion_message_building import AttemptExhaustionMessage
 from harness.exhausted_attempt import ExhaustedAttempt
 from harness.models import RunState
 
-
 """
 solid-name: AttemptExhaustionMessageBuilder
 solid-category: service
 solid-spec: [SPEC-010, SPEC-031]
 solid-description: Constructs an actionable diagnostic for an exhausted workflow execution attempt.
 """
+
+
 class AttemptExhaustionMessageBuilder(AttemptExhaustionMessageBuilding):
     def build(
         self,

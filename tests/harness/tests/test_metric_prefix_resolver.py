@@ -19,7 +19,7 @@ _HARNESS_DIR = _PROJECT_ROOT / "tests" / "harness"
 
 ensure_on_path(_HARNESS_DIR, _HERE)
 
-from metric_prefix_resolver import MetricPrefixResolver  # noqa: E402
+from metric_prefix_resolver import MetricPrefixResolver
 
 
 def _write_rule(tmp: Path, bands_block: str) -> Path:
@@ -35,7 +35,10 @@ def _write_rule(tmp: Path, bands_block: str) -> Path:
 class TestMetricPrefixResolver(unittest.TestCase):
     def test_prefix_matches_folder_name_case(self):
         with tempfile.TemporaryDirectory() as d:
-            folder = _write_rule(Path(d), "  SRP-1:\n    verb_count:\n      severe:\n        greater_than: 3\n")
+            folder = _write_rule(
+                Path(d),
+                "  SRP-1:\n    verb_count:\n      severe:\n        greater_than: 3\n",
+            )
             self.assertEqual(MetricPrefixResolver().resolve(folder), "SRP")
 
     def test_prefix_differs_from_folder_name(self):
@@ -69,7 +72,9 @@ class TestMetricPrefixResolver(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             folder = Path(d) / "empty-principle"
             folder.mkdir()
-            (folder / "rule.md").write_text("---\nname: empty-principle\n---\n\n# Empty\n", encoding="utf-8")
+            (folder / "rule.md").write_text(
+                "---\nname: empty-principle\n---\n\n# Empty\n", encoding="utf-8"
+            )
             with self.assertRaises(ValueError):
                 MetricPrefixResolver().resolve(folder)
 

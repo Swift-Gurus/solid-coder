@@ -1,10 +1,8 @@
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel
-
 from harness.operation_handling import OperationHandling
 from harness.operations.operation_result import OperationResult
-
+from pydantic import BaseModel
 
 Input = TypeVar("Input", bound=BaseModel)
 Result = TypeVar("Result", bound=BaseModel)
@@ -16,6 +14,8 @@ solid-category: service
 solid-spec: [SPEC-040, SPEC-057]
 solid-description: Exposes an existing typed operation result as a single bindable workflow output without changing the underlying service.
 """
+
+
 class ResultOperationAdapter(
     OperationHandling[Input, OperationResult[Result]],
     Generic[Input, Result],

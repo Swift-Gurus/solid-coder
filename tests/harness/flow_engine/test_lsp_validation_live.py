@@ -18,16 +18,14 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from lsp_validation_e2e_live_base import LSPValidationE2ELiveBase  # noqa: E402
+from claude_test_base import ClaudeTestBase
+from codex_test_base import CodexTestBase
+from lsp_validation_e2e_live_base import LSPValidationE2ELiveBase
 
 
 class TestCodexLSPValidationLive(CodexTestBase, LSPValidationE2ELiveBase):
-
     __test__ = True
 
 
 class TestClaudeLSPValidationLive(ClaudeTestBase, LSPValidationE2ELiveBase):
-
     __test__ = True

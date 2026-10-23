@@ -6,13 +6,20 @@ solid-tags: [hook, llm]
 
 import sys
 from pathlib import Path
+
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from hook_utils import PLUGIN_ROOT
 from prompt_builder import BasePromptBuilder, PromptReading
@@ -38,6 +45,8 @@ solid-category: abstraction
 solid-description: Contract for constructing one model-facing health-check prompt from selected principles and source context.
 solid-tags: [hook, llm]
 """
+
+
 class PromptBuilding(Protocol):
     def build(
         self,
@@ -55,15 +64,19 @@ solid-category: service
 solid-description: Assembles model-facing health-check instructions for the principles selected by a source request.
 solid-tags: [hook, llm]
 """
+
+
 class HealthPromptBuilder(BasePromptBuilder):
     """Assembles the LLM health-check prompt from detection rules and file content."""
 
     def __init__(
         self,
-        reader: Optional[PromptReading] = None,
-        shared_reader: Optional[PromptReading] = None,
+        reader: PromptReading | None = None,
+        shared_reader: PromptReading | None = None,
     ) -> None:
-        super().__init__(reader=reader, shared_reader=shared_reader, prompts_dir=_PROMPTS_DIR)
+        super().__init__(
+            reader=reader, shared_reader=shared_reader, prompts_dir=_PROMPTS_DIR
+        )
 
     def build(
         self,
@@ -78,14 +91,9 @@ class HealthPromptBuilder(BasePromptBuilder):
         )
         batch_example = self._make_batch_example(principles, output_dir)
         has_dry = any(
-            principle.get("name", "").casefold() == "dry"
-            for principle in principles
+            principle.get("name", "").casefold() == "dry" for principle in principles
         )
-        dry_search_step = (
-            self._read("dry-search.md")
-            if has_dry
-            else ""
-        )
+        dry_search_step = self._read("dry-search.md") if has_dry else ""
         workflow = (
             self._read("workflow.md")
             .replace("{dry_search_step}", dry_search_step)
@@ -115,6 +123,7 @@ class HealthPromptBuilder(BasePromptBuilder):
 
     def _make_batch_example(self, principles: list, output_dir: str) -> str:
         import json as _json
+
         submissions = {}
         for p in principles:
             agent = p.get("name", "")
@@ -131,7 +140,9 @@ class HealthPromptBuilder(BasePromptBuilder):
             }
             submissions[agent] = {
                 "timestamp": "2026-06-05T10:00:00Z",
-                "files": [{"file_path": "/path/to/ReviewedFile.swift", "units": [unit]}],
+                "files": [
+                    {"file_path": "/path/to/ReviewedFile.swift", "units": [unit]}
+                ],
             }
         example = {
             "output_dir": output_dir or "/path/to/gate/session",

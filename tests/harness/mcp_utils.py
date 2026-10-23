@@ -20,10 +20,10 @@ for _d in (str(_HARNESS_DIR), str(_HOOKS_DIR), str(_MCP_HEALTH_CONFIG)):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
-from interfaces import McpConfigBuilding  # noqa: E402
-from json_serializer import JsonSerializer  # noqa: E402
-from mcp_config_builder import McpConfigBuilder as ProductionMcpConfigBuilder  # noqa: E402
-from mcp_config_profile import McpConfigProfile  # noqa: E402
+from interfaces import McpConfigBuilding
+from json_serializer import JsonSerializer
+from mcp_config_builder import McpConfigBuilder as ProductionMcpConfigBuilder
+from mcp_config_profile import McpConfigProfile
 
 
 class McpConfigBuilder(McpConfigBuilding):

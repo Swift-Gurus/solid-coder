@@ -12,15 +12,15 @@ from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef
 from harness.run_completion_checking import RunCompletionChecking
 
-
 """
 solid-name: AttemptFailureHandler
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Records failed workflow-step attempts and evaluates terminal run state.
 """
-class AttemptFailureHandler(AttemptFailureHandling):
 
+
+class AttemptFailureHandler(AttemptFailureHandling):
     def __init__(
         self,
         event_appender: EventAppending,
@@ -74,4 +74,6 @@ class AttemptFailureHandler(AttemptFailureHandling):
                 payload["attempt_id"] = failure.attempt_id
             self._event_appender.append(events_path, event_type, payload)
         run_state = self._event_replayer.replay(events_path)
-        return self._completion_checker.check(base_dir, run_id, events_path, flow_def, run_state)
+        return self._completion_checker.check(
+            base_dir, run_id, events_path, flow_def, run_state
+        )

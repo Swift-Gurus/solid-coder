@@ -14,13 +14,14 @@ from patch_file_handler_factory import PatchFileHandlerFactory
 from patch_files_simulating import PatchFilesSimulating
 from patch_handler_planner import PatchHandlerPlanner
 
-
 """
 solid-name: ApplyPatchReviewerFactory
 solid-category: factory
 solid-description: Creates reviewers that evaluate all applicable files in a patch.
 solid-tags: [hook]
 """
+
+
 class ApplyPatchReviewerFactory:
     def create(
         self,

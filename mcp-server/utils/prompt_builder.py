@@ -5,7 +5,7 @@ solid-tags: [hook]
 """
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
 SHARED_PROMPTS_DIR = PLUGIN_ROOT / "mcp-server" / "prompts"
@@ -23,7 +23,7 @@ class TextFileReading(Protocol):
     solid-description: Contract for reading a plain text file's full contents from an arbitrary path, without raising on a missing file.
     """
 
-    def read(self, path: Path) -> Optional[str]: ...
+    def read(self, path: Path) -> str | None: ...
 
 
 class PlainTextFileReader:
@@ -34,7 +34,7 @@ class PlainTextFileReader:
     solid-description: Reads a plain text file's contents from a path, returning None if reading fails.
     """
 
-    def read(self, path: Path) -> Optional[str]:
+    def read(self, path: Path) -> str | None:
         try:
             return path.read_text(encoding="utf-8")
         except OSError:
@@ -60,9 +60,9 @@ class BasePromptBuilder:
 
     def __init__(
         self,
-        reader: Optional[PromptReading] = None,
-        shared_reader: Optional[PromptReading] = None,
-        prompts_dir: Optional[Path] = None,
+        reader: PromptReading | None = None,
+        shared_reader: PromptReading | None = None,
+        prompts_dir: Path | None = None,
     ) -> None:
         self._reader = reader or FilePromptReader(
             prompts_dir=prompts_dir or SHARED_PROMPTS_DIR

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal, Union
-
-from pydantic import BaseModel, ConfigDict
+from typing import Literal
 
 from harness.comparison_condition_evidence import ComparisonConditionEvidence
-
+from pydantic import BaseModel, ConfigDict
 
 """
 solid-name: CompositeConditionEvidence
@@ -15,13 +13,13 @@ solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Captures the evaluated child evidence and outcome of one composed workflow condition.
 """
+
+
 class CompositeConditionEvidence(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     kind: Literal["all", "any", "not"]
-    children: list[
-        Union[ComparisonConditionEvidence, "CompositeConditionEvidence"]
-    ]
+    children: list[ComparisonConditionEvidence | CompositeConditionEvidence]
     matched: bool
 
 

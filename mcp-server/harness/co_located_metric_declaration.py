@@ -2,13 +2,11 @@
 
 from typing import Annotated
 
-from pydantic import StringConstraints
-
 from harness.co_located_metric_scoring_declaration import (
     CoLocatedMetricScoringDeclaration,
 )
 from harness.metric_declaration import MetricDeclaration
-
+from pydantic import StringConstraints
 
 CoLocatedMetricStepId = Annotated[
     str,
@@ -22,6 +20,8 @@ solid-category: model
 solid-spec: [SPEC-058]
 solid-description: Adds runtime step identity and an owning-step output source to the existing metric contract.
 """
+
+
 class CoLocatedMetricDeclaration(MetricDeclaration):
     id: CoLocatedMetricStepId
     scoring: CoLocatedMetricScoringDeclaration

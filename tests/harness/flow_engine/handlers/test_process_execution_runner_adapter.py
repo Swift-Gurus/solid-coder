@@ -13,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
 from harness.inline_command_execution import InlineCommandExecution
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
+
+
 class StubArgumentRunner:
     def __init__(self) -> None:
         self.arguments = None

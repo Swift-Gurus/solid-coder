@@ -1,18 +1,17 @@
 """Coordinates role-focused pipeline command operations."""
 
-from typing import Optional
-
 from pipeline.pipeline_artifact_generating import PipelineArtifactGenerating
 from pipeline.pipeline_command_handling import PipelineCommandHandling
 from pipeline.pipeline_validation_handling import PipelineValidationHandling
 from pipeline.review_input_preparing import ReviewInputPreparing
-
 
 """
 solid-name: PipelineCommandHandler
 solid-category: service
 solid-description: Coordinates preparation, artifact generation, and validation commands exposed by the pipeline.
 """
+
+
 class PipelineCommandHandler(PipelineCommandHandling):
     def __init__(
         self,
@@ -31,7 +30,7 @@ class PipelineCommandHandler(PipelineCommandHandling):
         self,
         plan_path: str,
         output_dir: str,
-        arch_path: Optional[str] = None,
+        arch_path: str | None = None,
     ) -> dict:
         return self._artifacts.split_implementation_plan(
             plan_path,
@@ -42,7 +41,7 @@ class PipelineCommandHandler(PipelineCommandHandling):
     def generate_report(
         self,
         data_dir: str,
-        report_dir: Optional[str] = None,
+        report_dir: str | None = None,
     ) -> dict:
         return self._artifacts.generate_report(data_dir, report_dir)
 

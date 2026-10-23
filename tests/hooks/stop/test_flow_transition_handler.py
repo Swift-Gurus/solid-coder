@@ -14,18 +14,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stop_handler_doubles import StubGate
 from flow_transition_handler import FlowStopEvaluator, FlowTransitionHandler
+from stop_handler_doubles import StubGate
 
 
 class TestFlowTransitionHandler(unittest.TestCase):
     def test_should_handle_false_when_stop_hook_active(self):
-        handler = FlowTransitionHandler(evaluator=FlowStopEvaluator(StubGate({"allow": False})))
+        handler = FlowTransitionHandler(
+            evaluator=FlowStopEvaluator(StubGate({"allow": False}))
+        )
 
         self.assertFalse(handler.should_handle({"stop_hook_active": True}))
 
     def test_should_handle_true_on_fresh_attempt(self):
-        handler = FlowTransitionHandler(evaluator=FlowStopEvaluator(StubGate({"allow": True})))
+        handler = FlowTransitionHandler(
+            evaluator=FlowStopEvaluator(StubGate({"allow": True}))
+        )
 
         self.assertTrue(handler.should_handle({}))
 

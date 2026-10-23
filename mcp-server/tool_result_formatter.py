@@ -6,16 +6,20 @@ from tool_result_formatting import ToolResultFormatting
 _ERROR_MARKER = "**"
 
 
+_DEFAULT_SERIALIZER: JsonSerializing = JsonSerializer()
+
+
 """
 solid-name: ToolResultFormatter
 solid-category: service
 solid-description: Shapes a tool handler's raw return value into the MCP tool-call response content.
 """
-class ToolResultFormatter(ToolResultFormatting):
 
+
+class ToolResultFormatter(ToolResultFormatting):
     def __init__(
         self,
-        serializer: JsonSerializing = JsonSerializer(),
+        serializer: JsonSerializing = _DEFAULT_SERIALIZER,
     ) -> None:
         self._serializer = serializer
 

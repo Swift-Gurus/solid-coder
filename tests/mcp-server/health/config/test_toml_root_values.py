@@ -11,12 +11,13 @@ sys.path.insert(0, str(_ROOT / "mcp-server" / "health" / "config"))
 
 from toml_root_values import TomlRootValues
 
-
 """
 solid-name: TestTomlRootValues
 solid-category: unit-test
 solid-description: Verifies TOML root values remain available for validation while named tables are excluded.
 """
+
+
 class TestTomlRootValues:
     @pytest.mark.parametrize(
         "value",

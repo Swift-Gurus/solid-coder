@@ -4,15 +4,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-SCRIPT = Path(__file__).resolve().parents[2] / "mcp-server" / "rules" / "load_reference.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[2] / "mcp-server" / "rules" / "load_reference.py"
+)
 
 
 def _run(*args):
     result = subprocess.run(
         [sys.executable, str(SCRIPT), *args],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return result
 

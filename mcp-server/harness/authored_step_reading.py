@@ -4,13 +4,14 @@ from typing import Protocol
 
 from harness.output_spec import OutputSpec
 
-
 """
 solid-name: AuthoredStepReading
 solid-category: abstraction
 solid-spec: [SPEC-052]
-solid-description: Contract for reading authored step identity, instructions, and outputs.
+solid-description: Contract for accessing authored step presentation data.
 """
+
+
 class AuthoredStepReading(Protocol):
     workflow_id: str
     step_id: str

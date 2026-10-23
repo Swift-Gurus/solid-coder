@@ -18,13 +18,14 @@ from harness.step_output_reference_parser import StepOutputReferenceParser
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_expression_parser import WorkflowExpressionParser
 
-
 """
 solid-name: TestForEachDeclarationParser
 solid-category: unit-test
 solid-spec: [SPEC-042]
 solid-description: Proves workflow YAML decodes for-each source, model presentation mode, and domain label into one typed declaration.
 """
+
+
 class TestForEachDeclarationParser(unittest.TestCase):
     def setUp(self) -> None:
         expression_parser = WorkflowExpressionParser()
@@ -78,9 +79,13 @@ class TestForEachDeclarationParser(unittest.TestCase):
 
     def test_omitted_and_explicit_individual_modes_remain_distinguishable(self) -> None:
         omitted = self.sut.parse("review", "{{steps.prepare.outputs.units}}")
-        explicit = self.sut.parse("review", {
-            "source": "{{steps.prepare.outputs.units}}", "mode": "individual",
-        })
+        explicit = self.sut.parse(
+            "review",
+            {
+                "source": "{{steps.prepare.outputs.units}}",
+                "mode": "individual",
+            },
+        )
         self.assertFalse(omitted.mode_declared)
         self.assertTrue(explicit.mode_declared)
 

@@ -6,14 +6,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.collection_operation_registrations_factory import (  # noqa: E402
+from harness.collection_count_input import CollectionCountInput
+from harness.collection_count_output import CollectionCountOutput
+from harness.collection_operation_registrations_factory import (
     CollectionOperationRegistrationsFactory,
 )
-from harness.collection_count_input import CollectionCountInput  # noqa: E402
-from harness.collection_count_output import CollectionCountOutput  # noqa: E402
-from harness.collection_ratio_input import CollectionRatioInput  # noqa: E402
-from harness.collection_ratio_output import CollectionRatioOutput  # noqa: E402
-
+from harness.collection_ratio_input import CollectionRatioInput
+from harness.collection_ratio_output import CollectionRatioOutput
 
 """
 solid-name: TestCollectionOperationRegistrationsFactory
@@ -21,6 +20,8 @@ solid-category: unit-test
 solid-spec: [SPEC-057]
 solid-description: Verifies the flow engine exposes its typed collection operations by stable logical names.
 """
+
+
 class TestCollectionOperationRegistrationsFactory(unittest.TestCase):
     def test_registers_typed_collection_operations(self) -> None:
         registrations = CollectionOperationRegistrationsFactory().make()

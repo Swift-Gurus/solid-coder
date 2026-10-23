@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook, llm, http]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from llama.urllib_opener import HttpOpening, UrllibOpener
 from llama.urllib_request_builder import HttpRequestBuilding, UrllibRequestBuilder
@@ -19,8 +19,8 @@ class UrllibSender:
 
     def __init__(
         self,
-        opener: Optional[HttpOpening] = None,
-        builder: Optional[HttpRequestBuilding] = None,
+        opener: HttpOpening | None = None,
+        builder: HttpRequestBuilding | None = None,
     ) -> None:
         self._opener: HttpOpening = opener or UrllibOpener()
         self._builder: HttpRequestBuilding = builder or UrllibRequestBuilder()

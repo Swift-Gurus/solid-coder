@@ -12,12 +12,13 @@ from health.health_check_input_writer import HealthCheckInputWriter
 from patch_file_simulation import PatchFileSimulation
 from patch_review_context import PatchReviewContext
 
-
 """
 solid-name: TestHealthCheckInputWriter
 solid-category: unit-test
 solid-description: Verifies starting a health-input generation clears prior DRY-search completion proof.
 """
+
+
 class TestHealthCheckInputWriter:
     def setup_method(self) -> None:
         self.extractor = MagicMock()
@@ -45,20 +46,22 @@ class TestHealthCheckInputWriter:
 
     def test_write_persists_every_proposed_patch_source_for_mcp_context(self) -> None:
         self.extractor.extract.return_value = ["First"]
-        context = PatchReviewContext(proposed_files=[
-            PatchFileSimulation(
-                file_path="/src/First.swift",
-                content="struct First {}",
-                existing_content="",
-                low_risk=False,
-            ),
-            PatchFileSimulation(
-                file_path="/src/Second.swift",
-                content="struct Second {}",
-                existing_content="",
-                low_risk=False,
-            ),
-        ])
+        context = PatchReviewContext(
+            proposed_files=[
+                PatchFileSimulation(
+                    file_path="/src/First.swift",
+                    content="struct First {}",
+                    existing_content="",
+                    low_risk=False,
+                ),
+                PatchFileSimulation(
+                    file_path="/src/Second.swift",
+                    content="struct Second {}",
+                    existing_content="",
+                    low_risk=False,
+                ),
+            ]
+        )
 
         self.input_writer.write(
             output_dir="/health/patch",

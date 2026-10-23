@@ -4,13 +4,14 @@ from typing import Literal
 
 from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
-
 """
 solid-name: HookPermissionEvidence
 solid-category: test-support
 solid-spec: [SPEC-050]
 solid-description: Projects the hook wire response into its event, permission, and diagnostic fields without interpreting a denial as a successful review.
 """
+
+
 class HookPermissionEvidence(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

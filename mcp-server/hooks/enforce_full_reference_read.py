@@ -1,15 +1,17 @@
-#!/usr/bin/env python3
 """PreToolUse hook — block partial reads of files inside references/.
 
 If a Read call targets a file under the references/ directory and specifies
 an offset or limit, deny it so the agent always reads the full file.
 """
+
 import json
 import os
 import sys
 from pathlib import Path
 
-PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2]))
+PLUGIN_ROOT = Path(
+    os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2])
+)
 REFS_ROOT = PLUGIN_ROOT / "references"
 
 try:
@@ -25,7 +27,7 @@ file_path = tool_input.get("file_path", "")
 
 try:
     is_reference = Path(file_path).is_relative_to(REFS_ROOT)
-except Exception:
+except Exception:  # noqa: BLE001 — Legacy reference-read hook retains its path compatibility fallback pending separate retirement.
     is_reference = str(REFS_ROOT) in file_path
 
 if not is_reference:

@@ -24,41 +24,40 @@ for _directory in (_HARNESS, _FLOW_ENGINE, _MCP_SERVER, _MCP_HEALTH):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness_factory import DirectHealthChecker, HookUtilsTomlLoader  # noqa: E402
-from codex_health_review_transcript_reader import (  # noqa: E402
+from codex_health_review_transcript_reader import (
     CodexHealthReviewTranscriptReader,
 )
-from codex_review_stage_evidence_reader import (  # noqa: E402
+from codex_review_stage_evidence_reader import (
     CodexReviewStageEvidenceReader,
 )
-from codex_transcript_token_usage_reader import (  # noqa: E402
+from codex_transcript_token_usage_reader import (
     CodexTranscriptTokenUsageReader,
 )
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_artifact_directory_creator import (  # noqa: E402
-    LiveSessionArtifactDirectoryCreator,
-)
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_test_base import LiveTestBase  # noqa: E402
-from live_rule_validation_expectation import (  # noqa: E402
-    LiveRuleValidationExpectation,
-)
-from findings.mcp_batch_submission_builder import (  # noqa: E402
+from findings.mcp_batch_submission_builder import (
     McpBatchSubmissionBuilder,
 )
-from findings.review_violation import ReviewViolation  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
-from review_comparison_run_evidence import (  # noqa: E402
+from findings.review_violation import ReviewViolation
+from harness_factory import DirectHealthChecker, HookUtilsTomlLoader
+from hook_utils import solid_coder_project_dir
+from live_rule_validation_expectation import (
+    LiveRuleValidationExpectation,
+)
+from live_session_artifact_directory_creator import (
+    LiveSessionArtifactDirectoryCreator,
+)
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_test_base import LiveTestBase
+from model_profile_environment import model_profile_environment
+from model_profile_loader import ModelProfileLoader
+from review_comparison_run_evidence import (
     ReviewComparisonRunEvidence,
 )
-from review_comparison_stage_evidence import (  # noqa: E402
-    ReviewComparisonStageEvidence,
-)
-from review_comparison_source_project import (  # noqa: E402
+from review_comparison_source_project import (
     ReviewComparisonSourceProject,
 )
-
+from review_comparison_stage_evidence import (
+    ReviewComparisonStageEvidence,
+)
 
 """
 solid-name: LegacyHealthComparisonE2ELiveBase
@@ -66,6 +65,8 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Executes and audits the fixed legacy health-review smoke scenario used before repeated comparison.
 """
+
+
 class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
     __test__ = False
 
@@ -168,8 +169,7 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
         self.assertTrue(submissions)
         self.assertTrue(submissions[-1].successful)
         active_rule_ids = sorted(
-            principle.casefold()
-            for principle in submissions[-1].principle_names
+            principle.casefold() for principle in submissions[-1].principle_names
         )
         self.assertEqual(active_rule_ids, self.EXPECTED_RULE_IDS)
         transcript = submissions[-1].transcript_path
@@ -258,16 +258,12 @@ class LegacyHealthComparisonE2ELiveBase(unittest.TestCase, LiveTestBase):
         expectation = self.EXPECTED_RULE
         if expectation is None:
             return
-        output_path = (
-            health_directory
-            / expectation.workflow_id
-            / "review-output.json"
-        )
+        output_path = health_directory / expectation.workflow_id / "review-output.json"
         self.assertTrue(output_path.is_file())
         raw_output = json.loads(output_path.read_text(encoding="utf-8"))
-        submission = McpBatchSubmissionBuilder().build({
-            expectation.workflow_id: raw_output
-        })
+        submission = McpBatchSubmissionBuilder().build(
+            {expectation.workflow_id: raw_output}
+        )
         self.assertEqual(len(submission.principles), 1)
         reviewed_files = submission.principles[0].output.files
         self.assertEqual(len(reviewed_files), 1)

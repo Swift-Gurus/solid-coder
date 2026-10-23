@@ -11,14 +11,12 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from pydantic import TypeAdapter
-
 from harness.run_metadata import RunMetadata
 from harness.run_metadata_persisting import RunMetadataPersisting
+from pydantic import TypeAdapter
 
 
 class RunMetadataStore(RunMetadataPersisting):
-
     def write(self, run_dir: Path, metadata: RunMetadata) -> None:
         (run_dir / "run-metadata.json").write_text(json.dumps(asdict(metadata)))
 

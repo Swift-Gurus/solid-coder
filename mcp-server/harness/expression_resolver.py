@@ -8,13 +8,14 @@ from harness.nested_value_resolving import NestedValueResolving
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: ExpressionResolver
 solid-category: service
 solid-spec: [SPEC-030, SPEC-034, SPEC-037]
 solid-description: Resolves an unfiltered workflow expression from runtime context.
 """
+
+
 class ExpressionResolver(ExpressionEvaluating):
     def __init__(
         self,

@@ -12,10 +12,9 @@ _HARNESS = Path(__file__).resolve().parents[1]
 if str(_HARNESS) not in sys.path:
     sys.path.insert(0, str(_HARNESS))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from solid_gate_on_write_e2e_live_base import SolidGateOnWriteE2ELiveBase  # noqa: E402
-
+from claude_test_base import ClaudeTestBase
+from codex_test_base import CodexTestBase
+from solid_gate_on_write_e2e_live_base import SolidGateOnWriteE2ELiveBase
 
 """
 solid-name: TestCodexSolidGateOnWriteLive
@@ -23,6 +22,8 @@ solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-050]
 solid-description: Runs the shared real-hook aggregate gate contract using the locked Codex model profile.
 """
+
+
 class TestCodexSolidGateOnWriteLive(CodexTestBase, SolidGateOnWriteE2ELiveBase):
     __test__ = True
 
@@ -33,5 +34,7 @@ solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-050]
 solid-description: Runs the shared real-hook aggregate gate contract using the locked Claude model profile.
 """
+
+
 class TestClaudeSolidGateOnWriteLive(ClaudeTestBase, SolidGateOnWriteE2ELiveBase):
     __test__ = True

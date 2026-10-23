@@ -11,24 +11,23 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.project_context import ProjectDirectory  # noqa: E402
-from harness.rule_applicability_context import RuleApplicabilityContext  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
-from review.normalized_review_unit import NormalizedReviewUnit  # noqa: E402
-from source.file_analysis_source import FileAnalysisSource  # noqa: E402
-from source.prepare_search_targets_input import PrepareSearchTargetsInput  # noqa: E402
-from source.prepare_search_targets_operation_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
+from harness.rule_applicability_context import RuleApplicabilityContext
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.static_session_id_reader import StaticSessionIdReader
+from review.normalized_review_unit import NormalizedReviewUnit
+from source.file_analysis_source import FileAnalysisSource
+from source.prepare_search_targets_input import PrepareSearchTargetsInput
+from source.prepare_search_targets_operation_factory import (
     PrepareSearchTargetsOperationFactory,
 )
-from source.search_target_granularity import SearchTargetGranularity  # noqa: E402
-from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
-from source.source_operation_registrations_factory import (  # noqa: E402
+from source.search_target_granularity import SearchTargetGranularity
+from source.selected_source_candidate import SelectedSourceCandidate
+from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
-from source.source_search_context import SourceSearchContext  # noqa: E402
-
+from source.source_search_context import SourceSearchContext
 
 """
 solid-name: TestLSPRepositoryRelationshipFlow
@@ -36,6 +35,8 @@ solid-category: integration-test
 solid-spec: [SPEC-057]
 solid-description: Verifies LSP searches, inspects, classifies, and deterministically counts concrete inheritance violations.
 """
+
+
 class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -50,10 +51,14 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
             / "fixtures"
             / "fixture-3.swift"
         )
-        prepared = PrepareSearchTargetsOperationFactory().make().execute(
-            PrepareSearchTargetsInput(
-                source=FileAnalysisSource(path=fixture),
-                granularity=SearchTargetGranularity.UNIT,
+        prepared = (
+            PrepareSearchTargetsOperationFactory()
+            .make()
+            .execute(
+                PrepareSearchTargetsInput(
+                    source=FileAnalysisSource(path=fixture),
+                    granularity=SearchTargetGranularity.UNIT,
+                )
             )
         )
         target = next(
@@ -76,9 +81,7 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
             ).model_dump(mode="json"),
         }
         self.sut = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(
-                project_dir_fn=lambda: self.run_root
-            ),
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: self.run_root),
             plugin_root=_PROJECT_ROOT,
             project_directory=self.project_directory,
             session_reader=StaticSessionIdReader("spec-057-lsp-repository"),
@@ -92,72 +95,88 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
     ) -> None:
         started = self.sut.flow_start("lsp", self.params)
         analysis = started.steps[0]
-        selection = self.sut.flow_next({
-            analysis.instance_id: {
-                "has_inheritance": True,
-                "relationship_terms": ["RequestProcessor"],
-                "contract_implementations": [],
+        selection = self.sut.flow_next(
+            {
+                analysis.instance_id: {
+                    "has_inheritance": True,
+                    "relationship_terms": ["RequestProcessor"],
+                    "contract_implementations": [],
+                }
             }
-        })
+        )
         self.assertEqual(
             [step.step_id for step in selection.steps],
             ["select_relationship_candidates"],
         )
         candidate_ids = self._presented_candidate_ids(started.run_id)
-        inspections = self.sut.flow_next({
-            selection.steps[0].instance_id: {
-                "dispositions": [
-                    {
-                        "candidate_id": candidate_id,
-                        "disposition": "INSPECT",
-                        "reasoning": "The candidate may be the concrete base.",
-                        "evidence": "Its declaration name matches the base type.",
-                    }
-                    for candidate_id in candidate_ids
-                ]
+        inspections = self.sut.flow_next(
+            {
+                selection.steps[0].instance_id: {
+                    "dispositions": [
+                        {
+                            "candidate_id": candidate_id,
+                            "disposition": "INSPECT",
+                            "reasoning": "The candidate may be the concrete base.",
+                            "evidence": "Its declaration name matches the base type.",
+                        }
+                        for candidate_id in candidate_ids
+                    ]
+                }
             }
-        })
+        )
         self.assertEqual(len(inspections.steps), 1)
         selected = self._selected_candidates(started.run_id)
-        classifications = self.sut.flow_next({
-            inspections.steps[0].instance_id: {
-                "reasoning": "Read the selected base declaration.",
-                "evidence": f"Read {selected[0].source.path}.",
+        classifications = self.sut.flow_next(
+            {
+                inspections.steps[0].instance_id: {
+                    "reasoning": "Read the selected base declaration.",
+                    "evidence": f"Read {selected[0].source.path}.",
+                }
             }
-        })
+        )
         self.assertEqual(
             [step.step_id for step in classifications.steps],
             ["classify_relationship_violations"],
         )
-        exception = self.sut.flow_next({
-            classifications.steps[0].instance_id: {
-                "observations": [
-                    {
-                        "candidate_id": selected[0].candidate_id,
-                        "classification": "NEW_GUARD",
-                        "member": "process",
-                        "is_exception": False,
-                        "reasoning": "The completed comparison found a stronger precondition.",
-                        "evidence": "NonEmptyRequestProcessor adds !request.isEmpty.",
-                    }
-                ]
+        exception = self.sut.flow_next(
+            {
+                classifications.steps[0].instance_id: {
+                    "observations": [
+                        {
+                            "candidate_id": selected[0].candidate_id,
+                            "classification": "NEW_GUARD",
+                            "member": "process",
+                            "is_exception": False,
+                            "reasoning": "The completed comparison found a stronger precondition.",
+                            "evidence": "NonEmptyRequestProcessor adds !request.isEmpty.",
+                        }
+                    ]
+                }
             }
-        })
+        )
 
         self.assertEqual(
             [step.step_id for step in exception.steps],
             ["classify_exception"],
         )
-        self.assertFalse(any(event.get("step_id") == "contract_violations"
-                             and event.get("event") == "step_completed"
-                             for event in self._events(started.run_id)))
-        finished = self.sut.flow_next({exception.steps[0].instance_id: {
-            "is_exception": False,
-            "additional_info": {
-                "reasoning": "The processor is not a NoOp.",
-                "evidence": "process adds a guard before forwarding the request.",
-            },
-        }})
+        self.assertFalse(
+            any(
+                event.get("step_id") == "contract_violations"
+                and event.get("event") == "step_completed"
+                for event in self._events(started.run_id)
+            )
+        )
+        finished = self.sut.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "The processor is not a NoOp.",
+                        "evidence": "process adds a guard before forwarding the request.",
+                    },
+                }
+            }
+        )
         self.assertEqual(finished.status, "done", finished.error)
         metric = next(
             event
@@ -167,10 +186,15 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
         )
         self.assertEqual(metric["outputs"]["value"], 1)
         self.assertIsNotNone(metric["metric_derivation"])
-        completed = [event["step_id"] for event in self._events(started.run_id)
-                     if event.get("event") == "step_completed"]
+        completed = [
+            event["step_id"]
+            for event in self._events(started.run_id)
+            if event.get("event") == "step_completed"
+        ]
         self.assertEqual(completed.count("classify_relationship_violations"), 1)
-        self.assertFalse(any(step.endswith(".classify_relationship") for step in completed))
+        self.assertFalse(
+            any(step.endswith(".classify_relationship") for step in completed)
+        )
 
     def _presented_candidate_ids(self, run_id: str) -> list[str]:
         event = next(
@@ -199,9 +223,9 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
             json.loads(line)
-            for line in (
-                self.run_root / "runs" / run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.run_root / "runs" / run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
             if line.strip()
         ]
 

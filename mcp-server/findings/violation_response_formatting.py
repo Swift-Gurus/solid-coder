@@ -2,12 +2,13 @@
 
 from typing import Protocol
 
-
 """
 solid-name: ViolationResponseFormatting
 solid-category: abstraction
 solid-description: Contract for formatting violations into a model-facing response.
 """
+
+
 class ViolationResponseFormatting(Protocol):
     def format(self, violations: list, output_dir: str) -> dict: ...
 
@@ -17,11 +18,15 @@ solid-name: ViolationResponseFormatter
 solid-category: service
 solid-description: Formats severe violations and the required fix-submission instructions.
 """
+
+
 class ViolationResponseFormatter(ViolationResponseFormatting):
     def format(self, violations: list, output_dir: str) -> dict:
         response: dict = {"violations": violations}
         if violations:
-            rule_ids = ", ".join(f"'{violation['rule_id']}'" for violation in violations)
+            rule_ids = ", ".join(
+                f"'{violation['rule_id']}'" for violation in violations
+            )
             response["output_dir"] = output_dir
             response["message"] = (
                 f"Found {len(violations)} SEVERE violation(s). Complete these steps:\n"

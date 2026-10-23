@@ -6,13 +6,14 @@ from harness.flow_validation_error import FlowValidationError
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: WorkflowExpressionParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Decodes authored and snapshotted workflow expressions into normalized typed values.
 """
+
+
 class WorkflowExpressionParser(WorkflowExpressionParsing):
     def parse(self, raw: object) -> WorkflowExpression:
         if isinstance(raw, Mapping):

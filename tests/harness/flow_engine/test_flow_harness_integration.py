@@ -20,7 +20,6 @@ from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 _LINEAR_FLOW_YAML = textwrap.dedent("""    name: linear_3_step
     max_turns: 10
     steps:
@@ -46,7 +45,9 @@ class StubCommandAllowlistResolver:
 class FlowHarnessTestBuild(unittest.TestCase):
     """Base class assembling the full production wiring against a temp runs directory."""
 
-    def _build(self, tmpdir: str, command_allowlist_resolver=None, session_reader=None) -> FlowRunOrchestrator:
+    def _build(
+        self, tmpdir: str, command_allowlist_resolver=None, session_reader=None
+    ) -> FlowRunOrchestrator:
         base_dir_resolver = RunsBaseDirResolver(project_dir_fn=lambda: Path(tmpdir))
         return FlowRunOrchestratorFactory(
             base_dir_resolver=base_dir_resolver,
@@ -57,7 +58,6 @@ class FlowHarnessTestBuild(unittest.TestCase):
 
 
 class TestFlowHarnessIntegration(FlowHarnessTestBuild):
-
     def setUp(self):
         self._tmpdir = tempfile.mkdtemp()
         self.runs_dir = Path(self._tmpdir) / "runs"
@@ -104,7 +104,8 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
 
     def test_false_workflow_condition_completes_without_executing_steps(self):
         flow_file = Path(self._tmpdir) / "conditional.yaml"
-        flow_file.write_text(textwrap.dedent("""
+        flow_file.write_text(
+            textwrap.dedent("""
             name: conditional
             when:
               ref: "{{params.enabled}}"
@@ -112,7 +113,8 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
             steps:
               - id: review
                 prompt: Never execute
-        """))
+        """)
+        )
 
         result = self.sut.flow_start(
             str(flow_file),
@@ -123,8 +125,7 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
         self.assertEqual(result.steps, [])
         events_path = self.runs_dir / result.run_id / "events.jsonl"
         events = [
-            json.loads(line)
-            for line in events_path.read_text().strip().splitlines()
+            json.loads(line) for line in events_path.read_text().strip().splitlines()
         ]
         event_types = [event["event"] for event in events]
         self.assertEqual(event_types.count("workflow_condition_evaluated"), 1)
@@ -135,7 +136,8 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
 
     def test_true_workflow_condition_is_not_reevaluated_after_flow_next(self):
         flow_file = Path(self._tmpdir) / "conditional.yaml"
-        flow_file.write_text(textwrap.dedent("""
+        flow_file.write_text(
+            textwrap.dedent("""
             name: conditional
             when:
               ref: "{{params.enabled}}"
@@ -143,22 +145,20 @@ class TestFlowHarnessIntegration(FlowHarnessTestBuild):
             steps:
               - id: review
                 prompt: Review the change
-        """))
+        """)
+        )
 
         started = self.sut.flow_start(
             str(flow_file),
             params={"enabled": True},
         )
-        completed = self.sut.flow_next(
-            {step.instance_id: {} for step in started.steps}
-        )
+        completed = self.sut.flow_next({step.instance_id: {} for step in started.steps})
 
         self.assertEqual(len(started.steps), 1)
         self.assertEqual(completed.status, "done")
         events_path = self.runs_dir / started.run_id / "events.jsonl"
         events = [
-            json.loads(line)
-            for line in events_path.read_text().strip().splitlines()
+            json.loads(line) for line in events_path.read_text().strip().splitlines()
         ]
         event_types = [event["event"] for event in events]
         self.assertEqual(event_types.count("workflow_condition_evaluated"), 1)
@@ -186,8 +186,12 @@ class TestFlowHarnessSessionIsolation(FlowHarnessTestBuild):
         self._flow_file = Path(self._tmpdir) / "linear_3_step.yaml"
         self._flow_file.write_text(_LINEAR_FLOW_YAML)
 
-        self.session_a = self._build(self._tmpdir, session_reader=StubSessionReader("session-a"))
-        self.session_b = self._build(self._tmpdir, session_reader=StubSessionReader("session-b"))
+        self.session_a = self._build(
+            self._tmpdir, session_reader=StubSessionReader("session-a")
+        )
+        self.session_b = self._build(
+            self._tmpdir, session_reader=StubSessionReader("session-b")
+        )
 
     def test_both_sessions_can_start_a_run_concurrently_without_colliding(self):
         result_a = self.session_a.flow_start(str(self._flow_file))
@@ -210,7 +214,6 @@ class TestFlowHarnessSessionIsolation(FlowHarnessTestBuild):
 
 
 class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
-
     def setUp(self):
         self._tmpdir = tempfile.mkdtemp()
         self.runs_dir = Path(self._tmpdir) / "runs"
@@ -224,10 +227,12 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
     def _build_with_allowlist(self) -> FlowRunOrchestrator:
         return self._build(
             self._tmpdir,
-            command_allowlist_resolver=StubCommandAllowlistResolver([
-                sys.executable,
-                "bash",
-            ]),
+            command_allowlist_resolver=StubCommandAllowlistResolver(
+                [
+                    sys.executable,
+                    "bash",
+                ]
+            ),
         )
 
     def _drive_to_done(self, sut, first_result, max_iterations: int = 5):
@@ -235,22 +240,33 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         for _ in range(max_iterations):
             if result.status != "ready" or not result.steps:
                 return result
-            outputs = {step.instance_id: {} for step in result.steps if step.step_id in ("from_file", "sub.leaf")}
+            outputs = {
+                step.instance_id: {}
+                for step in result.steps
+                if step.step_id in ("from_file", "sub.leaf")
+            }
             if not outputs:
                 return result
             result = sut.flow_next(outputs)
         return result
 
-    def test_flow_combining_prompt_file_script_step_and_aliased_include_reaches_done(self):
+    def test_flow_combining_prompt_file_script_step_and_aliased_include_reaches_done(
+        self,
+    ):
         self._write("prompt.md", "Please review the change")
         succeed_script = Path(self._tmpdir) / "succeed.py"
-        succeed_script.write_text('print(\'{"ok": true}\')\n')
-        self._write("sub.yaml", """
+        succeed_script.write_text("print('{\"ok\": true}')\n")
+        self._write(
+            "sub.yaml",
+            """
             steps:
               - id: leaf
                 prompt: Do the leaf step
-        """)
-        flow_file = self._write("combined.yaml", f"""
+        """,
+        )
+        flow_file = self._write(
+            "combined.yaml",
+            f"""
             name: combined
             max_turns: 10
             steps:
@@ -262,12 +278,15 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
                 depends_on: [from_file]
               - include: sub.yaml
                 as: sub
-        """)
+        """,
+        )
 
         sut = self._build_with_allowlist()
         start_result = sut.flow_start(str(flow_file))
 
-        first_result = sut.flow_next({s.instance_id: {} for s in start_result.steps if s.step_id == "from_file"})
+        first_result = sut.flow_next(
+            {s.instance_id: {} for s in start_result.steps if s.step_id == "from_file"}
+        )
         result = self._drive_to_done(sut, first_result)
 
         self.assertEqual(result.status, "done", result.error)
@@ -275,7 +294,9 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
     def test_script_step_exhausting_max_attempts_on_flow_start_fails_the_run(self):
         fail_script = Path(self._tmpdir) / "fail.py"
         fail_script.write_text("import sys\nsys.exit(1)\n")
-        flow_file = self._write("failing.yaml", f"""
+        flow_file = self._write(
+            "failing.yaml",
+            f"""
             name: failing
             max_turns: 10
             steps:
@@ -283,7 +304,8 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
                 type: script
                 command: ["{sys.executable}", "{fail_script}"]
                 max_attempts: 2
-        """)
+        """,
+        )
 
         sut = self._build_with_allowlist()
         start_result = sut.flow_start(str(flow_file))
@@ -306,7 +328,8 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
             "print(json.dumps({'strict': '--strict' in sys.argv}))\n"
         )
         flow_file = package / "workflow.yaml"
-        flow_file.write_text(textwrap.dedent(f"""
+        flow_file.write_text(
+            textwrap.dedent(f"""
             id: review
             name: review
             max_turns: 10
@@ -316,7 +339,8 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
                 file: validate.py
                 executor: "{sys.executable}"
                 args: [--strict]
-        """))
+        """)
+        )
 
         sut = self._build_with_allowlist()
         result = sut.flow_start(str(flow_file))
@@ -327,7 +351,9 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
         self.assertNotIn("file: validate.py", snapshot)
 
     def test_inline_command_executes_as_one_shell_command(self):
-        flow_file = self._write("command.yaml", """
+        flow_file = self._write(
+            "command.yaml",
+            """
             name: command
             max_turns: 10
             steps:
@@ -335,21 +361,26 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
                 type: command
                 command: |
                   printf '{"ok": true}'
-        """)
+        """,
+        )
 
         sut = self._build_with_allowlist()
         result = sut.flow_start(str(flow_file))
 
         self.assertEqual(result.status, "done", result.error)
 
-    def test_agent_step_reopened_by_a_failing_downstream_script_eventually_exhausts_and_fails_the_run(self):
+    def test_agent_step_reopened_by_a_failing_downstream_script_eventually_exhausts_and_fails_the_run(
+        self,
+    ):
         # A script step's failure is attributed back to its nearest completed agent-type
         # dependency (ScriptFailureAttributor) — the agent gets reopened to retry, on the theory
         # that a validation-style script failing right after an agent step is feedback on that
         # step's output. So it's step_one's own max_attempts that exhausts here, not doomed's.
         fail_script = Path(self._tmpdir) / "fail.py"
         fail_script.write_text("import sys\nsys.exit(1)\n")
-        flow_file = self._write("fails_on_second_step.yaml", f"""
+        flow_file = self._write(
+            "fails_on_second_step.yaml",
+            f"""
             name: fails_on_second_step
             max_turns: 10
             steps:
@@ -360,7 +391,8 @@ class TestFlowHarnessScriptStepsAndIncludes(FlowHarnessTestBuild):
                 type: script
                 command: ["{sys.executable}", "{fail_script}"]
                 depends_on: [step_one]
-        """)
+        """,
+        )
 
         sut = self._build_with_allowlist()
         start_result = sut.flow_start(str(flow_file))
@@ -391,25 +423,32 @@ class TestFlowHarnessPackageResources(FlowHarnessTestBuild):
             (self.package / directory).mkdir(parents=True, exist_ok=True)
 
     def test_bare_package_resources_resolve_from_their_conventional_directories(self):
-        (self.package / "prompts" / "review.md").write_text("Review the supplied change")
+        (self.package / "prompts" / "review.md").write_text(
+            "Review the supplied change"
+        )
         (self.package / "schemas" / "findings.json").write_text(
             json.dumps({"type": "array"})
         )
-        (self.package / "steps" / "reviewer.yaml").write_text(textwrap.dedent("""
+        (self.package / "steps" / "reviewer.yaml").write_text(
+            textwrap.dedent("""
             id: review
             prompt_file: review.md
             outputs:
               - name: findings
                 type: data
                 schema_file: findings.json
-        """))
-        (self.package / "subflows" / "child.yaml").write_text(textwrap.dedent("""
+        """)
+        )
+        (self.package / "subflows" / "child.yaml").write_text(
+            textwrap.dedent("""
             steps:
               - id: leaf
                 prompt: Review the child change
-        """))
+        """)
+        )
         workflow = self.package / "workflow.yaml"
-        workflow.write_text(textwrap.dedent("""
+        workflow.write_text(
+            textwrap.dedent("""
             id: package-review
             name: Package Review
             max_turns: 10
@@ -417,7 +456,8 @@ class TestFlowHarnessPackageResources(FlowHarnessTestBuild):
               - uses: reviewer.yaml
               - include: child.yaml
                 as: child
-        """))
+        """)
+        )
 
         result = self._build(self._tmpdir).flow_start(str(workflow))
 
@@ -430,8 +470,12 @@ class TestFlowHarnessPackageResources(FlowHarnessTestBuild):
         self.assertNotIn("uses: reviewer.yaml", snapshot)
         self.assertNotIn("findings.json", snapshot)
         self.assertNotIn("include: child.yaml", snapshot)
-        self.assertIn(str((self.package / "steps" / "reviewer.yaml").resolve()), snapshot)
-        self.assertIn(str((self.package / "subflows" / "child.yaml").resolve()), snapshot)
+        self.assertIn(
+            str((self.package / "steps" / "reviewer.yaml").resolve()), snapshot
+        )
+        self.assertIn(
+            str((self.package / "subflows" / "child.yaml").resolve()), snapshot
+        )
 
 
 if __name__ == "__main__":

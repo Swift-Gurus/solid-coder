@@ -1,16 +1,15 @@
 """Resolves direct and plan-derived terms for codebase source search."""
 
 from pathlib import Path
-from typing import Optional
 
 from harness.ordered_string_collecting import OrderedStringCollecting
 from harness.structured_model_decoding import StructuredModelDecoding
 from scoring.yaml_config_file_loader import ConfigFileLoading
+from source.source_tokens_resolving import SourceTokensResolving
+
 from search.codebase_search_terms import CodebaseSearchTerms
 from search.codebase_search_terms_resolving import CodebaseSearchTermsResolving
 from search.search_plan_document import SearchPlanDocument
-from source.source_tokens_resolving import SourceTokensResolving
-
 
 """
 solid-name: CodebaseSearchTermsResolver
@@ -18,8 +17,9 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves normalized source terms and specification identifiers from search arguments and plan metadata.
 """
-class CodebaseSearchTermsResolver(CodebaseSearchTermsResolving):
 
+
+class CodebaseSearchTermsResolver(CodebaseSearchTermsResolving):
     def __init__(
         self,
         plan_loader: ConfigFileLoading,
@@ -34,9 +34,9 @@ class CodebaseSearchTermsResolver(CodebaseSearchTermsResolving):
 
     def resolve(
         self,
-        plan_path: Optional[Path],
-        tags: Optional[list[str]],
-        spec_numbers: Optional[list[str]],
+        plan_path: Path | None,
+        tags: list[str] | None,
+        spec_numbers: list[str] | None,
     ) -> CodebaseSearchTerms:
         terms: list[str] = []
         specifications = list(spec_numbers or [])

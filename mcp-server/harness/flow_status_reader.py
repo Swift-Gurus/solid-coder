@@ -13,15 +13,15 @@ from harness.run_snapshot_resolving import RunSnapshotResolving
 from harness.step_skip_status import StepSkipStatus
 from harness.workflow_condition_status import WorkflowConditionStatus
 
-
 """
 solid-name: FlowStatusReader
 solid-category: service
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Reads execution, skip, and workflow eligibility state for a flow run.
 """
-class FlowStatusReader(FlowStatusReading):
 
+
+class FlowStatusReader(FlowStatusReading):
     def __init__(
         self,
         run_locator: ActiveRunLocating,
@@ -41,9 +41,14 @@ class FlowStatusReader(FlowStatusReading):
             location = self._run_locator.locate(run_id)
         except (FileNotFoundError, KeyError):
             return FlowStatusResult(
-                flow="", run_id="", status="no_active_run",
-                turn_count=0, max_turns=0,
-                completed=[], running=[], pending=[],
+                flow="",
+                run_id="",
+                status="no_active_run",
+                turn_count=0,
+                max_turns=0,
+                completed=[],
+                running=[],
+                pending=[],
             )
 
         flow_def = self._flow_loader.load(location.workflow_path, [])
@@ -57,9 +62,15 @@ class FlowStatusReader(FlowStatusReading):
             )
         except InterpolationError as exc:
             return FlowStatusResult(
-                flow=flow_def.name, run_id=location.run_id, status="error",
-                turn_count=0, max_turns=flow_def.max_turns,
-                completed=[], running=[], pending=[], error=str(exc),
+                flow=flow_def.name,
+                run_id=location.run_id,
+                status="error",
+                turn_count=0,
+                max_turns=flow_def.max_turns,
+                completed=[],
+                running=[],
+                pending=[],
+                error=str(exc),
             )
 
         workflow_decision = snapshot.run_state.workflow_condition_decision

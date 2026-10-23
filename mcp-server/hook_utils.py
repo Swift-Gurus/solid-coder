@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Provides shared utilities and protocols for subprocess execution, data parsing, and project configuration.
 solid-category: utility
@@ -8,19 +7,22 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
 
-from type_checking import TypeChecking  # noqa: F401 — re-exported for consumers
+from event_parsing import ClaudeBareEventParsing as EventParsing
+from gate_handling import GateHandling  # noqa: F401 — re-exported for consumers
+from hook_responding import HookResponding  # noqa: F401 — re-exported for consumers
 from logging_protocol import Logging  # noqa: F401 — re-exported for consumers
 from output_writing import OutputWriting  # noqa: F401 — re-exported for consumers
-from hook_responding import HookResponding  # noqa: F401 — re-exported for consumers
-from gate_handling import GateHandling  # noqa: F401 — re-exported for consumers
-from subprocess_error import SubprocessError  # noqa: F401 — re-exported for consumers
+from subprocess_error import SubprocessError
+from subprocess_json_running import SubprocessJsonRunning
 from subprocess_running import SubprocessRunning  # noqa: F401 — re-exported for consumers
-from subprocess_json_running import SubprocessJsonRunning  # noqa: F401 — re-exported for consumers
-from event_parsing import ClaudeBareEventParsing as EventParsing  # noqa: F401 — re-exported for consumers
-from utils.patterns.fnmatch_pattern_matcher import FnmatchPatternMatcher, PatternMatching
+from type_checking import TypeChecking
+from utils.patterns.fnmatch_pattern_matcher import (
+    FnmatchPatternMatcher,
+    PatternMatching,
+)
 from utils.patterns.path_pattern_matcher import PathPatternMatcher
 
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
@@ -49,9 +51,13 @@ def _resolve_project_root(
     return Path(raw) if raw else cwd_factory()
 
 
-def solid_coder_project_dir(project_root: Optional[Path] = None) -> Path:
+def solid_coder_project_dir(project_root: Path | None = None) -> Path:
     """Return the ~/.solid-coder/{slug}/ base directory for this project."""
-    return Path.home() / ".solid-coder" / solid_coder_slug(project_root or _resolve_project_root())
+    return (
+        Path.home()
+        / ".solid-coder"
+        / solid_coder_slug(project_root or _resolve_project_root())
+    )
 
 
 def ensure_on_path(*dirs: Path) -> None:
@@ -71,7 +77,7 @@ def load_toml(path: Path) -> dict:
             import tomli as tomllib  # type: ignore[no-redef]
         with open(path, "rb") as f:
             return tomllib.load(f)
-    except Exception:
+    except Exception:  # noqa: BLE001 — Compatibility configuration loading preserves defaults when optional TOML loading fails.
         return {}
 
 
@@ -80,7 +86,7 @@ def strip_markdown_fences(text: str) -> str:
     return re.sub(r"`" * 3 + r"[a-zA-Z]*\n?", "", text).strip()
 
 
-def parse_json_field(raw: str, key: str, validator: TypeChecking) -> Optional[object]:
+def parse_json_field(raw: str, key: str, validator: TypeChecking) -> object | None:
     """Strip fences, locate the first JSON object, return validator.validate(value).
 
     Returns None when the JSON is absent, malformed, the key is missing,
@@ -100,12 +106,12 @@ def parse_json_field(raw: str, key: str, validator: TypeChecking) -> Optional[ob
         return None
 
 
-from str_validator import StrValidator  # noqa: E402, F401 — re-exported for consumers
-from list_validator import ListValidator  # noqa: E402, F401 — re-exported for consumers
-from violation_dict_validator import ViolationDictValidator  # noqa: E402, F401 — re-exported for consumers
+from list_validator import ListValidator  # noqa: F401 — re-exported for consumers
+from str_validator import StrValidator  # noqa: F401 — re-exported for consumers
+from violation_dict_validator import ViolationDictValidator  # noqa: F401 — re-exported for consumers
 
 
-def parse_json_safely(raw: str) -> Optional[dict]:
+def parse_json_safely(raw: str) -> dict | None:
     """Parse raw JSON into a dict, or None on any parse failure."""
     try:
         return json.loads(raw)
@@ -113,7 +119,7 @@ def parse_json_safely(raw: str) -> Optional[dict]:
         return None
 
 
-def parse_hook_event(raw: str) -> Optional[tuple]:
+def parse_hook_event(raw: str) -> tuple | None:
     """Parse a hook PreToolUse event from raw JSON.
 
     Returns (tool_name, tool_input, file_path, session_id, cwd) on success,
@@ -135,24 +141,29 @@ def parse_hook_event(raw: str) -> Optional[tuple]:
     )
 
 
+_DEFAULT_MATCHER: PatternMatching = PathPatternMatcher(FnmatchPatternMatcher())
+
+
 def path_matches_pattern(
     file_path: str,
     pattern: str,
-    matcher: PatternMatching = PathPatternMatcher(FnmatchPatternMatcher()),
+    matcher: PatternMatching = _DEFAULT_MATCHER,
 ) -> bool:
     """Compatibility boundary for the shared segment-aware path matcher."""
     return matcher.matches(file_path, pattern)
 
 
-from stdout_writer import StdoutWriter  # noqa: E402, F401 — re-exported for consumers
-from gate_logger import GateLogger  # noqa: E402, F401 — re-exported for consumers
-from hook_responder import HookResponder  # noqa: E402, F401 — re-exported for consumers
-from hook_gate import HookGate  # noqa: E402, F401 — re-exported for consumers
-from hook_gate_factory import HookGateFactory  # noqa: E402, F401 — re-exported for consumers
-from subprocess_adapter import SubprocessAdapter  # noqa: E402, F401 — re-exported for consumers
-from subprocess_json_runner import SubprocessJsonRunner  # noqa: E402, F401 — re-exported for consumers
+from gate_logger import GateLogger  # noqa: F401 — re-exported for consumers
+from hook_gate import HookGate  # noqa: F401 — re-exported for consumers
+from hook_gate_factory import HookGateFactory  # noqa: F401 — re-exported for consumers
+from hook_responder import HookResponder  # noqa: F401 — re-exported for consumers
+from stdout_writer import StdoutWriter  # noqa: F401 — re-exported for consumers
+from subprocess_adapter import SubprocessAdapter
+from subprocess_json_runner import SubprocessJsonRunner
 
-_default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(SubprocessAdapter())
+_default_subprocess_runner: SubprocessJsonRunning = SubprocessJsonRunner(
+    SubprocessAdapter()
+)
 
 
 def run_gateway_cmd(
@@ -160,7 +171,7 @@ def run_gateway_cmd(
     timeout: int,
     *,
     runner: SubprocessJsonRunning = _default_subprocess_runner,
-) -> Optional[dict]:
+) -> dict | None:
     """Run a gateway CLI command and return parsed JSON dict.
 
     Raises SubprocessError on failure — callers that need a safe fallback
@@ -169,7 +180,7 @@ def run_gateway_cmd(
     return runner.run(cmd, timeout=timeout)  # type: ignore[return-value]
 
 
-from event_parser import PydanticEventParser  # noqa: E402, F401 — re-exported for consumers
+from event_parser import PydanticEventParser
 
 _default_event_parser: EventParsing = PydanticEventParser()
 
@@ -185,7 +196,7 @@ def run_claude_bare(
     *,
     runner: SubprocessJsonRunning = _default_subprocess_runner,
     event_parser: EventParsing = _default_event_parser,
-) -> Optional[str]:
+) -> str | None:
     """Run claude -p in bare JSON mode and return the final result string.
 
     Parses the JSON event stream and returns the result field from the last

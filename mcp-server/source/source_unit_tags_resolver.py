@@ -6,13 +6,14 @@ from source.technology_detection_scope_matching import (
     TechnologyDetectionScopeMatching,
 )
 
-
 """
 solid-name: SourceUnitTagsResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Selects inherited and unit-specific technology tags for a stable analyzed unit identity.
 """
+
+
 class SourceUnitTagsResolver(SourceUnitTagsResolving):
     def __init__(
         self,

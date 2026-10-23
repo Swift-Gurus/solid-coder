@@ -7,11 +7,14 @@ from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
 
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 from _gate_fixtures import HC, call_main
-from health_violation import HealthViolation
 from health_check_outcome import HealthCheckOutcome
+from health_violation import HealthViolation
 from patch_review_context import PatchReviewContext
 from solid_coder_config import SolidCoderConfig
 from test_utils import parse_hook_output
@@ -57,10 +60,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
                 return HealthCheckOutcome(violations=[_violation("Second concern.")])
             return HealthCheckOutcome()
 
-        request = _patch_event([
-            ("/src/First.py", "class First:\n    pass"),
-            ("/src/Second.py", "class Second:\n    pass"),
-        ])
+        request = _patch_event(
+            [
+                ("/src/First.py", "class First:\n    pass"),
+                ("/src/Second.py", "class Second:\n    pass"),
+            ]
+        )
         with patch(HC, side_effect=check) as health:
             _, output = call_main(request)
 
@@ -76,10 +81,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
             name = Path(file_path).name
             return HealthCheckOutcome(violations=[_violation(f"{name} concern.")])
 
-        request = _patch_event([
-            ("/src/First.py", "class First:\n    pass"),
-            ("/src/Second.py", "class Second:\n    pass"),
-        ])
+        request = _patch_event(
+            [
+                ("/src/First.py", "class First:\n    pass"),
+                ("/src/Second.py", "class Second:\n    pass"),
+            ]
+        )
         with patch(HC, side_effect=check):
             _, output = call_main(request)
 
@@ -92,10 +99,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertIn("Second.py concern.", reason)
 
     def test_unsupported_first_file_does_not_hide_supported_sibling(self):
-        request = _patch_event([
-            ("/src/README.md", "documentation"),
-            ("/src/Second.py", "class Second:\n    pass"),
-        ])
+        request = _patch_event(
+            [
+                ("/src/README.md", "documentation"),
+                ("/src/Second.py", "class Second:\n    pass"),
+            ]
+        )
         violation = [_violation("Second concern.")]
         with patch(HC, return_value=HealthCheckOutcome(violations=violation)) as health:
             _, output = call_main(request)
@@ -106,10 +115,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
         self.assertEqual(result["permissionDecision"], "deny")
 
     def test_all_clean_files_allow_after_every_review(self):
-        request = _patch_event([
-            ("/src/First.py", "class First:\n    pass"),
-            ("/src/Second.py", "class Second:\n    pass"),
-        ])
+        request = _patch_event(
+            [
+                ("/src/First.py", "class First:\n    pass"),
+                ("/src/Second.py", "class Second:\n    pass"),
+            ]
+        )
         with patch(HC, return_value=HealthCheckOutcome()) as health:
             code, output = call_main(request)
 
@@ -126,10 +137,12 @@ class TestApplyPatchGateFanout(unittest.TestCase):
                 observed_contexts.append(patch_context)
             return HealthCheckOutcome()
 
-        request = _patch_event([
-            ("/src/First.py", "class First:\n    pass"),
-            ("/src/Second.py", "class Second:\n    pass"),
-        ])
+        request = _patch_event(
+            [
+                ("/src/First.py", "class First:\n    pass"),
+                ("/src/Second.py", "class Second:\n    pass"),
+            ]
+        )
         with patch(HC, side_effect=check):
             code, output = call_main(request)
 

@@ -14,13 +14,14 @@ from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestSessionDelegateCapabilitiesIntegration
 solid-category: integration-test
 solid-spec: [SPEC-027, SPEC-067]
 solid-description: Verifies that production-composed child sessions receive the flow-engine server and its callable tool names.
 """
+
+
 class TestSessionDelegateCapabilitiesIntegration(unittest.TestCase):
     def test_default_session_uses_flow_engine_not_legacy_review_servers(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

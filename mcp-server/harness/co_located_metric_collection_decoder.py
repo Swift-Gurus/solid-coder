@@ -18,13 +18,14 @@ from harness.output_spec import OutputSpec
 from harness.step_output_reference import StepOutputReference
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: CoLocatedMetricCollectionDecoder
 solid-category: boundary-adapter
 solid-spec: [SPEC-058]
 solid-description: Decodes local-output measurements into validated conditions, reducers, severity bands, and source references.
 """
+
+
 class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
     def __init__(
         self,
@@ -58,13 +59,12 @@ class CoLocatedMetricCollectionDecoder(CoLocatedMetricCollectionDecoding):
         for index, raw_declaration in enumerate(value):
             declaration = self._decoder.decode(
                 raw_declaration,
-                (
-                    f"co-located metric {index + 1} on step "
-                    f"'{owner_step_id}'"
-                ),
+                (f"co-located metric {index + 1} on step '{owner_step_id}'"),
             )
             source_name = declaration.scoring.source
-            self._source_validator.validate(owner_step_id, declaration.id, source_name, outputs)
+            self._source_validator.validate(
+                owner_step_id, declaration.id, source_name, outputs
+            )
             metric = MetricDeclaration(
                 metric_id=declaration.metric_id,
                 observation_id=declaration.observation_id,

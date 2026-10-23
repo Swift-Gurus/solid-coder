@@ -10,13 +10,14 @@ from source.source_unit import SourceUnit
 from source.source_unit_exclusion_checking import SourceUnitExclusionChecking
 from source.source_unit_identity import SourceUnitIdentity
 
-
 """
 solid-name: SourceUnitExclusionChecker
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Matches repository units against exact reviewed-unit exclusions.
 """
+
+
 class SourceUnitExclusionChecker(SourceUnitExclusionChecking):
     def __init__(self, paths: PathBuilding) -> None:
         self._paths = paths
@@ -51,6 +52,5 @@ class SourceUnitExclusionChecker(SourceUnitExclusionChecking):
                 "from review.prepare or source.prepare_search_targets."
             )
         return any(
-            exclusion.unit_identity == unit.unit_identity
-            for exclusion in same_source
+            exclusion.unit_identity == unit.unit_identity for exclusion in same_source
         )

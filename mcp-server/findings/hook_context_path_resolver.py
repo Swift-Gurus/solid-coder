@@ -2,15 +2,17 @@
 
 from pathlib import Path
 
-from findings.hook_context_path_resolving import HookContextPathResolving
 from harness.path_building import PathBuilding
 
+from findings.hook_context_path_resolving import HookContextPathResolving
 
 """
 solid-name: HookContextPathResolver
 solid-category: service
 solid-description: Resolves requested hook context locations.
 """
+
+
 class HookContextPathResolver(HookContextPathResolving):
     def __init__(self, path_builder: PathBuilding) -> None:
         self._path_builder = path_builder

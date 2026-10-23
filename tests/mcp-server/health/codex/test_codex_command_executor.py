@@ -13,13 +13,14 @@ ensure_on_path(Path(__file__).resolve().parents[4] / "mcp-server")
 from health.codex.codex_command_executor import CodexCommandExecutor
 from subprocess_error import SubprocessError
 
-
 """
 solid-name: TestCodexCommandExecutor
 solid-category: unit-test
 solid-spec: [SPEC-067]
 solid-description: Verifies successful and failed delegated executions preserve their complete diagnostics before validation.
 """
+
+
 class TestCodexCommandExecutor(unittest.TestCase):
     def test_records_complete_streams_before_validation(self):
         for succeeded in (True, False):
@@ -31,12 +32,21 @@ class TestCodexCommandExecutor(unittest.TestCase):
                 logger = MagicMock()
                 validator = MagicMock()
 
-                def validate(*arguments):
+                def validate(
+                    *arguments,
+                    succeeded=succeeded,
+                    stdout=stdout,
+                    stderr=stderr,
+                    logger=logger,
+                ):
                     self.assertEqual(arguments, (succeeded, stdout, stderr))
-                    self.assertEqual(logger.log.call_args_list, [
-                        unittest.mock.call("codex.stdout", stdout),
-                        unittest.mock.call("codex.stderr", stderr),
-                    ])
+                    self.assertEqual(
+                        logger.log.call_args_list,
+                        [
+                            unittest.mock.call("codex.stdout", stdout),
+                            unittest.mock.call("codex.stderr", stderr),
+                        ],
+                    )
                     if not succeeded:
                         raise SubprocessError("required server unavailable")
 
@@ -45,8 +55,13 @@ class TestCodexCommandExecutor(unittest.TestCase):
                 if succeeded:
                     executor.execute(["codex", "exec"], 30, None, "/project")
                 else:
-                    with self.assertRaisesRegex(SubprocessError, "required server unavailable"):
+                    with self.assertRaisesRegex(
+                        SubprocessError, "required server unavailable"
+                    ):
                         executor.execute(["codex", "exec"], 30, None, "/project")
                 runner.run.assert_called_once_with(
-                    ["codex", "exec"], timeout=30, stdin=None, cwd="/project",
+                    ["codex", "exec"],
+                    timeout=30,
+                    stdin=None,
+                    cwd="/project",
                 )

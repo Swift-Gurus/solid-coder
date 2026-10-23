@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Apple build MCP server — self-contained, no client-side dependencies.
 
 Build system autodiscovery (walks up from project_path):
@@ -12,6 +11,7 @@ Console output (tool response) is filtered to signal lines only:
   file:line:col: severity: message  (one line per issue)
   ✓ succeeded  |  ** FAILED **
 """
+
 import json
 import os
 import re
@@ -22,17 +22,23 @@ import sys
 import threading
 import time
 import warnings
+
 warnings.filterwarnings("ignore")
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from gate_logger import GateLogger
+from logging_protocol import Logging
 from mcp_server_factory import MCPServerFactory
+from utils.debug_logger import DebugLogger
 
 server = MCPServerFactory().build("apple-build", "1.1.0")
+_logger = GateLogger(DebugLogger())
 
 # ─── Locks ────────────────────────────────────────────────────────────────────
 _locks: dict = {}
 _lock_mutex = threading.Lock()
+
 
 def _lock(root: Path) -> threading.Lock:
     with _lock_mutex:
@@ -42,6 +48,7 @@ def _lock(root: Path) -> threading.Lock:
 
 
 # ─── Autodiscovery ────────────────────────────────────────────────────────────
+
 
 def _detect(start: Path):
     """Walk up from start → (system, root). system: tuist|xcode-ws|xcode-proj|swift|unknown.
@@ -71,6 +78,7 @@ def _detect(start: Path):
 
     return "unknown", start
 
+
 def _root(project_path=None) -> Path:
     if project_path:
         return Path(project_path).resolve()
@@ -79,10 +87,12 @@ def _root(project_path=None) -> Path:
 
 # ─── Logs ─────────────────────────────────────────────────────────────────────
 
+
 def _log_dir(root: Path) -> Path:
     d = root / ".solid_coder" / "logs"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
 
 def _save(root: Path, name: str, content: str) -> Path:
     p = _log_dir(root) / name
@@ -105,6 +115,7 @@ _KEEP = [
     re.compile(r"^\[x\]"),
     re.compile(r"^\[!\]"),
 ]
+
 
 def _filter(output: str) -> str:
     """Keep signal lines + their immediate continuation (the actual reason text)."""
@@ -143,10 +154,17 @@ def _summary(rc: int, output: str, verb: str = "build") -> str:
             status += f" ({warnings} warning{'s' if warnings != 1 else ''})"
     else:
         status = f"** {verb.upper()} FAILED **"
-        counts = ", ".join(filter(None, [
-            f"{errors} error{'s' if errors != 1 else ''}" if errors else "",
-            f"{warnings} warning{'s' if warnings != 1 else ''}" if warnings else "",
-        ]))
+        counts = ", ".join(
+            filter(
+                None,
+                [
+                    f"{errors} error{'s' if errors != 1 else ''}" if errors else "",
+                    f"{warnings} warning{'s' if warnings != 1 else ''}"
+                    if warnings
+                    else "",
+                ],
+            )
+        )
         if counts:
             status += f" — {counts}"
     signals = _filter(output)
@@ -155,7 +173,8 @@ def _summary(rc: int, output: str, verb: str = "build") -> str:
 
 # ─── SwiftLint ────────────────────────────────────────────────────────────────
 
-def _run_lint(root: Path) -> str:
+
+def _run_lint(root: Path, logger: Logging) -> str:
     """Run swiftlint on the project, return filtered violations as text."""
     if not _which("swiftlint"):
         return "(swiftlint not found — install via mise or Homebrew)"
@@ -171,7 +190,7 @@ def _run_lint(root: Path) -> str:
     if config:
         cmd += ["--config", str(config)]
 
-    r = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
+    r = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True, check=False)
     raw = r.stdout or "[]"
     _save(root, "lint.log", raw)
 
@@ -189,8 +208,11 @@ def _run_lint(root: Path) -> str:
         # Make path relative if inside project
         try:
             f = str(Path(f).relative_to(root))
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — Legacy Apple lint output retains the original path when formatting fails.
+            logger.log(
+                f"Could not make SwiftLint path relative: path={f}, root={root}; "
+                f"retaining original path; {type(exc).__name__}: {exc}"
+            )
         line = v.get("line", "")
         col = v.get("character", "")
         rule = v.get("rule_id", "")
@@ -202,26 +224,39 @@ def _run_lint(root: Path) -> str:
 
 
 def _which(cmd: str) -> bool:
-    return subprocess.run(["which", cmd], capture_output=True).returncode == 0
+    return (
+        subprocess.run(["which", cmd], capture_output=True, check=False).returncode == 0
+    )
 
 
 # ─── Runners ──────────────────────────────────────────────────────────────────
 
+
 def _run(cmd, cwd: Path, timeout: int = 600) -> tuple:
-    r = subprocess.run(cmd, cwd=str(cwd),
-                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                       text=True, timeout=timeout)
+    r = subprocess.run(
+        cmd,
+        cwd=str(cwd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
     return r.returncode, r.stdout
 
 
-def _run_and_summarize(cmd, root: Path, log_name: str = "build.log", verb: str = "build") -> str:
+def _run_and_summarize(
+    cmd, root: Path, log_name: str = "build.log", verb: str = "build"
+) -> str:
     """Run a single command, save its raw output, and return a status summary."""
     rc, out = _run(cmd, root)
     _save(root, log_name, out)
     return _summary(rc, out, verb)
 
 
-def _run_logged_step(cmd, root: Path, log_acc: list, step_label: str, log_name: str = "build.log") -> tuple:
+def _run_logged_step(
+    cmd, root: Path, log_acc: list, step_label: str, log_name: str = "build.log"
+) -> tuple:
     """Run one step of a multi-step build, appending to a cumulative log shared by later steps."""
     rc, out = _run(cmd, root)
     log_acc.append(f"=== {step_label} ===\n{out}")
@@ -232,7 +267,9 @@ def _run_logged_step(cmd, root: Path, log_acc: list, step_label: str, log_name: 
 def _xcode_target_ref(root: Path, system: str) -> tuple:
     """Return (xcodebuild flag, path) for the nearest workspace or project."""
     if system == "xcode-ws":
-        ws = next(f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj"))
+        ws = next(
+            f for f in root.glob("*.xcworkspace") if not f.name.endswith(".xcodeproj")
+        )
         return "-workspace", ws
     proj = next(root.glob("*.xcodeproj"))
     return "-project", proj
@@ -254,7 +291,12 @@ CRASH_PATTERNS = re.compile(
 _CRASH_KIND_RULES = [
     (re.compile(r"dyld\[\d+\]:|Library not loaded:|Symbol not found"), "dyld"),
     (re.compile(r"EXC_BAD_ACCESS|EXC_BAD_INSTRUCTION|SIGSEGV|SIGBUS"), "memory"),
-    (re.compile(r"SIGABRT|Crashed Thread:|Test Crashed:|Application launched but crashed"), "signal"),
+    (
+        re.compile(
+            r"SIGABRT|Crashed Thread:|Test Crashed:|Application launched but crashed"
+        ),
+        "signal",
+    ),
 ]
 
 
@@ -282,7 +324,7 @@ def _scan_for_crash(xcresult: Path) -> dict:
             continue
         lines = text.splitlines()
         idx = next((i for i, ln in enumerate(lines) if CRASH_PATTERNS.search(ln)), 0)
-        excerpt = "\n".join(lines[max(0, idx - 2): idx + 25])
+        excerpt = "\n".join(lines[max(0, idx - 2) : idx + 25])
         bid = re.match(r"StandardOutputAndStandardError-(.+)\.txt$", f.name)
         return {
             "kind": _classify_crash(excerpt),
@@ -308,7 +350,7 @@ def _clear_crash_info(root: Path, kind: str):
 
 def _format_crash_response(info: dict, kill_reason: str, kind: str) -> str:
     label = {
-        "dyld":   "App crashed at launch — missing framework or library",
+        "dyld": "App crashed at launch — missing framework or library",
         "memory": "App crashed — memory access violation",
         "signal": "App crashed — fatal signal",
     }.get(info["kind"], "App crashed")
@@ -327,17 +369,20 @@ def _format_crash_response(info: dict, kill_reason: str, kind: str) -> str:
         lines.append(f"  {ln}")
     lines += [
         "",
-        f"For full log + crash trace: get_log(kind=\"{kind}\")",
+        f'For full log + crash trace: get_log(kind="{kind}")',
     ]
     if kill_reason == "stall":
-        lines.append("(Detected via stall watchdog — no progress for 90s; process tree killed.)")
+        lines.append(
+            "(Detected via stall watchdog — no progress for 90s; process tree killed.)"
+        )
     return "\n".join(lines)
 
 
 class _ProcessOutputReader:
     """Reads a running process's stdout into shared state, tracking last-activity time."""
 
-    def __init__(self, proc, state: dict) -> None:
+    def __init__(self, proc, state: dict, logger: Logging) -> None:
+        self._logger = logger
         self._proc = proc
         self._state = state
 
@@ -346,14 +391,18 @@ class _ProcessOutputReader:
             for line in self._proc.stdout:
                 self._state["stdout"].append(line)
                 self._state["last_progress"] = time.monotonic()
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — Legacy Apple watchdog logs reader failures and preserves partial output.
+            self._logger.log(
+                f"Stopped reading Apple process output: pid={self._proc.pid}; {type(exc).__name__}: {exc}"
+            )
 
 
 class _CrashWatcher:
     """Polls the xcresult bundle for crash markers, signaling shared state on detection."""
 
-    def __init__(self, xcresult: Path, state: dict, stop: threading.Event, poll_interval: float) -> None:
+    def __init__(
+        self, xcresult: Path, state: dict, stop: threading.Event, poll_interval: float
+    ) -> None:
         self._xcresult = xcresult
         self._state = state
         self._stop = stop
@@ -387,9 +436,14 @@ class _StallWatcher:
                 return
 
 
-def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
-                       hard_timeout: int = 900, stall_timeout: int = 90,
-                       crash_poll: float = 2.0) -> tuple:
+def _run_with_watchdog(
+    cmd,
+    cwd: Path,
+    xcresult: Path,
+    hard_timeout: int = 900,
+    stall_timeout: int = 90,
+    crash_poll: float = 2.0,
+) -> tuple:
     """Run subprocess with three-tier watchdog. Returns (rc, stdout, crash_info, kill_reason).
 
     Tier 1 — Crash watcher: poll xcresult/Staging every `crash_poll` seconds for
@@ -400,9 +454,12 @@ def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
     Process is started in its own session so we can SIGTERM/SIGKILL the whole tree.
     """
     proc = subprocess.Popen(
-        cmd, cwd=str(cwd),
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, bufsize=1,
+        cmd,
+        cwd=str(cwd),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
         start_new_session=True,
     )
 
@@ -414,7 +471,7 @@ def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
     }
     stop = threading.Event()
 
-    reader = _ProcessOutputReader(proc, state)
+    reader = _ProcessOutputReader(proc, state, logger=_logger)
     crash_watcher = _CrashWatcher(xcresult, state, stop, crash_poll)
     stall_watcher = _StallWatcher(state, stop, stall_timeout)
 
@@ -469,7 +526,12 @@ def _run_with_watchdog(cmd, cwd: Path, xcresult: Path,
     elif state["crash"]:
         state["crash"] = _scan_for_crash(xcresult) or state["crash"]
 
-    return proc.returncode, "".join(state["stdout"]), state["crash"], state["kill_reason"]
+    return (
+        proc.returncode,
+        "".join(state["stdout"]),
+        state["crash"],
+        state["kill_reason"],
+    )
 
 
 def _run_tuist_build(root: Path, target: str, configuration: str) -> str:
@@ -483,13 +545,27 @@ def _run_tuist_build(root: Path, target: str, configuration: str) -> str:
         if rc != 0:
             return _summary(rc, out, label)
 
-    rc, out = _run_logged_step(["tuist", "build", target, "--configuration", configuration], root, log, "tuist build")
+    rc, out = _run_logged_step(
+        ["tuist", "build", target, "--configuration", configuration],
+        root,
+        log,
+        "tuist build",
+    )
     return _summary(rc, out, "build")
 
 
 def _run_xcode_build(root: Path, target: str, configuration: str, system: str) -> str:
     flag, ref = _xcode_target_ref(root, system)
-    cmd = ["xcodebuild", flag, str(ref), "-scheme", target, "-configuration", configuration, "build"]
+    cmd = [
+        "xcodebuild",
+        flag,
+        str(ref),
+        "-scheme",
+        target,
+        "-configuration",
+        configuration,
+        "build",
+    ]
     return _run_and_summarize(cmd, root)
 
 
@@ -500,12 +576,19 @@ def _run_swift_build(root: Path, target: str, configuration: str) -> str:
 
 def _xcresulttool_test_results(xcresult: Path) -> dict:
     """Call xcresulttool with the new test-results API."""
-    cmd = ["xcrun", "xcresulttool", "get", "test-results", "tests",
-           "--path", str(xcresult)]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    cmd = [
+        "xcrun",
+        "xcresulttool",
+        "get",
+        "test-results",
+        "tests",
+        "--path",
+        str(xcresult),
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True, check=False)
     try:
         return json.loads(r.stdout) if r.returncode == 0 else {}
-    except Exception:
+    except Exception:  # noqa: BLE001 — Legacy xcresult JSON decoding falls back to an empty result.
         return {}
 
 
@@ -546,8 +629,15 @@ def _count_failed(output: str) -> int:
     return len(re.findall(r"Test Case .+ failed", output))
 
 
-def _finalize_test_result(root: Path, kind: str, rc: int, out: str, crash: dict,
-                          kill_reason: str, xcresult: Path) -> str:
+def _finalize_test_result(
+    root: Path,
+    kind: str,
+    rc: int,
+    out: str,
+    crash: dict,
+    kill_reason: str,
+    xcresult: Path,
+) -> str:
     """Shared post-processing after a watchdog-guarded test run.
 
     Handles crash/stall/timeout reporting, then pass/fail counting and failure detail,
@@ -558,11 +648,15 @@ def _finalize_test_result(root: Path, kind: str, rc: int, out: str, crash: dict,
         return _format_crash_response(crash, kill_reason, kind)
 
     if kill_reason == "stall":
-        return (f"** TESTS FAILED ** — Run stalled (no progress for 90s, process tree killed). "
-                f"No crash trace found in xcresult. See: get_log(kind=\"{kind}\")")
+        return (
+            f"** TESTS FAILED ** — Run stalled (no progress for 90s, process tree killed). "
+            f'No crash trace found in xcresult. See: get_log(kind="{kind}")'
+        )
     if kill_reason == "hard_timeout":
-        return (f"** TESTS FAILED ** — Hard timeout after 900s, process tree killed. "
-                f"See: get_log(kind=\"{kind}\")")
+        return (
+            f"** TESTS FAILED ** — Hard timeout after 900s, process tree killed. "
+            f'See: get_log(kind="{kind}")'
+        )
 
     # Count from xcresult (accurate for both XCTest and swift-testing)
     if xcresult.exists():
@@ -581,13 +675,21 @@ def _finalize_test_result(root: Path, kind: str, rc: int, out: str, crash: dict,
     return f"{status}\n{signals}" if signals else status
 
 
-def _run_tuist_test(root: Path, target: str, test_targets: list,
-                    skip_ui: bool, skip_unit: bool, only_testing: list) -> str:
+def _run_tuist_test(
+    root: Path,
+    target: str,
+    test_targets: list,
+    skip_ui: bool,
+    skip_unit: bool,
+    only_testing: list,
+) -> str:
     # Mirror tq log naming: skip-unit-tests → ui-test.log, everything else → test.log
     kind = "ui-test" if skip_unit else "test"
     log = []
 
-    rc, out = _run_logged_step(["tuist", "generate", "--no-open"], root, log, "tuist generate")
+    rc, out = _run_logged_step(
+        ["tuist", "generate", "--no-open"], root, log, "tuist generate"
+    )
     if rc != 0:
         return _summary(rc, out, "tuist generate")
 
@@ -621,7 +723,16 @@ def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) ->
     _clear_crash_info(root, kind)
 
     flag, ref = _xcode_target_ref(root, system)
-    cmd = ["xcodebuild", "test", flag, str(ref), "-scheme", target, "-resultBundlePath", str(xcresult)]
+    cmd = [
+        "xcodebuild",
+        "test",
+        flag,
+        str(ref),
+        "-scheme",
+        target,
+        "-resultBundlePath",
+        str(xcresult),
+    ]
     for t in only_testing:
         cmd += ["-only-testing", t]
 
@@ -633,16 +744,26 @@ def _run_xcode_test(root: Path, target: str, system: str, only_testing: list) ->
 
 # ─── xcresult querying ────────────────────────────────────────────────────────
 
+
 def _xcresult_activities(xcresult: Path, test_id: str) -> str:
     """Fetch and render activity timeline for one test case (UI tests).
     Mirrors tq-extract-activities.py logic.
     """
-    cmd = ["xcrun", "xcresulttool", "get", "test-results", "activities",
-           "--path", str(xcresult), "--test-id", test_id]
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    cmd = [
+        "xcrun",
+        "xcresulttool",
+        "get",
+        "test-results",
+        "activities",
+        "--path",
+        str(xcresult),
+        "--test-id",
+        test_id,
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True, check=False)
     try:
         data = json.loads(r.stdout) if r.returncode == 0 else {}
-    except Exception:
+    except Exception:  # noqa: BLE001 — Legacy xcresult activity decoding falls back to empty text.
         return ""
 
     def iter_all(activities):
@@ -654,25 +775,33 @@ def _xcresult_activities(xcresult: Path, test_id: str) -> str:
     if not runs:
         return ""
 
-    times = [a["startTime"] for run in runs
-             for a in iter_all(run.get("activities", []))
-             if isinstance(a.get("startTime"), (int, float))]
+    times = [
+        a["startTime"]
+        for run in runs
+        for a in iter_all(run.get("activities", []))
+        if isinstance(a.get("startTime"), (int, float))
+    ]
     origin = min(times) if times else 0.0
 
     def is_noise(a):
         title = a.get("title", "")
-        return title.startswith("kXCT") or (a.get("startTime") is None and title.endswith("()"))
+        return title.startswith("kXCT") or (
+            a.get("startTime") is None and title.endswith("()")
+        )
 
     def render(a, depth):
-        if is_noise(a): return []
+        if is_noise(a):
+            return []
         marker = "✖" if a.get("isAssociatedWithFailure") else "•"
         start = a.get("startTime")
-        stamp = f"T+{start - origin:7.3f}s" if isinstance(start, (int, float)) else " " * 11
+        stamp = (
+            f"T+{start - origin:7.3f}s" if isinstance(start, (int, float)) else " " * 11
+        )
         lines = [f"{'  ' * depth}{marker} [{stamp}] {a.get('title', '')}"]
         children = [c for c in a.get("childActivities", []) if not is_noise(c)]
         if not children:
             for att in a.get("attachments", []):
-                lines.append(f"{'  ' * (depth+1)}↳ {att.get('name') or '(unnamed)'}")
+                lines.append(f"{'  ' * (depth + 1)}↳ {att.get('name') or '(unnamed)'}")
         for child in children:
             lines.extend(render(child, depth + 1))
         return lines
@@ -684,7 +813,7 @@ def _xcresult_activities(xcresult: Path, test_id: str) -> str:
     return "\n".join(out)
 
 
-def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
+def _xcresult_failures(xcresult: Path, max_failures: int | None = None) -> str:
     """Extract failures with their activity timeline (when present).
 
     Activities are included whenever xcresulttool returns them — typically rich for
@@ -693,7 +822,9 @@ def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
     If max_failures is set and exceeded, truncates and appends a hint to get_test_failures.
     """
     data = _xcresulttool_test_results(xcresult)
-    failed = [c for c in _iter_cases(data.get("testNodes", [])) if c.get("result") == "Failed"]
+    failed = [
+        c for c in _iter_cases(data.get("testNodes", [])) if c.get("result") == "Failed"
+    ]
     if not failed:
         return "(no failures)"
 
@@ -710,12 +841,15 @@ def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
             if activities:
                 lines.append(activities)
     if max_failures is not None and len(failed) > max_failures:
-        lines.append(f"  … {len(failed) - max_failures} more failure(s). "
-                     f"Call get_test_failures for the full list.")
+        lines.append(
+            f"  … {len(failed) - max_failures} more failure(s). "
+            f"Call get_test_failures for the full list."
+        )
     return "\n".join(lines)
 
 
 # ─── MCP tools ────────────────────────────────────────────────────────────────
+
 
 @server.tool(
     name="build",
@@ -729,9 +863,19 @@ def _xcresult_failures(xcresult: Path, max_failures: int = None) -> str:
         "type": "object",
         "required": ["target"],
         "properties": {
-            "target": {"type": "string", "description": "Scheme or target name to build."},
-            "project_path": {"type": "string", "description": "Path inside the project. Defaults to CLAUDE_PROJECT_DIR."},
-            "configuration": {"type": "string", "enum": ["Debug", "Release"], "description": "Default: Debug."},
+            "target": {
+                "type": "string",
+                "description": "Scheme or target name to build.",
+            },
+            "project_path": {
+                "type": "string",
+                "description": "Path inside the project. Defaults to CLAUDE_PROJECT_DIR.",
+            },
+            "configuration": {
+                "type": "string",
+                "enum": ["Debug", "Release"],
+                "description": "Default: Debug.",
+            },
         },
     },
 )
@@ -767,7 +911,11 @@ def build(target: str, project_path=None, configuration: str = "Debug") -> str:
         "properties": {
             "target": {"type": "string", "description": "Scheme or target name."},
             "project_path": {"type": "string"},
-            "test_targets": {"type": "array", "items": {"type": "string"}, "description": "Filter to specific test targets (Tuist only)."},
+            "test_targets": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Filter to specific test targets (Tuist only).",
+            },
             "only_testing": {
                 "type": "array",
                 "items": {"type": "string"},
@@ -777,20 +925,37 @@ def build(target: str, project_path=None, configuration: str = "Debug") -> str:
                     "Example: ['MyUITests/LoginTests/testLoginSuccess']"
                 ),
             },
-            "skip_ui_tests": {"type": "boolean", "description": "Skip UI tests, run unit tests only → test.log. Default: false."},
-            "skip_unit_tests": {"type": "boolean", "description": "Skip unit tests, run UI tests only → ui-test.log. Default: false."},
+            "skip_ui_tests": {
+                "type": "boolean",
+                "description": "Skip UI tests, run unit tests only → test.log. Default: false.",
+            },
+            "skip_unit_tests": {
+                "type": "boolean",
+                "description": "Skip unit tests, run UI tests only → ui-test.log. Default: false.",
+            },
         },
     },
 )
-def test(target: str, project_path=None, test_targets=None, only_testing=None,
-         skip_ui_tests: bool = False, skip_unit_tests: bool = False) -> str:
+def test(
+    target: str,
+    project_path=None,
+    test_targets=None,
+    only_testing=None,
+    skip_ui_tests: bool = False,
+    skip_unit_tests: bool = False,
+) -> str:
     root = _root(project_path)
     system, root = _detect(root)
     only = only_testing or []
     runners = {
-        "tuist": lambda: _run_tuist_test(root, target, test_targets or [],
-                                         skip_ui=skip_ui_tests, skip_unit=skip_unit_tests,
-                                         only_testing=only),
+        "tuist": lambda: _run_tuist_test(
+            root,
+            target,
+            test_targets or [],
+            skip_ui=skip_ui_tests,
+            skip_unit=skip_unit_tests,
+            only_testing=only,
+        ),
         "xcode-ws": lambda: _run_xcode_test(root, target, system, only_testing=only),
         "xcode-proj": lambda: _run_xcode_test(root, target, system, only_testing=only),
     }
@@ -817,7 +982,7 @@ def test(target: str, project_path=None, test_targets=None, only_testing=None,
 def lint(project_path=None) -> str:
     root = _root(project_path)
     _, root = _detect(root)
-    return _run_lint(root)
+    return _run_lint(root, logger=_logger)
 
 
 @server.tool(
@@ -826,13 +991,17 @@ def lint(project_path=None) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "kind": {"type": "string", "enum": ["build", "test", "ui-test", "lint"], "description": "Default: build."},
+            "kind": {
+                "type": "string",
+                "enum": ["build", "test", "ui-test", "lint"],
+                "description": "Default: build.",
+            },
             "project_path": {"type": "string"},
             "tail": {"type": "integer", "description": "Return only the last N lines."},
         },
     },
 )
-def get_log(kind: str = "build", project_path=None, tail: int = None) -> str:
+def get_log(kind: str = "build", project_path=None, tail: int | None = None) -> str:
     root = _root(project_path)
     _, root = _detect(root)
     log = _log_dir(root) / f"{kind}.log"
@@ -871,7 +1040,11 @@ def get_log(kind: str = "build", project_path=None, tail: int = None) -> str:
     input_schema={
         "type": "object",
         "properties": {
-            "kind": {"type": "string", "enum": ["test", "ui-test"], "description": "Default: test."},
+            "kind": {
+                "type": "string",
+                "enum": ["test", "ui-test"],
+                "description": "Default: test.",
+            },
             "project_path": {"type": "string"},
         },
     },

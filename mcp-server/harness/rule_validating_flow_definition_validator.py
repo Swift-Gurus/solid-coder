@@ -4,13 +4,14 @@ from harness.flow_def import FlowDef
 from harness.flow_definition_validating import FlowDefinitionValidating
 from harness.rule_workflow_validating import RuleWorkflowValidating
 
-
 """
 solid-name: RuleValidatingFlowDefinitionValidator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Decorates workflow validation with rule-structure checks while preserving existing lifecycle validation.
 """
+
+
 class RuleValidatingFlowDefinitionValidator(FlowDefinitionValidating):
     def __init__(
         self,

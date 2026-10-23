@@ -5,13 +5,14 @@ from harness.co_located_metric_dependency_resolving import (
 )
 from harness.co_located_metric_identity import CoLocatedMetricIdentity
 
-
 """
 solid-name: CoLocatedMetricDependencyResolver
 solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Selects the qualified compact metric identity owned by a step's root or included-workflow scope.
 """
+
+
 class CoLocatedMetricDependencyResolver(CoLocatedMetricDependencyResolving):
     def resolve(
         self,

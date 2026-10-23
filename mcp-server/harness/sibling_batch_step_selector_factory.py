@@ -18,13 +18,14 @@ from harness.ordinary_batch_step_group_validator import (
 )
 from harness.sibling_batch_step_selector import SiblingBatchStepSelector
 
-
 """
 solid-name: SiblingBatchStepSelectorFactory
 solid-category: factory
 solid-spec: [SPEC-042, SPEC-043]
 solid-description: Assembles sibling batch selection with validators for every supported presentation mode.
 """
+
+
 class SiblingBatchStepSelectorFactory:
     def make(self) -> SiblingBatchStepSelector:
         return SiblingBatchStepSelector(

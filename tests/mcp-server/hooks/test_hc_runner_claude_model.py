@@ -7,9 +7,13 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_checker import ClaudeRunner  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from hc_checker import ClaudeRunner
 
 
 class TestClaudeRunnerModel(unittest.TestCase):
@@ -20,7 +24,9 @@ class TestClaudeRunnerModel(unittest.TestCase):
             captured.update(kwargs)
             return "ok"
 
-        runner = ClaudeRunner(mcp_config="cfg", allowed_tools="tools", model=model, fn=fake_run_bare)
+        runner = ClaudeRunner(
+            mcp_config="cfg", allowed_tools="tools", model=model, fn=fake_run_bare
+        )
         runner.run("prompt", timeout=30)
         return captured
 
@@ -41,7 +47,9 @@ class TestClaudeRunnerCwd(unittest.TestCase):
             captured.update(kwargs)
             return "ok"
 
-        runner = ClaudeRunner(mcp_config="cfg", allowed_tools="tools", fn=fake_run_bare, cwd=cwd)
+        runner = ClaudeRunner(
+            mcp_config="cfg", allowed_tools="tools", fn=fake_run_bare, cwd=cwd
+        )
         runner.run("prompt", timeout=30)
         return captured
 

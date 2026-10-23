@@ -6,13 +6,14 @@ from harness.all_condition import AllCondition
 from harness.condition_conjoining import ConditionConjoining
 from harness.condition_declaration import ConditionDeclaration
 
-
 """
 solid-name: ConditionConjoiner
 solid-category: service
 solid-spec: [SPEC-037, SPEC-039]
 solid-description: Preserves zero or one condition and joins multiple conditions with logical all.
 """
+
+
 class ConditionConjoiner(ConditionConjoining):
     def conjoin(
         self,

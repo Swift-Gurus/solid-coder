@@ -3,13 +3,14 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 """
 solid-name: ScriptFileExecution
 solid-category: model
 solid-spec: [SPEC-035]
 solid-description: Represents a resolved workflow script execution request.
 """
+
+
 @dataclass(frozen=True)
 class ScriptFileExecution:
     executor: str

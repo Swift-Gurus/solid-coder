@@ -4,8 +4,6 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Optional
-
 
 class DictExtensionLookup:
     """Boundary adapter: wraps a plain {ext: language} dict for ExtensionLookup conformance."""
@@ -13,5 +11,5 @@ class DictExtensionLookup:
     def __init__(self, mapping: dict) -> None:
         self._mapping = mapping
 
-    def language_for(self, ext: str) -> Optional[str]:
+    def language_for(self, ext: str) -> str | None:
         return self._mapping.get(ext)

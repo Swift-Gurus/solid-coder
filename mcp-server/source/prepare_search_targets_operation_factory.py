@@ -7,13 +7,14 @@ from source.source_search_targets_builder_factory import (
     SourceSearchTargetsBuilderFactory,
 )
 
-
 """
 solid-name: PrepareSearchTargetsOperationFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Provides immutable source resolution, analysis, and typed search-target preparation as one operation.
 """
+
+
 class PrepareSearchTargetsOperationFactory:
     def make(self) -> PrepareSearchTargetsOperation:
         return PrepareSearchTargetsOperation(

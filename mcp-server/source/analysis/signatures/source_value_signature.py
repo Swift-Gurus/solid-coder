@@ -4,13 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SourceValueSignature
 solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Records a property's declared type, available accessor syntax, and modifiers without inferring its implementation behavior.
 """
+
+
 class SourceValueSignature(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

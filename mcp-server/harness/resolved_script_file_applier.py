@@ -5,15 +5,15 @@ from harness.resolved_step_resources_applying import ResolvedStepResourcesApplyi
 from harness.resolved_step_resources_creating import ResolvedStepResourcesCreating
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: ResolvedScriptFileApplier
 solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Applies a resolved script path to a workflow-step declaration.
 """
-class ResolvedScriptFileApplier(ResolvedScriptFileApplying):
 
+
+class ResolvedScriptFileApplier(ResolvedScriptFileApplying):
     def __init__(
         self,
         resources_factory: ResolvedStepResourcesCreating,

@@ -4,7 +4,7 @@ solid-category: utility
 solid-tags: [hook, llm]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from llama.session_observer import LLMSessionObserving
 
@@ -14,5 +14,5 @@ class ToolCallOrchestrating(Protocol):
         self,
         tool_calls: list,
         messages: list,
-        observer: Optional[LLMSessionObserving],
+        observer: LLMSessionObserving | None,
     ) -> None: ...

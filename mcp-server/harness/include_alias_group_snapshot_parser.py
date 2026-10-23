@@ -7,15 +7,15 @@ from harness.include_alias_group_snapshot_parsing import (
     IncludeAliasGroupSnapshotParsing,
 )
 
-
 """
 solid-name: IncludeAliasGroupSnapshotParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Restores validated include-group collections from workflow snapshots.
 """
-class IncludeAliasGroupSnapshotParser(IncludeAliasGroupSnapshotParsing):
 
+
+class IncludeAliasGroupSnapshotParser(IncludeAliasGroupSnapshotParsing):
     def __init__(self, group_parser: IncludeAliasGroupEntryParsing) -> None:
         self._group_parser = group_parser
 

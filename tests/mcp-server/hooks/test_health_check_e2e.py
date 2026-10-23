@@ -13,11 +13,14 @@ from unittest.mock import MagicMock, patch
 
 from _path_bootstrap import ensure_on_path
 
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
-from claude_runner_strategy import ClaudeRunnerStrategy  # noqa: E402
-from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
-from hc_checker_factory import LegacyHealthCheckerFactory  # noqa: E402
+from claude_runner_strategy import ClaudeRunnerStrategy
+from code_health_check_request import CodeHealthCheckRequest
+from hc_checker_factory import LegacyHealthCheckerFactory
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -54,6 +57,7 @@ _MCP_CONFIG = '{"mcpServers": {}}'
 # ---------------------------------------------------------------------------
 # Subprocess router
 # ---------------------------------------------------------------------------
+
 
 def _make_subprocess_side_effect(
     solid_dir: Path,
@@ -107,10 +111,14 @@ def _make_subprocess_side_effect(
             d = out_dir / principle
             d.mkdir(parents=True, exist_ok=True)
             (d / "review-output.json").write_text(
-                json.dumps({
-                    "timestamp": "2026-01-01T00:00:00Z",
-                    "files": [{"file_path": hook_input["file_path"], "units": units}],
-                }),
+                json.dumps(
+                    {
+                        "timestamp": "2026-01-01T00:00:00Z",
+                        "files": [
+                            {"file_path": hook_input["file_path"], "units": units}
+                        ],
+                    }
+                ),
                 encoding="utf-8",
             )
 
@@ -127,6 +135,7 @@ def _make_subprocess_side_effect(
 # Base test infrastructure
 # ---------------------------------------------------------------------------
 
+
 class _E2EBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -140,17 +149,23 @@ class _E2EBase(unittest.TestCase):
     def _run_checks(
         self,
         findings_sequence: list,
-        health_dirs: list = None,
+        health_dirs: list | None = None,
         file_path: str = "/src/Foo.swift",
         session_id: str = "test-session",
     ) -> list:
         if health_dirs is None:
-            health_dirs = [self._health_dir(f"health-run-{i}") for i in range(len(findings_sequence))]
+            health_dirs = [
+                self._health_dir(f"health-run-{i}")
+                for i in range(len(findings_sequence))
+            ]
 
-        side_effect = _make_subprocess_side_effect(self.solid_dir, health_dirs, findings_sequence)
+        side_effect = _make_subprocess_side_effect(
+            self.solid_dir, health_dirs, findings_sequence
+        )
 
         from llm_config import LlmConfig
         from solid_coder_config import SolidCoderConfig
+
         stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude", debug=True))
 
         results = []
@@ -178,13 +193,16 @@ class _E2EBase(unittest.TestCase):
                 mcp_config=_MCP_CONFIG,
             ).make(request)
             for _ in findings_sequence:
-                results.append(checker.check(_SWIFT_CONTENT, file_path, "Swift", session_id))
+                results.append(
+                    checker.check(_SWIFT_CONTENT, file_path, "Swift", session_id)
+                )
         return results
 
 
 # ---------------------------------------------------------------------------
 # Violation flow tests
 # ---------------------------------------------------------------------------
+
 
 class TestViolationFlow(_E2EBase):
     """Violations written by the fake LLM flow through the full pipeline."""
@@ -205,6 +223,7 @@ class TestViolationFlow(_E2EBase):
 # Context writer tests
 # ---------------------------------------------------------------------------
 
+
 class TestContextWriter(_E2EBase):
     """HealthCheckContextWriter writes hook-input.json and clears the pointer after check."""
 
@@ -221,7 +240,10 @@ class TestContextWriter(_E2EBase):
         h = self._health_dir("health-run-0")
         self._run_checks([{"srp": [_SRP_CLEAN]}], health_dirs=[h])
         pointer = self.solid_dir / "active-health-check"
-        self.assertFalse(pointer.exists(), "active-health-check must be deleted after check() returns")
+        self.assertFalse(
+            pointer.exists(),
+            "active-health-check must be deleted after check() returns",
+        )
 
     def test_pointer_cleared_after_each_of_two_runs(self):
         h1 = self._health_dir("health-run-0")
@@ -231,12 +253,16 @@ class TestContextWriter(_E2EBase):
             health_dirs=[h1, h2],
         )
         pointer = self.solid_dir / "active-health-check"
-        self.assertFalse(pointer.exists(), "active-health-check must be absent after last check() returns")
+        self.assertFalse(
+            pointer.exists(),
+            "active-health-check must be absent after last check() returns",
+        )
 
 
 # ---------------------------------------------------------------------------
 # Isolation tests
 # ---------------------------------------------------------------------------
+
 
 class TestInvocationIsolation(_E2EBase):
     """Each check() invocation uses its own health dir; stale files cannot bleed."""
@@ -270,15 +296,22 @@ class TestInvocationIsolation(_E2EBase):
         self.assertEqual(len(results[1]), 0, "Run2 must not inherit run1's violations")
 
         stale_files = list(h1.glob("*/review-output.json"))
-        self.assertTrue(stale_files, "Run1 findings should still be on disk (debug=True)")
+        self.assertTrue(
+            stale_files, "Run1 findings should still be on disk (debug=True)"
+        )
 
         for f in h2.glob("*/review-output.json"):
             doc = json.loads(f.read_text(encoding="utf-8"))
             for file_obj in doc.get("files", []):
                 for unit in file_obj.get("units", []):
-                    severe = [v for v in unit.get("violations", []) if v.get("severity") == "SEVERE"]
+                    severe = [
+                        v
+                        for v in unit.get("violations", [])
+                        if v.get("severity") == "SEVERE"
+                    ]
                     self.assertEqual(
-                        severe, [],
+                        severe,
+                        [],
                         f"Run2 dir contains stale SEVERE violations in {f}",
                     )
 

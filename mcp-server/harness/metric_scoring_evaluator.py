@@ -6,13 +6,14 @@ from harness.metric_scoring_band import MetricComparisonValue
 from harness.metric_scoring_declaration import MetricScoringDeclaration
 from harness.metric_scoring_evaluating import MetricScoringEvaluating
 
-
 """
 solid-name: MetricScoringEvaluator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Selects deterministic review severity from declared metric bands.
 """
+
+
 class MetricScoringEvaluator(MetricScoringEvaluating):
     def __init__(self, band_matcher: MetricBandMatcher) -> None:
         self._band_matcher = band_matcher

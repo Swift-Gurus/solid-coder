@@ -4,7 +4,7 @@ solid-category: service
 solid-description: Processes JSON-RPC method requests and returns properly formatted responses.
 """
 
-from typing import Any, Optional
+from typing import Any
 
 from json_rpc_response_building import JsonRpcResponseBuilding
 from no_arg_rpc_handling import NoArgRpcHandling
@@ -16,7 +16,6 @@ _UNKNOWN_TOOL_CODE = -32601
 
 
 class RpcDispatcher(RpcDispatching):
-
     def __init__(
         self,
         initialize_handler: NoArgRpcHandling,
@@ -29,7 +28,7 @@ class RpcDispatcher(RpcDispatching):
         self._tools_call_handler = tools_call_handler
         self._response_builder = response_builder
 
-    def dispatch(self, method: str, id: Any, params: dict) -> Optional[dict]:
+    def dispatch(self, method: str, id: Any, params: dict) -> dict | None:
         if id is None:
             return None
         if method == "initialize":
@@ -38,12 +37,18 @@ class RpcDispatcher(RpcDispatching):
             return self._response_builder.success(id, self._tools_list_handler.handle())
         if method == "tools/call":
             return self._dispatch_tool_call(id, params)
-        return self._response_builder.error(id, _UNKNOWN_METHOD_CODE, f"Unknown method: {method}")
+        return self._response_builder.error(
+            id, _UNKNOWN_METHOD_CODE, f"Unknown method: {method}"
+        )
 
     def _dispatch_tool_call(self, id: Any, params: dict) -> dict:
         name = params.get("name", "")
         try:
-            result = self._tools_call_handler.handle(name, params.get("arguments", {}), params.get("_meta"))
+            result = self._tools_call_handler.handle(
+                name, params.get("arguments", {}), params.get("_meta")
+            )
         except LookupError:
-            return self._response_builder.error(id, _UNKNOWN_TOOL_CODE, f"Unknown tool: {name}")
+            return self._response_builder.error(
+                id, _UNKNOWN_TOOL_CODE, f"Unknown tool: {name}"
+            )
         return self._response_builder.success(id, result)

@@ -7,15 +7,15 @@ from harness.step_instance_output_aggregating import StepInstanceOutputAggregati
 from harness.step_outputs_building import StepOutputsBuilding
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: StepCompletedTransition
 solid-category: service
 solid-spec: [SPEC-030]
 solid-description: Records validated step outputs and removes the completed step from active execution.
 """
-class StepCompletedTransition:
 
+
+class StepCompletedTransition:
     def __init__(
         self,
         event_decoder: StructuredModelDecoding[StepCompletedEvent],

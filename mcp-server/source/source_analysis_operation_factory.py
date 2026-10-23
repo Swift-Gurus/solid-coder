@@ -4,13 +4,14 @@ from source.analysis_source_resolver_factory import AnalysisSourceResolverFactor
 from source.resolved_source_analyzer_factory import ResolvedSourceAnalyzerFactory
 from source.source_analysis_operation import SourceAnalysisOperation
 
-
 """
 solid-name: SourceAnalysisOperationFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Composes deterministic file and text source-analysis capabilities.
 """
+
+
 class SourceAnalysisOperationFactory:
     def make(self) -> SourceAnalysisOperation:
         return SourceAnalysisOperation(

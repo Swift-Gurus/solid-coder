@@ -12,12 +12,13 @@ from findings.principle_coverage_scope_input_parsing import (
     PrincipleCoverageScopeInputParsing,
 )
 
-
 """
 solid-name: MappingPrincipleCoverageScopeInputParser
 solid-category: boundary-adapter
 solid-description: Validates mapping-based principle applicability configuration into explicit coverage scope inputs.
 """
+
+
 class MappingPrincipleCoverageScopeInputParser(PrincipleCoverageScopeInputParsing):
     def __init__(self, input_factory: PrincipleCoverageScopeInputCreating) -> None:
         self._input_factory = input_factory

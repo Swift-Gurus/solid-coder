@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """SubagentStop hook — blocks code-agent from finishing if it wrote tests but never ran them.
 
 Only fires when the agent actually wrote test files this session. If the agent
@@ -10,8 +9,6 @@ Errors and cancellations always pass through.
 
 import json
 import sys
-from pathlib import Path
-
 
 _REMINDER = (
     "Phase 5 (Build & Test) was not completed. "
@@ -70,11 +67,18 @@ def _unit_test_files_written(written_paths: list) -> bool:
     for path in written_paths:
         lower = path.lower()
         # Matches FooTests.swift, FooSpec.swift, tests/Foo.swift, etc.
-        if (lower.endswith("tests.swift") or lower.endswith("spec.swift")
-                or "/tests/" in lower or "/test/" in lower):
-            # Exclude UITest files — those are handled separately
-            if "uitest" not in lower and "ui_test" not in lower and "ui-test" not in lower:
-                return True
+        # Exclude UITest files — those are handled separately
+        if (
+            (
+                lower.endswith(("tests.swift", "spec.swift"))
+                or "/tests/" in lower
+                or "/test/" in lower
+            )
+            and "uitest" not in lower
+            and "ui_test" not in lower
+            and ("ui-test" not in lower)
+        ):
+            return True
     return False
 
 
@@ -87,8 +91,9 @@ def _ui_test_files_written(written_paths: list) -> bool:
     return False
 
 
-def _unit_test_was_run(tool_names: set, bash_commands: list,
-                       mcp_test_calls: list) -> bool:
+def _unit_test_was_run(
+    tool_names: set, bash_commands: list, mcp_test_calls: list
+) -> bool:
     """Return True if unit tests were run."""
     for call in mcp_test_calls:
         if not call.get("skip_unit_tests", False):
@@ -113,9 +118,13 @@ def _ui_test_was_run(mcp_test_calls: list, bash_commands: list) -> bool:
             return True
     for cmd in bash_commands:
         lower = cmd.lower()
-        if "xcodebuild" in lower and " test" in lower:
-            if "--skip-ui-tests" not in lower and "-skipuitests" not in lower:
-                return True
+        if (
+            "xcodebuild" in lower
+            and " test" in lower
+            and "--skip-ui-tests" not in lower
+            and "-skipuitests" not in lower
+        ):
+            return True
     return False
 
 
@@ -144,9 +153,9 @@ def main() -> None:
         sys.exit(0)
 
     needs_block = (
-        (wrote_unit_tests and not _unit_test_was_run(tool_names, bash_commands, mcp_test_calls))
-        or (wrote_ui_tests and not _ui_test_was_run(mcp_test_calls, bash_commands))
-    )
+        wrote_unit_tests
+        and not _unit_test_was_run(tool_names, bash_commands, mcp_test_calls)
+    ) or (wrote_ui_tests and not _ui_test_was_run(mcp_test_calls, bash_commands))
 
     if needs_block:
         sys.stdout.write(json.dumps({"decision": "block", "reason": _REMINDER}))

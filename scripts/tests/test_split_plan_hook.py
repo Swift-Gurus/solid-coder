@@ -10,6 +10,7 @@ Contract:
   - Silent (exit 0) for non-matching files, non-Write/Edit events, malformed JSON
   - Exits 1 with JSON error if split-plan.py fails
 """
+
 import json
 import os
 import subprocess
@@ -33,7 +34,10 @@ def run_hook(tool_name, file_path, env_root=None):
     return subprocess.run(
         [sys.executable, str(HOOK)],
         input=json.dumps(event),
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
 
 
@@ -54,8 +58,16 @@ def write_arch(path, *components):
     arch = {
         "spec_summary": "test",
         "components": [
-            {"name": n, "category": c, "stack": [], "responsibility": "",
-             "interfaces": [], "dependencies": [], "produces": [], "fields": []}
+            {
+                "name": n,
+                "category": c,
+                "stack": [],
+                "responsibility": "",
+                "interfaces": [],
+                "dependencies": [],
+                "produces": [],
+                "fields": [],
+            }
             for n, c in components
         ],
         "wiring": [],
@@ -66,9 +78,13 @@ def write_arch(path, *components):
 
 def make_item(id_, component="SomeService", depends_on=None, test_cases=None):
     item = {
-        "id": id_, "action": "create", "component": component,
-        "directive": f"implement {id_}", "depends_on": depends_on or [],
-        "notes": "", "acceptance_criteria": [],
+        "id": id_,
+        "action": "create",
+        "component": component,
+        "directive": f"implement {id_}",
+        "depends_on": depends_on or [],
+        "notes": "",
+        "acceptance_criteria": [],
     }
     if test_cases is not None:
         item["test_cases"] = test_cases
@@ -90,10 +106,13 @@ class TestSplitOnWrite(unittest.TestCase):
     def test_dependent_items_split_into_separate_chunks(self):
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = Path(tmp) / "implementation-plan.json"
-            write_plan(plan_path, [
-                make_item("plan-001"),
-                make_item("plan-002", depends_on=["plan-001"]),
-            ])
+            write_plan(
+                plan_path,
+                [
+                    make_item("plan-001"),
+                    make_item("plan-002", depends_on=["plan-001"]),
+                ],
+            )
             r = run_hook("Write", plan_path)
             self.assertEqual(r.returncode, 0, r.stderr)
             chunks = sorted((Path(tmp) / "implementation-plan").glob("*.json"))
@@ -117,7 +136,9 @@ class TestSplitOnWrite(unittest.TestCase):
             write_plan(plan_path, [make_item("plan-001")])
             run_hook("Write", plan_path)
             chunk = json.loads(
-                (Path(tmp) / "implementation-plan" / "01-implementations.json").read_text()
+                (
+                    Path(tmp) / "implementation-plan" / "01-implementations.json"
+                ).read_text()
             )
             self.assertIn("matched_tags", chunk)
 
@@ -135,8 +156,16 @@ class TestSplitOnWrite(unittest.TestCase):
     def test_with_arch_unit_test_goes_to_tests(self):
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = Path(tmp) / "implementation-plan.json"
-            tc = {"type": "unit", "description": "t", "given": "g", "when": "w", "expect": "e"}
-            write_plan(plan_path, [make_item("plan-001", component="Tests", test_cases=[tc])])
+            tc = {
+                "type": "unit",
+                "description": "t",
+                "given": "g",
+                "when": "w",
+                "expect": "e",
+            }
+            write_plan(
+                plan_path, [make_item("plan-001", component="Tests", test_cases=[tc])]
+            )
             write_arch(Path(tmp) / "arch.json", ("Tests", "test"))
             r = run_hook("Write", plan_path)
             self.assertEqual(r.returncode, 0, r.stderr)
@@ -146,8 +175,16 @@ class TestSplitOnWrite(unittest.TestCase):
     def test_with_arch_ui_test_goes_to_ui_tests(self):
         with tempfile.TemporaryDirectory() as tmp:
             plan_path = Path(tmp) / "implementation-plan.json"
-            tc = {"type": "ui", "description": "t", "given": "g", "when": "w", "expect": "e"}
-            write_plan(plan_path, [make_item("plan-001", component="UITests", test_cases=[tc])])
+            tc = {
+                "type": "ui",
+                "description": "t",
+                "given": "g",
+                "when": "w",
+                "expect": "e",
+            }
+            write_plan(
+                plan_path, [make_item("plan-001", component="UITests", test_cases=[tc])]
+            )
             write_arch(Path(tmp) / "arch.json", ("UITests", "test"))
             r = run_hook("Write", plan_path)
             self.assertEqual(r.returncode, 0, r.stderr)
@@ -180,7 +217,11 @@ class TestSilentCases(unittest.TestCase):
         env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(PROJECT_ROOT)}
         r = subprocess.run(
             [sys.executable, str(HOOK)],
-            input="not json", capture_output=True, text=True, env=env,
+            input="not json",
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
         )
         self.assertEqual(r.returncode, 0)
 

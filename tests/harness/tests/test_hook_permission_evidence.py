@@ -7,25 +7,28 @@ solid-description: Verifies live hook evidence decoding against the production r
 
 import json
 
-import pytest
-from pydantic import ValidationError
-
 import _path_bootstrap  # noqa: F401
-
+import pytest
 from hook_decision import HookDecision
 from hook_permission_evidence import HookPermissionEvidence
 from hook_permission_response import HookPermissionResponse
 from hook_permission_response_encoder import HookPermissionResponseEncoder
+from pydantic import ValidationError
 
 
-@pytest.mark.parametrize("reason", [
-    "[health-check] 1 SEVERE violation(s) found: LSP-3",
-    "[health-check] Gate subprocess failed — the write is blocked.",
-])
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "[health-check] 1 SEVERE violation(s) found: LSP-3",
+        "[health-check] Gate subprocess failed — the write is blocked.",
+    ],
+)
 def test_retains_the_complete_production_denial_reason(reason: str) -> None:
-    payload = HookPermissionResponseEncoder().encode(HookPermissionResponse(
-        decision=HookDecision(allow=False, reason=reason),
-    ))
+    payload = HookPermissionResponseEncoder().encode(
+        HookPermissionResponse(
+            decision=HookDecision(allow=False, reason=reason),
+        )
+    )
 
     evidence = HookPermissionEvidence.model_validate_json(json.dumps(payload))
 

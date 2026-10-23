@@ -4,13 +4,14 @@ from harness.command_step_field_reading import CommandStepFieldReading
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.step_field_validating import StepFieldValidating
 
-
 """
 solid-name: CommandStepShapeValidator
 solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Validates the declared fields of inline-command workflow steps.
 """
+
+
 class CommandStepShapeValidator(StepFieldValidating[CommandStepFieldReading]):
     def __init__(
         self,

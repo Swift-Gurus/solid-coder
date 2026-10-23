@@ -18,7 +18,7 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
 
-from models import ModelProfile, OutputPaths  # noqa: E402
+from models import ModelProfile, OutputPaths
 
 
 def _make_output_paths(tmp_dir: Path) -> OutputPaths:

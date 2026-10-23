@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.step_output_reference import StepOutputReference
 
-
 """
 solid-name: TestCoLocatedMetricLoading
 solid-category: unit-test
 solid-spec: [SPEC-058]
 solid-description: Verifies compact metrics normalize into existing collection-backed runtime metric steps.
 """
+
+
 class TestCoLocatedMetricLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()

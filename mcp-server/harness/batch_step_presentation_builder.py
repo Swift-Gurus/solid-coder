@@ -15,13 +15,14 @@ from harness.for_each_declaration import ForEachDeclaration
 from harness.models import StepDef
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: BatchStepPresentationBuilder
 solid-category: service
 solid-spec: [SPEC-042]
 solid-description: Builds one batch item's domain label and typed sibling identity from already resolved workflow context.
 """
+
+
 class BatchStepPresentationBuilder(BatchStepPresentationBuilding):
     def __init__(self, expression_evaluator: ExpressionEvaluating) -> None:
         self._expression_evaluator = expression_evaluator
@@ -51,23 +52,21 @@ class BatchStepPresentationBuilder(BatchStepPresentationBuilding):
         elif step.for_each is not None:
             group = BatchStepGroupIdentity(
                 workflow_alias=workflow_instance.alias,
-                local_step_id=workflow_instance.steps.require_execution(step.id).local_step_id,
+                local_step_id=workflow_instance.steps.require_execution(
+                    step.id
+                ).local_step_id,
                 owner_instance_id=workflow_instance.instance_id,
             )
         elif workflow_instance.combined_presentation is not None:
             combined = workflow_instance.combined_presentation
             return CombinedRuleBatchStepPresentation(
-                group=CombinedRuleBatchStepGroupIdentity(
-                    combined.group_alias
-                ),
+                group=CombinedRuleBatchStepGroupIdentity(combined.group_alias),
                 label=label,
                 rule_alias=combined.rule_alias,
             )
         else:
             group = BatchStepGroupIdentity(
                 workflow_instance.alias,
-                workflow_instance.steps.require_execution(
-                    step.id
-                ).local_step_id,
+                workflow_instance.steps.require_execution(step.id).local_step_id,
             )
         return BatchStepPresentation(group=group, label=label)

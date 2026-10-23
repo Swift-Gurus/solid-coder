@@ -8,10 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.flow_validation_error import FlowValidationError  # noqa: E402
-from harness.workflow_expression import WorkflowExpression  # noqa: E402
-from harness.workflow_expression_parser import WorkflowExpressionParser  # noqa: E402
-
+from harness.flow_validation_error import FlowValidationError
+from harness.workflow_expression import WorkflowExpression
+from harness.workflow_expression_parser import WorkflowExpressionParser
 
 """
 solid-name: TestWorkflowExpressionParser
@@ -19,8 +18,9 @@ solid-category: unit-test
 solid-spec: [SPEC-037]
 solid-description: Proves authored and snapshotted workflow expressions become normalized typed values at their input boundary.
 """
-class TestWorkflowExpressionParser(unittest.TestCase):
 
+
+class TestWorkflowExpressionParser(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = WorkflowExpressionParser()
 

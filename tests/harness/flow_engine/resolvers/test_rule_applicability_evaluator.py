@@ -15,8 +15,9 @@ from pydantic import TypeAdapter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.rule_applicability_evaluator import RuleApplicabilityEvaluator
+from findings.review_unit_kind import ReviewUnitKind
 from harness.rule_applicability_context import RuleApplicabilityContext
+from harness.rule_applicability_evaluator import RuleApplicabilityEvaluator
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
@@ -25,17 +26,13 @@ from harness.rule_values_matcher import RuleValuesMatcher
 from harness.rule_values_renderer import RuleValuesRenderer
 from harness.strict_collection_value_matcher import StrictCollectionValueMatcher
 from harness.strict_value_comparator import StrictValueComparator
-from findings.review_unit_kind import ReviewUnitKind
 
 
 class TestRuleApplicabilityEvaluator(unittest.TestCase):
-
     def setUp(self) -> None:
         comparator = StrictValueComparator()
         selection_evaluator = RuleSelectionEvaluator(
-            values_matcher=RuleValuesMatcher(
-                StrictCollectionValueMatcher(comparator)
-            ),
+            values_matcher=RuleValuesMatcher(StrictCollectionValueMatcher(comparator)),
             values_renderer=RuleValuesRenderer(TypeAdapter(list[str])),
         )
         self.sut = RuleApplicabilityEvaluator(selection_evaluator)

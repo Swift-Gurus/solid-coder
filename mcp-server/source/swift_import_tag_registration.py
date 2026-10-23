@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SwiftImportTagRegistration
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Associates one exact Swift module import with ordered normalized source tags.
 """
+
+
 class SwiftImportTagRegistration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

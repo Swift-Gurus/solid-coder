@@ -2,13 +2,14 @@
 
 from pathlib import Path
 
-from harness.output_spec import OutputSpec
-from harness.output_schema_declaration_validating import OutputSchemaDeclarationValidating
+from harness.output_schema_declaration_validating import (
+    OutputSchemaDeclarationValidating,
+)
 from harness.output_schema_file_loading import OutputSchemaFileLoading
+from harness.output_spec import OutputSpec
 from harness.resolved_output_schema_applying import ResolvedOutputSchemaApplying
 from harness.step_declaration import StepDeclaration
 from harness.step_identity_resolving import StepIdentityResolving
-
 
 """
 solid-name: OutputSchemaReferenceResolver
@@ -16,8 +17,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates and loads a single file-backed output schema from its declaring workflow.
 """
-class OutputSchemaReferenceResolver:
 
+
+class OutputSchemaReferenceResolver:
     def __init__(
         self,
         declaration_validator: OutputSchemaDeclarationValidating,

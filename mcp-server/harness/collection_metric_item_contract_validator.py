@@ -1,7 +1,5 @@
 """Validates collection metric behavior against its resolved item schema."""
 
-from typing import Optional
-
 from harness.collection_metric_item_contract_validating import (
     CollectionMetricItemContractValidating,
 )
@@ -11,16 +9,15 @@ from harness.condition_declaration import ConditionDeclaration
 from harness.condition_item_schema_validating import ConditionItemSchemaValidating
 from harness.workflow_data_schema import WorkflowDataSchema
 
-
 """
 solid-name: CollectionMetricItemContractValidator
 solid-category: service
 solid-spec: [SPEC-053, SPEC-054, SPEC-056]
 solid-description: Applies shared filter and reducer field validation to any typed collection source item.
 """
-class CollectionMetricItemContractValidator(
-    CollectionMetricItemContractValidating
-):
+
+
+class CollectionMetricItemContractValidator(CollectionMetricItemContractValidating):
     def __init__(
         self,
         item_schema_validator: ConditionItemSchemaValidating,
@@ -31,8 +28,8 @@ class CollectionMetricItemContractValidator(
         self,
         target_id: str,
         item_schema: WorkflowDataSchema,
-        condition: Optional[ConditionDeclaration],
-        reducer: Optional[CollectionMetricReducer],
+        condition: ConditionDeclaration | None,
+        reducer: CollectionMetricReducer | None,
     ) -> None:
         if condition is not None:
             self._item_schema_validator.validate(
@@ -65,7 +62,8 @@ class CollectionMetricItemContractValidator(
         if reducer.value is not None:
             allowed_types = (
                 ["integer", "number"]
-                if reducer.type in {
+                if reducer.type
+                in {
                     CollectionMetricReducerType.MAXIMUM,
                     CollectionMetricReducerType.MINIMUM,
                 }

@@ -6,7 +6,7 @@ from typing import Protocol, TypeVar
 
 from harness.condition_serializing import ConditionSerializing
 
-ConditionT = TypeVar("ConditionT", contravariant=True)
+ConditionT_contra = TypeVar("ConditionT_contra", contravariant=True)
 
 
 """
@@ -15,9 +15,11 @@ solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for serializing one supported condition variant.
 """
-class ConditionVariantSerializing(Protocol[ConditionT]):
+
+
+class ConditionVariantSerializing(Protocol[ConditionT_contra]):
     def serialize(
         self,
-        condition: ConditionT,
+        condition: ConditionT_contra,
         nested_serializer: ConditionSerializing,
     ) -> dict[str, object]: ...

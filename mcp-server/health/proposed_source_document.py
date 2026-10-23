@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: ProposedSourceDocument
 solid-category: model
 solid-description: Represents one path-identified source revision available before its write is authorized.
 solid-tags: [hook]
 """
+
+
 class ProposedSourceDocument(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

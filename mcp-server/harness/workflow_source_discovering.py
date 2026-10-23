@@ -7,12 +7,13 @@ from typing import Protocol
 
 from harness.workflow_source import WorkflowSource
 
-
 """
 solid-name: WorkflowSourceDiscovering
 solid-category: abstraction
 solid-spec: [SPEC-035]
 solid-description: Contract for discovering packaged and legacy workflow sources below one root.
 """
+
+
 class WorkflowSourceDiscovering(Protocol):
     def discover(self, root: Path) -> list[WorkflowSource]: ...

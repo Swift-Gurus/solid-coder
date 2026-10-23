@@ -7,12 +7,13 @@ from findings.principle_coverage_scope_input_creating import (
     PrincipleCoverageScopeInputCreating,
 )
 
-
 """
 solid-name: PrincipleCoverageScopeInputFactory
 solid-category: factory
 solid-description: Constructs validated principle coverage scope inputs from external configuration values.
 """
+
+
 class PrincipleCoverageScopeInputFactory(PrincipleCoverageScopeInputCreating):
     def create(
         self,

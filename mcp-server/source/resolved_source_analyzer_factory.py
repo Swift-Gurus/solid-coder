@@ -11,22 +11,25 @@ from source.source_language_detector_factory import SourceLanguageDetectorFactor
 from source.swift_source_analyzer_factory import SwiftSourceAnalyzerFactory
 from source.whole_document_unit_resolver import WholeDocumentUnitResolver
 
-
 """
 solid-name: ResolvedSourceAnalyzerFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Provides language-selected parsed analysis with deterministic whole-document fallback for immutable source.
 """
+
+
 class ResolvedSourceAnalyzerFactory:
     def make(self) -> ResolvedSourceAnalyzer:
         return ResolvedSourceAnalyzer(
             language_detector=SourceLanguageDetectorFactory().make(),
-            analyzer_resolver=LanguageSourceAnalyzerResolver([
-                LanguageSourceAnalyzerRegistration(
-                    language="swift",
-                    analyzer=SwiftSourceAnalyzerFactory().make(),
-                )
-            ]),
+            analyzer_resolver=LanguageSourceAnalyzerResolver(
+                [
+                    LanguageSourceAnalyzerRegistration(
+                        language="swift",
+                        analyzer=SwiftSourceAnalyzerFactory().make(),
+                    )
+                ]
+            ),
             document_unit_resolver=WholeDocumentUnitResolver(),
         )

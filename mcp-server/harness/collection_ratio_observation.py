@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: CollectionRatioObservation
 solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Carries one included or excluded ratio decision with model-supplied reasoning and evidence.
 """
+
+
 class CollectionRatioObservation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

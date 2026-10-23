@@ -11,28 +11,27 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.batch_step_presentation_mode import BatchStepPresentationMode  # noqa: E402
-from harness.batch_step_renderer_factory import BatchStepRendererFactory  # noqa: E402
-from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E402
-from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory  # noqa: E402
-from harness.flow_loading import FlowLoading  # noqa: E402
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.project_context import ProjectDirectory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.sibling_batch_step_selector_factory import (  # noqa: E402
+from harness.batch_step_presentation_mode import BatchStepPresentationMode
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
+from harness.first_ready_step_selector import FirstReadyStepSelector
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
+from harness.flow_loading import FlowLoading
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.sibling_batch_step_selector_factory import (
     SiblingBatchStepSelectorFactory,
 )
-from harness.single_step_renderer import SingleStepRenderer  # noqa: E402
-from harness.step_formatter import StepFormatter  # noqa: E402
-from harness.step_renderer import StepRenderer  # noqa: E402
-from harness.subagent_delegator import SubagentDelegator  # noqa: E402
-from review.review_operation_registrations_factory import (  # noqa: E402
+from harness.single_step_renderer import SingleStepRenderer
+from harness.step_formatter import StepFormatter
+from harness.step_renderer import StepRenderer
+from harness.subagent_delegator import SubagentDelegator
+from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
-from source.source_operation_registrations_factory import (  # noqa: E402
+from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
-
 
 """
 solid-name: TestSinglePromptReviewBatching
@@ -40,6 +39,8 @@ solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-042]
 solid-description: Proves shared single-prompt review rules batch normalized units while rules requiring unit-specific search context remain individually presented.
 """
+
+
 class TestSinglePromptReviewBatching(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -70,7 +71,9 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
             batch_step_renderer=BatchStepRendererFactory().make(),
         )
 
-    def test_batches_shared_rule_prompts_and_keeps_search_rules_individual(self) -> None:
+    def test_batches_shared_rule_prompts_and_keeps_search_rules_individual(
+        self,
+    ) -> None:
         started = self.sut.flow_start("solid-file-review-single-prompt")
         source = textwrap.dedent(
             """
@@ -84,19 +87,23 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
             """
         ).lstrip()
 
-        ready = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "target": {
-                    "kind": "text",
-                    "text": source,
-                    "virtual_path": str(self.run_root / "Profile.swift"),
+        ready = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "target": {
+                        "kind": "text",
+                        "text": source,
+                        "virtual_path": str(self.run_root / "Profile.swift"),
+                    }
                 }
             }
-        })
+        )
 
         combined_steps = []
         for local_step_id in ("assess_srp", "assess_ocp", "assess_lsp"):
-            steps = [step for step in ready.steps if step.step_id.endswith(local_step_id)]
+            steps = [
+                step for step in ready.steps if step.step_id.endswith(local_step_id)
+            ]
             self.assertEqual(len(steps), 2)
             self.assertTrue(all(step.batch is not None for step in steps))
             self.assertTrue(
@@ -115,7 +122,9 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
         self.assertEqual(rendered.count("Rule: lsp_reviews"), 1)
         self.assertNotIn(source, rendered)
 
-        dry_steps = [step for step in ready.steps if step.step_id.endswith("generate_terms")]
+        dry_steps = [
+            step for step in ready.steps if step.step_id.endswith("generate_terms")
+        ]
         self.assertEqual(len(dry_steps), 2)
         self.assertTrue(all(step.batch is None for step in dry_steps))
 

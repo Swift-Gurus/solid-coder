@@ -11,15 +11,15 @@ from harness.workflow_condition_decision import WorkflowConditionDecision
 from harness.workflow_condition_gate_result import WorkflowConditionGateResult
 from harness.workflow_condition_recording import WorkflowConditionRecording
 
-
 """
 solid-name: WorkflowConditionGate
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Coordinates durable workflow eligibility before any workflow step executes.
 """
-class WorkflowConditionGate(WorkflowConditionAdvancing):
 
+
+class WorkflowConditionGate(WorkflowConditionAdvancing):
     def __init__(
         self,
         context_builder: RunContextBuilding,

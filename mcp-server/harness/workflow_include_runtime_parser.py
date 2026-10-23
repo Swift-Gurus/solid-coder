@@ -10,13 +10,12 @@ from harness.for_each_declaration_parsing import ForEachDeclarationParsing
 from harness.structured_mode_resolver import StructuredModeResolver
 from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
 from harness.workflow_execution_mode import WorkflowExecutionMode
+from harness.workflow_expression_parsing import WorkflowExpressionParsing
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_input_binding import WorkflowInputBinding
-from harness.workflow_expression_parsing import WorkflowExpressionParsing
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_presentation_mode import WorkflowPresentationMode
-
 
 """
 solid-name: WorkflowIncludeRuntimeParser
@@ -24,8 +23,9 @@ solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Validates include-boundary runtime fields and maps them into typed controls.
 """
-class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
 
+
+class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
     def __init__(
         self,
         condition_parser: ConditionParsing,
@@ -55,8 +55,7 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
     ) -> WorkflowIncludeRuntime:
         depends_on = raw.get("depends_on") or []
         if not isinstance(depends_on, list) or not all(
-            isinstance(dependency, str) and dependency
-            for dependency in depends_on
+            isinstance(dependency, str) and dependency for dependency in depends_on
         ):
             raise self._error_factory.create(
                 "Workflow include 'depends_on' must be an array of non-empty strings"
@@ -122,10 +121,12 @@ class WorkflowIncludeRuntimeParser(WorkflowIncludeRuntimeParsing):
             ),
             execution_declared=(
                 "execution" in raw
-                or policy_source is not None and "execution" in policy_source
+                or policy_source is not None
+                and "execution" in policy_source
             ),
             presentation_declared=(
                 "presentation" in raw
-                or policy_source is not None and "presentation" in policy_source
+                or policy_source is not None
+                and "presentation" in policy_source
             ),
         )

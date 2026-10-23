@@ -2,12 +2,13 @@
 
 from enum import Enum
 
-
 """
 solid-name: ReviewUnitKind
 solid-category: model
 solid-description: Enumerates the closed set of source-code unit kinds accepted in review submissions.
 """
+
+
 class ReviewUnitKind(str, Enum):
     CLASS = "class"
     STRUCT = "struct"

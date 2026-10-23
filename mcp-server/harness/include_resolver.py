@@ -11,15 +11,15 @@ from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: IncludeResolver
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Coordinates recursive expansion of workflow includes and inline groups.
 """
-class IncludeResolver(IncludeResolving):
 
+
+class IncludeResolver(IncludeResolving):
     def __init__(
         self,
         path_canonicalizer: PathCanonicalizing,

@@ -2,13 +2,14 @@
 
 from gate_request_handling import GateRequestHandling
 
-
 """
 solid-name: GateRequestRouter
 solid-category: service
 solid-description: Selects a configured request handler from the parsed tool name and delegates the request.
 solid-tags: [hook]
 """
+
+
 class GateRequestRouter:
     def __init__(
         self,

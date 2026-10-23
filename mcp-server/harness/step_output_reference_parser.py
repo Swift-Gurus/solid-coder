@@ -6,13 +6,14 @@ from harness.step_output_reference_syntax_error import (
     StepOutputReferenceSyntaxError,
 )
 
-
 """
 solid-name: StepOutputReferenceParser
 solid-category: boundary
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Converts the supported authored step-output expression grammar into validated typed references.
 """
+
+
 class StepOutputReferenceParser(StepOutputReferenceParsing):
     def parse(self, expression: str) -> StepOutputReference:
         components = expression.split(".")

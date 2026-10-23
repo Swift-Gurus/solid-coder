@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Parses named XML blocks from markdown rule content into structured data.
 solid-category: utility
@@ -12,6 +11,8 @@ _TAG_WITH_ID = re.compile(
     r"<(detection|definition|severity-bands)\s+id=['\"]([^'\"]+)['\"][^>]*>(.*?)</\1>",
     re.DOTALL,
 )
+
+
 def parse(content: str) -> dict[str, Any]:
     """Parse named XML blocks from rule.md content.
 
@@ -61,5 +62,5 @@ def _line_delimited_body(content: str, tag: str) -> str:
         return ""
     for index in range(opening_index + 1, len(lines)):
         if lines[index].strip() == closing:
-            return "\n".join(lines[opening_index + 1:index]).strip()
+            return "\n".join(lines[opening_index + 1 : index]).strip()
     return ""

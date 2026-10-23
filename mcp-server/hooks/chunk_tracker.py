@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PostToolUse hook — register and track MCP chunk file reads.
 
 Two responsibilities, both using the same state file:

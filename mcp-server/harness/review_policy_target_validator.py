@@ -5,15 +5,15 @@ from harness.review_policy_resolution import ReviewPolicyResolution
 from harness.review_policy_target_validating import ReviewPolicyTargetValidating
 from harness.workflow_catalog import WorkflowCatalog
 
-
 """
 solid-name: ReviewPolicyTargetValidator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Rejects project review-policy records that target workflows outside the enrolled review-rule catalog.
 """
-class ReviewPolicyTargetValidator(ReviewPolicyTargetValidating):
 
+
+class ReviewPolicyTargetValidator(ReviewPolicyTargetValidating):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 

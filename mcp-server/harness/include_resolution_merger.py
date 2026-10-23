@@ -6,15 +6,15 @@ from harness.include_source import IncludeSource
 from harness.include_step_appending import IncludeStepAppending
 from harness.nested_include_resolution_merging import NestedIncludeResolutionMerging
 
-
 """
 solid-name: IncludeResolutionMerger
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Coordinates construction of recursive include-resolution results.
 """
-class IncludeResolutionMerger(IncludeResolutionMerging):
 
+
+class IncludeResolutionMerger(IncludeResolutionMerging):
     def __init__(
         self,
         step_appender: IncludeStepAppending,

@@ -12,16 +12,15 @@ from source.whole_file_repository_source_unit_building import (
     WholeFileRepositorySourceUnitBuilding,
 )
 
-
 """
 solid-name: FrontmatterRepositorySourceUnitsResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves whole-file repository search entries from authored frontmatter.
 """
-class FrontmatterRepositorySourceUnitsResolver(
-    RepositorySourceUnitsResolving
-):
+
+
+class FrontmatterRepositorySourceUnitsResolver(RepositorySourceUnitsResolving):
     def __init__(
         self,
         frontmatter_reader: SourceFrontmatterReading,

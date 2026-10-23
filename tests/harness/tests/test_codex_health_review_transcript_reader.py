@@ -12,14 +12,13 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from codex_health_review_transcript_reader import (  # noqa: E402
+from codex_health_review_submission import CodexHealthReviewSubmission
+from codex_health_review_transcript_reader import (
     CodexHealthReviewTranscriptReader,
 )
-from codex_health_review_submission import CodexHealthReviewSubmission  # noqa: E402
 
 
 class TestCodexHealthReviewTranscriptReader(unittest.TestCase):
-
     def test_reads_one_file_and_all_submitted_principles(self) -> None:
         submissions = {
             "dry": self._principle_payload("DashboardView.swift"),
@@ -62,6 +61,44 @@ class TestCodexHealthReviewTranscriptReader(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "one reviewed file"):
             self._read(submissions)
+
+    def test_rejects_missing_or_wrong_type_arguments(self) -> None:
+        self._assert_invalid_event_field("arguments", "event had no arguments")
+
+    def test_rejects_missing_or_wrong_type_submissions(self) -> None:
+        self._assert_invalid_event_field("submissions", "event had no submissions")
+
+    def test_rejects_missing_or_wrong_type_result(self) -> None:
+        self._assert_invalid_event_field("result", "event had no result")
+
+    def test_rejects_missing_or_wrong_type_content(self) -> None:
+        self._assert_invalid_event_field("content", "result had no content")
+
+    def _assert_invalid_event_field(self, field: str, message: str) -> None:
+        for wrong_value in (None, "wrong", 42):
+            with self.subTest(field=field, wrong_value=wrong_value):
+                event = self._event(
+                    {"dry": self._principle_payload("Example.swift")}, True
+                )
+                payload = event["payload"]
+                container = payload
+                if field == "arguments":
+                    container = payload["invocation"]
+                elif field == "submissions":
+                    container = payload["invocation"]["arguments"]
+                elif field == "content":
+                    container = payload["result"]["Ok"]
+                if wrong_value is None:
+                    del container[field]
+                else:
+                    container[field] = wrong_value
+                with tempfile.TemporaryDirectory() as directory:
+                    sessions_root = Path(directory)
+                    (sessions_root / "rollout.jsonl").write_text(
+                        json.dumps(event), encoding="utf-8"
+                    )
+                    with self.assertRaisesRegex(TypeError, message):
+                        CodexHealthReviewTranscriptReader().read(sessions_root)
 
     def _principle_payload(self, file_name: str) -> dict:
         return {"files": [{"file_path": f"/workspace/{file_name}"}]}

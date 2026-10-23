@@ -5,7 +5,7 @@ solid-tags: [hook, utility]
 """
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1]
@@ -14,7 +14,7 @@ for _d in (_HOOKS_DIR, _SESSION_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from session_store import StoreAccessing  # noqa: E402
+from session_store import StoreAccessing
 
 
 class SessionRegistrar:
@@ -28,7 +28,7 @@ class SessionRegistrar:
         registry = self._store.load(path)
         registry[session_id] = {
             "type": session_type,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         }
         self._store.save(path, registry)
         return {"registered": True, "session_id": session_id, "type": session_type}

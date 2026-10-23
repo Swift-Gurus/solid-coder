@@ -4,13 +4,14 @@ from harness.workflow_resource_directory import WorkflowResourceDirectory
 from harness.workflow_resource_path_classifying import WorkflowResourcePathClassifying
 from harness.workflow_resource_reference import WorkflowResourceReference
 
-
 """
 solid-name: WorkflowResourceReferenceFactory
 solid-category: factory
 solid-spec: [SPEC-035]
 solid-description: Creates workflow resource references from declared values and classified resolution locations.
 """
+
+
 class WorkflowResourceReferenceFactory:
     def __init__(
         self,

@@ -1,17 +1,19 @@
 """Persists immutable principle submissions in batch order."""
 
+from harness.path_building import PathBuilding
+
 from findings.batch_persistence_result import BatchPersistenceResult
 from findings.batch_submission import BatchSubmission
 from findings.batch_submission_persisting import BatchSubmissionPersisting
 from findings.principle_submission_submitting import PrincipleSubmissionSubmitting
-from harness.path_building import PathBuilding
-
 
 """
 solid-name: OrderedBatchSubmissionPersister
 solid-category: service
 solid-description: Persists principle reviews sequentially and stops at the first labelled submission failure.
 """
+
+
 class OrderedBatchSubmissionPersister(BatchSubmissionPersisting):
     def __init__(
         self,

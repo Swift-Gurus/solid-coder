@@ -10,9 +10,9 @@ import test_lsp_validation_flow as lsp_deterministic
 import test_lsp_validation_live as lsp_live
 import test_ocp_validation_flow as ocp_deterministic
 import test_ocp_validation_live as ocp_live
+from rule_metric_result_expectation import RuleMetricResultExpectation
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase
 from rule_validation_scenario import RuleValidationScenario
-from rule_metric_result_expectation import RuleMetricResultExpectation
 
 
 class TestLiveRuleContracts(unittest.TestCase):

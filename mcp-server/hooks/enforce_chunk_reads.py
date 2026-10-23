@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse hook — block non-Read tools while MCP chunk files are unread.
 
 When the MCP docs server returns content too large for a single response, it
@@ -14,8 +13,8 @@ State file written by chunk_tracker.py.
 
 import json
 import sys
-import time
 import tempfile
+import time
 from pathlib import Path
 
 _TTL_SECONDS = 1800
@@ -42,6 +41,7 @@ def _pending_chunks(session_id: str) -> list:
             continue
         # TTL: skip chunks whose timestamp is too old
         import re
+
         m = re.search(r"solid-coder-.+-(\d+)-\d+of\d+\.md$", path)
         if m and time.time() - int(m.group(1)) > _TTL_SECONDS:
             continue
@@ -54,21 +54,29 @@ def _allow() -> None:
 
 
 def _block(pending: list) -> None:
-    lines = [
-        "[chunk-read-gate] You must read ALL pending MCP chunk files with the Read",
-        "tool before using any other tool. Remaining chunks:",
-        "",
-    ] + [f"  - {p}" for p in pending] + [
-        "",
-        "Read each file above in order, then retry your action.",
-    ]
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": "\n".join(lines),
-        }
-    }))
+    lines = (
+        [
+            "[chunk-read-gate] You must read ALL pending MCP chunk files with the Read",
+            "tool before using any other tool. Remaining chunks:",
+            "",
+        ]
+        + [f"  - {p}" for p in pending]
+        + [
+            "",
+            "Read each file above in order, then retry your action.",
+        ]
+    )
+    sys.stdout.write(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "\n".join(lines),
+                }
+            }
+        )
+    )
     sys.stdout.flush()
     sys.exit(0)
 

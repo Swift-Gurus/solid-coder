@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 """CLI contract tests for count-spec.py."""
+
 import json
 import subprocess
 import sys
@@ -193,7 +193,12 @@ class CLIContract(unittest.TestCase):
     def test_missing_spec_file_exits_non_zero(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = subprocess.run(
-                [sys.executable, str(SCRIPT), str(Path(tmp) / "missing.md"), str(Path(tmp) / "out.json")],
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    str(Path(tmp) / "missing.md"),
+                    str(Path(tmp) / "out.json"),
+                ],
                 capture_output=True,
                 text=True,
                 check=False,

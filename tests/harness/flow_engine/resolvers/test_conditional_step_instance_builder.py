@@ -20,14 +20,14 @@ from harness.models import StepDef, StepInstance
 from harness.resolved_condition_value import ResolvedConditionValue
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_condition_applier import StepConditionApplier
-from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
-from harness.workflow_run_context import WorkflowRunContext
-from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
 )
+from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
 
 @dataclass
@@ -68,27 +68,32 @@ class StubConditionEvaluator:
 
 
 class TestConditionalStepInstanceBuilder(unittest.TestCase):
-
     def test_false_include_condition_skips_without_rendering(self) -> None:
         condition = self._condition()
         source_item = {"file_extension": ".md"}
-        child_inputs = WorkflowContextValues(entries=[
-            WorkflowContextValue(name="review_unit", value=source_item),
-        ])
+        child_inputs = WorkflowContextValues(
+            entries=[
+                WorkflowContextValue(name="review_unit", value=source_item),
+            ]
+        )
         parent_context = WorkflowRunContext(
-            parameters=WorkflowContextValues(entries=[
-                WorkflowContextValue(name="parent_setting", value=True),
-            ]),
+            parameters=WorkflowContextValues(
+                entries=[
+                    WorkflowContextValue(name="parent_setting", value=True),
+                ]
+            ),
             item=ResolvedWorkflowContextValue(present=True, value=source_item),
         )
         delegate = StubInstanceBuilder()
-        evaluator = StubConditionEvaluator([
-            self._evidence(actual=".md", matched=False)
-        ])
+        evaluator = StubConditionEvaluator(
+            [self._evidence(actual=".md", matched=False)]
+        )
         sut = ConditionalStepInstanceBuilder(
             delegate=delegate,
             condition_applier=StepConditionApplier(evaluator),
-            context_resolver=WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
+            context_resolver=WorkflowStepContextResolver(
+                WorkflowResultsVisibilitySelector()
+            ),
         )
         step = StepDef(
             id="review.inspect",
@@ -121,13 +126,15 @@ class TestConditionalStepInstanceBuilder(unittest.TestCase):
 
     def test_matching_condition_delegates_to_the_renderer(self) -> None:
         delegate = StubInstanceBuilder()
-        evaluator = StubConditionEvaluator([
-            self._evidence(actual=".swift", matched=True)
-        ])
+        evaluator = StubConditionEvaluator(
+            [self._evidence(actual=".swift", matched=True)]
+        )
         sut = ConditionalStepInstanceBuilder(
             delegate=delegate,
             condition_applier=StepConditionApplier(evaluator),
-            context_resolver=WorkflowStepContextResolver(WorkflowResultsVisibilitySelector()),
+            context_resolver=WorkflowStepContextResolver(
+                WorkflowResultsVisibilitySelector()
+            ),
         )
         item = {"file_extension": ".swift"}
 

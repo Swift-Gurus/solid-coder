@@ -1,7 +1,6 @@
 """Defines one deterministic severity comparison authored by a metric step."""
 
-from typing import Union
-
+from harness.scoring_comparison_operator import ScoringComparisonOperator
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -11,10 +10,7 @@ from pydantic import (
     StrictStr,
 )
 
-from harness.scoring_comparison_operator import ScoringComparisonOperator
-
-
-MetricComparisonValue = Union[StrictBool, StrictInt, StrictFloat, StrictStr]
+MetricComparisonValue = StrictBool | StrictInt | StrictFloat | StrictStr
 
 
 """
@@ -23,6 +19,8 @@ solid-category: model
 solid-spec: [SPEC-039]
 solid-description: Represents one typed comparison that maps a validated metric value to a severity.
 """
+
+
 class MetricScoringBand(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

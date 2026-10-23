@@ -10,14 +10,13 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from harness.flow_status_reading import FlowStatusReading  # noqa: E402
-from pending_step_failure_recording import PendingStepFailureRecording  # noqa: E402
+from harness.flow_status_reading import FlowStatusReading
+from pending_step_failure_recording import PendingStepFailureRecording
 
 
 class FlowTransitionGate:
@@ -28,11 +27,15 @@ class FlowTransitionGate:
     is marked failed and this gate allows the turn to end.
     """
 
-    def __init__(self, status_reader: FlowStatusReading, failure_recorder: PendingStepFailureRecording) -> None:
+    def __init__(
+        self,
+        status_reader: FlowStatusReading,
+        failure_recorder: PendingStepFailureRecording,
+    ) -> None:
         self._status_reader = status_reader
         self._failure_recorder = failure_recorder
 
-    def evaluate(self, run_id: Optional[str] = None) -> dict:
+    def evaluate(self, run_id: str | None = None) -> dict:
         status = self._status_reader.flow_status(run_id)
         if status.status != "in_progress" or not status.pending:
             return {"allow": True}

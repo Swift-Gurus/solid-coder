@@ -1,9 +1,7 @@
 """Enumerates syntax nodes in source order with declared trivia exclusions."""
 
-from tree_sitter import Node
-
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
-
+from tree_sitter import Node
 
 """
 solid-name: TreeSitterNodesParser
@@ -11,6 +9,8 @@ solid-category: boundary-adapter
 solid-spec: [SPEC-063]
 solid-description: Enumerates a syntax tree in preorder while pruning configured node kinds and fields for language-selected consumers.
 """
+
+
 class TreeSitterNodesParser(SourceSyntaxParsing[Node, list[Node]]):
     def __init__(
         self,
@@ -28,8 +28,13 @@ class TreeSitterNodesParser(SourceSyntaxParsing[Node, list[Node]]):
             if node.type in self._excluded_node_types:
                 continue
             nodes.append(node)
-            pending.extend(reversed([
-                child for index, child in enumerate(node.children)
-                if node.field_name_for_child(index) not in self._excluded_fields
-            ]))
+            pending.extend(
+                reversed(
+                    [
+                        child
+                        for index, child in enumerate(node.children)
+                        if node.field_name_for_child(index) not in self._excluded_fields
+                    ]
+                )
+            )
         return nodes

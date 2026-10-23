@@ -5,12 +5,13 @@ from typing import Protocol
 
 from findings.principle_coverage_scope_input import PrincipleCoverageScopeInput
 
-
 """
 solid-name: PrincipleCoverageScopeInputCreating
 solid-category: abstraction
 solid-description: Contract for constructing validated principle coverage scope input values.
 """
+
+
 class PrincipleCoverageScopeInputCreating(Protocol):
     def create(
         self,

@@ -1,8 +1,8 @@
 """Defines source-analyzer lookup by normalized language."""
 
-from typing import Optional, Protocol, TypeVar
+from typing import Protocol, TypeVar
 
-AnalysisCapability = TypeVar("AnalysisCapability", covariant=True)
+AnalysisCapability_co = TypeVar("AnalysisCapability_co", covariant=True)
 
 
 """
@@ -11,5 +11,7 @@ solid-category: abstraction
 solid-spec: [SPEC-040]
 solid-description: Contract for resolving a deterministic analyzer for a normalized source language.
 """
-class LanguageSourceAnalyzerResolving(Protocol[AnalysisCapability]):
-    def resolve(self, language: str) -> Optional[AnalysisCapability]: ...
+
+
+class LanguageSourceAnalyzerResolving(Protocol[AnalysisCapability_co]):
+    def resolve(self, language: str) -> AnalysisCapability_co | None: ...

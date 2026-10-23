@@ -14,13 +14,14 @@ from harness.step_output_reference_syntax_error import (
 )
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: StepOutputExpressionResolver
 solid-category: service
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Resolves a workflow expression to a recorded step output or one of its nested fields.
 """
+
+
 class StepOutputExpressionResolver(ExpressionEvaluating):
     def __init__(
         self,
@@ -38,7 +39,9 @@ class StepOutputExpressionResolver(ExpressionEvaluating):
         components = expr.split(".")
         for boundary in range(len(components), 3, -1):
             try:
-                reference = self._reference_parser.parse(".".join(components[:boundary]))
+                reference = self._reference_parser.parse(
+                    ".".join(components[:boundary])
+                )
             except StepOutputReferenceSyntaxError:
                 continue
             return self._nested_values.resolve(

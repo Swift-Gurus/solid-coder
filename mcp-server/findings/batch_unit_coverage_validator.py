@@ -1,7 +1,5 @@
 """Validates unit coverage for immutable findings batches."""
 
-from typing import Optional
-
 from findings.batch_coverage_failure import BatchCoverageFailure
 from findings.batch_coverage_validating import BatchCoverageValidating
 from findings.batch_submission import BatchSubmission
@@ -9,7 +7,6 @@ from findings.hook_context import HookContext
 from findings.principle_coverage_scope import PrincipleCoverageScope
 from findings.principle_submission import PrincipleSubmission
 from findings.review_unit_kind import ReviewUnitKind
-
 
 _SOLID_PRINCIPLES = frozenset({"srp", "ocp", "lsp", "isp", "dry"})
 
@@ -19,6 +16,8 @@ solid-name: BatchUnitCoverageValidator
 solid-category: validator
 solid-description: Detects active SOLID principles that omit every required source unit from an immutable batch review.
 """
+
+
 class BatchUnitCoverageValidator(BatchCoverageValidating):
     def __init__(self, scopes: tuple[PrincipleCoverageScope, ...]) -> None:
         self._scopes = scopes
@@ -26,8 +25,8 @@ class BatchUnitCoverageValidator(BatchCoverageValidating):
     def validate(
         self,
         submission: BatchSubmission,
-        context: Optional[HookContext],
-    ) -> Optional[BatchCoverageFailure]:
+        context: HookContext | None,
+    ) -> BatchCoverageFailure | None:
         expected_units = self._expected_units(submission, context)
         if not expected_units:
             return None
@@ -51,17 +50,21 @@ class BatchUnitCoverageValidator(BatchCoverageValidating):
     def _expected_units(
         self,
         submission: BatchSubmission,
-        context: Optional[HookContext],
+        context: HookContext | None,
     ) -> tuple[str, ...]:
         if context is not None and context.expected_units:
             return context.expected_units
-        return tuple(sorted({
-            unit.name
-            for principle in submission.principles
-            if principle.label.lower() in _SOLID_PRINCIPLES
-            for reviewed_file in principle.output.files
-            for unit in reviewed_file.units
-        }))
+        return tuple(
+            sorted(
+                {
+                    unit.name
+                    for principle in submission.principles
+                    if principle.label.lower() in _SOLID_PRINCIPLES
+                    for reviewed_file in principle.output.files
+                    for unit in reviewed_file.units
+                }
+            )
+        )
 
     def _submitted_kinds(
         self,

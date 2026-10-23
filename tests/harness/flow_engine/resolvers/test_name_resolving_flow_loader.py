@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import sys
 import unittest
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
@@ -59,11 +59,12 @@ class StubCatalogScope:
 
 
 class TestNameResolvingFlowLoader(unittest.TestCase):
-
     def test_loads_using_the_resolved_path(self):
         events: list[str] = []
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
-        file_resolver = StubFileResolver(resolved="/resolved/code_review.yaml", events=events)
+        file_resolver = StubFileResolver(
+            resolved="/resolved/code_review.yaml", events=events
+        )
         inner_loader = StubInnerLoader(flow_def, events=events)
         catalog_scope = StubCatalogScope(events=events)
         sut = NameResolvingFlowLoader(
@@ -77,8 +78,13 @@ class TestNameResolvingFlowLoader(unittest.TestCase):
         self.assertIs(result, flow_def)
         self.assertEqual(catalog_scope.calls, [["/search/dir"]])
         self.assertEqual(file_resolver.calls, [("code_review", ["/search/dir"])])
-        self.assertEqual(inner_loader.calls, [("/resolved/code_review.yaml", ["/search/dir"])])
-        self.assertEqual(events, ["scope-entered", "file-resolved", "definition-loaded", "scope-exited"])
+        self.assertEqual(
+            inner_loader.calls, [("/resolved/code_review.yaml", ["/search/dir"])]
+        )
+        self.assertEqual(
+            events,
+            ["scope-entered", "file-resolved", "definition-loaded", "scope-exited"],
+        )
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@ _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from hook_decision import HookDecision  # noqa: E402
-from hook_handling import HookHandling  # noqa: E402
-from flow_transition_evaluating import FlowTransitionGate  # noqa: E402
+from flow_transition_evaluating import FlowTransitionGate
+from hook_decision import HookDecision
+from hook_handling import HookHandling
 
 
 class FlowStopApplicabilityChecking(Protocol):
@@ -42,14 +42,23 @@ class FlowStopEvaluator(FlowStopEvaluating):
     def evaluate_stop(self, event: dict) -> HookDecision:
         result = self._gate.evaluate()
         if not result.get("allow", True):
-            return HookDecision(allow=False, reason=result.get("reason", "Flow run left in_progress."))
+            return HookDecision(
+                allow=False, reason=result.get("reason", "Flow run left in_progress.")
+            )
         return HookDecision(allow=True)
+
+
+_DEFAULT_APPLICABILITY: FlowStopApplicabilityChecking = FlowStopApplicabilityChecker()
 
 
 class FlowTransitionHandler(HookHandling):
     """Coordination facade: filters via applicability, then delegates to the evaluator."""
 
-    def __init__(self, evaluator: FlowStopEvaluating, applicability: FlowStopApplicabilityChecking = FlowStopApplicabilityChecker()) -> None:
+    def __init__(
+        self,
+        evaluator: FlowStopEvaluating,
+        applicability: FlowStopApplicabilityChecking = _DEFAULT_APPLICABILITY,
+    ) -> None:
         self._applicability = applicability
         self._evaluator = evaluator
 

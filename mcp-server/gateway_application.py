@@ -1,6 +1,6 @@
 """Coordinates one command-line gateway invocation."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from gateway_argument_parsing import GatewayArgumentParsing
 from gateway_argument_validating import GatewayArgumentValidating
@@ -9,12 +9,13 @@ from gateway_tool_running import GatewayToolRunning
 from logging_protocol import Logging
 from process_exiting import ProcessExiting
 
-
 """
 solid-name: GatewayApplication
 solid-category: service
 solid-description: Coordinates parsing, validation, and execution for one gateway command.
 """
+
+
 class GatewayApplication:
     def __init__(
         self,

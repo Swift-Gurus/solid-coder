@@ -2,14 +2,12 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 from findings.review_severity import ReviewSeverity
 from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_decision import RuleMetricDecision
 from harness.rule_review_provenance import RuleReviewProvenance
 from harness.unavailable_rule_metric import UnavailableRuleMetric
-
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 """
 solid-name: RuleReviewResult
@@ -17,6 +15,8 @@ solid-category: model
 solid-spec: [SPEC-039]
 solid-description: Represents one identified finalized rule execution with metric decisions, severity, and audited exception classification.
 """
+
+
 class RuleReviewResult(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

@@ -6,7 +6,6 @@ solid-tags: [hook, llm]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
 
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
@@ -14,26 +13,27 @@ for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from codex_command_executor import CodexCommandExecutor  # noqa: E402
-from codex_command_builder import CodexCommandBuilder  # noqa: E402
-from codex_execution_validator import CodexExecutionValidator  # noqa: E402
-from codex_mcp_config_argument_builder import CodexMcpConfigArgumentBuilder  # noqa: E402
-from codex_prompt_artifact_user import CodexPromptArtifactUser  # noqa: E402
-from codex_prompt_executing import CodexPromptExecuting  # noqa: E402
-from codex_prompt_executor import CodexPromptExecutor  # noqa: E402
-from codex_temp_file_manager import CodexTempFileManager  # noqa: E402
-from hook_utils import SubprocessAdapter, solid_coder_project_dir  # noqa: E402
-from llama.json_deserializer import JsonDeserializer  # noqa: E402
-from llama.json_serializer import JsonSerializer  # noqa: E402
-from subprocess_error_factory import SubprocessErrorFactory  # noqa: E402
-from utils.debug_logger import DebugLogger  # noqa: E402
-
+from codex_command_builder import CodexCommandBuilder
+from codex_command_executor import CodexCommandExecutor
+from codex_execution_validator import CodexExecutionValidator
+from codex_mcp_config_argument_builder import CodexMcpConfigArgumentBuilder
+from codex_prompt_artifact_user import CodexPromptArtifactUser
+from codex_prompt_executing import CodexPromptExecuting
+from codex_prompt_executor import CodexPromptExecutor
+from codex_temp_file_manager import CodexTempFileManager
+from hook_utils import SubprocessAdapter, solid_coder_project_dir
+from llama.json_deserializer import JsonDeserializer
+from llama.json_serializer import JsonSerializer
+from subprocess_error_factory import SubprocessErrorFactory
+from utils.debug_logger import DebugLogger
 
 """
 solid-name: CodexRunner
 solid-category: service
 solid-description: Delegates prompt execution to a configured Codex execution service.
 """
+
+
 class CodexRunner:
     """Facade: all stored properties are protocol-typed; run() is pure delegation."""
 
@@ -43,7 +43,7 @@ class CodexRunner:
     ) -> None:
         self._prompt_executor = prompt_executor
 
-    def run(self, prompt: str, timeout: int) -> Optional[str]:
+    def run(self, prompt: str, timeout: int) -> str | None:
         return self._prompt_executor.execute(prompt, timeout)
 
 
@@ -72,7 +72,9 @@ def make_codex_runner(
                     error_factory=SubprocessErrorFactory(),
                 ),
                 logger=DebugLogger(
-                    project_dir_fn=lambda: solid_coder_project_dir(Path(cwd) if cwd else None),
+                    project_dir_fn=lambda: solid_coder_project_dir(
+                        Path(cwd) if cwd else None
+                    ),
                     filename="codex-execution.log",
                 ),
             ),

@@ -16,13 +16,14 @@ from gate_request_router import GateRequestRouter
 from pathlib_extractor import PathlibExtractor
 from standard_write_request_handler import StandardWriteRequestHandler
 
-
 """
 solid-name: GateOrchestratorFactory
 solid-category: factory
 solid-description: Creates pre-write gate orchestrators that route eligible tool operations.
 solid-tags: [hook]
 """
+
+
 class GateOrchestratorFactory:
     def __init__(
         self,

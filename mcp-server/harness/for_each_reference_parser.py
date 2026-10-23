@@ -13,13 +13,14 @@ from harness.step_output_reference_syntax_error import (
 )
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: ForEachReferenceParser
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030]
 solid-description: Parses and validates workflow for-each source-output expression syntax.
 """
+
+
 class ForEachReferenceParser(ForEachReferenceParsing):
     def __init__(
         self,

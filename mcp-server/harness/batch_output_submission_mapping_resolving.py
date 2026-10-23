@@ -5,13 +5,14 @@ from typing import Protocol
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
 from harness.step_output_submission_mapping import StepOutputSubmissionMapping
 
-
 """
 solid-name: BatchOutputSubmissionMappingResolving
 solid-category: abstraction
 solid-spec: [SPEC-042, SPEC-043]
-solid-description: Contract for resolving output-submission mapping by batch-presentation mode.
+solid-description: Contract for determining how batch results are submitted based on their presentation mode.
 """
+
+
 class BatchOutputSubmissionMappingResolving(Protocol):
     def resolve(
         self,

@@ -7,7 +7,6 @@ from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_context_values_mapping import WorkflowContextValuesMapping
 
-
 Value = TypeVar("Value")
 
 
@@ -17,6 +16,8 @@ solid-category: boundary
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Maps named boundary values into typed workflow context entries.
 """
+
+
 class WorkflowContextValuesMapper(WorkflowContextValuesMapping):
     def map(
         self,

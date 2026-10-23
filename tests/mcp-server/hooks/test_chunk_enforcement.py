@@ -17,10 +17,10 @@ if HOOKS_DIR not in sys.path:
 import chunk_tracker as tracker
 import enforce_chunk_reads as enforcer
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _tmp() -> str:
     return tempfile.gettempdir()
@@ -42,28 +42,28 @@ def _clean_all_chunks() -> None:
 def _run_tracker(tool_name: str, session_id: str, **kwargs) -> int:
     import io
     from contextlib import redirect_stdout
+
     event = {"tool_name": tool_name, "session_id": session_id, **kwargs}
     buf = io.StringIO()
-    with patch("sys.stdin", io.StringIO(json.dumps(event))):
-        with redirect_stdout(buf):
-            try:
-                tracker.main()
-            except SystemExit as e:
-                return e.code or 0
+    with patch("sys.stdin", io.StringIO(json.dumps(event))), redirect_stdout(buf):
+        try:
+            tracker.main()
+        except SystemExit as e:
+            return e.code or 0
     return 0
 
 
 def _run_enforcer(tool_name: str, session_id: str) -> tuple:
     import io
     from contextlib import redirect_stdout
+
     event = {"tool_name": tool_name, "session_id": session_id}
     buf = io.StringIO()
-    with patch("sys.stdin", io.StringIO(json.dumps(event))):
-        with redirect_stdout(buf):
-            try:
-                enforcer.main()
-            except SystemExit:
-                pass
+    with patch("sys.stdin", io.StringIO(json.dumps(event))), redirect_stdout(buf):
+        try:
+            enforcer.main()
+        except SystemExit:
+            pass
     return buf.getvalue()
 
 
@@ -79,13 +79,17 @@ def _is_denied(out: str) -> bool:
 def _register(session_id: str, *chunk_paths: str) -> None:
     """Simulate the MCP PostToolUse registration step."""
     response_text = "\n".join(f"- {p}" for p in chunk_paths)
-    _run_tracker("mcp__plugin_solid-coder_docs__load_rules",
-                 session_id, tool_response=response_text)
+    _run_tracker(
+        "mcp__plugin_solid-coder_docs__load_rules",
+        session_id,
+        tool_response=response_text,
+    )
 
 
 # ---------------------------------------------------------------------------
 # chunk_tracker — MCP registration
 # ---------------------------------------------------------------------------
+
 
 class TestChunkTrackerRegistration(unittest.TestCase):
     def setUp(self):
@@ -106,8 +110,11 @@ class TestChunkTrackerRegistration(unittest.TestCase):
         self.assertEqual(state["read"], [])
 
     def test_mcp_response_without_chunks_ignored(self):
-        _run_tracker("mcp__plugin_solid-coder_docs__load_rules",
-                     self._session, tool_response="No chunk content here.")
+        _run_tracker(
+            "mcp__plugin_solid-coder_docs__load_rules",
+            self._session,
+            tool_response="No chunk content here.",
+        )
         state = tracker._load(self._sf)
         self.assertEqual(state.get("registered", []), [])
 
@@ -120,8 +127,7 @@ class TestChunkTrackerRegistration(unittest.TestCase):
 
     def test_non_mcp_tool_does_not_register(self):
         chunk = _make_chunk()
-        _run_tracker("Bash", self._session,
-                     tool_response=f"- {chunk}")
+        _run_tracker("Bash", self._session, tool_response=f"- {chunk}")
         state = tracker._load(self._sf)
         self.assertEqual(state.get("registered", []), [])
 
@@ -129,6 +135,7 @@ class TestChunkTrackerRegistration(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # chunk_tracker — Read tracking
 # ---------------------------------------------------------------------------
+
 
 class TestChunkTrackerRead(unittest.TestCase):
     def setUp(self):
@@ -143,14 +150,14 @@ class TestChunkTrackerRead(unittest.TestCase):
 
     def test_read_on_chunk_file_recorded(self):
         chunk = _make_chunk()
-        _run_tracker("Read", self._session,
-                     tool_input={"file_path": chunk})
+        _run_tracker("Read", self._session, tool_input={"file_path": chunk})
         state = tracker._load(self._sf)
         self.assertIn(chunk, state["read"])
 
     def test_read_on_non_chunk_file_ignored(self):
-        _run_tracker("Read", self._session,
-                     tool_input={"file_path": "/some/regular/file.md"})
+        _run_tracker(
+            "Read", self._session, tool_input={"file_path": "/some/regular/file.md"}
+        )
         state = tracker._load(self._sf)
         self.assertEqual(state.get("read", []), [])
 
@@ -171,6 +178,7 @@ class TestChunkTrackerRead(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # enforce_chunk_reads — session-isolated enforcement
 # ---------------------------------------------------------------------------
+
 
 class TestEnforceChunkReads(unittest.TestCase):
     def setUp(self):
@@ -231,7 +239,7 @@ class TestEnforceChunkReads(unittest.TestCase):
         other_sf = tracker._state_file(other_session)
         try:
             chunk = _make_chunk()
-            _register(other_session, chunk)           # B registers a chunk
+            _register(other_session, chunk)  # B registers a chunk
             out = _run_enforcer("Bash", self._session)  # A should be unblocked
             self.assertFalse(_is_denied(out))
         finally:

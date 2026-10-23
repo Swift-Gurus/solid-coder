@@ -6,13 +6,14 @@ from dataclasses import dataclass
 
 from harness.workflow_source import WorkflowSource
 
-
 """
 solid-name: WorkflowCatalog
 solid-category: model
 solid-spec: [SPEC-035]
 solid-description: Provides immutable lookup of uniquely identified workflow sources.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowCatalog:
     sources: list[WorkflowSource]

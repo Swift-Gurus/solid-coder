@@ -5,13 +5,14 @@ from harness.workflow_input_bindings_rebinding import (
     WorkflowInputBindingsRebinding,
 )
 
-
 """
 solid-name: NamedWorkflowInputBindingsRebinder
 solid-category: service
 solid-spec: [SPEC-037, SPEC-039]
 solid-description: Replaces a selected input expression with the expression carried by another named input binding.
 """
+
+
 class NamedWorkflowInputBindingsRebinder(WorkflowInputBindingsRebinding):
     def __init__(self, source_name: str, target_name: str) -> None:
         self._source_name = source_name
@@ -22,11 +23,7 @@ class NamedWorkflowInputBindingsRebinder(WorkflowInputBindingsRebinding):
         bindings: list[WorkflowInputBinding],
     ) -> list[WorkflowInputBinding]:
         source = next(
-            (
-                binding
-                for binding in bindings
-                if binding.name == self._source_name
-            ),
+            (binding for binding in bindings if binding.name == self._source_name),
             None,
         )
         if source is None:

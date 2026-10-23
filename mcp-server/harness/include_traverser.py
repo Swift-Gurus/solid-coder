@@ -10,15 +10,15 @@ from harness.include_traversal_context import IncludeTraversalContext
 from harness.include_traversing import IncludeTraversing
 from harness.nested_include_qualifying import NestedIncludeQualifying
 
-
 """
 solid-name: IncludeTraverser
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Recursively traverses and expands workflow include sources.
 """
-class IncludeTraverser(IncludeTraversing):
 
+
+class IncludeTraverser(IncludeTraversing):
     def __init__(
         self,
         source_resolver: IncludeSourceResolving,

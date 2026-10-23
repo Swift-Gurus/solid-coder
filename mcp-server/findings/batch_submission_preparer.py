@@ -7,12 +7,13 @@ from findings.prepared_batch_submission import PreparedBatchSubmission
 from findings.requested_hook_context_loading import RequestedHookContextLoading
 from findings.submission_context_applying import SubmissionContextApplying
 
-
 """
 solid-name: BatchSubmissionPreparer
 solid-category: service
 solid-description: Applies requested health context and verifies unit coverage for one immutable findings batch.
 """
+
+
 class BatchSubmissionPreparer(BatchSubmissionPreparing):
     def __init__(
         self,

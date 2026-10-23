@@ -11,28 +11,28 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.comparison_condition import ComparisonCondition
-from harness.comparison_condition_parser import ComparisonConditionParser
-from harness.comparison_operation_parser import ComparisonOperationParser
-from harness.composition_condition_parser import CompositionConditionParser
+from harness.co_located_metric_collection_decoder import (
+    CoLocatedMetricCollectionDecoder,
+)
+from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
+from harness.co_located_metric_source_validator import CoLocatedMetricSourceValidator
 from harness.collection_metric_reducer_decoder_factory import (
     CollectionMetricReducerDecoderFactory,
 )
 from harness.collection_source_reference_parser import (
     CollectionSourceReferenceParser,
 )
-from harness.co_located_metric_collection_decoder import (
-    CoLocatedMetricCollectionDecoder,
-)
-from harness.co_located_metric_source_validator import CoLocatedMetricSourceValidator
-from harness.co_located_metric_declaration import CoLocatedMetricDeclaration
+from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_parser import ComparisonConditionParser
+from harness.comparison_operation_parser import ComparisonOperationParser
+from harness.composition_condition_parser import CompositionConditionParser
 from harness.condition_operator import ConditionOperator
 from harness.condition_parser import ConditionParser
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_declaration_parser import ForEachDeclarationParser
 from harness.for_each_mode import ForEachMode
 from harness.for_each_reference_parser import ForEachReferenceParser
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.metric_declaration import MetricDeclaration
 from harness.metric_declaration_decoder import MetricDeclarationDecoder
 from harness.metric_step_contract_assembling import MetricStepContractAssembler
@@ -47,8 +47,8 @@ from harness.rule_step_contract_resolver import RuleStepContractResolver
 from harness.step_declaration_factory import StepDeclarationFactory
 from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
-from harness.workflow_expression_parser import WorkflowExpressionParser
 from harness.workflow_expression import WorkflowExpression
+from harness.workflow_expression_parser import WorkflowExpressionParser
 
 
 class EmptyOperationStepContractResolver:
@@ -65,9 +65,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
             composition_parser=CompositionConditionParser(),
             comparison_parser=ComparisonConditionParser(
                 expression_parser=expression_parser,
-                operation_parser=ComparisonOperationParser(
-                    error_factory
-                ),
+                operation_parser=ComparisonOperationParser(error_factory),
             ),
         )
         self.sut = StepDeclarationFactory(
@@ -94,7 +92,7 @@ class TestStepDeclarationFactory(unittest.TestCase):
                     expression_parser=expression_parser,
                     reference_parser=CollectionSourceReferenceParser(
                         step_reference_parser=reference_parser,
-                    )
+                    ),
                 ),
                 error_factory=error_factory,
             ),

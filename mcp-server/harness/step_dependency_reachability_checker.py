@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from harness.models import StepDef
-from harness.step_dependency_reachability_checking import StepDependencyReachabilityChecking
-
+from harness.step_dependency_reachability_checking import (
+    StepDependencyReachabilityChecking,
+)
 
 """
 solid-name: StepDependencyReachabilityChecker
@@ -12,6 +13,8 @@ solid-category: service
 solid-spec: [SPEC-010, SPEC-030]
 solid-description: Determines whether a workflow step reaches a source through declared dependencies.
 """
+
+
 class StepDependencyReachabilityChecker(StepDependencyReachabilityChecking):
     def is_dependency(
         self,

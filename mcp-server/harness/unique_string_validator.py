@@ -3,15 +3,15 @@
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.unique_string_validating import UniqueStringValidating
 
-
 """
 solid-name: UniqueStringValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-039]
 solid-description: Validates string identity collections and reports the first repeated value as a workflow error.
 """
-class UniqueStringValidator(UniqueStringValidating):
 
+
+class UniqueStringValidator(UniqueStringValidating):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 

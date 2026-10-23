@@ -1,6 +1,7 @@
 from harness.template_value_rendering import TemplateValueRendering
-from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
-
+from source.analysis.declarations.source_scoped_declaration import (
+    SourceScopedDeclaration,
+)
 
 """
 solid-name: SourceDeclarationInventoryRenderer
@@ -8,7 +9,11 @@ solid-category: utility
 solid-spec: [SPEC-066]
 solid-description: Renders compact declaration identities, lexical ownership, modifiers and locations without retransmitting source code or internal analysis objects.
 """
-class SourceDeclarationInventoryRenderer(TemplateValueRendering[list[SourceScopedDeclaration]]):
+
+
+class SourceDeclarationInventoryRenderer(
+    TemplateValueRendering[list[SourceScopedDeclaration]]
+):
     def render(self, value: list[SourceScopedDeclaration]) -> str:
         return "\n".join(
             f"{entry.identity} | {entry.scope_kind.value} {entry.unit.kind.value} "

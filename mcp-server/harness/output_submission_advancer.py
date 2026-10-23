@@ -15,15 +15,15 @@ from harness.submission_outcome import SubmissionOutcome
 from harness.turn_advancing import TurnAdvancing
 from harness.validation_result import ValidationResult
 
-
 """
 solid-name: OutputSubmissionAdvancer
 solid-description: Advances a workflow run from validated step-instance output submissions.
 solid-category: service
 solid-spec: [SPEC-010, SPEC-031]
 """
-class OutputSubmissionAdvancer:
 
+
+class OutputSubmissionAdvancer:
     def __init__(
         self,
         step_handler_resolver: StepHandlerResolving,
@@ -70,7 +70,9 @@ class OutputSubmissionAdvancer:
             )
 
         step_map = {step.id: step for step in flow_def.steps}
-        addressed = [instance for instance in ready if instance.instance_id in step_outputs]
+        addressed = [
+            instance for instance in ready if instance.instance_id in step_outputs
+        ]
         valid_instances: list[StepInstance] = []
         valid_outputs: dict = {}
 
@@ -78,18 +80,25 @@ class OutputSubmissionAdvancer:
             step_def = step_map[instance.step_id]
             handler = self._step_handler_resolver.resolve(step_def.type)
             pending_dependencies = [
-                dependency.instance_id for dependency in ready
+                dependency.instance_id
+                for dependency in ready
                 if dependency.step_id in step_def.depends_on
                 and dependency not in valid_instances
             ]
-            validation = handler.validate(instance, step_outputs[instance.instance_id], flow_def)
+            validation = handler.validate(
+                instance, step_outputs[instance.instance_id], flow_def
+            )
             if pending_dependencies:
-                validation = ValidationResult(ok=False, errors=[*validation.errors,
-                    "Prerequisite outputs were not accepted: "
-                    + ", ".join(pending_dependencies)
-                    + ". Resubmit this result together with the pending prerequisites; "
-                    "accepted independent results are already saved."
-                ])
+                validation = ValidationResult(
+                    ok=False,
+                    errors=[
+                        *validation.errors,
+                        "Prerequisite outputs were not accepted: "
+                        + ", ".join(pending_dependencies)
+                        + ". Resubmit this result together with the pending prerequisites; "
+                        "accepted independent results are already saved.",
+                    ],
+                )
             if validation.ok:
                 valid_instances.append(instance)
                 valid_outputs[instance.instance_id] = step_outputs[instance.instance_id]

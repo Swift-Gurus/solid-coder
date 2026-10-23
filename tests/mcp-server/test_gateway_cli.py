@@ -8,6 +8,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 GATEWAY = Path(__file__).resolve().parents[2] / "mcp-server" / "gateway.py"
 
@@ -17,6 +18,7 @@ def _run(*args):
         [sys.executable, str(GATEWAY)] + list(args),
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -51,7 +53,9 @@ class TestGatewayCliLoadDetectionRules(unittest.TestCase):
 
     def test_structured_concurrency_activates_for_async_code(self):
         """Code with async/await imports activates structured-concurrency + always-on."""
-        result = _run("load_detection_rules", "--matched_tags", "structured-concurrency")
+        result = _run(
+            "load_detection_rules", "--matched_tags", "structured-concurrency"
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         names = self._names(result)
         self.assertIn("structured-concurrency", names)
@@ -96,7 +100,9 @@ class TestGatewayCliLoadDetectionRules(unittest.TestCase):
             result = _run("load_detection_rules", "--matched_tags", tag)
             names = set(self._names(result))
             for p in always_on:
-                self.assertIn(p, names, f"always-on principle '{p}' missing for tag '{tag}'")
+                self.assertIn(
+                    p, names, f"always-on principle '{p}' missing for tag '{tag}'"
+                )
 
     def test_principle_arg_returns_single_principle(self):
         result = _run("load_detection_rules", "--principle", "SRP")
@@ -114,7 +120,7 @@ class TestGatewayCliLoadDetectionRules(unittest.TestCase):
 class TestGatewayCliRegistration(unittest.TestCase):
     """Smoke tests: verify all expected tools are registered in the CLI."""
 
-    REQUIRED_TOOLS = [
+    REQUIRED_TOOLS: ClassVar[list[str]] = [
         "get_candidate_tags",
         "discover_principles",
         "load_rules",
@@ -136,7 +142,9 @@ class TestGatewayCliRegistration(unittest.TestCase):
         result = _run("help")
         self.assertEqual(result.returncode, 0)
         for tool in self.REQUIRED_TOOLS:
-            self.assertIn(tool, result.stdout + result.stderr, f"Missing from help: {tool}")
+            self.assertIn(
+                tool, result.stdout + result.stderr, f"Missing from help: {tool}"
+            )
 
 
 if __name__ == "__main__":

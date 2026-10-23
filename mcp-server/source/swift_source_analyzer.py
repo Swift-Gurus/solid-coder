@@ -8,13 +8,14 @@ from source.source_analysis import SourceAnalysis
 from source.source_analysis_decision import SourceAnalysisDecision
 from source.swift_tag_detector import SwiftTagDetecting
 
-
 """
 solid-name: SwiftSourceAnalyzer
 solid-category: service
 solid-spec: [SPEC-040, SPEC-063]
 solid-description: Produces Swift declaration, type-inspection and technology facts with explicit parse completeness and recoverable diagnostics.
 """
+
+
 class SwiftSourceAnalyzer(LanguageSourceAnalyzing):
     def __init__(
         self,

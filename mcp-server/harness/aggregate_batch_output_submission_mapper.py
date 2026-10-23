@@ -3,17 +3,20 @@
 from collections.abc import Mapping
 from typing import cast
 
+from harness.aggregate_batch_step_presentation import AggregateBatchStepPresentation
 from harness.aggregate_envelope_submission_rejecting import (
     AggregateEnvelopeSubmissionRejecting,
 )
-from harness.aggregate_batch_step_presentation import AggregateBatchStepPresentation
 from harness.batch_submission_target import BatchSubmissionTarget
 from harness.batch_submission_target_resolving import BatchSubmissionTargetResolving
 from harness.models import StepInstance
 from harness.step_output_submission_mapping import StepOutputSubmissionMapping
-from harness.step_output_submission_mapping_result import StepOutputSubmissionMappingResult
-from harness.successful_step_output_mapping_building import SuccessfulStepOutputMappingBuilding
-
+from harness.step_output_submission_mapping_result import (
+    StepOutputSubmissionMappingResult,
+)
+from harness.successful_step_output_mapping_building import (
+    SuccessfulStepOutputMappingBuilding,
+)
 
 """
 solid-name: AggregateBatchOutputSubmissionMapper
@@ -21,6 +24,8 @@ solid-category: service
 solid-spec: [SPEC-045, SPEC-052]
 solid-description: Translates aggregate item, workflow, and step addresses into original instance outputs.
 """
+
+
 class AggregateBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
     def __init__(
         self,

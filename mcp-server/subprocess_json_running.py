@@ -3,7 +3,7 @@ solid-description: Contract for executing a shell command and returning parsed J
 solid-category: abstraction
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class SubprocessJsonRunning(Protocol):
@@ -15,4 +15,6 @@ class SubprocessJsonRunning(Protocol):
     the concrete boundary adapter.
     """
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object: ...
+    def run(
+        self, cmd: list, timeout: int | None = None, stdin=None, cwd: str | None = None
+    ) -> object: ...

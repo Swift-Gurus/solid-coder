@@ -1,18 +1,19 @@
 """Resolves configured scorers for named review principles."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from scoring.principle_scorer_resolution import PrincipleScorerResolution
 from scoring.principle_scorer_resolving import PrincipleScorerResolving
 from scoring.unit_metric_scorer_creating import UnitMetricScorerCreating
-
 
 """
 solid-name: PrincipleScorerResolver
 solid-category: service
 solid-description: Resolves one configured typed scorer for a named review principle.
 """
+
+
 class PrincipleScorerResolver(PrincipleScorerResolving):
     def __init__(
         self,

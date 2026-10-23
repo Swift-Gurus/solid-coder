@@ -10,13 +10,12 @@ _HARNESS = Path(__file__).resolve().parents[1]
 if str(_HARNESS) not in sys.path:
     sys.path.insert(0, str(_HARNESS))
 
-from review_comparison_source_project import (  # noqa: E402
+from review_comparison_source_project import (
     ReviewComparisonSourceProject,
 )
 
 
 class TestReviewComparisonSourceProject(unittest.TestCase):
-
     def test_materializes_only_the_locked_source_files(self) -> None:
         project = ReviewComparisonSourceProject.create()
         self.addCleanup(project.cleanup)

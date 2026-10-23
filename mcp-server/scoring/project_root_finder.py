@@ -5,17 +5,19 @@ solid-tags: [utility, service]
 """
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 from scoring.parent_chain import parent_chain
 
-CONFIG_DIR        = ".solid-coder"       # config directory name — mirrors hooks/solid_coder_paths.py
-CONFIG_TOML       = "config.toml"        # root marker: directory is the root iff this file exists
-CONFIG_BASENAME   = "severity-bands.yml" # threshold overrides — mirrors SEVERITY_BANDS
+CONFIG_DIR = (
+    ".solid-coder"  # config directory name — mirrors hooks/solid_coder_paths.py
+)
+CONFIG_TOML = "config.toml"  # root marker: directory is the root iff this file exists
+CONFIG_BASENAME = "severity-bands.yml"  # threshold overrides — mirrors SEVERITY_BANDS
 
 
 class ProjectRootFinding(Protocol):
-    def find(self, file_path: str) -> Optional[str]: ...
+    def find(self, file_path: str) -> str | None: ...
 
 
 class ProjectRootFinder:
@@ -30,7 +32,7 @@ class ProjectRootFinder:
     key-by-key.
     """
 
-    def find(self, file_path: str) -> Optional[str]:
+    def find(self, file_path: str) -> str | None:
         found = None
         for current in parent_chain(Path(file_path).resolve().parent):
             if (current / CONFIG_DIR / CONFIG_TOML).is_file():

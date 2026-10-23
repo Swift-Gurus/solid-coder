@@ -4,12 +4,15 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from gate_protocols import ContentSimulating, FrontmatterGateApplying, HealthGateChecking
 from file_name_resolving import FileNameResolving
 from frontmatter_description_detecting import FrontmatterDescriptionDetecting
+from gate_protocols import (
+    ContentSimulating,
+    FrontmatterGateApplying,
+    HealthGateChecking,
+)
 from hook_utils import GateHandling
 from tool_input_updating import ToolInputUpdating
-
 
 """
 solid-name: WriteGateCoordinator
@@ -17,6 +20,8 @@ solid-category: service
 solid-description: Sequences prospective source health and metadata authorization for write operations.
 solid-tags: [hook]
 """
+
+
 class WriteGateCoordinator:
     """Facade: coordinates health check and frontmatter correction via injected protocol-typed subsystems."""
 
@@ -38,7 +43,15 @@ class WriteGateCoordinator:
         self._file_name_resolver = file_name_resolver
         self._frontmatter_detector = frontmatter_detector
 
-    def run(self, tool_name: str, tool_input: dict, file_path: str, language: str, session_id: str, cwd: str = "") -> None:
+    def run(
+        self,
+        tool_name: str,
+        tool_input: dict,
+        file_path: str,
+        language: str,
+        session_id: str,
+        cwd: str = "",
+    ) -> None:
         simulation = self._simulator.simulate(tool_name, tool_input)
         content = simulation.content
         file_name = self._file_name_resolver.resolve(file_path)
@@ -47,11 +60,17 @@ class WriteGateCoordinator:
         if not run_health and not run_frontmatter:
             self._gate.allow()
             return
-        self._gate.log(f"INVOKE {file_name}: health={run_health} frontmatter={run_frontmatter}")
-        if run_health and not self._health_gate.check(content, file_path, language, session_id, self._gate, file_name, cwd):
+        self._gate.log(
+            f"INVOKE {file_name}: health={run_health} frontmatter={run_frontmatter}"
+        )
+        if run_health and not self._health_gate.check(
+            content, file_path, language, session_id, self._gate, file_name, cwd
+        ):
             return
         if run_frontmatter:
-            corrected = self._frontmatter_gate.apply(content, session_id, file_path, self._gate, file_name)
+            corrected = self._frontmatter_gate.apply(
+                content, session_id, file_path, self._gate, file_name
+            )
             if corrected is not None and corrected != content:
                 self._gate.log(f"CORRECTED {file_name}: frontmatter updated")
                 if tool_name in ("Write", "Edit"):

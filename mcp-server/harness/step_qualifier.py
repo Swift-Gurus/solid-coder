@@ -4,13 +4,14 @@ from harness.metric_scoring_source_qualifying import (
     MetricScoringSourceQualifying,
 )
 
-
 """
 solid-name: StepQualifier
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Prefixes an included step ID and its local step or group dependencies with one alias.
 """
+
+
 class StepQualifier:
     def __init__(
         self,

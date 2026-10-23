@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import Protocol
 
-
 """
 solid-name: SearchTermsResolving
 solid-category: abstraction
 solid-description: Contract for validating and normalizing codebase-search inputs into individual terms.
 """
+
+
 class SearchTermsResolving(Protocol):
     def resolve(
         self,

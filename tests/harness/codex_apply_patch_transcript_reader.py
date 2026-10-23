@@ -16,8 +16,9 @@ solid-name: CodexApplyPatchTranscriptReader
 solid-category: test-support
 solid-description: Converts direct and exec-wrapped Codex apply_patch transcript events into typed invocation observations.
 """
-class CodexApplyPatchTranscriptReader:
 
+
+class CodexApplyPatchTranscriptReader:
     def read(self, sessions_root: Path) -> list[CodexApplyPatchCall]:
         calls: list[CodexApplyPatchCall] = []
         for transcript_path in sorted(sessions_root.rglob("*.jsonl")):
@@ -62,9 +63,11 @@ class CodexApplyPatchTranscriptReader:
     def _read_assigned_patch(self, tool_input: str) -> str:
         assignment_offset = tool_input.find(_PATCH_ASSIGNMENT)
         if assignment_offset < 0:
-            raise RuntimeError("Codex exec invoked apply_patch without a patch assignment")
-        encoded_patch = tool_input[assignment_offset + len(_PATCH_ASSIGNMENT):]
+            raise RuntimeError(
+                "Codex exec invoked apply_patch without a patch assignment"
+            )
+        encoded_patch = tool_input[assignment_offset + len(_PATCH_ASSIGNMENT) :]
         patch_content, _end_offset = json.JSONDecoder().raw_decode(encoded_patch)
         if not isinstance(patch_content, str):
-            raise RuntimeError("Codex apply_patch assignment was not a string")
+            raise TypeError("Codex apply_patch assignment was not a string")
         return patch_content

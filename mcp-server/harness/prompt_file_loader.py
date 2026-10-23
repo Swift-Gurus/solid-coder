@@ -7,15 +7,15 @@ from pathlib import Path
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from utils.prompt_builder import TextFileReading
 
-
 """
 solid-name: PromptFileLoader
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Loads required prompt text and reports an actionable missing-resource failure.
 """
-class PromptFileLoader:
 
+
+class PromptFileLoader:
     def __init__(
         self,
         reader: TextFileReading,

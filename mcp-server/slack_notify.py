@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Notifies via webhook when Claude stops or requests tool permission.
 solid-category: hook
@@ -22,9 +21,10 @@ import os
 import re
 import sys
 import urllib.error
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, Protocol, runtime_checkable
+from typing import ClassVar, Protocol, runtime_checkable
 
 from llama.urllib_sender import HttpSending, UrllibSender
 
@@ -53,6 +53,7 @@ def _normalize_content_text(content) -> str:
 # ---------------------------------------------------------------------------
 # Infrastructure protocols + adapters
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class EnvironmentReading(Protocol):
@@ -127,12 +128,13 @@ class SystemClock:
     """Returns the real current UTC time."""
 
     def now_utc(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
 # Domain protocols
 # ---------------------------------------------------------------------------
+
 
 @runtime_checkable
 class ConfigReading(Protocol):
@@ -185,6 +187,7 @@ class WebhookSending(Protocol):
 # Implementations
 # ---------------------------------------------------------------------------
 
+
 class EnvConfigReader:
     """Reads the Slack webhook URL from the CLAUDE_SLACK_NOTIFY environment variable."""
 
@@ -205,11 +208,13 @@ class TomlThresholdReader:
 
     def __init__(self, threshold_fn: Callable[[], int] | None = None) -> None:
         if threshold_fn is None:
-            from hc_config_core import read_section, safe_convert  # noqa: PLC0415
+            from hc_config_core import read_section, safe_convert
+
             def _default() -> int:
                 return safe_convert(
                     read_section("slack").get("task_length_threshold"), 60, int
                 )
+
             threshold_fn = _default
         self._fn = threshold_fn
 
@@ -258,7 +263,9 @@ class SkillCallsReader:
     def _command_from_user_message(self, messages: list) -> str:
         for obj in messages:
             if obj.get("type") == "user":
-                text = _normalize_content_text(obj.get("message", {}).get("content", ""))
+                text = _normalize_content_text(
+                    obj.get("message", {}).get("content", "")
+                )
                 match = _COMMAND_MESSAGE_RE.search(text)
                 return match.group(1).strip() if match else ""
         return ""
@@ -268,10 +275,7 @@ class SkillCallsReader:
         for obj in messages:
             if obj.get("type") == "assistant":
                 for block in obj.get("message", {}).get("content", []):
-                    if (
-                        block.get("type") == "tool_use"
-                        and block.get("name") == "Skill"
-                    ):
+                    if block.get("type") == "tool_use" and block.get("name") == "Skill":
                         skill = (block.get("input") or {}).get("skill", "")
                         if skill:
                             skills.append(skill)
@@ -320,12 +324,16 @@ class TranscriptElapsedReader:
                 # and would make elapsed appear tiny even after a long task.
                 # Only track human-typed messages (text content).
                 content = obj.get("message", {}).get("content", "")
-                if isinstance(content, list) and content and content[0].get("type") == "tool_result":
+                if (
+                    isinstance(content, list)
+                    and content
+                    and content[0].get("type") == "tool_result"
+                ):
                     continue
                 raw = obj.get("timestamp", "")
                 if raw:
                     try:
-                        last_ts = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+                        last_ts = datetime.fromisoformat(raw)
                     except ValueError:
                         pass
         if last_ts is None:
@@ -336,7 +344,7 @@ class TranscriptElapsedReader:
 class ModeClassifier:
     """Classifies the session mode from skill calls."""
 
-    _TRIGGERS: list[tuple[str, str]] = [
+    _TRIGGERS: ClassVar[list[tuple[str, str]]] = [
         ("review", "solid-coder:review"),
         ("implement", "solid-coder:implement"),
         ("refactor", "solid-coder:refactor"),
@@ -369,7 +377,9 @@ class SlackPayloadBuilder:
         cwd = self._event.get("cwd", "")
         project_name = self._path_namer.name(cwd)
         icon = _MODE_ICONS.get(self._mode, ":magic_wand:")
-        first_line = self._last_message.split("\n")[0].strip() if self._last_message else ""
+        first_line = (
+            self._last_message.split("\n")[0].strip() if self._last_message else ""
+        )
         header_text = f"{icon}  {first_line or 'Finished'}"
 
         blocks: list[dict] = [
@@ -385,9 +395,7 @@ class SlackPayloadBuilder:
                 {"type": "mrkdwn", "text": f"*Project:* {project_name}"}
             )
         if cwd:
-            context_elements.append(
-                {"type": "mrkdwn", "text": f"*Path:* `{cwd}`"}
-            )
+            context_elements.append({"type": "mrkdwn", "text": f"*Path:* `{cwd}`"})
 
         if context_elements:
             blocks.append({"type": "context", "elements": context_elements})
@@ -397,9 +405,7 @@ class SlackPayloadBuilder:
             if len(msg) > _MAX_LAST_MESSAGE_LEN:
                 msg = msg[:_MAX_LAST_MESSAGE_LEN] + "…"
             blocks.append({"type": "divider"})
-            blocks.append(
-                {"type": "section", "text": {"type": "mrkdwn", "text": msg}}
-            )
+            blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": msg}})
 
         return {"text": first_line or "Finished", "blocks": blocks}
 
@@ -433,18 +439,25 @@ class SlackStopNotifier:
         config: ConfigReading | None = None,
         transcript_reader_factory: Callable[[str], TranscriptReading] | None = None,
         mode_classifier: ModeClassifying | None = None,
-        payload_builder_factory: Callable[[dict, str, str], PayloadBuilding] | None = None,
+        payload_builder_factory: Callable[[dict, str, str], PayloadBuilding]
+        | None = None,
         dispatcher_factory: Callable[[str], WebhookSending] | None = None,
         threshold_reader: ThresholdReading | None = None,
         elapsed_reader: ElapsedTimeReading | None = None,
     ) -> None:
         self._config = config if config is not None else EnvConfigReader()
         self._reader_factory = transcript_reader_factory or TranscriptReader
-        self._classifier = mode_classifier if mode_classifier is not None else ModeClassifier()
+        self._classifier = (
+            mode_classifier if mode_classifier is not None else ModeClassifier()
+        )
         self._builder_factory = payload_builder_factory or SlackPayloadBuilder
         self._dispatcher_factory = dispatcher_factory or WebhookDispatcher
-        self._threshold = threshold_reader if threshold_reader is not None else TomlThresholdReader()
-        self._elapsed = elapsed_reader if elapsed_reader is not None else TranscriptElapsedReader()
+        self._threshold = (
+            threshold_reader if threshold_reader is not None else TomlThresholdReader()
+        )
+        self._elapsed = (
+            elapsed_reader if elapsed_reader is not None else TranscriptElapsedReader()
+        )
 
     def should_handle(self, event: dict) -> bool:
         if not self._config.is_enabled():
@@ -526,7 +539,9 @@ class PermissionPayloadBuilder:
 
         context_elements: list[dict] = []
         if project_name:
-            context_elements.append({"type": "mrkdwn", "text": f"*Project:* {project_name}"})
+            context_elements.append(
+                {"type": "mrkdwn", "text": f"*Project:* {project_name}"}
+            )
         if summary:
             context_elements.append({"type": "mrkdwn", "text": f"`{summary}`"})
         if context_elements:

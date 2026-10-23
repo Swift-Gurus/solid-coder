@@ -1,8 +1,7 @@
 """Stores the current authorization decision for one file review."""
 
-from hook_decision import HookDecision
 from hook_context_buffer import HookContextBuffering
-
+from hook_decision import HookDecision
 
 """
 solid-name: ReviewDecisionStore
@@ -10,6 +9,8 @@ solid-category: service
 solid-description: Retains review warnings and authorization outcomes without allowing warnings to override a denial.
 solid-tags: [hook]
 """
+
+
 class ReviewDecisionStore:
     def __init__(self, context: HookContextBuffering) -> None:
         self._decision = HookDecision(allow=True)
@@ -36,5 +37,8 @@ class ReviewDecisionStore:
         return HookDecision(
             allow=self._decision.allow,
             reason=self._decision.reason,
-            additional_context=self._context.render(self._decision.additional_context or "") or None,
+            additional_context=self._context.render(
+                self._decision.additional_context or ""
+            )
+            or None,
         )

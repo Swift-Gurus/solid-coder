@@ -10,13 +10,14 @@ from patch_files_simulating import PatchFilesSimulating
 from patch_format_parser import PatchFormatParser
 from path_file_system_reader import PathFileSystemReader
 
-
 """
 solid-name: ApplyPatchContentSimulatorFactory
 solid-category: factory
 solid-description: Creates simulators for apply-patch file content.
 solid-tags: [hook]
 """
+
+
 class ApplyPatchContentSimulatorFactory:
     def create(self) -> PatchFilesSimulating:
         parser = ApplyPatchParser(

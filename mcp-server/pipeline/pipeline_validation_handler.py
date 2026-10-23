@@ -4,12 +4,13 @@ from pipeline.pipeline_validation_handling import PipelineValidationHandling
 from pipeline.skill_runner import ResultFormatting, SkillRunning
 from utils.path_file_system_reader import FileSystemReading
 
-
 """
 solid-name: PipelineValidationHandler
 solid-category: validator
 solid-description: Validates architecture plans and scored review findings through pipeline commands.
 """
+
+
 class PipelineValidationHandler(PipelineValidationHandling):
     def __init__(
         self,

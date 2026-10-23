@@ -4,10 +4,9 @@ solid-category: model
 solid-description: Supplies feature flag settings that control experimental behaviors.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from health_check_mode import HealthCheckMode
 from harness.flow_submission_format import FlowSubmissionFormat
+from health_check_mode import HealthCheckMode
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FeatureFlagsConfig(BaseModel):

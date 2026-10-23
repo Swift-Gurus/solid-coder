@@ -1,4 +1,5 @@
 """Gateway CLI tests for load_fix_for_violation and load_fix_instructions_for_findings."""
+
 import json
 import subprocess
 import sys
@@ -13,14 +14,18 @@ GATEWAY = PROJECT_ROOT / "mcp-server" / "gateway.py"
 def _run_gateway(*args):
     return subprocess.run(
         [sys.executable, str(GATEWAY), *args],
-        capture_output=True, text=True, cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+        check=False,
     )
 
 
 def _write_findings(findings):
-    f = tempfile.NamedTemporaryFile(mode="w", suffix=".output.json", delete=False)
-    json.dump({"findings": findings}, f)
-    f.close()
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".output.json", delete=False
+    ) as f:
+        json.dump({"findings": findings}, f)
     return f.name
 
 
@@ -51,24 +56,36 @@ class TestLoadFixForViolationGateway(unittest.TestCase):
 
     def test_all_core_metrics_have_files(self):
         cases = [
-            "SRP-1", "SRP-2", "SRP-3",
-            "OCP-1", "OCP-2",
-            "LSP-1", "LSP-2", "LSP-3",
-            "ISP-1", "ISP-2", "ISP-3",
-            "DRY-1", "DRY-2", "DRY-3",
+            "SRP-1",
+            "SRP-2",
+            "SRP-3",
+            "OCP-1",
+            "OCP-2",
+            "LSP-1",
+            "LSP-2",
+            "LSP-3",
+            "ISP-1",
+            "ISP-2",
+            "ISP-3",
+            "DRY-1",
+            "DRY-2",
+            "DRY-3",
         ]
         for metric_id in cases:
             with self.subTest(metric=metric_id):
                 r = self._run(metric_id)
                 self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertNotIn("No fix file found", r.stdout, msg=f"Missing fix for {metric_id}")
+                self.assertNotIn(
+                    "No fix file found", r.stdout, msg=f"Missing fix for {metric_id}"
+                )
                 self.assertGreater(len(r.stdout.strip()), 0)
 
 
 class TestLoadFixInstructionsForFindingsGateway(unittest.TestCase):
     def _run(self, findings_path):
-        return _run_gateway("load_fix_instructions_for_findings",
-                            "--findings_path", findings_path)
+        return _run_gateway(
+            "load_fix_instructions_for_findings", "--findings_path", findings_path
+        )
 
     def test_single_finding_returns_loaded_entry(self):
         path = _write_findings([{"metric_id": "OCP-1"}])

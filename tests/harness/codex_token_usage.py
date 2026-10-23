@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict
 
-
 """
 solid-name: CodexTokenUsage
 solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Carries explicit availability and cumulative token counters preserved for one comparison run.
 """
+
+
 class CodexTokenUsage(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

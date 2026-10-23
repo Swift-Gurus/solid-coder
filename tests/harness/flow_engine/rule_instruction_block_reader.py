@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-
 """
 solid-name: RuleInstructionBlockReader
 solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Extracts authored detection and exception bodies for workflow migration parity assertions.
 """
+
+
 class RuleInstructionBlockReader:
     def definition(
         self,

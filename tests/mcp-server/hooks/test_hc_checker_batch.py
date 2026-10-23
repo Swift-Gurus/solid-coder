@@ -6,7 +6,6 @@ solid-category: unit-test
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,12 +16,15 @@ from _path_bootstrap import ensure_on_path
 _HERE = Path(__file__).resolve()
 ensure_on_path(_HERE.parents[3] / "mcp-server" / "hooks", _HERE.parent)
 
-from hc_checker import (  # noqa: E402
-    LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
-    HealthPromptBuilder, LLMHealthChecker,
+from hc_checker import (
+    FileBasedOutputHandler,
+    FileOutputReader,
+    HealthPromptBuilder,
+    LLMHealthChecker,
+    LLMReviewer,
 )
-from violation_extractor import ViolationExtractor  # noqa: E402
-from test_utils import make_test_executor  # noqa: E402
+from test_utils import make_test_executor
+from violation_extractor import ViolationExtractor
 
 
 class TestLLMReviewerBatch(unittest.TestCase):
@@ -36,27 +38,42 @@ class TestLLMReviewerBatch(unittest.TestCase):
     def tmp_path(self):
         return Path(self.tmp.name)
 
-    def _write_review_output(self, output_dir: Path, label: str, violations: list) -> None:
+    def _write_review_output(
+        self, output_dir: Path, label: str, violations: list
+    ) -> None:
         p = output_dir / label
         p.mkdir(parents=True, exist_ok=True)
-        (p / "review-output.json").write_text(json.dumps({
-            "timestamp": "2026-01-01T00:00:00Z",
-            "files": [{"file_path": "/tmp/Foo.swift", "units": [{
-                "unit_name": "Foo",
-                "unit_kind": "class",
-                "metrics": {},
-                "violations": violations,
-            }]}],
-        }))
+        (p / "review-output.json").write_text(
+            json.dumps(
+                {
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "files": [
+                        {
+                            "file_path": "/tmp/Foo.swift",
+                            "units": [
+                                {
+                                    "unit_name": "Foo",
+                                    "unit_kind": "class",
+                                    "metrics": {},
+                                    "violations": violations,
+                                }
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
 
     def _violation(self, rule_id: str, severity: str = "SEVERE") -> dict:
         return {"rule_id": rule_id, "severity": severity}
 
     def _make_reviewer(self) -> LLMReviewer:
-        executor, _ = make_test_executor()
+        executor, logger = make_test_executor()
         return LLMReviewer(
             executor=executor,
-            output_handler=FileBasedOutputHandler(FileOutputReader(extractor=ViolationExtractor())),
+            output_handler=FileBasedOutputHandler(
+                FileOutputReader(extractor=ViolationExtractor(logger=logger))
+            ),
         )
 
     def _make_checker(self, resolver, reviewer=None):
@@ -76,46 +93,56 @@ class TestLLMReviewerBatch(unittest.TestCase):
 
     def test_reviewer_reads_violations_from_output_dir(self):
         self._write_review_output(self.tmp_path, "SRP", [self._violation("SRP-1")])
-        violations = self._make_reviewer().review("prompt", "/tmp/Foo.swift",
-                                                   output_dir=self.tmp.name)
+        violations = self._make_reviewer().review(
+            "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+        )
         self.assertIsNotNone(violations)
         self.assertGreater(len(violations), 0)
 
     def test_reviewer_violation_contains_principle_and_metric(self):
         self._write_review_output(self.tmp_path, "SRP", [self._violation("SRP-1")])
-        violations = self._make_reviewer().review("prompt", "/tmp/Foo.swift",
-                                                   output_dir=self.tmp.name)
+        violations = self._make_reviewer().review(
+            "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+        )
         v = violations[0]
         self.assertEqual(v["principle"], "SRP")
         self.assertIn("metric_id", v)
 
     def test_reviewer_raises_when_no_files_found(self):
         with self.assertRaises(RuntimeError):
-            self._make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
+            self._make_reviewer().review(
+                "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+            )
 
     def test_reviewer_aggregates_violations_from_multiple_principles(self):
         self._write_review_output(self.tmp_path, "SRP", [self._violation("SRP-1")])
         self._write_review_output(self.tmp_path, "DRY", [self._violation("DRY-3")])
-        violations = self._make_reviewer().review("prompt", "/tmp/Foo.swift",
-                                                   output_dir=self.tmp.name)
+        violations = self._make_reviewer().review(
+            "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+        )
         principles = {v["principle"] for v in violations}
         self.assertIn("SRP", principles)
         self.assertIn("DRY", principles)
 
     def test_reviewer_deletes_output_dir_after_reading(self):
         self._write_review_output(self.tmp_path, "SRP", [self._violation("SRP-1")])
-        self._make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
+        self._make_reviewer().review(
+            "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+        )
         self.assertFalse(Path(self.tmp.name).exists())
 
     def test_reviewer_deletes_output_dir_even_on_error(self):
         with self.assertRaises(RuntimeError):
-            self._make_reviewer().review("prompt", "/tmp/Foo.swift", output_dir=self.tmp.name)
+            self._make_reviewer().review(
+                "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+            )
         self.assertFalse(Path(self.tmp.name).exists())
 
     def test_compliant_units_produce_no_violations(self):
         self._write_review_output(self.tmp_path, "SRP", [])
-        violations = self._make_reviewer().review("prompt", "/tmp/Foo.swift",
-                                                   output_dir=self.tmp.name)
+        violations = self._make_reviewer().review(
+            "prompt", "/tmp/Foo.swift", output_dir=self.tmp.name
+        )
         self.assertEqual(violations, [])
 
     def test_build_accepts_output_dir_parameter(self):

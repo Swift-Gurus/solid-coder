@@ -7,13 +7,14 @@ from dataclasses import dataclass
 from harness.models import StepDef
 from harness.step_batch_running import StepBatchRunning
 
-
 """
 solid-name: StepBatchRunnerRegistration
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Associates a workflow step type and execution mode with its batch execution capability.
 """
+
+
 @dataclass(frozen=True)
 class StepBatchRunnerRegistration:
     step_type: str

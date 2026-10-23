@@ -6,15 +6,18 @@ from harness.output_spec import OutputSpec
 from harness.step_output_reference_syntax_error import StepOutputReferenceSyntaxError
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: CoLocatedMetricSourceValidating
 solid-category: abstraction
 solid-spec: [SPEC-058]
 solid-description: Contract for validating local metric output ownership and explaining invalid source references.
 """
+
+
 class CoLocatedMetricSourceValidating(Protocol):
-    def validate(self, owner_id: str, metric_id: str, source: str, outputs: list[OutputSpec]) -> None: ...
+    def validate(
+        self, owner_id: str, metric_id: str, source: str, outputs: list[OutputSpec]
+    ) -> None: ...
 
 
 """
@@ -23,13 +26,23 @@ solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Validates local metric output references and distinguishes undeclared sources from unsupported cross-step references.
 """
+
+
 class CoLocatedMetricSourceValidator(CoLocatedMetricSourceValidating):
-    def __init__(self, expression_parser: WorkflowExpressionParsing, reference_parser: CollectionSourceReferenceParsing) -> None:
+    def __init__(
+        self,
+        expression_parser: WorkflowExpressionParsing,
+        reference_parser: CollectionSourceReferenceParsing,
+    ) -> None:
         self._expression_parser = expression_parser
         self._reference_parser = reference_parser
 
-    def validate(self, owner_id: str, metric_id: str, source: str, outputs: list[OutputSpec]) -> None:
-        output = next((candidate for candidate in outputs if candidate.name == source), None)
+    def validate(
+        self, owner_id: str, metric_id: str, source: str, outputs: list[OutputSpec]
+    ) -> None:
+        output = next(
+            (candidate for candidate in outputs if candidate.name == source), None
+        )
         if output is not None:
             if output.type != "data":
                 raise FlowValidationError(

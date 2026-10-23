@@ -7,15 +7,15 @@ from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_input_bindings_resolving import WorkflowInputBindingsResolving
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowInputBindingsResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves child workflow input expressions to their raw runtime values.
 """
-class WorkflowInputBindingsResolver(WorkflowInputBindingsResolving):
 
+
+class WorkflowInputBindingsResolver(WorkflowInputBindingsResolving):
     def __init__(
         self,
         evaluator: ExpressionEvaluating,

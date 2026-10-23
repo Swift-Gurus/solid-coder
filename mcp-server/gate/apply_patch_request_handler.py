@@ -3,13 +3,14 @@
 from apply_patch_reviewing import ApplyPatchReviewing
 from gate_handling import GateHandling
 
-
 """
 solid-name: ApplyPatchRequestHandler
 solid-category: service
 solid-description: Reviews an entire patch and emits its single aggregated gate response.
 solid-tags: [hook]
 """
+
+
 class ApplyPatchRequestHandler:
     def __init__(
         self,

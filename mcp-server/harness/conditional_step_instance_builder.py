@@ -8,15 +8,15 @@ from harness.step_instance_building import StepInstanceBuilding
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
-
 """
 solid-name: ConditionalStepInstanceBuilder
 solid-category: decorator
 solid-spec: [SPEC-037]
 solid-description: Prevents ineligible workflow instances from rendering prompts or starting execution.
 """
-class ConditionalStepInstanceBuilder:
 
+
+class ConditionalStepInstanceBuilder:
     def __init__(
         self,
         delegate: StepInstanceBuilding,

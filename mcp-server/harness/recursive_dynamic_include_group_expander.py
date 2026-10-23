@@ -7,13 +7,14 @@ from harness.include_group_tree_materialization import IncludeGroupTreeMateriali
 from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: RecursiveDynamicIncludeGroupExpander
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Starts recursive materialization for one dynamic include-group hierarchy root.
 """
+
+
 class RecursiveDynamicIncludeGroupExpander(DynamicIncludeGroupExpanding):
     def __init__(
         self,

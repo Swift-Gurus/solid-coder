@@ -2,15 +2,14 @@
 
 import importlib
 from pathlib import Path
-from typing import Optional
 
 from findings.gateway_handler import GatewayHandling
 from health.dry_search_service_factory import DrySearchServiceFactory
 from lib.gateway_tools import GatewayHandlerFactory
 from mcp_server_factory import MCPServerFactory
 from message_transport_running import MessageTransportRunning
-from pipeline.check_severity_running import CheckSeverityRunning
 from pipeline.application_bootstrapper_creating import ApplicationBootstrapperCreating
+from pipeline.check_severity_running import CheckSeverityRunning
 from pipeline.context_loading import ContextLoading
 from pipeline.flow_result_renderer_creating import FlowResultRendererCreating
 from pipeline.flow_run_creating import FlowRunCreating
@@ -20,20 +19,26 @@ from pipeline.interfaces import ReviewResultsCollecting
 from pipeline.output_path_factory import OutputPathFactory
 from pipeline.output_validating import OutputValidating
 from pipeline.pipeline_tool_callables_assembler import PipelineToolCallablesAssembler
-from search.codebase_searcher_factory import CodebaseSearcherFactory
 from pipeline.pipeline_tool_callables_creating import PipelineToolCallablesCreating
 from pipeline.server import ApplicationBootstrapper
-from pipeline.skill_runner import ResultFormatting, SkillRunning, SkillResultFormatter, SkillRunner
-from pipeline.tool_registry import ToolRegistering, ToolRegistry
+from pipeline.skill_runner import (
+    ResultFormatting,
+    SkillResultFormatter,
+    SkillRunner,
+    SkillRunning,
+)
 from pipeline.tool_callables_building import ToolCallablesBuilding
+from pipeline.tool_registry import ToolRegistering, ToolRegistry
+from search.codebase_searcher_factory import CodebaseSearcherFactory
 from search.tag_codebase_searching import TagCodebaseSearching
-
 
 """
 solid-name: ApplicationBootstrapperFactory
 solid-category: factory
 solid-description: Assembles the production pipeline application from configurable runtime services.
 """
+
+
 class ApplicationBootstrapperFactory(
     ApplicationBootstrapperCreating,
     PipelineToolCallablesCreating,
@@ -44,16 +49,16 @@ class ApplicationBootstrapperFactory(
         skills_root: Path,
         flow_run_creator: FlowRunCreating,
         flow_renderer_creator: FlowResultRendererCreating,
-        server: Optional[MessageTransportRunning] = None,
-        registry: Optional[ToolRegistering] = None,
-        skill_runner: Optional[SkillRunning] = None,
-        result_formatter: Optional[ResultFormatting] = None,
-        collector: Optional[ReviewResultsCollecting] = None,
-        gateway: Optional[GatewayHandling] = None,
-        check_severity: Optional[CheckSeverityRunning] = None,
-        context_loader: Optional[ContextLoading] = None,
-        output_validator: Optional[OutputValidating] = None,
-        search: Optional[TagCodebaseSearching] = None,
+        server: MessageTransportRunning | None = None,
+        registry: ToolRegistering | None = None,
+        skill_runner: SkillRunning | None = None,
+        result_formatter: ResultFormatting | None = None,
+        collector: ReviewResultsCollecting | None = None,
+        gateway: GatewayHandling | None = None,
+        check_severity: CheckSeverityRunning | None = None,
+        context_loader: ContextLoading | None = None,
+        output_validator: OutputValidating | None = None,
+        search: TagCodebaseSearching | None = None,
     ) -> None:
         self._plugin_root = plugin_root
         self._skills_root = skills_root

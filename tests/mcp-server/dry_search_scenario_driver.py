@@ -2,19 +2,20 @@
 
 from pathlib import Path
 
+from dry_search_scenario import DrySearchScenario
+from dry_search_scenario_outcome import DrySearchScenarioOutcome
 from findings.batch_submission import BatchSubmission
 from findings.batch_submission_parse_result import BatchSubmissionParseResult
 from findings.partial_review_output import PartialReviewOutput
 from findings.principle_submission import PrincipleSubmission
-from dry_search_scenario import DrySearchScenario
-from dry_search_scenario_outcome import DrySearchScenarioOutcome
-
 
 """
 solid-name: DrySearchScenarioDriver
 solid-category: test-support
 solid-description: Executes the ordered calls in a DRY-search enforcement scenario.
 """
+
+
 class DrySearchScenarioDriver:
     def run(
         self,
@@ -22,12 +23,16 @@ class DrySearchScenarioDriver:
         output_dir: Path,
     ) -> DrySearchScenarioOutcome:
         output_path = str(output_dir)
-        parse_result = BatchSubmissionParseResult(BatchSubmission((
-            PrincipleSubmission(
-                label="dry",
-                output=PartialReviewOutput(timestamp="test", files=()),
-            ),
-        )))
+        parse_result = BatchSubmissionParseResult(
+            BatchSubmission(
+                (
+                    PrincipleSubmission(
+                        label="dry",
+                        output=PartialReviewOutput(timestamp="test", files=()),
+                    ),
+                )
+            )
+        )
         initial = scenario.submission.submit_batch(output_path, parse_result)
         malformed = scenario.search.search(
             tags=["Batch handler routing"],

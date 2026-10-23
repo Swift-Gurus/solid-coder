@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from findings.partial_review_output import PartialReviewOutput
-
 
 """
 solid-name: PrincipleScoringResult
 solid-category: model
 solid-description: Carries either a scored immutable review output or the scoring failure that prevented it.
 """
+
+
 @dataclass(frozen=True)
 class PrincipleScoringResult:
-    output: Optional[PartialReviewOutput] = None
-    error_message: Optional[str] = None
+    output: PartialReviewOutput | None = None
+    error_message: str | None = None
 
     @property
     def succeeded(self) -> bool:

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import ClassVar
 
 from preserved_live_workflow_run import PreservedLiveWorkflowRun
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase
-
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _FIXTURE = (
@@ -27,17 +27,19 @@ solid-category: test-support
 solid-spec: [SPEC-039, SPEC-055, SPEC-057]
 solid-description: Supplies the first SwiftUI review-unit result and locked mixed MCP/model-scored observations to the shared live rule contract.
 """
+
+
 class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "swiftui"
     ARTIFACT_SCENARIO = "swiftui-aggregate"
     REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"
     FIXTURE = _FIXTURE
-    EXPECTED_ANALYSIS_STEP_IDS = [
+    EXPECTED_ANALYSIS_STEP_IDS: ClassVar[list[str]] = [
         "classify_countable_observations",
         "classify_extrema_observations",
         "classify_view_purity",
     ]
-    EXPECTED_STEP_IDS = [
+    EXPECTED_STEP_IDS: ClassVar[list[str]] = [
         "body_nesting_depth",
         "view_expression_count",
         "max_modifier_chain",
@@ -49,7 +51,7 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "fixed_frame_count",
         "over_isolated_count",
     ]
-    EXPECTED_METRIC_IDS = [
+    EXPECTED_METRIC_IDS: ClassVar[list[str]] = [
         "SUI-1",
         "SUI-2",
         "SUI-3",
@@ -61,7 +63,7 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "SUI-9",
         "SUI-10",
     ]
-    EXPECTED_VALUES = [2, 8, 2, 2, "concrete", 0, 1, 1, 1, 1]
+    EXPECTED_VALUES: ClassVar[list[int | str]] = [2, 8, 2, 2, "concrete", 0, 1, 1, 1, 1]
     EXPECTED_METRIC_SEVERITIES = ["SEVERE"] * 5 + ["COMPLIANT"] + ["SEVERE"] * 4
     EXPECTED_FINAL_SEVERITY = "SEVERE"
     EXPECTED_RULE_SOURCE_INDEX = 1
@@ -79,8 +81,7 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
             event
             for event in events
             if event.get("event") == "step_completed"
-            and event.get("workflow_source_index")
-            == self.EXPECTED_RULE_SOURCE_INDEX
+            and event.get("workflow_source_index") == self.EXPECTED_RULE_SOURCE_INDEX
             and self._belongs_to_rule(event.get("workflow_instance_id"))
         ]
         countable = next(
@@ -130,11 +131,7 @@ class SwiftUIValidationE2ELiveBase(RuleValidationE2ELiveBase):
         expected: list[int],
     ) -> None:
         matching = sorted(
-            (
-                event
-                for event in completed
-                if event.get("local_step_id") == step_id
-            ),
+            (event for event in completed if event.get("local_step_id") == step_id),
             key=lambda event: event["iteration_index"],
         )
         self.assertEqual(

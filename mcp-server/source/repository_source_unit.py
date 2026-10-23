@@ -3,9 +3,7 @@
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
-
 from source.source_frontmatter import SourceFrontmatter
-
 
 """
 solid-name: RepositorySourceUnit
@@ -13,6 +11,8 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Represents one searchable unit resolved from repository source.
 """
+
+
 class RepositorySourceUnit(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

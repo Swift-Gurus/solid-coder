@@ -17,8 +17,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from integration_tests.base import IntegrationTestBase  # noqa: E402
+from claude_test_base import ClaudeTestBase
+
+from integration_tests.base import IntegrationTestBase
 
 
 class TestHaikuPrincipleReview(ClaudeTestBase, IntegrationTestBase):

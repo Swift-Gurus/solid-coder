@@ -10,13 +10,14 @@ from harness.condition_reference_collecting import ConditionReferenceCollecting
 from harness.not_condition import NotCondition
 from harness.workflow_expression import WorkflowExpression
 
-
 """
 solid-name: ConditionReferenceCollector
 solid-category: service
 solid-spec: [SPEC-053]
 solid-description: Collects authored references across the sealed workflow condition family.
 """
+
+
 class ConditionReferenceCollector(ConditionReferenceCollecting):
     @singledispatchmethod
     def collect(

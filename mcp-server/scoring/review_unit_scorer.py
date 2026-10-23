@@ -5,16 +5,18 @@ from dataclasses import replace
 from findings.review_severity import ReviewSeverity
 from findings.review_unit import ReviewUnit
 from findings.review_violation import ReviewViolation
+
 from scoring.principle_scorer_resolving import PrincipleScorerResolving
 from scoring.review_unit_scoring import ReviewUnitScoring
 from scoring.review_unit_scoring_result import ReviewUnitScoringResult
-
 
 """
 solid-name: ReviewUnitScorer
 solid-category: service
 solid-description: Produces server-authoritative rule violations for one immutable reviewed code unit.
 """
+
+
 class ReviewUnitScorer(ReviewUnitScoring):
     def __init__(self, scorer_resolver: PrincipleScorerResolving) -> None:
         self._scorer_resolver = scorer_resolver
@@ -22,9 +24,7 @@ class ReviewUnitScorer(ReviewUnitScoring):
     def score(self, unit: ReviewUnit, file_path: str) -> ReviewUnitScoringResult:
         violations: list[ReviewViolation] = []
         for principle_metrics in unit.metrics:
-            resolution = self._scorer_resolver.resolve(
-                principle_metrics.principle
-            )
+            resolution = self._scorer_resolver.resolve(principle_metrics.principle)
             if not resolution.succeeded or resolution.scorer is None:
                 return ReviewUnitScoringResult(
                     error_message=(
@@ -56,6 +56,4 @@ class ReviewUnitScorer(ReviewUnitScoring):
                         )
                     )
 
-        return ReviewUnitScoringResult(
-            unit=replace(unit, violations=tuple(violations))
-        )
+        return ReviewUnitScoringResult(unit=replace(unit, violations=tuple(violations)))

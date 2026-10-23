@@ -23,14 +23,13 @@ for _directory in (
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-import code_health_check  # noqa: E402
-from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
-from code_health_check_service import CodeHealthCheckService  # noqa: E402
-from hc_checker import LLMHealthChecker  # noqa: E402
-from health_prompt_builder import HealthPromptBuilder  # noqa: E402
-from health_check_outcome import HealthCheckOutcome  # noqa: E402
-from principles_loader import PrinciplesLoader  # noqa: E402
-
+import code_health_check
+from code_health_check_request import CodeHealthCheckRequest
+from code_health_check_service import CodeHealthCheckService
+from hc_checker import LLMHealthChecker
+from health_check_outcome import HealthCheckOutcome
+from health_prompt_builder import HealthPromptBuilder
+from principles_loader import PrinciplesLoader
 
 """
 solid-name: TestPrincipleScopedHealthCheck
@@ -38,6 +37,8 @@ solid-category: unit-test
 solid-spec: [SPEC-041]
 solid-description: Proves declared comparison principles reach the real checker and exclusively define its model-facing prompt.
 """
+
+
 class TestPrincipleScopedHealthCheck(unittest.TestCase):
     def test_check_forwards_declared_principles_in_typed_request(self) -> None:
         service = MagicMock()
@@ -129,13 +130,15 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
             checker_factory=checker_factory,
         )
 
-        service.check(CodeHealthCheckRequest(
-            content="final class Example {}",
-            path="/project/Example.swift",
-            language="Swift",
-            parent_session_id="comparison-session",
-            principle_names=["SRP"],
-        ))
+        service.check(
+            CodeHealthCheckRequest(
+                content="final class Example {}",
+                path="/project/Example.swift",
+                language="Swift",
+                parent_session_id="comparison-session",
+                principle_names=["SRP"],
+            )
+        )
 
         checker.check.assert_called_once_with(
             "final class Example {}",
@@ -148,9 +151,7 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
 
     def test_llm_checker_scopes_loader_before_building_prompt(self) -> None:
         loader = MagicMock()
-        loader.load.return_value = [
-            {"name": "srp", "content": "SRP instructions"}
-        ]
+        loader.load.return_value = [{"name": "srp", "content": "SRP instructions"}]
         builder = MagicMock()
         builder.build.return_value = "SRP-only prompt"
         reviewer = MagicMock()

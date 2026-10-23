@@ -14,15 +14,15 @@ from harness.run_completion_checking import RunCompletionChecking
 from harness.run_completion_finalizing import RunCompletionFinalizing
 from harness.run_timeout_message_building import RunTimeoutMessageBuilding
 
-
 """
 solid-name: RunCompletionChecker
 solid-category: service
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Coordinates completed, exhausted, and timed-out workflow-run terminal states.
 """
-class RunCompletionChecker(RunCompletionChecking):
 
+
+class RunCompletionChecker(RunCompletionChecking):
     def __init__(
         self,
         event_appender: EventAppending,
@@ -51,8 +51,7 @@ class RunCompletionChecker(RunCompletionChecking):
         terminal_step_ids = set(run_state.completed).union(run_state.skipped)
         workflow_condition = run_state.workflow_condition_decision
         workflow_skipped = (
-            workflow_condition is not None
-            and not workflow_condition.matched
+            workflow_condition is not None and not workflow_condition.matched
         )
         if workflow_skipped or all_step_ids.issubset(terminal_step_ids):
             self._finalizer.finalize(
@@ -61,17 +60,23 @@ class RunCompletionChecker(RunCompletionChecking):
                 flow_def,
                 run_state,
             )
-            self._event_appender.append(events_path, "run_completed", {"run_id": run_id})
+            self._event_appender.append(
+                events_path, "run_completed", {"run_id": run_id}
+            )
             self._active_run.delete(base_dir)
             return FlowNextResult(status="done")
 
         exhausted = self._exhaustion_evaluator.evaluate(flow_def, run_state)
         if exhausted is not None:
-            self._event_appender.append(events_path, "run_failed", {
-                "run_id": run_id,
-                "step_id": exhausted.step_id,
-                "attempt_id": exhausted.attempt_id,
-            })
+            self._event_appender.append(
+                events_path,
+                "run_failed",
+                {
+                    "run_id": run_id,
+                    "step_id": exhausted.step_id,
+                    "attempt_id": exhausted.attempt_id,
+                },
+            )
             self._active_run.delete(base_dir)
             return FlowNextResult(
                 status="failed",
@@ -83,7 +88,9 @@ class RunCompletionChecker(RunCompletionChecking):
             )
 
         if run_state.turn_count >= flow_def.max_turns:
-            self._event_appender.append(events_path, "run_timed_out", {"run_id": run_id})
+            self._event_appender.append(
+                events_path, "run_timed_out", {"run_id": run_id}
+            )
             self._active_run.delete(base_dir)
             return FlowNextResult(
                 status="timed_out",

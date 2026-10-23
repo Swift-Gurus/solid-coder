@@ -5,14 +5,14 @@ from message_transport_running import MessageTransportRunning
 from pipeline.tool_callables_building import ToolCallablesBuilding
 from tool_registering import ToolRegistering
 
-
 """
 solid-name: FlowEngineApplication
 solid-category: service
 solid-description: Exposes workflow progression tools through an MCP message transport.
 """
-class FlowEngineApplication:
 
+
+class FlowEngineApplication:
     def __init__(
         self,
         server: MessageTransportRunning,

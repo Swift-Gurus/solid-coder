@@ -1,13 +1,13 @@
 """Decodes Swift type-inspection expressions and patterns into syntax facts."""
 
-from tree_sitter import Node
-
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 from source.analysis.type_inspections.source_type_inspection import SourceTypeInspection
-from source.analysis.type_inspections.source_type_inspection_kind import SourceTypeInspectionKind
+from source.analysis.type_inspections.source_type_inspection_kind import (
+    SourceTypeInspectionKind,
+)
 from source.source_byte_range import SourceByteRange
 from source.source_line_range import SourceLineRange
-
+from tree_sitter import Node
 
 """
 solid-name: TreeSitterSwiftTypeInspectionParser
@@ -15,7 +15,11 @@ solid-category: boundary-adapter
 solid-spec: [SPEC-063]
 solid-description: Decodes Swift cast, type-test and runtime-type-query syntax, including pattern matching, for auditable source inspection without semantic ownership inference.
 """
-class TreeSitterSwiftTypeInspectionParser(SourceSyntaxParsing[Node, SourceTypeInspection | None]):
+
+
+class TreeSitterSwiftTypeInspectionParser(
+    SourceSyntaxParsing[Node, SourceTypeInspection | None]
+):
     def __init__(
         self,
         spans: SourceSyntaxParsing[Node, SourceLineRange],
@@ -33,7 +37,14 @@ class TreeSitterSwiftTypeInspectionParser(SourceSyntaxParsing[Node, SourceTypeIn
             case "as" | "is":
                 return self._pattern_inspection(source)
             case "as_expression":
-                operator = next((child for child in source.named_children if child.type == "as_operator"), None)
+                operator = next(
+                    (
+                        child
+                        for child in source.named_children
+                        if child.type == "as_operator"
+                    ),
+                    None,
+                )
                 if operator is None:
                     return None
                 match self._tokens.parse(operator):
@@ -73,22 +84,34 @@ class TreeSitterSwiftTypeInspectionParser(SourceSyntaxParsing[Node, SourceTypeIn
             span=self._spans.parse(source),
             start_offset=source.start_byte,
             end_offset=source.end_byte,
-            operand_range=SourceByteRange(start=operand.start_byte, end=operand.end_byte),
-            destination_range=SourceByteRange(start=target.start_byte, end=target.end_byte) if target is not None else None,
+            operand_range=SourceByteRange(
+                start=operand.start_byte, end=operand.end_byte
+            ),
+            destination_range=SourceByteRange(
+                start=target.start_byte, end=target.end_byte
+            )
+            if target is not None
+            else None,
         )
 
     def _pattern_inspection(self, operator: Node) -> SourceTypeInspection | None:
         parent = operator.parent
         if parent is None or parent.type not in {
-            "pattern", "if_statement", "guard_statement", "while_statement",
+            "pattern",
+            "if_statement",
+            "guard_statement",
+            "while_statement",
         }:
             return None
         target = operator.next_named_sibling
         while target is not None and target.is_extra:
             target = target.next_named_sibling
         if (
-            target is None or target.is_missing or target.has_error
-            or not target.text or target not in parent.children_by_field_name("name")
+            target is None
+            or target.is_missing
+            or target.has_error
+            or not target.text
+            or target not in parent.children_by_field_name("name")
             or not parent.text
         ):
             return None
@@ -98,9 +121,12 @@ class TreeSitterSwiftTypeInspectionParser(SourceSyntaxParsing[Node, SourceTypeIn
             identity=f"type-inspection:{start}:{end}",
             kind=(
                 SourceTypeInspectionKind.PATTERN_CAST
-                if operator.type == "as" else SourceTypeInspectionKind.PATTERN_TYPE_TEST
+                if operator.type == "as"
+                else SourceTypeInspectionKind.PATTERN_TYPE_TEST
             ),
-            expression=parent.text[start - parent.start_byte:end - parent.start_byte].decode("utf-8"),
+            expression=parent.text[
+                start - parent.start_byte : end - parent.start_byte
+            ].decode("utf-8"),
             operand=None,
             target_tokens=self._tokens.parse(target),
             span=SourceLineRange(
@@ -109,14 +135,21 @@ class TreeSitterSwiftTypeInspectionParser(SourceSyntaxParsing[Node, SourceTypeIn
             ),
             start_offset=start,
             end_offset=end,
-            destination_range=SourceByteRange(start=target.start_byte, end=target.end_byte),
+            destination_range=SourceByteRange(
+                start=target.start_byte, end=target.end_byte
+            ),
         )
 
     def _query_operand(self, source: Node) -> Node | None:
         children = [child for child in source.named_children if not child.is_extra]
-        if len(children) != 2 or self._tokens.parse(children[0]) not in [["type"], ["Swift", ".", "type"]]:
+        if len(children) != 2 or self._tokens.parse(children[0]) not in [
+            ["type"],
+            ["Swift", ".", "type"],
+        ]:
             return None
-        arguments = [child for child in children[1].named_children if not child.is_extra]
+        arguments = [
+            child for child in children[1].named_children if not child.is_extra
+        ]
         if len(arguments) != 1 or arguments[0].type != "value_arguments":
             return None
         values = [child for child in arguments[0].named_children if not child.is_extra]

@@ -1,20 +1,20 @@
 """
-solid-description: Dispatches tool events to the appropriate per-tool content simulator.
+solid-description: Provides prospective-content simulation for supported tool events.
 solid-category: service
 solid-tags: [hook]
 """
 
-from content_simulating import ContentSimulating
 from content_simulator_registration import ContentSimulatorRegistration
 from simulated_write import SimulatedWrite
 
-
 """
 solid-name: ContentSimulator
-solid-description: Routes supported write operations through their prospective-content simulation policy.
+solid-description: Provides prospective-content simulation for supported write operations.
 solid-category: service
 solid-tags: [hook]
 """
+
+
 class ContentSimulator:
     """Facade: dispatches simulate() calls to the matching per-tool handler."""
 

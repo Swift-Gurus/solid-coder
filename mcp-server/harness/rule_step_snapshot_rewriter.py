@@ -1,11 +1,10 @@
 """Rewrites typed rule steps into their public workflow YAML fields."""
 
 from harness.condition_serializing import ConditionSerializing
-from harness.step_def import StepDef
 from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
+from harness.step_def import StepDef
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
 from harness.workflow_expression_serializing import WorkflowExpressionSerializing
-
 
 """
 solid-name: RuleStepSnapshotRewriter
@@ -13,6 +12,8 @@ solid-category: boundary
 solid-spec: [SPEC-039, SPEC-054, SPEC-056]
 solid-description: Normalizes rule-step snapshots for their public workflow representation.
 """
+
+
 class RuleStepSnapshotRewriter(StepSnapshotRewriting):
     def __init__(
         self,
@@ -66,12 +67,16 @@ class RuleStepSnapshotRewriter(StepSnapshotRewriting):
                 if reducer.relation is not None:
                     serialized_reducer["relation"] = PairwiseRelationDeclaration(
                         operator=reducer.relation.operator,
-                        left=self._expression_serializer.serialize(reducer.relation.left),
-                        right=self._expression_serializer.serialize(reducer.relation.right),
+                        left=self._expression_serializer.serialize(
+                            reducer.relation.left
+                        ),
+                        right=self._expression_serializer.serialize(
+                            reducer.relation.right
+                        ),
                     ).model_dump(mode="json")
                 if reducer.value is not None:
-                    serialized_reducer["value"] = (
-                        self._expression_serializer.serialize(reducer.value)
+                    serialized_reducer["value"] = self._expression_serializer.serialize(
+                        reducer.value
                     )
                 if reducer.empty_value is not None:
                     serialized_reducer["empty_value"] = reducer.empty_value

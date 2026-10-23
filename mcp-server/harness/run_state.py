@@ -13,13 +13,14 @@ from harness.step_outputs import StepOutputs
 from harness.step_skip import StepSkip
 from harness.workflow_condition_decision import WorkflowConditionDecision
 
-
 """
 solid-name: RunState
 solid-category: model
 solid-spec: [SPEC-030, SPEC-027, SPEC-037]
 solid-description: Represents completed, skipped, active, attempted, and terminal workflow-run state.
 """
+
+
 @dataclass(frozen=True)
 class RunState:
     completed: dict[str, StepOutputs]

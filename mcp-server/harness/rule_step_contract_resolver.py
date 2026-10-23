@@ -14,13 +14,14 @@ from harness.rule_step_contract import RuleStepContract
 from harness.rule_step_contract_resolving import RuleStepContractResolving
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: RuleStepContractResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Validates rule-step declarations and provides the complete output contract for metric, exception, and custom workflow steps.
 """
+
+
 class RuleStepContractResolver(RuleStepContractResolving):
     def __init__(
         self,

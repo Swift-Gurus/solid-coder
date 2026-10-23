@@ -11,18 +11,17 @@ from source.file_analysis_source_resolver import FileAnalysisSourceResolver
 from source.text_analysis_source_resolver import TextAnalysisSourceResolver
 from utils.prompt_builder import PlainTextFileReader
 
-
 """
 solid-name: AnalysisSourceResolverFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Provides normalized immutable source resolution for file-backed and in-memory analysis inputs.
 """
+
+
 class AnalysisSourceResolverFactory:
     def make(self) -> AnalysisSourceResolver:
-        extension_extractor = PathlibExtractor(
-            lambda path: Path(path).suffix.lower()
-        )
+        extension_extractor = PathlibExtractor(lambda path: Path(path).suffix.lower())
         return AnalysisSourceResolver(
             AnalysisSourceDispatchVisitor(
                 file_resolver=FileAnalysisSourceResolver(

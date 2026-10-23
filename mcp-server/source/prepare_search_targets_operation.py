@@ -7,13 +7,14 @@ from source.prepare_search_targets_output import PrepareSearchTargetsOutput
 from source.resolved_source_analyzing import ResolvedSourceAnalyzing
 from source.source_search_targets_builder import SourceSearchTargetsBuilder
 
-
 """
 solid-name: PrepareSearchTargetsOperation
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves and analyzes immutable source once before preparing typed file-or-unit search targets.
 """
+
+
 class PrepareSearchTargetsOperation:
     def __init__(
         self,

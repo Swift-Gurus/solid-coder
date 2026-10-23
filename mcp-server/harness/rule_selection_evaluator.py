@@ -10,15 +10,15 @@ from harness.rule_value_match_mode import RuleValueMatchMode
 from harness.rule_values_matching import RuleValuesMatching
 from harness.rule_values_rendering import RuleValuesRendering
 
-
 """
 solid-name: RuleSelectionEvaluator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Determines applicability for one included/excluded rule-selection dimension.
 """
-class RuleSelectionEvaluator:
 
+
+class RuleSelectionEvaluator:
     def __init__(
         self,
         values_matcher: RuleValuesMatching,

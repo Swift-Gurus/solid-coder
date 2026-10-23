@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Resolves fix-guidance content for metric IDs from the available set of principle definitions.
 solid-category: utility
@@ -6,7 +5,6 @@ solid-tags: [utility, service]
 """
 
 from pathlib import Path
-from typing import Optional
 
 
 def find_fix_file(metric_id: str, all_principles: list) -> tuple:
@@ -43,7 +41,7 @@ def list_available_fix_metric_ids(all_principles: list) -> list[str]:
     )
 
 
-def resolve_single_fix(metric_id: str, all_principles: list) -> Optional[dict]:
+def resolve_single_fix(metric_id: str, all_principles: list) -> dict | None:
     """Find and read the fix content for a metric ID.
 
     Args:

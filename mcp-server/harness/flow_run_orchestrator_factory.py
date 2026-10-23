@@ -3,43 +3,39 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
-from pydantic import TypeAdapter
-
-from harness.collection_source_reference import CollectionSourceReference
-from harness.pydantic_type_adapter_encoder import PydanticTypeAdapterEncoder
-
-from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_location_assembler import ActiveRunLocationAssembler
+from harness.active_run_locator import ActiveRunLocator
 from harness.active_run_lock_clearer import ActiveRunLockClearer
 from harness.active_run_pointer_store import ActiveRunPointerStore
+from harness.agent_step_handler import AgentStepHandler
 from harness.aggregate_phase_audit import AggregatePhaseAuditEnvelope
 from harness.aggregate_phase_audit_recorder import AggregatePhaseAuditRecorder
-from harness.event_replayer import EventParser
-from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.aggregate_ready_step_expander_factory import (
     AggregateReadyStepExpanderFactory,
 )
-from harness.agent_step_handler import AgentStepHandler
 from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
 from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
 from harness.attempt_failure_handler import AttemptFailureHandler
 from harness.batch_step_output_submission_mapper_factory import (
     BatchStepOutputSubmissionMapperFactory,
 )
-from harness.command_allowlist_resolving import CommandAllowlistResolving
 from harness.collection_operation_registrations_factory import (
     CollectionOperationRegistrationsFactory,
 )
-from harness.concurrent_session_delegate_batch_runner import ConcurrentSessionDelegateBatchRunner
+from harness.collection_source_reference import CollectionSourceReference
+from harness.command_allowlist_resolving import CommandAllowlistResolving
+from harness.concurrent_session_delegate_batch_runner import (
+    ConcurrentSessionDelegateBatchRunner,
+)
 from harness.condition_serializer_factory import make_condition_serializer
 from harness.delegate_instruction_builder import DelegateInstructionBuilder
 from harness.delegate_step_handler import DelegateStepHandler
 from harness.engine_step_drainer import EngineStepDrainer
+from harness.event_replayer import EventParser
+from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
 from harness.executor_item_mapper import ExecutorItemMapper
 from harness.existing_path_filter import ExistingPathFilter
-from harness.execution_and_readiness_coordinator import ExecutionAndReadinessCoordinator
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_file_resolver import FlowFileResolver
 from harness.flow_initializer import FlowInitializer
@@ -48,8 +44,9 @@ from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.flow_start_result_builder import FlowStartResultBuilder
 from harness.flow_starter import FlowStarter
 from harness.flow_status_reader import FlowStatusReader
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.flow_stepper import FlowStepper
+from harness.flow_submission_format import FlowSubmissionFormat
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.interpolation_guard import InterpolationGuard
 from harness.isolated_run_path_resolver import IsolatedRunPathResolver
 from harness.json_loading import JsonLoader
@@ -62,38 +59,44 @@ from harness.operation_step_executor import OperationStepExecutor
 from harness.operation_step_runner_adapter import OperationStepRunnerAdapter
 from harness.output_recorder import OutputRecorder
 from harness.output_submission_advancer import OutputSubmissionAdvancer
-from harness.pass_through_step_submission_validator import PassThroughStepSubmissionValidator
-from harness.path_checking import PathChecker
-from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
-from harness.project_context import (
-    ProjectDirectory,
-    ProjectDirectoryReading,
+from harness.pass_through_step_submission_validator import (
+    PassThroughStepSubmissionValidator,
 )
-from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
-from harness.ready_step_executor import ReadyStepExecutor
-from harness.review_policy_loader_factory import ReviewPolicyLoaderFactory
+from harness.path_checking import PathChecker
+from harness.plugin_workflow_search_path_resolver import (
+    PluginWorkflowSearchPathResolver,
+)
 from harness.process_execution_factory import ProcessExecutionFactory
 from harness.process_execution_runner_adapter import ProcessExecutionRunnerAdapter
 from harness.process_step_executor import ProcessStepExecutor
 from harness.process_step_handler import ProcessStepHandler
+from harness.project_context import (
+    ProjectDirectory,
+    ProjectDirectoryReading,
+)
+from harness.project_workflow_search_path_resolver import (
+    ProjectWorkflowSearchPathResolver,
+)
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.pydantic_operation_invoker import PydanticOperationInvoker
+from harness.pydantic_type_adapter_encoder import PydanticTypeAdapterEncoder
+from harness.ready_step_executor import ReadyStepExecutor
+from harness.review_policy_loader_factory import ReviewPolicyLoaderFactory
+from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
 from harness.run_completion_checker import RunCompletionChecker
 from harness.run_context_builder import RunContextBuilder
 from harness.run_directory_scaffolder import RunDirectoryScaffolder
 from harness.run_initializer import RunInitializer
 from harness.run_metadata_store import RunMetadataStore
-from harness.flow_submission_format import FlowSubmissionFormat
-from harness.run_submission_assignment_annotator import RunSubmissionAssignmentAnnotator
 from harness.run_provisioner import RunProvisioner
-from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
 from harness.run_snapshot_resolver import RunSnapshotResolver
-from harness.workflow_results_context_builder_factory import (
-    WorkflowResultsContextBuilderFactory,
-)
 from harness.run_started_event_recorder import RunStartedEventRecorder
+from harness.run_submission_assignment_annotator import RunSubmissionAssignmentAnnotator
 from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
 from harness.runs_base_dir_resolving import RunsBaseDirResolving
-from harness.safe_session_delegate_instance_runner import SafeSessionDelegateInstanceRunner
+from harness.safe_session_delegate_instance_runner import (
+    SafeSessionDelegateInstanceRunner,
+)
 from harness.script_failure_attributor import ScriptFailureAttributor
 from harness.script_outcome_evaluator import ScriptOutcomeEvaluator
 from harness.session_delegate_runner import SessionDelegateRunner
@@ -101,32 +104,38 @@ from harness.session_delegate_running import SessionDelegateRunning
 from harness.session_delegate_step_batch_runner import SessionDelegateStepBatchRunner
 from harness.session_id_reading import SessionIdReading
 from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
-from harness.static_session_id_reader import StaticSessionIdReader
+from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRunner
 from harness.startup_context_resolver import StartupContextResolver
-from harness.step_execution_failure_handler import StepExecutionFailureHandler
-from harness.step_execution_batch_advancer import StepExecutionBatchAdvancer
+from harness.static_session_id_reader import StaticSessionIdReader
 from harness.step_batch_runner_registration import StepBatchRunnerRegistration
 from harness.step_batch_runner_resolver import StepBatchRunnerResolver
+from harness.step_execution_batch_advancer import StepExecutionBatchAdvancer
+from harness.step_execution_failure_handler import StepExecutionFailureHandler
 from harness.step_handler_resolver import StepHandlerResolver
-from harness.step_process_execution_resolver import StepProcessExecutionResolver
-from harness.step_output_validator import StepOutputValidator
 from harness.step_output_shape_checker import StepOutputShapeChecker
 from harness.step_output_submission_collector import StepOutputSubmissionCollector
+from harness.step_output_validator import StepOutputValidator
+from harness.step_process_execution_resolver import StepProcessExecutionResolver
 from harness.step_result_builder import StepResultBuilder
 from harness.step_skip_recorder import StepSkipRecorder
-from harness.single_instance_step_batch_runner import SingleInstanceStepBatchRunner
-from harness.successful_validation_result_provider import SuccessfulValidationResultProvider
-from harness.turn_advancer import TurnAdvancer
+from harness.successful_validation_result_provider import (
+    SuccessfulValidationResultProvider,
+)
 from harness.thread_pool_executor_factory import ThreadPoolExecutorFactory
+from harness.turn_advancer import TurnAdvancer
 from harness.workflow_catalog_factory import WorkflowCatalogFactory
-from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_condition_gate import WorkflowConditionGate
 from harness.workflow_condition_recorder import WorkflowConditionRecorder
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 from harness.workflow_persister_factory import WorkflowPersisterFactory
+from harness.workflow_results_context_builder_factory import (
+    WorkflowResultsContextBuilderFactory,
+)
 from hook_utils import _resolve_project_root
 from json_serializer import JsonSerializer
 from mcp_config_builder import McpConfigBuilder
 from mcp_config_profile import McpConfigProfile
+from pydantic import TypeAdapter
 from subprocess_adapter import SubprocessAdapter
 from utils.prompt_builder import PlainTextFileReader
 
@@ -140,28 +149,31 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-043]
 solid-description: Provides flow-run lifecycle orchestration for executable workflows.
 """
+
+
 class FlowRunOrchestratorFactory:
     def __init__(
         self,
         base_dir_resolver: RunsBaseDirResolving,
         plugin_root: Path,
-        project_directory: Optional[ProjectDirectoryReading] = None,
-        command_allowlist_resolver: Optional[CommandAllowlistResolving] = None,
-        session_reader: Optional[SessionIdReading] = None,
-        session_delegate_runner: Optional[SessionDelegateRunning] = None,
+        project_directory: ProjectDirectoryReading | None = None,
+        command_allowlist_resolver: CommandAllowlistResolving | None = None,
+        session_reader: SessionIdReading | None = None,
+        session_delegate_runner: SessionDelegateRunning | None = None,
         session_delegate_max_workers: int = _DELEGATE_SESSION_MAX_WORKERS,
-        operation_registrations: Optional[list[OperationRegistration]] = None,
+        operation_registrations: list[OperationRegistration] | None = None,
         submission_format: FlowSubmissionFormat = FlowSubmissionFormat.NESTED,
     ) -> None:
         self._base_dir_resolver = base_dir_resolver
         self._submission_format = submission_format
         self._plugin_root = plugin_root
-        self._project_directory = (
-            project_directory
-            or ProjectDirectory(path=_resolve_project_root())
+        self._project_directory = project_directory or ProjectDirectory(
+            path=_resolve_project_root()
         )
         self._command_allowlist_resolver = command_allowlist_resolver
-        self._session_reader: SessionIdReading = session_reader or StaticSessionIdReader()
+        self._session_reader: SessionIdReading = (
+            session_reader or StaticSessionIdReader()
+        )
         self._session_delegate_runner = session_delegate_runner
         self._session_delegate_max_workers = session_delegate_max_workers
         self._operation_registrations = operation_registrations or []
@@ -187,12 +199,16 @@ class FlowRunOrchestratorFactory:
             ).make(),
         )
         active_run = ActiveRunPointerStore(
-            path_resolver=SessionScopedActivePathResolver(session_id_reader=self._session_reader)
+            path_resolver=SessionScopedActivePathResolver(
+                session_id_reader=self._session_reader
+            )
         )
         metadata_store = RunMetadataStore()
         submission_assignments = RunSubmissionAssignmentAnnotator(metadata_store)
         step_result_builder = StepResultBuilder()
-        run_locator = ActiveRunLocator(base_dir_resolver=self._base_dir_resolver, active_run=active_run)
+        run_locator = ActiveRunLocator(
+            base_dir_resolver=self._base_dir_resolver, active_run=active_run
+        )
         resolving_flow_loader = NameResolvingFlowLoader(
             file_resolver=FlowFileResolver(
                 path_checker=path_checker,
@@ -212,7 +228,9 @@ class FlowRunOrchestratorFactory:
                 assembly.schema_validator
             ),
             dag_runner=assembly.dag_runner,
-            aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(assembly.interpolator),
+            aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(
+                assembly.interpolator
+            ),
         )
         condition_serializer = make_condition_serializer()
         output_recorder = OutputRecorder(
@@ -250,7 +268,9 @@ class FlowRunOrchestratorFactory:
                     ProcessExecutionFactory(FlowValidationErrorFactory())
                 ),
                 runner=ProcessExecutionRunnerAdapter(SubprocessAdapter()),
-                evaluator=ScriptOutcomeEvaluator(schema_validator=assembly.schema_validator),
+                evaluator=ScriptOutcomeEvaluator(
+                    schema_validator=assembly.schema_validator
+                ),
             ),
             submission_validator=PassThroughStepSubmissionValidator(
                 SuccessfulValidationResultProvider()
@@ -268,28 +288,33 @@ class FlowRunOrchestratorFactory:
                 SuccessfulValidationResultProvider()
             ),
         )
-        session_delegate_runner = self._session_delegate_runner or SessionDelegateRunner(
-            mcp_config=McpConfigBuilder(
-                project_root=self._plugin_root,
-                profile=McpConfigProfile.GATE_FLOW,
-                serializer=JsonSerializer(),
-            ).build(),
-            timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
-            output_loader=JsonLoader(),
+        session_delegate_runner = (
+            self._session_delegate_runner
+            or SessionDelegateRunner(
+                mcp_config=McpConfigBuilder(
+                    project_root=self._plugin_root,
+                    profile=McpConfigProfile.GATE_FLOW,
+                    serializer=JsonSerializer(),
+                ).build(),
+                timeout=_DELEGATE_SESSION_TIMEOUT_SECONDS,
+                output_loader=JsonLoader(),
+            )
         )
         delegate_handler = DelegateStepHandler(
             agent_handler=agent_handler,
             session_runner=session_delegate_runner,
         )
-        step_handler_resolver = StepHandlerResolver(handlers={
-            "agent": agent_handler,
-            "metric": agent_handler,
-            "exception": agent_handler,
-            "script": process_handler,
-            "command": process_handler,
-            "delegate": delegate_handler,
-            "operation": operation_handler,
-        })
+        step_handler_resolver = StepHandlerResolver(
+            handlers={
+                "agent": agent_handler,
+                "metric": agent_handler,
+                "exception": agent_handler,
+                "script": process_handler,
+                "command": process_handler,
+                "delegate": delegate_handler,
+                "operation": operation_handler,
+            }
+        )
         single_agent_batch = SingleInstanceStepBatchRunner(agent_handler)
         single_process_batch = SingleInstanceStepBatchRunner(process_handler)
         single_delegate_batch = SingleInstanceStepBatchRunner(delegate_handler)
@@ -304,16 +329,22 @@ class FlowRunOrchestratorFactory:
                 max_workers=self._session_delegate_max_workers,
             )
         )
-        batch_runner_resolver = StepBatchRunnerResolver(registrations=[
-            StepBatchRunnerRegistration("delegate", "session", session_delegate_batch),
-            StepBatchRunnerRegistration("delegate", "subagent", single_delegate_batch),
-            StepBatchRunnerRegistration("agent", "", single_agent_batch),
-            StepBatchRunnerRegistration("metric", "", single_agent_batch),
-            StepBatchRunnerRegistration("exception", "", single_agent_batch),
-            StepBatchRunnerRegistration("script", "", single_process_batch),
-            StepBatchRunnerRegistration("command", "", single_process_batch),
-            StepBatchRunnerRegistration("operation", "", single_operation_batch),
-        ])
+        batch_runner_resolver = StepBatchRunnerResolver(
+            registrations=[
+                StepBatchRunnerRegistration(
+                    "delegate", "session", session_delegate_batch
+                ),
+                StepBatchRunnerRegistration(
+                    "delegate", "subagent", single_delegate_batch
+                ),
+                StepBatchRunnerRegistration("agent", "", single_agent_batch),
+                StepBatchRunnerRegistration("metric", "", single_agent_batch),
+                StepBatchRunnerRegistration("exception", "", single_agent_batch),
+                StepBatchRunnerRegistration("script", "", single_process_batch),
+                StepBatchRunnerRegistration("command", "", single_process_batch),
+                StepBatchRunnerRegistration("operation", "", single_operation_batch),
+            ]
+        )
         step_execution_failure_handler = StepExecutionFailureHandler(
             failure_attributor=ScriptFailureAttributor(),
             attempt_failure_handler=attempt_failure_handler,
@@ -380,7 +411,9 @@ class FlowRunOrchestratorFactory:
             ),
             path_resolver=IsolatedRunPathResolver(),
             location_assembler=ActiveRunLocationAssembler(),
-            event_recorder=RunStartedEventRecorder(event_appender=assembly.event_appender),
+            event_recorder=RunStartedEventRecorder(
+                event_appender=assembly.event_appender
+            ),
         )
         starter = FlowStarter(
             initializer=flow_initializer,
@@ -398,7 +431,10 @@ class FlowRunOrchestratorFactory:
                 attempt_failure_handler=attempt_failure_handler,
                 session_reader=self._session_reader,
                 output_recorder=output_recorder,
-                turn_advancer=TurnAdvancer(event_replayer=assembly.event_replayer, event_appender=assembly.event_appender),
+                turn_advancer=TurnAdvancer(
+                    event_replayer=assembly.event_replayer,
+                    event_appender=assembly.event_appender,
+                ),
                 submission_mapper=BatchStepOutputSubmissionMapperFactory().make(),
             ),
             execution_and_readiness_coordinator=execution_and_readiness_coordinator,
@@ -412,8 +448,13 @@ class FlowRunOrchestratorFactory:
             run_snapshot_resolver=run_snapshot_resolver,
             condition_serializer=condition_serializer,
         )
-        lock_clearer = ActiveRunLockClearer(run_locator=run_locator, active_run=active_run)
+        lock_clearer = ActiveRunLockClearer(
+            run_locator=run_locator, active_run=active_run
+        )
 
         return FlowRunOrchestrator(
-            starter=starter, stepper=stepper, status_reader=status_reader, lock_clearer=lock_clearer
+            starter=starter,
+            stepper=stepper,
+            status_reader=status_reader,
+            lock_clearer=lock_clearer,
         )

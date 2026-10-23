@@ -2,25 +2,33 @@
 
 import sys
 from pathlib import Path
+
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
+from active_health_check_pointer_storing import ActiveHealthCheckPointerStoring
 from health_check_context_writing import HealthCheckContextWriting
 from health_check_input_writing import HealthCheckInputWriting
-from active_health_check_pointer_storing import ActiveHealthCheckPointerStoring
 from patch_review_context import PatchReviewContext
-
 
 """
 solid-name: HealthCheckContextWriter
 solid-category: service
 solid-description: Coordinates health-check context persistence and active-check lifecycle tracking.
 """
+
+
 class HealthCheckContextWriter(HealthCheckContextWriting):
     """Facade: coordinates hook-input.json writing and active-health-check pointer lifecycle.
 
@@ -48,7 +56,7 @@ class HealthCheckContextWriter(HealthCheckContextWriting):
         file_path: str,
         language: str,
         content: str = "",
-        patch_context: Optional[PatchReviewContext] = None,
+        patch_context: PatchReviewContext | None = None,
     ) -> None:
         self._input_writer.write(
             output_dir,

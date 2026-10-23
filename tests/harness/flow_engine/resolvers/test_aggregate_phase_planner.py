@@ -19,10 +19,9 @@ from harness.step_def import StepDef
 from harness.step_instance import StepInstance
 from harness.step_instance_boundary_resolver import StepInstanceBoundaryResolver
 from harness.step_output_reference import StepOutputReference
+from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_step_boundary_resolver import WorkflowStepBoundaryResolver
 from harness.workflow_step_finder import WorkflowStepFinder
-from harness.workflow_execution_mode import WorkflowExecutionMode
-
 
 """
 solid-name: TestAggregatePhasePlanner
@@ -30,6 +29,8 @@ solid-category: unit-test
 solid-spec: [SPEC-045]
 solid-description: Proves aggregate planning follows the resolved DAG while respecting nested and engine-owned execution boundaries.
 """
+
+
 class TestAggregatePhasePlanner(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = AggregatePhasePlanner(
@@ -47,7 +48,9 @@ class TestAggregatePhasePlanner(unittest.TestCase):
             status="running",
         )
 
-    def test_collects_compatible_dependent_agent_steps_in_topological_order(self) -> None:
+    def test_collects_compatible_dependent_agent_steps_in_topological_order(
+        self,
+    ) -> None:
         flow = FlowDef(
             id="aggregate",
             name="aggregate",
@@ -62,7 +65,9 @@ class TestAggregatePhasePlanner(unittest.TestCase):
 
         phases = self.sut.plan(flow, self.state, [self._ready("inspect")])
 
-        self.assertEqual([phase.step_ids for phase in phases], [["inspect", "measure", "decide"]])
+        self.assertEqual(
+            [phase.step_ids for phase in phases], [["inspect", "measure", "decide"]]
+        )
 
     def test_returns_no_aggregate_phase_for_granular_workflow(self) -> None:
         flow = FlowDef(
@@ -163,22 +168,36 @@ class TestAggregatePhasePlanner(unittest.TestCase):
 
     def test_ready_condition_and_independent_branch_join_across_operation(self) -> None:
         flow = FlowDef(
-            id="known", name="Known frontier", max_turns=10,
+            id="known",
+            name="Known frontier",
+            max_turns=10,
             execution=WorkflowExecutionMode.AGGREGATE,
             steps=[
                 StepDef(id="inspect", prompt="Inspect."),
-                StepDef(id="prepare", type="operation", prompt="", depends_on=["inspect"]),
+                StepDef(
+                    id="prepare", type="operation", prompt="", depends_on=["inspect"]
+                ),
                 StepDef(id="blocked", prompt="Wait.", depends_on=["prepare"]),
-                StepDef(id="known", prompt="Condition already true.", condition=object()),
+                StepDef(
+                    id="known", prompt="Condition already true.", condition=object()
+                ),
                 StepDef(id="independent", prompt="Independent."),
             ],
         )
 
-        phases = self.sut.plan(flow, self.state, [
-            self._ready("inspect"), self._ready("known"), self._ready("independent"),
-        ])
+        phases = self.sut.plan(
+            flow,
+            self.state,
+            [
+                self._ready("inspect"),
+                self._ready("known"),
+                self._ready("independent"),
+            ],
+        )
 
-        self.assertEqual([phase.step_ids for phase in phases], [["inspect", "known", "independent"]])
+        self.assertEqual(
+            [phase.step_ids for phase in phases], [["inspect", "known", "independent"]]
+        )
 
     def test_stops_before_unmaterialized_for_each_step(self) -> None:
         flow = FlowDef(
@@ -203,9 +222,13 @@ class TestAggregatePhasePlanner(unittest.TestCase):
 
         self.assertEqual([phase.step_ids for phase in phases], [["prepare"]])
 
-    def test_completed_conditional_prefix_does_not_disable_later_aggregation(self) -> None:
+    def test_completed_conditional_prefix_does_not_disable_later_aggregation(
+        self,
+    ) -> None:
         flow = FlowDef(
-            id="resumed", name="Resumed aggregate", max_turns=10,
+            id="resumed",
+            name="Resumed aggregate",
+            max_turns=10,
             execution=WorkflowExecutionMode.AGGREGATE,
             steps=[
                 StepDef(id="conditional", prompt="Earlier work.", condition=object()),
@@ -213,9 +236,13 @@ class TestAggregatePhasePlanner(unittest.TestCase):
                 StepDef(id="summarize", prompt="Summarize.", depends_on=["report"]),
             ],
         )
-        resumed = RunState(completed={"conditional": {}}, running=[], turn_count=1, status="running")
+        resumed = RunState(
+            completed={"conditional": {}}, running=[], turn_count=1, status="running"
+        )
         phases = self.sut.plan(flow, resumed, [self._ready("report")])
-        self.assertEqual([phase.step_ids for phase in phases], [["report", "summarize"]])
+        self.assertEqual(
+            [phase.step_ids for phase in phases], [["report", "summarize"]]
+        )
 
     def test_stops_after_for_each_step_before_fan_in_dependency(self) -> None:
         flow = FlowDef(
@@ -276,7 +303,9 @@ class TestAggregatePhasePlanner(unittest.TestCase):
             ],
         )
 
-        self.assertEqual([phase.step_ids for phase in phases], [["child.inspect", "child.measure"]])
+        self.assertEqual(
+            [phase.step_ids for phase in phases], [["child.inspect", "child.measure"]]
+        )
 
     def test_stops_before_delegate_or_session_boundary(self) -> None:
         flow = FlowDef(

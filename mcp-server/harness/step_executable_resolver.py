@@ -6,13 +6,14 @@ from typing import cast
 
 from harness.executable_step_field_reading import ExecutableStepFieldReading
 
-
 """
 solid-name: StepExecutableResolver
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Resolves the executable selected by a workflow process step declaration.
 """
+
+
 class StepExecutableResolver:
     _DEFAULT_EXECUTOR = "bash"
 

@@ -5,13 +5,14 @@ from harness.combined_rule_presentation_creating import (
     CombinedRulePresentationCreating,
 )
 
-
 """
 solid-name: CombinedRulePresentationFactory
 solid-category: factory
 solid-spec: [SPEC-043, SPEC-045]
 solid-description: Creates immutable combined presentation identity values.
 """
+
+
 class CombinedRulePresentationFactory(CombinedRulePresentationCreating):
     def create(
         self,

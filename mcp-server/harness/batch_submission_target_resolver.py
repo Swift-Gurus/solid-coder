@@ -5,13 +5,14 @@ from __future__ import annotations
 from harness.batch_submission_target import BatchSubmissionTarget
 from harness.batch_submission_target_resolving import BatchSubmissionTargetResolving
 
-
 """
 solid-name: BatchSubmissionTargetResolver
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Resolves item, workflow, and step addresses against known batch submission targets.
 """
+
+
 class BatchSubmissionTargetResolver(BatchSubmissionTargetResolving):
     def resolve(
         self,

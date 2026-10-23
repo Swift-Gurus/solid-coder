@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Iterator, Optional
 
-from harness.workflow_catalog_building import WorkflowCatalogBuilding
 from harness.workflow_catalog import WorkflowCatalog
+from harness.workflow_catalog_building import WorkflowCatalogBuilding
 from harness.workflow_catalog_load import WorkflowCatalogLoad
 from harness.workflow_source import WorkflowSource
-
 
 """
 solid-name: WorkflowCatalogResolver
@@ -19,11 +18,12 @@ solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Resolves workflow IDs through one collision-checked catalog per flow-definition load.
 """
-class WorkflowCatalogResolver:
 
+
+class WorkflowCatalogResolver:
     def __init__(self, builder: WorkflowCatalogBuilding) -> None:
         self._builder = builder
-        self._active_load: ContextVar[Optional[WorkflowCatalogLoad]] = ContextVar(
+        self._active_load: ContextVar[WorkflowCatalogLoad | None] = ContextVar(
             "workflow_catalog_load",
             default=None,
         )
@@ -38,7 +38,9 @@ class WorkflowCatalogResolver:
         finally:
             self._active_load.reset(token)
 
-    def resolve(self, workflow_id: str, search_paths: list[str]) -> WorkflowSource | None:
+    def resolve(
+        self, workflow_id: str, search_paths: list[str]
+    ) -> WorkflowSource | None:
         return self.catalog(search_paths).find(workflow_id)
 
     def catalog(self, search_paths: list[str]) -> WorkflowCatalog:

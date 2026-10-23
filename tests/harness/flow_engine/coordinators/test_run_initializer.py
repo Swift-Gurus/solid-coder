@@ -6,11 +6,10 @@ import sys
 import unittest
 from pathlib import Path
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.models import FlowDef  # noqa: E402
-from harness.run_initializer import RunInitializer  # noqa: E402
+from harness.models import FlowDef
+from harness.run_initializer import RunInitializer
 
 
 class SpyActiveRunPointer:
@@ -38,6 +37,8 @@ solid-category: unit-test
 solid-spec: [SPEC-031, SPEC-047]
 solid-description: Verifies only normal session-owned runs create active-run pointers.
 """
+
+
 class TestRunInitializer(unittest.TestCase):
     def setUp(self) -> None:
         self.active_run = SpyActiveRunPointer()

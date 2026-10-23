@@ -6,8 +6,9 @@ solid-tags: [hook, utility]
 
 import functools
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Protocol
+from typing import Protocol
 
 
 class DebugLogging(Protocol):
@@ -21,7 +22,11 @@ class DebugLogger:
     Never raises — all I/O errors are swallowed silently.
     """
 
-    def __init__(self, project_dir_fn: Optional[Callable[[], Path]] = None, filename: str = "debug.log") -> None:
+    def __init__(
+        self,
+        project_dir_fn: Callable[[], Path] | None = None,
+        filename: str = "debug.log",
+    ) -> None:
         self._project_dir_fn = project_dir_fn or _default_project_dir
         self._filename = filename
 
@@ -30,20 +35,23 @@ class DebugLogger:
             log_path = self._project_dir_fn() / self._filename
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with log_path.open("a") as f:
-                f.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {label} {event}\n")
-        except Exception:
+                f.write(
+                    f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {label} {event}\n"
+                )
+        except Exception:  # noqa: BLE001, S110 — Logging must not interrupt the caller; logging its own failure risks recursion.
             pass
 
 
 def _default_project_dir() -> Path:
     from hook_utils import solid_coder_project_dir  # lazy — avoids circular import
+
     return solid_coder_project_dir()
 
 
 _default_logger = DebugLogger()
 
 
-def Observing(label: str, *, log_args: bool = True, logger: Optional[DebugLogger] = None):
+def Observing(label: str, *, log_args: bool = True, logger: DebugLogger | None = None):
     """Decorator: logs ENTER/EXIT/ERROR to {project_dir}/debug.log.
 
     Args:
@@ -58,7 +66,9 @@ def Observing(label: str, *, log_args: bool = True, logger: Optional[DebugLogger
         def wrapper(*args, **kwargs):
             entry = label
             if log_args:
-                parts = [repr(a)[:120] for a in args] + [f"{k}={repr(v)[:120]}" for k, v in kwargs.items()]
+                parts = [repr(a)[:120] for a in args] + [
+                    f"{k}={repr(v)[:120]}" for k, v in kwargs.items()
+                ]
                 entry = f"{label}({', '.join(parts)})"
             _logger.log(entry, "ENTER")
             try:
@@ -68,5 +78,7 @@ def Observing(label: str, *, log_args: bool = True, logger: Optional[DebugLogger
             except Exception as exc:
                 _logger.log(label, f"ERROR {type(exc).__name__}: {exc}")
                 raise
+
         return wrapper
+
     return decorator

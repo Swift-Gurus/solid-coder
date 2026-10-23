@@ -9,13 +9,14 @@ from harness.workflow_output_declaration import WorkflowOutputDeclaration
 from harness.workflow_output_value import WorkflowOutputValue
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowOutputValueResolving
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for resolving and validating one declared workflow output.
 """
+
+
 class WorkflowOutputValueResolving(Protocol):
     def resolve(
         self,

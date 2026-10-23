@@ -7,27 +7,25 @@ import textwrap
 import unittest
 from pathlib import Path
 
-
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _TEST_HARNESS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 sys.path.insert(0, str(_TEST_HARNESS_ROOT))
 
-from bundled_review_rule_policy_writer import (  # noqa: E402
+from bundled_review_rule_policy_writer import (
     BundledReviewRulePolicyWriter,
 )
-from harness.flow_run_orchestrator_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import (
     FlowRunOrchestratorFactory,
 )
-from harness.project_context import ProjectDirectory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from review.review_operation_registrations_factory import (  # noqa: E402
+from harness.project_context import ProjectDirectory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
-from source.source_operation_registrations_factory import (  # noqa: E402
+from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
-
 
 """
 solid-name: TestSolidGateOnWriteWorkflow
@@ -35,6 +33,8 @@ solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-039, SPEC-041, SPEC-055]
 solid-description: Proves the packaged gate reviews a nonexistent destination from its prospective buffer and materializes file-scoped test review once.
 """
+
+
 class TestSolidGateOnWriteWorkflow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -94,9 +94,7 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
         self.assertTrue(
             all("unit-testing" in step.instance_id for step in started.steps)
         )
-        self.assertTrue(
-            all(self.source not in step.prompt for step in started.steps)
-        )
+        self.assertTrue(all(self.source not in step.prompt for step in started.steps))
         self.assertTrue(all(step.batch is not None for step in started.steps))
         self.assertEqual(
             {step.batch.mode.value for step in started.steps},
@@ -130,11 +128,7 @@ class TestSolidGateOnWriteWorkflow(unittest.TestCase):
         self.assertFalse(self.target_path.exists())
         self.assertFalse(sibling_path.exists())
         events_path = (
-            self.project_root
-            / "runs"
-            / "subagents"
-            / started.run_id
-            / "events.jsonl"
+            self.project_root / "runs" / "subagents" / started.run_id / "events.jsonl"
         )
         prepare_event = next(
             event

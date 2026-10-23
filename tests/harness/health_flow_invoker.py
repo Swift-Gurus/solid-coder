@@ -11,9 +11,9 @@ import concurrent.futures
 import json
 import os
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 _PROJECT_ROOT = _HARNESS_DIR.parents[1]
@@ -23,10 +23,9 @@ for _d in (str(_HARNESS_DIR), str(_MCP_SERVER), str(_MCP_HEALTH)):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
-from hc_checker import HealthChecking  # noqa: E402
-
-from interfaces import CheckResultWriting, FlowInvoking, SupportedExtensionsProviding  # noqa: E402
-from models import ModelProfile, OutputPaths  # noqa: E402
+from hc_checker import HealthChecking
+from interfaces import CheckResultWriting, FlowInvoking, SupportedExtensionsProviding
+from models import ModelProfile, OutputPaths
 
 
 @contextmanager
@@ -84,10 +83,14 @@ class HealthFlowInvoker(FlowInvoking):
 
         env_override: dict[str, str] = {}
         if model_profile.profile_path is not None:
-            env_override["SOLID_CODER_TEST_MODEL_PROFILE"] = str(model_profile.profile_path)
+            env_override["SOLID_CODER_TEST_MODEL_PROFILE"] = str(
+                model_profile.profile_path
+            )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(self._run_check, content, str(fixture_path), language, env_override)
+            future = executor.submit(
+                self._run_check, content, str(fixture_path), language, env_override
+            )
             try:
                 violations = future.result(timeout=timeout)
             except concurrent.futures.TimeoutError as exc:
@@ -105,11 +108,15 @@ class HealthFlowInvoker(FlowInvoking):
         self._write_full_output(all_violations, output_paths)
         return result
 
-    def _write_full_output(self, all_violations: list[dict], output_paths: OutputPaths) -> None:
+    def _write_full_output(
+        self, all_violations: list[dict], output_paths: OutputPaths
+    ) -> None:
         if not all_violations:
             return
         output_paths.log_dir.mkdir(parents=True, exist_ok=True)
-        full_path = output_paths.log_dir / (output_paths.reasoning_path.stem + "-full.json")
+        full_path = output_paths.log_dir / (
+            output_paths.reasoning_path.stem + "-full.json"
+        )
         full_path.write_text(json.dumps(all_violations, indent=2), encoding="utf-8")
 
     def _filter_by_principle(self, violations: list[dict]) -> list[dict]:
@@ -120,7 +127,9 @@ class HealthFlowInvoker(FlowInvoking):
         if not self._principle_name:
             return violations
         prefix = self._principle_name + "-"
-        return [v for v in violations if v.get("metric_id", "").upper().startswith(prefix)]
+        return [
+            v for v in violations if v.get("metric_id", "").upper().startswith(prefix)
+        ]
 
     def _run_check(
         self,

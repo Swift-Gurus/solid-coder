@@ -1,16 +1,16 @@
 """Verifies codebase-search term normalization and rejection rules."""
 
 import pytest
-
 from search.regex_search_term_extractor import RegexSearchTermExtractor
 from search.search_terms_resolver import SearchTermsResolver
-
 
 """
 solid-name: TestSearchTermsResolver
 solid-category: unit-test
 solid-description: Verifies codebase-search inputs resolve to individual terms or fail with actionable errors.
 """
+
+
 class TestSearchTermsResolver:
     def setup_method(self) -> None:
         self.resolver = SearchTermsResolver(RegexSearchTermExtractor())

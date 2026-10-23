@@ -14,13 +14,12 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from claude_live_session_runner import ClaudeLiveSessionRunner  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
+from claude_live_session_runner import ClaudeLiveSessionRunner
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
 
 
 class TestClaudeLiveSessionRunner(unittest.TestCase):
-
     def test_returns_child_session_id_and_final_output(self) -> None:
         completed = self._completed_process(
             json.dumps(
@@ -81,12 +80,11 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
                     return_value=artifact_directory,
                 ),
                 patch(
-                    "claude_live_session_runner.subprocess.run",
-                    return_value=completed,
+                    "claude_live_session_runner.subprocess.run", return_value=completed
                 ),
+                self.assertRaisesRegex(RuntimeError, "no session ID"),
             ):
-                with self.assertRaisesRegex(RuntimeError, "no session ID"):
-                    ClaudeLiveSessionRunner().run(self._request())
+                ClaudeLiveSessionRunner().run(self._request())
 
             self.assertEqual(
                 (artifact_directory / "claude-result.json").read_text(),
@@ -103,18 +101,18 @@ class TestClaudeLiveSessionRunner(unittest.TestCase):
                 }
             )
         )
-        with tempfile.TemporaryDirectory() as directory:
-            with (
-                patch(
-                    "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
-                    return_value=Path(directory),
-                ),
-                patch(
-                    "claude_live_session_runner.subprocess.run",
-                    return_value=completed,
-                ) as process,
-            ):
-                ClaudeLiveSessionRunner().run(self._request())
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch(
+                "claude_live_session_runner.LiveSessionArtifactDirectoryCreator.create",
+                return_value=Path(directory),
+            ),
+            patch(
+                "claude_live_session_runner.subprocess.run",
+                return_value=completed,
+            ) as process,
+        ):
+            ClaudeLiveSessionRunner().run(self._request())
 
         command = process.call_args.args[0]
         self.assertNotIn("--mcp-config", command)

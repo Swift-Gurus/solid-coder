@@ -15,14 +15,13 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from live_session_artifact_directory_creator import (  # noqa: E402
+from live_session_artifact_directory_creator import (
     LiveSessionArtifactDirectoryCreator,
 )
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope
 
 
 class TestLiveSessionArtifactDirectoryCreator(unittest.TestCase):
-
     def test_creates_unique_backend_specific_e2e_directory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project_root = Path(directory)
@@ -56,16 +55,18 @@ class TestLiveSessionArtifactDirectoryCreator(unittest.TestCase):
             self.assertTrue(second.is_dir())
 
     def test_rejects_scope_that_is_not_two_safe_directory_names(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(ValueError, "single directory names"):
-                LiveSessionArtifactDirectoryCreator().create(
-                    Path(directory),
-                    "codex",
-                    LiveSessionArtifactScope(
-                        domain="review",
-                        scenario="../srp",
-                    ),
-                )
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            self.assertRaisesRegex(ValueError, "single directory names"),
+        ):
+            LiveSessionArtifactDirectoryCreator().create(
+                Path(directory),
+                "codex",
+                LiveSessionArtifactScope(
+                    domain="review",
+                    scenario="../srp",
+                ),
+            )
 
 
 if __name__ == "__main__":

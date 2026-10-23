@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Count ACs and screens in a spec file, apply the heuristic formula, and emit JSON.
 
 Usage:
@@ -7,11 +6,11 @@ Usage:
 Bands and weights are sourced from spec-driven-development/specs/README.md § Scope Metrics.
 Keep this script in sync if the README changes.
 """
+
 import json
 import re
 import sys
 from pathlib import Path
-
 
 AC_WEIGHT = 12
 SCREEN_WEIGHT = 80
@@ -62,7 +61,9 @@ def count_acs_in_user_stories(stories_section: str) -> tuple[int, list[dict]]:
 
     if len(story_blocks) == 1:
         # No `### ` subheadings — treat the entire section as one story
-        ac_count = sum(1 for line in story_blocks[0].splitlines() if BULLET_RE.match(line))
+        ac_count = sum(
+            1 for line in story_blocks[0].splitlines() if BULLET_RE.match(line)
+        )
         if ac_count > 0:
             by_story.append({"story_id": "(unnamed)", "ac_count": ac_count})
             total = ac_count
@@ -81,7 +82,9 @@ def count_screens(ui_section: str) -> int:
     """Count `### ` subsections OR `![]()` image links inside the UI / Mockup section."""
     if not ui_section:
         return 0
-    h3_count = sum(1 for line in ui_section.splitlines() if re.match(r"^###\s+\S", line))
+    h3_count = sum(
+        1 for line in ui_section.splitlines() if re.match(r"^###\s+\S", line)
+    )
     image_count = len(re.findall(r"!\[[^\]]*\]\([^)]+\)", ui_section))
     detected = max(h3_count, image_count)
     if detected == 0 and ui_section.strip():

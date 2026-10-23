@@ -13,13 +13,14 @@ from harness.step_execution_coordinating import StepExecutionCoordinating
 from harness.step_skip_recording import StepSkipRecording
 from harness.workflow_condition_advancing import WorkflowConditionAdvancing
 
-
 """
 solid-name: EngineStepDrainer
 solid-category: service
 solid-spec: [SPEC-010, SPEC-027, SPEC-037]
 solid-description: Drains consecutive engine-executable workflow instances until input, failure, or no progress.
 """
+
+
 class EngineStepDrainer(StepExecutionCoordinating):
     def __init__(
         self,

@@ -6,12 +6,13 @@ from findings.batch_coverage_failure import BatchCoverageFailure
 from findings.batch_persistence_result import BatchPersistenceResult
 from findings.batch_submission_parse_failure import BatchSubmissionParseFailure
 
-
 """
 solid-name: BatchSubmissionResponseFormatting
 solid-category: abstraction
 solid-description: Contract for rendering typed batch completion and rejection outcomes as model-facing responses.
 """
+
+
 class BatchSubmissionResponseFormatting(Protocol):
     def format_coverage_failure(self, failure: BatchCoverageFailure) -> dict: ...
 

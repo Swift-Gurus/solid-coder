@@ -3,10 +3,10 @@ solid-description: Formats schema validation errors as human-readable messages.
 solid-category: utility
 """
 
-from typing import Any, List
+from typing import Any
 
 
-def format_schema_errors(schema: dict, data: Any, limit: int = 10) -> List[str]:
+def format_schema_errors(schema: dict, data: Any, limit: int = 10) -> list[str]:
     """Validate data against schema, returning up to `limit` formatted "path: message" lines."""
     import jsonschema
 

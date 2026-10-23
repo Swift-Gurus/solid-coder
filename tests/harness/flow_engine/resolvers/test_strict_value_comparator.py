@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.strict_value_comparator import StrictValueComparator  # noqa: E402
+from harness.strict_value_comparator import StrictValueComparator
 
 
 class TestStrictValueComparator(unittest.TestCase):

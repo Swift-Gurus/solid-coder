@@ -7,16 +7,19 @@ from findings.batch_submission_building import BatchSubmissionBuilding
 from findings.batch_submission_parse_failure import BatchSubmissionParseFailure
 from findings.batch_submission_parse_result import BatchSubmissionParseResult
 from findings.batch_submission_parsing import BatchSubmissionParsing
-from findings.batch_submission_payload_validating import BatchSubmissionPayloadValidating
+from findings.batch_submission_payload_validating import (
+    BatchSubmissionPayloadValidating,
+)
 from findings.partial_output_validator import PartialOutputValidating
 from findings.principle_submission import PrincipleSubmission
-
 
 """
 solid-name: McpBatchSubmissionParser
 solid-category: boundary-adapter
 solid-description: Parses structurally valid ordered batch review submissions and reports the first rejected principle.
 """
+
+
 class McpBatchSubmissionParser(BatchSubmissionParsing):
     def __init__(
         self,

@@ -10,15 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.comparison_condition import ComparisonCondition
 from harness.condition_operator import ConditionOperator
-from harness.for_each_declaration import ForEachDeclaration
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
+from harness.for_each_declaration import ForEachDeclaration
 from harness.step_output_reference import StepOutputReference
 from harness.workflow_expression import WorkflowExpression
 
 
 class TestDynamicWorkflowIncludeLoading(unittest.TestCase):
-
     def setUp(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)

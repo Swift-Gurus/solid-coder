@@ -4,14 +4,17 @@ from findings.batch_submission_handling import BatchSubmissionHandling
 from findings.batch_submission_parse_result import BatchSubmissionParseResult
 from findings.batch_submission_persisting import BatchSubmissionPersisting
 from findings.batch_submission_preparing import BatchSubmissionPreparing
-from findings.batch_submission_response_formatting import BatchSubmissionResponseFormatting
-
+from findings.batch_submission_response_formatting import (
+    BatchSubmissionResponseFormatting,
+)
 
 """
 solid-name: BatchSubmissionCoordinator
 solid-category: service
 solid-description: Sequences preparation, ordered persistence, and response rendering for a typed findings batch.
 """
+
+
 class BatchSubmissionCoordinator(BatchSubmissionHandling):
     def __init__(
         self,

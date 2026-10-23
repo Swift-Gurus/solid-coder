@@ -2,13 +2,14 @@
 
 from enum import IntEnum
 
-
 """
 solid-name: SemanticSymbolKind
 solid-category: model
 solid-spec: [SPEC-064]
 solid-description: Represents the standard semantic symbol categories without inferring contract ownership from symbol spelling.
 """
+
+
 class SemanticSymbolKind(IntEnum):
     FILE = 1
     MODULE = 2

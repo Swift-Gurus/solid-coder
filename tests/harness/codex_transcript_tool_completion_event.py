@@ -5,13 +5,14 @@ from typing import Literal
 
 from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
-
 """
 solid-name: CodexTranscriptToolCompletionEvent
 solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Decodes a completed MCP tool identity, result text, and timestamp for review-stage boundary detection.
 """
+
+
 class CodexTranscriptToolCompletionEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

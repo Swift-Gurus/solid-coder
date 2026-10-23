@@ -5,13 +5,14 @@ from pathlib import Path
 
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 
-
 """
 solid-name: NativeSourceKitLibrary
 solid-category: boundary-adapter
 solid-spec: [SPEC-064]
 solid-description: Exchanges native semantic requests while releasing request, response, and diagnostic memory across successful and failed calls.
 """
+
+
 class NativeSourceKitLibrary(SourceSyntaxParsing[str, str]):
     def __init__(self, path: Path) -> None:
         self._api = ctypes.CDLL(str(path))
@@ -22,7 +23,10 @@ class NativeSourceKitLibrary(SourceSyntaxParsing[str, str]):
         self._api.sourcekitd_initialize.restype = None
         self._api.sourcekitd_shutdown.argtypes = []
         self._api.sourcekitd_shutdown.restype = None
-        self._api.sourcekitd_request_create_from_yaml.argtypes = [ctypes.c_char_p, ctypes.POINTER(ctypes.c_char_p)]
+        self._api.sourcekitd_request_create_from_yaml.argtypes = [
+            ctypes.c_char_p,
+            ctypes.POINTER(ctypes.c_char_p),
+        ]
         self._api.sourcekitd_request_create_from_yaml.restype = ctypes.c_void_p
         self._api.sourcekitd_send_request_sync.argtypes = [ctypes.c_void_p]
         self._api.sourcekitd_send_request_sync.restype = ctypes.c_void_p
@@ -38,20 +42,30 @@ class NativeSourceKitLibrary(SourceSyntaxParsing[str, str]):
 
     def parse(self, source: str) -> str:
         error = ctypes.c_char_p()
-        request = self._api.sourcekitd_request_create_from_yaml(source.encode(), ctypes.byref(error))
+        request = self._api.sourcekitd_request_create_from_yaml(
+            source.encode(), ctypes.byref(error)
+        )
         if not request:
             try:
-                raise ValueError(error.value.decode() if error.value else "Invalid native semantic request.")
+                raise ValueError(
+                    error.value.decode()
+                    if error.value
+                    else "Invalid native semantic request."
+                )
             finally:
                 self._memory.free(error)
         try:
             response = self._api.sourcekitd_send_request_sync(request)
             if not response:
-                raise ConnectionError("The native semantic service returned no response.")
+                raise ConnectionError(
+                    "The native semantic service returned no response."
+                )
             try:
                 description = self._api.sourcekitd_response_description_copy(response)
                 if not description:
-                    raise ConnectionError("The native semantic service omitted its response content.")
+                    raise ConnectionError(
+                        "The native semantic service omitted its response content."
+                    )
                 try:
                     result = ctypes.string_at(description).decode()
                 finally:

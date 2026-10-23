@@ -8,15 +8,15 @@ from harness.review_plan_artifact_persisting import ReviewPlanArtifactPersisting
 from harness.review_policy_loading import ReviewPolicyLoading
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 
-
 """
 solid-name: ReviewRulePlanPreparer
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Coordinates policy loading, catalog planning, and mandatory audit persistence before review execution.
 """
-class ReviewRulePlanPreparer:
 
+
+class ReviewRulePlanPreparer:
     def __init__(
         self,
         policy_loader: ReviewPolicyLoading,

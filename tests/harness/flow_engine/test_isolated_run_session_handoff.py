@@ -8,17 +8,15 @@ import textwrap
 import unittest
 from pathlib import Path
 
-
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import (
     FlowRunOrchestratorFactory,
 )
-from harness.project_context import ProjectDirectory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
-
+from harness.project_context import ProjectDirectory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.static_session_id_reader import StaticSessionIdReader
 
 """
 solid-name: TestIsolatedRunSessionHandoff
@@ -26,6 +24,8 @@ solid-category: integration-test
 solid-spec: [SPEC-031]
 solid-description: Proves a child model session can continue and inspect an isolated run created by its parent session.
 """
+
+
 class TestIsolatedRunSessionHandoff(unittest.TestCase):
     def test_child_session_completes_parent_isolated_run_by_explicit_id(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

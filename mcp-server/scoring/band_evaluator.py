@@ -47,10 +47,13 @@ class BandEvaluator:
             return False
         if "greater_than" in comparison and v <= comparison["greater_than"]:
             return False
-        if "greater_than_or_equal" in comparison and v < comparison["greater_than_or_equal"]:
+        if (
+            "greater_than_or_equal" in comparison
+            and v < comparison["greater_than_or_equal"]
+        ):
             return False
         if "less_than" in comparison and v >= comparison["less_than"]:
             return False
-        if "less_than_or_equal" in comparison and v > comparison["less_than_or_equal"]:
-            return False
-        return True
+        return not (
+            "less_than_or_equal" in comparison and v > comparison["less_than_or_equal"]
+        )

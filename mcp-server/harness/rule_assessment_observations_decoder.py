@@ -11,13 +11,14 @@ from harness.rule_observations import RuleObservations
 from harness.step_outputs import StepOutputs
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: RuleAssessmentObservationsDecoder
 solid-category: boundary-adapter
 solid-spec: [SPEC-044]
 solid-description: Maps schema-validated aggregate output values into the established metric and exception observation models.
 """
+
+
 class RuleAssessmentObservationsDecoder(RuleAssessmentObservationsDecoding):
     def __init__(
         self,

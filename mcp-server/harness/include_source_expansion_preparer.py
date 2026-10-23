@@ -4,7 +4,12 @@ from harness.include_cycle_guarding import IncludeCycleGuarding
 from harness.include_source import IncludeSource
 from harness.include_source_expansion_preparing import IncludeSourceExpansionPreparing
 from harness.include_traversal_context import IncludeTraversalContext
-from harness.workflow_include_policy_resolver import WorkflowIncludePolicyResolving, WorkflowIncludePolicyResolver
+from harness.workflow_include_policy_resolver import (
+    WorkflowIncludePolicyResolver,
+    WorkflowIncludePolicyResolving,
+)
+
+_DEFAULT_POLICY: WorkflowIncludePolicyResolving = WorkflowIncludePolicyResolver()
 
 
 """
@@ -13,10 +18,14 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates and prepares traversal context for a nested include source.
 """
-class IncludeSourceExpansionPreparer(IncludeSourceExpansionPreparing):
 
-    def __init__(self, cycle_guard: IncludeCycleGuarding,
-                 policy: WorkflowIncludePolicyResolving = WorkflowIncludePolicyResolver()) -> None:
+
+class IncludeSourceExpansionPreparer(IncludeSourceExpansionPreparing):
+    def __init__(
+        self,
+        cycle_guard: IncludeCycleGuarding,
+        policy: WorkflowIncludePolicyResolving = _DEFAULT_POLICY,
+    ) -> None:
         self._cycle_guard = cycle_guard
         self._policy = policy
 

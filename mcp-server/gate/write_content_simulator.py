@@ -9,13 +9,14 @@ from typing import Protocol
 from changed_content import ChangedContent
 from simulated_write import SimulatedWrite
 
-
 """
 solid-name: FileReading
 solid-description: Contract for reading text content from a file identity.
 solid-category: abstraction
 solid-tags: [hook]
 """
+
+
 class FileReading(Protocol):
     def read_text(self, path: object, encoding: str = "utf-8") -> str: ...
 
@@ -26,6 +27,8 @@ solid-description: Contract for classifying the review risk of a prospective con
 solid-category: abstraction
 solid-tags: [hook]
 """
+
+
 class EditClassifying(Protocol):
     def is_low_risk(self, old: str, new: str) -> bool: ...
 
@@ -36,6 +39,8 @@ solid-description: Contract for selecting changed content from a prospective fil
 solid-category: abstraction
 solid-tags: [hook]
 """
+
+
 class DiffChunking(Protocol):
     def chunk(self, old: str, new: str) -> ChangedContent: ...
 
@@ -46,6 +51,8 @@ solid-description: Simulates prospective file content and review risk for a comp
 solid-category: service
 solid-tags: [hook]
 """
+
+
 class WriteContentSimulator:
     """Simulates the resulting file content and low-risk status for a Write tool event."""
 

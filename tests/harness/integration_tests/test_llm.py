@@ -29,15 +29,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from integration_tests.base import IntegrationTestBase  # noqa: E402
-from local_test_base import LocalTestBase  # noqa: E402
+from local_test_base import LocalTestBase
+
+from integration_tests.base import IntegrationTestBase
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 for _d in (_HOOKS_DIR, _PROJECT_ROOT / "mcp-server" / "health" / "config"):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
-from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML  # noqa: E402
+from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
+
 _LOCAL_TOML = _PROJECT_ROOT / CONFIG_DIR / CONFIG_LOCAL_TOML
 _LAUNCH_SCRIPT = _PROJECT_ROOT / "scripts" / "run-local-llm.sh"
 
@@ -54,7 +56,7 @@ def _read_server_config() -> dict:
             import tomli as tomllib  # type: ignore[no-redef]
         with open(_LOCAL_TOML, "rb") as f:
             return tomllib.load(f).get("server", {})
-    except Exception:
+    except Exception:  # noqa: BLE001 — Legacy local-test configuration uses defaults when optional TOML loading fails.
         return {}
 
 

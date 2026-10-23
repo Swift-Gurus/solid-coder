@@ -1,13 +1,14 @@
 """Defines pipeline command operations exposed through the callable registry."""
 
-from typing import Optional, Protocol
-
+from typing import Protocol
 
 """
 solid-name: PipelineCommandHandling
 solid-category: abstraction
 solid-description: Contract for executing and formatting pipeline preparation, validation, planning, and reporting commands.
 """
+
+
 class PipelineCommandHandling(Protocol):
     def prepare_review_input(self, candidate_tags=None) -> dict: ...
 
@@ -15,13 +16,13 @@ class PipelineCommandHandling(Protocol):
         self,
         plan_path: str,
         output_dir: str,
-        arch_path: Optional[str] = None,
+        arch_path: str | None = None,
     ) -> dict: ...
 
     def generate_report(
         self,
         data_dir: str,
-        report_dir: Optional[str] = None,
+        report_dir: str | None = None,
     ) -> dict: ...
 
     def validate_architecture(self, arch_path: str) -> dict: ...

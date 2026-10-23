@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-
 """
 solid-name: StepOutputs
 solid-category: model
 solid-spec: [SPEC-030]
 solid-description: Provides immutable access to the named values recorded for one completed workflow step.
 """
+
+
 @dataclass(frozen=True)
 class StepOutputs:
     values: dict[str, Any] = field(default_factory=dict)

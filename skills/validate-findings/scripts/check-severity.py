@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Check if review findings contain any SEVERE violations.
 
@@ -21,7 +20,6 @@ import json
 import sys
 from pathlib import Path
 
-
 # --- Public API ---
 
 
@@ -39,7 +37,7 @@ def iter_principle_results(output_root: str):
             continue
         try:
             data = json.loads(review_path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             yield principle_dir.name, 0, 0, [], str(review_path), str(exc)
             continue
         severe = minor = 0
@@ -53,7 +51,14 @@ def iter_principle_results(output_root: str):
                     elif sev == "MINOR":
                         minor += 1
                         minor_violations.append(violation)
-        yield principle_dir.name, severe, minor, minor_violations, str(review_path), None
+        yield (
+            principle_dir.name,
+            severe,
+            minor,
+            minor_violations,
+            str(review_path),
+            None,
+        )
 
 
 def check_severity(output_root: str) -> dict:
@@ -67,7 +72,9 @@ def check_severity(output_root: str) -> dict:
         raise FileNotFoundError(f"{rules_dir} not found")
 
     severe_count = minor_count = principles_count = 0
-    for _name, severe, minor, _findings, _path, error in iter_principle_results(output_root):
+    for _name, severe, minor, _findings, _path, error in iter_principle_results(
+        output_root
+    ):
         if error is None:
             principles_count += 1
             severe_count += severe

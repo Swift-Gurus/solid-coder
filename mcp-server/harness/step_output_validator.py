@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from harness.models import FlowDef, StepInstance
 from harness.schema_validator import SchemaValidator
-from harness.step_output_validating import StepOutputValidating
 from harness.step_output_shape_checking import StepOutputShapeChecking
 from harness.step_output_submission_collecting import StepOutputSubmissionCollecting
-
 
 """
 solid-name: StepOutputValidator
@@ -15,8 +13,9 @@ solid-category: service
 solid-spec: [SPEC-031, SPEC-039]
 solid-description: Validates submitted workflow-step outputs against their declared output shapes and schemas.
 """
-class StepOutputValidator:
 
+
+class StepOutputValidator:
     def __init__(
         self,
         schema_validator: SchemaValidator,

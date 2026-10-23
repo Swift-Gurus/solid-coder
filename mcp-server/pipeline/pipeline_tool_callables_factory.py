@@ -1,18 +1,20 @@
 """Builds the callable map exposed by the pipeline MCP server."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from health.dry_search_coordinating import DrySearchCoordinating
 from pipeline.output_path_computing import OutputPathComputing
 from pipeline.pipeline_command_handling import PipelineCommandHandling
 from pipeline.tool_callables_building import ToolCallablesBuilding
 
-
 """
 solid-name: PipelineToolCallablesFactory
 solid-category: factory
 solid-description: Builds the model-facing pipeline callable registry from role-focused operations.
 """
+
+
 class PipelineToolCallablesFactory(ToolCallablesBuilding):
     def __init__(
         self,

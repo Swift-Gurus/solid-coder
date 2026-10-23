@@ -8,13 +8,14 @@ from harness.include_alias_group_for_each_parsing import (
     IncludeAliasGroupForEachParsing,
 )
 
-
 """
 solid-name: IncludeAliasGroupForEachParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Restores an optional workflow iteration reference for an include alias group when a reference is present.
 """
+
+
 class IncludeAliasGroupForEachParser(IncludeAliasGroupForEachParsing):
     def __init__(self, declaration_parser: ForEachDeclarationParsing) -> None:
         self._declaration_parser = declaration_parser

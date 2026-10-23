@@ -7,11 +7,10 @@ from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.candidate_source_resolving import CandidateSourceResolving
 from source.loaded_candidate_source import LoadedCandidateSource
 from source.read_source_candidates_output import CandidateSourceReadResult
-from source.source_search_context import SourceSearchContext
 from source.source_bytes_reading import SourceBytesReading
 from source.source_search_candidate import SourceSearchCandidate
+from source.source_search_context import SourceSearchContext
 from source.unavailable_candidate_source import UnavailableCandidateSource
-
 
 """
 solid-name: VerifiedCandidateSourceResolver
@@ -19,6 +18,8 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves and verifies bounded source content for repository candidates.
 """
+
+
 class VerifiedCandidateSourceResolver(CandidateSourceResolving):
     def __init__(
         self,

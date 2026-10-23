@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
@@ -10,12 +11,13 @@ from pathlib import Path
 
 from codex_config_argument_building import CodexConfigArgumentBuilding
 
-
 """
 solid-name: CodexCommandBuilder
 solid-category: service
 solid-description: Constructs configurable Codex execution commands.
 """
+
+
 class CodexCommandBuilder:
     """Builds the codex exec command list for a health-check session."""
 
@@ -32,13 +34,15 @@ class CodexCommandBuilder:
     def build(self, result_path: Path) -> list:
         """Return the codex exec command, parameterized by output file path."""
         cmd = [
-            "codex", "exec",
+            "codex",
+            "exec",
             "--json",
             "--dangerously-bypass-approvals-and-sandbox",
             "--dangerously-bypass-hook-trust",
             "--skip-git-repo-check",
             "--ignore-user-config",
-            "--output-last-message", str(result_path),
+            "--output-last-message",
+            str(result_path),
             "-",
         ]
         cmd += self._config_argument_builder.build(self._mcp_config)

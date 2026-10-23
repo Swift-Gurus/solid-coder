@@ -5,22 +5,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
-
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from flow_engine.application import FlowEngineApplication  # noqa: E402
-from common.mcp_meta import COMPLETE_FLOW_OUTPUT  # noqa: E402
-
+from common.mcp_meta import COMPLETE_FLOW_OUTPUT
+from flow_engine.application import FlowEngineApplication
 
 """
 solid-name: TestFlowEngineApplication
 solid-category: test
 solid-description: Verifies that the flow-engine MCP boundary exposes only workflow progression tools.
 """
-class TestFlowEngineApplication(unittest.TestCase):
 
+
+class TestFlowEngineApplication(unittest.TestCase):
     def test_registers_only_start_and_next_before_running_transport(self) -> None:
         server = Mock()
         registry = Mock()

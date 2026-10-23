@@ -6,13 +6,14 @@ from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_output import ReadSourceCandidatesOutput
 from source.source_candidate_origin import SourceCandidateOrigin
 
-
 """
 solid-name: ReadSourceCandidatesOperation
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Preserves candidate order while resolving each requested source into a typed read outcome.
 """
+
+
 class ReadSourceCandidatesOperation:
     def __init__(
         self,
@@ -29,16 +30,18 @@ class ReadSourceCandidatesOperation:
         operation_input: ReadSourceCandidatesInput,
     ) -> ReadSourceCandidatesOutput:
         root = self._project_directory.read().resolve()
-        return ReadSourceCandidatesOutput(results=[
-            (
-                self._proposed_source
-                if candidate.origin is SourceCandidateOrigin.PROPOSED
-                else self._repository_source
-            ).resolve(
-                root,
-                candidate,
-                operation_input.max_bytes_per_candidate,
-                operation_input.context,
-            )
-            for candidate in operation_input.candidates
-        ])
+        return ReadSourceCandidatesOutput(
+            results=[
+                (
+                    self._proposed_source
+                    if candidate.origin is SourceCandidateOrigin.PROPOSED
+                    else self._repository_source
+                ).resolve(
+                    root,
+                    candidate,
+                    operation_input.max_bytes_per_candidate,
+                    operation_input.context,
+                )
+                for candidate in operation_input.candidates
+            ]
+        )

@@ -5,15 +5,15 @@ from harness.step_identity_resolving import StepIdentityResolving
 from harness.unique_step_identity_validating import UniqueStepIdentityValidating
 from harness.unique_string_validating import UniqueStringValidating
 
-
 """
 solid-name: UniqueStepIdentityValidator
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Rejects duplicate workflow-step identifiers.
 """
-class UniqueStepIdentityValidator(UniqueStepIdentityValidating):
 
+
+class UniqueStepIdentityValidator(UniqueStepIdentityValidating):
     def __init__(
         self,
         identity_resolver: StepIdentityResolving,

@@ -18,8 +18,7 @@ Exit codes:
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # Fields whose values are file paths relative to the file's parent directory
 LOCAL_PATH_FIELDS = {"rules", "output_schema", "input_schema", "examples", "code"}
@@ -31,7 +30,7 @@ REFS_PATH_FIELDS = {"required_patterns"}
 PRINCIPLE_FOLDER_TOKEN = "PRINCIPLE_FOLDER_ABSOLUTE_PATH"
 
 
-def parse_yaml_simple(text: str) -> Dict[str, Any]:
+def parse_yaml_simple(text: str) -> dict[str, Any]:
     """Minimal YAML parser for flat frontmatter with optional lists.
 
     Supports:
@@ -40,9 +39,9 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
         - item1
         - item2
     """
-    result: Dict[str, Any] = {}
-    current_key: Optional[str] = None
-    current_list: Optional[List[str]] = None
+    result: dict[str, Any] = {}
+    current_key: str | None = None
+    current_list: list[str] | None = None
 
     for line in text.splitlines():
         stripped = line.strip()
@@ -66,7 +65,7 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
         if ":" in stripped:
             colon_idx = stripped.index(":")
             key = stripped[:colon_idx].strip()
-            value = stripped[colon_idx + 1:].strip()
+            value = stripped[colon_idx + 1 :].strip()
 
             if value:
                 # Inline array: [item1, item2]
@@ -102,7 +101,7 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
     return result
 
 
-def extract_frontmatter(content: str) -> Optional[str]:
+def extract_frontmatter(content: str) -> str | None:
     """Extract YAML frontmatter between --- delimiters."""
     if not content.startswith("---"):
         return None
@@ -122,10 +121,10 @@ def resolve_path(value: str, base_dir: Path) -> str:
 
 
 def resolve_paths(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     file_dir: Path,
-    refs_root: Optional[Path],
-) -> Dict[str, Any]:
+    refs_root: Path | None,
+) -> dict[str, Any]:
     """Resolve path fields to absolute paths."""
     result = dict(data)
 
@@ -151,23 +150,19 @@ def resolve_paths(
                 continue
             value = result[field]
             if isinstance(value, str):
-                result[field] = resolve_path(
-                    f"design_patterns/{value}.md", refs_root
-                )
+                result[field] = resolve_path(f"design_patterns/{value}.md", refs_root)
             elif isinstance(value, list):
                 result[field] = [
-                    resolve_path(f"design_patterns/{v}.md", refs_root)
-                    for v in value
+                    resolve_path(f"design_patterns/{v}.md", refs_root) for v in value
                 ]
 
     return result
 
 
-
 # --- Public API ---
 
 
-def parse(file_path: str, refs_root: str = None) -> dict:
+def parse(file_path: str, refs_root: str | None = None) -> dict:
     """Parse YAML frontmatter from a file and resolve all paths.
 
     Returns dict with resolved paths, files_to_load, and metadata.
@@ -192,7 +187,9 @@ def parse(file_path: str, refs_root: str = None) -> dict:
     if rr is None and REFS_PATH_FIELDS & data.keys():
         candidate = file_dir
         while candidate != candidate.parent:
-            if (candidate / "ARCHITECTURE.md").exists() or (candidate / "design_patterns").is_dir():
+            if (candidate / "ARCHITECTURE.md").exists() or (
+                candidate / "design_patterns"
+            ).is_dir():
                 rr = candidate
                 break
             candidate = candidate.parent
@@ -223,7 +220,9 @@ def parse(file_path: str, refs_root: str = None) -> dict:
         for p in paths:
             pp = Path(p)
             if pp.is_dir():
-                files_to_load.extend(str(f) for f in sorted(pp.iterdir()) if f.is_file())
+                files_to_load.extend(
+                    str(f) for f in sorted(pp.iterdir()) if f.is_file()
+                )
             else:
                 files_to_load.append(str(pp))
 
@@ -242,7 +241,7 @@ def main() -> None:
         sys.exit(1)
 
     file_path = Path(sys.argv[1])
-    refs_root: Optional[Path] = None
+    refs_root: Path | None = None
 
     if "--refs-root" in sys.argv:
         idx = sys.argv.index("--refs-root")
@@ -269,7 +268,9 @@ def main() -> None:
     if refs_root is None and REFS_PATH_FIELDS & data.keys():
         candidate = file_dir
         while candidate != candidate.parent:
-            if (candidate / "ARCHITECTURE.md").exists() or (candidate / "design_patterns").is_dir():
+            if (candidate / "ARCHITECTURE.md").exists() or (
+                candidate / "design_patterns"
+            ).is_dir():
                 refs_root = candidate
                 break
             candidate = candidate.parent
@@ -296,7 +297,7 @@ def main() -> None:
     resolved["_dir"] = str(file_dir)
 
     # Build files_to_load — flat list of all files the consumer should read
-    files_to_load: List[str] = []
+    files_to_load: list[str] = []
     for field in ("required_patterns", "examples", "rules", "code"):
         value = resolved.get(field)
         if value is None:

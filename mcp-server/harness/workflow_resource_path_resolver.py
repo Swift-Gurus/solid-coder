@@ -9,15 +9,15 @@ from harness.workflow_package_root_locating import WorkflowPackageRootLocating
 from harness.workflow_resource_reference import WorkflowResourceReference
 from harness.workflow_resource_reference_kind import WorkflowResourceReferenceKind
 
-
 """
 solid-name: WorkflowResourcePathResolver
 solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Resolves declaring-file-relative resources while containing packaged references.
 """
-class WorkflowResourcePathResolver:
 
+
+class WorkflowResourcePathResolver:
     def __init__(
         self,
         package_root_locator: WorkflowPackageRootLocating,
@@ -40,7 +40,10 @@ class WorkflowResourcePathResolver:
                     f"Workflow resource '{reference.declared_value}' requires an owning package"
                 )
             candidate = (package_root / reference.path).resolve()
-        elif reference.kind == WorkflowResourceReferenceKind.CONVENTIONAL_PACKAGE_DIRECTORY:
+        elif (
+            reference.kind
+            == WorkflowResourceReferenceKind.CONVENTIONAL_PACKAGE_DIRECTORY
+        ):
             candidate = (
                 package_root / reference.conventional_directory.value / reference.path
                 if package_root is not None
@@ -51,7 +54,9 @@ class WorkflowResourcePathResolver:
         else:
             candidate = (declaring.parent / reference.path).resolve()
 
-        if package_root is not None and not candidate.is_relative_to(package_root.resolve()):
+        if package_root is not None and not candidate.is_relative_to(
+            package_root.resolve()
+        ):
             raise self._error_factory.create(
                 f"Workflow resource '{reference.declared_value}' escapes package root '{package_root}'"
             )

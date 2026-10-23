@@ -13,13 +13,14 @@ from harness.nested_include_child_group_transforming import (
     NestedIncludeChildGroupTransforming,
 )
 
-
 """
 solid-name: NestedIncludeChildGroupTransformer
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035, SPEC-045]
 solid-description: Coordinates policy selection and replacement for one nested child group.
 """
+
+
 class NestedIncludeChildGroupTransformer(NestedIncludeChildGroupTransforming):
     def __init__(
         self,

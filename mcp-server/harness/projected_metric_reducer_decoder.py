@@ -2,10 +2,11 @@
 
 from harness.collection_metric_reducer import CollectionMetricReducer
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
-from harness.projected_metric_reducer_declaration import ProjectedMetricReducerDeclaration
+from harness.projected_metric_reducer_declaration import (
+    ProjectedMetricReducerDeclaration,
+)
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
-
 
 """
 solid-name: ProjectedMetricReducerDecoder
@@ -13,6 +14,8 @@ solid-category: boundary
 solid-spec: [SPEC-054, SPEC-059]
 solid-description: Decodes scalar projection reducers for deterministic collection metrics.
 """
+
+
 class ProjectedMetricReducerDecoder(StructuredModelDecoding[CollectionMetricReducer]):
     def __init__(
         self,

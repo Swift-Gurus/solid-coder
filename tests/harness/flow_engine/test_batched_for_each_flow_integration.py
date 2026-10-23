@@ -23,7 +23,6 @@ from harness.step_formatter import StepFormatter
 from harness.step_renderer import StepRenderer
 from harness.subagent_delegator import SubagentDelegator
 
-
 _FLOW = """
     id: batch-review
     name: Batched Review
@@ -67,6 +66,8 @@ solid-category: integration-test
 solid-spec: [SPEC-042]
 solid-description: Proves batched presentation hides engine identity while domain-keyed submissions retain ordinary per-instance completion, retry, fan-in, and replay.
 """
+
+
 class TestBatchedForEachFlowIntegration(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -116,9 +117,7 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
     def test_partial_submission_presents_only_the_missing_domain_label(self) -> None:
         self._start_batch()
 
-        ready = self.sut.flow_next(
-            {"Alpha": {"result": "Alpha result"}}
-        )
+        ready = self.sut.flow_next({"Alpha": {"result": "Alpha result"}})
         rendered = self.renderer.render_steps(ready.steps)
 
         self.assertNotIn("Alpha", rendered)
@@ -138,10 +137,12 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
     def test_invalid_item_retries_only_its_domain_label_with_reason(self) -> None:
         self._start_batch()
 
-        ready = self.sut.flow_next({
-            "Alpha": {"result": 123},
-            "Beta": {"result": "Beta result"},
-        })
+        ready = self.sut.flow_next(
+            {
+                "Alpha": {"result": 123},
+                "Beta": {"result": "Beta result"},
+            }
+        )
         rendered = self.renderer.render_steps(ready.steps)
 
         self.assertEqual([step.batch.label for step in ready.steps], ["Alpha"])
@@ -153,10 +154,12 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
     def test_malformed_item_retries_without_exposing_internal_identity(self) -> None:
         self._start_batch()
 
-        ready = self.sut.flow_next({
-            "Alpha": "not an output object",
-            "Beta": {"result": "Beta result"},
-        })
+        ready = self.sut.flow_next(
+            {
+                "Alpha": "not an output object",
+                "Beta": {"result": "Beta result"},
+            }
+        )
         rendered = self.renderer.render_steps(ready.steps)
 
         self.assertEqual([step.batch.label for step in ready.steps], ["Alpha"])
@@ -166,9 +169,7 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
     def test_unknown_domain_label_is_rejected_without_completing_a_unit(self) -> None:
         self._start_batch()
 
-        result = self.sut.flow_next(
-            {"Gamma": {"result": "Invented result"}}
-        )
+        result = self.sut.flow_next({"Gamma": {"result": "Invented result"}})
 
         self.assertEqual(result.status, "ready")
         self.assertIn("unknown", result.error.lower())
@@ -182,7 +183,8 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
         subflows = self.project_root / "subflows"
         subflows.mkdir()
         child_path = subflows / "child.yaml"
-        child_path.write_text(textwrap.dedent("""
+        child_path.write_text(
+            textwrap.dedent("""
             id: child-review
             name: Child Review
             outputs:
@@ -197,9 +199,12 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
                   - name: result
                     type: data
                     schema: {type: string}
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
         parent_path = self.project_root / "parent.yaml"
-        parent_path.write_text(textwrap.dedent("""
+        parent_path.write_text(
+            textwrap.dedent("""
             id: parent-review
             name: Parent Review
             max_turns: 10
@@ -222,14 +227,18 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
               - id: summarize
                 depends_on: [reviews]
                 prompt: Summarize {{workflows.reviews.results}}.
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
         sut = self._orchestrator()
         started = sut.flow_start(str(parent_path))
-        ready = sut.flow_next({
-            started.steps[0].instance_id: {
-                "units": [{"name": "Alpha"}, {"name": "Beta"}]
+        ready = sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [{"name": "Alpha"}, {"name": "Beta"}]
+                }
             }
-        })
+        )
 
         rendered = self.renderer.render_steps(ready.steps)
 
@@ -239,10 +248,12 @@ class TestBatchedForEachFlowIntegration(unittest.TestCase):
         )
         self.assertIn("Alpha", rendered)
         self.assertIn("Beta", rendered)
-        result = sut.flow_next({
-            "Alpha": {"result": "Alpha result"},
-            "Beta": {"result": "Beta result"},
-        })
+        result = sut.flow_next(
+            {
+                "Alpha": {"result": "Alpha result"},
+                "Beta": {"result": "Beta result"},
+            }
+        )
         self.assertEqual([step.step_id for step in result.steps], ["summarize"])
         self.assertIn("Alpha result", result.steps[0].prompt)
         self.assertIn("Beta result", result.steps[0].prompt)

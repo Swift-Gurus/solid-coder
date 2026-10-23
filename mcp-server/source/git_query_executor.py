@@ -7,13 +7,14 @@ from source.git_process_execution import GitProcessExecution
 from source.git_querying import GitQuerying
 from source.source_operation_error import SourceOperationError
 
-
 """
 solid-name: GitQueryExecutor
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Executes read-only Git queries and reports failures with project and purpose context.
 """
+
+
 class GitQueryExecutor(GitQuerying):
     def __init__(
         self,

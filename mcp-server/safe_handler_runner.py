@@ -10,14 +10,16 @@ from hook_handling import HookHandling
 from logging_protocol import Logging
 from stderr_logger import StderrLogger
 
+_DEFAULT_LOGGER: Logging = StderrLogger()
+
 
 class SafeHandlerRunner:
-    def __init__(self, logger: Logging = StderrLogger()) -> None:
+    def __init__(self, logger: Logging = _DEFAULT_LOGGER) -> None:
         self._logger = logger
 
     def run(self, handler: HookHandling, event: dict) -> HookDecision:
         try:
             return handler.handle(event)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — Hook isolation logs arbitrary handler failures and preserves the explicit allow-continuation contract.
             self._logger.log(f"hook handler {handler!r} raised: {exc}")
             return HookDecision(allow=True)

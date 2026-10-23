@@ -7,8 +7,9 @@ from pathlib import Path
 from harness.path_building import PathBuilding
 from harness.step_declaration import StepDeclaration
 from harness.workflow_resource_path_resolving import WorkflowResourcePathResolving
-from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
-
+from harness.workflow_resource_reference_creating import (
+    WorkflowResourceReferenceCreating,
+)
 
 """
 solid-name: PromptFilePathResolver
@@ -16,8 +17,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Resolves prompt-file references from their workflow context into readable filesystem paths.
 """
-class PromptFilePathResolver:
 
+
+class PromptFilePathResolver:
     def __init__(
         self,
         path_builder: PathBuilding,

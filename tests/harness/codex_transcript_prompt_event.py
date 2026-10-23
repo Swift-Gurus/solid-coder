@@ -5,13 +5,14 @@ from typing import Literal
 
 from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
-
 """
 solid-name: CodexTranscriptPromptEvent
 solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Decodes the timestamp and first user prompt text needed to locate the beginning of a review stage.
 """
+
+
 class CodexTranscriptPromptEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

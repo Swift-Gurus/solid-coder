@@ -4,13 +4,14 @@ from harness.logical_operation_name_validating import (
     LogicalOperationNameValidating,
 )
 
-
 """
 solid-name: LogicalOperationNameValidator
 solid-category: service
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Validates logical operation names independently of MCP transport naming.
 """
+
+
 class LogicalOperationNameValidator(LogicalOperationNameValidating):
     def is_valid(self, name: str) -> bool:
         parts = name.split(".")

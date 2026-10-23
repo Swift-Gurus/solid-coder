@@ -95,23 +95,35 @@ class TestIntegration:
         src.write_text(SAMPLE_SWIFT)
 
         review_input = tmp_path / "review-input.json"
-        review_input.write_text(json.dumps({
-            "source_type": "changes",
-            "metadata": {"branch": "main", "base_branch": None, "timestamp": "2026-01-01T00:00:00Z"},
-            "files": [{
-                "file_path": str(src),
-                "changed_ranges": [{"start": 3, "end": 5}],
-                "units": [],
-            }],
-            "buffer": None,
-            "detected_imports": [],
-            "matched_tags": [],
-            "summary": {"total_files": 1, "total_units": 0, "changed_units": 0},
-        }))
+        review_input.write_text(
+            json.dumps(
+                {
+                    "source_type": "changes",
+                    "metadata": {
+                        "branch": "main",
+                        "base_branch": None,
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    "files": [
+                        {
+                            "file_path": str(src),
+                            "changed_ranges": [{"start": 3, "end": 5}],
+                            "units": [],
+                        }
+                    ],
+                    "buffer": None,
+                    "detected_imports": [],
+                    "matched_tags": [],
+                    "summary": {"total_files": 1, "total_units": 0, "changed_units": 0},
+                }
+            )
+        )
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(review_input)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, result.stderr
 
@@ -125,46 +137,74 @@ class TestIntegration:
 
     def test_buffer_mode(self, tmp_path):
         review_input = tmp_path / "review-input.json"
-        review_input.write_text(json.dumps({
-            "source_type": "buffer",
-            "metadata": {"branch": None, "base_branch": None, "timestamp": "2026-01-01T00:00:00Z"},
-            "files": None,
-            "buffer": {"input": SAMPLE_SWIFT, "units": []},
-            "detected_imports": [],
-            "matched_tags": [],
-            "summary": {"total_files": 0, "total_units": 0, "changed_units": 0},
-        }))
+        review_input.write_text(
+            json.dumps(
+                {
+                    "source_type": "buffer",
+                    "metadata": {
+                        "branch": None,
+                        "base_branch": None,
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    "files": None,
+                    "buffer": {"input": SAMPLE_SWIFT, "units": []},
+                    "detected_imports": [],
+                    "matched_tags": [],
+                    "summary": {"total_files": 0, "total_units": 0, "changed_units": 0},
+                }
+            )
+        )
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(review_input)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, result.stderr
 
         data = json.loads(review_input.read_text())
         units = data["buffer"]["units"]
-        assert [u["name"] for u in units] == ["Alpha", "Beta", "Gamma", "Delta", "String"]
+        assert [u["name"] for u in units] == [
+            "Alpha",
+            "Beta",
+            "Gamma",
+            "Delta",
+            "String",
+        ]
         assert data["summary"]["total_units"] == 5
 
     def test_missing_file_yields_empty_units(self, tmp_path):
         review_input = tmp_path / "review-input.json"
-        review_input.write_text(json.dumps({
-            "source_type": "changes",
-            "metadata": {"branch": None, "base_branch": None, "timestamp": "2026-01-01T00:00:00Z"},
-            "files": [{
-                "file_path": str(tmp_path / "does-not-exist.swift"),
-                "changed_ranges": None,
-                "units": [],
-            }],
-            "buffer": None,
-            "detected_imports": [],
-            "matched_tags": [],
-            "summary": {"total_files": 1, "total_units": 0, "changed_units": 0},
-        }))
+        review_input.write_text(
+            json.dumps(
+                {
+                    "source_type": "changes",
+                    "metadata": {
+                        "branch": None,
+                        "base_branch": None,
+                        "timestamp": "2026-01-01T00:00:00Z",
+                    },
+                    "files": [
+                        {
+                            "file_path": str(tmp_path / "does-not-exist.swift"),
+                            "changed_ranges": None,
+                            "units": [],
+                        }
+                    ],
+                    "buffer": None,
+                    "detected_imports": [],
+                    "matched_tags": [],
+                    "summary": {"total_files": 1, "total_units": 0, "changed_units": 0},
+                }
+            )
+        )
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(review_input)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, result.stderr
         data = json.loads(review_input.read_text())

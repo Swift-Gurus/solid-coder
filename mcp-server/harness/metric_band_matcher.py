@@ -3,13 +3,14 @@
 from harness.metric_scoring_band import MetricComparisonValue, MetricScoringBand
 from harness.scoring_comparison_operator import ScoringComparisonOperator
 
-
 """
 solid-name: MetricBandMatcher
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Applies the closed scoring comparison vocabulary to one scalar value and band.
 """
+
+
 class MetricBandMatcher:
     def matches(
         self,

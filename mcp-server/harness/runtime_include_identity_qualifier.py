@@ -9,13 +9,14 @@ from harness.runtime_include_identity_qualifying import (
     RuntimeIncludeIdentityQualifying,
 )
 
-
 """
 solid-name: RuntimeIncludeIdentityQualifier
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Qualifies nested runtime declaration identities beneath one materialized workflow instance.
 """
+
+
 class RuntimeIncludeIdentityQualifier(RuntimeIncludeIdentityQualifying):
     def __init__(
         self,

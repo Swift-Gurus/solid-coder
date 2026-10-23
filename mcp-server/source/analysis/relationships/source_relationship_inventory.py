@@ -1,10 +1,10 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from source.analysis.relationships.source_declaration_relationship import SourceDeclarationRelationship
+from source.analysis.relationships.source_declaration_relationship import (
+    SourceDeclarationRelationship,
+)
 from source.source_analysis import SourceAnalysis
-
 
 """
 solid-name: SourceRelationshipInventory
@@ -12,6 +12,8 @@ solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Preserves inspected source facts, diagnostics, and bounded relationship candidates without claiming repository completeness or verified conformance.
 """
+
+
 class SourceRelationshipInventory(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

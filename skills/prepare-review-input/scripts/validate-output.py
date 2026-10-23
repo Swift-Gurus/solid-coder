@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate review-input.json against output.schema.json.
 
 Usage:
@@ -6,6 +5,7 @@ Usage:
 
 Exits 0 on success, 1 on validation failure with a clear error message.
 """
+
 import json
 import sys
 from pathlib import Path
@@ -13,9 +13,10 @@ from pathlib import Path
 try:
     import jsonschema
 except ImportError:
-    print("Error: jsonschema not installed. Run: pip install jsonschema", file=sys.stderr)
+    print(
+        "Error: jsonschema not installed. Run: pip install jsonschema", file=sys.stderr
+    )
     sys.exit(1)
-
 
 
 # --- Public API ---
@@ -46,7 +47,9 @@ def validate_json(json_path: str, schema_path: str) -> dict:
     try:
         jsonschema.validate(instance=data, schema=schema)
     except jsonschema.ValidationError as e:
-        error_path = " → ".join(str(p) for p in e.absolute_path) if e.absolute_path else "(root)"
+        error_path = (
+            " → ".join(str(p) for p in e.absolute_path) if e.absolute_path else "(root)"
+        )
         return {"valid": False, "error": e.message, "path": error_path}
 
     return {"valid": True, "error": None, "path": None}

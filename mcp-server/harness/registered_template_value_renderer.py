@@ -7,15 +7,15 @@ from harness.template_value_renderer_registration import (
 )
 from harness.template_value_rendering import TemplateValueRendering
 
-
 """
 solid-name: RegisteredTemplateValueRenderer
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Dispatches workflow expression values through extensible template-renderer registrations.
 """
-class RegisteredTemplateValueRenderer(TemplateValueRendering):
 
+
+class RegisteredTemplateValueRenderer(TemplateValueRendering):
     def __init__(
         self,
         registrations: list[TemplateValueRendererRegistration],

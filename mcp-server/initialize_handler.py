@@ -1,5 +1,3 @@
-from typing import Optional
-
 from no_arg_rpc_handling import NoArgRpcHandling
 
 _PROTOCOL_VERSION = "2024-11-05"
@@ -10,13 +8,14 @@ solid-name: InitializeHandler
 solid-category: service
 solid-description: Provides server identification, capabilities, and model-facing guidance in response to initialization requests.
 """
-class InitializeHandler(NoArgRpcHandling):
 
+
+class InitializeHandler(NoArgRpcHandling):
     def __init__(
         self,
         name: str,
         version: str,
-        instructions: Optional[str] = None,
+        instructions: str | None = None,
     ) -> None:
         self._name = name
         self._version = version

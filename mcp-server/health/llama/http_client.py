@@ -4,15 +4,15 @@ solid-category: service
 solid-tags: [hook, llm, http]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
+from llama.json_deserializer import JsonDeserializer, JsonDeserializing
+from llama.json_serializer import JsonSerializer, JsonSerializing
 from llama.urllib_sender import HttpSending, UrllibSender
-from llama.json_serializer import JsonSerializing, JsonSerializer
-from llama.json_deserializer import JsonDeserializing, JsonDeserializer
 
 
 class LlamaHttpChatting(Protocol):
-    def chat(self, messages: list, tools: list, timeout: int) -> Optional[dict]: ...
+    def chat(self, messages: list, tools: list, timeout: int) -> dict | None: ...
 
 
 class LlamaHttpClient:
@@ -22,10 +22,10 @@ class LlamaHttpClient:
         self,
         host: str,
         model: str,
-        inference_params: Optional[dict] = None,
-        transport: Optional[HttpSending] = None,
-        serializer: Optional[JsonSerializing] = None,
-        deserializer: Optional[JsonDeserializing] = None,
+        inference_params: dict | None = None,
+        transport: HttpSending | None = None,
+        serializer: JsonSerializing | None = None,
+        deserializer: JsonDeserializing | None = None,
     ) -> None:
         self._url = f"{host.rstrip('/')}/v1/chat/completions"
         self._model = model
@@ -34,18 +34,20 @@ class LlamaHttpClient:
         self._serialize: JsonSerializing = serializer or JsonSerializer()
         self._deserialize: JsonDeserializing = deserializer or JsonDeserializer()
 
-    def chat(self, messages: list, tools: list, timeout: int) -> Optional[dict]:
-        payload = self._serialize.serialize({
-            "model": self._model,
-            "messages": messages,
-            "tools": tools,
-            "tool_choice": "auto",
-            **self._inference_params,
-        }).encode()
+    def chat(self, messages: list, tools: list, timeout: int) -> dict | None:
+        payload = self._serialize.serialize(
+            {
+                "model": self._model,
+                "messages": messages,
+                "tools": tools,
+                "tool_choice": "auto",
+                **self._inference_params,
+            }
+        ).encode()
         try:
             raw = self._transport.send(
                 self._url, payload, {"Content-Type": "application/json"}, timeout
             )
             return self._deserialize.deserialize(raw)
-        except Exception:
+        except Exception:  # noqa: BLE001 — Legacy llama backend preserves its unavailable-response fallback until separate retirement.
             return None

@@ -18,7 +18,7 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import (  # noqa: E402
+from interfaces import (
     ExpectationLoading,
     FindingComparing,
     FindingNormalizing,
@@ -31,7 +31,7 @@ from interfaces import (  # noqa: E402
     TestHarnessRunning,
     TimestampGenerating,
 )
-from models import FixturePair, ModelProfile, OutputPaths  # noqa: E402
+from models import FixturePair, ModelProfile, OutputPaths
 
 _FLOWS = ("apply", "health")
 
@@ -76,13 +76,14 @@ class TestHarnessRunner(TestHarnessRunning):
         tests_path = self._path_resolver.resolve(principle_path)
         pairs = self._fixture_discovery.discover(tests_path)
         model_profile = self._model_profile_loader.load(model_name)
-        effective_timeout = timeout if timeout is not None else model_profile.llm["timeout"]
+        effective_timeout = (
+            timeout if timeout is not None else model_profile.llm["timeout"]
+        )
         run_timestamp = self._timestamp_generator.now_str()
         category_path = str(tests_path.relative_to(tests_path.parents[1]))
 
         selected_pairs = [
-            p for p in pairs
-            if fixture_filter is None or p.stem == fixture_filter
+            p for p in pairs if fixture_filter is None or p.stem == fixture_filter
         ]
         flows_to_run = [flow] if flow else list(_FLOWS)
 
@@ -107,10 +108,18 @@ class TestHarnessRunner(TestHarnessRunning):
                 passed = not diffs
                 if not passed:
                     all_passed = False
-                print(self._result_formatter.format_status(
-                    passed, model_profile.output_dir_name, category_path, pair.stem, flow_name
-                ))
-                for line in self._result_formatter.format_failures(diffs, output_paths.reasoning_path):
+                print(
+                    self._result_formatter.format_status(
+                        passed,
+                        model_profile.output_dir_name,
+                        category_path,
+                        pair.stem,
+                        flow_name,
+                    )
+                )
+                for line in self._result_formatter.format_failures(
+                    diffs, output_paths.reasoning_path
+                ):
                     print(line)
 
         return all_passed

@@ -3,7 +3,7 @@ solid-category: service
 solid-tags: [utility, service]
 """
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from scoring.files_scoring_handler import FilesScoringCapable
 from scoring.principle_scorer import PrincipleScorerProviding
@@ -25,7 +25,7 @@ class ScoringHandler:
         self._scorer_provider = scorer_provider
         self._files_scorer = files_scorer
 
-    def resolve_and_score(self, files: list) -> tuple[list, Optional[dict]]:
+    def resolve_and_score(self, files: list) -> tuple[list, dict | None]:
         if not files:
             return [], None
         scored_files, err = self._files_scorer.score_files(self._scorer_provider, files)

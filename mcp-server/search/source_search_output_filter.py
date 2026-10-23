@@ -1,9 +1,9 @@
 """Applies codebase-search eligibility policy to typed source candidates."""
 
-from search.codebase_search_query_kind import CodebaseSearchQueryKind
-from search.source_search_output_filtering import SourceSearchOutputFiltering
 from source.source_search_output import SourceSearchOutput
 
+from search.codebase_search_query_kind import CodebaseSearchQueryKind
+from search.source_search_output_filtering import SourceSearchOutputFiltering
 
 """
 solid-name: SourceSearchOutputFilter
@@ -11,6 +11,8 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Retains source candidates that satisfy term thresholds or match requested specifications.
 """
+
+
 class SourceSearchOutputFilter(SourceSearchOutputFiltering):
     def filter(
         self,
@@ -25,8 +27,7 @@ class SourceSearchOutputFilter(SourceSearchOutputFiltering):
                 for candidate in output.candidates
                 if len(candidate.matches) >= minimum_matches
                 or any(
-                    match.query_id
-                    == CodebaseSearchQueryKind.SPECIFICATIONS.value
+                    match.query_id == CodebaseSearchQueryKind.SPECIFICATIONS.value
                     for match in candidate.matches
                 )
             ],

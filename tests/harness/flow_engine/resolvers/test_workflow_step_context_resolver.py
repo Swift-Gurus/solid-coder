@@ -8,23 +8,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_operator import ConditionOperator
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
-from harness.comparison_condition import ComparisonCondition
-from harness.condition_operator import ConditionOperator
-from harness.step_skip import StepSkip
 from harness.step_outputs import StepOutputs
+from harness.step_skip import StepSkip
 from harness.unavailable_condition_evidence import UnavailableConditionEvidence
-from harness.workflow_expression import WorkflowExpression
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
-from harness.workflow_run_context import WorkflowRunContext
-from harness.workflow_step_context_resolver import WorkflowStepContextResolver
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
 )
-
+from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
 """
 solid-name: TestWorkflowStepContextResolver
@@ -32,12 +31,11 @@ solid-category: unit-test
 solid-spec: [SPEC-037]
 solid-description: Verifies child workflow contexts expose only their own inputs, source item, and local step outputs.
 """
-class TestWorkflowStepContextResolver(unittest.TestCase):
 
+
+class TestWorkflowStepContextResolver(unittest.TestCase):
     def setUp(self) -> None:
-        self.sut = WorkflowStepContextResolver(
-            WorkflowResultsVisibilitySelector()
-        )
+        self.sut = WorkflowStepContextResolver(WorkflowResultsVisibilitySelector())
 
     def test_isolates_local_step_outputs_between_child_instances(self) -> None:
         context = WorkflowRunContext(
@@ -82,12 +80,8 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
             second.completed_steps.find("inspect").value.get("finding"),
             "Beta inspected",
         )
-        self.assertFalse(
-            first.completed_steps.find("opaque-beta-completion").present
-        )
-        self.assertFalse(
-            second.completed_steps.find("opaque-alpha-completion").present
-        )
+        self.assertFalse(first.completed_steps.find("opaque-beta-completion").present)
+        self.assertFalse(second.completed_steps.find("opaque-alpha-completion").present)
         self.assertEqual(first.parameters.find("review_unit").value, "Alpha")
         self.assertEqual(second.parameters.find("review_unit").value, "Beta")
 
@@ -125,9 +119,7 @@ class TestWorkflowStepContextResolver(unittest.TestCase):
         )
 
         self.assertEqual(resolved.skipped_steps.find("inspect").value, skip)
-        self.assertFalse(
-            resolved.skipped_steps.find("opaque-alpha-completion").present
-        )
+        self.assertFalse(resolved.skipped_steps.find("opaque-alpha-completion").present)
 
     def _workflow_instance(
         self,

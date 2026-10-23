@@ -22,17 +22,33 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory  # noqa: E402
+from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description="Search codebase for solid-frontmatter matches")
-    parser.add_argument("--sources", default=".", help="Root directory to search (default: .)")
-    parser.add_argument("--synonyms", default=None, help="JSON array string of synonym keywords")
-    parser.add_argument("--spec", action="append", default=[], metavar="SPEC-NNN",
-                        help="Spec number (repeatable)")
-    parser.add_argument("--min-matches", type=int, default=1, metavar="N",
-                        help="Minimum synonym terms that must match (default: 1)")
+    parser = argparse.ArgumentParser(
+        description="Search codebase for solid-frontmatter matches"
+    )
+    parser.add_argument(
+        "--sources", default=".", help="Root directory to search (default: .)"
+    )
+    parser.add_argument(
+        "--synonyms", default=None, help="JSON array string of synonym keywords"
+    )
+    parser.add_argument(
+        "--spec",
+        action="append",
+        default=[],
+        metavar="SPEC-NNN",
+        help="Spec number (repeatable)",
+    )
+    parser.add_argument(
+        "--min-matches",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Minimum synonym terms that must match (default: 1)",
+    )
     return parser.parse_args()
 
 
@@ -42,9 +58,9 @@ def _build_params(args):
         try:
             synonyms = json.loads(args.synonyms)
             if not isinstance(synonyms, list):
-                raise ValueError("synonyms must be a JSON array")
+                raise TypeError("synonyms must be a JSON array")
             synonyms_set = {s.lower() for s in synonyms if isinstance(s, str)}
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, TypeError) as e:
             print(f"Error: invalid synonyms JSON: {e}", file=sys.stderr)
             sys.exit(1)
     spec_numbers = {s.strip().upper() for s in args.spec if s.strip()}
@@ -55,7 +71,9 @@ def main():
     args = _parse_args()
 
     if not args.synonyms and not args.spec:
-        print("Error: at least one of --synonyms or --spec is required", file=sys.stderr)
+        print(
+            "Error: at least one of --synonyms or --spec is required", file=sys.stderr
+        )
         sys.exit(1)
 
     sources = Path(args.sources)
@@ -64,11 +82,15 @@ def main():
         sys.exit(1)
 
     synonyms_set, spec_numbers = _build_params(args)
-    result = RawCodebaseSearcherFactory().make().search_raw(
-        sources_dir=str(sources),
-        tags=sorted(synonyms_set),
-        spec_numbers=sorted(spec_numbers),
-        min_matches=args.min_matches,
+    result = (
+        RawCodebaseSearcherFactory()
+        .make()
+        .search_raw(
+            sources_dir=str(sources),
+            tags=sorted(synonyms_set),
+            spec_numbers=sorted(spec_numbers),
+            min_matches=args.min_matches,
+        )
     )
     print(json.dumps(result, indent=2))
 

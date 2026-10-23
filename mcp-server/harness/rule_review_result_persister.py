@@ -5,7 +5,6 @@ from pathlib import Path
 from harness.rule_review_result import RuleReviewResult
 from harness.rule_review_result_persisting import RuleReviewResultPersisting
 
-
 _RESULTS_DIRECTORY = Path("results") / "review"
 _RESULT_FILE_NAME = "result.json"
 
@@ -16,6 +15,8 @@ solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Publishes identified rule and single-rule aggregate projections in the normalized review-result directory.
 """
+
+
 class RuleReviewResultPersister(RuleReviewResultPersisting):
     def persist(
         self,

@@ -7,6 +7,7 @@ Contract:
   - _finalize_test_result reproduces the crash/stall/timeout/pass-fail formatting contract
   - build()/test() dispatch to the right runner per detected system, and refuse unknown ones
 """
+
 import sys
 import tempfile
 import unittest
@@ -19,21 +20,27 @@ MCP_DIR = APPLE_DIR.parent.parent  # mcp-server/
 sys.path.insert(0, str(MCP_DIR))
 sys.path.insert(0, str(APPLE_DIR))
 
-import server  # noqa: E402
+import server
 
 
 class TestRunAndSummarize(unittest.TestCase):
     def test_success_writes_log_and_summarizes(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            msg = server._run_and_summarize(["echo", "hello"], root, "build.log", "build")
+            msg = server._run_and_summarize(
+                ["echo", "hello"], root, "build.log", "build"
+            )
             self.assertIn("succeeded", msg)
-            self.assertIn("hello", (root / ".solid_coder" / "logs" / "build.log").read_text())
+            self.assertIn(
+                "hello", (root / ".solid_coder" / "logs" / "build.log").read_text()
+            )
 
     def test_failure_summary_reports_failed(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            msg = server._run_and_summarize(["sh", "-c", "echo boom 1>&2; exit 1"], root, "build.log", "build")
+            msg = server._run_and_summarize(
+                ["sh", "-c", "echo boom 1>&2; exit 1"], root, "build.log", "build"
+            )
             self.assertIn("BUILD FAILED", msg)
 
 
@@ -42,8 +49,12 @@ class TestRunLoggedStep(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             log = []
-            rc1, out1 = server._run_logged_step(["echo", "step one"], root, log, "step one")
-            rc2, out2 = server._run_logged_step(["echo", "step two"], root, log, "step two")
+            rc1, _out1 = server._run_logged_step(
+                ["echo", "step one"], root, log, "step one"
+            )
+            rc2, _out2 = server._run_logged_step(
+                ["echo", "step two"], root, log, "step two"
+            )
             self.assertEqual(rc1, 0)
             self.assertEqual(rc2, 0)
             content = (root / ".solid_coder" / "logs" / "build.log").read_text()
@@ -56,7 +67,9 @@ class TestRunLoggedStep(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             log = []
-            server._run_logged_step(["echo", "hi"], root, log, "custom step", "custom.log")
+            server._run_logged_step(
+                ["echo", "hi"], root, log, "custom step", "custom.log"
+            )
             self.assertTrue((root / ".solid_coder" / "logs" / "custom.log").exists())
 
 
@@ -83,30 +96,46 @@ class TestFinalizeTestResult(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xcresult = root / "test.xcresult"
-            crash = {"kind": "dyld", "marker": "x", "excerpt": "y", "file": "z", "bundle_id": "b"}
-            msg = server._finalize_test_result(root, "test", 1, "", crash, "crash", xcresult)
+            crash = {
+                "kind": "dyld",
+                "marker": "x",
+                "excerpt": "y",
+                "file": "z",
+                "bundle_id": "b",
+            }
+            msg = server._finalize_test_result(
+                root, "test", 1, "", crash, "crash", xcresult
+            )
             self.assertIn("TESTS FAILED", msg)
-            self.assertTrue((root / ".solid_coder" / "logs" / "test-crash.json").exists())
+            self.assertTrue(
+                (root / ".solid_coder" / "logs" / "test-crash.json").exists()
+            )
 
     def test_stall_message(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xcresult = root / "test.xcresult"
-            msg = server._finalize_test_result(root, "test", 1, "", None, "stall", xcresult)
+            msg = server._finalize_test_result(
+                root, "test", 1, "", None, "stall", xcresult
+            )
             self.assertIn("stalled", msg)
 
     def test_hard_timeout_message(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xcresult = root / "test.xcresult"
-            msg = server._finalize_test_result(root, "test", 1, "", None, "hard_timeout", xcresult)
+            msg = server._finalize_test_result(
+                root, "test", 1, "", None, "hard_timeout", xcresult
+            )
             self.assertIn("Hard timeout", msg)
 
     def test_success_without_xcresult_falls_back_to_output_counting(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             xcresult = root / "test.xcresult"  # never created
-            msg = server._finalize_test_result(root, "test", 0, "3 tests passed", None, None, xcresult)
+            msg = server._finalize_test_result(
+                root, "test", 0, "3 tests passed", None, None, xcresult
+            )
             self.assertIn("3 tests passed", msg)
 
     def test_failure_without_xcresult_reports_counts_and_signals(self):
@@ -114,7 +143,9 @@ class TestFinalizeTestResult(unittest.TestCase):
             root = Path(td)
             xcresult = root / "test.xcresult"
             out = "1 tests failed\nerror: something broke\n"
-            msg = server._finalize_test_result(root, "test", 1, out, None, None, xcresult)
+            msg = server._finalize_test_result(
+                root, "test", 1, out, None, None, xcresult
+            )
             self.assertIn("TESTS FAILED", msg)
             self.assertIn("1 failed", msg)
 
@@ -124,7 +155,9 @@ class TestBuildDispatch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td).resolve()
             (root / "Package.swift").write_text("// fake")
-            with patch.object(server, "_run_swift_build", return_value="✓ build succeeded") as m:
+            with patch.object(
+                server, "_run_swift_build", return_value="✓ build succeeded"
+            ) as m:
                 msg = server.build("MyTarget", project_path=str(root))
                 m.assert_called_once_with(root, "MyTarget", "Debug")
                 self.assertEqual(msg, "✓ build succeeded")
@@ -141,9 +174,18 @@ class TestTestDispatch(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td).resolve()
             (root / "Tuist.swift").write_text("// fake")
-            with patch.object(server, "_run_tuist_test", return_value="✓ 1 tests passed") as m:
+            with patch.object(
+                server, "_run_tuist_test", return_value="✓ 1 tests passed"
+            ) as m:
                 msg = server.test("MyTarget", project_path=str(root))
-                m.assert_called_once_with(root, "MyTarget", [], skip_ui=False, skip_unit=False, only_testing=[])
+                m.assert_called_once_with(
+                    root,
+                    "MyTarget",
+                    [],
+                    skip_ui=False,
+                    skip_unit=False,
+                    only_testing=[],
+                )
                 self.assertEqual(msg, "✓ 1 tests passed")
 
     def test_unknown_system_reports_not_supported(self):

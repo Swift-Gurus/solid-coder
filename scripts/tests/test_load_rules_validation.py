@@ -12,7 +12,10 @@ GATEWAY = PROJECT_ROOT / "mcp-server" / "gateway.py"
 def run(*args):
     return subprocess.run(
         [sys.executable, str(GATEWAY), "load_rules", *args],
-        capture_output=True, text=True, cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+        check=False,
     )
 
 
@@ -52,7 +55,9 @@ class TestModeValidation(unittest.TestCase):
             with self.subTest(mode=mode):
                 r = run("--mode", mode, "--principle", "srp")
                 self.assertEqual(r.returncode, 0, f"{mode!r} failed: {r.stderr}")
-                self.assertGreater(len(r.stdout.strip()), 100, f"{mode}: output too short")
+                self.assertGreater(
+                    len(r.stdout.strip()), 100, f"{mode}: output too short"
+                )
                 self.assertIn("SRP", r.stdout)
 
     def test_review_mode_includes_severity_bands(self):
@@ -65,8 +70,11 @@ class TestModeValidation(unittest.TestCase):
             with self.subTest(mode=mode):
                 r = run("--mode", mode, "--principle", "srp")
                 self.assertEqual(r.returncode, 0)
-                self.assertNotIn("<severity-bands", r.stdout,
-                                 f"{mode}: must not include severity-bands")
+                self.assertNotIn(
+                    "<severity-bands",
+                    r.stdout,
+                    f"{mode}: must not include severity-bands",
+                )
 
     def test_review_mode_includes_review_instructions(self):
         r = run("--mode", "review", "--principle", "srp")
@@ -78,8 +86,11 @@ class TestModeValidation(unittest.TestCase):
             with self.subTest(mode=mode):
                 r = run("--mode", mode, "--principle", "srp")
                 self.assertEqual(r.returncode, 0)
-                self.assertNotIn("review/instructions.md", r.stdout,
-                                 f"{mode}: must not include review/instructions.md")
+                self.assertNotIn(
+                    "review/instructions.md",
+                    r.stdout,
+                    f"{mode}: must not include review/instructions.md",
+                )
 
 
 if __name__ == "__main__":

@@ -10,12 +10,13 @@ from config_test_writer import ConfigTestWriter
 from metric_discoverer import MetricDiscoverer
 from scoring.severity_scorer_factory import SeverityScorerFactory
 
-
 """
 solid-name: ProjectRootTestContext
 solid-category: unit-test
 solid-description: Provides shared SRP bands and scoring support for project-root discovery tests.
 """
+
+
 class ProjectRootTestContext:
     def __init__(self, references_root: Path) -> None:
         self.bands, self.rule_path = MetricDiscoverer(references_root).discover()[

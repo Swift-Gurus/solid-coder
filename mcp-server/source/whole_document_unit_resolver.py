@@ -7,15 +7,15 @@ from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.source_line_range import SourceLineRange
 from source.source_unit import SourceUnit
 
-
 """
 solid-name: WholeDocumentUnitResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Represents readable source content as one deterministic document unit with a complete span.
 """
-class WholeDocumentUnitResolver:
 
+
+class WholeDocumentUnitResolver:
     def resolve(self, source: ResolvedAnalysisSource) -> SourceUnit:
         line_count = max(1, len(source.text.splitlines()))
         return SourceUnit(

@@ -14,12 +14,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stop_handler_doubles import StubValidateFn
 from session_validation_handler import (
     SessionStopApplicabilityChecker,
     SessionStopValidator,
     SessionValidationHandler,
 )
+from stop_handler_doubles import StubValidateFn
 
 
 class TestSessionStopApplicabilityChecker(unittest.TestCase):
@@ -27,7 +27,9 @@ class TestSessionStopApplicabilityChecker(unittest.TestCase):
         self.checker = SessionStopApplicabilityChecker()
 
     def test_does_not_apply_when_stop_hook_already_active(self):
-        self.assertFalse(self.checker.applies({"stop_hook_active": True, "session_id": "abc"}))
+        self.assertFalse(
+            self.checker.applies({"stop_hook_active": True, "session_id": "abc"})
+        )
 
     def test_does_not_apply_without_session_id(self):
         self.assertFalse(self.checker.applies({}))
@@ -40,12 +42,16 @@ class TestSessionStopValidator(unittest.TestCase):
     def test_allow_result_produces_allow_decision(self):
         validator = SessionStopValidator(validate_fn=StubValidateFn({"allow": True}))
 
-        decision = validator.validate({"session_id": "abc", "transcript_path": "t", "cwd": "/tmp"})
+        decision = validator.validate(
+            {"session_id": "abc", "transcript_path": "t", "cwd": "/tmp"}
+        )
 
         self.assertTrue(decision.allow)
 
     def test_deny_result_carries_reason_through(self):
-        validator = SessionStopValidator(validate_fn=StubValidateFn({"allow": False, "reason": "missing tool call"}))
+        validator = SessionStopValidator(
+            validate_fn=StubValidateFn({"allow": False, "reason": "missing tool call"})
+        )
 
         decision = validator.validate({"session_id": "abc"})
 
@@ -61,7 +67,9 @@ class TestSessionStopValidator(unittest.TestCase):
 
     def test_missing_cwd_falls_back_to_injected_cwd_provider(self):
         validate_fn = StubValidateFn({"allow": True})
-        validator = SessionStopValidator(validate_fn=validate_fn, cwd_provider=lambda: "/injected/cwd")
+        validator = SessionStopValidator(
+            validate_fn=validate_fn, cwd_provider=lambda: "/injected/cwd"
+        )
 
         validator.validate({"session_id": "abc"})
 
@@ -69,7 +77,9 @@ class TestSessionStopValidator(unittest.TestCase):
 
     def test_event_cwd_takes_precedence_over_provider(self):
         validate_fn = StubValidateFn({"allow": True})
-        validator = SessionStopValidator(validate_fn=validate_fn, cwd_provider=lambda: "/should/not/be/used")
+        validator = SessionStopValidator(
+            validate_fn=validate_fn, cwd_provider=lambda: "/should/not/be/used"
+        )
 
         validator.validate({"session_id": "abc", "cwd": "/event/cwd"})
 
@@ -78,13 +88,17 @@ class TestSessionStopValidator(unittest.TestCase):
 
 class TestSessionValidationHandler(unittest.TestCase):
     def test_should_handle_delegates_to_applicability_checker(self):
-        handler = SessionValidationHandler(applicability=SessionStopApplicabilityChecker())
+        handler = SessionValidationHandler(
+            applicability=SessionStopApplicabilityChecker()
+        )
 
         self.assertFalse(handler.should_handle({}))
         self.assertTrue(handler.should_handle({"session_id": "abc"}))
 
     def test_handle_delegates_to_validator(self):
-        validator = SessionStopValidator(validate_fn=StubValidateFn({"allow": False, "reason": "nope"}))
+        validator = SessionStopValidator(
+            validate_fn=StubValidateFn({"allow": False, "reason": "nope"})
+        )
         handler = SessionValidationHandler(validator=validator)
 
         decision = handler.handle({"session_id": "abc"})

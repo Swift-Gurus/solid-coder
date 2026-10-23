@@ -9,9 +9,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_llama_runner import LlamaHttpClient, TOOLS  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from hc_llama_runner import TOOLS, LlamaHttpClient
 
 
 def _urlopen_mock(body: dict):
@@ -21,8 +25,14 @@ def _urlopen_mock(body: dict):
 
 
 def _no_tool_response(content: str) -> dict:
-    return {"choices": [{"finish_reason": "stop",
-                         "message": {"role": "assistant", "content": content, "tool_calls": []}}]}
+    return {
+        "choices": [
+            {
+                "finish_reason": "stop",
+                "message": {"role": "assistant", "content": content, "tool_calls": []},
+            }
+        ]
+    }
 
 
 class TestLlamaHttpClient(unittest.TestCase):
@@ -47,18 +57,22 @@ class TestLlamaHttpClient(unittest.TestCase):
 
     def test_posts_to_v1_chat_completions(self):
         captured = []
+
         def fake_open(req, timeout=None):
             captured.append(req.full_url)
             return _urlopen_mock(_no_tool_response("x"))
+
         with patch("urllib.request.urlopen", side_effect=fake_open):
             self.client.chat([], TOOLS, 30)
         self.assertIn("/v1/chat/completions", captured[0])
 
     def test_includes_tools_in_request_body(self):
         captured = []
+
         def fake_open(req, timeout=None):
             captured.append(json.loads(req.data))
             return _urlopen_mock(_no_tool_response("x"))
+
         with patch("urllib.request.urlopen", side_effect=fake_open):
             self.client.chat([], TOOLS, 30)
         self.assertEqual(len(captured[0]["tools"]), len(TOOLS))

@@ -8,13 +8,14 @@ from source.source_unit_search_target_building import (
     SourceUnitSearchTargetBuilding,
 )
 
-
 """
 solid-name: UnitSourceSearchTargetsBuilder
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Prepares searchable targets for every ordered unit in a resolved source analysis.
 """
+
+
 class UnitSourceSearchTargetsBuilder(SourceSearchTargetsBuilding):
     def __init__(self, target: SourceUnitSearchTargetBuilding) -> None:
         self._target = target
@@ -24,7 +25,4 @@ class UnitSourceSearchTargetsBuilder(SourceSearchTargetsBuilding):
         source: ResolvedAnalysisSource,
         analysis: SourceAnalysis,
     ) -> list[SourceSearchTarget]:
-        return [
-            self._target.build(source, analysis, unit)
-            for unit in analysis.units
-        ]
+        return [self._target.build(source, analysis, unit) for unit in analysis.units]

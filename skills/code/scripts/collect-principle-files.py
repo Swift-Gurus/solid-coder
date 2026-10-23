@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Collect all loadable file paths for a set of active principles.
 
 Takes active_principles JSON (from discover-principles output) and returns
@@ -26,8 +25,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
-
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PARSE_FRONTMATTER = (
@@ -41,6 +38,7 @@ def parse_frontmatter(rule_path: str) -> dict:
         [sys.executable, str(PARSE_FRONTMATTER), rule_path],
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         print(
@@ -51,9 +49,9 @@ def parse_frontmatter(rule_path: str) -> dict:
     return json.loads(result.stdout)
 
 
-def collect_files(active_principles: list) -> List[str]:
+def collect_files(active_principles: list) -> list[str]:
     """Collect all file paths to load for the given active principles."""
-    files: List[str] = []
+    files: list[str] = []
     seen: set = set()
 
     def add(path: str) -> None:
@@ -120,7 +118,9 @@ def load_active_principles(args: list) -> list:
         return data["active_principles"]
     if isinstance(data, list):
         return data
-    print("Error: expected a JSON array or object with active_principles", file=sys.stderr)
+    print(
+        "Error: expected a JSON array or object with active_principles", file=sys.stderr
+    )
     sys.exit(1)
 
 

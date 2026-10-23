@@ -12,13 +12,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestCollectionBackedMetricExecution
 solid-category: integration-test
 solid-spec: [SPEC-053, SPEC-054]
 solid-description: Verifies deterministic collection metric completion through the real flow engine.
 """
+
+
 class TestCollectionBackedMetricExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -39,16 +40,18 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
     def test_counts_matching_entries_without_requesting_metric_submission(self) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
 
-        advanced = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False},
-                    {"classification": "STRUCTURED", "is_exception": False},
-                    {"classification": "DETACHED", "is_exception": True},
-                    {"classification": "DETACHED", "is_exception": False},
-                ]
+        advanced = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False},
+                        {"classification": "STRUCTURED", "is_exception": False},
+                        {"classification": "DETACHED", "is_exception": True},
+                        {"classification": "DETACHED", "is_exception": False},
+                    ]
+                }
             }
-        })
+        )
 
         self.assertIsNone(advanced.error, advanced.error)
         self.assertEqual(
@@ -101,15 +104,17 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         ]
         self.assertEqual(len(metric_events), 1)
 
-        completed = self.engine.flow_next({
-            advanced.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No whole-rule exception applies.",
-                    "evidence": "The reviewed unit performs runtime behavior.",
-                },
+        completed = self.engine.flow_next(
+            {
+                advanced.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No whole-rule exception applies.",
+                        "evidence": "The reviewed unit performs runtime behavior.",
+                    },
+                }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done")
         result = self._result(started.run_id)
@@ -128,27 +133,31 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
     def test_counts_only_instance_local_entries_in_dynamic_rule_includes(self) -> None:
         parent_path = self._write_dynamic_rule_workflows()
         prepared = self.engine.flow_start(str(parent_path))
-        analyses = self.engine.flow_next({
-            prepared.steps[0].instance_id: {
-                "units": [{"name": "Alpha"}, {"name": "Beta"}],
+        analyses = self.engine.flow_next(
+            {
+                prepared.steps[0].instance_id: {
+                    "units": [{"name": "Alpha"}, {"name": "Beta"}],
+                }
             }
-        })
+        )
 
-        exceptions = self.engine.flow_next({
-            analyses.steps[0].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False},
-                    {"classification": "STRUCTURED", "is_exception": False},
-                ],
-            },
-            analyses.steps[1].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False},
-                    {"classification": "DETACHED", "is_exception": False},
-                    {"classification": "DETACHED", "is_exception": True},
-                ],
-            },
-        })
+        exceptions = self.engine.flow_next(
+            {
+                analyses.steps[0].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False},
+                        {"classification": "STRUCTURED", "is_exception": False},
+                    ],
+                },
+                analyses.steps[1].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False},
+                        {"classification": "DETACHED", "is_exception": False},
+                        {"classification": "DETACHED", "is_exception": True},
+                    ],
+                },
+            }
+        )
 
         self.assertIsNone(exceptions.error, exceptions.error)
         self.assertEqual(
@@ -235,13 +244,17 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         )
 
         child_step = self.engine.flow_start(str(parent))
-        exception = self.engine.flow_next({
-            child_step.steps[0].instance_id: {
-                "assessment": {"classification": "MATCH"}
+        exception = self.engine.flow_next(
+            {
+                child_step.steps[0].instance_id: {
+                    "assessment": {"classification": "MATCH"}
+                }
             }
-        })
+        )
 
-        self.assertEqual([step.step_id for step in exception.steps], ["classify_exception"])
+        self.assertEqual(
+            [step.step_id for step in exception.steps], ["classify_exception"]
+        )
         metric_event = next(
             event
             for event in self._events(child_step.run_id)
@@ -330,15 +343,19 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         )
 
         prepared = self.engine.flow_start(str(parent))
-        measurements = self.engine.flow_next({
-            prepared.steps[0].instance_id: {
-                "conformers": [{"name": "Complete"}, {"name": "Partial"}],
+        measurements = self.engine.flow_next(
+            {
+                prepared.steps[0].instance_id: {
+                    "conformers": [{"name": "Complete"}, {"name": "Partial"}],
+                }
             }
-        })
-        exception = self.engine.flow_next({
-            measurements.steps[0].instance_id: {"coverage": 0.75},
-            measurements.steps[1].instance_id: {"coverage": 0.5},
-        })
+        )
+        exception = self.engine.flow_next(
+            {
+                measurements.steps[0].instance_id: {"coverage": 0.75},
+                measurements.steps[1].instance_id: {"coverage": 0.5},
+            }
+        )
 
         self.assertIsNone(exception.error, exception.error)
         self.assertEqual(
@@ -358,21 +375,23 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
                 {"index": 1, "value": 0.5},
             ],
         )
-        completed = self.engine.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No exception applies.",
-                    "evidence": "Both conformers are production declarations.",
-                },
+        completed = self.engine.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No exception applies.",
+                        "evidence": "Both conformers are production declarations.",
+                    },
+                }
             }
-        })
+        )
         self.assertEqual(completed.status, "done")
 
         empty_preparation = self.engine.flow_start(str(parent))
-        empty_exception = self.engine.flow_next({
-            empty_preparation.steps[0].instance_id: {"conformers": []}
-        })
+        empty_exception = self.engine.flow_next(
+            {empty_preparation.steps[0].instance_id: {"conformers": []}}
+        )
 
         self.assertIsNone(empty_exception.error, empty_exception.error)
         self.assertEqual(
@@ -393,32 +412,38 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
     def test_nested_rule_instances_score_only_their_projected_children(self) -> None:
         parent_path = self._write_nested_projection_rule_workflows()
         prepared = self.engine.flow_start(str(parent_path))
-        candidate_preparations = self.engine.flow_next({
-            prepared.steps[0].instance_id: {
-                "units": [{"name": "Alpha"}, {"name": "Beta"}],
-            }
-        })
-
-        candidate_reviews = self.engine.flow_next({
-            step.instance_id: {
-                "candidates": (
-                    [{"name": "Alpha-1"}, {"name": "Alpha-2"}]
-                    if "reviews-1" in step.step_id
-                    else [{"name": "Beta-1"}]
-                )
-            }
-            for step in candidate_preparations.steps
-        })
-        exceptions = self.engine.flow_next({
-            step.instance_id: {
-                "assessment": {
-                    "classification": (
-                        "MISS" if "Alpha-2" in step.prompt else "MATCH"
-                    )
+        candidate_preparations = self.engine.flow_next(
+            {
+                prepared.steps[0].instance_id: {
+                    "units": [{"name": "Alpha"}, {"name": "Beta"}],
                 }
             }
-            for step in candidate_reviews.steps
-        })
+        )
+
+        candidate_reviews = self.engine.flow_next(
+            {
+                step.instance_id: {
+                    "candidates": (
+                        [{"name": "Alpha-1"}, {"name": "Alpha-2"}]
+                        if "reviews-1" in step.step_id
+                        else [{"name": "Beta-1"}]
+                    )
+                }
+                for step in candidate_preparations.steps
+            }
+        )
+        exceptions = self.engine.flow_next(
+            {
+                step.instance_id: {
+                    "assessment": {
+                        "classification": (
+                            "MISS" if "Alpha-2" in step.prompt else "MATCH"
+                        )
+                    }
+                }
+                for step in candidate_reviews.steps
+            }
+        )
 
         self.assertIsNone(exceptions.error, exceptions.error)
         self.assertEqual(
@@ -457,29 +482,33 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
     def test_batch_for_each_derives_one_instance_scoped_metric_per_item(self) -> None:
         parent_path = self._write_dynamic_rule_workflows(batch=True)
         prepared = self.engine.flow_start(str(parent_path))
-        analyses = self.engine.flow_next({
-            prepared.steps[0].instance_id: {
-                "units": [{"name": "Alpha"}, {"name": "Beta"}],
+        analyses = self.engine.flow_next(
+            {
+                prepared.steps[0].instance_id: {
+                    "units": [{"name": "Alpha"}, {"name": "Beta"}],
+                }
             }
-        })
+        )
 
         self.assertEqual(
             [step.batch.label for step in analyses.steps],
             ["Alpha", "Beta"],
         )
-        exceptions = self.engine.flow_next({
-            "Alpha": {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False},
-                ],
-            },
-            "Beta": {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False},
-                    {"classification": "DETACHED", "is_exception": False},
-                ],
-            },
-        })
+        exceptions = self.engine.flow_next(
+            {
+                "Alpha": {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False},
+                    ],
+                },
+                "Beta": {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False},
+                        {"classification": "DETACHED", "is_exception": False},
+                    ],
+                },
+            }
+        )
 
         self.assertEqual(
             [step.batch.label for step in exceptions.steps],
@@ -500,26 +529,30 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
             ["reviews-1", "reviews-2"],
         )
 
-        completed = self.engine.flow_next({
-            "Alpha": {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "Alpha is not exempt.",
-                    "evidence": "Alpha performs runtime behavior.",
+        completed = self.engine.flow_next(
+            {
+                "Alpha": {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "Alpha is not exempt.",
+                        "evidence": "Alpha performs runtime behavior.",
+                    },
                 },
-            },
-            "Beta": {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "Beta is not exempt.",
-                    "evidence": "Beta performs runtime behavior.",
+                "Beta": {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "Beta is not exempt.",
+                        "evidence": "Beta performs runtime behavior.",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
 
-    def test_aggregate_execution_omits_internal_metric_and_preserves_exception_audit(self) -> None:
+    def test_aggregate_execution_omits_internal_metric_and_preserves_exception_audit(
+        self,
+    ) -> None:
         workflow_path = self.project_root / "aggregate.yaml"
         workflow_path.write_text(
             textwrap.dedent(self._workflow()).replace(
@@ -533,37 +566,41 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
 
         self.assertEqual(len(started.steps), 1)
         self.assertNotIn("detached_task_count", started.steps[0].prompt)
-        advanced = self.engine.flow_next({
-            "detached-task-review": {
+        advanced = self.engine.flow_next(
+            {
                 "detached-task-review": {
-                    "analyze_task_sites": {
-                        "task_sites": [
-                            {
-                                "classification": "DETACHED",
-                                "is_exception": False,
-                            }
-                        ]
+                    "detached-task-review": {
+                        "analyze_task_sites": {
+                            "task_sites": [
+                                {
+                                    "classification": "DETACHED",
+                                    "is_exception": False,
+                                }
+                            ]
+                        }
                     }
                 }
             }
-        })
+        )
 
         self.assertIsNone(advanced.error, advanced.error)
         self.assertEqual(len(advanced.steps), 1)
         self.assertNotIn("detached_task_count", advanced.steps[0].prompt)
-        completed = self.engine.flow_next({
-            "detached-task-review": {
+        completed = self.engine.flow_next(
+            {
                 "detached-task-review": {
-                    "classify_exception": {
-                        "is_exception": True,
-                        "additional_info": {
-                            "reasoning": "The whole rule is exempt.",
-                            "evidence": "The unit is a pure data carrier.",
-                        },
+                    "detached-task-review": {
+                        "classify_exception": {
+                            "is_exception": True,
+                            "additional_info": {
+                                "reasoning": "The whole rule is exempt.",
+                                "evidence": "The unit is a pure data carrier.",
+                            },
+                        }
                     }
                 }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id)
@@ -594,35 +631,39 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
 
         self.assertEqual(len(started.steps), 1)
         self.assertNotIn("maximum_depth", started.steps[0].prompt)
-        advanced = self.engine.flow_next({
-            "maximum-depth-review": {
+        advanced = self.engine.flow_next(
+            {
                 "maximum-depth-review": {
-                    "analyze_views": {
-                        "views": [
-                            {"depth": 2, "is_exception": False},
-                            {"depth": 5, "is_exception": False},
-                        ]
+                    "maximum-depth-review": {
+                        "analyze_views": {
+                            "views": [
+                                {"depth": 2, "is_exception": False},
+                                {"depth": 5, "is_exception": False},
+                            ]
+                        }
                     }
                 }
             }
-        })
+        )
 
         self.assertIsNone(advanced.error, advanced.error)
         self.assertEqual(len(advanced.steps), 1)
         self.assertNotIn("maximum_depth", advanced.steps[0].prompt)
-        completed = self.engine.flow_next({
-            "maximum-depth-review": {
+        completed = self.engine.flow_next(
+            {
                 "maximum-depth-review": {
-                    "classify_exception": {
-                        "is_exception": False,
-                        "additional_info": {
-                            "reasoning": "No exception applies.",
-                            "evidence": "The unit contains runtime behavior.",
-                        },
+                    "maximum-depth-review": {
+                        "classify_exception": {
+                            "is_exception": False,
+                            "additional_info": {
+                                "reasoning": "No exception applies.",
+                                "evidence": "The unit contains runtime behavior.",
+                            },
+                        }
                     }
                 }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id, "maximum-depth-review")
@@ -669,13 +710,15 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
 
     def test_resume_completes_missing_internal_derivation_exactly_once(self) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
-        self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED", "is_exception": False}
-                ]
+        self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED", "is_exception": False}
+                    ]
+                }
             }
-        })
+        )
         events_path = self.project_root / "runs" / started.run_id / "events.jsonl"
         preserved_events = [
             event
@@ -714,15 +757,17 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
         )
         started = self.engine.flow_start(str(workflow_path))
 
-        advanced = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "views": [
-                    {"depth": 2, "is_exception": False},
-                    {"depth": 9, "is_exception": True},
-                    {"depth": 5, "is_exception": False},
-                ]
+        advanced = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "views": [
+                        {"depth": 2, "is_exception": False},
+                        {"depth": 9, "is_exception": True},
+                        {"depth": 5, "is_exception": False},
+                    ]
+                }
             }
-        })
+        )
 
         self.assertIsNone(advanced.error, advanced.error)
         metric_event = next(
@@ -871,11 +916,7 @@ class TestCollectionBackedMetricExecution(unittest.TestCase):
 
     def _write_dynamic_rule_workflows(self, batch: bool = False) -> Path:
         workflow_root = self.project_root / "workflows" / "review"
-        child_path = (
-            workflow_root
-            / "child-detached-task-review"
-            / "workflow.yaml"
-        )
+        child_path = workflow_root / "child-detached-task-review" / "workflow.yaml"
         child_path.parent.mkdir(parents=True, exist_ok=True)
         child_path.write_text(
             textwrap.dedent(self._workflow()).replace(

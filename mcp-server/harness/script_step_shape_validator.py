@@ -6,13 +6,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.script_step_field_reading import ScriptStepFieldReading
 from harness.step_field_validating import StepFieldValidating
 
-
 """
 solid-name: ScriptStepShapeValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates prompt compatibility and delegates execution-value validation for script steps.
 """
+
+
 class ScriptStepShapeValidator(StepFieldValidating[ScriptStepFieldReading]):
     def __init__(
         self,

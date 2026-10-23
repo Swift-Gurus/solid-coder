@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hoo
 from flow_transition_gate_factory import FlowTransitionGateFactory
 from flow_transition_handler import FlowStopEvaluator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
-from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.flow_submission_format import FlowSubmissionFormat
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 _TWO_STEP_FLOW_YAML = textwrap.dedent("""
     name: two_step
@@ -84,9 +84,12 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
     def setUp(self):
         self._tmpdir = tempfile.mkdtemp()
         (Path(self._tmpdir) / "runs").mkdir(parents=True)
-        base_dir_resolver = RunsBaseDirResolver(project_dir_fn=lambda: Path(self._tmpdir))
+        base_dir_resolver = RunsBaseDirResolver(
+            project_dir_fn=lambda: Path(self._tmpdir)
+        )
         self.orchestrator = FlowRunOrchestratorFactory(
-            base_dir_resolver=base_dir_resolver, plugin_root=Path(self._tmpdir),
+            base_dir_resolver=base_dir_resolver,
+            plugin_root=Path(self._tmpdir),
         ).build()
         gate = FlowTransitionGateFactory(base_dir_resolver=base_dir_resolver).build()
         self.evaluator = FlowStopEvaluator(gate)
@@ -106,7 +109,9 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
 
     def test_blocks_when_one_of_two_steps_submitted_and_the_other_left_pending(self):
         start_result = self.orchestrator.flow_start(str(self._flow_file))
-        self.orchestrator.flow_next({s.instance_id: {} for s in start_result.steps})  # submits step_one only
+        self.orchestrator.flow_next(
+            {s.instance_id: {} for s in start_result.steps}
+        )  # submits step_one only
 
         allow, reason = self._evaluate()
 
@@ -114,7 +119,9 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         self.assertIn("step_two", reason)
 
     def test_allows_after_three_blocked_stop_attempts_exhaust_the_pending_step(self):
-        self.orchestrator.flow_start(str(self._flow_file))  # step_one is pending, never submitted
+        self.orchestrator.flow_start(
+            str(self._flow_file)
+        )  # step_one is pending, never submitted
 
         first = self._evaluate()
         second = self._evaluate()
@@ -133,7 +140,9 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
 
     def test_allows_once_every_step_is_submitted(self):
         start_result = self.orchestrator.flow_start(str(self._flow_file))
-        next1 = self.orchestrator.flow_next({s.instance_id: {} for s in start_result.steps})
+        next1 = self.orchestrator.flow_next(
+            {s.instance_id: {} for s in start_result.steps}
+        )
         final = self.orchestrator.flow_next({s.instance_id: {} for s in next1.steps})
         self.assertEqual(final.status, "done")
 
@@ -146,13 +155,15 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         aggregate_flow = Path(self._tmpdir) / "aggregate.yaml"
         aggregate_flow.write_text(_AGGREGATE_FLOW_YAML, encoding="utf-8")
         self.orchestrator.flow_start(str(aggregate_flow))
-        self.orchestrator.flow_next({
-            "aggregate-stop": {
+        self.orchestrator.flow_next(
+            {
                 "aggregate-stop": {
-                    "inspect": {},
+                    "aggregate-stop": {
+                        "inspect": {},
+                    }
                 }
             }
-        })
+        )
 
         allow, reason = self._evaluate()
 
@@ -164,21 +175,31 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
         aggregate_flow = Path(self._tmpdir) / "aggregate-flat.yaml"
         aggregate_flow.write_text(_AGGREGATE_FLOW_YAML, encoding="utf-8")
         engine = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: Path(self._tmpdir)),
+            base_dir_resolver=RunsBaseDirResolver(
+                project_dir_fn=lambda: Path(self._tmpdir)
+            ),
             plugin_root=Path(self._tmpdir),
             submission_format=FlowSubmissionFormat.FLAT_ARRAY,
         ).build()
         started = engine.flow_start(str(aggregate_flow))
-        remaining = engine.flow_next({"submissions": [
-            {"id": started.steps[0].submission_id, "result": {}},
-        ]})
+        remaining = engine.flow_next(
+            {
+                "submissions": [
+                    {"id": started.steps[0].submission_id, "result": {}},
+                ]
+            }
+        )
         decision = self.evaluator.evaluate_stop({})
         self.assertFalse(decision.allow)
         self.assertIn("decide", decision.reason)
         self.assertNotIn("inspect", decision.reason)
-        completed = engine.flow_next({"submissions": [
-            {"id": remaining.steps[0].submission_id, "result": {}},
-        ]})
+        completed = engine.flow_next(
+            {
+                "submissions": [
+                    {"id": remaining.steps[0].submission_id, "result": {}},
+                ]
+            }
+        )
         self.assertEqual(completed.status, "done")
         self.assertTrue(self.evaluator.evaluate_stop({}).allow)
 
@@ -191,26 +212,30 @@ class TestFlowTransitionHandlerIntegration(unittest.TestCase):
 
         self.assertFalse(initial_allow)
         self.assertIn("inspect", initial_reason)
-        exception = self.orchestrator.flow_next({
-            started.steps[0].instance_id: {
-                "actions": [{"name": "load"}],
+        exception = self.orchestrator.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "actions": [{"name": "load"}],
+                }
             }
-        })
+        )
 
         exception_allow, exception_reason = self._evaluate()
 
         self.assertFalse(exception_allow)
         self.assertIn("classify_exception", exception_reason)
         self.assertNotIn("action_count", exception_reason)
-        completed = self.orchestrator.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No rule exception applies.",
-                    "evidence": "The reviewed unit performs runtime behavior.",
-                },
+        completed = self.orchestrator.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No rule exception applies.",
+                        "evidence": "The reviewed unit performs runtime behavior.",
+                    },
+                }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         final_allow, final_reason = self._evaluate()

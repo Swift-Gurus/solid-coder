@@ -23,7 +23,7 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
 
-from apply_flow_invoker import (  # noqa: E402
+from apply_flow_invoker import (
     ApplyFlowInvoker,
     ClaudeReviewSessionRunner,
     ConfiguredReviewSessionRunner,
@@ -33,7 +33,7 @@ from apply_flow_invoker import (  # noqa: E402
     ReviewInputBuilder,
     _review_profile_environment,
 )
-from test_fixtures import _make_output_paths, _make_profile  # noqa: E402
+from test_fixtures import _make_output_paths, _make_profile
 
 
 def _make_mock(method: str, return_value=None) -> MagicMock:
@@ -58,11 +58,19 @@ class TestClaudeReviewSessionRunner(unittest.TestCase):
     def _make_runner(self, mcp_return="config_json", claude_return="output"):
         mcp_builder = _make_mcp_builder(mcp_return)
         claude_runner = _make_claude_runner(claude_return)
-        return ClaudeReviewSessionRunner(self._root, claude_runner, mcp_builder), mcp_builder, claude_runner
+        return (
+            ClaudeReviewSessionRunner(self._root, claude_runner, mcp_builder),
+            mcp_builder,
+            claude_runner,
+        )
 
     def _run_execute(self, runner):
-        with patch("apply_flow_invoker._build_skill_prompt", return_value="mock-prompt"):
-            return runner.execute(self._principle, Path("/input.json"), Path("/output"), timeout=30)
+        with patch(
+            "apply_flow_invoker._build_skill_prompt", return_value="mock-prompt"
+        ):
+            return runner.execute(
+                self._principle, Path("/input.json"), Path("/output"), timeout=30
+            )
 
     def test_calls_mcp_config_builder_with_project_root(self):
         runner, mcp_builder, _ = self._make_runner()
@@ -86,12 +94,21 @@ class TestClaudeReviewSessionRunner(unittest.TestCase):
         self.assertEqual(result, "session output")
 
     def test_prompt_contains_principle_folder_path(self):
-        runner, _, claude_runner = self._make_runner()
+        runner, _, _claude_runner = self._make_runner()
         # _build_skill_prompt is called with principle_folder; verify it's invoked correctly
-        with patch("apply_flow_invoker._build_skill_prompt", return_value="mock") as mock_build:
-            runner.execute(self._principle, Path("/input.json"), Path("/output"), timeout=30)
+        with patch(
+            "apply_flow_invoker._build_skill_prompt", return_value="mock"
+        ) as mock_build:
+            runner.execute(
+                self._principle, Path("/input.json"), Path("/output"), timeout=30
+            )
             args = mock_build.call_args
-            self.assertEqual(args.kwargs.get("principle_folder", args.args[1] if len(args.args) > 1 else None), self._principle)
+            self.assertEqual(
+                args.kwargs.get(
+                    "principle_folder", args.args[1] if len(args.args) > 1 else None
+                ),
+                self._principle,
+            )
 
 
 class TestConfiguredReviewSessionRunner(unittest.TestCase):
@@ -106,8 +123,12 @@ class TestConfiguredReviewSessionRunner(unittest.TestCase):
         mcp_builder = _make_mcp_builder("my_config")
         sut = ConfiguredReviewSessionRunner(self._root, mcp_builder, runner_factory)
 
-        with patch("apply_flow_invoker._build_skill_prompt", return_value="review prompt"):
-            result = sut.execute(self._principle, Path("/input.json"), Path("/output"), timeout=1000)
+        with patch(
+            "apply_flow_invoker._build_skill_prompt", return_value="review prompt"
+        ):
+            result = sut.execute(
+                self._principle, Path("/input.json"), Path("/output"), timeout=1000
+            )
 
         runner_factory.assert_called_once_with(
             mcp_config="my_config",
@@ -128,9 +149,16 @@ class TestConfiguredReviewSessionRunner(unittest.TestCase):
             codex_runner.run.return_value = "done"
             sut = ConfiguredReviewSessionRunner(self._root, _make_mcp_builder())
 
-            with _review_profile_environment(profile), \
-                 patch("apply_flow_invoker._build_skill_prompt", return_value="review prompt"), \
-                 patch("hc_codex_runner.make_codex_runner", return_value=codex_runner) as factory:
+            with (
+                _review_profile_environment(profile),
+                patch(
+                    "apply_flow_invoker._build_skill_prompt",
+                    return_value="review prompt",
+                ),
+                patch(
+                    "hc_codex_runner.make_codex_runner", return_value=codex_runner
+                ) as factory,
+            ):
                 result = sut.execute(
                     self._principle, Path("/input.json"), Path("/output"), timeout=1000
                 )
@@ -155,7 +183,9 @@ class TestReviewProfileEnvironment(unittest.TestCase):
             self.assertEqual(os.environ["SOLID_CODER_TEST_MODEL_PROFILE"], str(profile))
             self.assertEqual(os.environ["SOLID_CODER_SESSION_TYPE"], "review")
 
-        self.assertEqual(os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE"), before_profile)
+        self.assertEqual(
+            os.environ.get("SOLID_CODER_TEST_MODEL_PROFILE"), before_profile
+        )
         self.assertEqual(os.environ.get("SOLID_CODER_SESSION_TYPE"), before_type)
 
 
@@ -171,7 +201,9 @@ class TestApplyFlowInvokerInvoke(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp_ctx.cleanup()
 
-    def _make_invoker(self, session_return: str | None = None, findings: list | None = None):
+    def _make_invoker(
+        self, session_return: str | None = None, findings: list | None = None
+    ):
         artifact_handler = ReviewArtifactHandler(
             input_builder=ReviewInputBuilder(),
             reasoning_writer=ReasoningWriter(),
@@ -184,14 +216,25 @@ class TestApplyFlowInvokerInvoke(unittest.TestCase):
             # The invoker reads from {log_dir}/{fixture_stem}/{NAME}/review-output.json
             # Unified format: files[].units[].violations[]
             units = []
-            for f in (findings or []):
-                units.append({
-                    "unit_name": f.get("unit_name", ""),
-                    "violations": [{"rule_id": f.get("metric_id", ""), "severity": f.get("severity", "")}],
-                })
-            review_output = {"files": [{"file_path": str(self._fixture), "units": units}]}
+            for f in findings or []:
+                units.append(
+                    {
+                        "unit_name": f.get("unit_name", ""),
+                        "violations": [
+                            {
+                                "rule_id": f.get("metric_id", ""),
+                                "severity": f.get("severity", ""),
+                            }
+                        ],
+                    }
+                )
+            review_output = {
+                "files": [{"file_path": str(self._fixture), "units": units}]
+            }
             fixture_stem = self._fixture.stem  # "fixture"
-            actual_output = self._output_paths.log_dir / fixture_stem / "SRP" / "review-output.json"
+            actual_output = (
+                self._output_paths.log_dir / fixture_stem / "SRP" / "review-output.json"
+            )
             actual_output.parent.mkdir(parents=True, exist_ok=True)
             actual_output.write_text(json.dumps(review_output), encoding="utf-8")
 
@@ -200,17 +243,23 @@ class TestApplyFlowInvokerInvoke(unittest.TestCase):
     def test_raises_when_session_runner_returns_none(self):
         invoker = self._make_invoker(session_return=None)
         with self.assertRaises(RuntimeError):
-            invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=30)
+            invoker.invoke(
+                self._fixture, self._output_paths, _make_profile(), timeout=30
+            )
 
     def test_returns_findings_from_review_output(self):
         findings = [{"unit_name": "Foo", "metric_id": "SRP-1", "severity": "SEVERE"}]
         invoker = self._make_invoker(session_return="output", findings=findings)
-        result = invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=30)
+        result = invoker.invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=30
+        )
         self.assertEqual(result, findings)
 
     def test_returns_empty_list_when_no_findings(self):
         invoker = self._make_invoker(session_return="output", findings=[])
-        result = invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=30)
+        result = invoker.invoke(
+            self._fixture, self._output_paths, _make_profile(), timeout=30
+        )
         self.assertEqual(result, [])
 
 

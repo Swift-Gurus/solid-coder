@@ -4,13 +4,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.step_declaration import StepDeclaration
 from harness.step_field_validating import StepFieldValidating
 
-
 """
 solid-name: MetricStepShapeValidator
 solid-category: service
 solid-spec: [SPEC-053]
 solid-description: Validates execution ownership declared by metric workflow steps.
 """
+
+
 class MetricStepShapeValidator(StepFieldValidating[StepDeclaration]):
     def __init__(
         self,

@@ -1,7 +1,7 @@
 """Keeps a child step's own batch scoped to its materialized workflow instance."""
 
-from pathlib import Path
 import sys
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -23,17 +23,37 @@ from harness.workflow_run_context import WorkflowRunContext
 
 class TestNestedBatchScope(TestCase):
     def presentation(self, owner, own_iteration=True, combined=True):
-        declaration = ForEachDeclaration(StepOutputReference("prepare", "items"), ForEachMode.BATCH, WorkflowExpression("item.label"))
-        instance = IncludedWorkflowInstance(
-            alias="reviews.rule", instance_id=owner, source_index=0, source_item=None,
-            steps=IncludedWorkflowStepIdentities([IncludedWorkflowStepIdentity("declaration", "classify", "execution")]),
-            for_each=declaration,
-            combined_presentation=CombinedRulePresentation(group_alias="reviews", rule_alias="rule") if combined else None,
+        declaration = ForEachDeclaration(
+            StepOutputReference("prepare", "items"),
+            ForEachMode.BATCH,
+            WorkflowExpression("item.label"),
         )
-        step = StepDef(id="execution", prompt="Classify this unit's items.", workflow_instance=instance, for_each=declaration if own_iteration else None)
+        instance = IncludedWorkflowInstance(
+            alias="reviews.rule",
+            instance_id=owner,
+            source_index=0,
+            source_item=None,
+            steps=IncludedWorkflowStepIdentities(
+                [IncludedWorkflowStepIdentity("declaration", "classify", "execution")]
+            ),
+            for_each=declaration,
+            combined_presentation=CombinedRulePresentation(
+                group_alias="reviews", rule_alias="rule"
+            )
+            if combined
+            else None,
+        )
+        step = StepDef(
+            id="execution",
+            prompt="Classify this unit's items.",
+            workflow_instance=instance,
+            for_each=declaration if own_iteration else None,
+        )
         evaluator = Mock(spec=ExpressionEvaluating)
         evaluator.evaluate.return_value = "item-one"
-        return BatchStepPresentationBuilder(evaluator).build(step, declaration, WorkflowRunContext())
+        return BatchStepPresentationBuilder(evaluator).build(
+            step, declaration, WorkflowRunContext()
+        )
 
     def test_inner_batch_does_not_inherit_outer_combined_rule_group(self):
         first = self.presentation("first")
@@ -43,7 +63,10 @@ class TestNestedBatchScope(TestCase):
         self.assertEqual(first.group, self.presentation("first").group)
 
     def test_inner_batch_is_instance_scoped_without_combined_presentation_too(self):
-        self.assertNotEqual(self.presentation("first", combined=False).group, self.presentation("second", combined=False).group)
+        self.assertNotEqual(
+            self.presentation("first", combined=False).group,
+            self.presentation("second", combined=False).group,
+        )
 
     def test_inherited_parent_batch_still_combines_workflow_instances(self):
         first = self.presentation("first", own_iteration=False)

@@ -3,8 +3,6 @@
 import sys
 import unittest
 from pathlib import Path
-from typing import Optional
-
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _MCP_SERVER_DIRECTORY = _REPOSITORY_ROOT / "mcp-server"
@@ -16,13 +14,12 @@ for _directory in (
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness.project_context import (  # noqa: E402
+from harness.project_context import (
     McpRequestContextProjectDirectoryReader,
 )
 
 
 class StubSessionReader:
-
     def __init__(self, session_id: str) -> None:
         self._session_id = session_id
 
@@ -31,11 +28,10 @@ class StubSessionReader:
 
 
 class StubProjectDirectoryReader:
-
-    def __init__(self, project_directory: Optional[Path]) -> None:
+    def __init__(self, project_directory: Path | None) -> None:
         self._project_directory = project_directory
 
-    def read(self, session_id: str) -> Optional[Path]:
+    def read(self, session_id: str) -> Path | None:
         return self._project_directory
 
 
@@ -44,8 +40,9 @@ solid-name: TestMcpRequestContextProjectDirectoryReader
 solid-category: unit-test
 solid-description: Proves MCP project resolution uses host context, session context, and process fallback in precedence order.
 """
-class TestMcpRequestContextProjectDirectoryReader(unittest.TestCase):
 
+
+class TestMcpRequestContextProjectDirectoryReader(unittest.TestCase):
     def test_prefers_claude_project_directory(self) -> None:
         reader = self._reader(
             env={"CLAUDE_PROJECT_DIR": "/claude/project"},
@@ -67,13 +64,11 @@ class TestMcpRequestContextProjectDirectoryReader(unittest.TestCase):
     @staticmethod
     def _reader(
         env: dict[str, str],
-        session_project: Optional[Path],
+        session_project: Path | None,
     ) -> McpRequestContextProjectDirectoryReader:
         return McpRequestContextProjectDirectoryReader(
             session_reader=StubSessionReader("session-1"),
-            session_project_directory=StubProjectDirectoryReader(
-                session_project
-            ),
+            session_project_directory=StubProjectDirectoryReader(session_project),
             env=env,
             cwd_factory=lambda: Path("/plugin/cache"),
         )

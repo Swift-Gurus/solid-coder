@@ -6,7 +6,7 @@ solid-tags: [hook, utility]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1]
 _SESSION_DIR = Path(__file__).resolve().parent
@@ -16,12 +16,12 @@ for _d in (_HOOKS_DIR, _SESSION_DIR):
 
 
 class RegistryAccessing(Protocol):
-    def get_entry(self, session_id: str, cwd: str) -> Optional[dict]: ...
+    def get_entry(self, session_id: str, cwd: str) -> dict | None: ...
     def deregister(self, session_id: str, cwd: str) -> None: ...
 
 
 class ToolChecking(Protocol):
-    def check(self, transcript_path: Optional[str], session_type: str) -> dict: ...
+    def check(self, transcript_path: str | None, session_type: str) -> dict: ...
 
 
 class SessionStopValidator:
@@ -31,7 +31,7 @@ class SessionStopValidator:
         self._registry = registry
         self._checker = checker
 
-    def validate(self, session_id: str, transcript_path: Optional[str], cwd: str) -> dict:
+    def validate(self, session_id: str, transcript_path: str | None, cwd: str) -> dict:
         entry = self._registry.get_entry(session_id, cwd)
         if not entry:
             return {"allow": True}

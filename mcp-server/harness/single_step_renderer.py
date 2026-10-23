@@ -5,13 +5,14 @@ from harness.step_formatting import StepFormatting
 from harness.step_result import StepResult
 from harness.subagent_delegating import SubagentDelegating
 
-
 """
 solid-name: SingleStepRenderer
 solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Formats one selected step after applying its configured delegation instruction.
 """
+
+
 class SingleStepRenderer(SingleStepRendering):
     def __init__(
         self,

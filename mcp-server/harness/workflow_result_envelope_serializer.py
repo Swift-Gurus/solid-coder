@@ -7,13 +7,14 @@ from harness.workflow_result_envelope_serializing import (
     WorkflowResultEnvelopeSerializing,
 )
 
-
 """
 solid-name: WorkflowResultEnvelopeSerializer
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Serializes workflow result envelopes into externally renderable values.
 """
+
+
 class WorkflowResultEnvelopeSerializer(WorkflowResultEnvelopeSerializing):
     def serialize(
         self,
@@ -23,7 +24,6 @@ class WorkflowResultEnvelopeSerializer(WorkflowResultEnvelopeSerializing):
             "instance_id": envelope.instance_id,
             "item": envelope.item,
             "outputs": {
-                output.name: output.value
-                for output in envelope.outputs.entries
+                output.name: output.value for output in envelope.outputs.entries
             },
         }

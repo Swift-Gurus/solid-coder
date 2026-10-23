@@ -13,13 +13,14 @@ from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestEffectiveCollectionMetricPolicyExecution
 solid-category: integration-test
 solid-spec: [SPEC-053, SPEC-054, SPEC-058]
 solid-description: Verifies project scoring overrides reach executable collection-backed metrics.
 """
+
+
 class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -105,23 +106,27 @@ class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
         self,
     ) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
-        exception = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED"},
-                    {"classification": "DETACHED"},
-                ]
+        exception = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED"},
+                        {"classification": "DETACHED"},
+                    ]
+                }
             }
-        })
-        completed = self.engine.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No whole-rule exception applies.",
-                    "evidence": "The unit performs runtime behavior.",
-                },
+        )
+        completed = self.engine.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No whole-rule exception applies.",
+                        "evidence": "The unit performs runtime behavior.",
+                    },
+                }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id)
@@ -136,20 +141,24 @@ class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
             encoding="utf-8",
         )
         started = self.engine.flow_start(str(workflow_path))
-        exception = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "views": [{"depth": 2}, {"depth": 5}, {"depth": 3}]
+        exception = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "views": [{"depth": 2}, {"depth": 5}, {"depth": 3}]
+                }
             }
-        })
-        completed = self.engine.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No whole-rule exception applies.",
-                    "evidence": "The reviewed unit contains runtime behavior.",
-                },
+        )
+        completed = self.engine.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No whole-rule exception applies.",
+                        "evidence": "The reviewed unit contains runtime behavior.",
+                    },
+                }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id, "depth-review")
@@ -163,23 +172,27 @@ class TestEffectiveCollectionMetricPolicyExecution(unittest.TestCase):
             encoding="utf-8",
         )
         started = self.engine.flow_start(str(self.workflow_path))
-        exception = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "task_sites": [
-                    {"classification": "DETACHED"},
-                    {"classification": "DETACHED"},
-                ]
+        exception = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "task_sites": [
+                        {"classification": "DETACHED"},
+                        {"classification": "DETACHED"},
+                    ]
+                }
             }
-        })
-        completed = self.engine.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "No whole-rule exception applies.",
-                    "evidence": "The unit performs runtime behavior.",
-                },
+        )
+        completed = self.engine.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "No whole-rule exception applies.",
+                        "evidence": "The unit performs runtime behavior.",
+                    },
+                }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._result(started.run_id)

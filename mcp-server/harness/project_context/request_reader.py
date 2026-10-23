@@ -1,18 +1,20 @@
 """Resolves the project directory for the current MCP request."""
 
 import os
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Callable, Mapping, Protocol
+from typing import Protocol
 
 from harness.session_id_reading import SessionIdReading
 from session.project_context import SessionProjectDirectoryReading
-
 
 """
 solid-name: ProjectDirectoryReading
 solid-category: abstraction
 solid-description: Contract for reading the active project directory.
 """
+
+
 class ProjectDirectoryReading(Protocol):
     def read(self) -> Path: ...
 
@@ -22,8 +24,9 @@ solid-name: McpRequestContextProjectDirectoryReader
 solid-category: service
 solid-description: Resolves the current MCP request project from host and session context.
 """
-class McpRequestContextProjectDirectoryReader(ProjectDirectoryReading):
 
+
+class McpRequestContextProjectDirectoryReader(ProjectDirectoryReading):
     def __init__(
         self,
         session_reader: SessionIdReading,

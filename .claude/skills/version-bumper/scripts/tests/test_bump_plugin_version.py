@@ -10,7 +10,7 @@ from pathlib import Path
 _SCRIPT = Path(__file__).resolve().parents[1] / "bump-plugin-version.py"
 
 
-def _write_manifest(path: Path, version: str, extra: dict = None) -> None:
+def _write_manifest(path: Path, version: str, extra: dict | None = None) -> None:
     data = {"name": "solid-coder", "version": version}
     if extra:
         data.update(extra)
@@ -24,6 +24,7 @@ def _run(args: list, cwd: Path) -> subprocess.CompletedProcess:
         cwd=str(cwd),
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -39,9 +40,13 @@ class TestBumpPluginVersion(unittest.TestCase):
         """The script hardcodes manifest paths relative to its own location under
         .claude/skills/version-bumper/scripts/ — so tests run it from a fake repo
         root with the same 4-levels-up layout, rather than patching constants."""
-        script_home = self.repo_root / ".claude" / "skills" / "version-bumper" / "scripts"
+        script_home = (
+            self.repo_root / ".claude" / "skills" / "version-bumper" / "scripts"
+        )
         script_home.mkdir(parents=True)
-        (script_home / "bump-plugin-version.py").write_text(_SCRIPT.read_text(encoding="utf-8"), encoding="utf-8")
+        (script_home / "bump-plugin-version.py").write_text(
+            _SCRIPT.read_text(encoding="utf-8"), encoding="utf-8"
+        )
         return script_home / "bump-plugin-version.py"
 
     def _run_in_fake_repo(self, args: list) -> subprocess.CompletedProcess:
@@ -50,6 +55,7 @@ class TestBumpPluginVersion(unittest.TestCase):
             [sys.executable, str(script_copy), *args],
             capture_output=True,
             text=True,
+            check=False,
         )
 
     def test_default_patch_bump(self):
@@ -60,8 +66,12 @@ class TestBumpPluginVersion(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("1.7.7 -> 1.7.8", result.stdout)
-        self.assertEqual(json.loads(self.claude_manifest.read_text())["version"], "1.7.8")
-        self.assertEqual(json.loads(self.codex_manifest.read_text())["version"], "1.7.8")
+        self.assertEqual(
+            json.loads(self.claude_manifest.read_text())["version"], "1.7.8"
+        )
+        self.assertEqual(
+            json.loads(self.codex_manifest.read_text())["version"], "1.7.8"
+        )
 
     def test_minor_bump_resets_patch(self):
         _write_manifest(self.claude_manifest, "1.7.7")
@@ -115,7 +125,9 @@ class TestBumpPluginVersion(unittest.TestCase):
         result = self._run_in_fake_repo([])
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(self.claude_manifest.read_text())["description"], "hello")
+        self.assertEqual(
+            json.loads(self.claude_manifest.read_text())["description"], "hello"
+        )
 
 
 if __name__ == "__main__":

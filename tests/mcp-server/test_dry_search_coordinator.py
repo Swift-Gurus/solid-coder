@@ -6,12 +6,13 @@ from health.dry_search_coordinator import DrySearchCoordinator
 from search.regex_search_term_extractor import RegexSearchTermExtractor
 from search.search_terms_resolver import SearchTermsResolver
 
-
 """
 solid-name: TestDrySearchCoordinator
 solid-category: unit-test
 solid-description: Verifies health-check DRY searches reject malformed input and record only successful completion.
 """
+
+
 class TestDrySearchCoordinator:
     def setup_method(self) -> None:
         self.search = MagicMock()
@@ -50,7 +51,9 @@ class TestDrySearchCoordinator:
         self.completion.record.assert_not_called()
 
     def test_zero_match_result_records_successful_completion(self) -> None:
-        self.search.search.return_value = "No files matched in /project (12 files scanned)."
+        self.search.search.return_value = (
+            "No files matched in /project (12 files scanned)."
+        )
 
         self.coordinator.search(query="Batch handler", output_dir="/health/run")
 

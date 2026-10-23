@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from harness.template_value_rendering import TemplateValueRendering
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
-
+from harness.template_value_rendering import TemplateValueRendering
 
 """
 solid-name: TemplateValueRendererRegistration
@@ -14,6 +13,8 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Associates a runtime workflow-value type with its template renderer.
 """
+
+
 @dataclass(frozen=True)
 class TemplateValueRendererRegistration:
     value_type: type

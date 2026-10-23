@@ -3,7 +3,7 @@ solid-description: Accepts values for which a probe function succeeds without ra
 solid-category: utility
 """
 
-from typing import Callable, Optional, Tuple, Type
+from collections.abc import Callable
 
 
 class DuckTypeValidator:
@@ -14,11 +14,13 @@ class DuckTypeValidator:
     exception type(s) that signal an unsupported value.
     """
 
-    def __init__(self, probe: Callable[[object], object], errors: Tuple[Type[BaseException], ...]) -> None:
+    def __init__(
+        self, probe: Callable[[object], object], errors: tuple[type[BaseException], ...]
+    ) -> None:
         self._probe = probe
         self._errors = errors
 
-    def validate(self, value: object) -> Optional[object]:
+    def validate(self, value: object) -> object | None:
         try:
             self._probe(value)
             return value

@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from findings.review_unit_kind import ReviewUnitKind
 from findings.review_severity import ReviewSeverity
+from findings.review_unit_kind import ReviewUnitKind
 from harness.rule_scope import RuleScope
+from pydantic import BaseModel, ConfigDict, Field
 from rule_analysis_expectation import RuleAnalysisExpectation
 from rule_metric_expectation import RuleMetricExpectation
-
 
 """
 solid-name: RuleValidationScenario
@@ -19,6 +17,8 @@ solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Carries canonical source, fixture, metric, and final-severity expectations for one executable rule.
 """
+
+
 class RuleValidationScenario(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Collects rule file paths for a principle based on profile and
 exclusion set. Shared by mcp-server/server.py and docs/server.py to eliminate
@@ -9,7 +8,8 @@ solid-tags: [utility, service]
 """
 
 from pathlib import Path
-from typing import Optional
+
+from logging_protocol import Logging
 
 _PROFILE_INSTR_DIR: dict[str, str] = {"review": "review", "code": "fix"}
 _PROFILE_INCLUDE_CODE: dict[str, bool] = {"review": False, "code": True}
@@ -21,6 +21,8 @@ def collect_files(
     exclude: set,
     profile: str,
     parse_frontmatter=None,
+    *,
+    logger: Logging,
 ) -> list[str]:
     """Collect all rule file paths for one principle entry.
 
@@ -30,6 +32,7 @@ def collect_files(
         exclude:          Set of lowercase section names to skip.
         profile:          Pipeline profile ('review' or 'code').
         parse_frontmatter: Optional frontmatter parser; if None, required_patterns are skipped.
+        logger: Records failures while collecting required pattern paths.
 
     Returns:
         Ordered list of absolute file path strings.
@@ -57,10 +60,12 @@ def collect_files(
     if "patterns" not in exclude and parse_frontmatter is not None:
         try:
             fm = parse_frontmatter.parse(rule_path)
-            for pp in (fm.get("required_patterns") or []):
+            for pp in fm.get("required_patterns") or []:
                 if isinstance(pp, str) and Path(pp).is_file():
                     paths.append(pp)
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 — Legacy rules tooling logs optional pattern-loading failures and retains collected rule paths.
+            logger.log(
+                f"Stopped collecting required rule patterns: rule={rule_path}; {type(exc).__name__}: {exc}"
+            )
 
     return paths

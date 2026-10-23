@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from live_session_artifact_scope import LiveSessionArtifactScope
-
 
 """
 solid-name: LiveSessionArtifactDirectoryCreator
 solid-category: test-support
 solid-description: Creates uniquely named backend-specific directories for durable live-session evidence.
 """
-class LiveSessionArtifactDirectoryCreator:
 
+
+class LiveSessionArtifactDirectoryCreator:
     def create(
         self,
         project_root: Path,
@@ -24,7 +24,7 @@ class LiveSessionArtifactDirectoryCreator:
     ) -> Path:
         self._validate_component(scope.domain)
         self._validate_component(scope.scenario)
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         artifact_directory = (
             project_root
             / ".solid-coder"

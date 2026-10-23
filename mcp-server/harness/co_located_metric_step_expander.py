@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from harness.co_located_metric_identity import CoLocatedMetricIdentity
 from harness.co_located_metric_step_expanding import (
     CoLocatedMetricStepExpanding,
 )
-from harness.co_located_metric_identity import CoLocatedMetricIdentity
 from harness.co_located_metric_step_expansion import CoLocatedMetricStepExpansion
 from harness.output_spec import OutputSpec
 from harness.rule_additional_info_output_providing import (
@@ -13,13 +13,14 @@ from harness.rule_additional_info_output_providing import (
 )
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: CoLocatedMetricStepExpander
 solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Produces independently identified deterministic metric steps from typed local-output measurements.
 """
+
+
 class CoLocatedMetricStepExpander(CoLocatedMetricStepExpanding):
     def __init__(
         self,

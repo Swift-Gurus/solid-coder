@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Retrieves configuration values with guaranteed fallback defaults.
 solid-category: utility
@@ -11,18 +10,19 @@ or no TOML parser is available.
 """
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 _MCP_DIR = Path(__file__).resolve().parents[1] / "mcp-server"
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 import sys as _sys
 from pathlib import Path as _Path
+
 _PROJECT_ROOT = _Path(__file__).resolve().parents[1]
 _sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server/health/config"))
 
-from hc_config_core import read_section  # noqa: E402
+from hc_config_core import read_section
 
 
 class ConfigReader:

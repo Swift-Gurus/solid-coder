@@ -3,7 +3,7 @@ solid-description: Contract for parsing raw event data into structured events.
 solid-category: abstraction
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class ClaudeBareEventParsing(Protocol):
@@ -16,4 +16,4 @@ class ClaudeBareEventParsing(Protocol):
     """
 
     def parse_events(self, raw: object) -> list: ...
-    def parse_event_dict(self, event: object) -> Optional[dict]: ...
+    def parse_event_dict(self, event: object) -> dict | None: ...

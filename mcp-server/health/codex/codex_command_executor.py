@@ -4,13 +4,14 @@ from codex_execution_validating import CodexExecutionValidating
 from subprocess_running import SubprocessRunning
 from utils.debug_logger import DebugLogging
 
-
 """
 solid-name: CodexCommandExecutor
 solid-category: service
 solid-description: Executes Codex commands and validates their process outcomes.
 solid-tags: [hook, llm]
 """
+
+
 class CodexCommandExecutor:
     def __init__(
         self,

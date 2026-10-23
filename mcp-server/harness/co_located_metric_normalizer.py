@@ -1,11 +1,11 @@
 """Expands typed co-located metrics into ordinary metric steps."""
 
-from harness.co_located_metric_normalization import CoLocatedMetricNormalization
-from harness.co_located_metric_normalizing import CoLocatedMetricNormalizing
 from harness.co_located_metric_dependency_rebasing import (
     CoLocatedMetricDependencyRebasing,
 )
 from harness.co_located_metric_identity import CoLocatedMetricIdentity
+from harness.co_located_metric_normalization import CoLocatedMetricNormalization
+from harness.co_located_metric_normalizing import CoLocatedMetricNormalizing
 from harness.co_located_metric_owner_validating import (
     CoLocatedMetricOwnerValidating,
 )
@@ -23,13 +23,14 @@ from harness.include_group_membership_resolving import (
 )
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: CoLocatedMetricNormalizer
 solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Expands compact metric declarations while preserving root and included-workflow ownership.
 """
+
+
 class CoLocatedMetricNormalizer(CoLocatedMetricNormalizing):
     def __init__(
         self,

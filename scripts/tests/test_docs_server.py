@@ -1,4 +1,5 @@
 """Tests for mcp-server/docs/server.py"""
+
 import json
 import sys
 import tempfile
@@ -10,6 +11,7 @@ sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "docs"))
 
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "docs_server", ROOT / "mcp-server" / "docs" / "server.py"
 )
@@ -76,13 +78,16 @@ class TestLoadRules(unittest.TestCase):
         result = mod.load_rules(mode="planner", principle="SRP")
         # Output must start with our # SRP header, not raw frontmatter
         lines = result.splitlines()
-        self.assertTrue(lines[0].startswith("#"), f"First line should be a header, got: {lines[0]!r}")
+        self.assertTrue(
+            lines[0].startswith("#"),
+            f"First line should be a header, got: {lines[0]!r}",
+        )
         # Frontmatter field "name: ..." should not appear as a bare YAML key at line start
         self.assertNotIn("\nname: Single Responsibility", result)
         self.assertNotIn("\nname: SRP", result)
 
     def test_matched_tags_filters_conditional_principles(self):
-        all_result = mod.load_rules(mode="code", matched_tags=None)
+        mod.load_rules(mode="code", matched_tags=None)
         # swiftui tag loads SwiftUI principle; empty list should not error
         tagged_result = mod.load_rules(mode="code", matched_tags=[])
         self.assertIsInstance(tagged_result, str)
@@ -254,25 +259,35 @@ class TestLoadFixForViolation(unittest.TestCase):
 
     def test_all_core_metrics_resolve(self):
         for metric_id in [
-            "SRP-1", "SRP-2", "SRP-3",
-            "OCP-1", "OCP-2",
-            "LSP-1", "LSP-2", "LSP-3",
-            "ISP-1", "ISP-2", "ISP-3",
-            "DRY-1", "DRY-2", "DRY-3",
+            "SRP-1",
+            "SRP-2",
+            "SRP-3",
+            "OCP-1",
+            "OCP-2",
+            "LSP-1",
+            "LSP-2",
+            "LSP-3",
+            "ISP-1",
+            "ISP-2",
+            "ISP-3",
+            "DRY-1",
+            "DRY-2",
+            "DRY-3",
         ]:
             with self.subTest(metric=metric_id):
                 result = mod.load_fix_for_violation(metric_id)
-                self.assertNotIn("No fix file", result, msg=f"Missing file for {metric_id}")
+                self.assertNotIn(
+                    "No fix file", result, msg=f"Missing file for {metric_id}"
+                )
                 self.assertGreater(len(result), 50)
 
 
 class TestLoadFixInstructionsForFindings(unittest.TestCase):
     def _write(self, findings):
-        f = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             mode="w", suffix=".output.json", delete=False
-        )
-        json.dump({"findings": findings}, f)
-        f.close()
+        ) as f:
+            json.dump({"findings": findings}, f)
         return f.name
 
     def test_single_finding_returns_content(self):
@@ -324,34 +339,48 @@ class TestLoadFixInstructionsForFindings(unittest.TestCase):
 
     def test_real_by_file_output_structure(self):
         # The actual by-file output uses "principles[].findings[].metric", not flat findings
-        f = tempfile.NamedTemporaryFile(mode="w", suffix=".output.json", delete=False)
-        json.dump({
-            "file_path": "/path/to/Foo.swift",
-            "timestamp": "2026-01-01T00:00:00Z",
-            "principles": [
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".output.json", delete=False
+        ) as f:
+            json.dump(
                 {
-                    "principle": "Open/Closed Principle",
-                    "agent": "ocp",
-                    "severity": "SEVERE",
-                    "findings": [
-                        {"id": "ocp-001", "metric": "OCP-1", "severity": "SEVERE",
-                         "title": "Sealed point", "issue": "..."},
+                    "file_path": "/path/to/Foo.swift",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "principles": [
+                        {
+                            "principle": "Open/Closed Principle",
+                            "agent": "ocp",
+                            "severity": "SEVERE",
+                            "findings": [
+                                {
+                                    "id": "ocp-001",
+                                    "metric": "OCP-1",
+                                    "severity": "SEVERE",
+                                    "title": "Sealed point",
+                                    "issue": "...",
+                                },
+                            ],
+                            "suggestions": [],
+                        },
+                        {
+                            "principle": "Single Responsibility Principle",
+                            "agent": "srp",
+                            "severity": "SEVERE",
+                            "findings": [
+                                {
+                                    "id": "srp-001",
+                                    "metric": "SRP-2",
+                                    "severity": "SEVERE",
+                                    "title": "Cohesion groups",
+                                    "issue": "...",
+                                },
+                            ],
+                            "suggestions": [],
+                        },
                     ],
-                    "suggestions": []
                 },
-                {
-                    "principle": "Single Responsibility Principle",
-                    "agent": "srp",
-                    "severity": "SEVERE",
-                    "findings": [
-                        {"id": "srp-001", "metric": "SRP-2", "severity": "SEVERE",
-                         "title": "Cohesion groups", "issue": "..."},
-                    ],
-                    "suggestions": []
-                },
-            ]
-        }, f)
-        f.close()
+                f,
+            )
         result = mod.load_fix_instructions_for_findings(findings_path=f.name)
         self.assertIn("OCP-1", result)
         self.assertIn("SRP-2", result)

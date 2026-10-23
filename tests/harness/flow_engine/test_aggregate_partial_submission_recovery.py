@@ -11,25 +11,24 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.aggregate_batch_step_presentation import (  # noqa: E402
+from harness.aggregate_batch_step_presentation import (
     AggregateBatchStepPresentation,
 )
-from harness.batch_step_renderer_factory import BatchStepRendererFactory  # noqa: E402
-from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E402
-from harness.flow_result_renderer import FlowResultRenderer  # noqa: E402
-from harness.flow_run_orchestrator_factory import (  # noqa: E402
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
+from harness.first_ready_step_selector import FirstReadyStepSelector
+from harness.flow_result_renderer import FlowResultRenderer
+from harness.flow_run_orchestrator_factory import (
     FlowRunOrchestratorFactory,
 )
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.sibling_batch_step_selector_factory import (  # noqa: E402
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.sibling_batch_step_selector_factory import (
     SiblingBatchStepSelectorFactory,
 )
-from harness.single_step_renderer import SingleStepRenderer  # noqa: E402
-from harness.step_formatter import StepFormatter  # noqa: E402
-from harness.step_renderer import StepRenderer  # noqa: E402
-from harness.subagent_delegator import SubagentDelegator  # noqa: E402
-from harness.terminal_message_resolver import TerminalMessageResolver  # noqa: E402
-
+from harness.single_step_renderer import SingleStepRenderer
+from harness.step_formatter import StepFormatter
+from harness.step_renderer import StepRenderer
+from harness.subagent_delegator import SubagentDelegator
+from harness.terminal_message_resolver import TerminalMessageResolver
 
 """
 solid-name: TestAggregatePartialSubmissionRecovery
@@ -37,6 +36,8 @@ solid-category: integration-test
 solid-spec: [SPEC-052]
 solid-description: Verifies nested aggregate validation failures return unique pending addresses and partial-only correction guidance.
 """
+
+
 class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -99,25 +100,29 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
         ]
         self.assertEqual(len(completed), 2)
 
-    def test_nested_item_specific_for_each_stays_outside_aggregate_compilation(self) -> None:
+    def test_nested_item_specific_for_each_stays_outside_aggregate_compilation(
+        self,
+    ) -> None:
         workflow = self._write_nested_for_each_workflow()
         started = self.orchestrator.flow_start(str(workflow))
         discover = started.steps[0]
         self.assertIsInstance(discover.batch, AggregateBatchStepPresentation)
         assert isinstance(discover.batch, AggregateBatchStepPresentation)
 
-        remaining = self.orchestrator.flow_next({
-            discover.batch.label: {
-                discover.batch.workflow_alias: {
-                    discover.batch.authored_step.step_id: {
-                        "candidates": [
-                            {"name": "FirstCandidate"},
-                            {"name": "SecondCandidate"},
-                        ]
+        remaining = self.orchestrator.flow_next(
+            {
+                discover.batch.label: {
+                    discover.batch.workflow_alias: {
+                        discover.batch.authored_step.step_id: {
+                            "candidates": [
+                                {"name": "FirstCandidate"},
+                                {"name": "SecondCandidate"},
+                            ]
+                        }
                     }
                 }
             }
-        })
+        )
 
         self.assertIsNone(remaining.error, remaining.error)
         self.assertEqual(len(remaining.steps), 2)
@@ -145,7 +150,7 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
         self.assertIn("Workflow: sample-rule", rendered)
         self.assertIn("Step: secondary_count", rendered)
         self.assertEqual(rendered.count("not of type 'integer'"), 4)
-        schema = json.loads(rendered[rendered.index("{"):])
+        schema = json.loads(rendered[rendered.index("{") :])
         self.assertEqual(set(schema["required"]), {"AlphaType", "BetaType"})
         for item in ("AlphaType", "BetaType"):
             workflow = schema["properties"][item]["properties"]["sample-rule"]
@@ -205,11 +210,13 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
 
     def _start_review(self):
         started = self.orchestrator.flow_start(str(self.workflow_path))
-        ready = self.orchestrator.flow_next({
-            started.steps[0].instance_id: {
-                "units": [{"name": "AlphaType"}, {"name": "BetaType"}],
+        ready = self.orchestrator.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [{"name": "AlphaType"}, {"name": "BetaType"}],
+                }
             }
-        })
+        )
         self.assertIsNone(ready.error, ready.error)
         self.assertEqual(len(ready.steps), 8)
         return started, ready
@@ -399,9 +406,9 @@ class TestAggregatePartialSubmissionRecovery(unittest.TestCase):
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
             json.loads(line)
-            for line in (
-                self.project_root / "runs" / run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.project_root / "runs" / run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
 
 

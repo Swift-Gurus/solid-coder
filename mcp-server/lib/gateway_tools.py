@@ -1,17 +1,17 @@
 """Builds the fully configured model-facing gateway."""
 
 from pathlib import Path
-from typing import Optional
 
+from findings.batch_submission_coordinator import BatchSubmissionCoordinator
 from findings.batch_submission_decorating import BatchSubmissionDecorating
 from findings.batch_submission_handling import BatchSubmissionHandling
-from findings.batch_submission_coordinator import BatchSubmissionCoordinator
 from findings.batch_submission_preparer import BatchSubmissionPreparer
 from findings.batch_unit_coverage_validator import BatchUnitCoverageValidator
+from findings.findings_submitter import FindingsSubmitter
 from findings.fix_completeness_validator import FixCompletenessValidator
 from findings.fix_persister import FixPersister
 from findings.fix_submitter import FixSubmitter
-from findings.gateway_handler import GatewayHandler, GatewayHandling
+from findings.gateway_handler import GatewayHandler
 from findings.hook_context_ownership_validator import HookContextOwnershipValidator
 from findings.hook_context_path_resolver import HookContextPathResolver
 from findings.json_file_writer import JsonFileWriter
@@ -31,46 +31,47 @@ from findings.mcp_batch_submission_payload_validator import (
 from findings.mcp_batch_submission_response_formatter import (
     McpBatchSubmissionResponseFormatter,
 )
+from findings.metric_payload_builder import MetricPayloadBuilder
 from findings.ordered_batch_submission_persister import (
     OrderedBatchSubmissionPersister,
 )
-from findings.metric_payload_builder import MetricPayloadBuilder
 from findings.partial_output_validator import PartialOutputValidator
 from findings.partial_review_output_payload_builder import (
     PartialReviewOutputPayloadBuilder,
 )
 from findings.partial_review_output_persister import PartialReviewOutputPersister
-from findings.principle_metrics_payload_builder import PrincipleMetricsPayloadBuilder
 from findings.principle_coverage_scope_factory import PrincipleCoverageScopeFactory
 from findings.principle_coverage_scope_input_factory import (
     PrincipleCoverageScopeInputFactory,
 )
 from findings.principle_coverage_scope_parser import PrincipleCoverageScopeParser
 from findings.principle_coverage_scopes_factory import PrincipleCoverageScopesFactory
+from findings.principle_metrics_payload_builder import PrincipleMetricsPayloadBuilder
 from findings.principle_submission_submitter import PrincipleSubmissionSubmitter
 from findings.requested_hook_context_loader import RequestedHookContextLoader
-from findings.severity_summariser import SeveritySummariser
-from findings.submission_context_applier import SubmissionContextApplier
-from findings.submit_orchestrator import SubmitOrchestrator
-from findings.unit_coverage_validator import load_applies_to
-from findings.violation_reader import ViolationReader
-from findings.violation_response_formatting import ViolationResponseFormatter
 from findings.review_unit_kind_parser import ReviewUnitKindParser
 from findings.review_unit_kinds_parser import ReviewUnitKindsParser
 from findings.review_unit_payload_builder import ReviewUnitPayloadBuilder
 from findings.reviewed_file_payload_builder import ReviewedFilePayloadBuilder
-from findings.findings_submitter import FindingsSubmitter
+from findings.severity_summariser import SeveritySummariser
+from findings.submission_context_applier import SubmissionContextApplier
+from findings.submit_orchestrator import SubmitOrchestrator
+from findings.unit_coverage_validator import load_applies_to
 from findings.utf8_text_file_writer import Utf8TextFileWriter
+from findings.violation_reader import ViolationReader
+from findings.violation_response_formatting import ViolationResponseFormatter
+from gate_logger import GateLogger
 from harness.path_builder import PathBuilder
 from health.llama.json_deserializer import JsonDeserializer
 from json_serializer import JsonSerializer
+from logging_protocol import Logging
 from rules.detection_rules_loader import DetectionRulesLoader
 from rules.fix_instructions_loader import FixInstructionsLoader
 from rules.metric_submission_example_builder import MetricSubmissionExampleBuilder
+from rules.principal_folder_resolver import resolve as resolve_principle_folder
 from rules.principle_content_builder import PrincipleContentBuilder
 from rules.principle_metrics_example_loader import PrincipleMetricsExampleLoader
 from rules.principle_registry import PrincipleRegistry
-from rules.principal_folder_resolver import resolve as resolve_principle_folder
 from rules.rules_handler import RulesHandler
 from rules.schema_minimal_value_resolver import SchemaMinimalValueResolver
 from scoring.files_scoring_handler import FilesScoringHandler
@@ -80,22 +81,25 @@ from scoring.principle_submission_scorer import PrincipleSubmissionScorer
 from scoring.review_unit_scorer import ReviewUnitScorer
 from scoring.scoring_handler import ScoringHandler
 from scoring.severity_scorer_factory import SeverityScorerFactory
+from utils.debug_logger import DebugLogger
 from utils.prompt_builder import PlainTextFileReader
-
 
 """
 solid-name: GatewayHandlerFactory
 solid-category: factory
 solid-description: Assembles the model-facing review gateway.
 """
+
+
 class GatewayHandlerFactory:
     def __init__(
         self,
-        batch_decorator: Optional[BatchSubmissionDecorating] = None,
+        batch_decorator: BatchSubmissionDecorating | None = None,
     ) -> None:
         self._batch_decorator = batch_decorator
 
     def make(self, refs_root: Path) -> GatewayHandler:
+        logger: Logging = GateLogger(DebugLogger())
         path_builder = PathBuilder()
         json_deserializer = JsonDeserializer()
         json_serializer = JsonSerializer()
@@ -111,7 +115,7 @@ class GatewayHandlerFactory:
             scorer_provider=principle_scorers,
             files_scorer=FilesScoringHandler(),
         )
-        partial_output_validator = PartialOutputValidator(refs_root)
+        partial_output_validator = PartialOutputValidator(refs_root, logger=logger)
         submit_orchestrator = SubmitOrchestrator(
             scoring=scoring,
             validator=partial_output_validator,
@@ -137,14 +141,12 @@ class GatewayHandlerFactory:
             context_loader=context_loader,
             context_applier=SubmissionContextApplier(),
             coverage_validator=BatchUnitCoverageValidator(
-                scope_parser.parse(load_applies_to(refs_root))
+                scope_parser.parse(load_applies_to(refs_root, logger=logger))
             ),
         )
         persister = OrderedBatchSubmissionPersister(
             submission_submitter=PrincipleSubmissionSubmitter(
-                scoring=PrincipleSubmissionScorer(
-                    ReviewUnitScorer(principle_scorers)
-                ),
+                scoring=PrincipleSubmissionScorer(ReviewUnitScorer(principle_scorers)),
                 persisting=PartialReviewOutputPersister(
                     renderer=JsonPartialReviewOutputRenderer(
                         serializer=json_serializer,

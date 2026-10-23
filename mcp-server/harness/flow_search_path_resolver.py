@@ -7,15 +7,15 @@ from pathlib import Path
 from harness.flow_search_path_resolving import FlowSearchPathResolving
 from harness.path_filtering import PathFiltering
 
-
 """
 solid-name: FlowSearchPathResolver
 solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Resolves unique eligible directories from injected project and plugin workflow search-path sources.
 """
-class FlowSearchPathResolver:
 
+
+class FlowSearchPathResolver:
     def __init__(
         self,
         sources: list[FlowSearchPathResolving],

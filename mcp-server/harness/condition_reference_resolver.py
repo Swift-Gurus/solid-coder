@@ -9,13 +9,14 @@ from harness.resolved_condition_value import ResolvedConditionValue
 from harness.workflow_expression import WorkflowExpression
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: ConditionReferenceResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves workflow condition values while preserving absent-versus-null semantics.
 """
+
+
 class ConditionReferenceResolver(ConditionReferenceResolving):
     def __init__(
         self,

@@ -14,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stop_handler_doubles import StubGate
 from flow_transition_handler import FlowStopEvaluator
+from stop_handler_doubles import StubGate
 
 
 class TestFlowStopEvaluator(unittest.TestCase):
@@ -28,7 +28,9 @@ class TestFlowStopEvaluator(unittest.TestCase):
         self.assertEqual(gate.evaluate_calls, 1)
 
     def test_deny_result_carries_reason_through(self):
-        gate = StubGate({"allow": False, "reason": "Flow 'x' has pending step(s) ['a']."})
+        gate = StubGate(
+            {"allow": False, "reason": "Flow 'x' has pending step(s) ['a']."}
+        )
 
         decision = FlowStopEvaluator(gate).evaluate_stop({})
 

@@ -4,12 +4,9 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Optional
-
+from gate.hook_context_buffer import HookContextBuffering
 from hook_responding import HookResponding
 from logging_protocol import Logging
-from gate.hook_context_buffer import HookContextBuffering
-
 
 """
 solid-name: HookGate
@@ -17,6 +14,8 @@ solid-category: service
 solid-tags: [hook]
 solid-description: Provides hook diagnostics, retained warning context, and allow-or-block responses.
 """
+
+
 class HookGate:
     """Pure Facade composing Logging and HookResponding for hook scripts.
 
@@ -24,7 +23,9 @@ class HookGate:
     HookGateFactory to wire production defaults.
     """
 
-    def __init__(self, logger: Logging, responder: HookResponding, context: HookContextBuffering) -> None:
+    def __init__(
+        self, logger: Logging, responder: HookResponding, context: HookContextBuffering
+    ) -> None:
         self._logger = logger
         self._responder = responder
         self._context = context
@@ -35,8 +36,12 @@ class HookGate:
     def warn(self, message: str) -> None:
         self._context.append(message)
 
-    def allow(self, additional_context: str = "", updated_input: Optional[dict] = None) -> None:
-        return self._responder.allow(self._context.consume(additional_context), updated_input)
+    def allow(
+        self, additional_context: str = "", updated_input: dict | None = None
+    ) -> None:
+        return self._responder.allow(
+            self._context.consume(additional_context), updated_input
+        )
 
     def block(self, reason: str, additional_context: str = "") -> None:
         return self._responder.block(reason, self._context.consume(additional_context))

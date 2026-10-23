@@ -6,13 +6,14 @@ from harness.co_located_metric_identity import CoLocatedMetricIdentity
 from harness.include_alias_group import IncludeAliasGroup
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: CoLocatedMetricDependencyRebasing
 solid-category: abstraction
 solid-spec: [SPEC-058]
 solid-description: Contract for rebasing sibling dependencies onto qualified compact metric identities.
 """
+
+
 class CoLocatedMetricDependencyRebasing(Protocol):
     def rebase(
         self,

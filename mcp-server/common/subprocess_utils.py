@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Shared helper for executing shell commands and returning their success status and captured output.
 solid-category: utility
@@ -17,5 +16,5 @@ def run_cmd(cmd: list) -> tuple[bool, str, str]:
     Returns:
         Tuple of (success, stdout_stripped, stderr_stripped).
     """
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return result.returncode == 0, result.stdout.strip(), result.stderr.strip()

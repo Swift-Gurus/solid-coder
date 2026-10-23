@@ -4,13 +4,14 @@ from codex_config_argument_building import CodexConfigArgumentBuilding
 from llama.json_deserializer import JsonDeserializing
 from llama.json_serializer import JsonSerializing
 
-
 """
 solid-name: CodexMcpConfigArgumentBuilder
 solid-category: adapter
 solid-description: Translates session server configuration into command-line override arguments.
 solid-tags: [hook, llm]
 """
+
+
 class CodexMcpConfigArgumentBuilder(CodexConfigArgumentBuilding):
     def __init__(
         self,

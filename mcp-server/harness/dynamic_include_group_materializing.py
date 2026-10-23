@@ -10,13 +10,14 @@ from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.models import FlowDef, RunState
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: DynamicIncludeGroupMaterializing
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for materializing one dynamic include group and all descendants owned by its runtime instances.
 """
+
+
 class DynamicIncludeGroupMaterializing(Protocol):
     def materialize(
         self,

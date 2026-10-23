@@ -14,13 +14,14 @@ from harness.step_for_each_declaration_resolving import (
 )
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: BatchStepPresentationResolver
 solid-category: service
 solid-spec: [SPEC-042]
 solid-description: Coordinates effective iteration lookup and construction only for explicitly batched model presentation.
 """
+
+
 class BatchStepPresentationResolver(BatchStepPresentationResolving):
     def __init__(
         self,

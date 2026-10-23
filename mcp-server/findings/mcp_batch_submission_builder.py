@@ -8,12 +8,13 @@ from findings.batch_submission import BatchSubmission
 from findings.batch_submission_building import BatchSubmissionBuilding
 from findings.mcp_batch_submission_normalizer import McpBatchSubmissionNormalizer
 
-
 """
 solid-name: McpBatchSubmissionBuilder
 solid-category: boundary-adapter
 solid-description: Constructs the immutable submission hierarchy from a validated MCP review payload.
 """
+
+
 class McpBatchSubmissionBuilder(BatchSubmissionBuilding):
     def __init__(self, legacy_serializer: object = None) -> None:
         self._normalizer = McpBatchSubmissionNormalizer()

@@ -2,10 +2,11 @@
 
 from harness.collection_metric_reducer import CollectionMetricReducer
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
-from harness.component_metric_reducer_declaration import ComponentMetricReducerDeclaration
+from harness.component_metric_reducer_declaration import (
+    ComponentMetricReducerDeclaration,
+)
 from harness.pairwise_relation import PairwiseRelation
 from harness.structured_model_decoding import StructuredModelDecoding
-
 
 """
 solid-name: ComponentMetricReducerDecoder
@@ -13,6 +14,8 @@ solid-category: boundary
 solid-spec: [SPEC-059]
 solid-description: Translates component metric reducer input into a validated reducer model.
 """
+
+
 class ComponentMetricReducerDecoder(StructuredModelDecoding[CollectionMetricReducer]):
     def __init__(
         self,

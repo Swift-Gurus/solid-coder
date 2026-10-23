@@ -11,13 +11,14 @@ from harness.combined_rule_batch_step_presentation import (
 )
 from harness.step_result import StepResult
 
-
 """
 solid-name: CombinedRuleBatchSectionsBuilder
 solid-category: service
 solid-spec: [SPEC-043]
 solid-description: Groups ready batch items into stable authored rule sections for combined rendering.
 """
+
+
 class CombinedRuleBatchSectionsBuilder(CombinedRuleBatchSectionsBuilding):
     def build(self, steps: list[StepResult]) -> list[CombinedRuleBatchSection]:
         sections: list[CombinedRuleBatchSection] = []

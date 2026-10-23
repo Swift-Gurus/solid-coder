@@ -4,10 +4,8 @@ import unittest
 
 import tree_sitter_swift
 import tree_sitter_typescript
-from tree_sitter import Language, Parser
-
 from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
-
+from tree_sitter import Language, Parser
 
 """
 solid-name: TestTreeSitterSyntaxParser
@@ -15,9 +13,13 @@ solid-category: unit-test
 solid-spec: [SPEC-057]
 solid-description: Verifies shared syntax parsing preserves declaration facts and incomplete-buffer diagnostics across language grammars.
 """
+
+
 class TestTreeSitterSyntaxParser(unittest.TestCase):
     def setUp(self) -> None:
-        self.parser = TreeSitterSyntaxParser(Parser(Language(tree_sitter_swift.language())))
+        self.parser = TreeSitterSyntaxParser(
+            Parser(Language(tree_sitter_swift.language()))
+        )
 
     def test_swift_overloads_preserve_parameter_labels_and_types(self) -> None:
         tree = self.parser.parse(
@@ -38,12 +40,19 @@ class TestTreeSitterSyntaxParser(unittest.TestCase):
             if child.type == "parameter"
         ]
         self.assertEqual(
-            [[part.text.decode("utf-8") for part in parameter.children_by_field_name("name")]
-             for parameter in parameters],
+            [
+                [
+                    part.text.decode("utf-8")
+                    for part in parameter.children_by_field_name("name")
+                ]
+                for parameter in parameters
+            ],
             [["id", "String"], ["id", "Int"]],
         )
 
-    def test_swift_conformance_and_separate_extension_preserve_owner_names(self) -> None:
+    def test_swift_conformance_and_separate_extension_preserve_owner_names(
+        self,
+    ) -> None:
         declaration_tree = self.parser.parse("struct Store: Loading {}\n")
         extension_tree = self.parser.parse("extension Store { func load() {} }\n")
 
@@ -51,15 +60,20 @@ class TestTreeSitterSyntaxParser(unittest.TestCase):
         self.assertFalse(extension_tree.root_node.has_error)
         declaration = declaration_tree.root_node.named_children[0]
         inheritance = next(
-            child for child in declaration.named_children
+            child
+            for child in declaration.named_children
             if child.type == "inheritance_specifier"
         )
-        self.assertEqual(inheritance.child_by_field_name("inherits_from").text, b"Loading")
+        self.assertEqual(
+            inheritance.child_by_field_name("inherits_from").text, b"Loading"
+        )
         extension = extension_tree.root_node.named_children[0]
         self.assertEqual(extension.child_by_field_name("name").text, b"Store")
         self.assertEqual(extension.children[0].text, b"extension")
 
-    def test_swift_members_preserve_associated_types_properties_and_visibility(self) -> None:
+    def test_swift_members_preserve_associated_types_properties_and_visibility(
+        self,
+    ) -> None:
         tree = self.parser.parse(
             "protocol Loading { associatedtype Item; var item: Item { get } }\n"
             "extension Loading { private func hidden() {}; fileprivate func local() {} }\n"
@@ -68,11 +82,17 @@ class TestTreeSitterSyntaxParser(unittest.TestCase):
         self.assertFalse(tree.root_node.has_error)
         declaration, extension = tree.root_node.named_children
         self.assertEqual(
-            [member.type for member in declaration.child_by_field_name("body").named_children],
+            [
+                member.type
+                for member in declaration.child_by_field_name("body").named_children
+            ],
             ["associatedtype_declaration", "protocol_property_declaration"],
         )
         self.assertEqual(
-            [member.named_children[0].text for member in extension.child_by_field_name("body").named_children],
+            [
+                member.named_children[0].text
+                for member in extension.child_by_field_name("body").named_children
+            ],
             [b"private", b"fileprivate"],
         )
 
@@ -85,11 +105,17 @@ class TestTreeSitterSyntaxParser(unittest.TestCase):
 
         self.assertFalse(tree.root_node.has_error)
         extension = tree.root_node.named_children[0]
-        self.assertIn(b"where Item: Equatable", [child.text for child in extension.named_children])
+        self.assertIn(
+            b"where Item: Equatable", [child.text for child in extension.named_children]
+        )
         method = extension.child_by_field_name("body").named_children[0]
-        self.assertIn(b"where T: Hashable", [child.text for child in method.named_children])
+        self.assertIn(
+            b"where T: Hashable", [child.text for child in method.named_children]
+        )
 
-    def test_incomplete_buffer_retains_parse_error_without_becoming_empty_success(self) -> None:
+    def test_incomplete_buffer_retains_parse_error_without_becoming_empty_success(
+        self,
+    ) -> None:
         tree = self.parser.parse("protocol Loading { func load(id: String)\n")
 
         self.assertTrue(tree.root_node.has_error)
@@ -104,11 +130,17 @@ class TestTreeSitterSyntaxParser(unittest.TestCase):
 
         self.assertFalse(tree.root_node.has_error)
         self.assertEqual(name.text.decode("utf-8"), "télécharger")
-        self.assertEqual(source.encode("utf-8")[name.start_byte:name.end_byte], name.text)
+        self.assertEqual(
+            source.encode("utf-8")[name.start_byte : name.end_byte], name.text
+        )
         self.assertEqual(name.start_point.row, 1)
 
-    def test_same_parser_adapter_supports_typescript_without_swift_special_cases(self) -> None:
-        parser = TreeSitterSyntaxParser(Parser(Language(tree_sitter_typescript.language_typescript())))
+    def test_same_parser_adapter_supports_typescript_without_swift_special_cases(
+        self,
+    ) -> None:
+        parser = TreeSitterSyntaxParser(
+            Parser(Language(tree_sitter_typescript.language_typescript()))
+        )
         tree = parser.parse(
             "interface Loading { load(id: string): string; }\n"
             "class Store implements Loading { load(id: string): string { return id; } }\n"

@@ -15,8 +15,7 @@ _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from flow_transition_evaluating import FlowTransitionGate  # noqa: E402
-
+from flow_transition_evaluating import FlowTransitionGate
 
 """
 solid-name: FlowTransitionGateFactory
@@ -25,6 +24,8 @@ solid-spec: [SPEC-032]
 solid-description: Provides a ready-to-use flow-transition decision service.
 solid-tags: [hook]
 """
+
+
 class FlowTransitionGateFactory:
     """Factory: wires a FlowTransitionGate against the real filesystem, using production defaults.
 
@@ -39,43 +40,66 @@ class FlowTransitionGateFactory:
     def build(self) -> FlowTransitionGate:
         from harness.active_run_locator import ActiveRunLocator
         from harness.active_run_pointer_store import ActiveRunPointerStore
-        from harness.aggregate_ready_step_expander_factory import AggregateReadyStepExpanderFactory
+        from harness.aggregate_ready_step_expander_factory import (
+            AggregateReadyStepExpanderFactory,
+        )
         from harness.attempt_exhaustion_evaluator import AttemptExhaustionEvaluator
-        from harness.attempt_exhaustion_message_builder import AttemptExhaustionMessageBuilder
+        from harness.attempt_exhaustion_message_builder import (
+            AttemptExhaustionMessageBuilder,
+        )
         from harness.attempt_failure_handler import AttemptFailureHandler
+        from harness.collection_operation_registrations_factory import (
+            CollectionOperationRegistrationsFactory,
+        )
         from harness.condition_serializer_factory import make_condition_serializer
         from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
         from harness.flow_file_resolver import FlowFileResolver
         from harness.flow_status_reader import FlowStatusReader
+        from harness.flow_validation_error_factory import FlowValidationErrorFactory
+        from harness.logical_operation_name_validator import (
+            LogicalOperationNameValidator,
+        )
         from harness.name_resolving_flow_loader import NameResolvingFlowLoader
+        from harness.operation_registry import OperationRegistry
         from harness.path_checking import PathChecker
+        from harness.project_context import McpRequestContextProjectDirectoryReader
+        from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
         from harness.run_completion_checker import RunCompletionChecker
         from harness.run_context_builder import RunContextBuilder
         from harness.run_metadata_store import RunMetadataStore
-        from harness.rule_run_finalizer_factory import RuleRunFinalizerFactory
         from harness.run_snapshot_resolver import RunSnapshotResolver
         from harness.run_timeout_message_builder import RunTimeoutMessageBuilder
         from harness.runs_base_dir_resolver import RunsBaseDirResolver
-        from harness.session_scoped_active_path_resolver import SessionScopedActivePathResolver
+        from harness.session_scoped_active_path_resolver import (
+            SessionScopedActivePathResolver,
+        )
         from harness.static_session_id_reader import StaticSessionIdReader
         from harness.workflow_catalog_factory import WorkflowCatalogFactory
         from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
-        from harness.workflow_results_context_builder_factory import WorkflowResultsContextBuilderFactory
-        from harness.collection_operation_registrations_factory import CollectionOperationRegistrationsFactory
-        from harness.flow_validation_error_factory import FlowValidationErrorFactory
-        from harness.logical_operation_name_validator import LogicalOperationNameValidator
-        from harness.operation_registry import OperationRegistry
-        from harness.project_context import McpRequestContextProjectDirectoryReader
-        from review.review_operation_registrations_factory import ReviewOperationRegistrationsFactory
-        from session.project_context import SessionProjectContextPathResolver, SessionProjectDirectoryReader
-        from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
+        from harness.workflow_results_context_builder_factory import (
+            WorkflowResultsContextBuilderFactory,
+        )
         from pending_step_failure_recorder import PendingStepFailureRecorder
+        from review.review_operation_registrations_factory import (
+            ReviewOperationRegistrationsFactory,
+        )
+        from session.project_context import (
+            DEFAULT_SESSION_ROOT,
+            SessionProjectContextPathResolver,
+            SessionProjectDirectoryReader,
+        )
+        from source.source_operation_registrations_factory import (
+            SourceOperationRegistrationsFactory,
+        )
 
         active_run = ActiveRunPointerStore(
-            path_resolver=SessionScopedActivePathResolver(session_id_reader=StaticSessionIdReader(self._session_id))
+            path_resolver=SessionScopedActivePathResolver(
+                session_id_reader=StaticSessionIdReader(self._session_id)
+            )
         )
         run_locator = ActiveRunLocator(
-            base_dir_resolver=self._base_dir_resolver or RunsBaseDirResolver(), active_run=active_run
+            base_dir_resolver=self._base_dir_resolver or RunsBaseDirResolver(),
+            active_run=active_run,
         )
         workflow_catalog = WorkflowCatalogFactory().make()
         assembly = FlowEngineAssemblyFactory().build(
@@ -86,7 +110,11 @@ class FlowTransitionGateFactory:
                     *SourceOperationRegistrationsFactory(
                         project_directory=McpRequestContextProjectDirectoryReader(
                             session_reader=StaticSessionIdReader(self._session_id),
-                            session_project_directory=SessionProjectDirectoryReader(SessionProjectContextPathResolver()),
+                            session_project_directory=SessionProjectDirectoryReader(
+                                SessionProjectContextPathResolver(
+                                    root_directory=DEFAULT_SESSION_ROOT
+                                )
+                            ),
                         ),
                     ).make(),
                     *ReviewOperationRegistrationsFactory().make(),
@@ -130,7 +158,9 @@ class FlowTransitionGateFactory:
                     assembly.schema_validator
                 ),
                 dag_runner=assembly.dag_runner,
-                aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(assembly.interpolator),
+                aggregate_ready_steps=AggregateReadyStepExpanderFactory().make(
+                    assembly.interpolator
+                ),
             ),
             condition_serializer=make_condition_serializer(),
         )
@@ -139,4 +169,6 @@ class FlowTransitionGateFactory:
             flow_loader=resolving_flow_loader,
             attempt_failure_handler=attempt_failure_handler,
         )
-        return FlowTransitionGate(status_reader=status_reader, failure_recorder=failure_recorder)
+        return FlowTransitionGate(
+            status_reader=status_reader, failure_recorder=failure_recorder
+        )

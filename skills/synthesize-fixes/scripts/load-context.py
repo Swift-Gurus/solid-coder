@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Synthesize-fixes Phase 1: Load Context
 
@@ -38,8 +37,8 @@ Output (JSON to stdout):
 }
 """
 
-import json
 import glob
+import json
 import os
 import sys
 

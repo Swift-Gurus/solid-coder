@@ -11,13 +11,14 @@ from source.source_search_targets_building_resolving import (
     SourceSearchTargetsBuildingResolving,
 )
 
-
 """
 solid-name: SourceSearchTargetsBuilder
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Prepares source-search targets by selecting the policy appropriate to the requested granularity.
 """
+
+
 class SourceSearchTargetsBuilder:
     def __init__(
         self,
@@ -42,9 +43,7 @@ class SourceSearchTargetsBuilder:
                 path=self._paths.build(source.identity),
                 source_identity=source.identity,
                 content=source.text,
-                content_sha256=self._content_hasher.hash(
-                    source.text.encode("utf-8")
-                ),
+                content_sha256=self._content_hasher.hash(source.text.encode("utf-8")),
                 units=analysis.units,
             ),
         )

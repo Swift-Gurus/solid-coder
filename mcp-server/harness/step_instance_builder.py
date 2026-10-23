@@ -13,13 +13,14 @@ from harness.step_instance_building import StepInstanceBuilding
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
-
 """
 solid-name: StepInstanceBuilder
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030, SPEC-037, SPEC-040]
 solid-description: Materializes ordinary or operation-specific step instances from resolved runtime context.
 """
+
+
 class StepInstanceBuilder(StepInstanceBuilding):
     def __init__(
         self,

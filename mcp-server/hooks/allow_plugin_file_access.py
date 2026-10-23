@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PermissionRequest hook — auto-allow Read/Write/Edit for plugin-owned paths.
 
 Auto-approves:
@@ -7,12 +6,15 @@ Auto-approves:
   - Any file inside ${CLAUDE_PROJECT_DIR}/.claude/specs/       (project specs, nested)
   - Any file inside ${CLAUDE_PROJECT_DIR}/specs/               (project specs, root-level)
 """
+
 import json
 import os
 import sys
 from pathlib import Path
 
-PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2]))
+PLUGIN_ROOT = Path(
+    os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2])
+)
 
 project_dir_env = os.environ.get("CLAUDE_PROJECT_DIR")
 PROJECT_DIR = Path(project_dir_env) if project_dir_env else None
@@ -30,17 +32,18 @@ if not file_path:
 
 target = Path(file_path)
 
+
 def is_relative_to_safe(path, base):
     try:
         return path.is_relative_to(base)
-    except Exception:
+    except Exception:  # noqa: BLE001 — Legacy permission hook retains its path compatibility fallback pending separate retirement.
         return str(base) in str(path)
+
 
 is_plugin_file = is_relative_to_safe(target, PLUGIN_ROOT)
 
-is_output_file = (
-    PROJECT_DIR is not None
-    and is_relative_to_safe(target, PROJECT_DIR / ".solid_coder")
+is_output_file = PROJECT_DIR is not None and is_relative_to_safe(
+    target, PROJECT_DIR / ".solid_coder"
 )
 
 is_spec_file = PROJECT_DIR is not None and (
@@ -50,11 +53,19 @@ is_spec_file = PROJECT_DIR is not None and (
 
 is_home_output_file = is_relative_to_safe(target, Path.home() / ".solid-coder")
 
-behavior = "allow" if (is_plugin_file or is_output_file or is_spec_file or is_home_output_file) else "ask"
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "PermissionRequest",
-        "decision": {"behavior": behavior},
-    }
-}))
+behavior = (
+    "allow"
+    if (is_plugin_file or is_output_file or is_spec_file or is_home_output_file)
+    else "ask"
+)
+print(
+    json.dumps(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "PermissionRequest",
+                "decision": {"behavior": behavior},
+            }
+        }
+    )
+)
 sys.exit(0)

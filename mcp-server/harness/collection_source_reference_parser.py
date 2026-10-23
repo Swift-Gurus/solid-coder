@@ -10,13 +10,14 @@ from harness.step_output_reference_syntax_error import (
 )
 from harness.workflow_output_reference import WorkflowOutputReference
 
-
 """
 solid-name: CollectionSourceReferenceParser
 solid-category: boundary
 solid-spec: [SPEC-053, SPEC-056]
 solid-description: Parses collection sources from local step outputs or projected child-workflow outputs.
 """
+
+
 class CollectionSourceReferenceParser(CollectionSourceReferenceParsing):
     def __init__(
         self,

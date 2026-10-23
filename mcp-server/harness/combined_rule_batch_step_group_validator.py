@@ -9,24 +9,24 @@ from harness.combined_rule_batch_step_presentation import (
 from harness.flow_validation_error import FlowValidationError
 from harness.step_result import StepResult
 
-
 """
 solid-name: CombinedRuleBatchStepGroupValidator
 solid-category: service
 solid-spec: [SPEC-043]
 solid-description: Enforces unique rule-and-unit targets and one shared prompt within each rule section of a combined batch.
 """
+
+
 class CombinedRuleBatchStepGroupValidator(BatchStepGroupValidating):
     def validate(self, steps: list[StepResult]) -> None:
         presentations = [
-            cast(CombinedRuleBatchStepPresentation, step.batch)
-            for step in steps
+            cast(CombinedRuleBatchStepPresentation, step.batch) for step in steps
         ]
         for index, presentation in enumerate(presentations):
             if any(
                 candidate.label == presentation.label
                 and candidate.rule_alias == presentation.rule_alias
-                for candidate in presentations[index + 1:]
+                for candidate in presentations[index + 1 :]
             ):
                 raise FlowValidationError(
                     "Combined presentation rule and item labels must be unique"

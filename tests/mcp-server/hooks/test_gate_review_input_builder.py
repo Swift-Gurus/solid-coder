@@ -5,16 +5,14 @@ from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from gate_review_input_builder import GateReviewInputBuilder  # noqa: E402
-from patch_file_simulation import PatchFileSimulation  # noqa: E402
-from patch_review_context import PatchReviewContext  # noqa: E402
-
+from gate_review_input_builder import GateReviewInputBuilder
+from patch_file_simulation import PatchFileSimulation
+from patch_review_context import PatchReviewContext
 
 """
 solid-name: TestGateReviewInputBuilder
@@ -22,6 +20,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Proves prospective source requests become text-backed review inputs with shared patch context.
 """
+
+
 class TestGateReviewInputBuilder(unittest.TestCase):
     def test_builds_text_target_for_nonexistent_destination(self) -> None:
         result = GateReviewInputBuilder().build(
@@ -42,20 +42,22 @@ class TestGateReviewInputBuilder(unittest.TestCase):
         result = GateReviewInputBuilder().build(
             "struct First {}",
             "/project/Sources/First.swift",
-            PatchReviewContext(proposed_files=[
-                PatchFileSimulation(
-                    file_path="/project/Sources/First.swift",
-                    content="struct First {}",
-                    existing_content="",
-                    low_risk=False,
-                ),
-                PatchFileSimulation(
-                    file_path="/project/Sources/Second.swift",
-                    content="struct Second {}",
-                    existing_content="",
-                    low_risk=False,
-                ),
-            ]),
+            PatchReviewContext(
+                proposed_files=[
+                    PatchFileSimulation(
+                        file_path="/project/Sources/First.swift",
+                        content="struct First {}",
+                        existing_content="",
+                        low_risk=False,
+                    ),
+                    PatchFileSimulation(
+                        file_path="/project/Sources/Second.swift",
+                        content="struct Second {}",
+                        existing_content="",
+                        low_risk=False,
+                    ),
+                ]
+            ),
         )
 
         self.assertEqual(len(result.context_sources), 1)

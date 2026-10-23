@@ -7,13 +7,14 @@ from typing import Protocol
 from harness.exhausted_attempt import ExhaustedAttempt
 from harness.models import RunState
 
-
 """
 solid-name: AttemptExhaustionMessageBuilding
 solid-category: abstraction
 solid-spec: [SPEC-010, SPEC-031]
-solid-description: Contract for constructing an exhausted workflow-attempt diagnostic.
+solid-description: Contract for creating diagnostics for exhausted workflow attempts.
 """
+
+
 class AttemptExhaustionMessageBuilding(Protocol):
     def build(
         self,

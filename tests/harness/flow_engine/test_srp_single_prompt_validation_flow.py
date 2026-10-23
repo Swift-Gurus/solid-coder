@@ -15,14 +15,13 @@ for _directory in (_PROJECT_ROOT / "mcp-server", _HARNESS_DIRECTORY):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
-from review_unit_workflow_context import ReviewUnitWorkflowContext  # noqa: E402
-from review_unit_workflow_parameters import ReviewUnitWorkflowParameters  # noqa: E402
-from review_unit_workflow_target import ReviewUnitWorkflowTarget  # noqa: E402
-from rule_instruction_block_reader import RuleInstructionBlockReader  # noqa: E402
-
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.static_session_id_reader import StaticSessionIdReader
+from review_unit_workflow_context import ReviewUnitWorkflowContext
+from review_unit_workflow_parameters import ReviewUnitWorkflowParameters
+from review_unit_workflow_target import ReviewUnitWorkflowTarget
+from rule_instruction_block_reader import RuleInstructionBlockReader
 
 """
 solid-name: TestSRPSinglePromptValidationFlow
@@ -30,6 +29,8 @@ solid-category: integration-test
 solid-spec: [SPEC-036]
 solid-description: Proves the experimental SRP workflow presents one canonical prompt and validates all audited observations in one response.
 """
+
+
 class TestSRPSinglePromptValidationFlow(unittest.TestCase):
     WORKFLOW_ID = "srp-single-prompt"
 
@@ -77,11 +78,13 @@ class TestSRPSinglePromptValidationFlow(unittest.TestCase):
     def test_rejects_an_incomplete_aggregate_response(self) -> None:
         started = self._start()
 
-        rejected = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "verb_count": self._measurement(6),
+        rejected = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "verb_count": self._measurement(6),
+                }
             }
-        })
+        )
 
         self.assertEqual(rejected.status, "ready")
         self.assertEqual(len(rejected.steps), 1)
@@ -90,17 +93,19 @@ class TestSRPSinglePromptValidationFlow(unittest.TestCase):
     def test_completes_after_one_audited_aggregate_response(self) -> None:
         started = self._start()
 
-        completed = self.sut.flow_next({
-            started.steps[0].instance_id: self._response(),
-        })
+        completed = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: self._response(),
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         self.assertEqual(completed.steps, [])
         events = [
             json.loads(line)
-            for line in (
-                self.run_root / "runs" / started.run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.run_root / "runs" / started.run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
             if line.strip()
         ]
         completed_steps = [
@@ -111,7 +116,8 @@ class TestSRPSinglePromptValidationFlow(unittest.TestCase):
 
     def test_batched_include_completes_two_units_in_one_submission(self) -> None:
         parent = self.run_root / "workflow.yaml"
-        parent.write_text(textwrap.dedent("""
+        parent.write_text(
+            textwrap.dedent("""
             id: batched-srp-review
             name: Batched SRP Review
             max_turns: 5
@@ -132,37 +138,43 @@ class TestSRPSinglePromptValidationFlow(unittest.TestCase):
                   label: "{{item.target.name}}"
                 with:
                   review_unit: "{{item}}"
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
         started = self.sut.flow_start(str(parent))
-        ready = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "units": [
-                    ReviewUnitWorkflowContext(
-                        target=ReviewUnitWorkflowTarget(name="Alpha")
-                    ).model_dump(),
-                    ReviewUnitWorkflowContext(
-                        target=ReviewUnitWorkflowTarget(name="Beta")
-                    ).model_dump(),
-                ]
+        ready = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [
+                        ReviewUnitWorkflowContext(
+                            target=ReviewUnitWorkflowTarget(name="Alpha")
+                        ).model_dump(),
+                        ReviewUnitWorkflowContext(
+                            target=ReviewUnitWorkflowTarget(name="Beta")
+                        ).model_dump(),
+                    ]
+                }
             }
-        })
+        )
 
         self.assertEqual(
             [step.batch.label for step in ready.steps],
             ["Alpha", "Beta"],
         )
         self.assertEqual(len({step.prompt for step in ready.steps}), 1)
-        completed = self.sut.flow_next({
-            "Alpha": self._response(),
-            "Beta": self._response(),
-        })
+        completed = self.sut.flow_next(
+            {
+                "Alpha": self._response(),
+                "Beta": self._response(),
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         events = [
             json.loads(line)
-            for line in (
-                self.run_root / "runs" / started.run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.run_root / "runs" / started.run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
             if line.strip()
         ]
         completed_srp = [

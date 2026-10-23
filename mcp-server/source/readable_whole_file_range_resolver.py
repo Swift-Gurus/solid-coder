@@ -7,13 +7,14 @@ from source.source_operation_error import SourceOperationError
 from source.whole_file_range_resolving import WholeFileRangeResolving
 from utils.prompt_builder import TextFileReading
 
-
 """
 solid-name: ReadableWholeFileRangeResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves the complete inclusive line range of a readable text file.
 """
+
+
 class ReadableWholeFileRangeResolver(WholeFileRangeResolving):
     def __init__(self, reader: TextFileReading) -> None:
         self._reader = reader

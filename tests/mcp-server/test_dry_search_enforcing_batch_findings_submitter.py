@@ -11,12 +11,13 @@ from health.dry_search_enforcing_batch_findings_submitter import (
     DrySearchEnforcingBatchFindingsSubmitter,
 )
 
-
 """
 solid-name: TestDrySearchEnforcingBatchFindingsSubmitter
 solid-category: unit-test
 solid-description: Verifies health-check submission is rejected without DRY-search proof while other submissions remain supported.
 """
+
+
 class TestDrySearchEnforcingBatchFindingsSubmitter:
     def setup_method(self) -> None:
         self.submission = MagicMock()
@@ -25,12 +26,16 @@ class TestDrySearchEnforcingBatchFindingsSubmitter:
             submission=self.submission,
             completion=self.completion,
         )
-        self.parse_result = BatchSubmissionParseResult(BatchSubmission((
-            PrincipleSubmission(
-                label="dry",
-                output=PartialReviewOutput(timestamp="test", files=()),
-            ),
-        )))
+        self.parse_result = BatchSubmissionParseResult(
+            BatchSubmission(
+                (
+                    PrincipleSubmission(
+                        label="dry",
+                        output=PartialReviewOutput(timestamp="test", files=()),
+                    ),
+                )
+            )
+        )
 
     def test_missing_health_completion_is_rejected(self) -> None:
         self.completion.status.return_value = DrySearchCompletionStatus.MISSING
@@ -64,12 +69,16 @@ class TestDrySearchEnforcingBatchFindingsSubmitter:
     def test_health_submission_without_dry_does_not_require_search(self) -> None:
         self.completion.status.return_value = DrySearchCompletionStatus.MISSING
         self.submission.submit_batch.return_value = {"violations": []}
-        srp_result = BatchSubmissionParseResult(BatchSubmission((
-            PrincipleSubmission(
-                label="srp",
-                output=PartialReviewOutput(timestamp="test", files=()),
-            ),
-        )))
+        srp_result = BatchSubmissionParseResult(
+            BatchSubmission(
+                (
+                    PrincipleSubmission(
+                        label="srp",
+                        output=PartialReviewOutput(timestamp="test", files=()),
+                    ),
+                )
+            )
+        )
 
         result = self.handler.submit_batch("/health/run", srp_result)
 

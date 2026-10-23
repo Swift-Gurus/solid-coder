@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from findings.review_unit import ReviewUnit
-
 
 """
 solid-name: ReviewUnitScoringResult
 solid-category: model
 solid-description: Represents a unit-scoring outcome with either server-authoritative findings or failure information.
 """
+
+
 @dataclass(frozen=True)
 class ReviewUnitScoringResult:
-    unit: Optional[ReviewUnit] = None
-    error_message: Optional[str] = None
+    unit: ReviewUnit | None = None
+    error_message: str | None = None
 
     @property
     def succeeded(self) -> bool:

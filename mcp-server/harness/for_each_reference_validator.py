@@ -15,13 +15,14 @@ from harness.step_dependency_reachability_checking import (
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_data_schema import WorkflowDataSchema
 
-
 """
 solid-name: ForEachReferenceValidator
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030]
 solid-description: Validates workflow iteration syntax, source outputs, array schemas, and dependency reachability.
 """
+
+
 class ForEachReferenceValidator(ForEachTargetValidating):
     def __init__(
         self,
@@ -41,11 +42,7 @@ class ForEachReferenceValidator(ForEachTargetValidating):
         steps: list[StepDef],
     ) -> None:
         source_step = next(
-            (
-                candidate
-                for candidate in steps
-                if candidate.id == target.source_step_id
-            ),
+            (candidate for candidate in steps if candidate.id == target.source_step_id),
             None,
         )
         if source_step is None:

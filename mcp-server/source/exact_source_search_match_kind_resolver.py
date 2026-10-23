@@ -8,13 +8,14 @@ from source.source_search_match_kind_resolving import (
     SourceSearchMatchKindResolving,
 )
 
-
 """
 solid-name: ExactSourceSearchMatchKindResolver
 solid-category: service
 solid-spec: [SPEC-040, SPEC-060]
 solid-description: Classifies exact filename, import, frontmatter, symbol, and content matches from source snapshots.
 """
+
+
 class ExactSourceSearchMatchKindResolver(SourceSearchMatchKindResolving):
     def resolve(
         self,

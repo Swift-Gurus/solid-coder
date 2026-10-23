@@ -6,21 +6,20 @@ from collections import defaultdict
 from pathlib import Path
 from unittest.mock import Mock
 
-
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from pipeline.server import ApplicationBootstrapper  # noqa: E402
-
+from pipeline.server import ApplicationBootstrapper
 
 """
 solid-name: TestPipelineFlowBoundary
 solid-category: test
 solid-description: Verifies that the legacy pipeline endpoint does not expose workflow progression tools.
 """
-class TestPipelineFlowBoundary(unittest.TestCase):
 
+
+class TestPipelineFlowBoundary(unittest.TestCase):
     def test_does_not_register_flow_tools(self) -> None:
         registry = Mock()
         pipeline_callables = Mock()
@@ -39,10 +38,7 @@ class TestPipelineFlowBoundary(unittest.TestCase):
 
         application.run()
 
-        registered_names = [
-            call.args[0]
-            for call in registry.register.call_args_list
-        ]
+        registered_names = [call.args[0] for call in registry.register.call_args_list]
         self.assertNotIn("flow_start", registered_names)
         self.assertNotIn("flow_next", registered_names)
 

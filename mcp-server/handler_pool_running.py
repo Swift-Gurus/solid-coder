@@ -5,11 +5,12 @@ solid-description: Contract for applying a function to each item in a list and r
 solid-tags: [hook]
 """
 
-from typing import Callable, List, Protocol, TypeVar
+from collections.abc import Callable
+from typing import Protocol, TypeVar
 
 T = TypeVar("T")
 R = TypeVar("R")
 
 
 class HandlerPoolRunning(Protocol):
-    def map(self, fn: Callable[[T], R], items: List[T]) -> List[R]: ...
+    def map(self, fn: Callable[[T], R], items: list[T]) -> list[R]: ...

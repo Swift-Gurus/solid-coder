@@ -2,13 +2,14 @@
 
 from health_violation import HealthViolation
 
-
 """
 solid-name: HealthViolationBlockFormatter
 solid-category: service
 solid-spec: [SPEC-036]
 solid-description: Formats severe health findings with correction guidance while keeping audit evidence out of the model-facing response.
 """
+
+
 class HealthViolationBlockFormatter:
     def format_block_reason(
         self,
@@ -18,8 +19,7 @@ class HealthViolationBlockFormatter:
         for violation in violations:
             issue_lines = violation.issue.splitlines()
             lines.append(
-                f"  • {violation.principle} / {violation.metric_id} — "
-                f"{issue_lines[0]}"
+                f"  • {violation.principle} / {violation.metric_id} — {issue_lines[0]}"
             )
             lines.extend(f"    {line}" for line in issue_lines[1:])
             if violation.fix:

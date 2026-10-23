@@ -6,6 +6,7 @@ solid-category: service
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -13,9 +14,13 @@ _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from jsonschema_error_formatter import format_schema_errors  # noqa: E402
-
 from harness.models import ValidationResult
+
+"""
+solid-name: JsonSchemaValidating
+solid-category: abstraction
+solid-description: Contract for reporting whether data satisfies a JSON schema.
+"""
 
 
 class JsonSchemaValidating(Protocol):
@@ -27,17 +32,29 @@ class JsonSchemaValidating(Protocol):
     def validate(self, schema: dict, value: Any) -> ValidationResult: ...
 
 
+"""
+solid-name: JsonSchemaValidator
+solid-category: service
+solid-description: Validates JSON data and reports validation errors through structured results.
+"""
+
+
 class JsonSchemaValidator:
     """
     solid-description: Validates values against JSON Schema specifications.
     solid-category: service
     """
 
+    def __init__(self, format_errors: Callable[[dict, Any], list[str]]) -> None:
+        self._format_errors = format_errors
+
     def validate(self, schema: dict, value: Any) -> ValidationResult:
         try:
-            errors = format_schema_errors(schema, value)
+            errors = self._format_errors(schema, value)
             return ValidationResult(ok=not errors, errors=errors)
         except ImportError:
-            return ValidationResult(ok=False, errors=["jsonschema package not installed"])
-        except Exception as exc:
+            return ValidationResult(
+                ok=False, errors=["jsonschema package not installed"]
+            )
+        except Exception as exc:  # noqa: BLE001 — Formatter failures become explicit invalid ValidationResult values, never successful validation.
             return ValidationResult(ok=False, errors=[str(exc)])

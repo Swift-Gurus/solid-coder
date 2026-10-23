@@ -4,13 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: SourceAssociatedTypeSignature
 solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Records associated-type bounds, defaults, and constraints without assuming a concrete type substitution.
 """
+
+
 class SourceAssociatedTypeSignature(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

@@ -7,16 +7,15 @@ from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.text_analysis_source import TextAnalysisSource
 from source.text_analysis_source_resolving import TextAnalysisSourceResolving
 
-
 """
 solid-name: AnalysisSourceDispatchVisitor
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Dispatches each sealed analysis-source variant to its focused resolver.
 """
-class AnalysisSourceDispatchVisitor(
-    AnalysisSourceVisitor[ResolvedAnalysisSource]
-):
+
+
+class AnalysisSourceDispatchVisitor(AnalysisSourceVisitor[ResolvedAnalysisSource]):
     def __init__(
         self,
         file_resolver: FileAnalysisSourceResolving,

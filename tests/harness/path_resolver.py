@@ -14,7 +14,7 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import PathResolving  # noqa: E402
+from interfaces import PathResolving
 
 _REFERENCES_PREFIX = "references/"
 
@@ -26,7 +26,7 @@ class PathResolver(PathResolving):
     def resolve(self, references_path: str) -> Path:
         normalized = references_path.replace("\\", "/")
         if normalized.startswith(_REFERENCES_PREFIX):
-            suffix = normalized[len(_REFERENCES_PREFIX):]
+            suffix = normalized[len(_REFERENCES_PREFIX) :]
         else:
             suffix = normalized
         resolved = self._project_root / "tests" / suffix

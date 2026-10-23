@@ -14,10 +14,10 @@ from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.models import StepInstance
 from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
+from harness.models import StepInstance
 from harness.output_recorder import OutputRecorder
 
 
@@ -30,7 +30,6 @@ class SpyEventAppender:
 
 
 class TestOutputRecorder(unittest.TestCase):
-
     def setUp(self) -> None:
         self.derivation_renderer = Mock()
         self.derivation_renderer.render.return_value = None
@@ -45,8 +44,12 @@ class TestOutputRecorder(unittest.TestCase):
         appender = SpyEventAppender()
         sut = self._recorder(appender)
         instances = [
-            StepInstance(step_id="step-a", instance_id="step-a-1", item=None, prompt="Do step-a"),
-            StepInstance(step_id="step-b", instance_id="step-b-1", item=None, prompt="Do step-b"),
+            StepInstance(
+                step_id="step-a", instance_id="step-a-1", item=None, prompt="Do step-a"
+            ),
+            StepInstance(
+                step_id="step-b", instance_id="step-b-1", item=None, prompt="Do step-b"
+            ),
         ]
 
         sut.record(
@@ -60,10 +63,15 @@ class TestOutputRecorder(unittest.TestCase):
         )
 
         event_types = [e[1] for e in appender.events]
-        self.assertEqual(event_types, [
-            "step_completed", "session_step_recorded",
-            "step_completed", "session_step_recorded",
-        ])
+        self.assertEqual(
+            event_types,
+            [
+                "step_completed",
+                "session_step_recorded",
+                "step_completed",
+                "session_step_recorded",
+            ],
+        )
         first_completed = appender.events[0][2]
         self.assertEqual(first_completed["instance_id"], "step-a-1")
         self.assertEqual(first_completed["outputs"], {"result": "a"})
@@ -97,7 +105,9 @@ class TestOutputRecorder(unittest.TestCase):
         self.assertEqual(completion["item"], "Alpha.swift")
         self.assertFalse(completion["parent_completed"])
 
-    def test_complete_for_each_submission_marks_only_final_event_as_parent_complete(self):
+    def test_complete_for_each_submission_marks_only_final_event_as_parent_complete(
+        self,
+    ):
         appender = SpyEventAppender()
         sut = self._recorder(appender)
         instances = self._for_each_instances()
@@ -139,13 +149,15 @@ class TestOutputRecorder(unittest.TestCase):
             source_index=0,
             source_item="Alpha.swift",
             owner_instance_id="parent-workflow-instance-3",
-            steps=IncludedWorkflowStepIdentities(entries=[
-                IncludedWorkflowStepIdentity(
-                    declaration_id="review.inspect",
-                    local_step_id="inspect",
-                    execution_step_id="opaque-step-a7f4",
-                )
-            ]),
+            steps=IncludedWorkflowStepIdentities(
+                entries=[
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.inspect",
+                        local_step_id="inspect",
+                        execution_step_id="opaque-step-a7f4",
+                    )
+                ]
+            ),
         )
         instance = StepInstance(
             step_id="opaque-step-a7f4",

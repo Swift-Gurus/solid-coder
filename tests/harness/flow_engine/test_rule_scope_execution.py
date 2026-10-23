@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestRuleScopeExecution
 solid-category: integration-test
 solid-spec: [SPEC-039]
 solid-description: Proves file rules materialize once per file while unit rules materialize once per normalized unit.
 """
+
+
 class TestRuleScopeExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -34,15 +35,17 @@ class TestRuleScopeExecution(unittest.TestCase):
 
     def test_materializes_file_rule_once_and_unit_rule_for_every_unit(self) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
-        expanded = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "review_file": {"source_identity": "Mixed.swift"},
-                "units": [
-                    {"name": "First"},
-                    {"name": "Second"},
-                ],
+        expanded = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "review_file": {"source_identity": "Mixed.swift"},
+                    "units": [
+                        {"name": "First"},
+                        {"name": "Second"},
+                    ],
+                }
             }
-        })
+        )
 
         self.assertIsNone(expanded.error, expanded.error)
         prompts = [step.prompt for step in expanded.steps]

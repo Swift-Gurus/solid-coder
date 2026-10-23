@@ -15,20 +15,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
 from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
+from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
-from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
-from harness.project_review_policy_audit import ProjectReviewPolicyAudit
-from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
 from harness.metric_override_applier import MetricOverrideApplier
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.project_context import ProjectDirectory
+from harness.project_policy_rule_decision import ProjectPolicyRuleDecision
+from harness.project_review_policy_audit import ProjectReviewPolicyAudit
+from harness.project_review_policy_resolution import ProjectReviewPolicyResolution
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_metric_override import ReviewPolicyMetricOverride
 from harness.review_policy_rule_override import ReviewPolicyRuleOverride
+from harness.review_policy_target_validator import ReviewPolicyTargetValidator
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_enablement_resolver import RuleEnablementResolver
 from harness.rule_match_declaration import RuleMatchDeclaration
@@ -40,11 +41,9 @@ from harness.sha256_content_hasher import Sha256ContentHasher
 from harness.workflow_catalog import WorkflowCatalog
 from harness.workflow_default_rule_decision import WorkflowDefaultRuleDecision
 from harness.workflow_source import WorkflowSource
-from harness.review_policy_target_validator import ReviewPolicyTargetValidator
 
 
 class TestEffectiveRulePlanBuilder(unittest.TestCase):
-
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -91,9 +90,7 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
             ),
             audit=ProjectReviewPolicyAudit(
                 source_path=(self.project_root / ".solid-coder/policies/review.yaml"),
-                content_hash=hashlib.sha256(
-                    policy_content.encode("utf-8")
-                ).hexdigest(),
+                content_hash=hashlib.sha256(policy_content.encode("utf-8")).hexdigest(),
             ),
             authored_content=policy_content,
         )
@@ -162,7 +159,9 @@ class TestEffectiveRulePlanBuilder(unittest.TestCase):
             ProjectReviewPolicyResolution(
                 policy=ReviewPolicy(version=1),
                 audit=ProjectReviewPolicyAudit(
-                    source_path=(self.project_root / ".solid-coder/policies/review.yaml"),
+                    source_path=(
+                        self.project_root / ".solid-coder/policies/review.yaml"
+                    ),
                     content_hash="policy-hash",
                 ),
                 authored_content="version: 1\n",

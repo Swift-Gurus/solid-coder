@@ -6,15 +6,15 @@ from harness.run_state import RunState
 from harness.run_state_building import RunStateBuilding
 from harness.run_state_event_routing import RunStateEventRouting
 
-
 """
 solid-name: RunStateReconstructor
 solid-category: service
 solid-spec: [SPEC-030]
 solid-description: Coordinates run-state construction by replaying events through injected transitions.
 """
-class RunStateReconstructor:
 
+
+class RunStateReconstructor:
     def __init__(
         self,
         state_builder: RunStateBuilding,

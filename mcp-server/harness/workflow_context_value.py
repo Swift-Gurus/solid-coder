@@ -3,7 +3,6 @@
 from dataclasses import dataclass
 from typing import Generic, TypeVar
 
-
 Value = TypeVar("Value")
 
 
@@ -13,6 +12,8 @@ solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Associates a workflow runtime context name with its typed or schema-backed value.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowContextValue(Generic[Value]):
     name: str

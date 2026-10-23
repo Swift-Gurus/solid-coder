@@ -4,13 +4,14 @@ from findings.review_severity import ReviewSeverity
 from harness.review_result import ReviewResult
 from health_violation import HealthViolation
 
-
 """
 solid-name: ScoredReviewViolationSelector
 solid-category: service
 solid-spec: [SPEC-036, SPEC-039]
 solid-description: Converts severe scored metric decisions into health violations.
 """
+
+
 class ScoredReviewViolationSelector:
     def select(self, result: ReviewResult) -> list[HealthViolation]:
         return [

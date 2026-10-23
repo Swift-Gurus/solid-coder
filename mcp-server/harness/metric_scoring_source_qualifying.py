@@ -2,13 +2,14 @@
 
 from typing import Protocol
 
-
 """
 solid-name: MetricScoringSourceQualifying
 solid-category: abstraction
 solid-spec: [SPEC-053]
 solid-description: Contract for qualifying collection metric sources within included workflows.
 """
+
+
 class MetricScoringSourceQualifying(Protocol):
     def qualify(
         self,

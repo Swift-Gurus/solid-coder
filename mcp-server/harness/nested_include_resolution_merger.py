@@ -3,15 +3,14 @@
 from dataclasses import replace
 
 from harness.include_alias_group import IncludeAliasGroup
+from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 from harness.include_resolution import IncludeResolution
 from harness.include_source import IncludeSource
-from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 from harness.nested_include_child_group_transforming import (
     NestedIncludeChildGroupTransforming,
 )
 from harness.nested_include_resolution_merging import NestedIncludeResolutionMerging
 from harness.ordered_string_collecting import OrderedStringCollecting
-
 
 """
 solid-name: NestedIncludeResolutionMerger
@@ -19,8 +18,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035, SPEC-045]
 solid-description: Merges a qualified nested include into an aggregate resolution.
 """
-class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
 
+
+class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
     def __init__(
         self,
         ordered_strings: OrderedStringCollecting,
@@ -53,9 +53,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             for group in nested.alias_groups
         ]
         owned_member_ids = {
-            member_id
-            for group in owned_groups
-            for member_id in group.member_ids
+            member_id for group in owned_groups for member_id in group.member_ids
         }
         source_group = IncludeAliasGroup(
             alias=source.alias,
@@ -76,9 +74,7 @@ class NestedIncludeResolutionMerger(NestedIncludeResolutionMerging):
             presentation_declared=source.runtime.presentation_declared,
         )
         alias_groups = [
-            group
-            for group in resolution.alias_groups
-            if group.alias != source.alias
+            group for group in resolution.alias_groups if group.alias != source.alias
         ]
         alias_groups.extend([source_group, *owned_groups])
         source_paths = [source.source_path] if source.source_path else []

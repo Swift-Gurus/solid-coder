@@ -1,12 +1,18 @@
 """
-solid-description: Submits scored findings output for persistence.
+solid-description: Provides scored findings submission capabilities.
 solid-category: service
 solid-tags: [utility, service]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
-from findings.json_file_writer import JsonFileWriting, JsonFileWriter
+from findings.json_file_writer import JsonFileWriting
+
+"""
+solid-name: FindingsSubmitting
+solid-category: abstraction
+solid-description: Contract for persisting scored findings.
+"""
 
 
 class FindingsSubmitting(Protocol):
@@ -15,7 +21,14 @@ class FindingsSubmitting(Protocol):
         timestamp: str,
         scored_files: list,
         output_path: str,
-    ) -> Optional[dict]: ...
+    ) -> dict | None: ...
+
+
+"""
+solid-name: FindingsSubmitter
+solid-category: service
+solid-description: Submits scored findings for persistence.
+"""
 
 
 class FindingsSubmitter:
@@ -29,7 +42,7 @@ class FindingsSubmitter:
         timestamp: str,
         scored_files: list,
         output_path: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         doc = {"timestamp": timestamp, "files": scored_files}
         self._file_writer.write(output_path, doc)
         return None

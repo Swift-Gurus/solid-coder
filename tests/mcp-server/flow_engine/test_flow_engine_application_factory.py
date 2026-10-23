@@ -5,22 +5,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-
 _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from flow_engine.application import FlowEngineApplication  # noqa: E402
-from flow_engine.application_factory import FlowEngineApplicationFactory  # noqa: E402
-
+from flow_engine.application import FlowEngineApplication
+from flow_engine.application_factory import FlowEngineApplicationFactory
 
 """
 solid-name: TestFlowEngineApplicationFactory
 solid-category: test
 solid-description: Verifies the dedicated flow-engine server identity and model-facing initialization guidance.
 """
-class TestFlowEngineApplicationFactory(unittest.TestCase):
 
+
+class TestFlowEngineApplicationFactory(unittest.TestCase):
     @patch("flow_engine.application_factory.MCPServerFactory")
     def test_builds_dedicated_server_with_workflow_instructions(
         self,

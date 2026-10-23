@@ -5,15 +5,15 @@ from harness.directed_graph_creating import DirectedGraphCreating
 from harness.directed_graph_edge import DirectedGraphEdge
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 
-
 """
 solid-name: IncludeCycleValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Rejects cyclic workflow include chains.
 """
-class IncludeCycleValidator:
 
+
+class IncludeCycleValidator:
     def __init__(
         self,
         graph_factory: DirectedGraphCreating,

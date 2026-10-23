@@ -7,7 +7,6 @@ from typing import cast
 from harness.aggregate_assignment_presentation import AggregateAssignmentPresentation
 from harness.authored_step_coordinate import AuthoredStepCoordinate
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
-
 from harness.models import FlowDef, RunState, StepInstance
 from harness.step_result import StepResult
 from harness.step_result_building import StepResultBuilding
@@ -22,8 +21,9 @@ solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Synthesizes externally returned workflow-step execution results from definitions and run state.
 """
-class StepResultBuilder(StepResultBuilding):
 
+
+class StepResultBuilder(StepResultBuilding):
     def build(
         self,
         instances: list[StepInstance],
@@ -43,22 +43,27 @@ class StepResultBuilder(StepResultBuilding):
                 rejection_reason = run_state.rejection_reasons.get(
                     instance.instance_id
                 ) or run_state.rejection_reasons.get(instance.step_id)
-            results.append(StepResult(
-                step_id=instance.step_id,
-                instance_id=instance.instance_id,
-                prompt=instance.prompt,
-                execution=execution,
-                rejection_reason=rejection_reason,
-                batch=instance.batch,
-                authored_step=(
-                    cast(AggregateAssignmentPresentation, instance.batch).authored_step
-                    if instance.batch is not None and instance.batch.mode is BatchStepPresentationMode.AGGREGATE
-                    else AuthoredStepCoordinate(
-                        workflow_id=flow_def.workflow_id,
-                        step_id=instance.step_id,
-                        prompt=instance.authored_prompt or instance.prompt,
-                        outputs=step_def.outputs if step_def is not None else [],
-                    )
-                ),
-            ))
+            results.append(
+                StepResult(
+                    step_id=instance.step_id,
+                    instance_id=instance.instance_id,
+                    prompt=instance.prompt,
+                    execution=execution,
+                    rejection_reason=rejection_reason,
+                    batch=instance.batch,
+                    authored_step=(
+                        cast(
+                            AggregateAssignmentPresentation, instance.batch
+                        ).authored_step
+                        if instance.batch is not None
+                        and instance.batch.mode is BatchStepPresentationMode.AGGREGATE
+                        else AuthoredStepCoordinate(
+                            workflow_id=flow_def.workflow_id,
+                            step_id=instance.step_id,
+                            prompt=instance.authored_prompt or instance.prompt,
+                            outputs=step_def.outputs if step_def is not None else [],
+                        )
+                    ),
+                )
+            )
         return results

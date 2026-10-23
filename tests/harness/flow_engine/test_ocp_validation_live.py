@@ -18,16 +18,14 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from ocp_validation_e2e_live_base import OCPValidationE2ELiveBase  # noqa: E402
+from claude_test_base import ClaudeTestBase
+from codex_test_base import CodexTestBase
+from ocp_validation_e2e_live_base import OCPValidationE2ELiveBase
 
 
 class TestCodexOCPValidationLive(CodexTestBase, OCPValidationE2ELiveBase):
-
     __test__ = True
 
 
 class TestClaudeOCPValidationLive(ClaudeTestBase, OCPValidationE2ELiveBase):
-
     __test__ = True

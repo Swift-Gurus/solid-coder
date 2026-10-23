@@ -8,18 +8,18 @@ _MCP_SERVER = Path(__file__).resolve().parents[4] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from harness.policy_rule_set_members_resolver import (  # noqa: E402
+from harness.policy_rule_set_members_resolver import (
     PolicyRuleSetMembersResolver,
 )
-from harness.project_review_policy_audit import ProjectReviewPolicyAudit  # noqa: E402
-from harness.project_review_policy_resolution import (  # noqa: E402
+from harness.project_review_policy_audit import ProjectReviewPolicyAudit
+from harness.project_review_policy_resolution import (
     ProjectReviewPolicyResolution,
 )
-from harness.review_policy import ReviewPolicy  # noqa: E402
-from harness.review_policy_rule_override import ReviewPolicyRuleOverride  # noqa: E402
-from harness.rule_enablement_resolver import RuleEnablementResolver  # noqa: E402
-from harness.rule_set_member_include import RuleSetMemberInclude  # noqa: E402
-from harness.workflow_include_runtime import WorkflowIncludeRuntime  # noqa: E402
+from harness.review_policy import ReviewPolicy
+from harness.review_policy_rule_override import ReviewPolicyRuleOverride
+from harness.rule_enablement_resolver import RuleEnablementResolver
+from harness.rule_set_member_include import RuleSetMemberInclude
+from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
 
 class StubRuleSetMembersResolver:
@@ -48,8 +48,9 @@ solid-category: unit-test
 solid-spec: [SPEC-039]
 solid-description: Proves rules-all excludes project-disabled rules before child workflow materialization.
 """
-class TestPolicyRuleSetMembersResolver(unittest.TestCase):
 
+
+class TestPolicyRuleSetMembersResolver(unittest.TestCase):
     def test_excludes_project_disabled_members(self) -> None:
         runtime = WorkflowIncludeRuntime()
         members = [
@@ -57,9 +58,7 @@ class TestPolicyRuleSetMembersResolver(unittest.TestCase):
             RuleSetMemberInclude("srp", "srp", runtime),
         ]
         policy_content = (
-            "version: 1\nrules:\n"
-            "  - workflow_id: ocp\n"
-            "    enabled: false\n"
+            "version: 1\nrules:\n  - workflow_id: ocp\n    enabled: false\n"
         )
         resolution = ProjectReviewPolicyResolution(
             policy=ReviewPolicy(

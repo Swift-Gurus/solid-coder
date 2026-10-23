@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 from harness.catalog_rule_set_members_resolver import CatalogRuleSetMembersResolver
-from harness.combined_rule_presentation_factory import (
-    CombinedRulePresentationFactory,
-)
 from harness.collection_source_reference_parser import (
     CollectionSourceReferenceParser,
 )
+from harness.combined_rule_presentation_factory import (
+    CombinedRulePresentationFactory,
+)
 from harness.condition_conjoiner import ConditionConjoiner
 from harness.condition_serializer_factory import make_condition_serializer
-from harness.enrolled_rule_sources_selector import EnrolledRuleSourcesSelector
-from harness.flow_validation_error_creating import FlowValidationErrorCreating
-from harness.include_cycle_guard import IncludeCycleGuard
 from harness.dataclass_include_alias_group_replacer import (
     DataclassIncludeAliasGroupReplacer,
 )
+from harness.enrolled_rule_sources_selector import EnrolledRuleSourcesSelector
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
+from harness.include_cycle_guard import IncludeCycleGuard
 from harness.include_resolution_merger import IncludeResolutionMerger
 from harness.include_resolver import IncludeResolver
 from harness.include_source_expansion_preparer import IncludeSourceExpansionPreparer
@@ -26,7 +26,6 @@ from harness.include_traverser import IncludeTraverser
 from harness.inline_group_source_resolver import InlineGroupSourceResolver
 from harness.local_nested_identity_qualifier import LocalNestedIdentityQualifier
 from harness.metric_scoring_source_qualifier import MetricScoringSourceQualifier
-from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_alias_group_qualifier import (
     NestedIncludeAliasGroupQualifier,
 )
@@ -36,6 +35,7 @@ from harness.nested_include_child_group_policy_selector import (
 from harness.nested_include_child_group_transformer import (
     NestedIncludeChildGroupTransformer,
 )
+from harness.nested_include_qualifier import NestedIncludeQualifier
 from harness.nested_include_resolution_merger import NestedIncludeResolutionMerger
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.path_building import PathBuilding
@@ -47,34 +47,33 @@ from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_policy_loading import ReviewPolicyLoading
 from harness.rule_enablement_resolver import RuleEnablementResolver
 from harness.rule_match_condition_compiler import RuleMatchConditionCompiler
+from harness.rule_scope_runtime_adapter_resolver_factory import (
+    RuleScopeRuntimeAdapterResolverFactory,
+)
 from harness.rule_selection_condition_compiler import RuleSelectionConditionCompiler
 from harness.rule_set_include_reference import RuleSetIncludeReference
 from harness.rule_set_include_reference_parser import RuleSetIncludeReferenceParser
 from harness.rule_set_include_source_resolver import RuleSetIncludeSourceResolver
-from harness.rule_set_member_serializer import RuleSetMemberSerializer
 from harness.rule_set_member_resolver import RuleSetMemberResolver
-from harness.rule_scope_runtime_adapter_resolver_factory import (
-    RuleScopeRuntimeAdapterResolverFactory,
-)
+from harness.rule_set_member_serializer import RuleSetMemberSerializer
 from harness.runtime_include_group_dynamic_checker import (
     RuntimeIncludeGroupDynamicChecker,
 )
 from harness.step_declaring_file_resolver import StepDeclaringFileResolver
-from harness.step_qualifier import StepQualifier
 from harness.step_output_reference_parser import StepOutputReferenceParser
+from harness.step_qualifier import StepQualifier
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_catalog_resolving import WorkflowCatalogResolving
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
+from harness.workflow_expression_parser import WorkflowExpressionParser
+from harness.workflow_expression_serializer import WorkflowExpressionSerializer
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 from harness.workflow_include_source_resolver import WorkflowIncludeSourceResolver
 from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
-from harness.workflow_expression_parser import WorkflowExpressionParser
-from harness.workflow_expression_serializer import WorkflowExpressionSerializer
 from harness.workflow_resource_reference_creating import (
     WorkflowResourceReferenceCreating,
 )
 from scoring.yaml_config_file_loader import ConfigFileLoading
-
 
 """
 solid-name: IncludeResolverFactory
@@ -82,8 +81,9 @@ solid-category: factory
 solid-spec: [SPEC-027, SPEC-035, SPEC-039]
 solid-description: Provides production workflow include resolvers.
 """
-class IncludeResolverFactory:
 
+
+class IncludeResolverFactory:
     def __init__(
         self,
         file_loader: ConfigFileLoading,
@@ -168,9 +168,7 @@ class IncludeResolverFactory:
                             error_factory=self._error_factory,
                         ),
                         PathIncludeSourceResolver(
-                            entry_reader=PathIncludeEntryReader(
-                                self._error_factory
-                            ),
+                            entry_reader=PathIncludeEntryReader(self._error_factory),
                             declaring_file_resolver=StepDeclaringFileResolver(
                                 self._path_builder
                             ),

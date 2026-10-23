@@ -10,9 +10,8 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 DIFF_FILE_RE = re.compile(r"^diff --git a/(.*) b/(.*)$")
 HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
@@ -20,20 +19,16 @@ IMPORT_RE = re.compile(r"^\s*import\s+(\w+)", re.MULTILINE)
 
 
 def run_git(*args: str) -> str:
-    result = subprocess.run(
-        ["git", *args],
-        capture_output=True,
-        text=True,
-    )
+    result = subprocess.run(["git", *args], capture_output=True, text=True, check=False)
     if result.returncode != 0 and result.stderr:
         print(f"git {' '.join(args)}: {result.stderr.strip()}", file=sys.stderr)
     return result.stdout
 
 
-def parse_diff(diff_text: str) -> Dict[str, list]:
+def parse_diff(diff_text: str) -> dict[str, list]:
     """Parse unified diff → {file_path: [{start, end}, ...]}."""
-    files: Dict[str, List[int]] = {}
-    current_file: Optional[str] = None
+    files: dict[str, list[int]] = {}
+    current_file: str | None = None
     line_no = 0
 
     for raw_line in diff_text.splitlines():
@@ -54,7 +49,7 @@ def parse_diff(diff_text: str) -> Dict[str, list]:
         if current_file is None:
             continue
 
-        if raw_line.startswith("+++") or raw_line.startswith("---"):
+        if raw_line.startswith(("+++", "---")):
             continue
 
         if raw_line.startswith("+"):
@@ -73,7 +68,7 @@ def parse_diff(diff_text: str) -> Dict[str, list]:
     return {fp: ranges for fp, ranges in files.items()}
 
 
-def _coalesce(lines: List[int]) -> List[dict]:
+def _coalesce(lines: list[int]) -> list[dict]:
     """Turn sorted line numbers into [{start, end}, ...]."""
     if not lines:
         return []
@@ -91,7 +86,7 @@ def _coalesce(lines: List[int]) -> List[dict]:
     return ranges
 
 
-def untracked_files() -> List[str]:
+def untracked_files() -> list[str]:
     out = run_git("ls-files", "--others", "--exclude-standard")
     return [f for f in out.splitlines() if f.strip()]
 
@@ -103,7 +98,7 @@ def file_line_count(path: str) -> int:
         return 0
 
 
-def extract_imports(file_paths: List[str]) -> List[str]:
+def extract_imports(file_paths: list[str]) -> list[str]:
     """Extract unique import module names from a list of files."""
     imports: set = set()
     for fp in file_paths:
@@ -116,7 +111,7 @@ def extract_imports(file_paths: List[str]) -> List[str]:
     return sorted(imports)
 
 
-def build_output(output_path: Optional[str]) -> None:
+def build_output(output_path: str | None) -> None:
     # 1. Collect diffs
     staged = run_git("diff", "--staged")
     unstaged = run_git("diff")
@@ -125,10 +120,10 @@ def build_output(output_path: Optional[str]) -> None:
     unstaged_ranges = parse_diff(unstaged)
 
     # Merge: unstaged wins for overlapping files
-    merged: Dict[str, list] = {**staged_ranges}
+    merged: dict[str, list] = {**staged_ranges}
     for fp, ranges in unstaged_ranges.items():
         if fp in merged:
-            all_lines: List[int] = []
+            all_lines: list[int] = []
             for r in merged[fp]:
                 all_lines.extend(range(r["start"], r["end"] + 1))
             for r in ranges:
@@ -147,11 +142,13 @@ def build_output(output_path: Optional[str]) -> None:
     # 3. Build files array
     files = []
     for fp in sorted(merged):
-        files.append({
-            "file_path": fp,
-            "changed_ranges": merged[fp] if merged[fp] else None,
-            "units": [],
-        })
+        files.append(
+            {
+                "file_path": fp,
+                "changed_ranges": merged[fp] if merged[fp] else None,
+                "units": [],
+            }
+        )
 
     # 4. Extract imports from all files
     all_file_paths = [fp for fp in sorted(merged)]
@@ -164,7 +161,7 @@ def build_output(output_path: Optional[str]) -> None:
         "metadata": {
             "branch": branch,
             "base_branch": None,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
         "files": files if files else None,
         "buffer": None,
@@ -192,7 +189,8 @@ def main() -> None:
         description="Collect working-tree changes into structured JSON."
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Write JSON to file instead of stdout",
     )
     args = parser.parse_args()

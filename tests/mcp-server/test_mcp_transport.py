@@ -13,11 +13,11 @@ from mcp_server_factory import MCPServerFactory
 
 def _server_with_tool(meta=None):
     s = MCPServerFactory().build("test", "1.0.0")
-    kwargs = dict(
-        name="my_tool",
-        description="test",
-        input_schema={"type": "object", "properties": {}},
-    )
+    kwargs = {
+        "name": "my_tool",
+        "description": "test",
+        "input_schema": {"type": "object", "properties": {}},
+    }
     if meta is not None:
         kwargs["meta"] = meta
 
@@ -72,6 +72,7 @@ class TestLoadRulesAnnotation(unittest.TestCase):
         """load_rules must carry anthropic/maxResultSizeChars so large rule sets
         are never silently persisted to disk and replaced with a file reference."""
         import docs.server as docs_server
+
         tool = _list_tools(docs_server.server).get("load_rules")
         self.assertIsNotNone(tool, "load_rules must be registered in docs server")
         self.assertIn("_meta", tool)
@@ -83,8 +84,11 @@ class TestLoadSpecContextAnnotation(unittest.TestCase):
         """load_spec_context must carry anthropic/maxResultSizeChars so large
         spec ancestor chains are never silently persisted to disk."""
         import specs.server as specs_server
+
         tool = _list_tools(specs_server.server).get("load_spec_context")
-        self.assertIsNotNone(tool, "load_spec_context must be registered in specs server")
+        self.assertIsNotNone(
+            tool, "load_spec_context must be registered in specs server"
+        )
         self.assertIn("_meta", tool)
         self.assertGreater(tool["_meta"].get("anthropic/maxResultSizeChars", 0), 0)
 

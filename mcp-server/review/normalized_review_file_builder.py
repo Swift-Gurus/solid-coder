@@ -16,13 +16,14 @@ from source.technology_detections_resolving import (
     TechnologyDetectionsResolving,
 )
 
-
 """
 solid-name: NormalizedReviewFileBuilder
 solid-category: service
 solid-spec: [SPEC-039, SPEC-041]
 solid-description: Builds normalized review input from analyzed targets, applicability, evidence, and an immutable source snapshot.
 """
+
+
 class NormalizedReviewFileBuilder:
     def __init__(
         self,

@@ -8,15 +8,15 @@ from harness.include_cycle_validator import IncludeCycleValidator
 from harness.include_group_opacity_validating import IncludeGroupOpacityValidating
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: IncludeStructureValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates workflow include aliases, group opacity, and include cycles.
 """
-class IncludeStructureValidator:
 
+
+class IncludeStructureValidator:
     def __init__(
         self,
         alias_collision_validator: IncludeAliasCollisionValidating,

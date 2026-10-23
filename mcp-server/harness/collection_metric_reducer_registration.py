@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Generic, TypeVar
 
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
+
 CapabilityT = TypeVar("CapabilityT")
 
 
@@ -13,6 +14,8 @@ solid-category: model
 solid-spec: [SPEC-054]
 solid-description: Associates a declared reducer type with the capability that evaluates it.
 """
+
+
 @dataclass(frozen=True)
 class CollectionMetricReducerRegistration(Generic[CapabilityT]):
     reducer_type: CollectionMetricReducerType

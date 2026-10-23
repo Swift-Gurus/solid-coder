@@ -11,15 +11,15 @@ from harness.sha256_content_hasher import Sha256ContentHasher
 from harness.unique_string_validator import UniqueStringValidator
 from scoring.yaml_loader import PyYamlLoader
 
-
 """
 solid-name: ReviewPolicyLoaderFactory
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Supplies the configured project review-policy loading capability.
 """
-class ReviewPolicyLoaderFactory:
 
+
+class ReviewPolicyLoaderFactory:
     def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
@@ -31,9 +31,7 @@ class ReviewPolicyLoaderFactory:
             parser=ReviewPolicyParser(
                 decoder=PydanticModelDecoder(model_type=ReviewPolicy),
                 validators=[
-                    ReviewPolicyIdentityValidator(
-                        UniqueStringValidator(error_factory)
-                    )
+                    ReviewPolicyIdentityValidator(UniqueStringValidator(error_factory))
                 ],
             ),
             content_hasher=Sha256ContentHasher(),

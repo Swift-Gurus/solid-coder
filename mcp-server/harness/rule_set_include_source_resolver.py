@@ -11,13 +11,14 @@ from harness.rule_set_members_resolving import RuleSetMembersResolving
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 
-
 """
 solid-name: RuleSetIncludeSourceResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Expands an explicit all-rules include from the scoped catalog in stable workflow-ID order.
 """
+
+
 class RuleSetIncludeSourceResolver:
     def __init__(
         self,
@@ -45,10 +46,7 @@ class RuleSetIncludeSourceResolver:
         members = self._members_resolver.resolve(search_paths, runtime)
         return IncludeSource(
             alias=entry["as"],
-            steps=[
-                self._member_serializer.serialize(member)
-                for member in members
-            ],
+            steps=[self._member_serializer.serialize(member) for member in members],
             flow_path=flow_file_path,
             runtime=WorkflowIncludeRuntime(
                 execution=runtime.execution,

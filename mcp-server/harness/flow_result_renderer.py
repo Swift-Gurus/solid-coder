@@ -6,15 +6,15 @@ from harness.flow_start_result import FlowStartResult
 from harness.step_rendering import StepRendering
 from harness.terminal_message_resolving import TerminalMessageResolving
 
-
 """
 solid-name: FlowResultRenderer
 solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Renders flow execution results for agent consumption.
 """
-class FlowResultRenderer(FlowResultRendering):
 
+
+class FlowResultRenderer(FlowResultRendering):
     def __init__(
         self,
         step_renderer: StepRendering,

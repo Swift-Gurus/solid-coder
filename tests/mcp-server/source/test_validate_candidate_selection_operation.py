@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
-from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidator
 from harness.project_context import ProjectDirectory
 from source.selected_source_candidate import SelectedSourceCandidate
 from source.source_candidate_disposition import SourceCandidateDisposition
@@ -22,7 +21,9 @@ from source.validate_candidate_selection_input import ValidateCandidateSelection
 from source.validate_candidate_selection_operation import (
     ValidateCandidateSelectionOperation,
 )
-
+from validation.collection_identity_coverage_validator import (
+    CollectionIdentityCoverageValidator,
+)
 
 """
 solid-name: TestValidateCandidateSelectionOperation
@@ -30,6 +31,8 @@ solid-category: unit-test
 solid-spec: [SPEC-039, SPEC-040]
 solid-description: Verifies selected candidate identities resolve uniquely within discovered source candidates.
 """
+
+
 class TestValidateCandidateSelectionOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -43,13 +46,22 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
             "struct SecondFormatter { func format() {} }\n",
             encoding="utf-8",
         )
-        self.candidates = SourceSearchOperationFactory().make(
-            ProjectDirectory(path=self.project_root),
-        ).execute(SourceSearchInput(
-            queries=[SourceSearchQuery(id="format", terms=["Formatter"])],
-        )).candidates
+        self.candidates = (
+            SourceSearchOperationFactory()
+            .make(
+                ProjectDirectory(path=self.project_root),
+            )
+            .execute(
+                SourceSearchInput(
+                    queries=[SourceSearchQuery(id="format", terms=["Formatter"])],
+                )
+            )
+            .candidates
+        )
         self.operation = ValidateCandidateSelectionOperation(
-            coverage_validator=CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+            coverage_validator=CollectionIdentityCoverageValidator(
+                FlowValidationErrorFactory()
+            ),
         )
 
     def test_returns_inspected_candidates_in_discovered_order(self) -> None:
@@ -58,17 +70,21 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
             self._disposition(1, "INSPECT"),
         ]
 
-        output = self.operation.execute(ValidateCandidateSelectionInput(
-            candidates=self.candidates,
-            dispositions=dispositions,
-        ))
+        output = self.operation.execute(
+            ValidateCandidateSelectionInput(
+                candidates=self.candidates,
+                dispositions=dispositions,
+            )
+        )
 
         self.assertEqual(
             output.selected_candidates,
-            [SelectedSourceCandidate(
-                candidate_id="candidate-1",
-                source=self.candidates[0],
-            )],
+            [
+                SelectedSourceCandidate(
+                    candidate_id="candidate-1",
+                    source=self.candidates[0],
+                )
+            ],
         )
         self.assertEqual(
             output.dispositions,
@@ -78,35 +94,49 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
     def test_rejects_duplicate_candidate_id(self) -> None:
         disposition = self._disposition(1, "INSPECT")
 
-        with self.assertRaisesRegex(FlowValidationError, "duplicate candidate IDs.*candidate-1"):
-            self.operation.execute(ValidateCandidateSelectionInput(
-                candidates=self.candidates,
-                dispositions=[disposition, disposition],
-            ))
+        with self.assertRaisesRegex(
+            FlowValidationError, "duplicate candidate IDs.*candidate-1"
+        ):
+            self.operation.execute(
+                ValidateCandidateSelectionInput(
+                    candidates=self.candidates,
+                    dispositions=[disposition, disposition],
+                )
+            )
 
     def test_rejects_unknown_candidate_id(self) -> None:
-        with self.assertRaisesRegex(FlowValidationError, "unknown candidate IDs.*candidate-3"):
-            self.operation.execute(ValidateCandidateSelectionInput(
-                candidates=self.candidates,
-                dispositions=[
-                    self._disposition(1, "REJECT"),
-                    self._disposition(2, "REJECT"),
-                    self._disposition(3, "REJECT"),
-                ],
-            ))
+        with self.assertRaisesRegex(
+            FlowValidationError, "unknown candidate IDs.*candidate-3"
+        ):
+            self.operation.execute(
+                ValidateCandidateSelectionInput(
+                    candidates=self.candidates,
+                    dispositions=[
+                        self._disposition(1, "REJECT"),
+                        self._disposition(2, "REJECT"),
+                        self._disposition(3, "REJECT"),
+                    ],
+                )
+            )
 
     def test_rejects_missing_candidate_id(self) -> None:
-        with self.assertRaisesRegex(FlowValidationError, "missing candidate IDs.*candidate-2"):
-            self.operation.execute(ValidateCandidateSelectionInput(
-                candidates=self.candidates,
-                dispositions=[self._disposition(1, "INSPECT")],
-            ))
+        with self.assertRaisesRegex(
+            FlowValidationError, "missing candidate IDs.*candidate-2"
+        ):
+            self.operation.execute(
+                ValidateCandidateSelectionInput(
+                    candidates=self.candidates,
+                    dispositions=[self._disposition(1, "INSPECT")],
+                )
+            )
 
     def test_accepts_empty_dispositions_for_empty_search(self) -> None:
-        output = self.operation.execute(ValidateCandidateSelectionInput(
-            candidates=[],
-            dispositions=[],
-        ))
+        output = self.operation.execute(
+            ValidateCandidateSelectionInput(
+                candidates=[],
+                dispositions=[],
+            )
+        )
 
         self.assertEqual(output.selected_candidates, [])
         self.assertEqual(output.dispositions, [])

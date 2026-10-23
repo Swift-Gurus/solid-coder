@@ -4,8 +4,9 @@ solid-category: service
 solid-tags: [utility, service]
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Protocol
 
 from rules import discover_principles as _dp
 from rules.principle_content_building import PrincipleContentBuilding
@@ -17,7 +18,9 @@ class AllPrinciplesProviding(Protocol):
 
 class DetectionRulesLoading(Protocol):
     def load_detection_rules(
-        self, principle: Optional[str], matched_tags: Optional[list],
+        self,
+        principle: str | None,
+        matched_tags: list | None,
     ) -> dict: ...
 
 
@@ -29,7 +32,7 @@ class DetectionRulesLoader:
         all_principles: AllPrinciplesProviding,
         refs_root: Path,
         content_builder: PrincipleContentBuilding,
-        discover_fn: Optional[Callable] = None,
+        discover_fn: Callable | None = None,
     ) -> None:
         self._all_principles = all_principles
         self._refs_root = refs_root
@@ -38,8 +41,8 @@ class DetectionRulesLoader:
 
     def load_detection_rules(
         self,
-        principle: Optional[str] = None,
-        matched_tags: Optional[list] = None,
+        principle: str | None = None,
+        matched_tags: list | None = None,
     ) -> dict[str, Any]:
         all_p = self._all_principles.all_principles()
 
@@ -47,12 +50,20 @@ class DetectionRulesLoader:
             m = next((p for p in all_p if p["name"].lower() == principle.lower()), None)
             if not m:
                 available = ", ".join(p["name"] for p in all_p)
-                return {"error": f"Principle '{principle}' not found. Available: {available}"}
+                return {
+                    "error": f"Principle '{principle}' not found. Available: {available}"
+                }
             return {"principles": [self._content_builder.build(m)]}
 
         if matched_tags is None:
             active = all_p
         else:
-            tags: list = matched_tags if isinstance(matched_tags, list) else ([] if matched_tags in ("", []) else [matched_tags])
-            active = self._discover_fn(str(self._refs_root), matched_tags=tags)["active_principles"]
+            tags: list = (
+                matched_tags
+                if isinstance(matched_tags, list)
+                else ([] if matched_tags in ("", []) else [matched_tags])
+            )
+            active = self._discover_fn(str(self._refs_root), matched_tags=tags)[
+                "active_principles"
+            ]
         return {"principles": [self._content_builder.build(p) for p in active]}

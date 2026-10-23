@@ -7,9 +7,13 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_llama_runner import _strip_thinking  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from hc_llama_runner import _strip_thinking
 
 
 class TestStripThinking(unittest.TestCase):
@@ -19,26 +23,26 @@ class TestStripThinking(unittest.TestCase):
         self.assertEqual(response, '{"violations": []}')
 
     def test_strips_think_block_and_returns_both_parts(self):
-        raw = "<think>reasoning here</think>\n\n{\"violations\": []}"
+        raw = '<think>reasoning here</think>\n\n{"violations": []}'
         thinking, response = _strip_thinking(raw)
         self.assertEqual(thinking, "reasoning here")
         self.assertEqual(response, '{"violations": []}')
 
     def test_trims_whitespace_from_thinking_and_response(self):
-        raw = "<think>  reasoning  </think>   {\"violations\": []}"
+        raw = '<think>  reasoning  </think>   {"violations": []}'
         thinking, response = _strip_thinking(raw)
         self.assertEqual(thinking, "reasoning")
         self.assertEqual(response, '{"violations": []}')
 
     def test_multiline_thinking_block(self):
-        raw = "<think>\nStep 1: check SRP\nStep 2: check OCP\n</think>\n\n{\"violations\": []}"
+        raw = '<think>\nStep 1: check SRP\nStep 2: check OCP\n</think>\n\n{"violations": []}'
         thinking, response = _strip_thinking(raw)
         self.assertIn("Step 1", thinking)
         self.assertIn("Step 2", thinking)
         self.assertEqual(response, '{"violations": []}')
 
     def test_empty_think_block_returns_empty_thinking(self):
-        raw = "<think>\n\n</think>\n\n{\"violations\": []}"
+        raw = '<think>\n\n</think>\n\n{"violations": []}'
         thinking, response = _strip_thinking(raw)
         self.assertEqual(thinking, "")
         self.assertEqual(response, '{"violations": []}')

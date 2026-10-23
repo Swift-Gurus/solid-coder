@@ -3,13 +3,14 @@
 from harness.step_instance import StepInstance
 from harness.step_output_shape_checking import StepOutputShapeChecking
 
-
 """
 solid-name: StepOutputShapeChecker
 solid-category: service
 solid-spec: [SPEC-031, SPEC-039]
 solid-description: Reports workflow instance outputs that are not object maps keyed by output name.
 """
+
+
 class StepOutputShapeChecker(StepOutputShapeChecking):
     def errors(
         self,

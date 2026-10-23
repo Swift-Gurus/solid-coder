@@ -12,13 +12,14 @@ from harness.step_output_reference_resolving import StepOutputReferenceResolving
 from harness.workflow_output_reference import WorkflowOutputReference
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: ForEachItemsResolver
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030, SPEC-056]
 solid-description: Resolves typed step outputs and projected child-workflow outputs into ordered item collections.
 """
+
+
 class ForEachItemsResolver(ForEachItemsResolving):
     def __init__(
         self,
@@ -48,7 +49,4 @@ class ForEachItemsResolver(ForEachItemsResolving):
 
     @staticmethod
     def _workflow_expression(reference: WorkflowOutputReference) -> str:
-        return (
-            f"workflows.{reference.workflow_alias}.outputs."
-            f"{reference.output_name}"
-        )
+        return f"workflows.{reference.workflow_alias}.outputs.{reference.output_name}"

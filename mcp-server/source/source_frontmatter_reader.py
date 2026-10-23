@@ -5,14 +5,17 @@ from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 from source.source_frontmatter import SourceFrontmatter
 from source.source_frontmatter_reading import SourceFrontmatterReading
 
-
 """
 solid-name: SourceFrontmatterReader
 solid-category: service
 solid-spec: [SPEC-040, SPEC-069]
 solid-description: Provides ordered source metadata with strict declaration validation and tolerant repository discovery.
 """
-class SourceFrontmatterReader(SourceFrontmatterReading, SourceSyntaxParsing[str, SourceFrontmatter | None]):
+
+
+class SourceFrontmatterReader(
+    SourceFrontmatterReading, SourceSyntaxParsing[str, SourceFrontmatter | None]
+):
     def __init__(
         self,
         documents: SourceSyntaxParsing[str, list[str]],
@@ -35,5 +38,7 @@ class SourceFrontmatterReader(SourceFrontmatterReading, SourceSyntaxParsing[str,
         if not documents:
             return None
         if len(documents) != 1:
-            raise FlowValidationError("Expected one frontmatter block attached to this declaration")
+            raise FlowValidationError(
+                "Expected one frontmatter block attached to this declaration"
+            )
         return self._decoder.parse(documents[0])

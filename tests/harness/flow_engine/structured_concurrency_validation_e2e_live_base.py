@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase
-
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _FIXTURE = (
@@ -25,12 +25,14 @@ solid-category: test-support
 solid-spec: [SPEC-039, SPEC-055]
 solid-description: Supplies the Structured Concurrency scenario and locked MCP-scored observations to the shared live rule contract.
 """
+
+
 class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "structured-concurrency"
     ARTIFACT_SCENARIO = "structured-concurrency-aggregate"
     REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"
     FIXTURE = _FIXTURE
-    EXPECTED_ANALYSIS_STEP_IDS = [
+    EXPECTED_ANALYSIS_STEP_IDS: ClassVar[list[str]] = [
         "classify_concurrency_models",
         "classify_task_lifecycle",
         "classify_safety_bypasses",
@@ -38,7 +40,7 @@ class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "classify_bridges",
         "classify_durations",
     ]
-    EXPECTED_STEP_IDS = [
+    EXPECTED_STEP_IDS: ClassVar[list[str]] = [
         "model_mixing",
         "orphaned_tasks",
         "safety_bypasses",
@@ -46,7 +48,7 @@ class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "blocking_bridges",
         "raw_duration_count",
     ]
-    EXPECTED_METRIC_IDS = [
+    EXPECTED_METRIC_IDS: ClassVar[list[str]] = [
         "SC-1",
         "SC-2",
         "SC-3",
@@ -54,7 +56,7 @@ class StructuredConcurrencyValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "SC-5",
         "SC-6",
     ]
-    EXPECTED_VALUES = [1, 1, 1, 3, 1, 1]
+    EXPECTED_VALUES: ClassVar[list[int]] = [1, 1, 1, 3, 1, 1]
     EXPECTED_METRIC_SEVERITIES = ["SEVERE"] * 6
     EXPECTED_FINAL_SEVERITY = "SEVERE"
     ALLOW_AUXILIARY_STEPS = False

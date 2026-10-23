@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Protocol, TypeVar
-
+from collections.abc import Callable
+from typing import Protocol, TypeVar
 
 Input = TypeVar("Input")
 Output = TypeVar("Output")
@@ -15,6 +15,8 @@ solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for applying one operation concurrently to ordered items within a worker bound.
 """
+
+
 class ConcurrentItemMapping(Protocol):
     def map(
         self,

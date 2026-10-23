@@ -6,13 +6,14 @@ from harness.condition_parsing import ConditionParsing
 from harness.step_skip import StepSkip
 from harness.step_skipped_event import StepSkippedEvent
 
-
 """
 solid-name: StepSkippedTransition
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Restores a durable workflow-step skip decision into run state.
 """
+
+
 class StepSkippedTransition:
     def __init__(self, condition_parser: ConditionParsing) -> None:
         self._condition_parser = condition_parser

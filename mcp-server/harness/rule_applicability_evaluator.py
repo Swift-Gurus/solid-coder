@@ -6,15 +6,15 @@ from harness.rule_declaration import RuleDeclaration
 from harness.rule_selection_evaluating import RuleSelectionEvaluating
 from harness.rule_selection_requirement import RuleSelectionRequirement
 
-
 """
 solid-name: RuleApplicabilityEvaluator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Coordinates extension, unit-kind, and tag applicability decisions for one review rule.
 """
-class RuleApplicabilityEvaluator:
 
+
+class RuleApplicabilityEvaluator:
     def __init__(
         self,
         selection_evaluator: RuleSelectionEvaluating,

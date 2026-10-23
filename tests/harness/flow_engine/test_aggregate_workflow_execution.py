@@ -11,10 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.first_ready_step_selector import FirstReadyStepSelector
 from harness.flow_result_renderer import FlowResultRenderer
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.sibling_batch_step_selector_factory import SiblingBatchStepSelectorFactory
 from harness.single_step_renderer import SingleStepRenderer
@@ -23,13 +23,14 @@ from harness.step_renderer import StepRenderer
 from harness.subagent_delegator import SubagentDelegator
 from harness.terminal_message_resolver import TerminalMessageResolver
 
-
 """
 solid-name: TestAggregateWorkflowExecution
 solid-category: integration-test
 solid-spec: [SPEC-045]
 solid-description: Proves one aggregate model turn validates and records each original dependent workflow step.
 """
+
+
 class TestAggregateWorkflowExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -97,40 +98,47 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
             1,
         )
 
-        completed = self.sut.flow_next({
-            "aggregate-flow": {
+        completed = self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "inspect": {"analysis": "The target was inspected."},
-                    "decide": {"result": True},
+                    "aggregate-flow": {
+                        "inspect": {"analysis": "The target was inspected."},
+                        "decide": {"result": True},
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         events = [
             json.loads(line)
-            for line in (
-                self.project_root
-                / "runs"
-                / started.run_id
-                / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.project_root / "runs" / started.run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
         self.assertEqual(
-            [event["step_id"] for event in events if event["event"] == "step_completed"],
+            [
+                event["step_id"]
+                for event in events
+                if event["event"] == "step_completed"
+            ],
             ["inspect", "decide"],
         )
 
-    def test_partial_submission_completes_once_and_returns_only_missing_step(self) -> None:
+    def test_partial_submission_completes_once_and_returns_only_missing_step(
+        self,
+    ) -> None:
         started = self.sut.flow_start(str(self.workflow))
 
-        remaining = self.sut.flow_next({
-            "aggregate-flow": {
+        remaining = self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "inspect": {"analysis": "The target was inspected."},
+                    "aggregate-flow": {
+                        "inspect": {"analysis": "The target was inspected."},
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual(remaining.status, "ready", remaining.error)
         self.assertEqual([step.step_id for step in remaining.steps], ["decide"])
@@ -141,13 +149,15 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
         ]
         self.assertEqual(completed, ["inspect"])
 
-        finished = self.sut.flow_next({
-            "aggregate-flow": {
+        finished = self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "decide": {"result": True},
+                    "aggregate-flow": {
+                        "decide": {"result": True},
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual(finished.status, "done", finished.error)
         completed = [
@@ -160,14 +170,16 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
     def test_invalid_sibling_retries_without_reopening_valid_step(self) -> None:
         started = self.sut.flow_start(str(self.workflow))
 
-        remaining = self.sut.flow_next({
-            "aggregate-flow": {
+        remaining = self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "inspect": {"analysis": "The target was inspected."},
-                    "decide": {"result": "not-a-boolean"},
+                    "aggregate-flow": {
+                        "inspect": {"analysis": "The target was inspected."},
+                        "decide": {"result": "not-a-boolean"},
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual([step.step_id for step in remaining.steps], ["decide"])
         self.assertIn("not of type 'boolean'", remaining.steps[0].rejection_reason)
@@ -181,29 +193,35 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
     def test_unknown_address_is_rejected_without_completing_work(self) -> None:
         started = self.sut.flow_start(str(self.workflow))
 
-        rejected = self.sut.flow_next({
-            "aggregate-flow": {
+        rejected = self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "invented": {},
+                    "aggregate-flow": {
+                        "invented": {},
+                    }
                 }
             }
-        })
+        )
 
         self.assertIn("Unknown aggregate address", rejected.error)
-        self.assertFalse(any(
-            event["event"] == "step_completed"
-            for event in self._events(started.run_id)
-        ))
+        self.assertFalse(
+            any(
+                event["event"] == "step_completed"
+                for event in self._events(started.run_id)
+            )
+        )
 
     def test_replay_returns_only_the_incomplete_original_step(self) -> None:
-        started = self.sut.flow_start(str(self.workflow))
-        self.sut.flow_next({
-            "aggregate-flow": {
+        _started = self.sut.flow_start(str(self.workflow))
+        self.sut.flow_next(
+            {
                 "aggregate-flow": {
-                    "inspect": {"analysis": "The target was inspected."},
+                    "aggregate-flow": {
+                        "inspect": {"analysis": "The target was inspected."},
+                    }
                 }
             }
-        })
+        )
         restarted = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
                 project_dir_fn=lambda: self.project_root
@@ -286,15 +304,17 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
         )
         started = self.sut.flow_start(str(combined))
 
-        ready = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "items": [
-                    {"name": "A", "enabled": True},
-                    {"name": "Skipped", "enabled": False},
-                    {"name": "B", "enabled": True},
-                ]
+        ready = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "items": [
+                        {"name": "A", "enabled": True},
+                        {"name": "Skipped", "enabled": False},
+                        {"name": "B", "enabled": True},
+                    ]
+                }
             }
-        })
+        )
 
         self.assertEqual(len(ready.steps), 4)
         rendered = self.renderer.render_next(ready)
@@ -304,20 +324,22 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
         self.assertIn("B: alpha", rendered)
         self.assertNotIn("Skipped", rendered)
 
-        completed = self.sut.flow_next({
-            "A": {
-                "alpha": {
-                    "inspect": {"analysis": "A inspected"},
-                    "decide": {"result": True},
-                }
-            },
-            "B": {
-                "alpha": {
-                    "inspect": {"analysis": "B inspected"},
-                    "decide": {"result": False},
-                }
-            },
-        })
+        completed = self.sut.flow_next(
+            {
+                "A": {
+                    "alpha": {
+                        "inspect": {"analysis": "A inspected"},
+                        "decide": {"result": True},
+                    }
+                },
+                "B": {
+                    "alpha": {
+                        "inspect": {"analysis": "B inspected"},
+                        "decide": {"result": False},
+                    }
+                },
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         self.assertEqual(
@@ -332,7 +354,9 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
             ],
         )
 
-    def test_aggregates_every_root_for_each_instance_without_crossing_fan_out(self) -> None:
+    def test_aggregates_every_root_for_each_instance_without_crossing_fan_out(
+        self,
+    ) -> None:
         workflow = self.project_root / "root-batch.yaml"
         workflow.write_text(
             textwrap.dedent(
@@ -366,35 +390,41 @@ class TestAggregateWorkflowExecution(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        started = self.sut.flow_start(str(workflow))
+        _started = self.sut.flow_start(str(workflow))
 
-        ready = self.sut.flow_next({
-            "root-batch": {
+        ready = self.sut.flow_next(
+            {
                 "root-batch": {
-                    "prepare": {"items": ["A", "B"]},
+                    "root-batch": {
+                        "prepare": {"items": ["A", "B"]},
+                    }
                 }
             }
-        })
+        )
 
-        self.assertEqual([step.instance_id for step in ready.steps], ["review-1", "review-2"])
+        self.assertEqual(
+            [step.instance_id for step in ready.steps], ["review-1", "review-2"]
+        )
         rendered = self.renderer.render_next(ready)
         self.assertEqual(rendered.count("Review every assigned item."), 1)
         self.assertIn("A: root-batch", rendered)
         self.assertIn("B: root-batch", rendered)
 
-        completed = self.sut.flow_next({
-            "A": {"root-batch": {"review": {"result": "A reviewed"}}},
-            "B": {"root-batch": {"review": {"result": "B reviewed"}}},
-        })
+        completed = self.sut.flow_next(
+            {
+                "A": {"root-batch": {"review": {"result": "A reviewed"}}},
+                "B": {"root-batch": {"review": {"result": "B reviewed"}}},
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
 
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
             json.loads(line)
-            for line in (
-                self.project_root / "runs" / run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.project_root / "runs" / run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
 
 

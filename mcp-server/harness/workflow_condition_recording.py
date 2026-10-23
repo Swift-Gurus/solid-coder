@@ -6,13 +6,14 @@ from typing import Protocol
 
 from harness.workflow_condition_decision import WorkflowConditionDecision
 
-
 """
 solid-name: WorkflowConditionRecording
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for durably recording workflow-level condition decisions.
 """
+
+
 class WorkflowConditionRecording(Protocol):
     def record(
         self,

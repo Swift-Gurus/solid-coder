@@ -17,14 +17,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.existing_path_filter import ExistingPathFilter
 from harness.flow_search_path_resolver import FlowSearchPathResolver
 from harness.path_checking import PathChecker
-from harness.plugin_workflow_search_path_resolver import PluginWorkflowSearchPathResolver
+from harness.plugin_workflow_search_path_resolver import (
+    PluginWorkflowSearchPathResolver,
+)
 from harness.project_context import ProjectDirectory
-from harness.project_workflow_search_path_resolver import ProjectWorkflowSearchPathResolver
+from harness.project_workflow_search_path_resolver import (
+    ProjectWorkflowSearchPathResolver,
+)
 from hook_utils import _resolve_project_root
 
 
 class TestFlowSearchPathResolver(unittest.TestCase):
-
     def test_uses_process_cwd_when_project_environment_is_absent(self):
         with tempfile.TemporaryDirectory() as directory:
             project_root = Path(directory)

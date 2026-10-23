@@ -6,13 +6,14 @@ from harness.any_condition import AnyCondition
 from harness.condition_serializing import ConditionSerializing
 from harness.condition_variant_serializing import ConditionVariantSerializing
 
-
 """
 solid-name: AnyConditionSerializer
 solid-category: boundary
 solid-spec: [SPEC-037]
-solid-description: Serializes a disjunction condition into durable reversible data.
+solid-description: Converts disjunctive workflow conditions into a durable reversible representation.
 """
+
+
 class AnyConditionSerializer(ConditionVariantSerializing[AnyCondition]):
     def serialize(
         self,
@@ -21,7 +22,6 @@ class AnyConditionSerializer(ConditionVariantSerializing[AnyCondition]):
     ) -> dict[str, object]:
         return {
             "any": [
-                nested_serializer.serialize(nested)
-                for nested in condition.conditions
+                nested_serializer.serialize(nested) for nested in condition.conditions
             ]
         }

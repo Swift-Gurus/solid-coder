@@ -4,7 +4,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 RuleMatchDimension = Literal[
     "all",
     "file_extensions",
@@ -19,6 +18,8 @@ solid-category: model
 solid-spec: [SPEC-039]
 solid-description: Records whether a rule matched and the decisive matcher evidence.
 """
+
+
 class RuleApplicabilityDecision(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

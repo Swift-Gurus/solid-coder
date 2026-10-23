@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: StackRegistration
 solid-category: model
 solid-spec: [SPEC-069]
 solid-description: Carries language extensions, optional module prerequisites and declaration signals for a registered stack tag.
 """
+
+
 class StackRegistration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

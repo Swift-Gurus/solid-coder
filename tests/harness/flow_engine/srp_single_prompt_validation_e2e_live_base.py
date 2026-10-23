@@ -13,20 +13,21 @@ for _directory in (_HARNESS_DIRECTORY, _MCP_SERVER):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from flow_audit_event import FlowAuditEvent  # noqa: E402
-from harness.step_completed_event import StepCompletedEvent  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase  # noqa: E402
-from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
-from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
-from review_unit_workflow_context import ReviewUnitWorkflowContext  # noqa: E402
-from review_unit_workflow_parameters import ReviewUnitWorkflowParameters  # noqa: E402
-from review_unit_workflow_target import ReviewUnitWorkflowTarget  # noqa: E402
-from srp_single_prompt_output import SRPSinglePromptOutput  # noqa: E402
-
+from flow_audit_event import FlowAuditEvent
+from harness.step_completed_event import StepCompletedEvent
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase
+from live_workflow_scenario import LiveWorkflowScenario
+from preserved_live_workflow_run import PreservedLiveWorkflowRun
+from review_unit_workflow_context import ReviewUnitWorkflowContext
+from review_unit_workflow_parameters import ReviewUnitWorkflowParameters
+from review_unit_workflow_target import ReviewUnitWorkflowTarget
+from srp_single_prompt_output import SRPSinglePromptOutput
 
 _PROJECT_ROOT = _MCP_SERVER.parent
-_FIXTURE = _PROJECT_ROOT / "tests" / "principles" / "SRP" / "fixtures" / "fixture-1.swift"
+_FIXTURE = (
+    _PROJECT_ROOT / "tests" / "principles" / "SRP" / "fixtures" / "fixture-1.swift"
+)
 
 
 """
@@ -35,6 +36,8 @@ solid-category: test-support
 solid-spec: [SPEC-036]
 solid-description: Applies one backend-neutral live contract to the schema-validated single-prompt SRP comparison workflow.
 """
+
+
 class SRPSinglePromptValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     PROJECT_ROOT = _PROJECT_ROOT
 

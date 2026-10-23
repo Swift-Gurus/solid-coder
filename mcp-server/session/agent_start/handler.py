@@ -6,15 +6,15 @@ from session.agent_start.event import AgentStartEvent
 from session.project_context import SessionProjectDirectoryRecording
 from session.session_registry import SessionRegistering
 
-
 """
 solid-name: AgentStartHandler
 solid-category: service
 solid-spec: [SPEC-049]
 solid-description: Records agent project context and registers managed session types.
 """
-class AgentStartHandler:
 
+
+class AgentStartHandler:
     def __init__(
         self,
         project_directory_recorder: SessionProjectDirectoryRecording,

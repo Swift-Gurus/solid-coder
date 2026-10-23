@@ -14,22 +14,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.builtin_attribute_reader import BuiltinAttributeReader  # noqa: E402
-from harness.expression_resolver import ExpressionResolver  # noqa: E402
-from harness.interpolation_error import InterpolationError  # noqa: E402
-from harness.interpolation_error_factory import InterpolationErrorFactory  # noqa: E402
-from harness.nested_component_accessor import NestedComponentAccessor  # noqa: E402
-from harness.nested_path_resolver import NestedPathResolver  # noqa: E402
-from harness.run_context_builder import RunContextBuilder  # noqa: E402
-from harness.run_state import RunState  # noqa: E402
-from harness.step_output_expression_resolver import StepOutputExpressionResolver  # noqa: E402
-from harness.step_output_reference_parser import StepOutputReferenceParser  # noqa: E402
-from harness.step_output_reference_resolver import StepOutputReferenceResolver  # noqa: E402
-from harness.workflow_context_values_mapper import WorkflowContextValuesMapper  # noqa: E402
+from harness.builtin_attribute_reader import BuiltinAttributeReader
+from harness.expression_resolver import ExpressionResolver
+from harness.interpolation_error import InterpolationError
+from harness.interpolation_error_factory import InterpolationErrorFactory
+from harness.nested_component_accessor import NestedComponentAccessor
+from harness.nested_path_resolver import NestedPathResolver
+from harness.run_context_builder import RunContextBuilder
+from harness.run_state import RunState
+from harness.step_output_expression_resolver import StepOutputExpressionResolver
+from harness.step_output_reference_parser import StepOutputReferenceParser
+from harness.step_output_reference_resolver import StepOutputReferenceResolver
+from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 
 
 class TestExpressionResolver(unittest.TestCase):
-
     def setUp(self):
         self.context_builder = RunContextBuilder(
             values_mapper=WorkflowContextValuesMapper()
@@ -50,9 +49,7 @@ class TestExpressionResolver(unittest.TestCase):
         self.sut = ExpressionResolver(
             step_output_resolver=StepOutputExpressionResolver(
                 reference_parser=StepOutputReferenceParser(),
-                reference_resolver=StepOutputReferenceResolver[object](
-                    error_factory
-                ),
+                reference_resolver=StepOutputReferenceResolver[object](error_factory),
                 error_factory=error_factory,
                 nested_value_resolver=nested_values,
             ),
@@ -72,21 +69,29 @@ class TestExpressionResolver(unittest.TestCase):
         self.assertEqual(result, "/tmp/Foo.swift")
 
     def test_missing_parameter_reference_raises_an_actionable_error(self):
-        with self.assertRaisesRegex(InterpolationError, "parameter 'file_path' not found"):
+        with self.assertRaisesRegex(
+            InterpolationError, "parameter 'file_path' not found"
+        ):
             self.sut.evaluate(
                 "params.file_path",
                 self.context_builder.build({}, self.run_state),
             )
 
     def test_resolves_nested_fields_of_a_named_step_output(self):
-        state = replace(self.run_state, completed={
-            "review.prepare": {
-                "review_file": {
-                    "applicability": {"file_extension": ".swift", "tags": ["unit-test"]},
-                    "optional": None,
+        state = replace(
+            self.run_state,
+            completed={
+                "review.prepare": {
+                    "review_file": {
+                        "applicability": {
+                            "file_extension": ".swift",
+                            "tags": ["unit-test"],
+                        },
+                        "optional": None,
+                    },
                 },
             },
-        })
+        )
         context = self.context_builder.build({}, state)
 
         for path, expected in [
@@ -97,7 +102,8 @@ class TestExpressionResolver(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(
                     self.sut.evaluate(
-                        f"steps.review.prepare.outputs.review_file.{path}", context,
+                        f"steps.review.prepare.outputs.review_file.{path}",
+                        context,
                     ),
                     expected,
                 )

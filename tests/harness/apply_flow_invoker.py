@@ -10,15 +10,18 @@ import json
 import os
 import re
 import sys
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable, Iterator
 
 _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import (  # noqa: E402
+from datetime import UTC
+
+from hc_runner_factory import make_llm_runner
+from interfaces import (
     ClaudeRunning,
     FindingsReading,
     FlowInvoking,
@@ -28,8 +31,7 @@ from interfaces import (  # noqa: E402
     ReviewInputBuilding,
     ReviewSessionExecuting,
 )
-from models import ModelProfile, OutputPaths  # noqa: E402
-from hc_runner_factory import make_llm_runner  # noqa: E402
+from models import ModelProfile, OutputPaths
 
 _SKILL_PATH = "skills/apply-principle-review/SKILL.md"
 _ALLOWED_TOOLS = (
@@ -51,7 +53,7 @@ def _strip_frontmatter(content: str) -> str:
     end = content.find("\n---", 3)
     if end == -1:
         return content
-    return content[end + 4:].lstrip("\n")
+    return content[end + 4 :].lstrip("\n")
 
 
 def _build_skill_prompt(
@@ -81,25 +83,25 @@ def _build_skill_prompt(
     # The skill line reads: "- OUTPUT_PATH: <path> - output root if not provided use ..."
     # Without stripping the agent appends the description text to the path.
     skill_content = re.sub(
-        r'(- OUTPUT_PATH:\s+' + re.escape(str(output_dir)) + r')\s*-.*',
-        r'\1',
+        r"(- OUTPUT_PATH:\s+" + re.escape(str(output_dir)) + r")\s*-.*",
+        r"\1",
         skill_content,
     )
     # Remap plugin-prefixed tool names to bare-session names
-    skill_content = skill_content.replace("mcp__plugin_solid-coder_docs__", "mcp__docs__")
-    skill_content = skill_content.replace("mcp__plugin_solid-coder_pipeline__", "mcp__pipeline__")
+    skill_content = skill_content.replace(
+        "mcp__plugin_solid-coder_docs__", "mcp__docs__"
+    )
+    skill_content = skill_content.replace(
+        "mcp__plugin_solid-coder_pipeline__", "mcp__pipeline__"
+    )
 
     header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
-    return (
-        f"{header}"
-        f"{skill_content}\n\n"
-        f"Code files (review-input): {review_input_path}"
-    )
+    return f"{header}{skill_content}\n\nCode files (review-input): {review_input_path}"
 
 
 _SWIFT_TYPE_RE = re.compile(
-    r'^\s*(public\s+|internal\s+|private\s+|open\s+|final\s+)*'
-    r'(class|struct|protocol|enum|extension)\s+(\w+)',
+    r"^\s*(public\s+|internal\s+|private\s+|open\s+|final\s+)*"
+    r"(class|struct|protocol|enum|extension)\s+(\w+)",
     re.MULTILINE,
 )
 _VALID_KINDS = {"class", "struct", "protocol", "enum", "extension"}
@@ -113,15 +115,17 @@ def _parse_swift_units(content: str) -> list[dict]:
     for m in _SWIFT_TYPE_RE.finditer(content):
         kind = m.group(2)
         name = m.group(3)
-        line_start = content[:m.start()].count("\n") + 1
-        units.append({
-            "name": name,
-            "kind": kind,
-            "line_start": line_start,
-            "line_end": total,
-            "has_changes": True,
-            "changed_ranges": None,
-        })
+        line_start = content[: m.start()].count("\n") + 1
+        units.append(
+            {
+                "name": name,
+                "kind": kind,
+                "line_start": line_start,
+                "line_end": total,
+                "has_changes": True,
+                "changed_ranges": None,
+            }
+        )
     return units
 
 
@@ -132,17 +136,20 @@ class ReviewInputBuilder(ReviewInputBuilding):
         units = _parse_swift_units(content)
         if not units:
             # Fallback: treat the whole file as a single class-kind unit
-            units = [{
-                "name": fixture_path.stem,
-                "kind": "class",
-                "line_start": 1,
-                "line_end": line_count,
-                "has_changes": True,
-                "changed_ranges": None,
-            }]
+            units = [
+                {
+                    "name": fixture_path.stem,
+                    "kind": "class",
+                    "line_start": 1,
+                    "line_end": line_count,
+                    "has_changes": True,
+                    "changed_ranges": None,
+                }
+            ]
 
-        from datetime import datetime, timezone
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        from datetime import datetime
+
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         review_input = {
             "source_type": "file",
             "metadata": {"timestamp": timestamp, "branch": None, "base_branch": None},
@@ -160,7 +167,9 @@ class ReviewInputBuilder(ReviewInputBuilding):
             ],
         }
         review_input_path = log_dir / "review-input.json"
-        review_input_path.write_text(json.dumps(review_input, indent=2), encoding="utf-8")
+        review_input_path.write_text(
+            json.dumps(review_input, indent=2), encoding="utf-8"
+        )
         return review_input_path
 
 
@@ -176,7 +185,9 @@ class FindingsReader(FindingsReading):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
-            raise RuntimeError(f"Malformed review-output.json at {path}: {exc}") from exc
+            raise RuntimeError(
+                f"Malformed review-output.json at {path}: {exc}"
+            ) from exc
         # Nested files[].units[].violations[] (new unified format)
         findings = []
         for file_entry in data.get("files", []):
@@ -345,12 +356,17 @@ class ApplyFlowInvoker(FlowInvoking):
         # in the same principle share the same log_dir timestamp.
         fixture_output_dir = output_paths.log_dir / fixture_path.stem
         fixture_output_dir.mkdir(parents=True, exist_ok=True)
-        review_input_path = self._artifact_handler.build_input(fixture_path, output_paths.log_dir)
+        review_input_path = self._artifact_handler.build_input(
+            fixture_path, output_paths.log_dir
+        )
         # Skill writes to {fixture_output_dir}/{NAME}/review-output.json
         try:
             with _review_profile_environment(model_profile.profile_path):
                 result = self._session_runner.execute(
-                    self._principle_folder, review_input_path, fixture_output_dir, timeout
+                    self._principle_folder,
+                    review_input_path,
+                    fixture_output_dir,
+                    timeout,
                 )
         except TimeoutError:
             raise

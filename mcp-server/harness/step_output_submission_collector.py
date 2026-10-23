@@ -5,13 +5,14 @@ from harness.step_instance import StepInstance
 from harness.step_output_submission import StepOutputSubmission
 from harness.step_output_submission_collecting import StepOutputSubmissionCollecting
 
-
 """
 solid-name: StepOutputSubmissionCollector
 solid-category: service
 solid-spec: [SPEC-031, SPEC-039]
 solid-description: Collects typed output specification and value records from ready workflow instances.
 """
+
+
 class StepOutputSubmissionCollector(StepOutputSubmissionCollecting):
     def collect(
         self,

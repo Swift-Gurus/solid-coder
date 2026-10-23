@@ -7,11 +7,15 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from _config_section_stub import ConfigSectionStub  # noqa: E402
-from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
-from hook_config import HookConfig  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from _config_section_stub import ConfigSectionStub
+from hook_config import HookConfig
+from solid_coder_config_loader import SolidCoderConfigLoader
 
 
 class TestConfigOverrides(unittest.TestCase):
@@ -22,7 +26,9 @@ class TestConfigOverrides(unittest.TestCase):
         self.assertEqual(cfg.llm.timeout, 120)
 
     def test_hooks_section_parses_into_hook_config(self):
-        with ConfigSectionStub(hooks={"pre_write_gate": {"exclude": ["tests/fixtures/**"]}}):
+        with ConfigSectionStub(
+            hooks={"pre_write_gate": {"exclude": ["tests/fixtures/**"]}}
+        ):
             cfg = SolidCoderConfigLoader().load()
         self.assertIsInstance(cfg.hooks["pre_write_gate"], HookConfig)
         self.assertEqual(cfg.hook_exclude("pre_write_gate"), ["tests/fixtures/**"])

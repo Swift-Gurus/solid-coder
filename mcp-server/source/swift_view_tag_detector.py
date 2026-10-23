@@ -9,15 +9,15 @@ from source.swift_tag_detector import SwiftTagDetecting
 from source.technology_detection import TechnologyDetection
 from source.technology_detection_scope import TechnologyDetectionScope
 
-
 """
 solid-name: SwiftViewTagDetector
 solid-category: boundary-adapter
 solid-spec: [SPEC-040]
 solid-description: Determines auditable view tags from structured Swift declaration traits.
 """
-class SwiftViewTagDetector(SwiftTagDetecting):
 
+
+class SwiftViewTagDetector(SwiftTagDetecting):
     def detect(
         self,
         inventory: SourceSyntaxInventory,

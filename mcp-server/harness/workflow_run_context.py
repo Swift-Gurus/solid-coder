@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.step_outputs import StepOutputs
-from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_alias_results import WorkflowAliasResults
+from harness.workflow_context_values import WorkflowContextValues
 
 if TYPE_CHECKING:
     from harness.step_skip import StepSkip
@@ -20,6 +20,8 @@ solid-category: model
 solid-spec: [SPEC-030, SPEC-031, SPEC-037]
 solid-description: Carries typed workflow parameters, completed outputs, retry details, and iteration state.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowRunContext:
     parameters: WorkflowContextValues[object] = field(

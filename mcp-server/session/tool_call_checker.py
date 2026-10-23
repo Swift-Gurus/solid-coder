@@ -5,8 +5,10 @@ solid-tags: [hook, utility]
 """
 
 import sys
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Optional, Protocol
+from types import MappingProxyType
+from typing import Protocol
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1]
 _SESSION_DIR = Path(__file__).resolve().parent
@@ -14,26 +16,30 @@ for _d in (_HOOKS_DIR, _SESSION_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from mcp_tool_call_reader import McpToolCallReading  # noqa: E402
+from mcp_tool_call_reader import McpToolCallReading
 
-_DEFAULT_REQUIRED: dict = {
-    "health_check": {"submit_batch_findings"},
-    "review": {"submit_batch_findings"},
-}
+_DEFAULT_REQUIRED: Mapping[str, frozenset[str]] = MappingProxyType(
+    {
+        "health_check": frozenset({"submit_batch_findings"}),
+        "review": frozenset({"submit_batch_findings"}),
+    }
+)
 
 
 class RequiredToolsProviding(Protocol):
-    def required_for(self, session_type: str) -> set: ...
+    def required_for(self, session_type: str) -> frozenset[str]: ...
 
 
 class DefaultRequiredTools:
     """Returns the required MCP tool names for each managed session type."""
 
-    def __init__(self, mapping: dict = _DEFAULT_REQUIRED) -> None:
+    def __init__(
+        self, mapping: Mapping[str, frozenset[str]] = _DEFAULT_REQUIRED
+    ) -> None:
         self._mapping = mapping
 
-    def required_for(self, session_type: str) -> set:
-        return self._mapping.get(session_type, set())
+    def required_for(self, session_type: str) -> frozenset[str]:
+        return self._mapping.get(session_type, frozenset())
 
 
 class ToolCallChecker:
@@ -42,12 +48,12 @@ class ToolCallChecker:
     def __init__(
         self,
         reader: McpToolCallReading,
-        required_tools: RequiredToolsProviding = DefaultRequiredTools(),
+        required_tools: RequiredToolsProviding,
     ) -> None:
         self._reader = reader
         self._required_tools = required_tools
 
-    def check(self, transcript_path: Optional[str], session_type: str) -> dict:
+    def check(self, transcript_path: str | None, session_type: str) -> dict:
         required = self._required_tools.required_for(session_type)
         if not required:
             return {"allow": True}

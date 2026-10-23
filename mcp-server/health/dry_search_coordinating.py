@@ -1,21 +1,22 @@
 """Defines validated DRY-search coordination."""
 
-from typing import Optional, Protocol
-
+from typing import Protocol
 
 """
 solid-name: DrySearchCoordinating
 solid-category: abstraction
 solid-description: Contract for validating codebase searches and recording successful health-check completion.
 """
+
+
 class DrySearchCoordinating(Protocol):
     def search(
         self,
-        sources_dir: Optional[str] = None,
-        plan_path: Optional[str] = None,
-        query: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        spec_numbers: Optional[list[str]] = None,
+        sources_dir: str | None = None,
+        plan_path: str | None = None,
+        query: str | None = None,
+        tags: list[str] | None = None,
+        spec_numbers: list[str] | None = None,
         min_matches: int = 1,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> str: ...

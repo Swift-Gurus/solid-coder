@@ -6,14 +6,17 @@ from harness.workflow_context_values import WorkflowContextValues
 from review.normalized_review_unit import NormalizedReviewUnit
 from source.source_unit_identity import SourceUnitIdentity
 
-
 """
 solid-name: ReviewUnitSourceIdentityResolving
 solid-category: abstraction
 solid-description: Contract for deriving authoritative source-unit identity from normalized review inputs.
 """
+
+
 class ReviewUnitSourceIdentityResolving(Protocol):
-    def resolve(self, inputs: WorkflowContextValues[object]) -> SourceUnitIdentity | None: ...
+    def resolve(
+        self, inputs: WorkflowContextValues[object]
+    ) -> SourceUnitIdentity | None: ...
 
 
 """
@@ -22,11 +25,15 @@ solid-category: service
 solid-spec: [SPEC-057]
 solid-description: Resolves normalized review-unit provenance without claiming identities for unrelated custom inputs.
 """
+
+
 class ReviewUnitSourceIdentityResolver(ReviewUnitSourceIdentityResolving):
     def __init__(self, decoder: StructuredModelDecoding[NormalizedReviewUnit]) -> None:
         self._decoder = decoder
 
-    def resolve(self, inputs: WorkflowContextValues[object]) -> SourceUnitIdentity | None:
+    def resolve(
+        self, inputs: WorkflowContextValues[object]
+    ) -> SourceUnitIdentity | None:
         value = inputs.find("review_unit")
         if not value.present:
             return None

@@ -29,14 +29,14 @@ for _d in (_MCP_SERVER, _MCP_HEALTH_CONFIG, _TEST_DIR, _HARNESS_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from mcp_utils import McpConfigBuilder  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from claude_test_base import ClaudeTestBase
+from harness_factory import HookUtilsTomlLoader
+from hook_utils import solid_coder_project_dir
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
+from mcp_utils import McpConfigBuilder
+from model_profile_environment import model_profile_environment
+from model_profile_loader import ModelProfileLoader
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 # --plugin-dir registers the MCP server under a plugin-prefixed name
@@ -69,9 +69,11 @@ def _summarize_transcript(raw_stdout: str) -> str:
 
 
 def _build_prompt(flow_file: Path, parent_session_id: str) -> str:
-    spawned_by_header = f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
+    spawned_by_header = (
+        f"# spawned-by: {parent_session_id}\n\n" if parent_session_id else ""
+    )
     return (
-        f'{spawned_by_header}'
+        f"{spawned_by_header}"
         f'Call flow_start with flow="{flow_file}". Submit the output for the first step you are '
         "given via flow_next. Then, as a deliberate test of stop-time enforcement, try to end "
         "your turn immediately with a short closing message without submitting the second step. "
@@ -82,7 +84,6 @@ def _build_prompt(flow_file: Path, parent_session_id: str) -> str:
 
 
 class TestFlowTransitionGateE2ELive(ClaudeTestBase, unittest.TestCase):
-
     TIMEOUT = 300
 
     def setUp(self):
@@ -125,7 +126,9 @@ class TestFlowTransitionGateE2ELive(ClaudeTestBase, unittest.TestCase):
 
         after = set(runs_dir.glob("*/events.jsonl")) if runs_dir.exists() else set()
         new_logs = after - before
-        self.assertTrue(new_logs, f"No new events.jsonl appeared after the session\n\n{transcript}")
+        self.assertTrue(
+            new_logs, f"No new events.jsonl appeared after the session\n\n{transcript}"
+        )
         events_path = max(new_logs, key=lambda p: p.stat().st_mtime)
 
         events = [

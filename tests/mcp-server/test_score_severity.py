@@ -3,12 +3,13 @@ solid-category: unit-test
 """
 
 import unittest
+
 from helpers import (
     SubmitFindingsTestBase,
     make_partial_output,
-    make_srp_file,
     make_schema_srp_metrics,
     make_schema_srp_severe_metrics,
+    make_srp_file,
 )
 
 
@@ -39,7 +40,9 @@ class TestScoreSeverity(SubmitFindingsTestBase):
 
     def test_unknown_principle_key_returns_error(self):
         """Metrics with an unrecognised principle key returns an error — fail-fast."""
-        output = make_partial_output([make_srp_file({"UNKNOWN": {"foo": {"value": 1}}})])
+        output = make_partial_output(
+            [make_srp_file({"UNKNOWN": {"foo": {"value": 1}}})]
+        )
         result = self.handler.score_severity([output])
         self.assertIn("error", result["results"][0])
 

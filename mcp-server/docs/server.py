@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """solid-coder docs MCP server — loads principle documentation on demand.
 
 Returns file content directly (frontmatter stripped) instead of paths.
@@ -26,25 +25,29 @@ SKILLS_ROOT = PLUGIN_ROOT / "skills"
 
 sys.path.insert(0, str(MCP_DIR))
 
-from rules import discover_principles
-from spec import parse_frontmatter
-from rules.load_reference import strip_frontmatter
-from common.chunker import Chunker
-from rules.principle_registry import PrincipleRegistry
-from findings.fix_file_lookup import find_fix_file
-from rules.rule_file_collector import collect_files
 import modes as modes_module
-from mcp_server_factory import MCPServerFactory
+from common.chunker import Chunker
 from common.mcp_meta import LARGE_OUTPUT
+from findings.fix_file_lookup import find_fix_file
+from gate_logger import GateLogger
+from mcp_server_factory import MCPServerFactory
+from rules import discover_principles
+from rules.load_reference import strip_frontmatter
+from rules.principle_registry import PrincipleRegistry
+from rules.rule_file_collector import collect_files
+from spec import parse_frontmatter
+from utils.debug_logger import DebugLogger
 
 server = MCPServerFactory().build("solid-coder-docs", "1.0.0")
 _chunker = Chunker()
 _registry = PrincipleRegistry(REFS_ROOT)
+_logger = GateLogger(DebugLogger())
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _read(path) -> str:
     try:
@@ -73,9 +76,11 @@ def _strip_review_only_sections(content: str) -> str:
     Non-review modes need violation definitions and exceptions, not thresholds.
     """
     import re as _re
+
     # Strip XML severity-bands blocks first
-    content = _re.sub(r"<severity-bands[^>]*>.*?</severity-bands>", "", content,
-                      flags=_re.DOTALL)
+    content = _re.sub(
+        r"<severity-bands[^>]*>.*?</severity-bands>", "", content, flags=_re.DOTALL
+    )
     lines = content.splitlines(keepends=True)
     result = []
     skipping = False
@@ -110,6 +115,7 @@ def _render_principle(name: str, files: list, review_mode: bool) -> str:
 # Tool: discover_principles
 # ---------------------------------------------------------------------------
 
+
 @server.tool(
     name="discover_principles",
     meta=LARGE_OUTPUT,
@@ -136,7 +142,9 @@ def _render_principle(name: str, files: list, review_mode: bool) -> str:
 )
 def discover_principles_tool(matched_tags=None, profile=None):
     result = discover_principles.discover_and_filter(
-        str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
+        str(REFS_ROOT),
+        matched_tags=matched_tags,
+        profile=profile,
     )
     return {
         "active_principles": result["active_principles"],
@@ -148,6 +156,7 @@ def discover_principles_tool(matched_tags=None, profile=None):
 # ---------------------------------------------------------------------------
 # Tool: get_candidate_tags
 # ---------------------------------------------------------------------------
+
 
 @server.tool(
     name="get_candidate_tags",
@@ -167,6 +176,7 @@ def get_candidate_tags():
 # ---------------------------------------------------------------------------
 # Tool: load_rules
 # ---------------------------------------------------------------------------
+
 
 @server.tool(
     name="load_rules",
@@ -209,7 +219,9 @@ def load_rules(mode, matched_tags=None, principle=None):
     exclude = set(cfg.get("exclude", []))
 
     result = discover_principles.discover_and_filter(
-        str(REFS_ROOT), matched_tags=matched_tags, profile=profile,
+        str(REFS_ROOT),
+        matched_tags=matched_tags,
+        profile=profile,
     )
     active = result["active_principles"]
 
@@ -227,9 +239,12 @@ def load_rules(mode, matched_tags=None, principle=None):
             exclude=exclude,
             profile=profile,
             parse_frontmatter=parse_frontmatter,
+            logger=_logger,
         )
         if files:
-            blocks.append(_render_principle(p["name"], files, review_mode=mode == "review"))
+            blocks.append(
+                _render_principle(p["name"], files, review_mode=mode == "review")
+            )
 
     content = "\n\n---\n\n".join(blocks) if blocks else "No active principles found."
     return content
@@ -238,6 +253,7 @@ def load_rules(mode, matched_tags=None, principle=None):
 # ---------------------------------------------------------------------------
 # Tool: load_examples
 # ---------------------------------------------------------------------------
+
 
 @server.tool(
     name="load_examples",
@@ -290,6 +306,7 @@ def load_examples(principle):
 # Tool: load_pattern
 # ---------------------------------------------------------------------------
 
+
 @server.tool(
     name="load_pattern",
     meta=LARGE_OUTPUT,
@@ -324,7 +341,7 @@ def load_pattern(name):
             desc = (fm.get("description") or "").strip()
             suffix = f" — {desc}" if desc else ""
             available.append(f"- **{display}**{suffix} (`{_rel_label(f)}`)")
-        except Exception:
+        except Exception:  # noqa: BLE001 — Legacy documentation catalog falls back to filenames when metadata loading fails.
             available.append(f"- {f.stem} (`{_rel_label(f)}`)")
 
     catalog = "\n".join(available) if available else "(none)"
@@ -459,6 +476,7 @@ def _load_and_format_fixes(metric_ids: list, all_p: list) -> tuple:
 )
 def load_fix_instructions_for_findings(findings_path):
     import json as _json
+
     try:
         raw = _json.loads(Path(findings_path).read_text(encoding="utf-8"))
     except (OSError, _json.JSONDecodeError) as e:
@@ -481,7 +499,11 @@ def load_fix_instructions_for_findings(findings_path):
     parts, missing = _load_and_format_fixes(metric_ids, _registry.all_principles())
     result = "\n\n---\n\n".join(parts) if parts else ""
     if missing:
-        result += ("\n\n" if result else "") + "> Note (fail-open): " + "; ".join(f"no fix file for {m}" for m in missing)
+        result += (
+            ("\n\n" if result else "")
+            + "> Note (fail-open): "
+            + "; ".join(f"no fix file for {m}" for m in missing)
+        )
     return result or "No fix strategies found in the findings file."
 
 
@@ -519,7 +541,9 @@ def load_fix_for_violation(metric_ids, **_):
             if (Path(p["folder"]) / "fix").is_dir() and f.stem != "instructions"
         )
         for norm in missing:
-            parts.append(f"# {norm}\n\nNo fix file found. Available: {', '.join(available)}")
+            parts.append(
+                f"# {norm}\n\nNo fix file found. Available: {', '.join(available)}"
+            )
     return "\n\n---\n\n".join(parts) if parts else "No metric IDs provided."
 
 

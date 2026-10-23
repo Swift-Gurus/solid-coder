@@ -1,12 +1,13 @@
 from harness.pydantic_type_adapter_encoder import StructuredModelEncoding
 from hook_permission_response import HookPermissionResponse
 
-
 """
 solid-name: HookPermissionResponseEncoder
 solid-category: adapter
 solid-description: Encodes hook permission decisions, response context, and corrected input into the hook wire format.
 """
+
+
 class HookPermissionResponseEncoder(StructuredModelEncoding[HookPermissionResponse]):
     def encode(self, value: HookPermissionResponse) -> object:
         decision = value.decision

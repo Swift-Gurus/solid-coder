@@ -1,17 +1,18 @@
 """Retrieves specification ancestry through the installed query script."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from spec_ancestry_retrieving import SpecAncestryRetrieving
 from subprocess_running import SubprocessRunning
-
 
 """
 solid-name: SpecAncestryRetriever
 solid-category: boundary-adapter
 solid-description: Retrieves specification ancestry records from the configured query capability.
 """
+
+
 class SpecAncestryRetriever(SpecAncestryRetrieving):
     def __init__(
         self,

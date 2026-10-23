@@ -3,9 +3,7 @@
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
-
 from source.source_unit import SourceUnit
-
 
 """
 solid-name: RepositorySourceSnapshot
@@ -13,6 +11,8 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Carries canonical repository source identity, exact text, and content hash captured by one search.
 """
+
+
 class RepositorySourceSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

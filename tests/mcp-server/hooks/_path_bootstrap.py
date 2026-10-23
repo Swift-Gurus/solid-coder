@@ -25,4 +25,4 @@ for _d in (
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_utils import ensure_on_path  # noqa: E402, F401  # re-export
+from hook_utils import ensure_on_path  # noqa: F401  # re-export

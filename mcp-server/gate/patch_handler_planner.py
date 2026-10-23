@@ -8,13 +8,14 @@ from patch_file_handler_creating import PatchFileHandlerCreating
 from patch_files_simulating import PatchFilesSimulating
 from patch_review_context import PatchReviewContext
 
-
 """
 solid-name: PatchHandlerPlanner
 solid-category: service
 solid-description: Selects supported non-excluded patch simulations and creates their isolated review handlers.
 solid-tags: [hook]
 """
+
+
 class PatchHandlerPlanner:
     def __init__(
         self,
@@ -38,9 +39,9 @@ class PatchHandlerPlanner:
             language = self._extension_lookup.language_for(
                 self._extension_extractor.suffix_of(simulation.file_path)
             )
-            if language is None or self._exclusion_checker.is_excluded(simulation.file_path):
+            if language is None or self._exclusion_checker.is_excluded(
+                simulation.file_path
+            ):
                 continue
-            handlers.append(
-                self._handler_factory.create(simulation, language, context)
-            )
+            handlers.append(self._handler_factory.create(simulation, language, context))
         return handlers

@@ -13,10 +13,10 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
-from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
-from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
-from rule_validation_scenario import RuleValidationScenario  # noqa: E402
+from rule_analysis_expectation import RuleAnalysisExpectation
+from rule_metric_expectation import RuleMetricExpectation
+from rule_validation_flow_contract import RuleValidationFlowContract
+from rule_validation_scenario import RuleValidationScenario
 
 
 class TestSRPValidationFlow(RuleValidationFlowContract):
@@ -54,7 +54,12 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
                                 "evidence": f"{method} source body",
                             }
                             for method in (
-                                "save", "load", "invalidate", "render", "format", "present",
+                                "save",
+                                "load",
+                                "invalidate",
+                                "render",
+                                "format",
+                                "present",
                             )
                         ],
                     ],
@@ -192,7 +197,9 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
         self.assertIn("every instance variable it directly uses", prompts)
         self.assertIn("is_orchestrator", prompts)
         self.assertIn("distinct stakeholders", prompts)
-        self.assertIn("Every stored property and initializer parameter is protocol-typed", prompts)
+        self.assertIn(
+            "Every stored property and initializer parameter is protocol-typed", prompts
+        )
         self.assertIn("pure delegation without business logic", prompts)
         self.assertIn("every dependency is", prompts)
         self.assertIn("injected through its initializer", prompts)
@@ -200,18 +207,20 @@ class TestSRPValidationFlow(RuleValidationFlowContract):
     def test_rejects_an_observation_without_required_evidence(self) -> None:
         analysis = self._start()
 
-        rejected = self.sut.flow_next({
-            analysis.steps[0].instance_id: {
-                "actions": [
-                    {
-                        "method": "save",
-                        "action": "save",
-                        "is_lifecycle": False,
-                        "reasoning": "The method persists the supplied data.",
-                    }
-                ],
-            },
-        })
+        rejected = self.sut.flow_next(
+            {
+                analysis.steps[0].instance_id: {
+                    "actions": [
+                        {
+                            "method": "save",
+                            "action": "save",
+                            "is_lifecycle": False,
+                            "reasoning": "The method persists the supplied data.",
+                        }
+                    ],
+                },
+            }
+        )
 
         self.assertEqual(rejected.status, "ready")
         self.assertEqual(

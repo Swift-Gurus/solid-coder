@@ -3,13 +3,14 @@
 from harness.collection_value_matching import CollectionValueMatching
 from harness.rule_value_match_mode import RuleValueMatchMode
 
-
 """
 solid-name: RuleValuesMatcher
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Selects values that are present in or missing from one rule-selection candidate collection.
 """
+
+
 class RuleValuesMatcher:
     def __init__(self, collection_matcher: CollectionValueMatching) -> None:
         self._collection_matcher = collection_matcher

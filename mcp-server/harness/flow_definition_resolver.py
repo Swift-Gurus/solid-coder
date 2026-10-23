@@ -1,10 +1,12 @@
 """Resolves a raw workflow document and all composition resources."""
 
-from harness.condition_parsing import ConditionParsing
 from harness.co_located_metric_normalizing import CoLocatedMetricNormalizing
+from harness.condition_parsing import ConditionParsing
 from harness.flow_config_extractor import FlowConfigExtracting
 from harness.flow_def import FlowDef
-from harness.include_alias_group_snapshot_parsing import IncludeAliasGroupSnapshotParsing
+from harness.include_alias_group_snapshot_parsing import (
+    IncludeAliasGroupSnapshotParsing,
+)
 from harness.include_resolving import IncludeResolving
 from harness.output_schema_prompt_annotating import OutputSchemaPromptAnnotating
 from harness.output_schema_resolving import OutputSchemaResolving
@@ -14,15 +16,14 @@ from harness.rule_declaration import RuleDeclaration
 from harness.script_file_resolving import ScriptFileResolving
 from harness.step_collection_uses_resolving import StepCollectionUsesResolving
 from harness.step_declaration_mapping import StepDeclarationMapping
-from harness.step_source_collecting import StepSourceCollecting
 from harness.step_source_annotating import StepSourceAnnotating
-from harness.structured_model_decoding import StructuredModelDecoding
+from harness.step_source_collecting import StepSourceCollecting
 from harness.structured_mode_resolver import StructuredModeResolver
+from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_presentation_mode import WorkflowPresentationMode
-
 
 """
 solid-name: FlowDefinitionResolver
@@ -30,8 +31,9 @@ solid-category: service
 solid-spec: [SPEC-030, SPEC-035, SPEC-039]
 solid-description: Runs the ordered workflow composition and resource-resolution pipeline with source provenance.
 """
-class FlowDefinitionResolver:
 
+
+class FlowDefinitionResolver:
     def __init__(
         self,
         config_extractor: FlowConfigExtracting,
@@ -97,7 +99,9 @@ class FlowDefinitionResolver:
             self._config_extractor.extract_steps(raw),
             source_path,
         )
-        top_level_steps = self._uses_resolver.resolve(declared_steps, path, search_paths)
+        top_level_steps = self._uses_resolver.resolve(
+            declared_steps, path, search_paths
+        )
         top_level_step_ids = {step["id"] for step in top_level_steps if "id" in step}
         inclusion = self._include_resolver.resolve(
             top_level_steps,
@@ -110,7 +114,9 @@ class FlowDefinitionResolver:
         restored_alias_groups = self._alias_group_snapshot_parser.parse(
             raw.get("alias_groups")
         )
-        included_steps = self._uses_resolver.resolve(inclusion.steps, path, search_paths)
+        included_steps = self._uses_resolver.resolve(
+            inclusion.steps, path, search_paths
+        )
         sources = self._source_collector.collect(
             included_steps,
             [source_path, *inclusion.sources],
@@ -119,8 +125,12 @@ class FlowDefinitionResolver:
         script_steps = [
             self._script_file_resolver.resolve(step, path) for step in mapped_steps
         ]
-        prompt_steps = [self._prompt_resolver.resolve(step, path) for step in script_steps]
-        schema_steps = [self._schema_resolver.resolve(step, path) for step in prompt_steps]
+        prompt_steps = [
+            self._prompt_resolver.resolve(step, path) for step in script_steps
+        ]
+        schema_steps = [
+            self._schema_resolver.resolve(step, path) for step in prompt_steps
+        ]
         step_declarations = [
             self._prompt_annotator.annotate(step) for step in schema_steps
         ]

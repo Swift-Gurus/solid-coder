@@ -16,13 +16,14 @@ from harness.metric_value_type import MetricValueType
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: MetricDeclarationDecoder
 solid-category: boundary-adapter
 solid-spec: [SPEC-039, SPEC-054, SPEC-056]
 solid-description: Produces validated executable measurement contracts from authored configuration.
 """
+
+
 class MetricDeclarationDecoder(MetricDeclarationDecoding):
     def __init__(
         self,
@@ -85,16 +86,12 @@ class MetricDeclarationDecoder(MetricDeclarationDecoding):
                 f"metric step '{step_id}'",
             )
         parsed_source = (
-            self._reference_parser.parse(
-                self._expression_parser.parse(source).value
-            )
+            self._reference_parser.parse(self._expression_parser.parse(source).value)
             if source is not None
             else None
         )
         parsed_condition = (
-            self._condition_parser.parse(condition)
-            if condition is not None
-            else None
+            self._condition_parser.parse(condition) if condition is not None else None
         )
         return self._contract_assembler.assemble(
             metric,

@@ -14,13 +14,14 @@ from harness.collection_metric_reduction_result import (
 from harness.selected_collection_metric_entry import SelectedCollectionMetricEntry
 from harness.strict_value_comparing import StrictValueComparing
 
-
 """
 solid-name: DistinctCountCollectionMetricReducer
 solid-category: strategy
 solid-spec: [SPEC-054]
 solid-description: Counts type-strict projected values while preserving first-occurrence evidence for audit.
 """
+
+
 class DistinctCountCollectionMetricReducer(CollectionMetricReducing):
     def __init__(
         self,

@@ -6,7 +6,6 @@ solid-tags: [hook, utility]
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 _HOOKS_DIR = Path(__file__).resolve().parents[1]
 _SESSION_DIR = Path(__file__).resolve().parent
@@ -14,7 +13,7 @@ for _d in (_HOOKS_DIR, _SESSION_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from session_store import StoreAccessing  # noqa: E402
+from session_store import StoreAccessing
 
 
 class SessionRegistryAccessor:
@@ -23,7 +22,7 @@ class SessionRegistryAccessor:
     def __init__(self, store: StoreAccessing) -> None:
         self._store = store
 
-    def get_entry(self, session_id: str, cwd: str) -> Optional[dict]:
+    def get_entry(self, session_id: str, cwd: str) -> dict | None:
         """Return the registry entry for session_id, or None if not registered."""
         path = self._store.registry_path(cwd)
         registry = self._store.load(path)

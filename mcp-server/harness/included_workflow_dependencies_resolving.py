@@ -6,13 +6,14 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.models import StepDef
 
-
 """
 solid-name: IncludedWorkflowDependenciesResolving
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for resolving one child step's instance-scoped dependencies.
 """
+
+
 class IncludedWorkflowDependenciesResolving(Protocol):
     def resolve(
         self,

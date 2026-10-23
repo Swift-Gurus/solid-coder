@@ -5,10 +5,10 @@ solid-description: Contract for consolidating multiple decisions into a single o
 solid-tags: [hook]
 """
 
-from typing import List, Protocol
+from typing import Protocol
 
 from hook_decision import HookDecision
 
 
 class DecisionAggregating(Protocol):
-    def aggregate(self, decisions: List[HookDecision]) -> HookDecision: ...
+    def aggregate(self, decisions: list[HookDecision]) -> HookDecision: ...

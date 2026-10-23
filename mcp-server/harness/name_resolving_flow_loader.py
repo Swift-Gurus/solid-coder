@@ -5,15 +5,15 @@ from harness.flow_loading import FlowLoading
 from harness.models import FlowDef
 from harness.workflow_catalog_resolving import WorkflowCatalogScoping
 
-
 """
 solid-name: NameResolvingFlowLoader
 solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Loads a flow definition with automatic name resolution through search paths.
 """
-class NameResolvingFlowLoader:
 
+
+class NameResolvingFlowLoader:
     def __init__(
         self,
         file_resolver: FlowFileResolving,

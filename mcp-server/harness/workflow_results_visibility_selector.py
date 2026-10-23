@@ -10,13 +10,14 @@ from harness.workflow_results_visibility_selecting import (
     WorkflowResultsVisibilitySelecting,
 )
 
-
 """
 solid-name: WorkflowResultsVisibilitySelector
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Exposes included-workflow results visible to one execution scope.
 """
+
+
 class WorkflowResultsVisibilitySelector(WorkflowResultsVisibilitySelecting):
     def select(
         self,
@@ -41,10 +42,12 @@ class WorkflowResultsVisibilitySelector(WorkflowResultsVisibilitySelecting):
                     and entry.value.owner_alias == workflow_instance.alias
                 )
             ]
-        return WorkflowContextValues(entries=[
-            WorkflowContextValue(
-                name=entry.value.authored_alias,
-                value=entry.value,
-            )
-            for entry in visible
-        ])
+        return WorkflowContextValues(
+            entries=[
+                WorkflowContextValue(
+                    name=entry.value.authored_alias,
+                    value=entry.value,
+                )
+                for entry in visible
+            ]
+        )

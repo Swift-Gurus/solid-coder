@@ -7,10 +7,14 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-import hook_utils  # noqa: E402
-from capture_runner import CaptureRunner  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+import hook_utils
+from capture_runner import CaptureRunner
 
 
 class TestRunClaudeBareCwd(unittest.TestCase):

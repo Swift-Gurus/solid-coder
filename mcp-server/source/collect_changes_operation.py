@@ -11,13 +11,14 @@ from source.renamed_source_file_change import RenamedSourceFileChange
 from source.source_file_change import SourceFileChange
 from source.whole_file_range_resolving import WholeFileRangeResolving
 
-
 """
 solid-name: CollectChangesOperation
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Collects ordered typed source-file changes from a Git working tree without mutation.
 """
+
+
 class CollectChangesOperation:
     def __init__(
         self,
@@ -46,9 +47,7 @@ class CollectChangesOperation:
             *[
                 AddedSourceFileChange(
                     path=path,
-                    added_ranges=self._whole_file_range.resolve(
-                        project_root / path
-                    ),
+                    added_ranges=self._whole_file_range.resolve(project_root / path),
                 )
                 for path in paths.untracked
             ],
@@ -59,10 +58,7 @@ class CollectChangesOperation:
                 )
                 for path in paths.modified
             ],
-            *[
-                DeletedSourceFileChange(path=path)
-                for path in paths.deleted
-            ],
+            *[DeletedSourceFileChange(path=path) for path in paths.deleted],
             *[
                 RenamedSourceFileChange(
                     previous_path=rename.previous_path,

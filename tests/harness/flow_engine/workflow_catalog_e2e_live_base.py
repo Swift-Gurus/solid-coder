@@ -20,14 +20,14 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from live_session_running import LiveSessionRunning  # noqa: E402
-from mcp_utils import McpConfigBuilder  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from harness_factory import HookUtilsTomlLoader
+from hook_utils import solid_coder_project_dir
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
+from live_session_running import LiveSessionRunning
+from mcp_utils import McpConfigBuilder
+from model_profile_environment import model_profile_environment
+from model_profile_loader import ModelProfileLoader
 
 _PLUGIN_ROOT = _MCP_SERVER.parent
 _FIXTURE_ROOT = Path(__file__).resolve().parent / "fixtures" / "workflow_catalog_e2e"
@@ -40,8 +40,9 @@ solid-category: test-support
 solid-spec: [SPEC-035]
 solid-description: Verifies bare-ID package discovery and nested workflow-ID composition through any live model backend.
 """
-class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
 
+
+class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     FLOW_START_TOOL: ClassVar[str]
@@ -57,7 +58,9 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
         raise NotImplementedError
 
     def setUp(self) -> None:
-        self._temporary_project = tempfile.TemporaryDirectory(prefix="solid-coder-catalog-e2e-")
+        self._temporary_project = tempfile.TemporaryDirectory(
+            prefix="solid-coder-catalog-e2e-"
+        )
         self._project_root = Path(self._temporary_project.name)
         workflows = self._project_root / ".solid-coder" / "workflows"
         shutil.copytree(_FIXTURE_ROOT / "workflows", workflows)
@@ -97,9 +100,11 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
             mcp_config=McpConfigBuilder().build(_PLUGIN_ROOT),
         )
 
-        with patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(self._project_root)}):
-            with model_profile_environment(profile.profile_path):
-                session_result = self.live_session_runner().run(request)
+        with (
+            patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(self._project_root)}),
+            model_profile_environment(profile.profile_path),
+        ):
+            session_result = self.live_session_runner().run(request)
 
         runs = self._read_runs()
         self.assertEqual(
@@ -122,9 +127,17 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
             ],
         )
         self._assert_successful(combined_events)
-        self.assertEqual(self._step_output(combined_events, "first.verify_existing", "existing"), True)
-        self.assertEqual(self._step_output(combined_events, "second.verify_existing", "existing"), True)
-        self.assertEqual(self._step_output(combined_events, "confirm_combined", "combined"), True)
+        self.assertEqual(
+            self._step_output(combined_events, "first.verify_existing", "existing"),
+            True,
+        )
+        self.assertEqual(
+            self._step_output(combined_events, "second.verify_existing", "existing"),
+            True,
+        )
+        self.assertEqual(
+            self._step_output(combined_events, "confirm_combined", "combined"), True
+        )
         self.assertNotEqual(session_result.session_id, parent_session_id)
         self.assertEqual(
             self._model_session_ids(combined_events),
@@ -133,10 +146,18 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
 
     def _read_runs(self) -> list[list[dict]]:
         runs_dir = self._artifact_root / "runs"
-        return [
-            [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-            for path in runs_dir.glob("*/events.jsonl")
-        ] if runs_dir.exists() else []
+        return (
+            [
+                [
+                    json.loads(line)
+                    for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip()
+                ]
+                for path in runs_dir.glob("*/events.jsonl")
+            ]
+            if runs_dir.exists()
+            else []
+        )
 
     def _events_for_flow(self, runs: list[list[dict]], flow_name: str) -> list[dict]:
         for events in runs:
@@ -157,11 +178,14 @@ class WorkflowCatalogE2ELiveBase(unittest.TestCase, ABC):
         self.assertFalse(event_types & _FAILED_EVENTS)
         self.assertEqual(events[-1].get("event"), "run_completed")
 
-    def _step_output(self, events: list[dict], step_id: str, output_name: str) -> object:
+    def _step_output(
+        self, events: list[dict], step_id: str, output_name: str
+    ) -> object:
         event = next(
             event
             for event in events
-            if event.get("event") == "step_completed" and event.get("step_id") == step_id
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == step_id
         )
         return event["outputs"][output_name]
 

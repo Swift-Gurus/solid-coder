@@ -9,13 +9,14 @@ from harness.condition_runtime import ConditionRuntime
 from harness.condition_value_matching import ConditionValueMatching
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: ConditionComparator
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves and compares one workflow condition reference.
 """
+
+
 class ConditionComparator(ConditionRuntime):
     def __init__(
         self,

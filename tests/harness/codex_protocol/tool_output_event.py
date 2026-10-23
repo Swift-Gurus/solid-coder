@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Union
-
-from pydantic import AliasPath, BaseModel, ConfigDict, Field
+from typing import Literal
 
 from codex_protocol.output_text import CodexOutputText
-
+from pydantic import AliasPath, BaseModel, ConfigDict, Field
 
 """
 solid-name: CodexToolOutputEvent
 solid-category: test-support
 solid-description: Carries a timestamped Codex tool response linked to its invocation, preserving native text and code-mode content blocks.
 """
+
+
 class CodexToolOutputEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True, populate_by_name=True)
 
@@ -24,7 +24,7 @@ class CodexToolOutputEvent(BaseModel):
         validation_alias=AliasPath("payload", "type"),
     )
     call_id: str = Field(validation_alias=AliasPath("payload", "call_id"))
-    output: Union[str, list[CodexOutputText]] = Field(
+    output: str | list[CodexOutputText] = Field(
         validation_alias=AliasPath("payload", "output"),
     )
 

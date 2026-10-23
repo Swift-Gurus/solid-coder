@@ -11,15 +11,15 @@ from harness.workflow_publication_state_resolving import (
     WorkflowPublicationStateResolving,
 )
 
-
 """
 solid-name: WorkflowPublicationStateResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves whether an included-workflow result is pending, omitted, or publishable.
 """
-class WorkflowPublicationStateResolver(WorkflowPublicationStateResolving):
 
+
+class WorkflowPublicationStateResolver(WorkflowPublicationStateResolving):
     def __init__(
         self,
         terminal_state_resolver: StepTerminalStateResolving,
@@ -41,8 +41,7 @@ class WorkflowPublicationStateResolver(WorkflowPublicationStateResolving):
         if any(state is StepTerminalState.PENDING for state in terminal_states):
             return WorkflowPublicationState.PENDING
         if terminal_states and all(
-            state is StepTerminalState.SKIPPED
-            for state in terminal_states
+            state is StepTerminalState.SKIPPED for state in terminal_states
         ):
             return WorkflowPublicationState.OMITTED
         return WorkflowPublicationState.PUBLISHABLE

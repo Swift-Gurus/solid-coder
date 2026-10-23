@@ -6,13 +6,14 @@ from source.technology_detection_scope_matching import (
     TechnologyDetectionScopeMatching,
 )
 
-
 """
 solid-name: TechnologyDetectionScopeMatcher
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Recognizes technology detections whose typed scope equals an injected scope selection.
 """
+
+
 class TechnologyDetectionScopeMatcher(TechnologyDetectionScopeMatching):
     def __init__(self, scope: TechnologyDetectionScope) -> None:
         self._scope = scope

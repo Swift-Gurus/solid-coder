@@ -7,13 +7,14 @@ solid-tags: [hook]
 from hc_checker import ClaudeRunning
 from runner_strategy_base import RunnerStrategyBase
 
-
 """
 solid-name: CodexRunnerStrategy
 solid-category: service
 solid-description: Creates health-check runners for local Codex execution.
 solid-tags: [hook, llm]
 """
+
+
 class CodexRunnerStrategy(RunnerStrategyBase):
     """Runs health checks via a local Codex agent session."""
 
@@ -29,7 +30,8 @@ class CodexRunnerStrategy(RunnerStrategyBase):
         file_path: str = "",
         cwd: str = "",
     ) -> ClaudeRunning:
-        from hc_codex_runner import make_codex_runner  # noqa: PLC0415
+        from hc_codex_runner import make_codex_runner
+
         return make_codex_runner(
             model=self._model,
             timeout=self._timeout,

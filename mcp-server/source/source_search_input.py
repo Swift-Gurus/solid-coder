@@ -3,12 +3,10 @@
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-
 from source.default_source_file_extensions import DEFAULT_SOURCE_FILE_EXTENSIONS
+from source.source_search_context import SourceSearchContext
 from source.source_search_query import SourceSearchQuery
 from source.source_unit_identity import SourceUnitIdentity
-from source.source_search_context import SourceSearchContext
-
 
 SourceFileExtension = Annotated[
     str,
@@ -24,6 +22,8 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Defines a validated source-search request for deterministic repository comparison.
 """
+
+
 class SourceSearchInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

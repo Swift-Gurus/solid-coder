@@ -5,13 +5,14 @@ from __future__ import annotations
 from harness.interpolation_error import InterpolationError
 from harness.interpolation_error_creating import InterpolationErrorCreating
 
-
 """
 solid-name: InterpolationErrorFactory
 solid-category: factory
 solid-spec: [SPEC-037]
 solid-description: Creates an actionable error for an unresolved workflow reference.
 """
+
+
 class InterpolationErrorFactory(InterpolationErrorCreating):
     def create(
         self,

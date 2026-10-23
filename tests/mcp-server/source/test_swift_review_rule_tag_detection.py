@@ -7,13 +7,14 @@ from source.source_analysis_operation_factory import SourceAnalysisOperationFact
 from source.technology_detection_scope import TechnologyDetectionScope
 from source.text_analysis_source import TextAnalysisSource
 
-
 """
 solid-name: TestSwiftReviewRuleTagDetection
 solid-category: unit-test
 solid-spec: [SPEC-039, SPEC-040]
 solid-description: Verifies deterministic activation tags for concurrency, Swift unit-test, and Swift UI-test rule workflows.
 """
+
+
 class TestSwiftReviewRuleTagDetection(unittest.TestCase):
     def setUp(self) -> None:
         self.operation = SourceAnalysisOperationFactory().make()

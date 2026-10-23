@@ -13,13 +13,14 @@ from harness.step_output_submission_mapping_result import (
     StepOutputSubmissionMappingResult,
 )
 
-
 """
 solid-name: CombinedRuleBatchOutputSubmissionMapper
 solid-category: service
 solid-spec: [SPEC-043]
 solid-description: Translates nested domain-and-rule batch outputs into existing ready workflow instances.
 """
+
+
 class CombinedRuleBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
     def map(
         self,
@@ -44,13 +45,11 @@ class CombinedRuleBatchOutputSubmissionMapper(StepOutputSubmissionMapping):
             if any(
                 candidate.label == target.label
                 and candidate.workflow_alias == target.workflow_alias
-                for candidate in targets[index + 1:]
+                for candidate in targets[index + 1 :]
             ):
                 return StepOutputSubmissionMappingResult(
                     outputs={},
-                    error=(
-                        "Combined presentation rule and item labels must be unique"
-                    ),
+                    error=("Combined presentation rule and item labels must be unique"),
                 )
 
         mapped_outputs = {}

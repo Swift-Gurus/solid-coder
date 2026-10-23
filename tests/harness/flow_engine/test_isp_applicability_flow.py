@@ -18,11 +18,11 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.project_context import ProjectDirectory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.static_session_id_reader import StaticSessionIdReader  # noqa: E402
-from source.source_operation_registrations_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.project_context import ProjectDirectory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.static_session_id_reader import StaticSessionIdReader
+from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
 
@@ -45,9 +45,7 @@ class TestISPApplicabilityFlow(unittest.TestCase):
             / "fixture-3.swift"
         )
         self.sut = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(
-                project_dir_fn=lambda: self.run_root
-            ),
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: self.run_root),
             plugin_root=self.plugin_root,
             project_directory=project_directory,
             session_reader=StaticSessionIdReader("spec-039-isp-skip-test"),
@@ -84,13 +82,17 @@ class TestISPApplicabilityFlow(unittest.TestCase):
                 "classify_exception",
             },
         )
-        empty_iterations = [event for event in events if event["event"] == "step_completed"]
+        empty_iterations = [
+            event for event in events if event["event"] == "step_completed"
+        ]
         self.assertEqual(
             {event["local_step_id"] for event in empty_iterations},
             {"unverified_members", "classify_members"},
         )
         self.assertTrue(all(event["empty_collection"] for event in empty_iterations))
-        self.assertTrue(all(event["session_id"] == "engine" for event in empty_iterations))
+        self.assertTrue(
+            all(event["session_id"] == "engine" for event in empty_iterations)
+        )
         self.assertTrue(
             all(event["workflow_instance_id"] is not None for event in skipped)
         )
@@ -111,7 +113,9 @@ class TestISPApplicabilityFlow(unittest.TestCase):
             )
         )
         self.assertFalse(
-            (self.run_root / "runs" / result.run_id / "results" / "review" / "isp").exists()
+            (
+                self.run_root / "runs" / result.run_id / "results" / "review" / "isp"
+            ).exists()
         )
 
     def _prepare_isolated_catalog(self) -> Path:
@@ -144,7 +148,7 @@ class TestISPApplicabilityFlow(unittest.TestCase):
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
             json.loads(line)
-            for line in (
-                self.run_root / "runs" / run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.run_root / "runs" / run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]

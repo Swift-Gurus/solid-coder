@@ -14,8 +14,8 @@ import os
 import tempfile
 import time
 import unittest
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 from unittest.mock import MagicMock
 
 from _path_bootstrap import ensure_on_path
@@ -27,13 +27,13 @@ _HOOKS_DIR = _PROJECT_ROOT / "hooks"
 
 ensure_on_path(_HARNESS_DIR, _HERE, _HOOKS_DIR)
 
-from health_flow_invoker import (  # noqa: E402
+from health_flow_invoker import (
     CheckResultWriter,
     HealthFlowInvoker,
     SupportedExtensionsProvider,
     _env_override_context,
 )
-from test_fixtures import _make_output_paths, _make_profile  # noqa: E402
+from test_fixtures import _make_output_paths, _make_profile
 
 
 class TestSupportedExtensionsProvider(unittest.TestCase):
@@ -70,12 +70,16 @@ class TestCheckResultWriter(unittest.TestCase):
         result = [{"principle": "SRP", "issue": "violation"}]
         self._writer.write(result, self._output_paths)
         self.assertTrue(self._output_paths.log_dir.exists())
-        written = json.loads(self._output_paths.reasoning_path.read_text(encoding="utf-8"))
+        written = json.loads(
+            self._output_paths.reasoning_path.read_text(encoding="utf-8")
+        )
         self.assertEqual(written, result)
 
     def test_writes_empty_list_when_no_violations(self):
         self._writer.write([], self._output_paths)
-        written = json.loads(self._output_paths.reasoning_path.read_text(encoding="utf-8"))
+        written = json.loads(
+            self._output_paths.reasoning_path.read_text(encoding="utf-8")
+        )
         self.assertEqual(written, [])
 
 
@@ -117,7 +121,9 @@ class TestHealthFlowInvoker(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmp_ctx.cleanup()
 
-    def _make_invoker(self, violations=None, side_effect: Callable | None = None) -> HealthFlowInvoker:
+    def _make_invoker(
+        self, violations=None, side_effect: Callable | None = None
+    ) -> HealthFlowInvoker:
         checker = MagicMock()
         if side_effect is not None:
             checker.check.side_effect = side_effect
@@ -142,7 +148,9 @@ class TestHealthFlowInvoker(unittest.TestCase):
         self._make_invoker(violations).invoke(
             self._fixture, self._output_paths, _make_profile(), timeout=10
         )
-        written = json.loads(self._output_paths.reasoning_path.read_text(encoding="utf-8"))
+        written = json.loads(
+            self._output_paths.reasoning_path.read_text(encoding="utf-8")
+        )
         self.assertEqual(written, violations)
 
     def test_injects_model_profile_env_var_when_profile_path_set(self):
@@ -177,7 +185,9 @@ class TestHealthFlowInvoker(unittest.TestCase):
 
         invoker = self._make_invoker(side_effect=slow_check)
         with self.assertRaises(TimeoutError):
-            invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=1)
+            invoker.invoke(
+                self._fixture, self._output_paths, _make_profile(), timeout=1
+            )
 
     def test_raises_runtime_error_when_checker_raises(self):
         def raising_check(*_a, **_kw):
@@ -185,7 +195,9 @@ class TestHealthFlowInvoker(unittest.TestCase):
 
         invoker = self._make_invoker(side_effect=raising_check)
         with self.assertRaises(RuntimeError):
-            invoker.invoke(self._fixture, self._output_paths, _make_profile(), timeout=10)
+            invoker.invoke(
+                self._fixture, self._output_paths, _make_profile(), timeout=10
+            )
 
 
 class TestHealthFlowInvokerPrincipleFilter(unittest.TestCase):

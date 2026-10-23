@@ -1,23 +1,24 @@
 """Parses JSON hook context into an immutable domain model."""
 
 from pathlib import Path
-from typing import Optional
+
+from health.llama.json_deserializer import JsonDeserializing
 
 from findings.hook_context import HookContext
 from findings.hook_context_parsing import HookContextParsing
-from health.llama.json_deserializer import JsonDeserializing
-
 
 """
 solid-name: JsonHookContextParser
 solid-category: boundary-adapter
 solid-description: Validates decoded JSON fields and constructs immutable hook context.
 """
+
+
 class JsonHookContextParser(HookContextParsing):
     def __init__(self, deserializer: JsonDeserializing) -> None:
         self._deserializer = deserializer
 
-    def parse(self, raw_context: bytes) -> Optional[HookContext]:
+    def parse(self, raw_context: bytes) -> HookContext | None:
         payload = self._deserializer.deserialize(raw_context)
         if payload is None:
             return None

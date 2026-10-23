@@ -2,28 +2,40 @@
 
 from pathlib import Path
 
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.operation_registration import OperationRegistration
 from harness.operations.operation_result import OperationResult
 from harness.operations.result_operation_adapter import ResultOperationAdapter
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.project_context import ProjectDirectoryReading
 from hooks.pathlib_extractor import PathlibExtractor
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
+from source.analysis.operations.discover_source_declaration_input import (
+    DiscoverSourceDeclarationInput,
+)
 from source.analysis.operations.source_analysis_operation_registrations_factory import (
     SourceAnalysisOperationRegistrationsFactory,
 )
-from source.analysis.operations.discover_source_declaration_input import DiscoverSourceDeclarationInput
-from source.analysis.operations.source_declaration_discovery import SourceDeclarationDiscovery
-from source.analysis.operations.source_declaration_discovery_operation_factory import SourceDeclarationDiscoveryOperationFactory
-from source.analysis.provenance.resolve_type_inspections_input import ResolveTypeInspectionsInput
+from source.analysis.operations.source_declaration_discovery import (
+    SourceDeclarationDiscovery,
+)
+from source.analysis.operations.source_declaration_discovery_operation_factory import (
+    SourceDeclarationDiscoveryOperationFactory,
+)
+from source.analysis.provenance.resolve_type_inspections_input import (
+    ResolveTypeInspectionsInput,
+)
 from source.analysis.provenance.resolved_type_inspections import ResolvedTypeInspections
-from source.analysis.provenance.source_type_inspection_operation_factory import SourceTypeInspectionOperationFactory
+from source.analysis.provenance.source_type_inspection_operation_factory import (
+    SourceTypeInspectionOperationFactory,
+)
 from source.collect_changes_input import CollectChangesInput
 from source.collect_changes_operation_factory import CollectChangesOperationFactory
 from source.collect_changes_output import CollectChangesOutput
-from source.frontmatter.frontmatter_operation_registrations_factory import FrontmatterOperationRegistrationsFactory
 from source.exact_source_tokens_resolver_factory import (
     ExactSourceTokensResolverFactory,
+)
+from source.frontmatter.frontmatter_operation_registrations_factory import (
+    FrontmatterOperationRegistrationsFactory,
 )
 from source.prepare_search_query_input import PrepareSearchQueryInput
 from source.prepare_search_query_operation import PrepareSearchQueryOperation
@@ -53,8 +65,9 @@ from source.validate_candidate_selection_operation import (
 from source.validate_candidate_selection_output import (
     ValidateCandidateSelectionOutput,
 )
-from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidator
-
+from validation.collection_identity_coverage_validator import (
+    CollectionIdentityCoverageValidator,
+)
 
 """
 solid-name: SourceOperationRegistrationsFactory
@@ -62,6 +75,8 @@ solid-category: factory
 solid-spec: [SPEC-040, SPEC-057]
 solid-description: Composes typed logical operation registrations for deterministic source services.
 """
+
+
 class SourceOperationRegistrationsFactory:
     def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
@@ -80,14 +95,18 @@ class SourceOperationRegistrationsFactory:
                 name="source.resolve_type_inspections",
                 input_model=ResolveTypeInspectionsInput,
                 output_model=ResolvedTypeInspections,
-                handler=SourceTypeInspectionOperationFactory(self._project_directory).make(),
+                handler=SourceTypeInspectionOperationFactory(
+                    self._project_directory
+                ).make(),
             ),
             OperationRegistration(
                 name="source.discover_declaration",
                 input_model=DiscoverSourceDeclarationInput,
                 output_model=OperationResult[SourceDeclarationDiscovery],
                 handler=ResultOperationAdapter(
-                    operation=SourceDeclarationDiscoveryOperationFactory(self._project_directory).make(),
+                    operation=SourceDeclarationDiscoveryOperationFactory(
+                        self._project_directory
+                    ).make(),
                     result_type=OperationResult[SourceDeclarationDiscovery],
                 ),
             ),
@@ -103,9 +122,7 @@ class SourceOperationRegistrationsFactory:
                 output_model=PrepareSearchQueryOutput,
                 handler=PrepareSearchQueryOperation(
                     tokens=ExactSourceTokensResolverFactory().make(),
-                    extension=PathlibExtractor(
-                        lambda path: Path(path).suffix.lower()
-                    ),
+                    extension=PathlibExtractor(lambda path: Path(path).suffix.lower()),
                 ),
             ),
             OperationRegistration(
@@ -130,7 +147,9 @@ class SourceOperationRegistrationsFactory:
                 input_model=ValidateCandidateSelectionInput,
                 output_model=ValidateCandidateSelectionOutput,
                 handler=ValidateCandidateSelectionOperation(
-                    coverage_validator=CollectionIdentityCoverageValidator(FlowValidationErrorFactory()),
+                    coverage_validator=CollectionIdentityCoverageValidator(
+                        FlowValidationErrorFactory()
+                    ),
                 ),
             ),
             OperationRegistration(

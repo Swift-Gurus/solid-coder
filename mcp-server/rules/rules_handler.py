@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [utility, service]
 """
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 from rules.detection_rules_loader import DetectionRulesLoading
 from rules.fix_instructions_loader import FixInstructionsLoading
@@ -26,7 +26,9 @@ class RulesHandler:
         self._fix_instructions = fix_instructions
 
     def load_detection_rules(
-        self, principle: Optional[str] = None, matched_tags: Optional[list] = None,
+        self,
+        principle: str | None = None,
+        matched_tags: list | None = None,
     ) -> dict[str, Any]:
         return self._detection.load_detection_rules(principle, matched_tags)
 

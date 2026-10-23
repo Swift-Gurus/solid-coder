@@ -5,13 +5,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 """
 solid-name: SourceDeclarationSymbol
 solid-category: model
 solid-spec: [SPEC-064]
 solid-description: Identifies a verified source declaration independently from its repository ownership.
 """
+
+
 class SourceDeclarationSymbol(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

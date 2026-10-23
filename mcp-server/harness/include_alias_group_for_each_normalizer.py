@@ -11,16 +11,15 @@ from harness.include_alias_group_for_each_normalizing import (
     IncludeAliasGroupForEachNormalizing,
 )
 
-
 """
 solid-name: IncludeAliasGroupForEachNormalizer
 solid-category: service
 solid-spec: [SPEC-035, SPEC-037]
 solid-description: Normalizes an include group's typed iteration-source identity.
 """
-class IncludeAliasGroupForEachNormalizer(
-    IncludeAliasGroupForEachNormalizing
-):
+
+
+class IncludeAliasGroupForEachNormalizer(IncludeAliasGroupForEachNormalizing):
     def __init__(
         self,
         source_identity: ForEachSourceIdentityResolving,

@@ -5,13 +5,14 @@ from pydantic import BaseModel, ConfigDict, Field
 from search.search_plan_component import SearchPlanComponent
 from search.search_plan_item import SearchPlanItem
 
-
 """
 solid-name: SearchPlanDocument
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Carries plan metadata that can seed repository source-search queries.
 """
+
+
 class SearchPlanDocument(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

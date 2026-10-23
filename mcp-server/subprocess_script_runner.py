@@ -8,19 +8,17 @@ solid-description: Executes subprocess commands with timeout support and returns
 from __future__ import annotations
 
 import subprocess
-from typing import Optional
 
 from harness.script_execution_result import ScriptExecutionResult
 
 
 class SubprocessScriptRunner:
-
     def run(
         self,
         command: list[str],
-        timeout_seconds: Optional[int] = None,
+        timeout_seconds: int | None = None,
         stdin=None,
-        cwd: Optional[str] = None,
+        cwd: str | None = None,
     ) -> ScriptExecutionResult:
         kwargs: dict = {}
         if stdin is not None:
@@ -28,7 +26,14 @@ class SubprocessScriptRunner:
         if cwd is not None:
             kwargs["cwd"] = cwd
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=timeout_seconds, **kwargs)
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                **kwargs,
+            )
             return ScriptExecutionResult(
                 exit_code=result.returncode,
                 stdout=result.stdout,

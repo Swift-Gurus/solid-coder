@@ -5,8 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add parent dir to path so we can import the module
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -24,6 +22,7 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 
 
 # ---------- unit_in_changed_range ----------
+
 
 class TestUnitInChangedRange:
     def _unit(self, line_start=None, line_end=None):
@@ -74,6 +73,7 @@ class TestUnitInChangedRange:
 
 # ---------- worst_severity ----------
 
+
 class TestWorstSeverity:
     def test_empty_list(self):
         assert worst_severity([]) == "COMPLIANT"
@@ -102,6 +102,7 @@ class TestWorstSeverity:
 
 
 # ---------- _unit_passes_filter ----------
+
 
 class TestUnitPassesFilter:
     def _unit(self, line_start=None, line_end=None):
@@ -143,6 +144,7 @@ class TestUnitPassesFilter:
 
 # ---------- _match_suggestions ----------
 
+
 class TestMatchSuggestions:
     def test_no_suggestions(self):
         violations = [{"rule_id": "SRP-1", "severity": "SEVERE"}]
@@ -151,9 +153,7 @@ class TestMatchSuggestions:
 
     def test_matching_suggestion(self):
         violations = [{"rule_id": "SRP-1", "severity": "SEVERE"}]
-        suggestions_by_rule = {
-            "SRP-1": [{"id": "fix-001", "addresses": ["SRP-1"]}]
-        }
+        suggestions_by_rule = {"SRP-1": [{"id": "fix-001", "addresses": ["SRP-1"]}]}
         result = _match_suggestions(violations, suggestions_by_rule)
         assert len(result) == 1
         assert result[0]["id"] == "fix-001"
@@ -183,16 +183,26 @@ class TestMatchSuggestions:
 
 # ---------- Integration ----------
 
+
 def _build_review_input(source_type="folder"):
     return {
         "source_type": source_type,
-        "metadata": {"branch": None, "base_branch": None, "timestamp": "2026-01-01T00:00:00Z"},
+        "metadata": {
+            "branch": None,
+            "base_branch": None,
+            "timestamp": "2026-01-01T00:00:00Z",
+        },
         "files": [
             {
                 "file_path": "/project/MyFile.swift",
                 "changed_ranges": None,
                 "units": [
-                    {"name": "MyClass", "kind": "class", "line_start": 1, "line_end": 50}
+                    {
+                        "name": "MyClass",
+                        "kind": "class",
+                        "line_start": 1,
+                        "line_end": 50,
+                    }
                 ],
             }
         ],
@@ -203,6 +213,7 @@ def _build_review_input(source_type="folder"):
 
 def _build_review_output():
     """Build a new-format review output with SRP violations."""
+
     def measurement(value, reasoning, evidence):
         return {
             "value": value,
@@ -270,7 +281,9 @@ class TestIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(tmp_path)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -299,7 +312,9 @@ class TestIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(tmp_path), str(PLUGIN_ROOT)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -318,6 +333,8 @@ class TestIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(tmp_path)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0

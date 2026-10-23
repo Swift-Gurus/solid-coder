@@ -14,13 +14,14 @@ from harness.rule_step_contract_resolving import RuleStepContractResolving
 from harness.step_declaration import StepDeclaration
 from harness.step_declaration_mapping import StepDeclarationMapping
 
-
 """
 solid-name: StepDeclarationFactory
 solid-category: factory
 solid-spec: [SPEC-027, SPEC-030, SPEC-035, SPEC-039]
 solid-description: Creates unvalidated workflow-step declarations from structured input.
 """
+
+
 class StepDeclarationFactory(StepDeclarationMapping):
     def __init__(
         self,

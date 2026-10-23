@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse hook — validate pipeline JSON outputs against their schemas
 BEFORE Write commits them.
 
@@ -18,13 +17,15 @@ import re
 import sys
 from pathlib import Path
 
-PLUGIN_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2]))
+PLUGIN_ROOT = Path(
+    os.environ.get("CLAUDE_PLUGIN_ROOT", Path(__file__).resolve().parents[2])
+)
 
 FILENAME_TO_SCHEMA = {
-    "arch.json":                 "skills/plan/arch.schema.json",
-    "validation.json":           "skills/validate-plan/validation.schema.json",
-    "review-input.json":         "skills/prepare-review-input/output.schema.json",
-    "implementation-plan.json":  "skills/synthesize-implementation/implementation-plan.schema.json",
+    "arch.json": "skills/plan/arch.schema.json",
+    "validation.json": "skills/validate-plan/validation.schema.json",
+    "review-input.json": "skills/prepare-review-input/output.schema.json",
+    "implementation-plan.json": "skills/synthesize-implementation/implementation-plan.schema.json",
 }
 
 
@@ -44,7 +45,9 @@ def find_schema(file_path: Path):
         return p if p.exists() else None
 
     # Principle outputs: /rules/{PRINCIPLE}/review-output.json or /rules/{PRINCIPLE}/fix.json
-    m = re.search(r"[/\\]rules[/\\]([^/\\]+)[/\\](review-output|fix)\.json$", str(file_path))
+    m = re.search(
+        r"[/\\]rules[/\\]([^/\\]+)[/\\](review-output|fix)\.json$", str(file_path)
+    )
     if m:
         principle, kind_raw = m.group(1), m.group(2)
         kind = "review" if kind_raw == "review-output" else "fix"
@@ -58,8 +61,8 @@ def find_schema(file_path: Path):
 
 def collect_errors(content: str, schema_path: Path):
     """Return one of:
-      - None  → infrastructure problem (skip validation, fail open)
-      - [str] → list of error lines (empty list = valid)
+    - None  → infrastructure problem (skip validation, fail open)
+    - [str] → list of error lines (empty list = valid)
     """
     try:
         import jsonschema

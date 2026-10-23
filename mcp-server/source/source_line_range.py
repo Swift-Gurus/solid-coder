@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-
 """
 solid-name: SourceLineRange
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Represents a validated inclusive range in destination-file line coordinates.
 """
+
+
 class SourceLineRange(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

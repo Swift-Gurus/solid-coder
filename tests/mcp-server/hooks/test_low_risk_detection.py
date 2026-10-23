@@ -9,8 +9,9 @@ HOOKS_DIR = str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks")
 if HOOKS_DIR not in sys.path:
     sys.path.insert(0, HOOKS_DIR)
 
-from edit_classifier import EditClassifier
 from diff_chunker_factory import DiffChunkerFactory
+from edit_classifier import EditClassifier
+
 
 def _diff_chunks(old, new):
     return DiffChunkerFactory().make().chunk(old, new)
@@ -36,28 +37,36 @@ class TestIsReorder(unittest.TestCase):
         self.c = EditClassifier()
 
     def test_detects_argument_reorder(self):
-        self.assertTrue(self.c.is_reorder(
-            "func foo(a: Int, b: String)",
-            "func foo(b: String, a: Int)",
-        ))
+        self.assertTrue(
+            self.c.is_reorder(
+                "func foo(a: Int, b: String)",
+                "func foo(b: String, a: Int)",
+            )
+        )
 
     def test_detects_import_reorder(self):
-        self.assertTrue(self.c.is_reorder(
-            "import Foundation\nimport SwiftUI",
-            "import SwiftUI\nimport Foundation",
-        ))
+        self.assertTrue(
+            self.c.is_reorder(
+                "import Foundation\nimport SwiftUI",
+                "import SwiftUI\nimport Foundation",
+            )
+        )
 
     def test_rejects_new_parameter(self):
-        self.assertFalse(self.c.is_reorder(
-            "func foo(a: Int)",
-            "func foo(a: Int, b: String)",
-        ))
+        self.assertFalse(
+            self.c.is_reorder(
+                "func foo(a: Int)",
+                "func foo(a: Int, b: String)",
+            )
+        )
 
     def test_rejects_new_function(self):
-        self.assertFalse(self.c.is_reorder(
-            "func foo() {}",
-            "func foo() {}\nfunc bar() {}",
-        ))
+        self.assertFalse(
+            self.c.is_reorder(
+                "func foo() {}",
+                "func foo() {}\nfunc bar() {}",
+            )
+        )
 
 
 class TestIsRename(unittest.TestCase):
@@ -65,19 +74,23 @@ class TestIsRename(unittest.TestCase):
         self.c = EditClassifier()
 
     def test_detects_function_rename(self):
-        self.assertTrue(self.c.is_rename(
-            "func oldName(a: Int) -> Bool",
-            "func newName(a: Int) -> Bool",
-        ))
+        self.assertTrue(
+            self.c.is_rename(
+                "func oldName(a: Int) -> Bool",
+                "func newName(a: Int) -> Bool",
+            )
+        )
 
     def test_detects_variable_rename(self):
         self.assertTrue(self.c.is_rename("let myVar = 42", "let renamedVar = 42"))
 
     def test_rejects_structural_change(self):
-        self.assertFalse(self.c.is_rename(
-            "func foo(a: Int)",
-            "func foo(a: Int, b: String)",
-        ))
+        self.assertFalse(
+            self.c.is_rename(
+                "func foo(a: Int)",
+                "func foo(a: Int, b: String)",
+            )
+        )
 
 
 class TestDiffChunks(unittest.TestCase):
@@ -109,22 +122,28 @@ class TestIsLowRiskEdit(unittest.TestCase):
         self.assertTrue(self.c.is_low_risk(old, new))
 
     def test_reorder_is_low_risk(self):
-        self.assertTrue(self.c.is_low_risk(
-            "func foo(a: Int, b: String)",
-            "func foo(b: String, a: Int)",
-        ))
+        self.assertTrue(
+            self.c.is_low_risk(
+                "func foo(a: Int, b: String)",
+                "func foo(b: String, a: Int)",
+            )
+        )
 
     def test_rename_is_low_risk(self):
-        self.assertTrue(self.c.is_low_risk(
-            "func oldName(a: Int) -> Bool",
-            "func newName(a: Int) -> Bool",
-        ))
+        self.assertTrue(
+            self.c.is_low_risk(
+                "func oldName(a: Int) -> Bool",
+                "func newName(a: Int) -> Bool",
+            )
+        )
 
     def test_new_logic_is_not_low_risk(self):
-        self.assertFalse(self.c.is_low_risk(
-            "func foo() { return 1 }",
-            "func foo() { return 1 }\nfunc bar() { return 2 }",
-        ))
+        self.assertFalse(
+            self.c.is_low_risk(
+                "func foo() { return 1 }",
+                "func foo() { return 1 }\nfunc bar() { return 2 }",
+            )
+        )
 
 
 class TestWriteDiffIntegration(unittest.TestCase):
@@ -134,36 +153,41 @@ class TestWriteDiffIntegration(unittest.TestCase):
         self.c = EditClassifier()
 
     def _make_file(self, content: str) -> str:
-        f = tempfile.NamedTemporaryFile(mode="w", suffix=".swift", delete=False)
-        f.write(content)
-        f.close()
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".swift", delete=False) as f:
+            f.write(content)
         return f.name
 
     def test_rename_write_is_low_risk(self):
         original = "func oldName(a: Int) -> Bool { return true }\n"
-        updated  = "func newName(a: Int) -> Bool { return true }\n"
+        updated = "func newName(a: Int) -> Bool { return true }\n"
         changed = _diff_chunks(original, updated)
-        self.assertTrue(self.c.is_low_risk(
-            changed.previous,
-            changed.prospective,
-        ))
+        self.assertTrue(
+            self.c.is_low_risk(
+                changed.previous,
+                changed.prospective,
+            )
+        )
 
     def test_new_method_write_is_not_low_risk(self):
         original = "func foo() {}\n"
-        updated  = "func foo() {}\nfunc bar() { doSomethingNew() }\n"
+        updated = "func foo() {}\nfunc bar() { doSomethingNew() }\n"
         changed = _diff_chunks(original, updated)
-        self.assertFalse(self.c.is_low_risk(
-            changed.previous,
-            changed.prospective,
-        ))
+        self.assertFalse(
+            self.c.is_low_risk(
+                changed.previous,
+                changed.prospective,
+            )
+        )
 
     def test_new_file_has_no_diff(self):
         """New file — OSError on read → low_risk stays False → full health check."""
         changed = _diff_chunks("", "func foo() {}")
-        self.assertFalse(self.c.is_low_risk(
-            changed.previous,
-            changed.prospective,
-        ))
+        self.assertFalse(
+            self.c.is_low_risk(
+                changed.previous,
+                changed.prospective,
+            )
+        )
 
 
 if __name__ == "__main__":

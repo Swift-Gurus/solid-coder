@@ -2,22 +2,23 @@
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 from hook_utils import SubprocessJsonRunning, _default_subprocess_runner
-
 
 """
 solid-name: GatewayInvoking
 solid-category: abstraction
 solid-description: Contract for invoking gateway operations and selecting response fields.
 """
+
+
 class GatewayInvoking(Protocol):
     def invoke(
         self,
         subcommand: str,
-        extra_args: Optional[list] = None,
-        result_key: Optional[str] = None,
+        extra_args: list | None = None,
+        result_key: str | None = None,
         default=None,
     ): ...
 
@@ -27,6 +28,8 @@ solid-name: GatewayCommandRunner
 solid-category: service
 solid-description: Executes gateway health-check commands with timeout handling and parsed responses.
 """
+
+
 class GatewayCommandRunner:
     def __init__(
         self,
@@ -43,11 +46,13 @@ class GatewayCommandRunner:
     def invoke(
         self,
         subcommand: str,
-        extra_args: Optional[list] = None,
-        result_key: Optional[str] = None,
+        extra_args: list | None = None,
+        result_key: str | None = None,
         default=None,
     ):
-        command = [self._executable, str(self._gateway), subcommand] + (extra_args or [])
+        command = [self._executable, str(self._gateway), subcommand] + (
+            extra_args or []
+        )
         data = self._runner.run(command, timeout=self._timeout)
         if data is None:
             return default

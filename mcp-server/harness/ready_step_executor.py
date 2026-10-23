@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from harness.output_recording import OutputRecording
 from harness.ready_step_executing import ReadyStepExecuting
 from harness.ready_step_execution_outcome import ReadyStepExecutionOutcome
 from harness.ready_step_execution_request import ReadyStepExecutionRequest
-from harness.output_recording import OutputRecording
 from harness.step_batch_runner_resolving import StepBatchRunnerResolving
 from harness.step_execution_batch_advancing import StepExecutionBatchAdvancing
 from harness.step_execution_batch_request import StepExecutionBatchRequest
@@ -19,6 +19,8 @@ solid-category: service
 solid-spec: [SPEC-010, SPEC-027, SPEC-037]
 solid-description: Coordinates batch execution of ready workflow-step instances and automatic empty completions.
 """
+
+
 class ReadyStepExecutor(ReadyStepExecuting):
     def __init__(
         self,
@@ -50,9 +52,7 @@ class ReadyStepExecutor(ReadyStepExecuting):
                 step_ids.append(instance.step_id)
         for step_id in step_ids:
             step_def = next(
-                step
-                for step in request.snapshot.flow_def.steps
-                if step.id == step_id
+                step for step in request.snapshot.flow_def.steps if step.id == step_id
             )
             instances = [
                 instance

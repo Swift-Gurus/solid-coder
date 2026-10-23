@@ -4,15 +4,15 @@ from typing import Protocol
 
 from source.source_evidence import SourceEvidence
 
-
 """
 solid-name: SourceEvidenceResolving
 solid-category: abstraction
 solid-spec: [SPEC-040]
 solid-description: Contract for resolving auditable source evidence from a parsed fact and source offsets.
 """
-class SourceEvidenceResolving(Protocol):
 
+
+class SourceEvidenceResolving(Protocol):
     def resolve(
         self,
         fact: str,

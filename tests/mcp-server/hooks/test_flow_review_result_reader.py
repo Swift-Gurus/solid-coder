@@ -7,21 +7,19 @@ from unittest.mock import MagicMock
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from findings.metric_additional_info import MetricAdditionalInfo  # noqa: E402
-from findings.review_severity import ReviewSeverity  # noqa: E402
-from flow_review_result_reader import FlowReviewResultReader  # noqa: E402
-from harness.review_result import ReviewResult  # noqa: E402
-from harness.rule_exception_decision import RuleExceptionDecision  # noqa: E402
-from harness.rule_metric_decision import RuleMetricDecision  # noqa: E402
-from harness.rule_review_provenance import RuleReviewProvenance  # noqa: E402
-from harness.rule_review_result import RuleReviewResult  # noqa: E402
-
+from findings.metric_additional_info import MetricAdditionalInfo
+from findings.review_severity import ReviewSeverity
+from flow_review_result_reader import FlowReviewResultReader
+from harness.review_result import ReviewResult
+from harness.rule_exception_decision import RuleExceptionDecision
+from harness.rule_metric_decision import RuleMetricDecision
+from harness.rule_review_provenance import RuleReviewProvenance
+from harness.rule_review_result import RuleReviewResult
 
 """
 solid-name: TestFlowReviewResultReader
@@ -29,6 +27,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036, SPEC-039]
 solid-description: Proves gate decisions load only typed aggregate results from the selected flow run.
 """
+
+
 class TestFlowReviewResultReader(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()

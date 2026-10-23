@@ -19,15 +19,15 @@ from harness.workflow_output_collection_validation_target import (
 )
 from harness.workflow_output_reference import WorkflowOutputReference
 
-
 """
 solid-name: ForEachCollectionValidator
 solid-category: service
 solid-spec: [SPEC-030, SPEC-037, SPEC-056]
 solid-description: Coordinates step-output iteration validation and workflow-output collection metric validation.
 """
-class ForEachCollectionValidator(ForEachReferenceValidating):
 
+
+class ForEachCollectionValidator(ForEachReferenceValidating):
     def __init__(
         self,
         target_validator: ForEachTargetValidating,

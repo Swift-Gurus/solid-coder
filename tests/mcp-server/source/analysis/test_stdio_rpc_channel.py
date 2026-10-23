@@ -9,7 +9,10 @@ from content_length_reader import ContentLengthReader
 from content_length_writer import ContentLengthWriter
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from health.llama.timer import TimeMeasuring
-from source.analysis.provenance.bounded_rpc_message_reader import BoundedRpcMessageReader, TimedRpcMessageReading
+from source.analysis.provenance.bounded_rpc_message_reader import (
+    BoundedRpcMessageReader,
+    TimedRpcMessageReading,
+)
 from source.analysis.provenance.rpc_inbound_message import RpcInboundMessage
 from source.analysis.provenance.stdio_rpc_channel import StdioRpcChannel
 
@@ -21,21 +24,30 @@ class TestStdioRpcChannel(TestCase):
         self.timer.now.return_value = 0
         self.output = BytesIO()
         self.channel = StdioRpcChannel(
-            outgoing=self.output, reader=self.incoming,
-            writer=ContentLengthWriter(), timer=self.timer, timeout_seconds=2,
+            outgoing=self.output,
+            reader=self.incoming,
+            writer=ContentLengthWriter(),
+            timer=self.timer,
+            timeout_seconds=2,
         )
 
     def test_correlates_responses_after_notifications_and_peer_requests(self):
         self.incoming.read.side_effect = [
             RpcInboundMessage(jsonrpc="2.0", method="progress"),
-            RpcInboundMessage(jsonrpc="2.0", id="peer", method="workspace/configuration"),
+            RpcInboundMessage(
+                jsonrpc="2.0", id="peer", method="workspace/configuration"
+            ),
             RpcInboundMessage(jsonrpc="2.0", id=1, result=["symbol"]),
         ]
         self.assertEqual(self.channel.request("lookup", None), ["symbol"])
         self.output.seek(0)
         decoder = PydanticModelDecoder(RpcInboundMessage)
-        request = decoder.decode(ContentLengthReader().read(self.output, b""), "request")
-        rejection = decoder.decode(ContentLengthReader().read(self.output, b""), "rejection")
+        request = decoder.decode(
+            ContentLengthReader().read(self.output, b""), "request"
+        )
+        rejection = decoder.decode(
+            ContentLengthReader().read(self.output, b""), "rejection"
+        )
         self.assertEqual(request.id, 1)
         self.assertEqual(rejection.id, "peer")
         self.assertIsNotNone(rejection.error)
@@ -64,7 +76,9 @@ class TestStdioRpcChannel(TestCase):
             self.channel.request("lookup", None)
 
     def test_peer_error_is_preserved(self):
-        self.incoming.read.return_value = RpcInboundMessage(jsonrpc="2.0", id=1, error="missing context")
+        self.incoming.read.return_value = RpcInboundMessage(
+            jsonrpc="2.0", id=1, error="missing context"
+        )
         with self.assertRaisesRegex(ConnectionError, "missing context"):
             self.channel.request("lookup", None)
 
@@ -76,8 +90,10 @@ class TestBoundedRpcMessageReader(TestCase):
         stream.seek(0)
         with ThreadPoolExecutor(max_workers=1) as executor:
             reader = BoundedRpcMessageReader(
-                incoming=stream, reader=ContentLengthReader(),
-                decoder=PydanticModelDecoder(RpcInboundMessage), executor=executor,
+                incoming=stream,
+                reader=ContentLengthReader(),
+                decoder=PydanticModelDecoder(RpcInboundMessage),
+                executor=executor,
             )
             self.assertEqual(reader.read(1).result, [])
             self.assertIsNone(reader.read(1))

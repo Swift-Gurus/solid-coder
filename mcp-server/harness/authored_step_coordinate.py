@@ -4,13 +4,14 @@ from dataclasses import dataclass, field
 
 from harness.output_spec import OutputSpec
 
-
 """
 solid-name: AuthoredStepCoordinate
 solid-category: model
 solid-spec: [SPEC-045]
-solid-description: Carries stable authored workflow-step identity, instructions, and declared outputs.
+solid-description: Represents the authored definition and output contract of a workflow step.
 """
+
+
 @dataclass(frozen=True)
 class AuthoredStepCoordinate:
     workflow_id: str

@@ -5,8 +5,9 @@ solid-description: Applies a function to each item in a list concurrently and co
 solid-tags: [hook]
 """
 
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable, List, TypeVar
+from typing import TypeVar
 
 from handler_pool_running import HandlerPoolRunning
 
@@ -15,7 +16,7 @@ R = TypeVar("R")
 
 
 class ThreadPoolHandlerRunner(HandlerPoolRunning):
-    def map(self, fn: Callable[[T], R], items: List[T]) -> List[R]:
+    def map(self, fn: Callable[[T], R], items: list[T]) -> list[R]:
         if not items:
             return []
         with ThreadPoolExecutor(max_workers=len(items)) as pool:

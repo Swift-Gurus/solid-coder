@@ -3,11 +3,9 @@
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
-
 from source.source_candidate_disposition_kind import (
     SourceCandidateDispositionKind,
 )
-
 
 NonEmptyText = Annotated[
     str,
@@ -25,6 +23,8 @@ solid-category: model
 solid-spec: [SPEC-056]
 solid-description: Carries an audited inspect-or-reject decision for one server-identified search candidate.
 """
+
+
 class SourceCandidateDisposition(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

@@ -10,8 +10,9 @@ from harness.uses_resolving import UsesResolving
 from harness.workflow_config_resource import WorkflowConfigResource
 from harness.workflow_config_resource_loading import WorkflowConfigResourceLoading
 from harness.workflow_package_root_locating import WorkflowPackageRootLocating
-from harness.workflow_resource_reference_creating import WorkflowResourceReferenceCreating
-
+from harness.workflow_resource_reference_creating import (
+    WorkflowResourceReferenceCreating,
+)
 
 """
 solid-name: UsesResolver
@@ -19,8 +20,9 @@ solid-category: service
 solid-spec: [SPEC-030, SPEC-035]
 solid-description: Resolves and merges one reusable step fragment from its declaring package or legacy roots.
 """
-class UsesResolver(UsesResolving):
 
+
+class UsesResolver(UsesResolving):
     def __init__(
         self,
         resource_loader: WorkflowConfigResourceLoading,
@@ -40,7 +42,9 @@ class UsesResolver(UsesResolving):
         if uses is None:
             return raw_step
 
-        declaring_file = self._path_builder.build(raw_step.get("__source_file") or flow_path)
+        declaring_file = self._path_builder.build(
+            raw_step.get("__source_file") or flow_path
+        )
         resource = self._find_fragment(uses, declaring_file, search_paths)
         merged = dict(resource.content)
         merged["__source_file"] = str(resource.path)

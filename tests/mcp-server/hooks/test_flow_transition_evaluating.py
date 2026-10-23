@@ -12,9 +12,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 
-from flow_transition_evaluating import FlowTransitionGate  # noqa: E402
-from harness.flow_next_result import FlowNextResult  # noqa: E402
-from harness.flow_status_result import FlowStatusResult  # noqa: E402
+from flow_transition_evaluating import FlowTransitionGate
+from harness.flow_next_result import FlowNextResult
+from harness.flow_status_result import FlowStatusResult
 
 
 class StubStatusReader:
@@ -37,15 +37,22 @@ class StubFailureRecorder:
         return self._terminal
 
 
-def _status(status: str, pending=None, flow="test_flow", run_id="run-1") -> FlowStatusResult:
+def _status(
+    status: str, pending=None, flow="test_flow", run_id="run-1"
+) -> FlowStatusResult:
     return FlowStatusResult(
-        flow=flow, run_id=run_id, status=status, turn_count=1, max_turns=10,
-        completed=[], running=[], pending=pending or [],
+        flow=flow,
+        run_id=run_id,
+        status=status,
+        turn_count=1,
+        max_turns=10,
+        completed=[],
+        running=[],
+        pending=pending or [],
     )
 
 
 class TestFlowTransitionGate(unittest.TestCase):
-
     def test_allows_when_no_active_run(self):
         reader = StubStatusReader(_status("no_active_run"))
         recorder = StubFailureRecorder()
@@ -71,7 +78,11 @@ class TestFlowTransitionGate(unittest.TestCase):
         self.assertEqual(recorder.calls, [])
 
     def test_blocks_and_records_a_failed_attempt_when_a_step_is_pending(self):
-        reader = StubStatusReader(_status("in_progress", pending=["step-a"], flow="code_review", run_id="run-42"))
+        reader = StubStatusReader(
+            _status(
+                "in_progress", pending=["step-a"], flow="code_review", run_id="run-42"
+            )
+        )
         recorder = StubFailureRecorder(terminal=None)
         sut = FlowTransitionGate(status_reader=reader, failure_recorder=recorder)
 
@@ -85,7 +96,10 @@ class TestFlowTransitionGate(unittest.TestCase):
 
     def test_uses_the_terminal_error_message_when_the_step_exhausts_its_attempts(self):
         reader = StubStatusReader(_status("in_progress", pending=["step-a"]))
-        terminal = FlowNextResult(status="failed", error="Flow failed — step 'step-a' exhausted all 3 attempt(s).")
+        terminal = FlowNextResult(
+            status="failed",
+            error="Flow failed — step 'step-a' exhausted all 3 attempt(s).",
+        )
         recorder = StubFailureRecorder(terminal=terminal)
         sut = FlowTransitionGate(status_reader=reader, failure_recorder=recorder)
 

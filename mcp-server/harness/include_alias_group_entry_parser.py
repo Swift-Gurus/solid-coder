@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from harness.condition_parsing import ConditionParsing
 from harness.combined_rule_presentation import CombinedRulePresentation
+from harness.condition_parsing import ConditionParsing
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_entry_parsing import IncludeAliasGroupEntryParsing
@@ -13,8 +13,8 @@ from harness.include_alias_group_for_each_parsing import (
     IncludeAliasGroupForEachParsing,
 )
 from harness.included_rule_workflow import IncludedRuleWorkflow
-from harness.structured_model_decoding import StructuredModelDecoding
 from harness.structured_mode_resolver import StructuredModeResolver
+from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_execution_declaration import WorkflowExecutionDeclaration
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_input_binding_snapshot_parsing import (
@@ -24,22 +24,24 @@ from harness.workflow_output_declaration_parser import WorkflowOutputDeclaration
 from harness.workflow_presentation_declaration import WorkflowPresentationDeclaration
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: IncludeAliasGroupEntryParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Restores one validated include group from a workflow snapshot entry.
 """
-class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
 
+
+class IncludeAliasGroupEntryParser(IncludeAliasGroupEntryParsing):
     def __init__(
         self,
         binding_parser: WorkflowInputBindingSnapshotParsing,
         condition_parser: ConditionParsing,
         for_each_parser: IncludeAliasGroupForEachParsing,
         rule_workflow_decoder: StructuredModelDecoding[IncludedRuleWorkflow],
-        combined_presentation_decoder: StructuredModelDecoding[CombinedRulePresentation],
+        combined_presentation_decoder: StructuredModelDecoding[
+            CombinedRulePresentation
+        ],
         execution_resolver: StructuredModeResolver[
             WorkflowExecutionDeclaration,
             WorkflowExecutionMode,

@@ -3,12 +3,13 @@
 from scoring.unit_scoring_result import UnitScoringResult
 from scoring.unit_scoring_result_formatting import UnitScoringResultFormatting
 
-
 """
 solid-name: UnitScoringResultFormatter
 solid-category: boundary-adapter
 solid-description: Formats typed unit scoring outcomes for compatibility clients.
 """
+
+
 class UnitScoringResultFormatter(UnitScoringResultFormatting):
     def format(self, result: UnitScoringResult) -> dict:
         response = {

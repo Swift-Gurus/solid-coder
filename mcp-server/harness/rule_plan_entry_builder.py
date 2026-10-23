@@ -1,15 +1,14 @@
 """Constructs one effective rule-plan entry from an enrolled workflow."""
 
 from harness.content_hashing import ContentHashing
-from harness.effective_rule_plan_entry import EffectiveRulePlanEntry
 from harness.effective_metric_plan_resolving import EffectiveMetricPlanResolving
+from harness.effective_rule_plan_entry import EffectiveRulePlanEntry
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
-from harness.review_policy_resolution import ReviewPolicyResolution
 from harness.resolved_rule_workflow import ResolvedRuleWorkflow
+from harness.review_policy_resolution import ReviewPolicyResolution
 from harness.rule_enablement_resolving import RuleEnablementResolving
 from harness.rule_plan_entry_building import RulePlanEntryBuilding
 from harness.rule_workflow_origin_resolving import RuleWorkflowOriginResolving
-
 
 """
 solid-name: RulePlanEntryBuilder
@@ -17,8 +16,9 @@ solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Constructs one auditable effective-plan entry from workflow provenance, enablement, and effective metrics.
 """
-class RulePlanEntryBuilder(RulePlanEntryBuilding):
 
+
+class RulePlanEntryBuilder(RulePlanEntryBuilding):
     def __init__(
         self,
         content_hasher: ContentHashing,

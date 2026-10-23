@@ -7,13 +7,14 @@ from harness.rule_workflow_structure_validating import (
 )
 from harness.rule_workflow_validation_scope import RuleWorkflowValidationScope
 
-
 """
 solid-name: RuleWorkflowStructureValidator
 solid-category: service
 solid-spec: [SPEC-039, SPEC-044, SPEC-066]
 solid-description: Validates granular or aggregate rule-step structure and returns the declarations that require identity validation.
 """
+
+
 class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
@@ -23,12 +24,8 @@ class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
         scope: RuleWorkflowValidationScope,
     ) -> list[MetricDeclaration]:
         metric_steps = [step for step in scope.steps if step.type == "metric"]
-        exception_steps = [
-            step for step in scope.steps if step.type == "exception"
-        ]
-        assessment_steps = [
-            step for step in scope.steps if step.assessment is not None
-        ]
+        exception_steps = [step for step in scope.steps if step.type == "exception"]
+        assessment_steps = [step for step in scope.steps if step.assessment is not None]
         fixed_exception = scope.declaration.exception
         if fixed_exception is not None and (exception_steps or assessment_steps):
             raise self._error_factory.create(
@@ -65,8 +62,4 @@ class RuleWorkflowStructureValidator(RuleWorkflowStructureValidating):
             raise self._error_factory.create(
                 f"Metric step '{missing_declaration.id}' is missing its typed metric declaration"
             )
-        return [
-            step.metric
-            for step in metric_steps
-            if step.metric is not None
-        ]
+        return [step.metric for step in metric_steps if step.metric is not None]

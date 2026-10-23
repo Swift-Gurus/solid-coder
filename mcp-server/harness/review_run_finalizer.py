@@ -12,13 +12,14 @@ from harness.rule_execution_instances_resolving import (
 from harness.run_completion_finalizing import RunCompletionFinalizing
 from harness.run_state import RunState
 
-
 """
 solid-name: ReviewRunFinalizer
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Finalizes completed rule instances and publishes one ordered aggregate result for a workflow run.
 """
+
+
 class ReviewRunFinalizer(RunCompletionFinalizing):
     def __init__(
         self,

@@ -11,15 +11,15 @@ from harness.condition_node_parsing import ConditionNodeParsing
 from harness.condition_parsing import ConditionParsing
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: ComparisonConditionParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Maps comparison condition input into a typed condition declaration.
 """
-class ComparisonConditionParser(ConditionNodeParsing):
 
+
+class ComparisonConditionParser(ConditionNodeParsing):
     def __init__(
         self,
         expression_parser: WorkflowExpressionParsing,

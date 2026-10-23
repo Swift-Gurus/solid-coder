@@ -11,13 +11,14 @@ from harness.workflow_output_declaration import WorkflowOutputDeclaration
 from harness.workflow_result_envelope import WorkflowResultEnvelope
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowResultEnvelopeBuilding
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for constructing a published result from one terminal included-workflow instance.
 """
+
+
 class WorkflowResultEnvelopeBuilding(Protocol):
     def build(
         self,

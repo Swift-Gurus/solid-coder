@@ -4,13 +4,13 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
-from llama.codebase_searcher import CodebaseSearching  # noqa: F401
+from health.gateway.gateway_fix_invoker import FixInvoking
+
+from llama.codebase_searcher import CodebaseSearching
 from llama.findings_submitter import FindingsSubmitting
 from llama.tool_call_parser import ToolCallArgsParsing
-from health.gateway.gateway_fix_invoker import FixInvoking  # noqa: F401
-
 
 TOOLS: list = [
     {
@@ -24,7 +24,10 @@ TOOLS: list = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Space-separated synonyms (name + camelCase words + responsibility keywords)"},
+                    "query": {
+                        "type": "string",
+                        "description": "Space-separated synonyms (name + camelCase words + responsibility keywords)",
+                    },
                     "output_dir": {
                         "type": "string",
                         "description": "Health-check output_dir from the prompt, used to record DRY-search completion.",
@@ -46,7 +49,10 @@ TOOLS: list = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string", "description": "Type or function name to search for (e.g. UserManager)"},
+                    "name": {
+                        "type": "string",
+                        "description": "Type or function name to search for (e.g. UserManager)",
+                    },
                 },
                 "required": ["name"],
             },
@@ -64,7 +70,10 @@ TOOLS: list = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "pattern": {"type": "string", "description": "Glob pattern to match against filenames (e.g. *UserManager*)"},
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to match against filenames (e.g. *UserManager*)",
+                    },
                 },
                 "required": ["pattern"],
             },
@@ -84,7 +93,10 @@ TOOLS: list = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "file_path": {"type": "string", "description": "Absolute path of the file to read"},
+                    "file_path": {
+                        "type": "string",
+                        "description": "Absolute path of the file to read",
+                    },
                 },
                 "required": ["file_path"],
             },
@@ -148,7 +160,11 @@ TOOLS: list = [
                                                 "type": "array",
                                                 "items": {
                                                     "type": "object",
-                                                    "required": ["unit_name", "unit_kind", "metrics"],
+                                                    "required": [
+                                                        "unit_name",
+                                                        "unit_kind",
+                                                        "metrics",
+                                                    ],
                                                     "properties": {
                                                         "unit_name": {"type": "string"},
                                                         "unit_kind": {"type": "string"},
@@ -187,12 +203,23 @@ TOOLS: list = [
                         "description": "One fix object per SEVERE violation.",
                         "items": {
                             "type": "object",
-                            "required": ["rule_id", "file_path", "unit_name", "suggested_fix"],
+                            "required": [
+                                "rule_id",
+                                "file_path",
+                                "unit_name",
+                                "suggested_fix",
+                            ],
                             "properties": {
-                                "rule_id": {"type": "string", "description": "e.g. SRP-1"},
+                                "rule_id": {
+                                    "type": "string",
+                                    "description": "e.g. SRP-1",
+                                },
                                 "file_path": {"type": "string"},
                                 "unit_name": {"type": "string"},
-                                "suggested_fix": {"type": "string", "description": "1-3 sentence structural suggestion, no code"},
+                                "suggested_fix": {
+                                    "type": "string",
+                                    "description": "1-3 sentence structural suggestion, no code",
+                                },
                             },
                         },
                     },
@@ -208,6 +235,8 @@ solid-name: ToolDispatching
 solid-category: abstraction
 solid-description: Contract for dispatching one parsed health-check tool call.
 """
+
+
 class ToolDispatching(Protocol):
     def dispatch(self, tool_call: dict) -> str: ...
 
@@ -217,6 +246,8 @@ solid-name: GatewayToolDispatcher
 solid-category: service
 solid-description: Routes health-check tool calls to their configured capabilities.
 """
+
+
 class GatewayToolDispatcher:
     """Routes tool calls to CodebaseSearching, FixInvoking, or FindingsSubmitting."""
 
@@ -225,16 +256,22 @@ class GatewayToolDispatcher:
         codebase_search: CodebaseSearching,
         fix_invoker: FixInvoking,
         parser: ToolCallArgsParsing,
-        findings_submitter: Optional[FindingsSubmitting] = None,
+        findings_submitter: FindingsSubmitting | None = None,
     ) -> None:
         self._parser = parser
         self._dispatch_map: dict = {
             "mcp__pipeline__search_codebase": lambda a: codebase_search.search(
                 a.get("query", ""), a.get("output_dir", "")
             ),
-            "mcp__pipeline__grep_codebase": lambda a: codebase_search.grep(a.get("name", "")),
-            "mcp__pipeline__glob_codebase": lambda a: codebase_search.glob(a.get("pattern", "*")),
-            "mcp__pipeline__read_file": lambda a: codebase_search.read(a.get("file_path", "")),
+            "mcp__pipeline__grep_codebase": lambda a: codebase_search.grep(
+                a.get("name", "")
+            ),
+            "mcp__pipeline__glob_codebase": lambda a: codebase_search.glob(
+                a.get("pattern", "*")
+            ),
+            "mcp__pipeline__read_file": lambda a: codebase_search.read(
+                a.get("file_path", "")
+            ),
             "mcp__docs__load_fix_for_violation": lambda a: fix_invoker.load_fix(
                 a.get("metric_ids") or ([a["metric_id"]] if a.get("metric_id") else [])
             ),
@@ -243,8 +280,10 @@ class GatewayToolDispatcher:
             ),
         }
         if findings_submitter is not None:
-            self._dispatch_map["mcp__pipeline__submit_batch_findings"] = lambda a: findings_submitter.submit(
-                a.get("output_dir", ""), a.get("submissions", {})
+            self._dispatch_map["mcp__pipeline__submit_batch_findings"] = lambda a: (
+                findings_submitter.submit(
+                    a.get("output_dir", ""), a.get("submissions", {})
+                )
             )
 
     def dispatch(self, tool_call: dict) -> str:

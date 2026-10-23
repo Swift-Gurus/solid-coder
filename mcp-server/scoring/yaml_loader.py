@@ -4,10 +4,11 @@ solid-category: utility
 solid-tags: [utility]
 """
 
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 try:
     import yaml as _yaml
+
     _YAML_AVAILABLE = True
 except ImportError:
     _yaml = None  # type: ignore[assignment]

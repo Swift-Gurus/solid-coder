@@ -3,10 +3,12 @@ solid-description: Contract for executing a shell command with configurable time
 solid-category: abstraction
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class SubprocessRunning(Protocol):
     """Protocol for executing a shell command and returning captured output."""
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> tuple: ...
+    def run(
+        self, cmd: list, timeout: int | None = None, stdin=None, cwd: str | None = None
+    ) -> tuple: ...

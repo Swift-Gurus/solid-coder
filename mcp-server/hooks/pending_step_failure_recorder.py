@@ -9,20 +9,18 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from harness.active_run_locating import ActiveRunLocating  # noqa: E402
-from harness.attempt_failure_handling import AttemptFailureHandling  # noqa: E402
-from harness.flow_loading import FlowLoading  # noqa: E402
-from harness.flow_next_result import FlowNextResult  # noqa: E402
+from harness.active_run_locating import ActiveRunLocating
+from harness.attempt_failure_handling import AttemptFailureHandling
+from harness.flow_loading import FlowLoading
+from harness.flow_next_result import FlowNextResult
 
 
 class PendingStepFailureRecorder:
-
     def __init__(
         self,
         run_locator: ActiveRunLocating,
@@ -33,7 +31,7 @@ class PendingStepFailureRecorder:
         self._flow_loader = flow_loader
         self._attempt_failure_handler = attempt_failure_handler
 
-    def record(self, run_id: Optional[str], step_id: str) -> Optional[FlowNextResult]:
+    def record(self, run_id: str | None, step_id: str) -> FlowNextResult | None:
         location = self._run_locator.locate(run_id)
         flow_def = self._flow_loader.load(location.workflow_path, [])
         return self._attempt_failure_handler.handle(

@@ -5,15 +5,15 @@ from harness.directed_graph_creating import DirectedGraphCreating
 from harness.directed_graph_edge import DirectedGraphEdge
 from harness.directed_graph_node import DirectedGraphNode
 
-
 """
 solid-name: DirectedGraphFactory
 solid-category: factory
 solid-spec: [SPEC-027]
 solid-description: Creates a typed directed graph from node identifiers and edges.
 """
-class DirectedGraphFactory(DirectedGraphCreating):
 
+
+class DirectedGraphFactory(DirectedGraphCreating):
     def create(
         self,
         node_ids: list[str],

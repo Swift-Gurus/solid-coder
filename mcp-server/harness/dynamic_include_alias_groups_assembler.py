@@ -14,16 +14,15 @@ from harness.include_alias_group_input_bindings_normalizing import (
     IncludeAliasGroupInputBindingsNormalizing,
 )
 
-
 """
 solid-name: DynamicIncludeAliasGroupsAssembler
 solid-category: service
 solid-spec: [SPEC-035, SPEC-037]
 solid-description: Produces runtime include groups with normalized typed iteration sources.
 """
-class DynamicIncludeAliasGroupsAssembler(
-    DynamicIncludeAliasGroupsAssembling
-):
+
+
+class DynamicIncludeAliasGroupsAssembler(DynamicIncludeAliasGroupsAssembling):
     def __init__(
         self,
         selector: DynamicIncludeAliasGroupsSelecting,

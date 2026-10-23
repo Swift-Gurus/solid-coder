@@ -9,11 +9,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import (
     FlowRunOrchestratorFactory,
 )
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 """
 solid-name: TestCollectionCountReducerComposition
@@ -21,6 +20,8 @@ solid-category: integration-test
 solid-spec: [SPEC-057]
 solid-description: Verifies operation fan-out counts nested evidence before an engine-owned maximum metric.
 """
+
+
 class TestCollectionCountReducerComposition(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -41,24 +42,26 @@ class TestCollectionCountReducerComposition(unittest.TestCase):
     def test_counts_nested_collections_before_selecting_the_maximum(self) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
 
-        exception = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "groups": [
-                    {
-                        "values": ["VStack", "HStack", "Text"],
-                        "is_exception": False,
-                    },
-                    {
-                        "values": ["Preview", "Only", "Content", "Text"],
-                        "is_exception": True,
-                    },
-                    {
-                        "values": ["HStack", "Text"],
-                        "is_exception": False,
-                    },
-                ]
+        exception = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "groups": [
+                        {
+                            "values": ["VStack", "HStack", "Text"],
+                            "is_exception": False,
+                        },
+                        {
+                            "values": ["Preview", "Only", "Content", "Text"],
+                            "is_exception": True,
+                        },
+                        {
+                            "values": ["HStack", "Text"],
+                            "is_exception": False,
+                        },
+                    ]
+                }
             }
-        })
+        )
 
         self.assertIsNone(exception.error, exception.error)
         self.assertEqual(
@@ -91,16 +94,18 @@ class TestCollectionCountReducerComposition(unittest.TestCase):
     def test_uses_zero_when_every_nested_collection_is_excluded(self) -> None:
         started = self.engine.flow_start(str(self.workflow_path))
 
-        exception = self.engine.flow_next({
-            started.steps[0].instance_id: {
-                "groups": [
-                    {
-                        "values": ["Preview", "Only", "Content"],
-                        "is_exception": True,
-                    },
-                ]
+        exception = self.engine.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "groups": [
+                        {
+                            "values": ["Preview", "Only", "Content"],
+                            "is_exception": True,
+                        },
+                    ]
+                }
             }
-        })
+        )
 
         self.assertIsNone(exception.error, exception.error)
         self.assertEqual(

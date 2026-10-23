@@ -10,13 +10,14 @@ from harness.workflow_input_binding_nested_normalizing import (
     WorkflowInputBindingNestedNormalizing,
 )
 
-
 """
 solid-name: IncludeAliasGroupInputBindingsNormalizer
 solid-category: service
 solid-spec: [SPEC-035, SPEC-037]
 solid-description: Applies nested-scope normalization across an include group's typed input bindings.
 """
+
+
 class IncludeAliasGroupInputBindingsNormalizer(
     IncludeAliasGroupInputBindingsNormalizing
 ):

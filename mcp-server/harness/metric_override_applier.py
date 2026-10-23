@@ -1,6 +1,6 @@
 """Applies one optional project override to one authored review metric."""
 
-from typing import Optional, cast
+from typing import cast
 
 from harness.effective_metric_plan_entry import EffectiveMetricPlanEntry
 from harness.metric_declaration import MetricDeclaration
@@ -10,18 +10,19 @@ from harness.project_review_policy_audit import ProjectReviewPolicyAudit
 from harness.review_policy_metric_override import ReviewPolicyMetricOverride
 from harness.review_policy_resolution import ReviewPolicyResolution
 
-
 """
 solid-name: MetricOverrideApplier
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Applies project enablement and scoring values over one metric while preserving audit provenance.
 """
+
+
 class MetricOverrideApplier(MetricOverrideApplying):
     def apply(
         self,
         metric: MetricDeclaration,
-        override: Optional[ReviewPolicyMetricOverride],
+        override: ReviewPolicyMetricOverride | None,
         policy_resolution: ReviewPolicyResolution,
     ) -> EffectiveMetricPlanEntry:
         if override is None:

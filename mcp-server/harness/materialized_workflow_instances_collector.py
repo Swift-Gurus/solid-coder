@@ -6,16 +6,15 @@ from harness.materialized_workflow_instances_collecting import (
 )
 from harness.models import StepDef
 
-
 """
 solid-name: MaterializedWorkflowInstancesCollector
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Collects distinct included-workflow instances in materialized step order.
 """
-class MaterializedWorkflowInstancesCollector(
-    MaterializedWorkflowInstancesCollecting
-):
+
+
+class MaterializedWorkflowInstancesCollector(MaterializedWorkflowInstancesCollecting):
     def collect(
         self,
         steps: list[StepDef],
@@ -24,8 +23,7 @@ class MaterializedWorkflowInstancesCollector(
         for step in steps:
             instance = step.workflow_instance
             if instance is None or any(
-                existing.instance_id == instance.instance_id
-                for existing in instances
+                existing.instance_id == instance.instance_id for existing in instances
             ):
                 continue
             instances.append(instance)

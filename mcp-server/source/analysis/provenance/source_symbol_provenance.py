@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
-
 from source.analysis.provenance.source_declaration_symbol import SourceDeclarationSymbol
 from source.analysis.provenance.source_sdk_symbol import SourceSDKSymbol
 from source.analysis.provenance.source_symbol_ownership import SourceSymbolOwnership
@@ -22,6 +21,8 @@ solid-category: model
 solid-spec: [SPEC-064]
 solid-description: Preserves semantic resolution, canonical repository boundaries and auditable ownership decisions for replay.
 """
+
+
 class SourceSymbolProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

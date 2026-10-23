@@ -1,13 +1,14 @@
 """Projects validated dispositions to inspected candidates and audit records."""
 
+from source.selected_source_candidate import SelectedSourceCandidate
 from source.source_candidate_disposition_kind import (
     SourceCandidateDispositionKind,
 )
-from source.selected_source_candidate import SelectedSourceCandidate
 from source.validate_candidate_selection_input import ValidateCandidateSelectionInput
 from source.validate_candidate_selection_output import ValidateCandidateSelectionOutput
-from validation.collection_identity_coverage_validator import CollectionIdentityCoverageValidating
-
+from validation.collection_identity_coverage_validator import (
+    CollectionIdentityCoverageValidating,
+)
 
 """
 solid-name: ValidateCandidateSelectionOperation
@@ -15,8 +16,12 @@ solid-category: service
 solid-spec: [SPEC-039, SPEC-040, SPEC-056]
 solid-description: Resolves complete candidate dispositions into source-ordered inspection work and audit records.
 """
+
+
 class ValidateCandidateSelectionOperation:
-    def __init__(self, coverage_validator: CollectionIdentityCoverageValidating) -> None:
+    def __init__(
+        self, coverage_validator: CollectionIdentityCoverageValidating
+    ) -> None:
         self._coverage_validator = coverage_validator
 
     def execute(
@@ -24,7 +29,10 @@ class ValidateCandidateSelectionOperation:
         operation_input: ValidateCandidateSelectionInput,
     ) -> ValidateCandidateSelectionOutput:
         self._coverage_validator.validate(
-            expected_ids=[f"candidate-{index}" for index in range(1, len(operation_input.candidates) + 1)],
+            expected_ids=[
+                f"candidate-{index}"
+                for index in range(1, len(operation_input.candidates) + 1)
+            ],
             submitted_ids=[item.candidate_id for item in operation_input.dispositions],
             identity_name="candidate",
         )
@@ -46,8 +54,7 @@ class ValidateCandidateSelectionOperation:
                     operation_input.candidates,
                     ordered_dispositions,
                 )
-                if disposition.disposition
-                is SourceCandidateDispositionKind.INSPECT
+                if disposition.disposition is SourceCandidateDispositionKind.INSPECT
             ],
             dispositions=ordered_dispositions,
         )

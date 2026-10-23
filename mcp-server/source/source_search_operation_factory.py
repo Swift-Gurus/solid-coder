@@ -28,10 +28,10 @@ from source.os_directory_tree_walker import OsDirectoryTreeWalker
 from source.repository_source_snapshots_collector import (
     RepositorySourceSnapshotsCollector,
 )
-from source.source_search_operation import SourceSearchOperation
-from source.source_frontmatter_reader_factory import SourceFrontmatterReaderFactory
 from source.repository_source_unit_projector import RepositorySourceUnitProjector
+from source.source_frontmatter_reader_factory import SourceFrontmatterReaderFactory
 from source.source_frontmatter_selector import SourceFrontmatterSelector
+from source.source_search_operation import SourceSearchOperation
 from source.source_unit_exclusion_checker import SourceUnitExclusionChecker
 from source.utf8_source_slice_resolver import UTF8SourceSliceResolver
 from source.whole_file_repository_source_unit_builder import (
@@ -44,6 +44,8 @@ solid-category: factory
 solid-spec: [SPEC-040, SPEC-060]
 solid-description: Provides repository source search operations.
 """
+
+
 class SourceSearchOperationFactory:
     def make(
         self,

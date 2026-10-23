@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import os
 
-
 """
 solid-name: LiveTestBase
 solid-category: test-support
 solid-description: Resolves the real parent session that launched a live test independently from the backend selected for its child session.
 """
-class LiveTestBase:
 
+
+class LiveTestBase:
     FLOW_START_TOOL: str
     FLOW_NEXT_TOOL: str
 

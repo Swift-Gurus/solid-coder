@@ -3,12 +3,13 @@
 from spec_ancestry_retrieving import SpecAncestryRetrieving
 from spec_context_rendering import SpecContextRendering
 
-
 """
 solid-name: SpecContextLoader
 solid-category: service
 solid-description: Coordinates retrieval and rendering of specification ancestry context.
 """
+
+
 class SpecContextLoader:
     def __init__(
         self,

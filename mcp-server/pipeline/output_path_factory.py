@@ -4,24 +4,25 @@ from __future__ import annotations
 
 import os
 import uuid as _uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pipeline.output_path_computing import OutputPathComputing
-
 
 """
 solid-name: OutputPathFactory
 solid-category: service
 solid-description: Computes project-scoped output locations for model-facing operations.
 """
+
+
 class OutputPathFactory(OutputPathComputing):
     """Generates standardized output directory paths for solid-coder operations."""
 
     def compute(self, operation: str, spec_number: str = "") -> dict:
         project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
         slug = str(Path(project_dir).resolve()).replace("/", "-")
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
         if operation == "health":
             dir_name = f"health-{_uuid.uuid4()}"
         elif operation == "implement" and spec_number:

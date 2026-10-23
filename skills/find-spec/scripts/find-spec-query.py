@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Discover and query spec files in .claude/specs/.
 
 Subcommands:
@@ -32,14 +31,14 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Frontmatter parsing
 # ---------------------------------------------------------------------------
 
-def extract_frontmatter_text(content: str) -> Optional[str]:
+
+def extract_frontmatter_text(content: str) -> str | None:
     if not content.startswith("---"):
         return None
     end = content.find("---", 3)
@@ -48,13 +47,13 @@ def extract_frontmatter_text(content: str) -> Optional[str]:
     return content[3:end].strip()
 
 
-def parse_frontmatter(content: str) -> Dict[str, Any]:
+def parse_frontmatter(content: str) -> dict[str, Any]:
     yaml_text = extract_frontmatter_text(content)
     if not yaml_text:
         return {}
-    result: Dict[str, Any] = {}
-    current_key: Optional[str] = None
-    current_list: Optional[List[str]] = None
+    result: dict[str, Any] = {}
+    current_key: str | None = None
+    current_list: list[str] | None = None
 
     for line in yaml_text.splitlines():
         stripped = line.strip()
@@ -72,11 +71,13 @@ def parse_frontmatter(content: str) -> Dict[str, Any]:
         if ":" in stripped:
             colon_idx = stripped.index(":")
             key = stripped[:colon_idx].strip()
-            value = stripped[colon_idx + 1:].strip()
+            value = stripped[colon_idx + 1 :].strip()
             if value:
                 if value.startswith("[") and value.endswith("]"):
                     inner = value[1:-1].strip()
-                    result[key] = [item.strip() for item in inner.split(",")] if inner else []
+                    result[key] = (
+                        [item.strip() for item in inner.split(",")] if inner else []
+                    )
                 else:
                     result[key] = value
                 current_key = None
@@ -97,7 +98,8 @@ def parse_frontmatter(content: str) -> Dict[str, Any]:
 # Spec discovery
 # ---------------------------------------------------------------------------
 
-def find_specs_root(given: Optional[str]) -> Path:
+
+def find_specs_root(given: str | None) -> Path:
     if given:
         return Path(given).resolve()
     cwd = Path.cwd()
@@ -108,27 +110,29 @@ def find_specs_root(given: Optional[str]) -> Path:
     return cwd / ".claude" / "specs"
 
 
-def load_all_specs(specs_root: Path) -> List[Dict[str, Any]]:
+def load_all_specs(specs_root: Path) -> list[dict[str, Any]]:
     specs = []
     for md_file in sorted(specs_root.rglob("Spec.md")):
         content = md_file.read_text(encoding="utf-8")
         fm = parse_frontmatter(content)
         if not fm.get("number"):
             continue
-        specs.append({
-            "number": fm.get("number"),
-            "feature": fm.get("feature"),
-            "type": fm.get("type"),
-            "status": fm.get("status", "draft"),
-            "parent": fm.get("parent"),
-            "blocked_by": fm.get("blocked-by") or [],
-            "blocking": fm.get("blocking") or [],
-            "path": str(md_file),
-        })
+        specs.append(
+            {
+                "number": fm.get("number"),
+                "feature": fm.get("feature"),
+                "type": fm.get("type"),
+                "status": fm.get("status", "draft"),
+                "parent": fm.get("parent"),
+                "blocked_by": fm.get("blocked-by") or [],
+                "blocking": fm.get("blocking") or [],
+                "path": str(md_file),
+            }
+        )
     return specs
 
 
-def build_hierarchy(specs: List[Dict[str, Any]]) -> None:
+def build_hierarchy(specs: list[dict[str, Any]]) -> None:
     by_number = {s["number"]: s for s in specs}
     for s in specs:
         s["children"] = []
@@ -138,7 +142,7 @@ def build_hierarchy(specs: List[Dict[str, Any]]) -> None:
             by_number[parent_num]["children"].append(s["number"])
 
 
-def find_spec(specs: List[Dict[str, Any]], number: str) -> Optional[Dict[str, Any]]:
+def find_spec(specs: list[dict[str, Any]], number: str) -> dict[str, Any] | None:
     for s in specs:
         if s["number"] == number:
             return s
@@ -149,12 +153,13 @@ def find_spec(specs: List[Dict[str, Any]], number: str) -> Optional[Dict[str, An
 # Subcommands
 # ---------------------------------------------------------------------------
 
+
 def cmd_scan(
     specs_root: Path,
-    filter_type: Optional[str] = None,
-    filter_status: Optional[str] = None,
+    filter_type: str | None = None,
+    filter_status: str | None = None,
     no_parent: bool = False,
-    filter_parent: Optional[str] = None,
+    filter_parent: str | None = None,
 ) -> None:
     specs = load_all_specs(specs_root)
     build_hierarchy(specs)
@@ -223,15 +228,16 @@ def cmd_next_number(specs_root: Path) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     args = sys.argv[1:]
 
-    specs_root_override: Optional[str] = None
+    specs_root_override: str | None = None
     if "--specs-root" in args:
         idx = args.index("--specs-root")
         if idx + 1 < len(args):
             specs_root_override = args[idx + 1]
-            args = args[:idx] + args[idx + 2:]
+            args = args[:idx] + args[idx + 2 :]
 
     if not args:
         print(__doc__, file=sys.stderr)
@@ -263,7 +269,9 @@ def main() -> None:
         cmd_children(specs_root, args[1])
     elif subcommand == "ancestors":
         if len(args) < 2:
-            print("Usage: spec-query.py ancestors <SPEC-NNN> [--blocked]", file=sys.stderr)
+            print(
+                "Usage: spec-query.py ancestors <SPEC-NNN> [--blocked]", file=sys.stderr
+            )
             sys.exit(1)
         include_blocked = "--blocked" in args
         cmd_ancestors(specs_root, args[1], include_blocked=include_blocked)

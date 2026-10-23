@@ -9,13 +9,14 @@ from harness.batch_step_rendering import BatchStepRendering
 from harness.step_result import StepResult
 from json_serializer import JsonSerializing
 
-
 """
 solid-name: AggregateBatchStepRenderer
 solid-category: service
 solid-spec: [SPEC-045, SPEC-052]
 solid-description: Renders aggregate work with its exact response and correction contract.
 """
+
+
 class AggregateBatchStepRenderer(BatchStepRendering):
     def __init__(
         self,

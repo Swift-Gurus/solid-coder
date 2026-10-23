@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Discover principles from references directory and optionally filter by tags.
 
 Mode 1 — Discovery (no --matched-tags):
@@ -34,14 +33,14 @@ import json
 import sys
 from glob import glob
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
-def parse_yaml_simple(text: str) -> Dict[str, Any]:
+def parse_yaml_simple(text: str) -> dict[str, Any]:
     """Minimal YAML parser for flat frontmatter with optional lists."""
-    result: Dict[str, Any] = {}
-    current_key: Optional[str] = None
-    current_list: Optional[List[str]] = None
+    result: dict[str, Any] = {}
+    current_key: str | None = None
+    current_list: list[str] | None = None
 
     for line in text.splitlines():
         stripped = line.strip()
@@ -62,12 +61,14 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
         if ":" in stripped:
             colon_idx = stripped.index(":")
             key = stripped[:colon_idx].strip()
-            value = stripped[colon_idx + 1:].strip()
+            value = stripped[colon_idx + 1 :].strip()
 
             if value:
                 if value.startswith("[") and value.endswith("]"):
                     inner = value[1:-1].strip()
-                    result[key] = [item.strip() for item in inner.split(",")] if inner else []
+                    result[key] = (
+                        [item.strip() for item in inner.split(",")] if inner else []
+                    )
                 elif value.lower() in ("true", "yes"):
                     result[key] = True
                 elif value.lower() in ("false", "no"):
@@ -91,7 +92,7 @@ def parse_yaml_simple(text: str) -> Dict[str, Any]:
     return result
 
 
-def extract_frontmatter(content: str) -> Optional[str]:
+def extract_frontmatter(content: str) -> str | None:
     """Extract YAML frontmatter between --- delimiters."""
     if not content.startswith("---"):
         return None
@@ -101,7 +102,7 @@ def extract_frontmatter(content: str) -> Optional[str]:
     return content[3:end].strip()
 
 
-def discover(refs_root: Path, pattern: str) -> List[Dict[str, Any]]:
+def discover(refs_root: Path, pattern: str) -> list[dict[str, Any]]:
     """Find all rule.md files and parse their frontmatter."""
     principles = []
     search = str(refs_root / pattern)
@@ -137,22 +138,24 @@ def discover(refs_root: Path, pattern: str) -> List[Dict[str, Any]]:
             elif isinstance(raw_profile, list):
                 profile = [p.lower() for p in raw_profile]
 
-        principles.append({
-            "name": data.get("name", folder.name),
-            "displayName": data.get("displayName", data.get("name", folder.name)),
-            "folder": str(folder.resolve()),
-            "rule_path": str(rule_file.resolve()),
-            "tags": tags,
-            "profile": profile,
-        })
+        principles.append(
+            {
+                "name": data.get("name", folder.name),
+                "displayName": data.get("displayName", data.get("name", folder.name)),
+                "folder": str(folder.resolve()),
+                "rule_path": str(rule_file.resolve()),
+                "tags": tags,
+                "profile": profile,
+            }
+        )
 
     return principles
 
 
 def filter_principles(
-    principles: List[Dict[str, Any]],
-    matched_tags: Optional[List[str]],
-    profile: Optional[str] = None,
+    principles: list[dict[str, Any]],
+    matched_tags: list[str] | None,
+    profile: str | None = None,
 ) -> tuple:
     """Split principles into active and skipped based on matched tags and profile.
 
@@ -166,34 +169,37 @@ def filter_principles(
     # matched_tags may be a string (single tag, no comma in CLI arg) or a list
     if isinstance(matched_tags, str):
         matched_tags = [matched_tags]
-    matched_set = set(t.lower() for t in matched_tags) if matched_tags else set()
+    matched_set = {t.lower() for t in matched_tags} if matched_tags else set()
     profile_key = profile.lower() if profile else None
 
     for p in principles:
         # Profile filter first — skip principles that don't support the requested profile.
         profiles = p.get("profile")
-        if profile_key is not None and profiles is not None and profile_key not in profiles:
-            skipped.append({
-                **p,
-                "reason": f"profile '{profile_key}' not in supported profiles {profiles}",
-            })
+        if (
+            profile_key is not None
+            and profiles is not None
+            and profile_key not in profiles
+        ):
+            skipped.append(
+                {
+                    **p,
+                    "reason": f"profile '{profile_key}' not in supported profiles {profiles}",
+                }
+            )
             continue
 
         tags = p["tags"]
-        if tags is None:
-            active.append(p)
-        elif matched_tags is None:
-            active.append(p)
-        elif set(tags) & matched_set:
+        if tags is None or matched_tags is None or set(tags) & matched_set:
             active.append(p)
         else:
-            skipped.append({
-                **p,
-                "reason": "no matching tags",
-            })
+            skipped.append(
+                {
+                    **p,
+                    "reason": "no matching tags",
+                }
+            )
 
     return active, skipped
-
 
 
 # --- Public API ---
@@ -202,9 +208,9 @@ def filter_principles(
 def discover_and_filter(
     refs_root: str,
     glob_pattern: str = "**/rule.md",
-    matched_tags: Optional[List[str]] = None,
-    profile: Optional[str] = None,
-) -> Dict[str, Any]:
+    matched_tags: list[str] | None = None,
+    profile: str | None = None,
+) -> dict[str, Any]:
     """Discover principles and optionally filter by tags and/or profile.
 
     Returns dict with active_principles, skipped_principles, all_candidate_tags.
@@ -237,7 +243,8 @@ def main() -> None:
         description="Discover and filter principles by tags."
     )
     parser.add_argument(
-        "--refs-root", required=True,
+        "--refs-root",
+        required=True,
         help="Path to references directory",
     )
     parser.add_argument(
@@ -249,13 +256,14 @@ def main() -> None:
         help="Path to review-input.json — reads matched_tags from it (alternative to --matched-tags)",
     )
     parser.add_argument(
-        "--glob", default="**/rule.md",
+        "--glob",
+        default="**/rule.md",
         help="Glob pattern for finding rule.md files (default: **/rule.md)",
     )
     parser.add_argument(
         "--profile",
         help="Filter to principles supporting this profile (e.g. 'review', 'code'). "
-             "Principles with no `profile:` field are always included.",
+        "Principles with no `profile:` field are always included.",
     )
     args = parser.parse_args()
 

@@ -10,16 +10,15 @@ from harness.rule_scope_runtime_adapting_resolving import (
     RuleScopeRuntimeAdaptingResolving,
 )
 
-
 """
 solid-name: RuleScopeRuntimeAdapterResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Resolves registered include-runtime adaptation without hardcoded rule-scope branches.
 """
-class RuleScopeRuntimeAdapterResolver(
-    RuleScopeRuntimeAdaptingResolving
-):
+
+
+class RuleScopeRuntimeAdapterResolver(RuleScopeRuntimeAdaptingResolving):
     def __init__(
         self,
         registrations: list[RuleScopeRuntimeAdapterRegistration],
@@ -33,6 +32,4 @@ class RuleScopeRuntimeAdapterResolver(
         for registration in self._registrations:
             if registration.scope is scope:
                 return registration.adapter
-        raise FlowValidationError(
-            f"No runtime adapter for rule scope '{scope.value}'"
-        )
+        raise FlowValidationError(f"No runtime adapter for rule scope '{scope.value}'")

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Tests for collect-principle-files.py."""
 
 import json
@@ -21,24 +20,24 @@ def run_script(input_json: str) -> dict:
         input=input_json,
         capture_output=True,
         text=True,
+        check=False,
     )
     if result.returncode != 0:
         raise RuntimeError(f"Script failed: {result.stderr}")
     return json.loads(result.stdout)
 
 
-def run_discover(extra_args: list = None) -> dict:
+def run_discover(extra_args: list | None = None) -> dict:
     cmd = [sys.executable, str(DISCOVER_SCRIPT), "--refs-root", str(REFS_ROOT)]
     if extra_args:
         cmd.extend(extra_args)
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
     if result.returncode != 0:
         raise RuntimeError(f"Discover failed: {result.stderr}")
     return json.loads(result.stdout)
 
 
 class TestCollectPrincipleFiles(unittest.TestCase):
-
     def test_output_has_files_to_load_key(self):
         discover = run_discover()
         output = run_script(json.dumps(discover))
@@ -119,16 +118,16 @@ class TestCollectPrincipleFiles(unittest.TestCase):
 
     def test_file_flag(self):
         import tempfile
+
         discover = run_discover()
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(discover, f)
             f.flush()
             result = subprocess.run(
                 [sys.executable, str(SCRIPT), "--file", f.name],
                 capture_output=True,
                 text=True,
+                check=False,
             )
         self.assertEqual(result.returncode, 0)
         output = json.loads(result.stdout)
@@ -141,6 +140,7 @@ class TestCollectPrincipleFiles(unittest.TestCase):
             [sys.executable, str(SCRIPT), "--json", json.dumps(discover)],
             capture_output=True,
             text=True,
+            check=False,
         )
         self.assertEqual(result.returncode, 0)
         output = json.loads(result.stdout)

@@ -4,21 +4,20 @@ from flow_continuation_instruction_building import (
     FlowContinuationInstructionBuilding,
 )
 
-
 """
 solid-name: GateFlowPromptBuilder
 solid-category: service
 solid-spec: [SPEC-036]
 solid-description: Builds a source-review bootstrap that continues one server-started workflow run.
 """
+
+
 class GateFlowPromptBuilder:
     def __init__(
         self,
         continuation_instruction_builder: FlowContinuationInstructionBuilding,
     ) -> None:
-        self._continuation_instruction_builder = (
-            continuation_instruction_builder
-        )
+        self._continuation_instruction_builder = continuation_instruction_builder
 
     def build(
         self,

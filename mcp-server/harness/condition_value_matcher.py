@@ -8,13 +8,14 @@ from harness.condition_value_matching import ConditionValueMatching
 from harness.resolved_condition_value import ResolvedConditionValue
 from harness.strict_value_comparing import StrictValueComparing
 
-
 """
 solid-name: ConditionValueMatcher
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Applies supported workflow comparison semantics without type coercion.
 """
+
+
 class ConditionValueMatcher(ConditionValueMatching):
     def __init__(
         self,

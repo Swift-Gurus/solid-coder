@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from rule_validation_e2e_live_base import RuleValidationE2ELiveBase
-
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 _FIXTURE = (
@@ -24,20 +24,22 @@ solid-category: test-support
 solid-spec: [SPEC-039, SPEC-055]
 solid-description: Supplies the file-scoped Frontmatter fixture and locked MCP-scored observations to the shared live rule contract.
 """
+
+
 class FrontmatterValidationE2ELiveBase(RuleValidationE2ELiveBase):
     WORKFLOW_ID = "frontmatter"
     ARTIFACT_SCENARIO = "frontmatter"
     FIXTURE = _FIXTURE
-    EXPECTED_STEP_IDS = [
+    EXPECTED_STEP_IDS: ClassVar[list[str]] = [
         "missing_frontmatter_count",
         "name_mismatch_count",
         "invalid_category_count",
         "incorrect_stack_count",
         "bad_description_count",
     ]
-    EXPECTED_METRIC_IDS = ["FM-1", "FM-2", "FM-3", "FM-4", "FM-5"]
-    EXPECTED_VALUES = [1, 0, 0, 0, 0]
-    EXPECTED_METRIC_SEVERITIES = [
+    EXPECTED_METRIC_IDS: ClassVar[list[str]] = ["FM-1", "FM-2", "FM-3", "FM-4", "FM-5"]
+    EXPECTED_VALUES: ClassVar[list[int]] = [1, 0, 0, 0, 0]
+    EXPECTED_METRIC_SEVERITIES: ClassVar[list[str]] = [
         "SEVERE",
         "COMPLIANT",
         "COMPLIANT",
@@ -45,6 +47,10 @@ class FrontmatterValidationE2ELiveBase(RuleValidationE2ELiveBase):
         "COMPLIANT",
     ]
     EXPECTED_FINAL_SEVERITY = "SEVERE"
-    EXPECTED_ANALYSIS_STEP_IDS = ["analyze_source", "prepare_frontmatter", "bind_descriptions"]
-    EXCEPTION_STEP_IDS = []
+    EXPECTED_ANALYSIS_STEP_IDS: ClassVar[list[str]] = [
+        "analyze_source",
+        "prepare_frontmatter",
+        "bind_descriptions",
+    ]
+    EXCEPTION_STEP_IDS: ClassVar[list[str]] = []
     ALLOW_AUXILIARY_STEPS = True

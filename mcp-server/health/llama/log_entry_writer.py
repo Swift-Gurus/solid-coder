@@ -20,5 +20,5 @@ class JsonlEntryWriter:
         try:
             with (dir_path / filename).open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 — Logging must not interrupt the caller; logging its own failure risks recursion.
             pass

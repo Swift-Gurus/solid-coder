@@ -2,15 +2,15 @@
 
 from harness.run_state_transitioning import RunStateTransitioning
 
-
 """
 solid-name: StepRejectedTransition
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Records a failed attempt and reopens the rejected completed step for another execution.
 """
-class StepRejectedTransition:
 
+
+class StepRejectedTransition:
     def __init__(self, attempt_transition: RunStateTransitioning) -> None:
         self._attempt_transition = attempt_transition
 

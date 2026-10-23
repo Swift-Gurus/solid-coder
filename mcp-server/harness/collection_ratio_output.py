@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: CollectionRatioOutput
 solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Reports a ratio with auditable numerator, denominator, and empty-value usage.
 """
+
+
 class CollectionRatioOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

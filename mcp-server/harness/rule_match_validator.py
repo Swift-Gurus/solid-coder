@@ -4,15 +4,15 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
 
-
 """
 solid-name: RuleMatchValidator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Rejects ambiguous or non-normalized review-rule match declarations before execution.
 """
-class RuleMatchValidator:
 
+
+class RuleMatchValidator:
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 

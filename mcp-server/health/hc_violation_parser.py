@@ -6,11 +6,17 @@ solid-tags: [hook, parsing]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
@@ -18,7 +24,7 @@ from hook_utils import ListValidator, ViolationDictValidator, parse_json_field
 
 
 class LLMResponseParsing(Protocol):
-    def parse(self, raw: str) -> Optional[list]: ...
+    def parse(self, raw: str) -> list | None: ...
 
 
 class BlockReasonFormatting(Protocol):
@@ -36,7 +42,7 @@ class ViolationParsing(LLMResponseParsing, BlockReasonFormatting, Protocol):
 class LLMViolationParser:
     """Parses a violations list from raw LLM text response using structural validation."""
 
-    def parse(self, raw: str) -> Optional[list]:
+    def parse(self, raw: str) -> list | None:
         violations = parse_json_field(raw, "violations", ListValidator())
         if violations is None:
             return None
@@ -73,13 +79,13 @@ class ViolationParser:
 
     def __init__(
         self,
-        parser: Optional[LLMResponseParsing] = None,
-        formatter: Optional[BlockReasonFormatting] = None,
+        parser: LLMResponseParsing | None = None,
+        formatter: BlockReasonFormatting | None = None,
     ) -> None:
         self._parser: LLMResponseParsing = parser or LLMViolationParser()
         self._formatter: BlockReasonFormatting = formatter or ViolationBlockFormatter()
 
-    def parse(self, raw: str) -> Optional[list]:
+    def parse(self, raw: str) -> list | None:
         return self._parser.parse(raw)
 
     def format_block_reason(self, violations: list) -> str:

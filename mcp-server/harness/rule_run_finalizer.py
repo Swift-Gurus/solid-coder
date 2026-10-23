@@ -11,13 +11,14 @@ from harness.rule_review_result_building import RuleReviewResultBuilding
 from harness.rule_review_result_persisting import RuleReviewResultPersisting
 from harness.run_state import RunState
 
-
 """
 solid-name: RuleRunFinalizer
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Produces and publishes the deterministic scored result for one completed rule execution instance.
 """
+
+
 class RuleRunFinalizer(RuleExecutionFinalizing):
     def __init__(
         self,

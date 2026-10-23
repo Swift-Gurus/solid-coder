@@ -6,7 +6,8 @@ solid-tags: [utility, service]
 
 from typing import Protocol
 
-from findings.fix_file_lookup import resolve_single_fix, list_available_fix_metric_ids
+from findings.fix_file_lookup import list_available_fix_metric_ids, resolve_single_fix
+
 from rules.detection_rules_loader import AllPrinciplesProviding
 from rules.load_reference import strip_frontmatter
 

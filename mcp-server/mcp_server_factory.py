@@ -1,5 +1,3 @@
-from typing import Optional
-
 from handler_store import HandlerStore
 from handler_storing import HandlerStoring
 from initialize_handler import InitializeHandler
@@ -22,20 +20,20 @@ from tools_call_handler import ToolsCallHandler
 from tools_list_handler import ToolsListHandler
 from transport_format_detector import TransportFormatDetector
 
-
 """
 solid-name: MCPServerFactory
 solid-category: service
 solid-description: Configures an MCP endpoint for tool registration and request handling.
 """
-class MCPServerFactory:
 
+
+class MCPServerFactory:
     def __init__(
         self,
-        metadata: Optional[ToolMetadataStoring] = None,
-        handlers: Optional[HandlerStoring] = None,
-        stdin: Optional[StdinSource] = None,
-        stdout: Optional[StdoutSink] = None,
+        metadata: ToolMetadataStoring | None = None,
+        handlers: HandlerStoring | None = None,
+        stdin: StdinSource | None = None,
+        stdout: StdoutSink | None = None,
     ) -> None:
         self._metadata = metadata or ToolMetadataStore()
         self._handlers = handlers or HandlerStore()
@@ -46,7 +44,7 @@ class MCPServerFactory:
         self,
         name: str,
         version: str = "1.0.0",
-        instructions: Optional[str] = None,
+        instructions: str | None = None,
     ) -> MCPServer:
         format_detector = TransportFormatDetector()
         tools_call_handler = ToolsCallHandler(self._handlers, ToolResultFormatter())
@@ -66,7 +64,9 @@ class MCPServerFactory:
         return MCPServer(
             name=name,
             version=version,
-            tool_registering=ToolDecorator(ToolRegistrar(self._metadata, self._handlers)),
+            tool_registering=ToolDecorator(
+                ToolRegistrar(self._metadata, self._handlers)
+            ),
             call_meta_provider=tools_call_handler,
             transport_runner=transport_runner,
         )

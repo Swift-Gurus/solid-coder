@@ -8,13 +8,14 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.models import StepDef
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: IncludedWorkflowStepsResolving
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for materializing one item-scoped included workflow DAG.
 """
+
+
 class IncludedWorkflowStepsResolving(Protocol):
     def resolve(
         self,

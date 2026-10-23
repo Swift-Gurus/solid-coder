@@ -9,13 +9,14 @@ from harness.condition_declaration import ConditionDeclaration
 from harness.condition_runtime import ConditionRuntime
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: NotCondition
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Represents workflow eligibility that negates one nested criterion.
 """
+
+
 @dataclass(frozen=True)
 class NotCondition(ConditionDeclaration):
     condition: ConditionDeclaration

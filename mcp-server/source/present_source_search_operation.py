@@ -2,9 +2,8 @@
 
 from harness.project_context import ProjectDirectoryReading
 from search.codebase_search_output_rendering import CodebaseSearchOutputRendering
-from source.source_search_results import SourceSearchResults
 from source.source_search_presentation import SourceSearchPresentation
-
+from source.source_search_results import SourceSearchResults
 
 """
 solid-name: PresentSourceSearchOperation
@@ -12,6 +11,8 @@ solid-category: service
 solid-spec: [SPEC-039, SPEC-040]
 solid-description: Adapts typed source-search results into the shared readable model-facing presentation.
 """
+
+
 class PresentSourceSearchOperation:
     def __init__(
         self,

@@ -13,13 +13,12 @@ _HARNESS = Path(__file__).resolve().parents[1]
 if str(_HARNESS) not in sys.path:
     sys.path.insert(0, str(_HARNESS))
 
-from legacy_health_comparison_e2e_live_base import (  # noqa: E402
+from legacy_health_comparison_e2e_live_base import (
     LegacyHealthComparisonE2ELiveBase,
 )
 
 
 class TestLegacyHealthComparisonEvidence(unittest.TestCase):
-
     def test_hashes_the_exact_executed_health_prompt(self) -> None:
         review_prompt = (
             "# spawned-by: child\n\n"
@@ -38,9 +37,7 @@ class TestLegacyHealthComparisonEvidence(unittest.TestCase):
             transcript = Path(directory) / "rollout.jsonl"
             transcript.write_text(json.dumps(event) + "\n", encoding="utf-8")
 
-            digest = LegacyHealthComparisonE2ELiveBase._instruction_hash(
-                transcript
-            )
+            digest = LegacyHealthComparisonE2ELiveBase._instruction_hash(transcript)
 
         self.assertEqual(
             digest,

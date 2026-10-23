@@ -5,15 +5,15 @@ solid-tags: [utility, service]
 """
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
-from scoring.project_root_finder import ProjectRootFinding, CONFIG_DIR, CONFIG_BASENAME
 from scoring.directory_walker import DirectoryWalking
+from scoring.project_root_finder import CONFIG_BASENAME, CONFIG_DIR, ProjectRootFinding
 from scoring.yaml_config_file_loader import ConfigFileLoading
 
 
 class ConfigCollecting(Protocol):
-    def collect(self, file_path: str, project_root: Optional[str]) -> list: ...
+    def collect(self, file_path: str, project_root: str | None) -> list: ...
 
 
 class ConfigPathCollector:
@@ -29,9 +29,13 @@ class ConfigPathCollector:
         self._loader = loader
         self._root_finder = root_finder
 
-    def collect(self, file_path: str, project_root: Optional[str] = None) -> list:
-        detected = project_root or (self._root_finder.find(file_path) if file_path else None)
-        root = Path(detected).resolve() if detected else Path(file_path).resolve().parent
+    def collect(self, file_path: str, project_root: str | None = None) -> list:
+        detected = project_root or (
+            self._root_finder.find(file_path) if file_path else None
+        )
+        root = (
+            Path(detected).resolve() if detected else Path(file_path).resolve().parent
+        )
         configs = []
         for d in self._walker.directories(file_path, root):
             cfg = self._loader.load(d / CONFIG_DIR / CONFIG_BASENAME)

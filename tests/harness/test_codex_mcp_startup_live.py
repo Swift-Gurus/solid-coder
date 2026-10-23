@@ -25,23 +25,27 @@ from mcp_config_profile import McpConfigProfile
 from model_profile_loader import ModelProfileLoader
 from subprocess_error import SubprocessError
 
-
 """
 solid-name: TestCodexMcpStartupLive
 solid-category: integration-test
 solid-spec: [SPEC-067]
 solid-description: Proves a delegated Codex session waits for delayed required capabilities and fails before model work when initialization fails.
 """
+
+
 class TestCodexMcpStartupLive(CodexTestBase, unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="solid-coder-mcp-startup-")
         self.addCleanup(temporary.cleanup)
         self.project = Path(temporary.name)
         self.audit = solid_coder_project_dir(self.project)
-        profile = ModelProfileLoader(_PROJECT_ROOT, HookUtilsTomlLoader()).load(self.MODEL_PROFILE)
+        profile = ModelProfileLoader(_PROJECT_ROOT, HookUtilsTomlLoader()).load(
+            self.MODEL_PROFILE
+        )
         self.llm = LlmConfig.model_validate(profile.llm)
         self.artifacts = LiveSessionArtifactDirectoryCreator().create(
-            _PROJECT_ROOT, self.llm.backend,
+            _PROJECT_ROOT,
+            self.llm.backend,
             LiveSessionArtifactScope(domain="gate", scenario="mcp-startup"),
         )
         shutil.copy2(profile.profile_path, self.artifacts / "model-profile.toml")
@@ -50,10 +54,12 @@ class TestCodexMcpStartupLive(CodexTestBase, unittest.TestCase):
 
     def test_delayed_server_is_available_on_the_first_probe(self):
         server = _PROJECT_ROOT / "mcp-server/flow_engine/server.py"
-        result = self._run([
-            "-c",
-            f"import time, runpy; time.sleep(15); runpy.run_path({str(server)!r}, run_name='__main__')",
-        ])
+        result = self._run(
+            [
+                "-c",
+                f"import time, runpy; time.sleep(15); runpy.run_path({str(server)!r}, run_name='__main__')",
+            ]
+        )
 
         self.assertEqual(result, "function")
         diagnostics = (self.audit / "codex-execution.log").read_text()
@@ -70,10 +76,16 @@ class TestCodexMcpStartupLive(CodexTestBase, unittest.TestCase):
         self.assertNotIn('"turn.completed"', diagnostics)
 
     def _run(self, server_arguments: list[str]):
-        configuration = json.loads(McpConfigBuilder(
-            _PROJECT_ROOT, McpConfigProfile.GATE_FLOW, JsonSerializer(),
-        ).build())
-        configuration["mcpServers"]["solid-coder-flow-engine"]["args"] = server_arguments
+        configuration = json.loads(
+            McpConfigBuilder(
+                _PROJECT_ROOT,
+                McpConfigProfile.GATE_FLOW,
+                JsonSerializer(),
+            ).build()
+        )
+        configuration["mcpServers"]["solid-coder-flow-engine"]["args"] = (
+            server_arguments
+        )
         prompt = (
             "Read-only capability probe. Make exactly one tool call, using functions.exec "
             "with JavaScript: text(typeof tools.mcp__solid_coder_flow_engine__flow_next); "
@@ -82,11 +94,14 @@ class TestCodexMcpStartupLive(CodexTestBase, unittest.TestCase):
             f"or formatting.\nspawned-by: {self.parent_session_id}"
         )
         try:
-            with patch.dict(os.environ, {
-                "SOLID_CODER_SESSION_TYPE": "health_check",
-                "CLAUDE_PROJECT_DIR": str(self.project),
-                "CODEX_WORKSPACE_ROOT": str(self.project),
-            }):
+            with patch.dict(
+                os.environ,
+                {
+                    "SOLID_CODER_SESSION_TYPE": "health_check",
+                    "CLAUDE_PROJECT_DIR": str(self.project),
+                    "CODEX_WORKSPACE_ROOT": str(self.project),
+                },
+            ):
                 return make_codex_runner(
                     model=self.llm.model,
                     cwd=str(self.project),

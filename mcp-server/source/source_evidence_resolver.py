@@ -1,9 +1,10 @@
 """Resolves source evidence from parser offsets."""
 
+from source.analysis.provenance.utf16_source_position_resolver import (
+    SourceCoordinateResolving,
+)
 from source.source_evidence import SourceEvidence
 from source.source_line_range import SourceLineRange
-from source.analysis.provenance.utf16_source_position_resolver import SourceCoordinateResolving
-
 
 """
 solid-name: SourceEvidenceResolver
@@ -11,8 +12,9 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves auditable source evidence spans from parsed source offsets.
 """
-class SourceEvidenceResolver:
 
+
+class SourceEvidenceResolver:
     def __init__(self, line_resolver: SourceCoordinateResolving[int, int]) -> None:
         self._line_resolver = line_resolver
 

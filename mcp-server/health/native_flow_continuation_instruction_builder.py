@@ -4,13 +4,14 @@ from flow_continuation_instruction_building import (
     FlowContinuationInstructionBuilding,
 )
 
-
 """
 solid-name: NativeFlowContinuationInstructionBuilder
 solid-category: service
 solid-spec: [SPEC-047]
 solid-description: Directs a native MCP caller to continue one existing isolated flow run.
 """
+
+
 class NativeFlowContinuationInstructionBuilder(
     FlowContinuationInstructionBuilding,
 ):

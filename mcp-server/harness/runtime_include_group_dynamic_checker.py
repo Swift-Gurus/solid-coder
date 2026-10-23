@@ -3,13 +3,14 @@
 from harness.include_alias_group import IncludeAliasGroup
 from harness.include_group_dynamic_checking import IncludeGroupDynamicChecking
 
-
 """
 solid-name: RuntimeIncludeGroupDynamicChecker
 solid-category: service
 solid-spec: [SPEC-037, SPEC-045]
 solid-description: Identifies executable include groups requiring runtime instance materialization.
 """
+
+
 class RuntimeIncludeGroupDynamicChecker(IncludeGroupDynamicChecking):
     def is_dynamic(self, group: IncludeAliasGroup) -> bool:
         has_runtime_controls = bool(

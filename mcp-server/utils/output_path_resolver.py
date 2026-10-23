@@ -4,7 +4,8 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Callable, Optional, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from hook_utils import solid_coder_project_dir
 
@@ -22,7 +23,7 @@ class SessionOutputPathResolver:
     Inject project_dir_fn for testing.
     """
 
-    def __init__(self, project_dir_fn: Optional[Callable] = None) -> None:
+    def __init__(self, project_dir_fn: Callable | None = None) -> None:
         self._project_dir_fn: Callable = project_dir_fn or solid_coder_project_dir
 
     def resolve(self, session_id: str) -> str:

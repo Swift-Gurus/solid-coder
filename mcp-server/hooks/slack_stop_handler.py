@@ -7,14 +7,15 @@ solid-tags: [hook]
 
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Protocol
+from typing import Protocol
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from hook_decision import HookDecision  # noqa: E402
+from hook_decision import HookDecision
 
 
 class SlackNotifying(Protocol):
@@ -33,7 +34,9 @@ class SlackStopHandler:
     def __init__(
         self,
         notifier: SlackNotifying,
-        session_type_fn: Callable[[], str] = lambda: os.environ.get("SOLID_CODER_SESSION_TYPE", ""),
+        session_type_fn: Callable[[], str] = lambda: os.environ.get(
+            "SOLID_CODER_SESSION_TYPE", ""
+        ),
     ) -> None:
         self._notifier = notifier
         self._session_type_fn = session_type_fn

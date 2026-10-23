@@ -1,8 +1,9 @@
 """Serializes typed source-search results for the CLI JSON boundary."""
 
+from source.source_search_output import SourceSearchOutput
+
 from search.codebase_search_output_serializing import CodebaseSearchOutputSerializing
 from search.codebase_search_query_kind import CodebaseSearchQueryKind
-from source.source_search_output import SourceSearchOutput
 
 """
 solid-name: CodebaseSearchOutputSerializer
@@ -10,6 +11,8 @@ solid-category: serializer
 solid-spec: [SPEC-040]
 solid-description: Serializes source candidates and scan totals into CLI-compatible JSON data.
 """
+
+
 class CodebaseSearchOutputSerializer(CodebaseSearchOutputSerializing):
     def serialize(self, output: SourceSearchOutput) -> dict:
         matches = [
@@ -27,8 +30,7 @@ class CodebaseSearchOutputSerializer(CodebaseSearchOutputSerializing):
                 "matched_specs": [
                     match.term
                     for match in candidate.matches
-                    if match.query_id
-                    == CodebaseSearchQueryKind.SPECIFICATIONS.value
+                    if match.query_id == CodebaseSearchQueryKind.SPECIFICATIONS.value
                 ],
             }
             for candidate in output.candidates
@@ -38,6 +40,8 @@ class CodebaseSearchOutputSerializer(CodebaseSearchOutputSerializing):
             "summary": {
                 "total_files_scanned": output.files_scanned,
                 "files_with_frontmatter": output.files_with_frontmatter,
-                "files_matched": len({candidate.path for candidate in output.candidates}),
+                "files_matched": len(
+                    {candidate.path for candidate in output.candidates}
+                ),
             },
         }

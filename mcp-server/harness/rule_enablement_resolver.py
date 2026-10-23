@@ -11,13 +11,14 @@ from harness.rule_enablement_resolving import (
 )
 from harness.workflow_default_rule_decision import WorkflowDefaultRuleDecision
 
-
 """
 solid-name: RuleEnablementResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Applies an authored project enablement request over the enabled workflow default with audit evidence.
 """
+
+
 class RuleEnablementResolver(RuleEnablementResolving):
     def resolve(
         self,

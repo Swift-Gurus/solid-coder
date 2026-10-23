@@ -5,13 +5,14 @@ from pathlib import Path
 from harness.effective_rule_plan import EffectiveRulePlan
 from harness.review_policy_resolution import ReviewPolicyResolution
 
-
 """
 solid-name: ReviewPlanArtifactPersister
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Preserves effective review planning and project-policy snapshots for durable audit.
 """
+
+
 class ReviewPlanArtifactPersister:
     def persist(
         self,

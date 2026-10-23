@@ -1,11 +1,9 @@
 """Defines one immutable MCP-owned source-search target."""
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from findings.review_unit_kind import ReviewUnitKind
+from pydantic import BaseModel, ConfigDict, Field
 from source.source_line_range import SourceLineRange
 from source.source_search_query import SearchTerm
-
 
 """
 solid-name: SourceSearchTarget
@@ -13,6 +11,8 @@ solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Represents one immutable analyzed unit prepared for semantic source search.
 """
+
+
 class SourceSearchTarget(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

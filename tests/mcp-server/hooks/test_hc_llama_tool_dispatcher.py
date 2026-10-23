@@ -9,25 +9,32 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_llama_runner import GatewayToolDispatcher  # noqa: E402
-from health.gateway.gateway_fix_invoker import GatewayFixInvoker  # noqa: E402
-from llama.codebase_searcher import CodebaseSearcher  # noqa: E402
-from llama.tool_call_parser import ToolCallParser  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
-_SEARCH      = "mcp__pipeline__search_codebase"
-_READ        = "mcp__pipeline__read_file"
-_GREP        = "mcp__pipeline__grep_codebase"
-_GLOB        = "mcp__pipeline__glob_codebase"
-_FIX         = "mcp__docs__load_fix_for_violation"
-_SUBMIT      = "mcp__pipeline__submit_batch_findings"
-_SUBMIT_FIX  = "mcp__pipeline__submit_fix"
+from hc_llama_runner import GatewayToolDispatcher
+from health.gateway.gateway_fix_invoker import GatewayFixInvoker
+from llama.codebase_searcher import CodebaseSearcher
+from llama.tool_call_parser import ToolCallParser
+
+_SEARCH = "mcp__pipeline__search_codebase"
+_READ = "mcp__pipeline__read_file"
+_GREP = "mcp__pipeline__grep_codebase"
+_GLOB = "mcp__pipeline__glob_codebase"
+_FIX = "mcp__docs__load_fix_for_violation"
+_SUBMIT = "mcp__pipeline__submit_batch_findings"
+_SUBMIT_FIX = "mcp__pipeline__submit_fix"
 
 
 def _tc(name: str, args: dict, call_id: str = "c1") -> dict:
-    return {"id": call_id, "type": "function",
-            "function": {"name": name, "arguments": json.dumps(args)}}
+    return {
+        "id": call_id,
+        "type": "function",
+        "function": {"name": name, "arguments": json.dumps(args)},
+    }
 
 
 class TestGatewayToolDispatcher(unittest.TestCase):
@@ -38,9 +45,17 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         glob_fn = MagicMock(return_value="")
         search_fn = MagicMock(return_value="")
         read_fn = MagicMock(return_value="")
-        fns = {"grep_fn": grep_fn, "glob_fn": glob_fn, "search_fn": search_fn, "read_fn": read_fn}
+        fns = {
+            "grep_fn": grep_fn,
+            "glob_fn": glob_fn,
+            "search_fn": search_fn,
+            "read_fn": read_fn,
+        }
         searcher = CodebaseSearcher(
-            search_fn=search_fn, grep_fn=grep_fn, glob_fn=glob_fn, read_fn=read_fn,
+            search_fn=search_fn,
+            grep_fn=grep_fn,
+            glob_fn=glob_fn,
+            read_fn=read_fn,
         )
         d = GatewayToolDispatcher(
             codebase_search=searcher,
@@ -56,11 +71,18 @@ class TestGatewayToolDispatcher(unittest.TestCase):
     def test_search_codebase_delegates_to_search_fn(self):
         d, _, fns = self._make()
         fns["search_fn"].return_value = "tests/Foo.swift — Foo service"
-        result = d.dispatch(_tc(_SEARCH, {
-            "query": "Foo service repository",
-            "output_dir": "/health/run",
-        }))
-        fns["search_fn"].assert_called_once_with("Foo service repository", "/health/run")
+        result = d.dispatch(
+            _tc(
+                _SEARCH,
+                {
+                    "query": "Foo service repository",
+                    "output_dir": "/health/run",
+                },
+            )
+        )
+        fns["search_fn"].assert_called_once_with(
+            "Foo service repository", "/health/run"
+        )
         self.assertEqual(result, "tests/Foo.swift — Foo service")
 
     def test_read_file_delegates_to_read_fn(self):
@@ -106,10 +128,16 @@ class TestGatewayToolDispatcher(unittest.TestCase):
 
     def test_arguments_as_dict_handled_gracefully(self):
         d, _, fns = self._make()
-        tc = {"id": "x", "function": {"name": _SEARCH, "arguments": {
-            "query": "Foo",
-            "output_dir": "/health/run",
-        }}}
+        tc = {
+            "id": "x",
+            "function": {
+                "name": _SEARCH,
+                "arguments": {
+                    "query": "Foo",
+                    "output_dir": "/health/run",
+                },
+            },
+        }
         d.dispatch(tc)
         fns["search_fn"].assert_called_once_with("Foo", "/health/run")
 
@@ -131,8 +159,10 @@ class TestGatewayToolDispatcher(unittest.TestCase):
 
     def test_search_schema_requires_output_directory(self):
         from llama.tool_dispatcher import TOOLS
+
         search_tool = next(
-            tool for tool in TOOLS
+            tool
+            for tool in TOOLS
             if tool["function"]["name"] == "mcp__pipeline__search_codebase"
         )
 
@@ -168,13 +198,27 @@ class TestGatewayToolDispatcher(unittest.TestCase):
         self.assertEqual(result, "/src/FooManager.swift")
 
     def test_submit_fix_invokes_correct_subcommand(self):
-        fixes = [{"rule_id": "SRP-1", "file_path": "/p.swift", "unit_name": "Foo", "suggested_fix": "Extract."}]
+        fixes = [
+            {
+                "rule_id": "SRP-1",
+                "file_path": "/p.swift",
+                "unit_name": "Foo",
+                "suggested_fix": "Extract.",
+            }
+        ]
         d, invoker, _ = self._make("{}")
         d.dispatch(_tc(_SUBMIT_FIX, {"output_dir": "/out", "fixes": fixes}))
         self.assertEqual(invoker.invoke.call_args[0][0], "submit_fix")
 
     def test_submit_fix_passes_output_dir(self):
-        fixes = [{"rule_id": "SRP-1", "file_path": "/p.swift", "unit_name": "Foo", "suggested_fix": "Extract."}]
+        fixes = [
+            {
+                "rule_id": "SRP-1",
+                "file_path": "/p.swift",
+                "unit_name": "Foo",
+                "suggested_fix": "Extract.",
+            }
+        ]
         d, invoker, _ = self._make("{}")
         d.dispatch(_tc(_SUBMIT_FIX, {"output_dir": "/my/out", "fixes": fixes}))
         self.assertIn("--output_dir", self._extra_args(invoker))
@@ -182,6 +226,7 @@ class TestGatewayToolDispatcher(unittest.TestCase):
 
     def test_submit_fix_is_in_tools_list(self):
         from llama.tool_dispatcher import TOOLS
+
         names = [t["function"]["name"] for t in TOOLS]
         self.assertIn("mcp__pipeline__submit_fix", names)
 

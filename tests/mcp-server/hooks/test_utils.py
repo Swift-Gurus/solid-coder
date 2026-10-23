@@ -7,20 +7,22 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
-from typing import Tuple, Union
 from unittest.mock import MagicMock, patch
 
 _MCP_DIR = Path(__file__).resolve().parents[3] / "mcp-server"
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-LONG_SWIFT = "import Foundation\n\nfinal class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
+LONG_SWIFT = (
+    "import Foundation\n\nfinal class Foo {\n" + "    func bar() {}\n" * 35 + "}\n"
+)
 SHORT_SWIFT = "final class Foo {\n    func bar() {}\n}\n"
 
 
-def write_toml(directory: Path, content: Union[str, bytes]) -> Path:
+def write_toml(directory: Path, content: str | bytes) -> Path:
     """Create .solid-coder/config.local.toml under directory with given content."""
     from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML
+
     cfg_dir = directory / CONFIG_DIR
     cfg_dir.mkdir(parents=True, exist_ok=True)
     path = cfg_dir / CONFIG_LOCAL_TOML
@@ -36,18 +38,16 @@ def call_main(stdin_input, main_fn) -> tuple:
 
     stdin_input may be a dict (JSON-serialised automatically) or a raw str
     (used as-is, allowing callers to inject invalid JSON for error-path tests).
+    Expected SystemExit is captured; unexpected exceptions propagate to the test runner.
     """
     raw = stdin_input if isinstance(stdin_input, str) else json.dumps(stdin_input)
     buf = io.StringIO()
     code = 0
-    with patch("sys.stdin", io.StringIO(raw)):
-        with redirect_stdout(buf):
-            try:
-                main_fn()
-            except SystemExit as e:
-                code = e.code or 0
-            except Exception:
-                code = 1  # unhandled exception → non-blocking exit (Claude Code allows)
+    with patch("sys.stdin", io.StringIO(raw)), redirect_stdout(buf):
+        try:
+            main_fn()
+        except SystemExit as e:
+            code = e.code or 0
     return code, buf.getvalue()
 
 
@@ -67,9 +67,10 @@ def make_subprocess_mock(returncode: int, stdout_obj) -> MagicMock:
 def make_test_executor(
     runner_result=None,
     runner_raises=None,
-) -> Tuple:
+) -> tuple:
     """Build a (LLMExecutor, logger_mock) pair for use in LLMReviewer tests."""
     from hc_checker import LLMExecutor
+
     runner = MagicMock()
     if runner_raises:
         runner.run.side_effect = runner_raises

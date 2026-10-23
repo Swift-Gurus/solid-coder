@@ -10,10 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory  # noqa: E402
-from harness.flow_validation_error import FlowValidationError  # noqa: E402
-from harness.workflow_persister_factory import WorkflowPersisterFactory  # noqa: E402
-
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
+from harness.flow_validation_error import FlowValidationError
+from harness.workflow_persister_factory import WorkflowPersisterFactory
 
 """
 solid-name: TestAggregateRuleWorkflowLoading
@@ -21,6 +20,8 @@ solid-category: unit-test
 solid-spec: [SPEC-044]
 solid-description: Verifies aggregate assessment declarations generate audited output contracts and reject ambiguous rule shapes.
 """
+
+
 class TestAggregateRuleWorkflowLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -50,7 +51,9 @@ class TestAggregateRuleWorkflowLoading(unittest.TestCase):
             self.assertIn("additional_info", output.schema["required"])
 
     def test_preserves_public_assessment_contract_through_snapshot_reload(self) -> None:
-        flow = self.loader.load(self._write(self._workflow_with_supporting_output()), [])
+        flow = self.loader.load(
+            self._write(self._workflow_with_supporting_output()), []
+        )
         run_directory = self.directory / "run"
         run_directory.mkdir()
 
@@ -68,10 +71,7 @@ class TestAggregateRuleWorkflowLoading(unittest.TestCase):
     def test_rejects_authored_outputs_on_assessment_step(self) -> None:
         source = self._valid_workflow().replace(
             "    assessment:\n",
-            "    outputs:\n"
-            "      - name: result\n"
-            "        type: data\n"
-            "    assessment:\n",
+            "    outputs:\n      - name: result\n        type: data\n    assessment:\n",
         )
 
         with self.assertRaisesRegex(FlowValidationError, "must not declare outputs"):
@@ -119,7 +119,9 @@ class TestAggregateRuleWorkflowLoading(unittest.TestCase):
             self.loader.load(self._write(source), [])
 
     def test_generates_declared_supporting_outputs_without_scoring_them(self) -> None:
-        flow = self.loader.load(self._write(self._workflow_with_supporting_output()), [])
+        flow = self.loader.load(
+            self._write(self._workflow_with_supporting_output()), []
+        )
 
         self.assertEqual(
             [output.name for output in flow.steps[0].outputs],

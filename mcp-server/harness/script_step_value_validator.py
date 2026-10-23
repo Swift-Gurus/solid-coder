@@ -6,13 +6,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.script_step_field_reading import ScriptStepFieldReading
 from harness.step_field_validating import StepFieldValidating
 
-
 """
 solid-name: ScriptStepValueValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Validates structured and legacy execution values declared by a script workflow step.
 """
+
+
 class ScriptStepValueValidator(StepFieldValidating[ScriptStepFieldReading]):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
@@ -42,8 +43,10 @@ class ScriptStepValueValidator(StepFieldValidating[ScriptStepFieldReading]):
         self._validate_executor(step)
 
     def _validate_legacy_command(self, step: ScriptStepFieldReading) -> None:
-        if not isinstance(step.command, list) or not step.command or not all(
-            isinstance(argument, str) for argument in step.command
+        if (
+            not isinstance(step.command, list)
+            or not step.command
+            or not all(isinstance(argument, str) for argument in step.command)
         ):
             raise self._error_factory.create(
                 f"Step '{step.id}' legacy script 'command' must be a non-empty list of strings"

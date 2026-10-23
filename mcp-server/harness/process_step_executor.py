@@ -6,13 +6,14 @@ from harness.script_outcome_evaluating import ScriptOutcomeEvaluating
 from harness.step_process_execution_resolving import StepProcessExecutionResolving
 from harness.step_run_outcome import StepRunOutcome
 
-
 """
 solid-name: ProcessStepExecutor
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Executes typed workflow process requests and evaluates their declared outcomes.
 """
+
+
 class ProcessStepExecutor:
     def __init__(
         self,

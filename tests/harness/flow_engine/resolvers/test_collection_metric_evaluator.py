@@ -35,13 +35,14 @@ from harness.workflow_results_visibility_selector import (
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
-
 """
 solid-name: TestCollectionMetricEvaluator
 solid-category: unit-test
 solid-spec: [SPEC-053]
 solid-description: Verifies ordered filtered-count semantics for collection-backed metrics.
 """
+
+
 class TestCollectionMetricEvaluator(unittest.TestCase):
     def setUp(self) -> None:
         interpolation_errors = InterpolationErrorFactory()
@@ -53,10 +54,10 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
             error_factory=interpolation_errors,
         )
         expression_evaluator = ExpressionResolver(
-                step_output_resolver=Mock(),
-                nested_value_resolver=nested_value_resolver,
-                error_factory=interpolation_errors,
-            )
+            step_output_resolver=Mock(),
+            nested_value_resolver=nested_value_resolver,
+            error_factory=interpolation_errors,
+        )
         self.sut = CollectionMetricEvaluatorFactory().build(
             condition_evaluator=condition_evaluator,
             expression_evaluator=expression_evaluator,
@@ -86,18 +87,20 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
         self.assertEqual(result.excluded_indexes, [])
 
     def test_counts_only_entries_matching_every_authored_comparison(self) -> None:
-        condition = AllCondition(conditions=(
-            ComparisonCondition(
-                reference=WorkflowExpression("item.classification"),
-                operator=ConditionOperator.EQUALS,
-                expected="DETACHED",
-            ),
-            ComparisonCondition(
-                reference=WorkflowExpression("item.is_exception"),
-                operator=ConditionOperator.EQUALS,
-                expected=False,
-            ),
-        ))
+        condition = AllCondition(
+            conditions=(
+                ComparisonCondition(
+                    reference=WorkflowExpression("item.classification"),
+                    operator=ConditionOperator.EQUALS,
+                    expected="DETACHED",
+                ),
+                ComparisonCondition(
+                    reference=WorkflowExpression("item.is_exception"),
+                    operator=ConditionOperator.EQUALS,
+                    expected=False,
+                ),
+            )
+        )
 
         result = self.sut.evaluate(
             CollectionMetricCalculation(
@@ -128,20 +131,22 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
         self.assertEqual(result.source_size, 0)
 
     def test_reuses_nested_any_and_not_condition_semantics(self) -> None:
-        condition = AnyCondition(conditions=(
-            ComparisonCondition(
-                reference=WorkflowExpression("item.classification"),
-                operator=ConditionOperator.EQUALS,
-                expected="STRUCTURED",
-            ),
-            NotCondition(
-                condition=ComparisonCondition(
-                    reference=WorkflowExpression("item.is_exception"),
+        condition = AnyCondition(
+            conditions=(
+                ComparisonCondition(
+                    reference=WorkflowExpression("item.classification"),
                     operator=ConditionOperator.EQUALS,
-                    expected=True,
-                )
-            ),
-        ))
+                    expected="STRUCTURED",
+                ),
+                NotCondition(
+                    condition=ComparisonCondition(
+                        reference=WorkflowExpression("item.is_exception"),
+                        operator=ConditionOperator.EQUALS,
+                        expected=True,
+                    )
+                ),
+            )
+        )
 
         result = self.sut.evaluate(
             CollectionMetricCalculation(
@@ -160,18 +165,20 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
         self.assertEqual(result.excluded_indexes, [1])
 
     def test_filters_client_authored_field_names_without_registration(self) -> None:
-        condition = AllCondition(conditions=(
-            ComparisonCondition(
-                reference=WorkflowExpression("item.name"),
-                operator=ConditionOperator.EQUALS,
-                expected="this",
-            ),
-            ComparisonCondition(
-                reference=WorkflowExpression("item.exempt"),
-                operator=ConditionOperator.EQUALS,
-                expected=False,
-            ),
-        ))
+        condition = AllCondition(
+            conditions=(
+                ComparisonCondition(
+                    reference=WorkflowExpression("item.name"),
+                    operator=ConditionOperator.EQUALS,
+                    expected="this",
+                ),
+                ComparisonCondition(
+                    reference=WorkflowExpression("item.exempt"),
+                    operator=ConditionOperator.EQUALS,
+                    expected=False,
+                ),
+            )
+        )
 
         result = self.sut.evaluate(
             CollectionMetricCalculation(
@@ -213,7 +220,10 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
 
         self.assertEqual(result.value, 5)
         self.assertEqual(
-            [(evidence.index, evidence.value) for evidence in result.projection_evidence],
+            [
+                (evidence.index, evidence.value)
+                for evidence in result.projection_evidence
+            ],
             [(0, 2), (2, 5)],
         )
 
@@ -259,18 +269,20 @@ class TestCollectionMetricEvaluator(unittest.TestCase):
                 ),
                 reducer=CollectionMetricReducer(
                     type=CollectionMetricReducerType.RATIO,
-                    numerator_condition=AllCondition(conditions=(
-                        ComparisonCondition(
-                            reference=WorkflowExpression("item.classification"),
-                            operator=ConditionOperator.EQUALS,
-                            expected="UNSAFE",
-                        ),
-                        ComparisonCondition(
-                            reference=WorkflowExpression("item.is_exception"),
-                            operator=ConditionOperator.EQUALS,
-                            expected=False,
-                        ),
-                    )),
+                    numerator_condition=AllCondition(
+                        conditions=(
+                            ComparisonCondition(
+                                reference=WorkflowExpression("item.classification"),
+                                operator=ConditionOperator.EQUALS,
+                                expected="UNSAFE",
+                            ),
+                            ComparisonCondition(
+                                reference=WorkflowExpression("item.is_exception"),
+                                operator=ConditionOperator.EQUALS,
+                                expected=False,
+                            ),
+                        )
+                    ),
                     denominator_condition=ComparisonCondition(
                         reference=WorkflowExpression("item.is_exception"),
                         operator=ConditionOperator.EQUALS,

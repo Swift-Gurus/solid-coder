@@ -9,9 +9,8 @@ Contract:
   - _run_with_watchdog kills the process tree on stall (Tier 2)
   - get_log prepends crash info when <kind>-crash.json exists
 """
+
 import json
-import os
-import subprocess
 import sys
 import tempfile
 import time
@@ -25,7 +24,7 @@ MCP_DIR = APPLE_DIR.parent.parent  # mcp-server/
 sys.path.insert(0, str(MCP_DIR))
 sys.path.insert(0, str(APPLE_DIR))
 
-import server  # noqa: E402
+import server
 
 # Real fixture: a dyld error captured from a real ui-test run on claude-code-inspector.
 # Self-contained — does not depend on the original project being on disk.
@@ -60,7 +59,9 @@ def make_xcresult_with_text(parent: Path, bundle_id: str, text: str) -> Path:
     xcr = parent / "test.xcresult"
     diag = xcr / "Staging" / "1_Test" / "Diagnostics" / "Foo-AAAA"
     diag.mkdir(parents=True, exist_ok=True)
-    (diag / f"StandardOutputAndStandardError-{bundle_id}.txt").write_text(text, encoding="utf-8")
+    (diag / f"StandardOutputAndStandardError-{bundle_id}.txt").write_text(
+        text, encoding="utf-8"
+    )
     return xcr
 
 
@@ -82,18 +83,26 @@ class TestScanForCrash(unittest.TestCase):
 
     def test_detects_dyld_error(self):
         with tempfile.TemporaryDirectory() as td:
-            xcr = make_xcresult_with_text(Path(td), "com.example.testapp", DYLD_ERROR_TEXT)
+            xcr = make_xcresult_with_text(
+                Path(td), "com.example.testapp", DYLD_ERROR_TEXT
+            )
             info = server._scan_for_crash(xcr)
             self.assertIsNotNone(info)
             self.assertEqual(info["kind"], "dyld")
             self.assertEqual(info["bundle_id"], "com.example.testapp")
             self.assertIn("Library not loaded", info["excerpt"])
             self.assertIn("Testing.framework", info["excerpt"])
-            self.assertTrue(info["file"].endswith("StandardOutputAndStandardError-com.example.testapp.txt"))
+            self.assertTrue(
+                info["file"].endswith(
+                    "StandardOutputAndStandardError-com.example.testapp.txt"
+                )
+            )
 
     def test_detects_exc_bad_access(self):
         with tempfile.TemporaryDirectory() as td:
-            xcr = make_xcresult_with_text(Path(td), "com.example.app", EXC_BAD_ACCESS_TEXT)
+            xcr = make_xcresult_with_text(
+                Path(td), "com.example.app", EXC_BAD_ACCESS_TEXT
+            )
             info = server._scan_for_crash(xcr)
             self.assertIsNotNone(info)
             self.assertEqual(info["kind"], "memory")
@@ -111,7 +120,9 @@ class TestScanForCrash(unittest.TestCase):
             xcr = make_xcresult_with_text(Path(td), "com.example.clean", CLEAN_OUTPUT)
             diag2 = xcr / "Staging" / "1_Test" / "Diagnostics" / "Bar-BBBB"
             diag2.mkdir(parents=True)
-            (diag2 / "StandardOutputAndStandardError-com.example.crashy.txt").write_text(DYLD_ERROR_TEXT)
+            (
+                diag2 / "StandardOutputAndStandardError-com.example.crashy.txt"
+            ).write_text(DYLD_ERROR_TEXT)
             info = server._scan_for_crash(xcr)
             self.assertIsNotNone(info)
             self.assertEqual(info["bundle_id"], "com.example.crashy")
@@ -119,7 +130,9 @@ class TestScanForCrash(unittest.TestCase):
 
 class TestClassifyCrash(unittest.TestCase):
     def test_dyld_classification(self):
-        self.assertEqual(server._classify_crash("dyld[42]: Library not loaded: foo"), "dyld")
+        self.assertEqual(
+            server._classify_crash("dyld[42]: Library not loaded: foo"), "dyld"
+        )
         self.assertEqual(server._classify_crash("Symbol not found: _foo"), "dyld")
 
     def test_memory_classification(self):
@@ -152,7 +165,7 @@ class TestFormatCrashResponse(unittest.TestCase):
         self.assertIn("dyld", msg)
         self.assertIn("com.example.app", msg)
         self.assertIn("Library not loaded:", msg)
-        self.assertIn("get_log(kind=\"ui-test\")", msg)
+        self.assertIn('get_log(kind="ui-test")', msg)
 
     def test_stall_kill_reason_appended(self):
         msg = server._format_crash_response(self._info(), "stall", "ui-test")
@@ -167,8 +180,13 @@ class TestSaveAndClearCrashInfo(unittest.TestCase):
     def test_round_trip(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
-            info = {"kind": "dyld", "marker": "Library not loaded:", "excerpt": "foo",
-                    "file": "/tmp/x.txt", "bundle_id": "com.example.app"}
+            info = {
+                "kind": "dyld",
+                "marker": "Library not loaded:",
+                "excerpt": "foo",
+                "file": "/tmp/x.txt",
+                "bundle_id": "com.example.app",
+            }
             p = server._save_crash_info(root, "ui-test", info)
             self.assertTrue(p.exists())
             loaded = json.loads(p.read_text())
@@ -185,15 +203,22 @@ class TestGetLogIncludesCrash(unittest.TestCase):
     def _setup_logs(self, td: Path, kind: str, with_crash: bool):
         logs = td / ".solid_coder" / "logs"
         logs.mkdir(parents=True)
-        (logs / f"{kind}.log").write_text("=== tuist test ===\nfoo\nbar\n", encoding="utf-8")
+        (logs / f"{kind}.log").write_text(
+            "=== tuist test ===\nfoo\nbar\n", encoding="utf-8"
+        )
         if with_crash:
-            (logs / f"{kind}-crash.json").write_text(json.dumps({
-                "kind": "dyld",
-                "marker": "Library not loaded:",
-                "excerpt": "dyld[42]: Library not loaded: @rpath/X.framework",
-                "file": str(logs / "ui-test.xcresult" / "stuff.txt"),
-                "bundle_id": "com.example.app",
-            }), encoding="utf-8")
+            (logs / f"{kind}-crash.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "dyld",
+                        "marker": "Library not loaded:",
+                        "excerpt": "dyld[42]: Library not loaded: @rpath/X.framework",
+                        "file": str(logs / "ui-test.xcresult" / "stuff.txt"),
+                        "bundle_id": "com.example.app",
+                    }
+                ),
+                encoding="utf-8",
+            )
         return logs
 
     def test_get_log_without_crash_returns_log_only(self):
@@ -217,7 +242,9 @@ class TestGetLogIncludesCrash(unittest.TestCase):
             self.assertIn("Library not loaded:", out)
             self.assertIn("com.example.app", out)
             # Ordering: crash section before raw log
-            self.assertLess(out.index("=== Crash detected"), out.index("=== tuist test"))
+            self.assertLess(
+                out.index("=== Crash detected"), out.index("=== tuist test")
+            )
 
 
 class TestWatchdogIntegration(unittest.TestCase):
@@ -225,10 +252,16 @@ class TestWatchdogIntegration(unittest.TestCase):
 
     def test_clean_run_returns_normally(self):
         with tempfile.TemporaryDirectory() as td:
-            xcr = Path(td) / "test.xcresult"  # never created — that's fine for "no crash" path
+            xcr = (
+                Path(td) / "test.xcresult"
+            )  # never created — that's fine for "no crash" path
             rc, out, crash, kill = server._run_with_watchdog(
-                ["echo", "hello world"], Path(td), xcr,
-                hard_timeout=10, stall_timeout=10, crash_poll=0.5,
+                ["echo", "hello world"],
+                Path(td),
+                xcr,
+                hard_timeout=10,
+                stall_timeout=10,
+                crash_poll=0.5,
             )
             self.assertEqual(rc, 0)
             self.assertIn("hello world", out)
@@ -238,14 +271,22 @@ class TestWatchdogIntegration(unittest.TestCase):
     def test_crash_detection_triggers_kill(self):
         """Spawn a sleep, drop a crash file, verify watchdog detects it and kills the process."""
         with tempfile.TemporaryDirectory() as td:
-            xcr = make_xcresult_with_text(Path(td), "com.example.testapp", DYLD_ERROR_TEXT)
+            xcr = make_xcresult_with_text(
+                Path(td), "com.example.testapp", DYLD_ERROR_TEXT
+            )
             t0 = time.monotonic()
-            rc, out, crash, kill = server._run_with_watchdog(
-                ["sleep", "30"], Path(td), xcr,
-                hard_timeout=20, stall_timeout=20, crash_poll=0.5,
+            _rc, _out, crash, kill = server._run_with_watchdog(
+                ["sleep", "30"],
+                Path(td),
+                xcr,
+                hard_timeout=20,
+                stall_timeout=20,
+                crash_poll=0.5,
             )
             elapsed = time.monotonic() - t0
-            self.assertLess(elapsed, 10, f"Watchdog should kill within seconds, took {elapsed:.1f}s")
+            self.assertLess(
+                elapsed, 10, f"Watchdog should kill within seconds, took {elapsed:.1f}s"
+            )
             self.assertEqual(kill, "crash")
             self.assertIsNotNone(crash)
             self.assertEqual(crash["kind"], "dyld")
@@ -254,12 +295,20 @@ class TestWatchdogIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             xcr = Path(td) / "test.xcresult"
             t0 = time.monotonic()
-            rc, out, crash, kill = server._run_with_watchdog(
-                ["sleep", "30"], Path(td), xcr,
-                hard_timeout=20, stall_timeout=2, crash_poll=0.5,
+            _rc, _out, crash, kill = server._run_with_watchdog(
+                ["sleep", "30"],
+                Path(td),
+                xcr,
+                hard_timeout=20,
+                stall_timeout=2,
+                crash_poll=0.5,
             )
             elapsed = time.monotonic() - t0
-            self.assertLess(elapsed, 15, f"Stall watchdog should fire ~{2}s + slack, took {elapsed:.1f}s")
+            self.assertLess(
+                elapsed,
+                15,
+                f"Stall watchdog should fire ~{2}s + slack, took {elapsed:.1f}s",
+            )
             self.assertEqual(kill, "stall")
             self.assertIsNone(crash)
 

@@ -8,13 +8,14 @@ from harness.included_workflow_instances_resolving import (
 )
 from harness.models import FlowDef
 
-
 """
 solid-name: IncludedWorkflowInstancesResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves ordered materialized workflow instances owned by one include alias.
 """
+
+
 class IncludedWorkflowInstancesResolver(IncludedWorkflowInstancesResolving):
     def resolve(
         self,
@@ -27,8 +28,7 @@ class IncludedWorkflowInstancesResolver(IncludedWorkflowInstancesResolving):
             if instance is None or instance.alias != alias:
                 continue
             if any(
-                existing.instance_id == instance.instance_id
-                for existing in instances
+                existing.instance_id == instance.instance_id for existing in instances
             ):
                 continue
             instances.append(instance)

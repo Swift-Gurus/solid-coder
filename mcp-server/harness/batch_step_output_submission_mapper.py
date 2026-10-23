@@ -9,15 +9,20 @@ from harness.step_output_submission_mapping_result import (
     StepOutputSubmissionMappingResult,
 )
 
-
 """
 solid-name: BatchStepOutputSubmissionMapper
 solid-category: service
 solid-spec: [SPEC-042]
 solid-description: Translates model-facing batch outputs according to their typed presentation mode.
 """
+
+
 class BatchStepOutputSubmissionMapper(StepOutputSubmissionMapping):
-    def __init__(self, mappers: BatchOutputSubmissionMappingResolving, flat_mapper: StepOutputSubmissionMapping) -> None:
+    def __init__(
+        self,
+        mappers: BatchOutputSubmissionMappingResolving,
+        flat_mapper: StepOutputSubmissionMapping,
+    ) -> None:
         self._mappers = mappers
         self._flat_mapper = flat_mapper
 

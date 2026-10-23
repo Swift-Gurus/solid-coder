@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """solid-coder CLI gateway — exposes pipeline tools as one-shot commands.
 
 Same tools as the MCP server, but called via bash. One call per operation,
@@ -53,58 +52,61 @@ SKILLS_ROOT = PLUGIN_ROOT / "skills"
 sys.path.insert(0, str(GATEWAY_DIR))
 
 # Documentation tools — mcp-server/docs/server.py
-from docs.server import (  # noqa: E402
-    get_candidate_tags,
+from docs.server import (
     discover_principles_tool,
-    load_rules,
-    load_fix_instructions_for_findings,
-    load_fix_for_violation,
+    get_candidate_tags,
     load_detection_rules,
+    load_fix_for_violation,
+    load_fix_instructions_for_findings,
+    load_rules,
 )
+from health.config.solid_coder_config_loader import SolidCoderConfigLoader
 
 # Pipeline tools — constructed via factory for gateway CLI access
-from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory  # noqa: E402
-from pipeline.flow_result_renderer_creator import FlowResultRendererCreator  # noqa: E402
-from pipeline.flow_run_creator import FlowRunCreator  # noqa: E402
-from pipeline.output_path_factory import OutputPathFactory  # noqa: E402
-from pipeline.pipeline_tools_provider import PipelineToolsProvider  # noqa: E402
+from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
+from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
+from pipeline.flow_run_creator import FlowRunCreator
+from pipeline.output_path_factory import OutputPathFactory
+from pipeline.pipeline_tools_provider import PipelineToolsProvider
 
 _pipeline_factory = ApplicationBootstrapperFactory(
     plugin_root=PLUGIN_ROOT,
     skills_root=SKILLS_ROOT,
-    flow_run_creator=FlowRunCreator(PLUGIN_ROOT),
+    flow_run_creator=FlowRunCreator(
+        PLUGIN_ROOT, config_loader=SolidCoderConfigLoader()
+    ),
     flow_renderer_creator=FlowResultRendererCreator(),
 )
 _pt = PipelineToolsProvider(_pipeline_factory).get()
 get_output_path = OutputPathFactory().compute
-check_severity = _pt['check_severity']
-load_synthesis_context = _pt['load_synthesis_context']
-validate_phase_output = _pt['validate_phase_output']
-validate_findings = _pt['validate_findings']
-generate_report = _pt['generate_report']
-validate_architecture = _pt['validate_architecture']
-split_implementation_plan = _pt['split_implementation_plan']
-from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory  # noqa: E402
+check_severity = _pt["check_severity"]
+load_synthesis_context = _pt["load_synthesis_context"]
+validate_phase_output = _pt["validate_phase_output"]
+validate_findings = _pt["validate_findings"]
+generate_report = _pt["generate_report"]
+validate_architecture = _pt["validate_architecture"]
+split_implementation_plan = _pt["split_implementation_plan"]
+from search.raw_codebase_searcher_factory import RawCodebaseSearcherFactory
 
 _raw_codebase_searcher = RawCodebaseSearcherFactory().make()
 search_codebase = _raw_codebase_searcher.search_raw
-prepare_review_input = _pt['prepare_review_input']
+prepare_review_input = _pt["prepare_review_input"]
 
 # Spec tools — mcp-server/specs/server.py
-from specs.server import query_specs  # noqa: E402
-from gateway_application import GatewayApplication  # noqa: E402
-from gateway_argument_parser import GatewayArgumentParser  # noqa: E402
-from gateway_argument_validator import GatewayArgumentValidator  # noqa: E402
-from gateway_arguments import GatewayArguments  # noqa: E402
-from gateway_tool_runner import GatewayToolRunner  # noqa: E402
-from search_gateway_arguments_normalizer import SearchGatewayArgumentsNormalizer  # noqa: E402
-from spec_ancestry_retriever import SpecAncestryRetriever  # noqa: E402
-from spec_context_loader import SpecContextLoader  # noqa: E402
-from spec_context_renderer import SpecContextRenderer  # noqa: E402
-from stderr_logger import StderrLogger  # noqa: E402
-from stdout_writer import StdoutWriter  # noqa: E402
-from subprocess_adapter import SubprocessAdapter  # noqa: E402
-from system_process_exit import SystemProcessExit  # noqa: E402
+from gateway_application import GatewayApplication
+from gateway_argument_parser import GatewayArgumentParser
+from gateway_argument_validator import GatewayArgumentValidator
+from gateway_arguments import GatewayArguments
+from gateway_tool_runner import GatewayToolRunner
+from search_gateway_arguments_normalizer import SearchGatewayArgumentsNormalizer
+from spec_ancestry_retriever import SpecAncestryRetriever
+from spec_context_loader import SpecContextLoader
+from spec_context_renderer import SpecContextRenderer
+from specs.server import query_specs
+from stderr_logger import StderrLogger
+from stdout_writer import StdoutWriter
+from subprocess_adapter import SubprocessAdapter
+from system_process_exit import SystemProcessExit
 
 _spec_context = SpecContextLoader(
     retriever=SpecAncestryRetriever(

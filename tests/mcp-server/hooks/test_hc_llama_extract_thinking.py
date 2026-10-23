@@ -7,9 +7,13 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hc_llama_runner import _extract_thinking_and_content  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from hc_llama_runner import _extract_thinking_and_content
 
 
 class TestExtractThinkingAndContent(unittest.TestCase):
@@ -21,11 +25,14 @@ class TestExtractThinkingAndContent(unittest.TestCase):
 
     def test_falls_back_to_think_tag_stripping_when_no_reasoning_content(self):
         msg = {"content": "<think>inline reasoning</think>\nfinal answer"}
-        thinking, content = _extract_thinking_and_content(msg)
+        thinking, _content = _extract_thinking_and_content(msg)
         self.assertEqual(thinking, "inline reasoning")
 
     def test_prefers_reasoning_content_over_think_tags(self):
-        msg = {"reasoning_content": "from field", "content": "<think>from tag</think>answer"}
+        msg = {
+            "reasoning_content": "from field",
+            "content": "<think>from tag</think>answer",
+        }
         thinking, _ = _extract_thinking_and_content(msg)
         self.assertEqual(thinking, "from field")
 

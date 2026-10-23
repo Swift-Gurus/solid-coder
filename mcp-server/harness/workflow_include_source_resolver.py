@@ -11,15 +11,15 @@ from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsi
 from harness.workflow_output_declaration_parser import WorkflowOutputDeclarationParser
 from scoring.yaml_config_file_loader import ConfigFileLoading
 
-
 """
 solid-name: WorkflowIncludeSourceResolver
 solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Loads an included workflow by globally unique catalog ID and records its stable provenance.
 """
-class WorkflowIncludeSourceResolver:
 
+
+class WorkflowIncludeSourceResolver:
     def __init__(
         self,
         file_loader: ConfigFileLoading,
@@ -36,7 +36,9 @@ class WorkflowIncludeSourceResolver:
         self._output_parser = output_parser
         self._error_factory = error_factory
 
-    def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
+    def resolve(
+        self, entry: dict, flow_file_path: str, search_paths: list[str]
+    ) -> IncludeSource | None:
         declaration = entry.get("include")
         if not isinstance(declaration, dict):
             return None

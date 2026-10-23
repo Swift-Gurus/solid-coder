@@ -6,15 +6,14 @@ import sys
 import unittest
 from pathlib import Path
 
-
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 _MCP_SERVER_DIRECTORY = _REPOSITORY_ROOT / "mcp-server"
 if str(_MCP_SERVER_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER_DIRECTORY))
 
-from harness.json_loading import JsonLoader  # noqa: E402
-from harness.pydantic_model_decoder import PydanticModelDecoder  # noqa: E402
-from session.agent_start import (  # noqa: E402
+from harness.json_loading import JsonLoader
+from harness.pydantic_model_decoder import PydanticModelDecoder
+from session.agent_start import (
     AgentStartApplication,
     AgentStartEvent,
     AgentStartEventParser,
@@ -57,8 +56,9 @@ solid-name: TestOnAgentStart
 solid-category: unit-test
 solid-description: Proves agent-start parsing and typed session registration behavior.
 """
-class TestOnAgentStart(unittest.TestCase):
 
+
+class TestOnAgentStart(unittest.TestCase):
     def test_records_project_context_without_managed_session_type(self) -> None:
         recorder = RecordingSpy()
         registrar = RegistrationSpy()

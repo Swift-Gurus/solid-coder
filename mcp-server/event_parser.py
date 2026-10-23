@@ -4,8 +4,6 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Optional
-
 from pydantic import TypeAdapter, ValidationError
 
 
@@ -18,7 +16,7 @@ class PydanticEventParser:
         except ValidationError:
             return [raw]
 
-    def parse_event_dict(self, event: object) -> Optional[dict]:
+    def parse_event_dict(self, event: object) -> dict | None:
         try:
             return TypeAdapter(dict).validate_python(event)
         except ValidationError:

@@ -5,13 +5,14 @@ from harness.aggregate_envelope_rejection_rendering import (
 )
 from harness.batch_submission_target import BatchSubmissionTarget
 
-
 """
 solid-name: AggregateEnvelopeRejectionRenderer
 solid-category: service
 solid-spec: [SPEC-052]
 solid-description: Explains full resubmission after structural aggregate rejection.
 """
+
+
 class AggregateEnvelopeRejectionRenderer(AggregateEnvelopeRejectionRendering):
     def render(
         self,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Bump the solid-coder plugin version across all plugin.json manifests.
 
 Usage:
@@ -73,7 +72,9 @@ def _write_version(manifest_paths: list, new_version: str) -> None:
         path.write_text(updated, encoding="utf-8")
 
 
-def bump_versions(manifest_paths: list, part: str = "patch", set_version: str = None) -> tuple:
+def bump_versions(
+    manifest_paths: list, part: str = "patch", set_version: str | None = None
+) -> tuple:
     """Bump every manifest's version. Returns (old_version, new_version)."""
     current = _read_current_version(manifest_paths)
 
@@ -91,11 +92,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Bump the solid-coder plugin version.")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--part", choices=["major", "minor", "patch"], default="patch")
-    group.add_argument("--set", dest="set_version", help="Set an exact version, e.g. 2.0.0")
+    group.add_argument(
+        "--set", dest="set_version", help="Set an exact version, e.g. 2.0.0"
+    )
     args = parser.parse_args()
 
     try:
-        old_version, new_version = bump_versions(_MANIFEST_PATHS, part=args.part, set_version=args.set_version)
+        old_version, new_version = bump_versions(
+            _MANIFEST_PATHS, part=args.part, set_version=args.set_version
+        )
     except (FileNotFoundError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(1)

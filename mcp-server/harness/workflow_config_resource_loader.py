@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from harness.workflow_config_resource import WorkflowConfigResource
-from harness.workflow_resource_reference import WorkflowResourceReference
 from harness.workflow_resource_path_resolving import WorkflowResourcePathResolving
+from harness.workflow_resource_reference import WorkflowResourceReference
 from scoring.yaml_config_file_loader import ConfigFileLoading
-
 
 """
 solid-name: WorkflowConfigResourceLoader
@@ -17,8 +15,9 @@ solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Loads optional structured workflow content through the shared resource-path policy.
 """
-class WorkflowConfigResourceLoader:
 
+
+class WorkflowConfigResourceLoader:
     def __init__(
         self,
         file_loader: ConfigFileLoading,
@@ -31,7 +30,7 @@ class WorkflowConfigResourceLoader:
         self,
         declaring_file: Path,
         reference: WorkflowResourceReference,
-    ) -> Optional[WorkflowConfigResource]:
+    ) -> WorkflowConfigResource | None:
         path = self._path_resolver.resolve(declaring_file, reference)
         content = self._file_loader.load(path)
         if content is None:

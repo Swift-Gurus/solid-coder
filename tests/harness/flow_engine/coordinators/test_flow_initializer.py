@@ -43,7 +43,13 @@ class StubRunProvisioner:
         self._run_init = run_init
         self.calls: list[tuple] = []
 
-    def provision(self, base_dir: Path, flow_def: FlowDef, params: dict, self_contained: bool = False) -> RunInit:
+    def provision(
+        self,
+        base_dir: Path,
+        flow_def: FlowDef,
+        params: dict,
+        self_contained: bool = False,
+    ) -> RunInit:
         self.calls.append((base_dir, flow_def, params, self_contained))
         return self._run_init
 
@@ -80,26 +86,35 @@ class FlowInitializerFactory:
     """Builds a FlowInitializer with sensible stub/spy defaults; tests override only what they vary."""
 
     def __init__(self) -> None:
-        self.startup_context = StubStartupContext(StartupContext(base_dir=Path("/runs"), search_paths=["/flows"]))
-        self.flow_loader = StubFlowLoader(FlowDef(name="code_review", max_turns=10, steps=[]))
-        self.run_provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/run-1")))
+        self.startup_context = StubStartupContext(
+            StartupContext(base_dir=Path("/runs"), search_paths=["/flows"])
+        )
+        self.flow_loader = StubFlowLoader(
+            FlowDef(name="code_review", max_turns=10, steps=[])
+        )
+        self.run_provisioner = StubRunProvisioner(
+            RunInit(run_id="run-1", run_dir=Path("/runs/run-1"))
+        )
         self.path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs"))
         self.location = ActiveRunLocation(
-            run_id="run-1", base_dir=Path("/runs"), run_dir=Path("/runs/run-1"),
-            events_path="/runs/run-1/events.jsonl", workflow_path="/runs/run-1/workflow.yaml",
+            run_id="run-1",
+            base_dir=Path("/runs"),
+            run_dir=Path("/runs/run-1"),
+            events_path="/runs/run-1/events.jsonl",
+            workflow_path="/runs/run-1/workflow.yaml",
         )
         self.location_assembler = SpyLocationAssembler(self.location)
         self.event_recorder = SpyEventRecorder()
 
-    def with_flow_loader(self, flow_loader) -> "FlowInitializerFactory":
+    def with_flow_loader(self, flow_loader) -> FlowInitializerFactory:
         self.flow_loader = flow_loader
         return self
 
-    def with_run_provisioner(self, run_provisioner) -> "FlowInitializerFactory":
+    def with_run_provisioner(self, run_provisioner) -> FlowInitializerFactory:
         self.run_provisioner = run_provisioner
         return self
 
-    def with_path_resolver(self, path_resolver) -> "FlowInitializerFactory":
+    def with_path_resolver(self, path_resolver) -> FlowInitializerFactory:
         self.path_resolver = path_resolver
         return self
 
@@ -115,7 +130,6 @@ class FlowInitializerFactory:
 
 
 class TestFlowInitializer(unittest.TestCase):
-
     def test_loads_the_flow_by_name_with_the_startup_search_paths(self):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
         flow_loader = StubFlowLoader(flow_def)
@@ -127,15 +141,23 @@ class TestFlowInitializer(unittest.TestCase):
 
     def test_provisions_the_run_under_the_path_resolvers_provisioning_base_dir(self):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
-        provisioner = StubRunProvisioner(RunInit(run_id="run-1", run_dir=Path("/runs/run-1")))
+        provisioner = StubRunProvisioner(
+            RunInit(run_id="run-1", run_dir=Path("/runs/run-1"))
+        )
         path_resolver = StubPathResolver(provisioning_base_dir=Path("/runs/subagents"))
-        factory = FlowInitializerFactory().with_flow_loader(StubFlowLoader(flow_def)).with_run_provisioner(
-            provisioner
-        ).with_path_resolver(path_resolver)
+        factory = (
+            FlowInitializerFactory()
+            .with_flow_loader(StubFlowLoader(flow_def))
+            .with_run_provisioner(provisioner)
+            .with_path_resolver(path_resolver)
+        )
 
         factory.make_sut().initialize("code_review", {"key": "value"}, isolated=True)
 
-        self.assertEqual(provisioner.calls, [(Path("/runs/subagents"), flow_def, {"key": "value"}, True)])
+        self.assertEqual(
+            provisioner.calls,
+            [(Path("/runs/subagents"), flow_def, {"key": "value"}, True)],
+        )
 
     def test_returns_the_assembled_location_base_as_the_execution_base(self):
         factory = FlowInitializerFactory()
@@ -146,12 +168,17 @@ class TestFlowInitializer(unittest.TestCase):
 
     def test_assembles_the_location_from_the_provisioned_run(self):
         run_init = RunInit(run_id="run-9", run_dir=Path("/runs/run-9"))
-        factory = FlowInitializerFactory().with_run_provisioner(StubRunProvisioner(run_init))
+        factory = FlowInitializerFactory().with_run_provisioner(
+            StubRunProvisioner(run_init)
+        )
 
         result = factory.make_sut().initialize("code_review", {}, isolated=False)
 
         self.assertIs(result.location, factory.location)
-        self.assertEqual(factory.location_assembler.calls, [("run-9", Path("/runs"), Path("/runs/run-9"))])
+        self.assertEqual(
+            factory.location_assembler.calls,
+            [("run-9", Path("/runs"), Path("/runs/run-9"))],
+        )
 
     def test_records_the_run_started_event_with_the_assembled_events_path(self):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])
@@ -159,9 +186,12 @@ class TestFlowInitializer(unittest.TestCase):
 
         factory.make_sut().initialize("code_review", {}, isolated=False)
 
-        self.assertEqual(factory.event_recorder.calls, [
-            ("/runs/run-1/events.jsonl", "run-1", "code_review"),
-        ])
+        self.assertEqual(
+            factory.event_recorder.calls,
+            [
+                ("/runs/run-1/events.jsonl", "run-1", "code_review"),
+            ],
+        )
 
     def test_returns_the_loaded_flow_def_in_the_result(self):
         flow_def = FlowDef(name="code_review", max_turns=10, steps=[])

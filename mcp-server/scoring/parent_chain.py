@@ -4,8 +4,9 @@ solid-category: utility
 solid-tags: [utility]
 """
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, Protocol
+from typing import Protocol
 
 
 class ParentChaining(Protocol):

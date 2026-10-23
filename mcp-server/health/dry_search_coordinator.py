@@ -1,18 +1,17 @@
 """Coordinates validated DRY searches for health checks."""
 
-from typing import Optional
-
 from health.dry_search_completion_recording import DrySearchCompletionRecording
 from health.dry_search_coordinating import DrySearchCoordinating
 from search.search_terms_resolving import SearchTermsResolving
 from search.tag_codebase_searching import TagCodebaseSearching
-
 
 """
 solid-name: DrySearchCoordinator
 solid-category: coordinator
 solid-description: Coordinates validated codebase search and successful DRY-search completion recording.
 """
+
+
 class DrySearchCoordinator(DrySearchCoordinating):
     def __init__(
         self,
@@ -26,13 +25,13 @@ class DrySearchCoordinator(DrySearchCoordinating):
 
     def search(
         self,
-        sources_dir: Optional[str] = None,
-        plan_path: Optional[str] = None,
-        query: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        spec_numbers: Optional[list[str]] = None,
+        sources_dir: str | None = None,
+        plan_path: str | None = None,
+        query: str | None = None,
+        tags: list[str] | None = None,
+        spec_numbers: list[str] | None = None,
         min_matches: int = 1,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
     ) -> str:
         try:
             resolved_terms = self._terms.resolve(query, tags)

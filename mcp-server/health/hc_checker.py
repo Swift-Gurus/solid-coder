@@ -6,32 +6,38 @@ solid-tags: [hook, llm]
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol, TypeVar
+from typing import Protocol, TypeVar
 
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / "config", _HEALTH_DIR / "llm", _HEALTH_DIR / "codex"):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
 # Re-exports for backwards compatibility
-from claude_runner import ClaudeRunning, ClaudeRunner, ClaudeCallable  # noqa: F401
-from utils.debug_logger import Observing
-from principles_loader import PrinciplesLoading, PrinciplesLoader  # noqa: F401
-from health_prompt_builder import PromptBuilding, HealthPromptBuilder  # noqa: F401
+from claude_runner import ClaudeCallable, ClaudeRunner, ClaudeRunning  # noqa: F401
+from file_based_output_handler import FileBasedOutputHandler, OutputHandling  # noqa: F401
+from file_output_reader import FileOutputReader, OutputReading  # noqa: F401
+from health_check_context_writing import HealthCheckContextWriting
+from health_prompt_builder import HealthPromptBuilder, PromptBuilding  # noqa: F401
 from llm_executor import LLMExecuting, LLMExecutor  # noqa: F401
-from path_file_system_reader import FileSystemReading, PathFileSystemReader  # noqa: F401
-from violation_extractor import ViolationExtracting, ViolationExtractor  # noqa: F401
-from file_output_reader import OutputReading, FileOutputReader  # noqa: F401
-from response_parser import ResponseParsing, ResponseParser  # noqa: F401
-from file_based_output_handler import OutputHandling, FileBasedOutputHandler  # noqa: F401
-from text_based_output_handler import TextBasedOutputHandler  # noqa: F401
-from llm_reviewer import LLMReviewing, LLMReviewer  # noqa: F401
+from llm_reviewer import LLMReviewer, LLMReviewing  # noqa: F401
 from output_path_resolver import OutputPathResolving, SessionOutputPathResolver  # noqa: F401
-from health_check_context_writing import HealthCheckContextWriting  # noqa: F401
-from patch_review_context import PatchReviewContext  # noqa: F401
+from patch_review_context import PatchReviewContext
+from path_file_system_reader import FileSystemReading, PathFileSystemReader  # noqa: F401
+from principles_loader import PrinciplesLoader, PrinciplesLoading  # noqa: F401
+from response_parser import ResponseParser, ResponseParsing  # noqa: F401
+from text_based_output_handler import TextBasedOutputHandler  # noqa: F401
+from utils.debug_logger import Observing
+from violation_extractor import ViolationExtracting, ViolationExtractor  # noqa: F401
 
-HealthResult = TypeVar("HealthResult", covariant=True)
+HealthResult_co = TypeVar("HealthResult_co", covariant=True)
 
 """
 solid-name: HealthChecking
@@ -39,7 +45,9 @@ solid-category: abstraction
 solid-description: Contract for validating prospective source content within its request-scoped context.
 solid-tags: [hook]
 """
-class HealthChecking(Protocol[HealthResult]):
+
+
+class HealthChecking(Protocol[HealthResult_co]):
     def check(
         self,
         content: str,
@@ -47,9 +55,9 @@ class HealthChecking(Protocol[HealthResult]):
         language: str,
         parent_session_id: str,
         cwd: str = "",
-        patch_context: Optional[PatchReviewContext] = None,
-        principle_names: Optional[list[str]] = None,
-    ) -> HealthResult: ...
+        patch_context: PatchReviewContext | None = None,
+        principle_names: list[str] | None = None,
+    ) -> HealthResult_co: ...
 
 
 """
@@ -58,6 +66,8 @@ solid-category: service
 solid-description: Coordinates prospective source health reviews and their isolated audit context.
 solid-tags: [hook]
 """
+
+
 class LLMHealthChecker:
     """Facade coordinating principle loading, prompt building, and LLM review."""
 
@@ -67,7 +77,7 @@ class LLMHealthChecker:
         builder: PromptBuilding,
         reviewer: LLMReviewing,
         path_resolver: OutputPathResolving,
-        context_writer: Optional[HealthCheckContextWriting] = None,
+        context_writer: HealthCheckContextWriting | None = None,
     ) -> None:
         self._loader = loader
         self._builder = builder
@@ -82,9 +92,9 @@ class LLMHealthChecker:
         path: str,
         language: str,
         parent_session_id: str,
-        patch_context: Optional[PatchReviewContext] = None,
-        principle_names: Optional[list[str]] = None,
-    ) -> Optional[list]:
+        patch_context: PatchReviewContext | None = None,
+        principle_names: list[str] | None = None,
+    ) -> list | None:
         principles = self._loader.load(content, path, principle_names)
         if principles is None:
             return None
@@ -99,7 +109,9 @@ class LLMHealthChecker:
                 content,
                 patch_context,
             )
-        prompt = self._builder.build(principles, content, path, parent_session_id, output_dir)
+        prompt = self._builder.build(
+            principles, content, path, parent_session_id, output_dir
+        )
         try:
             return self._reviewer.review(prompt, path, output_dir=output_dir)
         finally:

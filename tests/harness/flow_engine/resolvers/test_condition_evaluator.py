@@ -10,29 +10,28 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.all_condition import AllCondition  # noqa: E402
-from harness.any_condition import AnyCondition  # noqa: E402
-from harness.comparison_condition import ComparisonCondition  # noqa: E402
-from harness.condition_evidence import (  # noqa: E402
+from harness.all_condition import AllCondition
+from harness.any_condition import AnyCondition
+from harness.comparison_condition import ComparisonCondition
+from harness.condition_comparator import ConditionComparator
+from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator
+from harness.condition_evaluator import ConditionEvaluator
+from harness.condition_evidence import (
     ComparisonConditionEvidence,
     CompositeConditionEvidence,
 )
-from harness.condition_comparator import ConditionComparator  # noqa: E402
-from harness.condition_declaration_evaluator import ConditionDeclarationEvaluator  # noqa: E402
-from harness.condition_evaluator import ConditionEvaluator  # noqa: E402
-from harness.condition_operator import ConditionOperator  # noqa: E402
-from harness.condition_reference_resolver import ConditionReferenceResolver  # noqa: E402
-from harness.condition_value_matcher import ConditionValueMatcher  # noqa: E402
-from harness.interpolation_error import InterpolationError  # noqa: E402
-from harness.not_condition import NotCondition  # noqa: E402
-from harness.resolved_condition_value import ResolvedConditionValue  # noqa: E402
-from harness.strict_collection_value_matcher import (  # noqa: E402
+from harness.condition_operator import ConditionOperator
+from harness.condition_reference_resolver import ConditionReferenceResolver
+from harness.condition_value_matcher import ConditionValueMatcher
+from harness.interpolation_error import InterpolationError
+from harness.not_condition import NotCondition
+from harness.resolved_condition_value import ResolvedConditionValue
+from harness.strict_collection_value_matcher import (
     StrictCollectionValueMatcher,
 )
-from harness.strict_value_comparator import StrictValueComparator  # noqa: E402
-from harness.workflow_run_context import WorkflowRunContext  # noqa: E402
-from harness.workflow_expression import WorkflowExpression  # noqa: E402
-
+from harness.strict_value_comparator import StrictValueComparator
+from harness.workflow_expression import WorkflowExpression
+from harness.workflow_run_context import WorkflowRunContext
 
 _CONTEXT = WorkflowRunContext()
 
@@ -57,23 +56,24 @@ class StubExpressionEvaluator:
 
 
 class TestConditionEvaluator(unittest.TestCase):
-
     def test_returns_typed_nested_evidence_for_a_decision(self) -> None:
-        sut = self._sut(StubExpressionEvaluator((
-            ResolvedExpression("item.language", "kotlin"),
-        )))
-        condition = AllCondition(conditions=(
-            ComparisonCondition(
-                WorkflowExpression("item.language"),
-                ConditionOperator.EQUALS,
-                "swift",
-            ),
-            ComparisonCondition(
-                WorkflowExpression("item.kind"),
-                ConditionOperator.EQUALS,
-                "view",
-            ),
-        ))
+        sut = self._sut(
+            StubExpressionEvaluator((ResolvedExpression("item.language", "kotlin"),))
+        )
+        condition = AllCondition(
+            conditions=(
+                ComparisonCondition(
+                    WorkflowExpression("item.language"),
+                    ConditionOperator.EQUALS,
+                    "swift",
+                ),
+                ComparisonCondition(
+                    WorkflowExpression("item.kind"),
+                    ConditionOperator.EQUALS,
+                    "view",
+                ),
+            )
+        )
 
         evidence = sut.evaluate(condition, _CONTEXT)
 
@@ -101,22 +101,46 @@ class TestConditionEvaluator(unittest.TestCase):
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.value", True),))
         sut = self._sut(evaluator)
 
-        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.EQUALS, 1), _CONTEXT).matched)
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_EQUALS, 1), _CONTEXT).matched)
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.EQUALS, True), _CONTEXT).matched)
+        self.assertFalse(
+            sut.evaluate(
+                self._comparison(ConditionOperator.EQUALS, 1), _CONTEXT
+            ).matched
+        )
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.NOT_EQUALS, 1), _CONTEXT
+            ).matched
+        )
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.EQUALS, True), _CONTEXT
+            ).matched
+        )
 
     def test_membership_is_type_strict(self) -> None:
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.value", True),))
         sut = self._sut(evaluator)
 
-        self.assertFalse(sut.evaluate(self._comparison(ConditionOperator.IN, [1, 2]), _CONTEXT).matched)
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.IN, [False, True]), _CONTEXT).matched)
-        self.assertTrue(sut.evaluate(self._comparison(ConditionOperator.NOT_IN, [1, 2]), _CONTEXT).matched)
+        self.assertFalse(
+            sut.evaluate(
+                self._comparison(ConditionOperator.IN, [1, 2]), _CONTEXT
+            ).matched
+        )
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.IN, [False, True]), _CONTEXT
+            ).matched
+        )
+        self.assertTrue(
+            sut.evaluate(
+                self._comparison(ConditionOperator.NOT_IN, [1, 2]), _CONTEXT
+            ).matched
+        )
 
     def test_collection_containment_is_type_strict(self) -> None:
-        evaluator = StubExpressionEvaluator((
-            ResolvedExpression("item.value", ["swiftui", True]),
-        ))
+        evaluator = StubExpressionEvaluator(
+            (ResolvedExpression("item.value", ["swiftui", True]),)
+        )
         sut = self._sut(evaluator)
 
         self.assertTrue(
@@ -139,42 +163,84 @@ class TestConditionEvaluator(unittest.TestCase):
         )
 
     def test_exists_distinguishes_absent_from_present_null(self) -> None:
-        present = self._sut(StubExpressionEvaluator((ResolvedExpression("item.value", None),)))
+        present = self._sut(
+            StubExpressionEvaluator((ResolvedExpression("item.value", None),))
+        )
         absent = self._sut(StubExpressionEvaluator(()))
 
-        self.assertTrue(present.evaluate(self._comparison(ConditionOperator.EXISTS, True), _CONTEXT).matched)
-        self.assertFalse(present.evaluate(self._comparison(ConditionOperator.EXISTS, False), _CONTEXT).matched)
-        self.assertFalse(absent.evaluate(self._comparison(ConditionOperator.EXISTS, True), _CONTEXT).matched)
-        self.assertTrue(absent.evaluate(self._comparison(ConditionOperator.EXISTS, False), _CONTEXT).matched)
+        self.assertTrue(
+            present.evaluate(
+                self._comparison(ConditionOperator.EXISTS, True), _CONTEXT
+            ).matched
+        )
+        self.assertFalse(
+            present.evaluate(
+                self._comparison(ConditionOperator.EXISTS, False), _CONTEXT
+            ).matched
+        )
+        self.assertFalse(
+            absent.evaluate(
+                self._comparison(ConditionOperator.EXISTS, True), _CONTEXT
+            ).matched
+        )
+        self.assertTrue(
+            absent.evaluate(
+                self._comparison(ConditionOperator.EXISTS, False), _CONTEXT
+            ).matched
+        )
 
     def test_evaluates_nested_all_any_and_not_conditions(self) -> None:
-        evaluator = StubExpressionEvaluator((
-            ResolvedExpression("item.language", "swift"),
-            ResolvedExpression("item.kind", "view"),
-            ResolvedExpression("item.generated", False),
-        ))
+        evaluator = StubExpressionEvaluator(
+            (
+                ResolvedExpression("item.language", "swift"),
+                ResolvedExpression("item.kind", "view"),
+                ResolvedExpression("item.generated", False),
+            )
+        )
         sut = self._sut(evaluator)
-        condition = AllCondition(conditions=(
-            ComparisonCondition(WorkflowExpression("item.language"), ConditionOperator.EQUALS, "swift"),
-            AnyCondition(conditions=(
-                ComparisonCondition(WorkflowExpression("item.kind"), ConditionOperator.EQUALS, "view"),
-                NotCondition(ComparisonCondition(
-                    WorkflowExpression("item.generated"),
+        condition = AllCondition(
+            conditions=(
+                ComparisonCondition(
+                    WorkflowExpression("item.language"),
                     ConditionOperator.EQUALS,
-                    True,
-                )),
-            )),
-        ))
+                    "swift",
+                ),
+                AnyCondition(
+                    conditions=(
+                        ComparisonCondition(
+                            WorkflowExpression("item.kind"),
+                            ConditionOperator.EQUALS,
+                            "view",
+                        ),
+                        NotCondition(
+                            ComparisonCondition(
+                                WorkflowExpression("item.generated"),
+                                ConditionOperator.EQUALS,
+                                True,
+                            )
+                        ),
+                    )
+                ),
+            )
+        )
 
         self.assertTrue(sut.evaluate(condition, _CONTEXT).matched)
 
     def test_composite_conditions_short_circuit(self) -> None:
         evaluator = StubExpressionEvaluator((ResolvedExpression("item.first", False),))
         sut = self._sut(evaluator)
-        condition = AllCondition(conditions=(
-            ComparisonCondition(WorkflowExpression("item.first"), ConditionOperator.EQUALS, True),
-            ComparisonCondition(WorkflowExpression("item.unreachable"), ConditionOperator.EQUALS, True),
-        ))
+        condition = AllCondition(
+            conditions=(
+                ComparisonCondition(
+                    WorkflowExpression("item.first"), ConditionOperator.EQUALS, True
+                ),
+                ComparisonCondition(
+                    WorkflowExpression("item.unreachable"),
+                    ConditionOperator.EQUALS,
+                    True,
+                ),
+            )
+        )
 
         self.assertFalse(sut.evaluate(condition, _CONTEXT).matched)
         self.assertEqual(evaluator.evaluated, ["item.first"])

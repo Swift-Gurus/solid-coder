@@ -7,13 +7,14 @@ from tempfile import TemporaryDirectory
 from source.frontmatter.frontmatter_category_resolver import FrontmatterCategoryResolver
 from source.frontmatter.frontmatter_config_parser import FrontmatterConfigParser
 
-
 """
 solid-name: TestFrontmatterConfigInheritance
 solid-category: integration-test
 solid-spec: [SPEC-069]
 solid-description: Verifies project category overrides follow root-to-leaf precedence and remain inside the project boundary.
 """
+
+
 class TestFrontmatterConfigInheritance(unittest.TestCase):
     def setUp(self) -> None:
         temporary = TemporaryDirectory()
@@ -23,7 +24,9 @@ class TestFrontmatterConfigInheritance(unittest.TestCase):
         (self.project / ".git").mkdir(parents=True)
         self.sut = FrontmatterConfigParser()
 
-    def test_nested_local_configuration_overrides_parent_and_bundled_defaults(self) -> None:
+    def test_nested_local_configuration_overrides_parent_and_bundled_defaults(
+        self,
+    ) -> None:
         self._write(self.project, "config.toml", "root-role")
         nested = self.project / "Sources"
         self._write(nested, "config.toml", "nested-role")
@@ -43,4 +46,6 @@ class TestFrontmatterConfigInheritance(unittest.TestCase):
     def _write(self, directory: Path, filename: str, category: str) -> None:
         folder = directory / ".solid-coder"
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / filename).write_text(f'[frontmatter]\nadditional_categories = ["{category}"]\n')
+        (folder / filename).write_text(
+            f'[frontmatter]\nadditional_categories = ["{category}"]\n'
+        )

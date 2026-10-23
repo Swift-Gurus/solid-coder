@@ -5,13 +5,14 @@ import unittest
 from health.config.frontmatter_config import FrontmatterConfig
 from source.frontmatter.frontmatter_category_resolver import FrontmatterCategoryResolver
 
-
 """
 solid-name: TestFrontmatterCategoryResolver
 solid-category: unit-test
 solid-spec: [SPEC-069]
 solid-description: Verifies project metadata categories extend the bundled vocabulary without duplicates.
 """
+
+
 class TestFrontmatterCategoryResolver(unittest.TestCase):
     def test_project_categories_extend_the_registered_vocabulary(self) -> None:
         config = FrontmatterConfig(additional_categories=["domain-role", "service"])
@@ -23,4 +24,6 @@ class TestFrontmatterCategoryResolver(unittest.TestCase):
         self.assertEqual(categories, sorted(categories))
 
     def test_default_configuration_preserves_registered_categories(self) -> None:
-        self.assertIn("abstraction", FrontmatterCategoryResolver().parse(FrontmatterConfig()))
+        self.assertIn(
+            "abstraction", FrontmatterCategoryResolver().parse(FrontmatterConfig())
+        )

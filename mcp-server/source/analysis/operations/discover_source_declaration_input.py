@@ -1,8 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
-
 from source.source_search_context import SourceSearchContext
 from source.source_search_target import SourceSearchTarget
-
 
 """
 solid-name: DiscoverSourceDeclarationInput
@@ -10,6 +8,8 @@ solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Selects a prepared declaration and authoritative source context for bounded related-declaration discovery.
 """
+
+
 class DiscoverSourceDeclarationInput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

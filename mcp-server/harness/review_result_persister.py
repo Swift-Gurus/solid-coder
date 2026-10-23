@@ -5,7 +5,6 @@ from pathlib import Path
 from harness.review_result import ReviewResult
 from harness.review_result_persisting import ReviewResultPersisting
 
-
 _RESULT_PATH = Path("results") / "review" / "result.json"
 
 
@@ -15,6 +14,8 @@ solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Persists the authoritative aggregate review result at its stable run-relative location.
 """
+
+
 class ReviewResultPersister(ReviewResultPersisting):
     def persist(
         self,

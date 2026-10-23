@@ -5,13 +5,14 @@ from harness.aggregate_prompt_rendering import AggregatePromptRendering
 from harness.aggregate_response_schema_building import AggregateResponseSchemaBuilding
 from harness.compiled_aggregate_turn import CompiledAggregateTurn
 
-
 """
 solid-name: AggregateTurnCompiler
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Coordinates aggregate prompt rendering and exact response-schema generation.
 """
+
+
 class AggregateTurnCompiler:
     def __init__(
         self,

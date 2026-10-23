@@ -6,11 +6,10 @@ solid-tags: [hook]
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
 class HookDecision:
     allow: bool = True
-    reason: Optional[str] = None
-    additional_context: Optional[str] = None
+    reason: str | None = None
+    additional_context: str | None = None

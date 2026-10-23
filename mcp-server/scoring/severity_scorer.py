@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
 """Scores immutable unit measurements against configured severity bands."""
 
 from typing import Any
 
 from findings.principle_metrics import PrincipleMetrics
 from findings.review_severity import ReviewSeverity
-from scoring.band_evaluator import BandEvaluating, BandEvaluator
+
+from scoring.band_evaluator import BandEvaluating
 from scoring.compatibility_metrics_adapting import CompatibilityMetricsAdapting
 from scoring.frontmatter_bands_provider import BandsProviding
 from scoring.metric_id_catalog import MetricIdCatalog
@@ -15,12 +15,13 @@ from scoring.unit_metric_scoring import UnitMetricScoring
 from scoring.unit_scoring_result import UnitScoringResult
 from scoring.unit_scoring_result_formatting import UnitScoringResultFormatting
 
-
 """
 solid-name: SeverityScorer
 solid-category: service
 solid-description: Applies configured severity bands to immutable measurements for one review principle.
 """
+
+
 class SeverityScorer(UnitMetricScoring):
     """Scores unit metrics against YAML severity bands from rule.md frontmatter.
 
@@ -74,7 +75,11 @@ class SeverityScorer(UnitMetricScoring):
         """
         var_bands = self._bands.metric_variables(metric_id, file_path)
         if not var_bands:
-            return {"metric_id": metric_id, "final_severity": "COMPLIANT", "band_matched": None}
+            return {
+                "metric_id": metric_id,
+                "final_severity": "COMPLIANT",
+                "band_matched": None,
+            }
 
         typed_metrics = self._compatibility_metrics.adapt(unit_metrics, metric_id)
         result = self.score(typed_metrics, metric_id, file_path)

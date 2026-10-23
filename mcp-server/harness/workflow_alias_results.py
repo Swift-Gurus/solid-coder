@@ -7,13 +7,14 @@ from dataclasses import dataclass, field
 from harness.workflow_output_projections import WorkflowOutputProjections
 from harness.workflow_result_envelope import WorkflowResultEnvelope
 
-
 """
 solid-name: WorkflowAliasResults
 solid-category: model
 solid-spec: [SPEC-037, SPEC-056]
 solid-description: Provides ordered child result envelopes and declared output projections for an include alias.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowAliasResults:
     authored_alias: str
@@ -23,7 +24,7 @@ class WorkflowAliasResults:
     entries: list[WorkflowResultEnvelope] = field(default_factory=list)
 
     @property
-    def results(self) -> "WorkflowAliasResults":
+    def results(self) -> WorkflowAliasResults:
         return self
 
     @property

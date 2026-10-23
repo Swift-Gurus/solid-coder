@@ -8,16 +8,19 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from hook_utils import PLUGIN_ROOT  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from hook_utils import PLUGIN_ROOT
 
 
 def _iter_hook_entries(hooks_json: dict):
     for entries in hooks_json.get("hooks", {}).values():
         for entry in entries:
-            for hook in entry.get("hooks", []):
-                yield hook
+            yield from entry.get("hooks", [])
 
 
 class TestHooksJsonTimeout(unittest.TestCase):
@@ -35,8 +38,12 @@ class TestHooksJsonTimeout(unittest.TestCase):
         self.assertTrue(hooks, "expected at least one hook entry in hooks.json")
         timeouts = {hook.get("command"): hook.get("timeout") for hook in hooks}
         distinct = set(timeouts.values())
-        self.assertEqual(len(distinct), 1, f"hook timeouts have drifted apart: {timeouts}")
-        self.assertNotIn(None, distinct, "every hook entry must declare an explicit timeout")
+        self.assertEqual(
+            len(distinct), 1, f"hook timeouts have drifted apart: {timeouts}"
+        )
+        self.assertNotIn(
+            None, distinct, "every hook entry must declare an explicit timeout"
+        )
 
 
 if __name__ == "__main__":

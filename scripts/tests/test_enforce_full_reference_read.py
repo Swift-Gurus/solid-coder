@@ -8,6 +8,7 @@ Contract:
   - Exit 2 (block) for reference files with both set
   - Stderr contains the file path and reason on block
 """
+
 import json
 import subprocess
 import sys
@@ -29,7 +30,9 @@ def run(tool_name, file_path, offset=None, limit=None):
     return subprocess.run(
         [sys.executable, str(HOOK)],
         input=json.dumps(event),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
 

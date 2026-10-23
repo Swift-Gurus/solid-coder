@@ -1,10 +1,9 @@
 """Provides typed access to one included workflow instance's step identities."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
-
 
 """
 solid-name: IncludedWorkflowStepIdentities
@@ -12,15 +11,14 @@ solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Finds child workflow step identities by declaration, execution, or local identifiers.
 """
+
+
 @dataclass(frozen=True)
 class IncludedWorkflowStepIdentities:
     entries: list[IncludedWorkflowStepIdentity] = field(default_factory=list)
 
     def contains_declaration(self, declaration_id: str) -> bool:
-        return any(
-            entry.declaration_id == declaration_id
-            for entry in self.entries
-        )
+        return any(entry.declaration_id == declaration_id for entry in self.entries)
 
     def require_declaration(
         self,
@@ -61,6 +59,4 @@ class IncludedWorkflowStepIdentities:
         for entry in self.entries:
             if matches(entry):
                 return entry
-        raise ValueError(
-            f"Included workflow {kind} identity not found: '{identity}'"
-        )
+        raise ValueError(f"Included workflow {kind} identity not found: '{identity}'")

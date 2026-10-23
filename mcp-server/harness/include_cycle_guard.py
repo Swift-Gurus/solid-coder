@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 
-
 """
 solid-name: IncludeCycleGuard
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Rejects repeated workflow sources and reports the active path or workflow-ID chain.
 """
-class IncludeCycleGuard:
 
+
+class IncludeCycleGuard:
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 

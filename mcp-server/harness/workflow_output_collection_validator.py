@@ -18,13 +18,14 @@ from harness.workflow_output_collection_validation_target import (
     WorkflowOutputCollectionValidationTarget,
 )
 
-
 """
 solid-name: WorkflowOutputCollectionValidator
 solid-category: service
 solid-spec: [SPEC-056]
 solid-description: Resolves child output declarations and validates metric filters, reducers, and dependency coverage.
 """
+
+
 class WorkflowOutputCollectionValidator(WorkflowOutputCollectionValidating):
     def __init__(
         self,
@@ -49,8 +50,7 @@ class WorkflowOutputCollectionValidator(WorkflowOutputCollectionValidating):
             (
                 declaration.specification
                 for declaration in group.outputs
-                if declaration.specification.name
-                == target.source_reference.output_name
+                if declaration.specification.name == target.source_reference.output_name
             ),
             None,
         )
@@ -72,10 +72,7 @@ class WorkflowOutputCollectionValidator(WorkflowOutputCollectionValidating):
             )
         item_schema = self._schema_decoder.decode(
             output.schema,
-            (
-                f"workflow '{target.source_reference.workflow_alias}' output "
-                "schema"
-            ),
+            (f"workflow '{target.source_reference.workflow_alias}' output schema"),
         )
         self._item_contract_validator.validate(
             target.target_id,

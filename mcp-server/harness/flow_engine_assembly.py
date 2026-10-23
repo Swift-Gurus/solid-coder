@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from harness.condition_decision_evaluating import ConditionDecisionEvaluating
 from harness.dag_running import DAGRunning
 from harness.dynamic_workflow_steps_resolving import DynamicWorkflowStepsResolving
@@ -12,13 +13,14 @@ from harness.flow_loading import FlowLoading
 from harness.interpolator import TemplateRendering
 from harness.schema_validator import SchemaValidator
 
-
 """
 solid-name: FlowEngineAssembly
 solid-category: model
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Provides workflow loading, runtime materialization, execution, event, interpolation, and validation services.
 """
+
+
 @dataclass(frozen=True)
 class FlowEngineAssembly:
     flow_loader: FlowLoading

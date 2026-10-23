@@ -4,15 +4,15 @@ solid-category: utility
 """
 
 import json
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class JsonSerializing(Protocol):
-    def serialize(self, doc: object, indent: Optional[int] = None) -> str: ...
+    def serialize(self, doc: object, indent: int | None = None) -> str: ...
 
 
 class JsonSerializer:
     """Boundary adapter: wraps json.dumps for injection into writers."""
 
-    def serialize(self, doc: object, indent: Optional[int] = None) -> str:
+    def serialize(self, doc: object, indent: int | None = None) -> str:
         return json.dumps(doc, indent=indent)

@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error import FlowValidationError
 
-
 """
 solid-name: TestCoLocatedMetricValidation
 solid-category: unit-test
 solid-spec: [SPEC-058]
 solid-description: Verifies compact metric syntax rejects ambiguous sources and independent scheduling fields.
 """
+
+
 class TestCoLocatedMetricValidation(unittest.TestCase):
     def setUp(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
@@ -58,41 +59,48 @@ class TestCoLocatedMetricValidation(unittest.TestCase):
     def test_rejects_independent_scheduling_fields(self) -> None:
         source = self._workflow(source="observations").replace(
             "\n        metric_id: TEST-1\n",
-            "\n        metric_id: TEST-1\n"
-            "        depends_on: [other]\n",
+            "\n        metric_id: TEST-1\n        depends_on: [other]\n",
         )
 
         with self.assertRaisesRegex(FlowValidationError, "depends_on"):
             self._load(source)
 
     def test_rejects_duplicate_runtime_step_id(self) -> None:
-        source = self._workflow(source="observations").replace(
-            "id: count",
-            "id: classify_exception",
-        ).replace(
-            "depends_on: [count]",
-            "depends_on: [classify_exception]",
+        source = (
+            self._workflow(source="observations")
+            .replace(
+                "id: count",
+                "id: classify_exception",
+            )
+            .replace(
+                "depends_on: [count]",
+                "depends_on: [classify_exception]",
+            )
         )
 
         with self.assertRaisesRegex(FlowValidationError, "Duplicate step ID"):
             self._load(source)
 
     def test_rejects_owner_level_for_each_until_instance_local_contract(self) -> None:
-        source = self._workflow(source="observations").replace(
-            "steps:\n  - id: classify\n",
-            "steps:\n"
-            "  - id: prepare\n"
-            "    prompt: Prepare units.\n"
-            "    outputs:\n"
-            "      - name: units\n"
-            "        type: data\n"
-            "        schema: {type: array, items: {type: string}}\n"
-            "  - id: classify\n",
-        ).replace(
-            "    prompt: Classify observations.\n",
-            "    prompt: Classify observations.\n"
-            "    depends_on: [prepare]\n"
-            '    for_each: "{{steps.prepare.outputs.units}}"\n',
+        source = (
+            self._workflow(source="observations")
+            .replace(
+                "steps:\n  - id: classify\n",
+                "steps:\n"
+                "  - id: prepare\n"
+                "    prompt: Prepare units.\n"
+                "    outputs:\n"
+                "      - name: units\n"
+                "        type: data\n"
+                "        schema: {type: array, items: {type: string}}\n"
+                "  - id: classify\n",
+            )
+            .replace(
+                "    prompt: Classify observations.\n",
+                "    prompt: Classify observations.\n"
+                "    depends_on: [prepare]\n"
+                '    for_each: "{{steps.prepare.outputs.units}}"\n',
+            )
         )
 
         with self.assertRaisesRegex(
@@ -104,8 +112,7 @@ class TestCoLocatedMetricValidation(unittest.TestCase):
     def test_rejects_non_agent_owner(self) -> None:
         source = self._workflow(source="observations").replace(
             "    prompt: Classify observations.\n",
-            "    type: command\n"
-            "    command: echo observations\n",
+            "    type: command\n    command: echo observations\n",
         )
 
         with self.assertRaisesRegex(

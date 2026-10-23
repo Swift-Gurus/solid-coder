@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import sys
 import json
+import sys
 import tempfile
 import textwrap
 import threading
@@ -13,11 +13,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.flow_run_orchestrator import FlowRunOrchestrator  # noqa: E402
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.step_run_outcome import StepRunOutcome  # noqa: E402
-
+from harness.flow_run_orchestrator import FlowRunOrchestrator
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.step_run_outcome import StepRunOutcome
 
 _FLOW = """
     name: session_delegate_for_each
@@ -83,9 +82,7 @@ class ControlledSessionRunner:
         )
 
     def _unit_in(self, prompt: str) -> str:
-        return next(
-            unit for unit in ["Alpha", "Beta", "Gamma"] if unit in prompt
-        )
+        return next(unit for unit in ["Alpha", "Beta", "Gamma"] if unit in prompt)
 
 
 class TestSessionDelegateForEachIntegration(unittest.TestCase):
@@ -113,9 +110,7 @@ class TestSessionDelegateForEachIntegration(unittest.TestCase):
             prompt.index("Gamma finding"),
         )
         self.assertEqual(runner.call_counts, {"Alpha": 1, "Beta": 1, "Gamma": 1})
-        self.assertTrue(
-            all("isolated=true" in prompt for prompt in runner.prompts)
-        )
+        self.assertTrue(all("isolated=true" in prompt for prompt in runner.prompts))
 
     def test_invalid_instance_retries_without_relaunching_valid_siblings(self) -> None:
         runner = ControlledSessionRunner(invalid_first_units={"Alpha"})
@@ -127,9 +122,7 @@ class TestSessionDelegateForEachIntegration(unittest.TestCase):
         self.assertEqual(runner.call_counts, {"Alpha": 2, "Beta": 1, "Gamma": 1})
 
     def test_records_each_invalid_sibling_attempt_before_retrying_batch(self) -> None:
-        runner = ControlledSessionRunner(
-            invalid_first_units={"Alpha", "Beta"}
-        )
+        runner = ControlledSessionRunner(invalid_first_units={"Alpha", "Beta"})
         sut = self._make_orchestrator(runner)
 
         result = self._start_fan_out(sut, ["Alpha", "Beta", "Gamma"])
@@ -187,9 +180,7 @@ class TestSessionDelegateForEachIntegration(unittest.TestCase):
         units: list[str],
     ):
         started = sut.flow_start(str(self.flow_path))
-        return sut.flow_next(
-            {started.steps[0].instance_id: {"units": units}}
-        )
+        return sut.flow_next({started.steps[0].instance_id: {"units": units}})
 
 
 if __name__ == "__main__":

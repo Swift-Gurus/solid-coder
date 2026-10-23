@@ -4,17 +4,16 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
-from llama.log_entry_writer import LogEntryWriting, JsonlEntryWriter
-from llama.timer import TimeMeasuring, MonotonicTimer
 from llama.directory_creator import DirectoryCreating, PathDirectoryCreator
+from llama.log_entry_writer import JsonlEntryWriter, LogEntryWriting
+from llama.timer import MonotonicTimer, TimeMeasuring
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
 
 def _summarise_result(name: str, result_str: str) -> dict:
@@ -33,9 +32,9 @@ class LocalLLMLogger:
         log_dir: Path,
         file_path: str,
         model: str,
-        entry_writer: Optional[LogEntryWriting] = None,
-        timer: Optional[TimeMeasuring] = None,
-        dir_creator: Optional[DirectoryCreating] = None,
+        entry_writer: LogEntryWriting | None = None,
+        timer: TimeMeasuring | None = None,
+        dir_creator: DirectoryCreating | None = None,
     ) -> None:
         _creator: DirectoryCreating = dir_creator or PathDirectoryCreator()
         _creator.create(log_dir)
@@ -51,10 +50,15 @@ class LocalLLMLogger:
         self._writer.append(self._dir, filename, entry)
 
     def log_start(self, prompt_len: int) -> None:
-        self._write("_exchange.jsonl", {
-            "ev": "start", "file": self._file,
-            "model": self._model, "prompt_len": prompt_len,
-        })
+        self._write(
+            "_exchange.jsonl",
+            {
+                "ev": "start",
+                "file": self._file,
+                "model": self._model,
+                "prompt_len": prompt_len,
+            },
+        )
 
     def log_tool_call(self, call_id: str, name: str, args: dict) -> None:
         self._write(f"{call_id}.jsonl", {"ev": "call", "name": name, "args": args})
@@ -64,11 +68,19 @@ class LocalLLMLogger:
         self._write(f"{call_id}.jsonl", {"ev": "result", **summary})
 
     def log_thinking(self, round: int, content: str) -> None:
-        self._write("_thinking.jsonl", {
-            "ev": "thinking", "round": round, "file": self._file, "content": content,
-        })
+        self._write(
+            "_thinking.jsonl",
+            {
+                "ev": "thinking",
+                "round": round,
+                "file": self._file,
+                "content": content,
+            },
+        )
 
-    def log_done(self, rounds: int, usage: dict, violations: list, thinking: str = "") -> None:
+    def log_done(
+        self, rounds: int, usage: dict, violations: list, thinking: str = ""
+    ) -> None:
         elapsed_ms = int(self._timer.elapsed(self._t0) * 1000)
         entry: dict = {
             "ev": "done",
@@ -81,5 +93,8 @@ class LocalLLMLogger:
         }
         if thinking:
             entry["thinking_len"] = len(thinking)
-            self._write("_thinking.jsonl", {"ev": "thinking", "file": self._file, "content": thinking})
+            self._write(
+                "_thinking.jsonl",
+                {"ev": "thinking", "file": self._file, "content": thinking},
+            )
         self._write("_exchange.jsonl", entry)

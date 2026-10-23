@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Callable, TypeVar
+from collections.abc import Callable
+from typing import TypeVar
 
 from harness.concurrent_executor_creating import ConcurrentExecutorCreating
 from harness.concurrent_item_mapping import ConcurrentItemMapping
-
 
 Input = TypeVar("Input")
 Output = TypeVar("Output")
@@ -18,6 +18,8 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Applies one operation concurrently to ordered items within a supplied worker bound.
 """
+
+
 class ExecutorItemMapper(ConcurrentItemMapping):
     def __init__(self, executor_factory: ConcurrentExecutorCreating) -> None:
         self._executor_factory = executor_factory

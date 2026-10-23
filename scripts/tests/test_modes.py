@@ -5,10 +5,11 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
-import modes  # noqa: E402
+import modes
 
-
-EXPECTED_SECTIONS = frozenset({"rule", "code_rules", "instructions", "examples", "patterns"})
+EXPECTED_SECTIONS = frozenset(
+    {"rule", "code_rules", "instructions", "examples", "patterns"}
+)
 
 
 class TestModesRegistry(unittest.TestCase):
@@ -20,8 +21,11 @@ class TestModesRegistry(unittest.TestCase):
         required = {"profile", "exclude", "aggregation", "description", "loads"}
         for name, cfg in modes.MODES.items():
             with self.subTest(mode=name):
-                self.assertEqual(set(cfg.keys()) >= required, True,
-                                 f"{name} missing: {required - set(cfg.keys())}")
+                self.assertEqual(
+                    set(cfg.keys()) >= required,
+                    True,
+                    f"{name} missing: {required - set(cfg.keys())}",
+                )
 
     def test_profile_values_are_valid(self):
         for name, cfg in modes.MODES.items():
@@ -37,15 +41,21 @@ class TestModesRegistry(unittest.TestCase):
         for name, cfg in modes.MODES.items():
             with self.subTest(mode=name):
                 for section in cfg["loads"]:
-                    self.assertIn(section, EXPECTED_SECTIONS,
-                                  f"{name} declares unknown section: {section}")
+                    self.assertIn(
+                        section,
+                        EXPECTED_SECTIONS,
+                        f"{name} declares unknown section: {section}",
+                    )
 
     def test_exclude_sections_are_known(self):
         for name, cfg in modes.MODES.items():
             with self.subTest(mode=name):
                 for section in cfg["exclude"]:
-                    self.assertIn(section, EXPECTED_SECTIONS,
-                                  f"{name} excludes unknown section: {section}")
+                    self.assertIn(
+                        section,
+                        EXPECTED_SECTIONS,
+                        f"{name} excludes unknown section: {section}",
+                    )
 
     def test_resolve_returns_config(self):
         cfg = modes.resolve("code")
@@ -61,6 +71,7 @@ class TestModesRegistry(unittest.TestCase):
 
     def test_review_is_per_principle(self):
         self.assertEqual(modes.MODES["review"]["aggregation"], "per-principle")
+
 
 if __name__ == "__main__":
     unittest.main()

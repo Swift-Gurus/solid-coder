@@ -13,11 +13,11 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
-from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
-from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
-from rule_validation_scenario import RuleValidationScenario  # noqa: E402
-from harness.rule_scope import RuleScope  # noqa: E402
+from harness.rule_scope import RuleScope
+from rule_analysis_expectation import RuleAnalysisExpectation
+from rule_metric_expectation import RuleMetricExpectation
+from rule_validation_flow_contract import RuleValidationFlowContract
+from rule_validation_scenario import RuleValidationScenario
 
 
 class TestUnitTestingValidationFlow(RuleValidationFlowContract):
@@ -90,7 +90,7 @@ class TestUnitTestingValidationFlow(RuleValidationFlowContract):
                                 "TEST_DOUBLE_VIOLATION",
                                 "CheckoutTests.testBasic",
                                 "The test sets and reads the same mock value.",
-                                "mock.formatted = \"$10\" followed by asserting mock.formatted",
+                                'mock.formatted = "$10" followed by asserting mock.formatted',
                             ),
                             (
                                 "SETUP_VIOLATION",
@@ -110,12 +110,60 @@ class TestUnitTestingValidationFlow(RuleValidationFlowContract):
             ),
         ],
         metrics=[
-            RuleMetricExpectation(step_id="isolation_violations", metric_id="TEST-1", detection_id="TEST-1", detection_name="Test Isolation", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="structure_violations", metric_id="TEST-2", detection_id="TEST-2", detection_name="Test Structure", value=2, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="naming_violations", metric_id="TEST-3", detection_id="TEST-3", detection_name="Test Naming", value=3, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="test_double_violations", metric_id="TEST-4", detection_id="TEST-4", detection_name="Test Double Quality", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="setup_violations", metric_id="TEST-5", detection_id="TEST-5", detection_name="Test Setup Complexity", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="framework_violations", metric_id="TEST-6", detection_id="TEST-6", detection_name="Testing Framework", value=1, severity="SEVERE", mcp_owned=True),
+            RuleMetricExpectation(
+                step_id="isolation_violations",
+                metric_id="TEST-1",
+                detection_id="TEST-1",
+                detection_name="Test Isolation",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="structure_violations",
+                metric_id="TEST-2",
+                detection_id="TEST-2",
+                detection_name="Test Structure",
+                value=2,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="naming_violations",
+                metric_id="TEST-3",
+                detection_id="TEST-3",
+                detection_name="Test Naming",
+                value=3,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="test_double_violations",
+                metric_id="TEST-4",
+                detection_id="TEST-4",
+                detection_name="Test Double Quality",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="setup_violations",
+                metric_id="TEST-5",
+                detection_id="TEST-5",
+                detection_name="Test Setup Complexity",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="framework_violations",
+                metric_id="TEST-6",
+                detection_id="TEST-6",
+                detection_name="Testing Framework",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
         ],
         final_severity="SEVERE",
         rule_scope=RuleScope.FILE,
@@ -133,18 +181,22 @@ class TestUnitTestingValidationFlow(RuleValidationFlowContract):
             for observation in self.SCENARIO.analysis[0].output["observations"]
         ]
 
-        exception = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": observations},
-        })
-        completed = self.sut.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "Only the shared-state observation is exempt.",
-                    "evidence": "All remaining test violations still apply.",
+        exception = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {"observations": observations},
+            }
+        )
+        completed = self.sut.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "Only the shared-state observation is exempt.",
+                        "evidence": "All remaining test violations still apply.",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._rule_result(started.run_id)
@@ -159,9 +211,11 @@ class TestUnitTestingValidationFlow(RuleValidationFlowContract):
         invalid = dict(self.SCENARIO.analysis[0].output["observations"][0])
         invalid.pop("evidence")
 
-        rejected = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": [invalid]},
-        })
+        rejected = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {"observations": [invalid]},
+            }
+        )
 
         self.assertEqual(rejected.status, "ready")
         self.assertEqual(

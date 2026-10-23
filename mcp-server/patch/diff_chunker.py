@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 from changed_content import ChangedContent
 
@@ -14,6 +14,8 @@ solid-category: service
 solid-description: Selects changed portions from previous and prospective source content.
 solid-tags: [hook, utility]
 """
+
+
 class DiffChunker:
     """Extracts only the changed lines from a before/after text pair."""
 

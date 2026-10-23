@@ -5,20 +5,18 @@ from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from gate_flow_prompt_builder import GateFlowPromptBuilder  # noqa: E402
-from codex_flow_continuation_instruction_builder import (  # noqa: E402
+from codex_flow_continuation_instruction_builder import (
     CodexFlowContinuationInstructionBuilder,
 )
-from native_flow_continuation_instruction_builder import (  # noqa: E402
+from gate_flow_prompt_builder import GateFlowPromptBuilder
+from native_flow_continuation_instruction_builder import (
     NativeFlowContinuationInstructionBuilder,
 )
-
 
 """
 solid-name: TestGateFlowPromptBuilder
@@ -26,6 +24,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036]
 solid-description: Proves the child bootstrap carries source once and directs progression through the existing isolated run.
 """
+
+
 class TestGateFlowPromptBuilder(unittest.TestCase):
     def test_builds_single_source_bootstrap_for_existing_run(self) -> None:
         source = "struct PendingView { let marker = 7391 }"

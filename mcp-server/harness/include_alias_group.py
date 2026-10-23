@@ -13,13 +13,14 @@ from harness.workflow_input_binding import WorkflowInputBinding
 from harness.workflow_output_declaration import WorkflowOutputDeclaration
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: IncludeAliasGroup
 solid-category: model
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Represents one workflow include alias and its expanded member-step identifiers.
 """
+
+
 @dataclass(frozen=True)
 class IncludeAliasGroup:
     alias: str

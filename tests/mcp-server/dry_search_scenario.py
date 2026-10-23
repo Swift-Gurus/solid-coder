@@ -8,12 +8,13 @@ from health.dry_search_enforcing_batch_findings_submitter import (
     DrySearchEnforcingBatchFindingsSubmitter,
 )
 
-
 """
 solid-name: DrySearchScenario
 solid-category: test-support
 solid-description: Holds configured collaborators for one DRY-search enforcement scenario.
 """
+
+
 @dataclass(frozen=True)
 class DrySearchScenario:
     search: DrySearchCoordinator

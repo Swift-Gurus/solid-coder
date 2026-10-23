@@ -5,13 +5,14 @@ from harness.rule_additional_info_output_providing import (
     RuleAdditionalInfoOutputProviding,
 )
 
-
 """
 solid-name: RuleAdditionalInfoOutputProvider
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Supplies the required reasoning-and-evidence output contract shared by metric and exception steps.
 """
+
+
 class RuleAdditionalInfoOutputProvider(RuleAdditionalInfoOutputProviding):
     def provide(self) -> OutputSpec:
         return OutputSpec(

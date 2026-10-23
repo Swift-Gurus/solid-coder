@@ -14,15 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestWorkflowOutputAggregation
 solid-category: test
 solid-spec: [SPEC-037, SPEC-056]
 solid-description: Verifies included workflow outputs are exposed as ordered envelopes and typed output projections.
 """
-class TestWorkflowOutputAggregation(unittest.TestCase):
 
+
+class TestWorkflowOutputAggregation(unittest.TestCase):
     def test_publishes_declared_outputs_in_source_order(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
@@ -31,18 +31,22 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         started = orchestrator.flow_start(str(flow_path))
-        children = orchestrator.flow_next({
-            started.steps[0].instance_id: {
-                "units": [
-                    {"name": "Alpha", "enabled": True},
-                    {"name": "Beta", "enabled": True},
-                ],
+        children = orchestrator.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [
+                        {"name": "Alpha", "enabled": True},
+                        {"name": "Beta", "enabled": True},
+                    ],
+                }
             }
-        })
-        aggregated = orchestrator.flow_next({
-            children.steps[1].instance_id: {"review": "Beta review"},
-            children.steps[0].instance_id: {"review": "Alpha review"},
-        })
+        )
+        aggregated = orchestrator.flow_next(
+            {
+                children.steps[1].instance_id: {"review": "Beta review"},
+                children.steps[0].instance_id: {"review": "Alpha review"},
+            }
+        )
 
         self.assertIsNone(aggregated.error, aggregated.error)
         self.assertEqual([step.step_id for step in aggregated.steps], ["aggregate"])
@@ -71,17 +75,21 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         started = orchestrator.flow_start(str(flow_path))
-        children = orchestrator.flow_next({
-            started.steps[0].instance_id: {
-                "units": [
-                    {"name": "Alpha", "enabled": True},
-                    {"name": "Beta", "enabled": False},
-                ],
+        children = orchestrator.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [
+                        {"name": "Alpha", "enabled": True},
+                        {"name": "Beta", "enabled": False},
+                    ],
+                }
             }
-        })
-        aggregated = orchestrator.flow_next({
-            children.steps[0].instance_id: {"review": "Alpha review"},
-        })
+        )
+        aggregated = orchestrator.flow_next(
+            {
+                children.steps[0].instance_id: {"review": "Alpha review"},
+            }
+        )
 
         result_json = aggregated.steps[0].prompt.removeprefix("Aggregate ").rstrip(".")
         results = json.loads(result_json)
@@ -95,16 +103,18 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         started = orchestrator.flow_start(str(flow_path))
-        aggregated = orchestrator.flow_next({
-            started.steps[0].instance_id: {"units": []}
-        })
+        aggregated = orchestrator.flow_next(
+            {started.steps[0].instance_id: {"units": []}}
+        )
 
         self.assertEqual(
             aggregated.steps[0].prompt,
             "Aggregate [].",
         )
 
-    def test_projects_one_declared_output_from_every_child_in_source_order(self) -> None:
+    def test_projects_one_declared_output_from_every_child_in_source_order(
+        self,
+    ) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         project_root = Path(temporary_directory.name)
@@ -117,18 +127,22 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         started = orchestrator.flow_start(str(flow_path))
-        children = orchestrator.flow_next({
-            started.steps[0].instance_id: {
-                "units": [
-                    {"name": "Alpha", "enabled": True},
-                    {"name": "Beta", "enabled": True},
-                ],
+        children = orchestrator.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [
+                        {"name": "Alpha", "enabled": True},
+                        {"name": "Beta", "enabled": True},
+                    ],
+                }
             }
-        })
-        aggregated = orchestrator.flow_next({
-            children.steps[1].instance_id: {"review": "Beta review"},
-            children.steps[0].instance_id: {"review": "Alpha review"},
-        })
+        )
+        aggregated = orchestrator.flow_next(
+            {
+                children.steps[1].instance_id: {"review": "Beta review"},
+                children.steps[0].instance_id: {"review": "Alpha review"},
+            }
+        )
 
         self.assertIsNone(aggregated.error, aggregated.error)
         self.assertEqual(
@@ -149,9 +163,9 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         started = orchestrator.flow_start(str(flow_path))
-        aggregated = orchestrator.flow_next({
-            started.steps[0].instance_id: {"units": []}
-        })
+        aggregated = orchestrator.flow_next(
+            {started.steps[0].instance_id: {"units": []}}
+        )
 
         self.assertEqual(aggregated.steps[0].prompt, "Aggregate [].")
 
@@ -163,9 +177,9 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         child = orchestrator.flow_start(str(flow_path))
-        aggregated = orchestrator.flow_next({
-            child.steps[0].instance_id: {"review": "Complete"}
-        })
+        aggregated = orchestrator.flow_next(
+            {child.steps[0].instance_id: {"review": "Complete"}}
+        )
 
         result_json = aggregated.steps[0].prompt.removeprefix("Aggregate ").rstrip(".")
         results = json.loads(result_json)
@@ -181,14 +195,14 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         orchestrator = self._make_orchestrator(project_root)
 
         child = orchestrator.flow_start(str(flow_path))
-        blocked = orchestrator.flow_next({
-            child.steps[0].instance_id: {"review": 42}
-        })
+        blocked = orchestrator.flow_next({child.steps[0].instance_id: {"review": 42}})
 
         self.assertEqual(blocked.steps, [])
         self.assertIn("output 'review_results' is invalid", blocked.error)
 
-    def test_aggregate_child_publishes_declared_output_after_all_steps_complete(self) -> None:
+    def test_aggregate_child_publishes_declared_output_after_all_steps_complete(
+        self,
+    ) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
         project_root = Path(temporary_directory.name)
@@ -244,24 +258,24 @@ class TestWorkflowOutputAggregation(unittest.TestCase):
         )
         orchestrator = self._make_orchestrator(project_root)
 
-        child = orchestrator.flow_start(str(parent))
-        report = orchestrator.flow_next({
-            "child-1": {
-                "child": {
-                    "inspect": {"analysis": "Inspected"},
-                    "decide": {"result": "Accepted"},
+        _child = orchestrator.flow_start(str(parent))
+        report = orchestrator.flow_next(
+            {
+                "child-1": {
+                    "child": {
+                        "inspect": {"analysis": "Inspected"},
+                        "decide": {"result": "Accepted"},
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual([step.step_id for step in report.steps], ["report"])
         self.assertIn("Accepted", report.steps[0].prompt)
 
     def _make_orchestrator(self, project_root: Path):
         return FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(
-                project_dir_fn=lambda: project_root
-            ),
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: project_root),
             plugin_root=project_root,
         ).build()
 

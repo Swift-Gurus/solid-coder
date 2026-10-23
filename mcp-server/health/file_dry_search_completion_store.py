@@ -5,12 +5,13 @@ from harness.path_building import PathBuilding
 from harness.path_checking import PathChecking
 from health.dry_search_completion_status import DrySearchCompletionStatus
 
-
 """
 solid-name: FileDrySearchCompletionStore
 solid-category: service
 solid-description: Records and evaluates health-check DRY-search completion state.
 """
+
+
 class FileDrySearchCompletionStore:
     _HEALTH_INPUT_NAME = "hook-input.json"
     _MARKER_NAME = "dry-search.completed"
@@ -26,7 +27,9 @@ class FileDrySearchCompletionStore:
         self._marker_writer = marker_writer
 
     def record(self, output_dir: str) -> None:
-        health_input_path = self._path_builder.build(output_dir, self._HEALTH_INPUT_NAME)
+        health_input_path = self._path_builder.build(
+            output_dir, self._HEALTH_INPUT_NAME
+        )
         if not self._path_checker.exists(str(health_input_path)):
             return
 
@@ -41,7 +44,9 @@ class FileDrySearchCompletionStore:
         marker_path.unlink(missing_ok=True)
 
     def status(self, output_dir: str) -> DrySearchCompletionStatus:
-        health_input_path = self._path_builder.build(output_dir, self._HEALTH_INPUT_NAME)
+        health_input_path = self._path_builder.build(
+            output_dir, self._HEALTH_INPUT_NAME
+        )
         if not self._path_checker.exists(str(health_input_path)):
             return DrySearchCompletionStatus.NOT_REQUIRED
 

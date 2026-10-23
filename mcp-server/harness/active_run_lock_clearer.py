@@ -7,14 +7,15 @@ solid-description: Clears a stuck run's lock after validating the run identifier
 
 from __future__ import annotations
 
-from harness.active_run_lock_clearing import ActiveRunLockClearing
 from harness.active_run_locating import ActiveRunLocating
+from harness.active_run_lock_clearing import ActiveRunLockClearing
 from harness.active_run_pointer_storing import ActiveRunPointerStoring
 
 
 class ActiveRunLockClearer(ActiveRunLockClearing):
-
-    def __init__(self, run_locator: ActiveRunLocating, active_run: ActiveRunPointerStoring) -> None:
+    def __init__(
+        self, run_locator: ActiveRunLocating, active_run: ActiveRunPointerStoring
+    ) -> None:
         self._run_locator = run_locator
         self._active_run = active_run
 

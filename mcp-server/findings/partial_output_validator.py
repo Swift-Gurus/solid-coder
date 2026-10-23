@@ -7,10 +7,13 @@ solid-tags: [utility, service]
 import copy
 import json
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
+
+from logging_protocol import Logging
 
 try:
     import jsonschema as _jsonschema
+
     _JSONSCHEMA_AVAILABLE = True
 except ImportError:
     _jsonschema = None  # type: ignore[assignment]
@@ -20,7 +23,7 @@ from rules.principal_folder_resolver import resolve as _resolve_folder_fn
 
 
 class PartialOutputValidating(Protocol):
-    def validate_output(self, partial_output: dict) -> Optional[dict]: ...
+    def validate_output(self, partial_output: dict) -> dict | None: ...
 
 
 class PartialOutputValidator:
@@ -31,10 +34,11 @@ class PartialOutputValidator:
     No-ops when jsonschema is unavailable.
     """
 
-    def __init__(self, refs_root: Path) -> None:
+    def __init__(self, refs_root: Path, logger: Logging) -> None:
         self._refs_root = refs_root
+        self._logger = logger
 
-    def validate_output(self, partial_output: dict) -> Optional[dict]:
+    def validate_output(self, partial_output: dict) -> dict | None:
         if not _JSONSCHEMA_AVAILABLE:
             return None
 
@@ -42,10 +46,9 @@ class PartialOutputValidator:
         if unified_path.exists():
             schema = copy.deepcopy(json.loads(unified_path.read_text(encoding="utf-8")))
             try:
-                unit_items = (
-                    schema["properties"]["files"]["items"]
-                    ["properties"]["units"]["items"]
-                )
+                unit_items = schema["properties"]["files"]["items"]["properties"][
+                    "units"
+                ]["items"]
                 unit_items["required"] = [
                     f for f in unit_items.get("required", []) if f != "violations"
                 ]
@@ -63,7 +66,11 @@ class PartialOutputValidator:
                         file_path = files_list[fidx].get("file_path", "?")
                         if len(vpath) >= 4 and vpath[2] == "units":
                             uidx = vpath[3]
-                            unit_name = files_list[fidx].get("units", [])[uidx].get("unit_name", "?")
+                            unit_name = (
+                                files_list[fidx]
+                                .get("units", [])[uidx]
+                                .get("unit_name", "?")
+                            )
                     except (IndexError, AttributeError):
                         pass
                 return {
@@ -77,16 +84,22 @@ class PartialOutputValidator:
             for unit in file_obj.get("units", []):
                 _file_path = file_obj.get("file_path", "?")
                 _unit_name = unit.get("unit_name", "?")
-                for principle_name, principle_metrics in unit.get("metrics", {}).items():
+                for principle_name, principle_metrics in unit.get(
+                    "metrics", {}
+                ).items():
                     try:
-                        principle_folder = _resolve_folder_fn(principle_name, self._refs_root)
+                        principle_folder = _resolve_folder_fn(
+                            principle_name, self._refs_root
+                        )
                     except (ValueError, FileNotFoundError):
                         continue
                     schema_path = principle_folder / "review" / "output.schema.json"
                     if not schema_path.exists():
                         continue
                     try:
-                        principle_schema = json.loads(schema_path.read_text(encoding="utf-8"))
+                        principle_schema = json.loads(
+                            schema_path.read_text(encoding="utf-8")
+                        )
                         _jsonschema.validate(principle_metrics, principle_schema)
                     except _jsonschema.ValidationError as exc:
                         return {
@@ -96,7 +109,12 @@ class PartialOutputValidator:
                                 f"Use the <submission-metrics-example> format from load_detection_rules output."
                             )
                         }
-                    except Exception:
-                        continue
+                    except Exception as exc:
+                        self._logger.log(
+                            f"Principle schema validation failed: principle={principle_name}, "
+                            f"schema={schema_path}, file={_file_path}, unit={_unit_name}; "
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                        raise
 
         return None

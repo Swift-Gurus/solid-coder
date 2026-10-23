@@ -5,12 +5,13 @@ from pathlib import Path
 
 from helpers import SubmitFindingsTestBase, make_schema_srp_partial
 
-
 """
 solid-name: MetricAuditPersistenceTests
 solid-category: unit-test
 solid-description: Verifies persisted review output retains submitted metric audit information.
 """
+
+
 class MetricAuditPersistenceTests(SubmitFindingsTestBase):
     def test_persisted_measurement_retains_all_audit_fields(self):
         self.handler.submit_batch_findings(

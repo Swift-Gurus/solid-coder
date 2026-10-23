@@ -4,8 +4,6 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Optional
-
 from gate_protocols import FrontmatterFixing, GateHandling
 
 
@@ -15,10 +13,17 @@ class SafeFrontmatterFixer:
     def __init__(self, fixer: FrontmatterFixing) -> None:
         self._fixer = fixer
 
-    def apply(self, content: str, session_id: str, path: str, gate: GateHandling, file_name: str) -> Optional[str]:
+    def apply(
+        self,
+        content: str,
+        session_id: str,
+        path: str,
+        gate: GateHandling,
+        file_name: str,
+    ) -> str | None:
         try:
             return self._fixer.fix(content, session_id, path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — Shared gate boundary logs fixer failures and blocks the write instead of accepting unverified content.
             gate.log(f"BLOCK {file_name}: frontmatter subprocess error: {exc}")
             gate.block(
                 f"[frontmatter] Gate subprocess failed — the write is blocked.\n\nError: {exc}\n\n"

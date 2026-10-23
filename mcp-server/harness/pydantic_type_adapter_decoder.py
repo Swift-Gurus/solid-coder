@@ -2,10 +2,9 @@
 
 from typing import Generic, TypeVar
 
-from pydantic import TypeAdapter, ValidationError
-
 from harness.flow_validation_error import FlowValidationError
 from harness.structured_model_decoding import StructuredModelDecoding
+from pydantic import TypeAdapter, ValidationError
 
 ValueT = TypeVar("ValueT")
 
@@ -16,6 +15,8 @@ solid-category: boundary
 solid-spec: [SPEC-059]
 solid-description: Decodes structured workflow inputs against union or collection schemas with actionable validation errors.
 """
+
+
 class PydanticTypeAdapterDecoder(StructuredModelDecoding[ValueT], Generic[ValueT]):
     def __init__(self, adapter: TypeAdapter[ValueT]) -> None:
         self._adapter = adapter

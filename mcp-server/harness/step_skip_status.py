@@ -5,13 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-
 """
 solid-name: StepSkipStatus
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Captures the identity, context, and condition summary of a skipped step instance.
 """
+
+
 @dataclass(frozen=True)
 class StepSkipStatus:
     step_id: str

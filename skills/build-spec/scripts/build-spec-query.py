@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build and update spec files.
 
 Subcommands:
@@ -36,7 +35,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 VALID_STATUSES = ["draft", "ready", "in-progress", "done"]
 VALID_TYPES = ["bug", "feature", "epic", "subtask"]
@@ -47,7 +46,8 @@ STATUS_RANK = {"draft": 0, "ready": 1, "in-progress": 2, "done": 3}
 # Frontmatter parsing / writing
 # ---------------------------------------------------------------------------
 
-def extract_frontmatter_text(content: str) -> Optional[str]:
+
+def extract_frontmatter_text(content: str) -> str | None:
     if not content.startswith("---"):
         return None
     end = content.find("---", 3)
@@ -56,13 +56,13 @@ def extract_frontmatter_text(content: str) -> Optional[str]:
     return content[3:end].strip()
 
 
-def parse_frontmatter(content: str) -> Dict[str, Any]:
+def parse_frontmatter(content: str) -> dict[str, Any]:
     yaml_text = extract_frontmatter_text(content)
     if not yaml_text:
         return {}
-    result: Dict[str, Any] = {}
-    current_key: Optional[str] = None
-    current_list: Optional[List[str]] = None
+    result: dict[str, Any] = {}
+    current_key: str | None = None
+    current_list: list[str] | None = None
 
     for line in yaml_text.splitlines():
         stripped = line.strip()
@@ -80,7 +80,7 @@ def parse_frontmatter(content: str) -> Dict[str, Any]:
         if ":" in stripped:
             colon_idx = stripped.index(":")
             key = stripped[:colon_idx].strip()
-            value = stripped[colon_idx + 1:].strip()
+            value = stripped[colon_idx + 1 :].strip()
             if value:
                 result[key] = value
                 current_key = None
@@ -102,13 +102,17 @@ def write_status(file_path: Path, new_status: str) -> None:
     updated = re.sub(
         r"^(status:\s*).*$",
         lambda m: f"{m.group(1)}{new_status}",
-        content, count=1, flags=re.MULTILINE,
+        content,
+        count=1,
+        flags=re.MULTILINE,
     )
     if updated == content:
         updated = re.sub(
             r"^(number:\s*.+)$",
             lambda m: f"{m.group(1)}\nstatus: {new_status}",
-            content, count=1, flags=re.MULTILINE,
+            content,
+            count=1,
+            flags=re.MULTILINE,
         )
     file_path.write_text(updated, encoding="utf-8")
 
@@ -117,7 +121,8 @@ def write_status(file_path: Path, new_status: str) -> None:
 # Spec discovery (minimal — only what resolve-path and update-status need)
 # ---------------------------------------------------------------------------
 
-def find_specs_root(given: Optional[str]) -> Path:
+
+def find_specs_root(given: str | None) -> Path:
     if given:
         return Path(given).resolve()
     cwd = Path.cwd()
@@ -128,26 +133,28 @@ def find_specs_root(given: Optional[str]) -> Path:
     return cwd / ".claude" / "specs"
 
 
-def load_all_specs(specs_root: Path) -> List[Dict[str, Any]]:
+def load_all_specs(specs_root: Path) -> list[dict[str, Any]]:
     specs = []
     for md_file in sorted(specs_root.rglob("Spec.md")):
         content = md_file.read_text(encoding="utf-8")
         fm = parse_frontmatter(content)
         if not fm.get("number"):
             continue
-        specs.append({
-            "number": fm.get("number"),
-            "feature": fm.get("feature"),
-            "type": fm.get("type"),
-            "status": fm.get("status", "draft"),
-            "parent": fm.get("parent"),
-            "children": [],
-            "path": str(md_file),
-        })
+        specs.append(
+            {
+                "number": fm.get("number"),
+                "feature": fm.get("feature"),
+                "type": fm.get("type"),
+                "status": fm.get("status", "draft"),
+                "parent": fm.get("parent"),
+                "children": [],
+                "path": str(md_file),
+            }
+        )
     return specs
 
 
-def build_hierarchy(specs: List[Dict[str, Any]]) -> None:
+def build_hierarchy(specs: list[dict[str, Any]]) -> None:
     by_number = {s["number"]: s for s in specs}
     for s in specs:
         parent_num = s.get("parent")
@@ -155,7 +162,7 @@ def build_hierarchy(specs: List[Dict[str, Any]]) -> None:
             by_number[parent_num]["children"].append(s["number"])
 
 
-def find_spec(specs: List[Dict[str, Any]], number: str) -> Optional[Dict[str, Any]]:
+def find_spec(specs: list[dict[str, Any]], number: str) -> dict[str, Any] | None:
     for s in specs:
         if s["number"] == number:
             return s
@@ -165,6 +172,7 @@ def find_spec(specs: List[Dict[str, Any]], number: str) -> Optional[Dict[str, An
 # ---------------------------------------------------------------------------
 # Subcommands
 # ---------------------------------------------------------------------------
+
 
 def cmd_types() -> None:
     print(json.dumps(VALID_TYPES))
@@ -179,10 +187,17 @@ def cmd_resolve_path(
     spec_type: str,
     number: str,
     slug: str,
-    parent_number: Optional[str],
+    parent_number: str | None,
 ) -> None:
     if spec_type not in VALID_TYPES:
-        print(json.dumps({"error": "invalid_type", "message": f"'{spec_type}' must be one of: {', '.join(VALID_TYPES)}"}))
+        print(
+            json.dumps(
+                {
+                    "error": "invalid_type",
+                    "message": f"'{spec_type}' must be one of: {', '.join(VALID_TYPES)}",
+                }
+            )
+        )
         sys.exit(1)
 
     folder_name = f"{number}-{slug}"
@@ -191,12 +206,26 @@ def cmd_resolve_path(
         path = specs_root / folder_name / "Spec.md"
     else:
         if not parent_number:
-            print(json.dumps({"error": "missing_parent", "message": f"--parent is required for type '{spec_type}'"}))
+            print(
+                json.dumps(
+                    {
+                        "error": "missing_parent",
+                        "message": f"--parent is required for type '{spec_type}'",
+                    }
+                )
+            )
             sys.exit(1)
         specs = load_all_specs(specs_root)
         parent = find_spec(specs, parent_number)
         if not parent:
-            print(json.dumps({"error": "not_found", "message": f"parent {parent_number} not found"}))
+            print(
+                json.dumps(
+                    {
+                        "error": "not_found",
+                        "message": f"parent {parent_number} not found",
+                    }
+                )
+            )
             sys.exit(1)
         parent_folder = Path(parent["path"]).parent
         parent_type = parent.get("type", "")
@@ -220,7 +249,14 @@ def cmd_resolve_path(
 
 def cmd_update_status(specs_root: Path, number: str, new_status: str) -> None:
     if new_status not in set(VALID_STATUSES):
-        print(json.dumps({"error": "invalid_status", "message": f"'{new_status}' must be one of: {', '.join(VALID_STATUSES)}"}))
+        print(
+            json.dumps(
+                {
+                    "error": "invalid_status",
+                    "message": f"'{new_status}' must be one of: {', '.join(VALID_STATUSES)}",
+                }
+            )
+        )
         sys.exit(1)
 
     specs = load_all_specs(specs_root)
@@ -231,16 +267,28 @@ def cmd_update_status(specs_root: Path, number: str, new_status: str) -> None:
         sys.exit(1)
 
     draft_children = [
-        find_spec(specs, n) for n in spec.get("children", [])
+        find_spec(specs, n)
+        for n in spec.get("children", [])
         if (s := find_spec(specs, n)) and s["status"] == "draft"
     ]
     draft_children = [c for c in draft_children if c]
     if draft_children and STATUS_RANK.get(new_status, 0) > STATUS_RANK["draft"]:
-        print(json.dumps({
-            "error": "blocked_by_draft_children",
-            "message": f"Cannot set {number} to '{new_status}': {len(draft_children)} child spec(s) are still draft.",
-            "draft_children": [{"number": c["number"], "feature": c["feature"], "path": c["path"]} for c in draft_children],
-        }))
+        print(
+            json.dumps(
+                {
+                    "error": "blocked_by_draft_children",
+                    "message": f"Cannot set {number} to '{new_status}': {len(draft_children)} child spec(s) are still draft.",
+                    "draft_children": [
+                        {
+                            "number": c["number"],
+                            "feature": c["feature"],
+                            "path": c["path"],
+                        }
+                        for c in draft_children
+                    ],
+                }
+            )
+        )
         sys.exit(1)
 
     modified = []
@@ -276,15 +324,16 @@ def cmd_update_status(specs_root: Path, number: str, new_status: str) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     args = sys.argv[1:]
 
-    specs_root_override: Optional[str] = None
+    specs_root_override: str | None = None
     if "--specs-root" in args:
         idx = args.index("--specs-root")
         if idx + 1 < len(args):
             specs_root_override = args[idx + 1]
-            args = args[:idx] + args[idx + 2:]
+            args = args[:idx] + args[idx + 2 :]
 
     if not args:
         print(__doc__, file=sys.stderr)
@@ -299,19 +348,27 @@ def main() -> None:
         cmd_statuses()
     elif subcommand == "resolve-path":
         if len(args) < 4:
-            print("Usage: spec-query.py resolve-path <type> <SPEC-NNN> <slug> [--parent <SPEC-NNN>]", file=sys.stderr)
+            print(
+                "Usage: spec-query.py resolve-path <type> <SPEC-NNN> <slug> [--parent <SPEC-NNN>]",
+                file=sys.stderr,
+            )
             sys.exit(1)
-        parent_num: Optional[str] = None
+        parent_num: str | None = None
         remaining = args[1:]
         if "--parent" in remaining:
             i = remaining.index("--parent")
             if i + 1 < len(remaining):
                 parent_num = remaining[i + 1]
-                remaining = remaining[:i] + remaining[i + 2:]
-        cmd_resolve_path(specs_root, remaining[0], remaining[1], remaining[2], parent_num)
+                remaining = remaining[:i] + remaining[i + 2 :]
+        cmd_resolve_path(
+            specs_root, remaining[0], remaining[1], remaining[2], parent_num
+        )
     elif subcommand == "update-status":
         if len(args) < 3:
-            print("Usage: spec-query.py update-status <SPEC-NNN> <new-status>", file=sys.stderr)
+            print(
+                "Usage: spec-query.py update-status <SPEC-NNN> <new-status>",
+                file=sys.stderr,
+            )
             sys.exit(1)
         cmd_update_status(specs_root, args[1], args[2])
     else:

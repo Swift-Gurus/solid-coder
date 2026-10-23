@@ -4,7 +4,6 @@ from flow_continuation_instruction_building import (
     FlowContinuationInstructionBuilding,
 )
 
-
 _FLOW_NEXT_TOOL = "tools.mcp__solid_coder_flow_engine__flow_next"
 
 NESTED_SUBMISSION_SCAFFOLD = (
@@ -19,14 +18,14 @@ NESTED_SUBMISSION_SCAFFOLD = (
     "};\n\n"
     "// Add one assign call for every required schema leaf, using the "
     "exact path rendered by the current instruction.\n"
-    "// assign([\"exact\", \"schema\", \"path\"], value);\n\n"
+    '// assign(["exact", "schema", "path"], value);\n\n'
 )
 
 FLAT_SUBMISSION_SCAFFOLD = (
     "const outputs = {submissions: []};\n"
     "const assign = (id, result) => outputs.submissions.push({id, result});\n\n"
     "// Add one assign call per pending assignment with its complete named outputs.\n"
-    "// assign(\"<assignment ID>\", {\"<named output>\": value});\n\n"
+    '// assign("<assignment ID>", {"<named output>": value});\n\n'
 )
 
 
@@ -36,6 +35,8 @@ solid-category: service
 solid-spec: [SPEC-047, SPEC-052]
 solid-description: Produces deferred flow-continuation guidance for model sessions.
 """
+
+
 class CodexFlowContinuationInstructionBuilder(
     FlowContinuationInstructionBuilding,
 ):

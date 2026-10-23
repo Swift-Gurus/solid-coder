@@ -8,13 +8,14 @@ from harness.logical_operation_name_validating import (
 )
 from harness.operation_registration import OperationRegistration
 
-
 """
 solid-name: OperationRegistry
 solid-category: service
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Resolves unique typed operation registrations by validated logical name.
 """
+
+
 class OperationRegistry:
     def __init__(
         self,

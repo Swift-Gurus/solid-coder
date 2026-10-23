@@ -11,9 +11,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.collection_reference_validator_factory import (
     CollectionReferenceValidatorFactory,
 )
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.for_each_declaration import ForEachDeclaration
 from harness.for_each_reference_parser import ForEachReferenceParser
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.models import FlowValidationError, OutputSpec, StepDef
 from harness.step_output_reference import StepOutputReference
 from harness.step_output_reference_parser import StepOutputReferenceParser
@@ -52,11 +52,13 @@ class TestForEachReferenceValidator(unittest.TestCase):
                 prompt="Measure {{item}}",
                 depends_on=["load"],
                 for_each=self._declaration("load", "files"),
-                outputs=[OutputSpec(
-                    name="length",
-                    type="data",
-                    schema={"type": "integer"},
-                )],
+                outputs=[
+                    OutputSpec(
+                        name="length",
+                        type="data",
+                        schema={"type": "integer"},
+                    )
+                ],
             ),
             StepDef(
                 id="review",
@@ -90,11 +92,13 @@ class TestForEachReferenceValidator(unittest.TestCase):
         source = StepDef(
             id="load",
             prompt="Load",
-            outputs=[OutputSpec(
-                name="files",
-                type="data",
-                schema={"type": "string"},
-            )],
+            outputs=[
+                OutputSpec(
+                    name="files",
+                    type="data",
+                    schema={"type": "string"},
+                )
+            ],
         )
         review = StepDef(
             id="review",
@@ -148,11 +152,13 @@ class TestForEachReferenceValidator(unittest.TestCase):
         return StepDef(
             id="load",
             prompt="Load",
-            outputs=[OutputSpec(
-                name="files",
-                type="data",
-                schema={"type": "array", "items": {"type": "string"}},
-            )],
+            outputs=[
+                OutputSpec(
+                    name="files",
+                    type="data",
+                    schema={"type": "array", "items": {"type": "string"}},
+                )
+            ],
         )
 
 

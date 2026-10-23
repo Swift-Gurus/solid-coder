@@ -10,12 +10,14 @@ from hook_decision import HookDecision
 from hook_decision_aggregating import DecisionAggregating
 from hook_decision_aggregator import HookDecisionAggregator
 
+_DEFAULT_AGGREGATOR: DecisionAggregating = HookDecisionAggregator()
+
 
 class ParallelHookDispatcher:
     def __init__(
         self,
         executor: HandlerExecuting,
-        aggregator: DecisionAggregating = HookDecisionAggregator(),
+        aggregator: DecisionAggregating = _DEFAULT_AGGREGATOR,
     ) -> None:
         self._executor = executor
         self._aggregator = aggregator

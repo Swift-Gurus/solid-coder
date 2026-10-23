@@ -18,13 +18,14 @@ from harness.workflow_output_collection_validator import (
     WorkflowOutputCollectionValidator,
 )
 
-
 """
 solid-name: CollectionReferenceValidatorFactory
 solid-category: factory
 solid-spec: [SPEC-030, SPEC-053, SPEC-056]
 solid-description: Composes shared item-schema validation for step-output iteration and workflow-output metric sources.
 """
+
+
 class CollectionReferenceValidatorFactory:
     def make(
         self,

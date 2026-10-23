@@ -8,24 +8,27 @@ from pathlib import Path
 
 from helpers import SubmitFindingsTestBase, make_schema_srp_partial
 
-
 """
 solid-name: TestBatchSubmissionContextIsolation
 solid-category: unit-test
 solid-description: Verifies batch submissions cannot be redirected by another active health check.
 """
+
+
 class TestBatchSubmissionContextIsolation(SubmitFindingsTestBase):
     def test_requested_output_dir_supplies_its_own_hook_context(self):
         output_dir = Path(self.tmp.name) / "health-request"
         output_dir.mkdir()
         expected_path = "/src/Expected.swift"
         (output_dir / "hook-input.json").write_text(
-            json.dumps({
-                "file_path": expected_path,
-                "language": "Swift",
-                "output_dir": str(output_dir),
-                "expected_units": ["Foo"],
-            }),
+            json.dumps(
+                {
+                    "file_path": expected_path,
+                    "language": "Swift",
+                    "output_dir": str(output_dir),
+                    "expected_units": ["Foo"],
+                }
+            ),
             encoding="utf-8",
         )
 

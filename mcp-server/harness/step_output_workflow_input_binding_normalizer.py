@@ -15,16 +15,15 @@ from harness.workflow_input_binding_nested_normalizing import (
     WorkflowInputBindingNestedNormalizing,
 )
 
-
 """
 solid-name: StepOutputWorkflowInputBindingNormalizer
 solid-category: service
 solid-spec: [SPEC-035, SPEC-037]
 solid-description: Normalizes one typed step-output input binding within its nested include scope.
 """
-class StepOutputWorkflowInputBindingNormalizer(
-    WorkflowInputBindingNestedNormalizing
-):
+
+
+class StepOutputWorkflowInputBindingNormalizer(WorkflowInputBindingNestedNormalizing):
     def __init__(
         self,
         reference_parser: StepOutputReferenceParsing,
@@ -40,9 +39,7 @@ class StepOutputWorkflowInputBindingNormalizer(
         all_groups: list[IncludeAliasGroup],
     ) -> WorkflowInputBinding:
         try:
-            reference = self._reference_parser.parse(
-                binding.expression.value
-            )
+            reference = self._reference_parser.parse(binding.expression.value)
         except StepOutputReferenceSyntaxError:
             return binding
         owner_group = next(
@@ -55,8 +52,7 @@ class StepOutputWorkflowInputBindingNormalizer(
         )
         if (
             owner_group is not None
-            and f"{owner_group.alias}.{reference.step_id}"
-            in owner_group.member_ids
+            and f"{owner_group.alias}.{reference.step_id}" in owner_group.member_ids
         ):
             return binding
         source_id = self._source_identity.resolve(

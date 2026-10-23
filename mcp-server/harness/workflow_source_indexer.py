@@ -5,13 +5,14 @@ from __future__ import annotations
 from harness.models import FlowValidationError
 from harness.workflow_source import WorkflowSource
 
-
 """
 solid-name: WorkflowSourceIndexer
 solid-category: service
 solid-spec: [SPEC-035]
 solid-description: Orders workflow sources by public ID and reports every duplicate source path.
 """
+
+
 class WorkflowSourceIndexer:
     def index(self, sources: list[WorkflowSource]) -> list[WorkflowSource]:
         sources_by_path = sorted(sources, key=lambda source: str(source.entry_path))

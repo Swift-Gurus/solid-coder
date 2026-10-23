@@ -9,6 +9,10 @@ from health.config.frontmatter_config import FrontmatterConfig
 from health.config.hc_config_core import read_section
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 
+_DEFAULT_DECODER: StructuredModelDecoding[FrontmatterConfig] = PydanticModelDecoder(
+    FrontmatterConfig
+)
+
 
 """
 solid-name: FrontmatterConfigParser
@@ -16,11 +20,13 @@ solid-category: boundary-adapter
 solid-spec: [SPEC-069]
 solid-description: Loads and validates effective project additions to the registered metadata category vocabulary.
 """
+
+
 class FrontmatterConfigParser(SourceSyntaxParsing[Path, FrontmatterConfig]):
     def __init__(
         self,
         section_reader: ConfigSectionReading = read_section,
-        decoder: StructuredModelDecoding[FrontmatterConfig] = PydanticModelDecoder(FrontmatterConfig),
+        decoder: StructuredModelDecoding[FrontmatterConfig] = _DEFAULT_DECODER,
     ) -> None:
         self._section_reader = section_reader
         self._decoder = decoder

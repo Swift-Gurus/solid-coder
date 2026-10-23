@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 """Tests for validate-output.py"""
+
 import json
 import subprocess
 import sys
@@ -17,7 +17,9 @@ def run_validator(data, schema_path=SCHEMA):
         f.flush()
         result = subprocess.run(
             [sys.executable, SCRIPT, f.name, schema_path],
-            capture_output=True, text=True
+            capture_output=True,
+            text=True,
+            check=False,
         )
     return result
 
@@ -25,25 +27,34 @@ def run_validator(data, schema_path=SCHEMA):
 def make_valid_input():
     return {
         "source_type": "changes",
-        "metadata": {"branch": "main", "base_branch": None, "timestamp": "2026-01-01T00:00:00Z"},
+        "metadata": {
+            "branch": "main",
+            "base_branch": None,
+            "timestamp": "2026-01-01T00:00:00Z",
+        },
         "files": [
             {
                 "file_path": "Foo.swift",
                 "changed_ranges": [{"start": 1, "end": 10}],
                 "units": [
-                    {"name": "Foo", "kind": "class", "line_start": 1, "line_end": 10, "has_changes": True}
-                ]
+                    {
+                        "name": "Foo",
+                        "kind": "class",
+                        "line_start": 1,
+                        "line_end": 10,
+                        "has_changes": True,
+                    }
+                ],
             }
         ],
         "buffer": None,
         "detected_imports": [],
         "matched_tags": [],
-        "summary": {"total_files": 1, "total_units": 1, "changed_units": 1}
+        "summary": {"total_files": 1, "total_units": 1, "changed_units": 1},
     }
 
 
 class TestValidateOutput(unittest.TestCase):
-
     def test_valid_input_passes(self):
         result = run_validator(make_valid_input())
         self.assertEqual(result.returncode, 0)
@@ -75,7 +86,9 @@ class TestValidateOutput(unittest.TestCase):
             f.flush()
             result = subprocess.run(
                 [sys.executable, SCRIPT, f.name, SCHEMA],
-                capture_output=True, text=True
+                capture_output=True,
+                text=True,
+                check=False,
             )
         self.assertEqual(result.returncode, 1)
         self.assertIn("not valid JSON", result.stderr)
@@ -83,7 +96,9 @@ class TestValidateOutput(unittest.TestCase):
     def test_missing_file_fails(self):
         result = subprocess.run(
             [sys.executable, SCRIPT, "/nonexistent.json", SCHEMA],
-            capture_output=True, text=True
+            capture_output=True,
+            text=True,
+            check=False,
         )
         self.assertEqual(result.returncode, 1)
 

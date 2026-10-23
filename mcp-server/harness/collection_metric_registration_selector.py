@@ -2,9 +2,13 @@
 
 from typing import Generic, TypeVar
 
-from harness.collection_metric_reducer_registration import CollectionMetricReducerRegistration
+from harness.collection_metric_reducer_registration import (
+    CollectionMetricReducerRegistration,
+)
 from harness.collection_metric_reducer_type import CollectionMetricReducerType
-from harness.collection_metric_registration_selecting import CollectionMetricRegistrationSelecting
+from harness.collection_metric_registration_selecting import (
+    CollectionMetricRegistrationSelecting,
+)
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 
 CapabilityT = TypeVar("CapabilityT")
@@ -16,6 +20,8 @@ solid-category: service
 solid-spec: [SPEC-059]
 solid-description: Provides registered reducer capabilities with explicit diagnostics for missing registrations.
 """
+
+
 class CollectionMetricRegistrationSelector(
     CollectionMetricRegistrationSelecting[CapabilityT], Generic[CapabilityT]
 ):
@@ -29,7 +35,11 @@ class CollectionMetricRegistrationSelector(
 
     def select(self, reducer_type: CollectionMetricReducerType) -> CapabilityT:
         registration = next(
-            (entry for entry in self._registrations if entry.reducer_type == reducer_type),
+            (
+                entry
+                for entry in self._registrations
+                if entry.reducer_type == reducer_type
+            ),
             None,
         )
         if registration is None:

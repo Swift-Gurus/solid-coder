@@ -10,7 +10,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 from _gate_fixtures import FM, HC, LONG_SWIFT, call_main, event
 from test_utils import write_toml
@@ -30,8 +34,11 @@ class TestTomlRootKeyIntegration(unittest.TestCase):
             tmp_path = Path(tmp)
             write_toml(tmp_path, toml_content)
             full_env = {"CLAUDE_PROJECT_DIR": str(tmp_path), **env}
-            with patch.dict(os.environ, full_env, clear=True), \
-                 patch(HC, return_value=[]) as hc, patch(FM) as fm:
+            with (
+                patch.dict(os.environ, full_env, clear=True),
+                patch(HC, return_value=[]) as hc,
+                patch(FM) as fm,
+            ):
                 code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         return code, out, hc, fm
 
@@ -63,7 +70,7 @@ class TestTomlRootKeyIntegration(unittest.TestCase):
         [hooks.pre_write_gate] nests it under that table (extra=forbid) instead of
         the root — must not silently proceed as if the flag were enabled."""
         _, out, hc, _ = self._run_with_real_toml(
-            '[hooks.pre_write_gate]\nexclude = []\ncode_review_on_write_enabled = true\n\n'
+            "[hooks.pre_write_gate]\nexclude = []\ncode_review_on_write_enabled = true\n\n"
             '[llm]\nbackend = "claude"\n',
             {"ANTHROPIC_API_KEY": "sk-test"},
         )

@@ -5,15 +5,16 @@ solid-category: abstraction
 
 from typing import Protocol
 
-from logging_protocol import Logging
 from hook_responding import HookResponding
-
+from logging_protocol import Logging
 
 """
 solid-name: GateHandling
 solid-category: abstraction
 solid-description: Contract for logging, retaining review warnings, and allowing or blocking hook operations.
 """
+
+
 class GateHandling(Logging, HookResponding, Protocol):
     """Narrow gate protocol for components that need to log, allow, or block.
 

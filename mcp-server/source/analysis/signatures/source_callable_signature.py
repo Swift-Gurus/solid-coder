@@ -3,9 +3,9 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from source.analysis.signatures.source_parameter_signature import SourceParameterSignature
-
+from source.analysis.signatures.source_parameter_signature import (
+    SourceParameterSignature,
+)
 
 """
 solid-name: SourceCallableSignature
@@ -13,6 +13,8 @@ solid-category: model
 solid-spec: [SPEC-057]
 solid-description: Preserves ordered callable parameters, result syntax, modifiers, and generic constraints for structural analysis without asserting semantic equivalence.
 """
+
+
 class SourceCallableSignature(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

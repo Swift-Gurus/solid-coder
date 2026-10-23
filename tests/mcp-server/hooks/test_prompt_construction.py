@@ -5,25 +5,28 @@ solid-category: unit-test
 
 from __future__ import annotations
 
-import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
 
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 from hc_checker import HealthPromptBuilder, PrinciplesLoader
+from hc_tag_detector import TagDetector
 from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader
 from health.gateway.gateway_command_runner import GatewayCommandRunner
 from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader
 from health.gateway.gateway_rule_loader import GatewayRuleLoader
-from hc_tag_detector import TagDetector
 from hook_utils import GATEWAY
 
 _ALWAYS_ON_NAMES = frozenset({"srp", "ocp", "isp", "lsp", "dry", "code-smells"})
-_CONDITIONAL_NAMES = frozenset({"swiftui", "structured-concurrency", "testing", "uitesting"})
+_CONDITIONAL_NAMES = frozenset(
+    {"swiftui", "structured-concurrency", "testing", "uitesting"}
+)
 
 
 def _make_loader() -> PrinciplesLoader:
@@ -62,10 +65,12 @@ class UserManager {
     func save(_ user: User) { db.save(user) }
 }
 """
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
-        self.assertTrue(_ALWAYS_ON_NAMES.issubset(names),
-                        f"Missing always-on principles: {_ALWAYS_ON_NAMES - names}")
+        self.assertTrue(
+            _ALWAYS_ON_NAMES.issubset(names),
+            f"Missing always-on principles: {_ALWAYS_ON_NAMES - names}",
+        )
 
     def test_plain_class_prompt_contains_srp_detection(self):
         code = "class Foo { func save() {} }"
@@ -79,11 +84,14 @@ class UserManager {
 
     def test_plain_class_excludes_conditional_principles(self):
         code = "class DataManager { func process() {} }"
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
         for conditional in _CONDITIONAL_NAMES:
-            self.assertNotIn(conditional, names,
-                             f"Conditional principle '{conditional}' should not activate for plain code")
+            self.assertNotIn(
+                conditional,
+                names,
+                f"Conditional principle '{conditional}' should not activate for plain code",
+            )
 
 
 class TestSwiftUIPromptConstruction(unittest.TestCase):
@@ -97,13 +105,15 @@ struct ContentView: View {
     }
 }
 """
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
-        self.assertIn("swiftui", names, "SwiftUI principle must activate for SwiftUI code")
+        self.assertIn(
+            "swiftui", names, "SwiftUI principle must activate for SwiftUI code"
+        )
         self.assertTrue(_ALWAYS_ON_NAMES.issubset(names))
 
     def test_swiftui_prompt_contains_swiftui_detection_content(self):
-        code = "import SwiftUI\nstruct Foo: View { var body: some View { Text(\"x\") } }"
+        code = 'import SwiftUI\nstruct Foo: View { var body: some View { Text("x") } }'
         principles, prompt = _prompt_for(code)
         swiftui_p = next((p for p in principles if p["name"] == "swiftui"), None)
         self.assertIsNotNone(swiftui_p, "SwiftUI principle not loaded")
@@ -111,15 +121,17 @@ struct ContentView: View {
             self.assertIn(swiftui_p["content"], prompt)
 
     def test_swiftui_prompt_excludes_testing_and_concurrency_rules(self):
-        code = "import SwiftUI\nstruct Foo: View { var body: some View { EmptyView() } }"
-        principles, prompt = _prompt_for(code)
+        code = (
+            "import SwiftUI\nstruct Foo: View { var body: some View { EmptyView() } }"
+        )
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
         self.assertNotIn("testing", names)
         self.assertNotIn("structured-concurrency", names)
         self.assertNotIn("uitesting", names)
 
     def test_state_wrapper_activates_swiftui_in_prompt(self):
-        code = "struct Counter: View {\n    @State private var n = 0\n    var body: some View { Text(\"\\(n)\") }\n}"
+        code = 'struct Counter: View {\n    @State private var n = 0\n    var body: some View { Text("\\(n)") }\n}'
         principles, _ = _prompt_for(code)
         self.assertIn("swiftui", _principle_names(principles))
 
@@ -134,7 +146,7 @@ class NetworkClient {
     }
 }
 """
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
         self.assertIn("structured-concurrency", names)
         self.assertTrue(_ALWAYS_ON_NAMES.issubset(names))
@@ -159,7 +171,7 @@ final class UserManagerTests: XCTestCase {
     }
 }
 """
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
         self.assertIn("testing", names)
         self.assertTrue(_ALWAYS_ON_NAMES.issubset(names))
@@ -182,7 +194,7 @@ final class AppUITests: XCTestCase {
     func testLaunch() { app.launch(); XCTAssert(app.exists) }
 }
 """
-        principles, prompt = _prompt_for(code)
+        principles, _prompt = _prompt_for(code)
         names = _principle_names(principles)
         self.assertIn("uitesting", names)
         self.assertTrue(_ALWAYS_ON_NAMES.issubset(names))
@@ -202,12 +214,17 @@ class TestPromptDoesNotIncludeInactiveRules(unittest.TestCase):
         plain_code = "class DataService { func fetch() {} }"
         _, plain_prompt = _prompt_for(plain_code)
 
-        swiftui_code = "import SwiftUI\nstruct Foo: View { var body: some View { EmptyView() } }"
+        swiftui_code = (
+            "import SwiftUI\nstruct Foo: View { var body: some View { EmptyView() } }"
+        )
         _, swiftui_prompt = _prompt_for(swiftui_code)
 
         # SwiftUI prompt should contain more rules than plain prompt
-        self.assertGreater(len(swiftui_prompt), len(plain_prompt),
-                           "SwiftUI prompt should be longer due to SwiftUI detection rules")
+        self.assertGreater(
+            len(swiftui_prompt),
+            len(plain_prompt),
+            "SwiftUI prompt should be longer due to SwiftUI detection rules",
+        )
 
 
 if __name__ == "__main__":

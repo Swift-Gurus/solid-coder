@@ -1,7 +1,7 @@
 """Executes one engine-owned logical operation step."""
 
-from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.flow_validation_error import FlowValidationError
+from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.models import StepDef
 from harness.operation_input_supplying import OperationInputSupplying
 from harness.operation_invoking import OperationInvoking
@@ -9,13 +9,14 @@ from harness.operation_registration_resolving import OperationRegistrationResolv
 from harness.operation_step_running import OperationStepRunning
 from harness.step_run_outcome import StepRunOutcome
 
-
 """
 solid-name: OperationStepExecutor
 solid-category: service
 solid-spec: [SPEC-010, SPEC-040, SPEC-056]
 solid-description: Executes an engine-owned logical operation and exposes either validated outputs or retryable rejection evidence.
 """
+
+
 class OperationStepExecutor(OperationStepRunning):
     def __init__(
         self,

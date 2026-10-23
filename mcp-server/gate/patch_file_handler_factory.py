@@ -8,13 +8,14 @@ from patch_file_gate_handler import PatchFileGateHandler
 from patch_file_simulation import PatchFileSimulation
 from patch_review_context import PatchReviewContext
 
-
 """
 solid-name: PatchFileHandlerFactory
 solid-category: factory
 solid-description: Constructs one isolated write-gate handler for each simulated patch file.
 solid-tags: [hook]
 """
+
+
 class PatchFileHandlerFactory:
     def __init__(
         self,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Service that validates solid-coder configuration and gates tool operations.
 solid-category: service

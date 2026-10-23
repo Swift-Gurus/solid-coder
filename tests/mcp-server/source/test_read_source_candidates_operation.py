@@ -15,14 +15,13 @@ from source.read_source_candidates_input import ReadSourceCandidatesInput
 from source.read_source_candidates_operation_factory import (
     ReadSourceCandidatesOperationFactory,
 )
-from source.source_search_candidate import SourceSearchCandidate
 from source.source_candidate_origin import SourceCandidateOrigin
+from source.source_search_candidate import SourceSearchCandidate
 from source.source_search_input import SourceSearchInput
 from source.source_search_match import SourceSearchMatch
 from source.source_search_match_kind import SourceSearchMatchKind
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_query import SourceSearchQuery
-
 
 """
 solid-name: TestReadSourceCandidatesOperation
@@ -30,6 +29,8 @@ solid-category: unit-test
 solid-spec: [SPEC-040]
 solid-description: Validates bounded candidate loading, root confinement, and changed-source audit outcomes.
 """
+
+
 class TestReadSourceCandidatesOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -42,22 +43,27 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             encoding="utf-8",
         )
         project_directory = ProjectDirectory(path=self.project_root)
-        self.candidate = SourceSearchOperationFactory().make(
-            project_directory,
-        ).execute(
-            SourceSearchInput(
-                queries=[SourceSearchQuery(id="tax", terms=["TaxRule"])],
+        self.candidate = (
+            SourceSearchOperationFactory()
+            .make(
+                project_directory,
             )
-        ).candidates[0]
-        self.operation = ReadSourceCandidatesOperationFactory(
-            project_directory
-        ).make()
+            .execute(
+                SourceSearchInput(
+                    queries=[SourceSearchQuery(id="tax", terms=["TaxRule"])],
+                )
+            )
+            .candidates[0]
+        )
+        self.operation = ReadSourceCandidatesOperationFactory(project_directory).make()
 
     def test_loads_bounded_content_with_the_search_candidate_provenance(self) -> None:
-        result = self.operation.execute(ReadSourceCandidatesInput(
-            candidates=[self.candidate],
-            max_bytes_per_candidate=12,
-        ))
+        result = self.operation.execute(
+            ReadSourceCandidatesInput(
+                candidates=[self.candidate],
+                max_bytes_per_candidate=12,
+            )
+        )
 
         loaded = result.results[0]
         self.assertEqual(loaded.kind, CandidateSourceReadKind.LOADED)
@@ -68,9 +74,11 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
     def test_reports_a_changed_candidate_instead_of_reading_new_bytes(self) -> None:
         self.candidate_path.write_text("struct Changed {}\n", encoding="utf-8")
 
-        result = self.operation.execute(ReadSourceCandidatesInput(
-            candidates=[self.candidate],
-        ))
+        result = self.operation.execute(
+            ReadSourceCandidatesInput(
+                candidates=[self.candidate],
+            )
+        )
 
         self.assertEqual(result.results[0].kind, CandidateSourceReadKind.CHANGED)
 
@@ -83,16 +91,20 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             source_identity="../Outside.swift",
             content_sha256="0" * 64,
             origin=SourceCandidateOrigin.REPOSITORY,
-            matches=[SourceSearchMatch(
-                query_id="outside",
-                term="Outside",
-                kind=SourceSearchMatchKind.FILENAME,
-            )],
+            matches=[
+                SourceSearchMatch(
+                    query_id="outside",
+                    term="Outside",
+                    kind=SourceSearchMatchKind.FILENAME,
+                )
+            ],
         )
 
-        result = self.operation.execute(ReadSourceCandidatesInput(
-            candidates=[escaped],
-        ))
+        result = self.operation.execute(
+            ReadSourceCandidatesInput(
+                candidates=[escaped],
+            )
+        )
 
         self.assertEqual(result.results[0].kind, CandidateSourceReadKind.ESCAPED_ROOT)
 

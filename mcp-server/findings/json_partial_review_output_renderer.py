@@ -1,18 +1,20 @@
 """Renders immutable scored review outputs as JSON text."""
 
+from json_serializer import JsonSerializing
+
 from findings.partial_review_output import PartialReviewOutput
 from findings.partial_review_output_payload_building import (
     PartialReviewOutputPayloadBuilding,
 )
 from findings.partial_review_output_rendering import PartialReviewOutputRendering
-from json_serializer import JsonSerializing
-
 
 """
 solid-name: JsonPartialReviewOutputRenderer
 solid-category: boundary-adapter
 solid-description: Produces persisted review-output text from typed scored review data.
 """
+
+
 class JsonPartialReviewOutputRenderer(PartialReviewOutputRendering):
     def __init__(
         self,

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from harness.active_run_locating import ActiveRunLocating
-from harness.execution_and_readiness_coordinating import ExecutionAndReadinessCoordinating
+from harness.execution_and_readiness_coordinating import (
+    ExecutionAndReadinessCoordinating,
+)
 from harness.flow_loading import FlowLoading
 from harness.flow_next_result import FlowNextResult
 from harness.flow_stepping import FlowStepping
@@ -11,8 +13,9 @@ from harness.interpolation_guarding import InterpolationGuarding
 from harness.output_submission_advancing import OutputSubmissionAdvancing
 from harness.run_metadata_persisting import RunMetadataPersisting
 from harness.run_snapshot_resolving import RunSnapshotResolving
-from harness.run_submission_assignment_annotator import RunSubmissionAssignmentAnnotating
-
+from harness.run_submission_assignment_annotator import (
+    RunSubmissionAssignmentAnnotating,
+)
 
 """
 solid-name: FlowStepper
@@ -20,6 +23,8 @@ solid-category: service
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Advances submitted outputs through the next executable workflow snapshot and returns its next ready result.
 """
+
+
 class FlowStepper(FlowStepping):
     def __init__(
         self,
@@ -41,13 +46,17 @@ class FlowStepper(FlowStepping):
         self._interpolation_guard = interpolation_guard
         self._submission_assignments = submission_assignments
 
-    def flow_next(self, outputs: dict | None = None, run_id: str | None = None) -> FlowNextResult:
+    def flow_next(
+        self, outputs: dict | None = None, run_id: str | None = None
+    ) -> FlowNextResult:
         location = self._run_locator.locate(run_id)
         metadata = self._metadata_store.read(location.run_dir)
         flow_def = self._flow_loader.load(location.workflow_path, [])
 
         snapshot, error = self._interpolation_guard.guard(
-            lambda: self._run_snapshot_resolver.resolve(location.events_path, flow_def, metadata.params)
+            lambda: self._run_snapshot_resolver.resolve(
+                location.events_path, flow_def, metadata.params
+            )
         )
         if error is not None:
             return FlowNextResult(status="ready", error=error)
@@ -64,7 +73,11 @@ class FlowStepper(FlowStepping):
             return outcome.terminal
 
         execution = self._execution_and_readiness_coordinator.coordinate(
-            location.base_dir, location.run_id, location.events_path, flow_def, metadata.params
+            location.base_dir,
+            location.run_id,
+            location.events_path,
+            flow_def,
+            metadata.params,
         )
         if execution.error is not None:
             return FlowNextResult(status="ready", error=execution.error)
@@ -72,5 +85,7 @@ class FlowStepper(FlowStepping):
             return execution.terminal
         return FlowNextResult(
             status="ready",
-            steps=self._submission_assignments.annotate(location.run_dir, execution.steps),
+            steps=self._submission_assignments.annotate(
+                location.run_dir, execution.steps
+            ),
         )

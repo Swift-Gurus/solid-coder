@@ -9,13 +9,14 @@ from harness.session_delegate_running import SessionDelegateRunning
 from harness.step_instance_execution import StepInstanceExecution
 from harness.step_run_outcome import StepRunOutcome
 
-
 """
 solid-name: SafeSessionDelegateInstanceRunner
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Executes one session-delegate instance and returns a correlated retryable outcome.
 """
+
+
 class SafeSessionDelegateInstanceRunner(SessionDelegateInstanceRunning):
     def __init__(
         self,
@@ -27,10 +28,8 @@ class SafeSessionDelegateInstanceRunner(SessionDelegateInstanceRunning):
 
     def run(self, instance: StepInstance) -> StepInstanceExecution:
         try:
-            outcome = self._runner.run(
-                self._instruction_builder.build(instance.prompt)
-            )
-        except Exception as error:
+            outcome = self._runner.run(self._instruction_builder.build(instance.prompt))
+        except Exception as error:  # noqa: BLE001 — Child-session failures become correlated retryable rejection outcomes for the orchestrator.
             outcome = StepRunOutcome(
                 awaiting_input=False,
                 rejection_reason=f"Delegated session failed: {error}",

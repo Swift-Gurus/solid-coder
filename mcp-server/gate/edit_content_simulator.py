@@ -7,13 +7,14 @@ solid-tags: [hook]
 from simulated_write import SimulatedWrite
 from write_content_simulator import EditClassifying, FileReading
 
-
 """
 solid-name: EditContentSimulator
 solid-description: Simulates prospective file content and review risk for a targeted edit request.
 solid-category: service
 solid-tags: [hook]
 """
+
+
 class EditContentSimulator:
     """Simulates the resulting file content and low-risk status for an Edit tool event."""
 
@@ -30,8 +31,11 @@ class EditContentSimulator:
         existing = ""
         try:
             existing = self._reader.read_text(file_path)
-            content = existing.replace(old_string, new_string) if replace_all \
-                      else existing.replace(old_string, new_string, 1)
+            content = (
+                existing.replace(old_string, new_string)
+                if replace_all
+                else existing.replace(old_string, new_string, 1)
+            )
         except OSError:
             content = new_string
         return SimulatedWrite(

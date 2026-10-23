@@ -9,15 +9,15 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.step_dependency_graph_creating import StepDependencyGraphCreating
 from harness.step_identity_resolving import StepIdentityResolving
 
-
 """
 solid-name: StepDependencyGraphFactory
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Creates a typed dependency graph from workflow steps and include groups.
 """
-class StepDependencyGraphFactory(StepDependencyGraphCreating):
 
+
+class StepDependencyGraphFactory(StepDependencyGraphCreating):
     def __init__(
         self,
         identity_resolver: StepIdentityResolving,

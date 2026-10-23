@@ -10,13 +10,14 @@ from harness.process_execution import ProcessExecution
 from harness.script_file_execution import ScriptFileExecution
 from harness.step_def import StepDef
 
-
 """
 solid-name: ProcessExecutionFactory
 solid-category: factory
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Translates validated workflow steps into executable process requests.
 """
+
+
 class ProcessExecutionFactory:
     _DEFAULT_EXECUTOR = "bash"
 

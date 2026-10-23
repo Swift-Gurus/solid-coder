@@ -6,7 +6,6 @@ from pathlib import Path
 
 from project_root_test_context import ProjectRootTestContext
 
-
 _CONTEXT = ProjectRootTestContext(Path(__file__).resolve().parents[3] / "references")
 
 
@@ -15,6 +14,8 @@ solid-name: ProjectRootAutoDetectionTests
 solid-category: unit-test
 solid-description: Verifies scoring discovers the project root from its configuration directory.
 """
+
+
 class ProjectRootAutoDetectionTests(unittest.TestCase):
     def test_project_root_auto_detected_via_solid_coder_directory(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 
 class ConfigFeatureToggle:

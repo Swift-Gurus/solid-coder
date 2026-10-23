@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from harness.prompt_content_resolving import PromptContentResolving
 from harness.prompt_file_loading import PromptFileLoading
 from harness.prompt_file_path_resolving import PromptFilePathResolving
-from harness.prompt_content_resolving import PromptContentResolving
 from harness.resolved_prompt_applying import ResolvedPromptApplying
 from harness.step_declaration import StepDeclaration
-
 
 """
 solid-name: PromptContentResolver
@@ -15,8 +14,9 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Coordinates prompt path resolution and loading before applying text to one workflow step.
 """
-class PromptContentResolver(PromptContentResolving):
 
+
+class PromptContentResolver(PromptContentResolving):
     def __init__(
         self,
         path_resolver: PromptFilePathResolving,

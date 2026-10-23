@@ -7,13 +7,14 @@ from harness.included_workflow_dependencies_resolving import (
 from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
 from harness.models import StepDef
 
-
 """
 solid-name: IncludedWorkflowDependenciesResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves child-step dependencies within one included workflow runtime instance.
 """
+
+
 class IncludedWorkflowDependenciesResolver(IncludedWorkflowDependenciesResolving):
     def resolve(
         self,
@@ -29,7 +30,6 @@ class IncludedWorkflowDependenciesResolver(IncludedWorkflowDependenciesResolving
             for dependency in template.depends_on
         ]
         has_internal_dependency = any(
-            dependency in member_ids
-            for dependency in template.depends_on
+            dependency in member_ids for dependency in template.depends_on
         )
         return resolved if has_internal_dependency else [*group.depends_on, *resolved]

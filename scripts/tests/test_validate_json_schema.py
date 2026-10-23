@@ -8,6 +8,7 @@ Contract:
   - Silent for non-Write/Edit tool events
   - Graceful on malformed event JSON
 """
+
 import json
 import os
 import subprocess
@@ -59,14 +60,16 @@ def run(tool_name, file_path, content, project_dir=FAKE_PROJECT):
     return subprocess.run(
         [sys.executable, str(HOOK)],
         input=json.dumps(event),
-        capture_output=True, text=True, env=env,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
 
 
 def write_tmp(data, suffix=".json"):
-    f = tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False)
-    json.dump(data, f)
-    f.close()
+    with tempfile.NamedTemporaryFile(mode="w", suffix=suffix, delete=False) as f:
+        json.dump(data, f)
     return Path(f.name)
 
 
@@ -184,7 +187,11 @@ class TestEdgeCases(unittest.TestCase):
         env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(PROJECT_ROOT)}
         r = subprocess.run(
             [sys.executable, str(HOOK)],
-            input="not json", capture_output=True, text=True, env=env,
+            input="not json",
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
         )
         self.assertEqual(r.returncode, 0)
 
@@ -193,7 +200,11 @@ class TestEdgeCases(unittest.TestCase):
         env = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(PROJECT_ROOT)}
         r = subprocess.run(
             [sys.executable, str(HOOK)],
-            input=json.dumps(event), capture_output=True, text=True, env=env,
+            input=json.dumps(event),
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
         )
         self.assertEqual(r.returncode, 0)
 

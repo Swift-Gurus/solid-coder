@@ -4,13 +4,14 @@ from harness.step_def import StepDef
 from harness.step_snapshot_rewriting import StepSnapshotRewriting
 from harness.workflow_expression_serializing import WorkflowExpressionSerializing
 
-
 """
 solid-name: OperationStepSnapshotRewriter
 solid-category: boundary
 solid-spec: [SPEC-031, SPEC-040]
 solid-description: Serializes typed logical operations and input bindings into durable public YAML fields.
 """
+
+
 class OperationStepSnapshotRewriter(StepSnapshotRewriting):
     def __init__(
         self,
@@ -27,9 +28,7 @@ class OperationStepSnapshotRewriter(StepSnapshotRewriting):
         snapshot["with"] = {
             **{entry.name: entry.value for entry in step.operation.input_values},
             **{
-                binding.name: self._expression_serializer.serialize(
-                    binding.expression
-                )
+                binding.name: self._expression_serializer.serialize(binding.expression)
                 for binding in step.operation.input_bindings
             },
         }

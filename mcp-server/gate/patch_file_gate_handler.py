@@ -7,13 +7,14 @@ from logging_protocol import Logging
 from patch_file_simulation import PatchFileSimulation
 from patch_review_context import PatchReviewContext
 
-
 """
 solid-name: PatchFileGateHandler
 solid-category: service
 solid-description: Evaluates one simulated file change and returns its isolated authorization decision.
 solid-tags: [hook]
 """
+
+
 class PatchFileGateHandler:
     def __init__(
         self,

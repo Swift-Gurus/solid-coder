@@ -17,8 +17,8 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import ExpectationLoading  # noqa: E402
-from models import Expectation, ExpectedFinding  # noqa: E402
+from interfaces import ExpectationLoading
+from models import Expectation, ExpectedFinding
 
 
 class ExpectationLoader(ExpectationLoading):

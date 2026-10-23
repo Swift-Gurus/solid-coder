@@ -13,13 +13,14 @@ from harness.rule_selection_condition_compiling import (
 )
 from harness.workflow_input_binding import WorkflowInputBinding
 
-
 """
 solid-name: RuleMatchConditionCompiler
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Compiles exact extension, unit-kind, and tag selectors into auditable workflow conditions.
 """
+
+
 class RuleMatchConditionCompiler(RuleMatchConditionCompiling):
     def __init__(
         self,
@@ -36,8 +37,14 @@ class RuleMatchConditionCompiler(RuleMatchConditionCompiling):
     ) -> ConditionDeclaration | None:
         if declaration == RuleMatchDeclaration():
             return None
-        subject = next((binding.expression for binding in input_bindings
-                        if binding.name == "review_unit"), None)
+        subject = next(
+            (
+                binding.expression
+                for binding in input_bindings
+                if binding.name == "review_unit"
+            ),
+            None,
+        )
         if subject is None:
             raise FlowValidationError(
                 "Rule matching requires an explicit 'review_unit' input binding"

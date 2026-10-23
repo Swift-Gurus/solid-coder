@@ -11,13 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.models import FlowValidationError
 
-
 """
 solid-name: TestCollectionMetricReducerLoading
 solid-category: unit-test
 solid-spec: [SPEC-054]
 solid-description: Verifies sealed reducer parsing and source-schema compatibility.
 """
+
+
 class TestCollectionMetricReducerLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -106,14 +107,18 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
             self._load(workflow)
 
     def test_rejects_distinct_count_for_non_integer_metric(self) -> None:
-        workflow = self._maximum_workflow().replace(
-            "type: maximum",
-            "type: distinct_count",
-            1,
-        ).replace(
-            "value: {type: integer, minimum: 0}",
-            "value: {type: number, minimum: 0}",
-            1,
+        workflow = (
+            self._maximum_workflow()
+            .replace(
+                "type: maximum",
+                "type: distinct_count",
+                1,
+            )
+            .replace(
+                "value: {type: integer, minimum: 0}",
+                "value: {type: number, minimum: 0}",
+                1,
+            )
         )
 
         with self.assertRaisesRegex(
@@ -149,14 +154,18 @@ class TestCollectionMetricReducerLoading(unittest.TestCase):
             self._load(workflow)
 
     def test_rejects_nonscalar_distinct_count_projection(self) -> None:
-        workflow = self._maximum_workflow().replace(
-            "type: maximum",
-            "type: distinct_count",
-            1,
-        ).replace(
-            "depth: {type: integer}",
-            "depth: {type: object}",
-            1,
+        workflow = (
+            self._maximum_workflow()
+            .replace(
+                "type: maximum",
+                "type: distinct_count",
+                1,
+            )
+            .replace(
+                "depth: {type: integer}",
+                "depth: {type: object}",
+                1,
+            )
         )
 
         with self.assertRaisesRegex(

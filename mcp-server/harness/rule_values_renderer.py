@@ -2,15 +2,15 @@
 
 from pydantic import TypeAdapter
 
-
 """
 solid-name: RuleValuesRenderer
 solid-category: adapter
 solid-spec: [SPEC-039]
 solid-description: Produces stable audit text for rule-selection values.
 """
-class RuleValuesRenderer:
 
+
+class RuleValuesRenderer:
     def __init__(self, adapter: TypeAdapter) -> None:
         self._adapter = adapter
 

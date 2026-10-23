@@ -5,14 +5,16 @@ from typing import Any
 from findings.metric_additional_info import MetricAdditionalInfo
 from findings.metric_value import MetricValue
 from findings.principle_metrics import PrincipleMetrics
-from scoring.compatibility_metrics_adapting import CompatibilityMetricsAdapting
 
+from scoring.compatibility_metrics_adapting import CompatibilityMetricsAdapting
 
 """
 solid-name: CompatibilityMetricsAdapter
 solid-category: boundary-adapter
 solid-description: Adapts legacy unit metrics into typed principle measurements with audit context.
 """
+
+
 class CompatibilityMetricsAdapter(CompatibilityMetricsAdapting):
     def adapt(
         self,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Split implementation-plan.json into semantically grouped chunk files.
 
 Usage:
@@ -25,7 +24,6 @@ import json
 import os
 import sys
 from collections import defaultdict
-
 
 FOUNDATION_CATEGORIES = frozenset({"model", "enum", "typealias"})
 
@@ -164,9 +162,12 @@ def main():
         description="Split implementation-plan.json into semantically grouped chunks."
     )
     parser.add_argument("plan", help="Path to implementation-plan.json")
-    parser.add_argument("--output-dir", required=True, help="Directory to write chunk files")
     parser.add_argument(
-        "--arch", default=None,
+        "--output-dir", required=True, help="Directory to write chunk files"
+    )
+    parser.add_argument(
+        "--arch",
+        default=None,
         help="Path to arch.json. Used to classify items by component category.",
     )
     args = parser.parse_args()

@@ -22,7 +22,7 @@ for _d in (str(_HARNESS_DIR), str(_HARNESS_DIR / "tests")):
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
-from harness_factory import HarnessFactory  # noqa: E402
+from harness_factory import HarnessFactory
 
 
 class IntegrationTestBase(unittest.TestCase):
@@ -59,7 +59,8 @@ class IntegrationTestBase(unittest.TestCase):
         if not principles_root.is_dir():
             return []
         return sorted(
-            p for p in principles_root.iterdir()
+            p
+            for p in principles_root.iterdir()
             if p.is_dir() and (p / "fixtures").is_dir()
         )
 
@@ -73,7 +74,10 @@ class IntegrationTestBase(unittest.TestCase):
         factory = HarnessFactory()
         runner = factory.build(
             project_root=_PROJECT_ROOT,
-            principle_folder=_PROJECT_ROOT / "references" / "principles" / principle_folder.name,
+            principle_folder=_PROJECT_ROOT
+            / "references"
+            / "principles"
+            / principle_folder.name,
             profile_dir=self._models_dir(),
         )
         # runner.run() returns False on expectation mismatches — that is OK here.
@@ -86,7 +90,10 @@ class IntegrationTestBase(unittest.TestCase):
             timeout=self.TIMEOUT,
         )
         status = "PASS" if passed else "MISMATCH (ok)"
-        print(f"  [{self.MODEL_PROFILE}] {principle_folder.name} / {flow} → {status}", flush=True)
+        print(
+            f"  [{self.MODEL_PROFILE}] {principle_folder.name} / {flow} → {status}",
+            flush=True,
+        )
 
     # ── Test methods ───────────────────────────────────────────────────────────
 

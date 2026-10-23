@@ -11,15 +11,15 @@ from harness.step_instance_expanding import StepInstanceExpanding
 from harness.step_readiness_checking import StepReadinessChecking
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: DAGRunner
 solid-description: Coordinates workflow-step readiness and runtime instance expansion.
 solid-category: service
 solid-spec: [SPEC-010, SPEC-030]
 """
-class DAGRunner(DAGRunning):
 
+
+class DAGRunner(DAGRunning):
     def __init__(
         self,
         readiness_checker: StepReadinessChecking,

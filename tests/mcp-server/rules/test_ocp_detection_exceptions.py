@@ -10,21 +10,21 @@ for _path in (_TEST_MCP_DIR, _MCP_DIR, _MCP_DIR / "utils"):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from helpers import make_handler
 from health.health_prompt_builder import HealthPromptBuilder
-
+from helpers import make_handler
 
 """
 solid-name: TestOCPDetectionExceptions
 solid-category: unit-test
 solid-description: Verifies dependency-free and pure-data OCP exceptions survive rule loading and health-prompt assembly.
 """
-class TestOCPDetectionExceptions(unittest.TestCase):
 
+
+class TestOCPDetectionExceptions(unittest.TestCase):
     def test_health_prompt_contains_dependency_free_and_pure_data_exceptions(self):
-        principle = make_handler().load_detection_rules(
-            principle="ocp"
-        )["principles"][0]
+        principle = make_handler().load_detection_rules(principle="ocp")["principles"][
+            0
+        ]
 
         prompt = HealthPromptBuilder().build(
             principles=[principle],
@@ -38,9 +38,9 @@ class TestOCPDetectionExceptions(unittest.TestCase):
         self.assertIn("**Pure data structures**", prompt)
 
     def test_health_prompt_states_the_testability_decision_unambiguously(self):
-        principle = make_handler().load_detection_rules(
-            principle="ocp"
-        )["principles"][0]
+        principle = make_handler().load_detection_rules(principle="ocp")["principles"][
+            0
+        ]
 
         prompt = HealthPromptBuilder().build(
             principles=[principle],

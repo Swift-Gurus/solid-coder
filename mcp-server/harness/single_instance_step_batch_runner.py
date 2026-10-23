@@ -7,13 +7,14 @@ from harness.step_batch_running import StepBatchRunning
 from harness.step_instance_execution import StepInstanceExecution
 from harness.step_running import StepRunning
 
-
 """
 solid-name: SingleInstanceStepBatchRunner
 solid-category: adapter
 solid-spec: [SPEC-037]
 solid-description: Executes a workflow-step batch with single-instance semantics.
 """
+
+
 class SingleInstanceStepBatchRunner(StepBatchRunning):
     def __init__(self, runner: StepRunning) -> None:
         self._runner = runner

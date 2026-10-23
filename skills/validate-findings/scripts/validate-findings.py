@@ -23,8 +23,8 @@ Output:
 import json
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
 
 try:
     import jsonschema
@@ -46,7 +46,10 @@ def validate_json(data, schema_path):
     try:
         jsonschema.validate(instance=data, schema=schema)
     except jsonschema.ValidationError as e:
-        print(f"Schema validation failed for {schema_path}:\n  {e.message}", file=sys.stderr)
+        print(
+            f"Schema validation failed for {schema_path}:\n  {e.message}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
@@ -93,7 +96,10 @@ def main():
 
     review_input = load_json(review_input_path)
     if plugin_root:
-        validate_json(review_input, plugin_root / "skills" / "prepare-review-input" / "output.schema.json")
+        validate_json(
+            review_input,
+            plugin_root / "skills" / "prepare-review-input" / "output.schema.json",
+        )
     source_type = review_input.get("source_type", "changes")
     skip_filtering = source_type in ("folder", "file", "buffer")
 
@@ -128,7 +134,10 @@ def main():
                 # Fix schema remains per-principle
                 refs_root = plugin_root / "references"
                 for candidate in refs_root.rglob("*/"):
-                    if candidate.name.lower() == principle_dir.name.lower() and (candidate / "rule.md").exists():
+                    if (
+                        candidate.name.lower() == principle_dir.name.lower()
+                        and (candidate / "rule.md").exists()
+                    ):
                         fix_schema = candidate / "fix" / "output.schema.json"
                         if fix_schema.exists():
                             validate_json(fix_data, fix_schema)
@@ -145,7 +154,7 @@ def main():
         review = entry["review"]
         fix = entry["fix"]
 
-        timestamp = review.get("timestamp", datetime.now(timezone.utc).isoformat())
+        timestamp = review.get("timestamp", datetime.now(UTC).isoformat())
 
         # Build suggestion lookup from fix.json: rule_id -> [suggestions]
         suggestions_by_rule = {}
@@ -178,21 +187,27 @@ def main():
                     if not violations:
                         continue
 
-                    matched_suggestions = _match_suggestions(violations, suggestions_by_rule)
+                    matched_suggestions = _match_suggestions(
+                        violations, suggestions_by_rule
+                    )
                     severity = worst_severity(violations)
 
                     if severity == "COMPLIANT":
                         continue
 
-                    by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
-                    by_file[file_path]["principles"].append({
-                        "principle": _infer_principle(review, violations),
-                        "severity": severity,
-                        "unit_name": unit_name,
-                        "unit_kind": unit_kind,
-                        "violations": violations,
-                        "suggestions": matched_suggestions,
-                    })
+                    by_file.setdefault(
+                        file_path, {"timestamp": timestamp, "principles": []}
+                    )
+                    by_file[file_path]["principles"].append(
+                        {
+                            "principle": _infer_principle(review, violations),
+                            "severity": severity,
+                            "unit_name": unit_name,
+                            "unit_kind": unit_kind,
+                            "violations": violations,
+                            "suggestions": matched_suggestions,
+                        }
+                    )
             else:
                 # Legacy flat structure: files[].findings (backward compatibility)
                 findings = file_entry.get("findings", [])
@@ -206,13 +221,17 @@ def main():
                 severity = worst_severity(passing)
                 if severity == "COMPLIANT":
                     continue
-                by_file.setdefault(file_path, {"timestamp": timestamp, "principles": []})
-                by_file[file_path]["principles"].append({
-                    "principle": review.get("principle", review.get("agent", "")),
-                    "severity": severity,
-                    "violations": passing,
-                    "suggestions": [],
-                })
+                by_file.setdefault(
+                    file_path, {"timestamp": timestamp, "principles": []}
+                )
+                by_file[file_path]["principles"].append(
+                    {
+                        "principle": review.get("principle", review.get("agent", "")),
+                        "severity": severity,
+                        "violations": passing,
+                        "suggestions": [],
+                    }
+                )
 
     # Phase 4: Write outputs
     by_file_dir = output_root / "by-file"
@@ -228,7 +247,9 @@ def main():
         out_path = by_file_dir / f"{filename}.output.json"
         write_json(str(out_path), output)
 
-    print(f"{total_violations} violations → {total_passed} validated, {total_rejected} rejected")
+    print(
+        f"{total_violations} violations → {total_passed} validated, {total_rejected} rejected"
+    )
     print(f"Output: {by_file_dir}")
 
 

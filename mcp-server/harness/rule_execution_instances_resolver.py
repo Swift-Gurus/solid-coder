@@ -13,8 +13,9 @@ from harness.rule_execution_instances_resolving import (
 )
 from harness.rule_review_provenance import RuleReviewProvenance
 from harness.run_state import RunState
-from review.review_unit_source_identity_resolver import ReviewUnitSourceIdentityResolving
-
+from review.review_unit_source_identity_resolver import (
+    ReviewUnitSourceIdentityResolving,
+)
 
 """
 solid-name: RuleExecutionInstancesResolver
@@ -22,6 +23,8 @@ solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Identifies completed review-rule executions eligible for deterministic finalization.
 """
+
+
 class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
     def __init__(
         self,
@@ -39,55 +42,57 @@ class RuleExecutionInstancesResolver(RuleExecutionInstancesResolving):
     ) -> list[RuleExecutionInstance]:
         instances: list[RuleExecutionInstance] = []
         if flow_def.rule is not None:
-            instances.append(RuleExecutionInstance(
-                workflow=IncludedRuleWorkflow(
-                    workflow_id=flow_def.workflow_id,
-                    declaration=flow_def.rule,
-                ),
-                instance_id=root_instance_id,
-                provenance=RuleReviewProvenance(
-                    kind="root",
-                    scope_identity=flow_def.workflow_id,
-                    source_index=0,
-                ),
-                steps=[
-                    step
-                    for step in flow_def.steps
-                    if step.workflow_instance is None
-                    or step.workflow_instance.rule_workflow is None
-                ],
-            ))
+            instances.append(
+                RuleExecutionInstance(
+                    workflow=IncludedRuleWorkflow(
+                        workflow_id=flow_def.workflow_id,
+                        declaration=flow_def.rule,
+                    ),
+                    instance_id=root_instance_id,
+                    provenance=RuleReviewProvenance(
+                        kind="root",
+                        scope_identity=flow_def.workflow_id,
+                        source_index=0,
+                    ),
+                    steps=[
+                        step
+                        for step in flow_def.steps
+                        if step.workflow_instance is None
+                        or step.workflow_instance.rule_workflow is None
+                    ],
+                )
+            )
 
         for step in flow_def.steps:
             workflow_instance = step.workflow_instance
-            if (
-                workflow_instance is None
-                or workflow_instance.rule_workflow is None
-            ):
+            if workflow_instance is None or workflow_instance.rule_workflow is None:
                 continue
             existing_index = next(
                 (
                     index
                     for index in range(len(instances))
-                    if instances[index].instance_id
-                    == workflow_instance.instance_id
+                    if instances[index].instance_id == workflow_instance.instance_id
                     and instances[index].workflow.workflow_id
                     == workflow_instance.rule_workflow.workflow_id
                 ),
                 None,
             )
             if existing_index is None:
-                instances.append(RuleExecutionInstance(
-                    workflow=workflow_instance.rule_workflow,
-                    instance_id=workflow_instance.instance_id,
-                    provenance=RuleReviewProvenance(
-                        kind="included",
-                        scope_identity=workflow_instance.alias,
-                        source_index=workflow_instance.source_index,
-                        source_unit=self._source_identities.resolve(workflow_instance.inputs),
-                    ),
-                    steps=[step],
-                ))
+                instances.append(
+                    RuleExecutionInstance(
+                        workflow=workflow_instance.rule_workflow,
+                        instance_id=workflow_instance.instance_id,
+                        provenance=RuleReviewProvenance(
+                            kind="included",
+                            scope_identity=workflow_instance.alias,
+                            source_index=workflow_instance.source_index,
+                            source_unit=self._source_identities.resolve(
+                                workflow_instance.inputs
+                            ),
+                        ),
+                        steps=[step],
+                    )
+                )
             else:
                 current = instances[existing_index]
                 instances[existing_index] = replace(

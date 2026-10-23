@@ -7,10 +7,14 @@ import unittest
 from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-from _config_section_stub import ConfigSectionStub  # noqa: E402
-from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
+
+from _config_section_stub import ConfigSectionStub
+from solid_coder_config_loader import SolidCoderConfigLoader
 
 
 class TestLlmSectionUsesEnvAwareReader(unittest.TestCase):

@@ -14,13 +14,14 @@ from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 """
 solid-name: TestAggregateWorkflowRuleScoring
 solid-category: integration-test
 solid-spec: [SPEC-045]
 solid-description: Proves multi-step aggregate rule outputs retain ordinary MCP scoring and audit behavior.
 """
+
+
 class TestAggregateWorkflowRuleScoring(unittest.TestCase):
     def test_scores_original_metric_and_exception_steps(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -52,9 +53,7 @@ class TestAggregateWorkflowRuleScoring(unittest.TestCase):
             encoding="utf-8",
         )
         orchestrator = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(
-                project_dir_fn=lambda: project_root
-            ),
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: project_root),
             plugin_root=project_root,
         ).build()
 
@@ -63,20 +62,22 @@ class TestAggregateWorkflowRuleScoring(unittest.TestCase):
             "reasoning": "The inspected source supports this observation.",
             "evidence": "line 12",
         }
-        completed = orchestrator.flow_next({
-            "aggregate-scored-rule": {
+        completed = orchestrator.flow_next(
+            {
                 "aggregate-scored-rule": {
-                    "smell_count": {
-                        "value": 2,
-                        "additional_info": audit,
-                    },
-                    "classify_exception": {
-                        "is_exception": False,
-                        "additional_info": audit,
-                    },
+                    "aggregate-scored-rule": {
+                        "smell_count": {
+                            "value": 2,
+                            "additional_info": audit,
+                        },
+                        "classify_exception": {
+                            "is_exception": False,
+                            "additional_info": audit,
+                        },
+                    }
                 }
             }
-        })
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = RuleReviewResult.model_validate_json(

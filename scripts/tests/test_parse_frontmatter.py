@@ -5,15 +5,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-SCRIPT = Path(__file__).resolve().parents[2] / "mcp-server" / "spec" / "parse_frontmatter.py"
+SCRIPT = (
+    Path(__file__).resolve().parents[2] / "mcp-server" / "spec" / "parse_frontmatter.py"
+)
 
 
 def _run(*args):
     result = subprocess.run(
         [sys.executable, str(SCRIPT), *args],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return result
 
@@ -75,15 +77,20 @@ class TestRuleComplete:
         principle_dir = refs_root / "SRP"
         principle_dir.mkdir(parents=True)
         md = principle_dir / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "Single Responsibility Principle",
-            "category": "solid",
-            "description": "Verb counting and cohesion group analysis",
-            "required_patterns": ["structural/facade"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "Single Responsibility Principle",
+                "category": "solid",
+                "description": "Verb counting and cohesion group analysis",
+                "required_patterns": ["structural/facade"],
+            },
+        )
         (refs_root / "design_patterns" / "structural").mkdir(parents=True)
-        (refs_root / "design_patterns" / "structural" / "facade.md").write_text("---\nname: facade\n---\n")
+        (refs_root / "design_patterns" / "structural" / "facade.md").write_text(
+            "---\nname: facade\n---\n"
+        )
 
         result = _run(str(md))
         assert result.returncode == 0
@@ -100,13 +107,16 @@ class TestRuleComplete:
         principle_dir = refs_root / "TEST"
         principle_dir.mkdir(parents=True)
         md = principle_dir / "rule.md"
-        _write_md(md, {
-            "name": "test",
-            "displayName": "Test",
-            "category": "solid",
-            "description": "Test rule",
-            "required_patterns": ["structural/facade", "behavioral/strategy"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "test",
+                "displayName": "Test",
+                "category": "solid",
+                "description": "Test rule",
+                "required_patterns": ["structural/facade", "behavioral/strategy"],
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -117,10 +127,13 @@ class TestRuleComplete:
     def test_refs_root_override(self, tmp_path):
         """Explicit --refs-root overrides grandparent auto-detection."""
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "required_patterns": ["structural/facade"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "required_patterns": ["structural/facade"],
+            },
+        )
         custom_root = tmp_path / "custom"
         custom_root.mkdir()
         result = _run(str(md), "--refs-root", str(custom_root))
@@ -132,11 +145,14 @@ class TestRuleComplete:
 class TestRuleMissingDescription:
     def test_no_description(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "Single Responsibility Principle",
-            "category": "solid",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "Single Responsibility Principle",
+                "category": "solid",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -147,11 +163,14 @@ class TestRuleMissingDescription:
 class TestRuleMissingCategory:
     def test_no_category(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "Single Responsibility Principle",
-            "description": "Some description",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "Single Responsibility Principle",
+                "description": "Some description",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -162,11 +181,14 @@ class TestRuleMissingCategory:
 class TestRuleMissingDisplayName:
     def test_no_display_name(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "category": "solid",
-            "description": "Some description",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "category": "solid",
+                "description": "Some description",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -179,12 +201,15 @@ class TestExamplesDefault:
 
     def test_default_examples_when_dir_exists(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "SRP",
-            "category": "solid",
-            "description": "desc",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "SRP",
+                "category": "solid",
+                "description": "desc",
+            },
+        )
         (tmp_path / "Examples").mkdir()
         (tmp_path / "Examples" / "sample.swift").write_text("// sample")
 
@@ -197,12 +222,15 @@ class TestExamplesDefault:
 
     def test_no_default_examples_when_dir_missing(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "SRP",
-            "category": "solid",
-            "description": "desc",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "SRP",
+                "category": "solid",
+                "description": "desc",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -214,13 +242,16 @@ class TestExamplesExplicit:
 
     def test_explicit_folder(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "SRP",
-            "category": "solid",
-            "description": "desc",
-            "examples": ["MyExamples"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "SRP",
+                "category": "solid",
+                "description": "desc",
+                "examples": ["MyExamples"],
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -229,13 +260,16 @@ class TestExamplesExplicit:
 
     def test_explicit_file(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "SRP",
-            "category": "solid",
-            "description": "desc",
-            "examples": ["samples/specific-test.swift"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "SRP",
+                "category": "solid",
+                "description": "desc",
+                "examples": ["samples/specific-test.swift"],
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -243,13 +277,16 @@ class TestExamplesExplicit:
 
     def test_mixed_folders_and_files(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "displayName": "SRP",
-            "category": "solid",
-            "description": "desc",
-            "examples": ["Examples", "extra/edge-case.swift"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "displayName": "SRP",
+                "category": "solid",
+                "description": "desc",
+                "examples": ["Examples", "extra/edge-case.swift"],
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -263,18 +300,23 @@ class TestInstructionFrontmatter:
         review_dir = tmp_path / "SRP" / "review"
         review_dir.mkdir(parents=True)
         md = review_dir / "instructions.md"
-        _write_md(md, {
-            "name": "srp-review",
-            "type": "review",
-            "rules": "PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md",
-            "output_schema": "output.schema.json",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp-review",
+                "type": "review",
+                "rules": "PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md",
+                "output_schema": "output.schema.json",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
         assert "PRINCIPLE_FOLDER_ABSOLUTE_PATH" not in data["rules"]
         assert data["rules"] == str((tmp_path / "SRP" / "rule.md").resolve())
-        assert data["output_schema"] == str((review_dir / "output.schema.json").resolve())
+        assert data["output_schema"] == str(
+            (review_dir / "output.schema.json").resolve()
+        )
 
 
 class TestMetadata:
@@ -298,12 +340,15 @@ class TestFilesToLoad:
         principle_dir = refs_root / "SRP"
         principle_dir.mkdir(parents=True)
         md = principle_dir / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "category": "solid",
-            "description": "desc",
-            "required_patterns": ["structural/facade"],
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "category": "solid",
+                "description": "desc",
+                "required_patterns": ["structural/facade"],
+            },
+        )
         # Create pattern file
         (refs_root / "design_patterns" / "structural").mkdir(parents=True)
         facade = refs_root / "design_patterns" / "structural" / "facade.md"
@@ -338,11 +383,14 @@ class TestFilesToLoad:
         md = review_dir / "instructions.md"
         rule_file = tmp_path / "SRP" / "rule.md"
         rule_file.write_text("---\nname: srp\n---\n")
-        _write_md(md, {
-            "name": "srp-review",
-            "type": "review",
-            "rules": "PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp-review",
+                "type": "review",
+                "rules": "PRINCIPLE_FOLDER_ABSOLUTE_PATH/rule.md",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -354,11 +402,14 @@ class TestCodeDirectory:
 
     def test_code_dir_auto_discovered(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "swiftui",
-            "category": "framework",
-            "description": "SwiftUI rules",
-        })
+        _write_md(
+            md,
+            {
+                "name": "swiftui",
+                "category": "framework",
+                "description": "SwiftUI rules",
+            },
+        )
         code_dir = tmp_path / "code"
         code_dir.mkdir()
         code_rule = code_dir / "rule.md"
@@ -371,11 +422,14 @@ class TestCodeDirectory:
 
     def test_no_code_dir_no_field(self, tmp_path):
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "srp",
-            "category": "solid",
-            "description": "desc",
-        })
+        _write_md(
+            md,
+            {
+                "name": "srp",
+                "category": "solid",
+                "description": "desc",
+            },
+        )
         result = _run(str(md))
         assert result.returncode == 0
         data = json.loads(result.stdout)
@@ -384,11 +438,14 @@ class TestCodeDirectory:
     def test_code_dir_with_examples(self, tmp_path):
         """code/ files appear alongside examples in files_to_load."""
         md = tmp_path / "rule.md"
-        _write_md(md, {
-            "name": "swiftui",
-            "category": "framework",
-            "description": "desc",
-        })
+        _write_md(
+            md,
+            {
+                "name": "swiftui",
+                "category": "framework",
+                "description": "desc",
+            },
+        )
         (tmp_path / "Examples").mkdir()
         ex = tmp_path / "Examples" / "sample.swift"
         ex.write_text("// sample")

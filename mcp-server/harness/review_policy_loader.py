@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 
 from harness.content_hashing import ContentHashing
 from harness.default_review_policy_resolution import DefaultReviewPolicyResolution
@@ -17,10 +16,7 @@ from scoring.yaml_loader import YamlLoading
 
 _POLICY_RELATIVE_PATH = Path(".solid-coder") / "policies" / "review.yaml"
 
-ReviewPolicyLoadResult = Union[
-    DefaultReviewPolicyResolution,
-    ProjectReviewPolicyResolution,
-]
+ReviewPolicyLoadResult = DefaultReviewPolicyResolution | ProjectReviewPolicyResolution
 
 
 """
@@ -29,8 +25,9 @@ solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Loads and validates the project review policy with auditable source content and hashing.
 """
-class ReviewPolicyLoader:
 
+
+class ReviewPolicyLoader:
     def __init__(
         self,
         project_directory: ProjectDirectoryReading,
@@ -46,9 +43,7 @@ class ReviewPolicyLoader:
         self._error_factory = error_factory
 
     def load(self) -> ReviewPolicyLoadResult:
-        source_path = (
-            self._project_directory.read() / _POLICY_RELATIVE_PATH
-        ).resolve()
+        source_path = (self._project_directory.read() / _POLICY_RELATIVE_PATH).resolve()
         if not source_path.exists():
             return DefaultReviewPolicyResolution()
         try:

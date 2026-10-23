@@ -14,12 +14,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
+from harness.package_workflow_source_discoverer import PackageWorkflowSourceDiscoverer
 from harness.rule_declaration import RuleDeclaration
 from harness.rule_match_declaration import RuleMatchDeclaration
 from harness.rule_selection import RuleSelection
-from harness.package_workflow_source_discoverer import PackageWorkflowSourceDiscoverer
-from harness.workflow_source import WorkflowSource
 from harness.workflow_package_catalog_document import WorkflowPackageCatalogDocument
+from harness.workflow_source import WorkflowSource
 
 
 class StubConfigFileLoader:
@@ -39,7 +39,6 @@ class StubWorkflowPackageDecoder:
 
 
 class TestWorkflowSourceDiscoverer(unittest.TestCase):
-
     def test_uses_the_typed_source_returned_by_package_validation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

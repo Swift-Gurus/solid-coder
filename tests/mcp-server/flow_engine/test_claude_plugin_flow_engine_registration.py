@@ -4,7 +4,6 @@ import json
 import unittest
 from pathlib import Path
 
-
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -14,8 +13,9 @@ solid-category: unit-test
 solid-spec: [SPEC-039]
 solid-description: Prevents Claude plugin packaging from omitting the flow-engine MCP server used by production review workflows.
 """
-class TestClaudePluginFlowEngineRegistration(unittest.TestCase):
 
+
+class TestClaudePluginFlowEngineRegistration(unittest.TestCase):
     def test_manifest_registers_checkout_flow_engine_server(self) -> None:
         manifest = json.loads(
             (_PROJECT_ROOT / ".claude-plugin" / "plugin.json").read_text(

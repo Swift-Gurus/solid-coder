@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from typing import Optional
+
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
 for _d in (_MCP_DIR, _HEALTH_DIR):
@@ -15,12 +15,13 @@ from llama.directory_creator import DirectoryCreating
 from patch_review_context import PatchReviewContext
 from proposed_source_document import ProposedSourceDocument
 
-
 """
 solid-name: HealthCheckInputWriter
 solid-category: service
 solid-description: Persists authoritative prospective source context and expected review coverage for an isolated health check.
 """
+
+
 class HealthCheckInputWriter:
     """Boundary adapter: writes hook-input.json — file_path, language, output_dir, and expected_units."""
 
@@ -42,7 +43,7 @@ class HealthCheckInputWriter:
         file_path: str,
         language: str,
         content: str,
-        patch_context: Optional[PatchReviewContext] = None,
+        patch_context: PatchReviewContext | None = None,
     ) -> None:
         health_dir = Path(output_dir)
         self._completion.clear(output_dir)

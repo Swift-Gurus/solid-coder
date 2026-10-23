@@ -11,18 +11,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.models import RunState, StepOutputs
+from harness.models import RunState
 from harness.run_context_builder import RunContextBuilder
 from harness.step_outputs_builder import StepOutputsBuilder
 from harness.workflow_context_values_mapper import WorkflowContextValuesMapper
 
 
 class TestRunContextBuilder(unittest.TestCase):
-
     def setUp(self):
-        self.sut = RunContextBuilder(
-            values_mapper=WorkflowContextValuesMapper()
-        )
+        self.sut = RunContextBuilder(values_mapper=WorkflowContextValuesMapper())
 
     def test_builds_context_with_params_and_completed_step_outputs(self):
         run_state = RunState(
@@ -39,7 +36,10 @@ class TestRunContextBuilder(unittest.TestCase):
 
     def test_exposes_rejection_reasons_for_prompt_interpolation(self):
         run_state = RunState(
-            completed={}, running=[], turn_count=1, status="in_progress",
+            completed={},
+            running=[],
+            turn_count=1,
+            status="in_progress",
             rejection_reasons={"writer": "bad shape"},
         )
 
@@ -52,7 +52,10 @@ class TestRunContextBuilder(unittest.TestCase):
 
     def test_exposes_attempts_used(self):
         run_state = RunState(
-            completed={}, running=[], turn_count=1, status="in_progress",
+            completed={},
+            running=[],
+            turn_count=1,
+            status="in_progress",
             attempts_used={"writer": 2},
         )
 

@@ -13,13 +13,14 @@ from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
 from harness.rule_assessment_declaration import RuleAssessmentDeclaration
 
-
 """
 solid-name: StepDef
 solid-category: model
 solid-spec: [SPEC-030, SPEC-027, SPEC-028, SPEC-037, SPEC-039]
 solid-description: Represents a validated workflow step with its execution, dependency, and output contracts.
 """
+
+
 @dataclass(frozen=True)
 class StepDef:
     id: str

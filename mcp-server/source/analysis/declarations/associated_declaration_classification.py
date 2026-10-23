@@ -1,9 +1,7 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from findings.metric_additional_info import MetricAdditionalInfo
-
+from pydantic import BaseModel, ConfigDict, Field
 
 """
 solid-name: AssociatedDeclarationClassification
@@ -11,6 +9,8 @@ solid-category: model
 solid-spec: [SPEC-066]
 solid-description: Records an evidenced semantic relationship from one declaration to an independently classified implementation or contract.
 """
+
+
 class AssociatedDeclarationClassification(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

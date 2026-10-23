@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: StrictObjectSchema
 solid-category: model
 solid-spec: [SPEC-045]
 solid-description: Represents a JSON object schema whose declared properties are closed and required explicitly.
 """
+
+
 class StrictObjectSchema(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

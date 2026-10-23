@@ -4,10 +4,17 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from hook_utils import GateHandling
 
 
 class FrontmatterGateApplying(Protocol):
-    def apply(self, content: str, session_id: str, path: str, gate: GateHandling, file_name: str) -> Optional[str]: ...
+    def apply(
+        self,
+        content: str,
+        session_id: str,
+        path: str,
+        gate: GateHandling,
+        file_name: str,
+    ) -> str | None: ...

@@ -13,13 +13,14 @@ from source.source_unit_search_target_building import (
 from source.source_unit_tags_resolving import SourceUnitTagsResolving
 from source.utf8_source_slice_resolver import UTF8SourceSliceResolver
 
-
 """
 solid-name: SourceUnitSearchTargetBuilder
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Prepares one searchable source-unit target with immutable code and normalized analysis terms.
 """
+
+
 class SourceUnitSearchTargetBuilder(SourceUnitSearchTargetBuilding):
     def __init__(
         self,

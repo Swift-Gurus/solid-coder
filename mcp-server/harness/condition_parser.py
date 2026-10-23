@@ -9,13 +9,14 @@ from harness.condition_node_parsing import ConditionNodeParsing
 from harness.condition_parsing import ConditionParsing
 from harness.models import FlowValidationError
 
-
 """
 solid-name: ConditionParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Maps declarative workflow condition input into validated typed condition models.
 """
+
+
 class ConditionParser(ConditionParsing):
     _COMPOSITIONS = frozenset({"all", "any", "not"})
 

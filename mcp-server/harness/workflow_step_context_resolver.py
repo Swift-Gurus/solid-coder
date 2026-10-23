@@ -8,12 +8,11 @@ from harness.included_workflow_instance import IncludedWorkflowInstance
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
-from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_results_visibility_selecting import (
     WorkflowResultsVisibilitySelecting,
 )
+from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
-
 
 """
 solid-name: WorkflowStepContextResolver
@@ -21,8 +20,9 @@ solid-category: service
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Resolves root or included-workflow parameters, completed outputs, and item visibility for one executable step.
 """
-class WorkflowStepContextResolver(WorkflowStepContextResolving):
 
+
+class WorkflowStepContextResolver(WorkflowStepContextResolving):
     def __init__(
         self,
         results_selector: WorkflowResultsVisibilitySelecting,

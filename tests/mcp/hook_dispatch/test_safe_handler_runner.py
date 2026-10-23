@@ -13,8 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from hook_dispatch_doubles import RecordingLogger, StubHandler
 from hook_decision import HookDecision
+from hook_dispatch_doubles import RecordingLogger, StubHandler
 from safe_handler_runner import SafeHandlerRunner
 
 

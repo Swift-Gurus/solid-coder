@@ -5,13 +5,14 @@ from harness.aggregate_item_assignment import AggregateItemAssignment
 from harness.aggregate_prompt_rendering import AggregatePromptRendering
 from harness.authored_step_coordinate import AuthoredStepCoordinate
 
-
 """
 solid-name: AggregatePromptRenderer
 solid-category: service
 solid-spec: [SPEC-045]
 solid-description: Renders unique authored step instructions and opaque aggregate item assignments.
 """
+
+
 class AggregatePromptRenderer(AggregatePromptRendering):
     def render(self, assignments: list[AggregateAssignment]) -> str:
         authored_steps: list[AuthoredStepCoordinate] = []

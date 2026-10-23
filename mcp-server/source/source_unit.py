@@ -2,14 +2,16 @@
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from findings.review_unit_kind import ReviewUnitKind
-from source.analysis.signatures.source_declaration_signature import SourceDeclarationSignature
-from source.analysis.signatures.source_unresolved_signature import SourceUnresolvedSignature
+from pydantic import BaseModel, ConfigDict, Field
+from source.analysis.signatures.source_declaration_signature import (
+    SourceDeclarationSignature,
+)
+from source.analysis.signatures.source_unresolved_signature import (
+    SourceUnresolvedSignature,
+)
 from source.members.source_member import SourceMember
 from source.source_line_range import SourceLineRange
-
 
 SourceUnitSignature = Annotated[
     SourceDeclarationSignature | SourceUnresolvedSignature,
@@ -23,6 +25,8 @@ solid-category: model
 solid-spec: [SPEC-040, SPEC-062, SPEC-057]
 solid-description: Records a stable top-level declaration identity, kind, name, inclusive source span, typed header, and ordered direct-member facts.
 """
+
+
 class SourceUnit(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

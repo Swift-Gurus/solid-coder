@@ -8,19 +8,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.aggregate_ready_step_expander_factory import AggregateReadyStepExpanderFactory
-from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
+from harness.aggregate_ready_step_expander_factory import (
+    AggregateReadyStepExpanderFactory,
+)
 from harness.batch_step_group_identity import BatchStepGroupIdentity
 from harness.batch_step_presentation import BatchStepPresentation
 from harness.flow_def import FlowDef
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.for_each_declaration import ForEachDeclaration
 from harness.run_state import RunState
 from harness.step_def import StepDef
 from harness.step_instance import StepInstance
 from harness.step_output_reference import StepOutputReference
+from harness.workflow_context_value import WorkflowContextValue
+from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
-
+from harness.workflow_run_context import WorkflowRunContext
 
 """
 solid-name: TestAggregateReadyStepExpander
@@ -28,9 +32,42 @@ solid-category: unit-test
 solid-spec: [SPEC-045]
 solid-description: Proves aggregate phases become original step instances with typed model-presentation identities.
 """
+
+
 class TestAggregateReadyStepExpander(unittest.TestCase):
     def setUp(self) -> None:
-        self.sut = AggregateReadyStepExpanderFactory().make(FlowEngineAssemblyFactory().build().interpolator)
+        self.sut = AggregateReadyStepExpanderFactory().make(
+            FlowEngineAssemblyFactory().build().interpolator
+        )
+
+    def test_materializes_each_run_with_its_supplied_context(self) -> None:
+        flow = FlowDef(
+            id="context-flow",
+            name="Context Flow",
+            max_turns=10,
+            execution=WorkflowExecutionMode.AGGREGATE,
+            steps=[
+                StepDef(id="inspect", prompt="Inspect."),
+                StepDef(
+                    id="decide",
+                    prompt="Decide {{params.label}}.",
+                    depends_on=["inspect"],
+                ),
+            ],
+        )
+        state = RunState(completed={}, running=[], turn_count=0, status="running")
+        ready = [StepInstance("inspect", "inspect-1", None, "Inspect.")]
+
+        for label in ("first", "second"):
+            context = WorkflowRunContext(
+                parameters=WorkflowContextValues(
+                    entries=[WorkflowContextValue("label", label)]
+                )
+            )
+
+            expansion = self.sut.expand(flow, state, ready, context)
+
+            self.assertEqual(expansion.ready[-1].prompt, f"Decide {label}.")
 
     def test_expands_dependent_steps_without_replacing_their_identity(self) -> None:
         flow = FlowDef(
@@ -53,7 +90,7 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
             )
         ]
 
-        expanded = self.sut.expand(flow, state, ready).ready
+        expanded = self.sut.expand(flow, state, ready, WorkflowRunContext()).ready
 
         self.assertEqual(
             [instance.step_id for instance in expanded],
@@ -82,7 +119,7 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
         state = RunState(completed={}, running=[], turn_count=0, status="running")
         ready = [StepInstance("inspect", "inspect-1", None, "Inspect.")]
 
-        expanded = self.sut.expand(flow, state, ready).ready
+        expanded = self.sut.expand(flow, state, ready, WorkflowRunContext()).ready
 
         self.assertEqual(expanded, ready)
 
@@ -118,7 +155,7 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
             for index, label in enumerate(["A", "B"], start=1)
         ]
 
-        expanded = self.sut.expand(flow, state, ready).ready
+        expanded = self.sut.expand(flow, state, ready, WorkflowRunContext()).ready
 
         self.assertEqual(
             [instance.instance_id for instance in expanded],
@@ -158,7 +195,7 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
         )
         ready = [operation, StepInstance("inspect", "inspect-1", None, "Inspect.")]
 
-        expanded = self.sut.expand(flow, state, ready).ready
+        expanded = self.sut.expand(flow, state, ready, WorkflowRunContext()).ready
 
         self.assertIs(expanded[0], operation)
         self.assertEqual(
@@ -173,13 +210,25 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
 
     def test_mixed_ready_loops_and_scalar_keep_their_own_context(self) -> None:
         flow = FlowDef(
-            id="mixed", name="Mixed", max_turns=10,
+            id="mixed",
+            name="Mixed",
+            max_turns=10,
             execution=WorkflowExecutionMode.AGGREGATE,
             presentation=WorkflowPresentationMode.COMBINED,
             steps=[
-                StepDef(id="left", prompt="Left.", for_each=ForEachDeclaration(StepOutputReference("prepare", "left"))),
+                StepDef(
+                    id="left",
+                    prompt="Left.",
+                    for_each=ForEachDeclaration(StepOutputReference("prepare", "left")),
+                ),
                 StepDef(id="scalar", prompt="Scalar."),
-                StepDef(id="right", prompt="Right.", for_each=ForEachDeclaration(StepOutputReference("prepare", "right"))),
+                StepDef(
+                    id="right",
+                    prompt="Right.",
+                    for_each=ForEachDeclaration(
+                        StepOutputReference("prepare", "right")
+                    ),
+                ),
             ],
         )
         state = RunState(completed={}, running=[], turn_count=0, status="running")
@@ -190,38 +239,56 @@ class TestAggregateReadyStepExpander(unittest.TestCase):
             StepInstance("right", "right-1", "C", "Right C.", iteration_index=0),
         ]
 
-        expanded = self.sut.expand(flow, state, ready).ready
+        expanded = self.sut.expand(flow, state, ready, WorkflowRunContext()).ready
 
-        self.assertEqual([step.instance_id for step in expanded], [step.instance_id for step in ready])
+        self.assertEqual(
+            [step.instance_id for step in expanded],
+            [step.instance_id for step in ready],
+        )
         self.assertEqual([step.item for step in expanded], ["A", "B", None, "C"])
-        self.assertEqual([step.prompt for step in expanded], [step.prompt for step in ready])
+        self.assertEqual(
+            [step.prompt for step in expanded], [step.prompt for step in ready]
+        )
         self.assertTrue(all(step.batch is not None for step in expanded))
         self.assertEqual(len({step.batch.group for step in expanded}), 1)
         self.assertEqual(len({step.batch.label for step in expanded}), 4)
 
-    def test_explicit_individual_iteration_is_not_absorbed_by_ready_scalar_phase(self) -> None:
+    def test_explicit_individual_iteration_is_not_absorbed_by_ready_scalar_phase(
+        self,
+    ) -> None:
         flow = FlowDef(
-            id="mixed", name="Mixed", max_turns=10,
+            id="mixed",
+            name="Mixed",
+            max_turns=10,
             execution=WorkflowExecutionMode.AGGREGATE,
             presentation=WorkflowPresentationMode.COMBINED,
             steps=[
-                StepDef(id="individual", prompt="Individual.", for_each=ForEachDeclaration(
-                    source=StepOutputReference("prepare", "items"), mode_declared=True,
-                )),
+                StepDef(
+                    id="individual",
+                    prompt="Individual.",
+                    for_each=ForEachDeclaration(
+                        source=StepOutputReference("prepare", "items"),
+                        mode_declared=True,
+                    ),
+                ),
                 StepDef(id="scalar", prompt="Scalar."),
             ],
         )
         state = RunState(completed={}, running=[], turn_count=0, status="running")
-        individual = StepInstance("individual", "individual-1", "A", "Individual A.", iteration_index=0)
+        individual = StepInstance(
+            "individual", "individual-1", "A", "Individual A.", iteration_index=0
+        )
         ready = [individual, StepInstance("scalar", "scalar-1", None, "Scalar.")]
 
-        expansion = self.sut.expand(flow, state, ready)
+        expansion = self.sut.expand(flow, state, ready, WorkflowRunContext())
         expanded = expansion.ready
 
         self.assertIs(expanded[0], individual)
         self.assertIsNone(expanded[0].batch)
         self.assertIsNotNone(expanded[1].batch)
-        self.assertEqual(expansion.phases[0].deferrals[0].reason.value, "execution_policy")
+        self.assertEqual(
+            expansion.phases[0].deferrals[0].reason.value, "execution_policy"
+        )
         self.assertIn("Materialized work", expansion.phases[0].deferrals[0].detail)
 
 

@@ -14,7 +14,8 @@ from _frontmatter_fixtures import CLEAN_CONTENT
 
 class TestParseCorrectedContent(unittest.TestCase):
     def _parse(self, raw):
-        from hook_utils import parse_json_field, StrValidator
+        from hook_utils import StrValidator, parse_json_field
+
         v = parse_json_field(raw, "corrected_content", StrValidator())
         return v if v is not None else None
 
@@ -27,7 +28,11 @@ class TestParseCorrectedContent(unittest.TestCase):
         self.assertEqual(self._parse(raw), CLEAN_CONTENT)
 
     def test_extracts_corrected_content_with_surrounding_text(self):
-        raw = "Here is the result:\n" + json.dumps({"corrected_content": CLEAN_CONTENT}) + "\nDone."
+        raw = (
+            "Here is the result:\n"
+            + json.dumps({"corrected_content": CLEAN_CONTENT})
+            + "\nDone."
+        )
         self.assertEqual(self._parse(raw), CLEAN_CONTENT)
 
     def test_returns_none_for_missing_field(self):

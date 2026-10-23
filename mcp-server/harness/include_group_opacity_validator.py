@@ -6,15 +6,15 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.include_group_membership_resolving import IncludeGroupMembershipResolving
 from harness.include_group_opacity_validating import IncludeGroupOpacityValidating
 
-
 """
 solid-name: IncludeGroupOpacityValidator
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Rejects dependencies that cross unrelated include-group boundaries.
 """
-class IncludeGroupOpacityValidator(IncludeGroupOpacityValidating):
 
+
+class IncludeGroupOpacityValidator(IncludeGroupOpacityValidating):
     def __init__(
         self,
         membership_resolver: IncludeGroupMembershipResolving,

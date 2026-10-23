@@ -1,14 +1,15 @@
 """Builds structured principle content for detection rules."""
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from common.xml_block_parser import parse as _parse_xml_blocks
+from utils.prompt_builder import TextFileReading
+
 from rules.load_reference import strip_frontmatter as _strip_frontmatter
 from rules.principle_content_building import PrincipleContentBuilding
 from rules.principle_metrics_example_loading import PrincipleMetricsExampleLoading
-from utils.prompt_builder import TextFileReading
 
 
 class PrincipleContentBuilder(PrincipleContentBuilding):
@@ -37,7 +38,9 @@ class PrincipleContentBuilder(PrincipleContentBuilding):
             raise FileNotFoundError(rule_path)
         blocks = self._xml_parser(raw)
         name = p_entry["name"]
-        if not (blocks["detection"] or blocks["definition"] or blocks["severity-bands"]):
+        if not (
+            blocks["detection"] or blocks["definition"] or blocks["severity-bands"]
+        ):
             return {"name": name, "content": self._strip(raw)}
         sections = [f"## {name.upper()}"]
         for mid, text in blocks["definition"].items():
@@ -45,7 +48,9 @@ class PrincipleContentBuilder(PrincipleContentBuilding):
         for mid, text in blocks["detection"].items():
             sections.append(f'<detection id="{mid}">\n{text}\n</detection>')
         if blocks["exceptions"]:
-            sections.append(f'<exceptions principle="{name.upper()}">\n{blocks["exceptions"]}\n</exceptions>')
+            sections.append(
+                f'<exceptions principle="{name.upper()}">\n{blocks["exceptions"]}\n</exceptions>'
+            )
 
         metrics_example = self._metrics_loader.load(
             Path(p_entry["folder"]) / "review" / "output.schema.json"
@@ -54,16 +59,20 @@ class PrincipleContentBuilder(PrincipleContentBuilding):
         if metrics_example:
             payload_example = {
                 "timestamp": "ISO-8601",
-                "files": [{
-                    "file_path": "...",
-                    "units": [{
-                        "unit_name": "...",
-                        "unit_kind": "class",
-                        "line_start": 0,
-                        "line_end": 0,
-                        "metrics": {name: metrics_example},
-                    }],
-                }],
+                "files": [
+                    {
+                        "file_path": "...",
+                        "units": [
+                            {
+                                "unit_name": "...",
+                                "unit_kind": "class",
+                                "line_start": 0,
+                                "line_end": 0,
+                                "metrics": {name: metrics_example},
+                            }
+                        ],
+                    }
+                ],
             }
             sections.append(
                 "<submission-metrics-example>\n"

@@ -1,10 +1,10 @@
 """Tests the packaged review bundle through real flow orchestration."""
 
-import tempfile
 import json
+import sys
+import tempfile
 import textwrap
 import unittest
-import sys
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -12,10 +12,10 @@ _TEST_HARNESS_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 sys.path.insert(0, str(_TEST_HARNESS_ROOT))
 
+from bundled_review_rule_policy_writer import BundledReviewRulePolicyWriter
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
-from bundled_review_rule_policy_writer import BundledReviewRulePolicyWriter
 from review.review_operation_registrations_factory import (
     ReviewOperationRegistrationsFactory,
 )
@@ -23,13 +23,14 @@ from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
 
-
 """
 solid-name: TestSolidReviewBundleExecution
 solid-category: integration-test
 solid-spec: [SPEC-036, SPEC-039, SPEC-041]
 solid-description: Proves the packaged review bundle normalizes a buffer, fans out units, activates applicable rules, and supplies shared DRY context.
 """
+
+
 class TestSolidReviewBundleExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -57,20 +58,22 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
             *ReviewOperationRegistrationsFactory().make(),
         ]
         self.sut = FlowRunOrchestratorFactory(
-            base_dir_resolver=RunsBaseDirResolver(
-                project_dir_fn=lambda: self.run_root
-            ),
+            base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: self.run_root),
             plugin_root=_PROJECT_ROOT,
             project_directory=project_directory,
             operation_registrations=registrations,
         ).build()
 
-    def test_prospective_text_selects_rules_without_entering_model_prompts(self) -> None:
-        started = self._start_review({
-            "kind": "text",
-            "text": self.source,
-            "virtual_path": str(self.target_path),
-        })
+    def test_prospective_text_selects_rules_without_entering_model_prompts(
+        self,
+    ) -> None:
+        started = self._start_review(
+            {
+                "kind": "text",
+                "text": self.source,
+                "virtual_path": str(self.target_path),
+            }
+        )
 
         self.assertIsNone(started.error, started.error)
         self.assertTrue(started.steps)
@@ -85,16 +88,31 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         identities = [step.step_id for step in started.steps]
         self.assertTrue(any("code-smells" in identity for identity in identities))
         self.assertFalse(any("frontmatter" in identity for identity in identities))
-        events = [json.loads(line) for line in
-                  (self.run_root / "runs" / self.run_id / "events.jsonl").read_text().splitlines()]
-        frontmatter_metrics = [event for event in events
-                               if event.get("event") == "step_completed"
-                               and ".rule_reviews.frontmatter-" in event.get("step_id", "")
-                               and event.get("metric_derivation") is not None]
+        events = [
+            json.loads(line)
+            for line in (self.run_root / "runs" / self.run_id / "events.jsonl")
+            .read_text()
+            .splitlines()
+        ]
+        frontmatter_metrics = [
+            event
+            for event in events
+            if event.get("event") == "step_completed"
+            and ".rule_reviews.frontmatter-" in event.get("step_id", "")
+            and event.get("metric_derivation") is not None
+        ]
         self.assertEqual(
-            {event["local_step_id"]: event["outputs"]["value"] for event in frontmatter_metrics},
-            {"missing_frontmatter_count": 2, "name_mismatch_count": 0,
-             "invalid_category_count": 0, "incorrect_stack_count": 0, "bad_description_count": 0},
+            {
+                event["local_step_id"]: event["outputs"]["value"]
+                for event in frontmatter_metrics
+            },
+            {
+                "missing_frontmatter_count": 2,
+                "name_mismatch_count": 0,
+                "invalid_category_count": 0,
+                "incorrect_stack_count": 0,
+                "bad_description_count": 0,
+            },
         )
         self.assertTrue(any("srp" in identity for identity in identities))
         self.assertTrue(any("dry" in identity for identity in identities))
@@ -116,17 +134,21 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
             12,
         )
 
-    def test_file_review_applies_project_policy_before_rule_materialization(self) -> None:
+    def test_file_review_applies_project_policy_before_rule_materialization(
+        self,
+    ) -> None:
         self.target_path.write_text(self.source, encoding="utf-8")
         BundledReviewRulePolicyWriter(
             plugin_root=_PROJECT_ROOT,
             project_root=self.run_root,
         ).write_only("srp")
 
-        started = self._start_review({
-            "kind": "file",
-            "path": str(self.target_path),
-        })
+        started = self._start_review(
+            {
+                "kind": "file",
+                "path": str(self.target_path),
+            }
+        )
 
         self.assertIsNone(started.error, started.error)
         identities = [step.step_id for step in started.steps]
@@ -186,21 +208,19 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
         self.run_id = started.run_id
         self.assertIsNone(started.error, started.error)
         self.assertEqual(len(started.steps), 1)
-        return self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "target": target,
-                "context_sources": [],
+        return self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "target": target,
+                    "context_sources": [],
+                }
             }
-        })
+        )
 
     @staticmethod
     def _rule_step_count(identities: list[str], rule_id: str) -> int:
         qualification = f".rule_reviews.{rule_id}-"
-        return len([
-            identity
-            for identity in identities
-            if qualification in identity
-        ])
+        return len([identity for identity in identities if qualification in identity])
 
 
 if __name__ == "__main__":

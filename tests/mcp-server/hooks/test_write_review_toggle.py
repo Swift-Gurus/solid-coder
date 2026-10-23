@@ -6,7 +6,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 from _gate_fixtures import FM, HC, LONG_SWIFT, call_main, event
 from llm_config import LlmConfig
@@ -15,10 +19,15 @@ from solid_coder_config import SolidCoderConfig
 
 class TestWriteReviewToggle(unittest.TestCase):
     def test_allows_without_check_when_disabled(self):
-        stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=False)
-        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
-             patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
-             patch(HC) as hc, patch(FM) as fm:
+        stub_config = SolidCoderConfig(
+            llm=LlmConfig(backend="claude"), code_review_on_write_enabled=False
+        )
+        with (
+            patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config),
+            patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}),
+            patch(HC) as hc,
+            patch(FM) as fm,
+        ):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_not_called()
         fm.assert_not_called()
@@ -26,19 +35,28 @@ class TestWriteReviewToggle(unittest.TestCase):
         self.assertEqual(out, "")
 
     def test_proceeds_when_enabled_and_key_present(self):
-        stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True)
-        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
-             patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}), \
-             patch(HC, return_value=[]) as hc:
+        stub_config = SolidCoderConfig(
+            llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True
+        )
+        with (
+            patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config),
+            patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}),
+            patch(HC, return_value=[]) as hc,
+        ):
             call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_called_once()
 
     def test_allows_without_check_when_enabled_but_no_api_key(self):
-        stub_config = SolidCoderConfig(llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True)
-        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
-             patch.dict(os.environ, {}, clear=True), \
-             patch(HC) as hc, patch(FM) as fm:
-            code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
+        stub_config = SolidCoderConfig(
+            llm=LlmConfig(backend="claude"), code_review_on_write_enabled=True
+        )
+        with (
+            patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config),
+            patch.dict(os.environ, {}, clear=True),
+            patch(HC) as hc,
+            patch(FM) as fm,
+        ):
+            code, _out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_not_called()
         fm.assert_not_called()
         self.assertEqual(code, 0)
@@ -49,9 +67,12 @@ class TestDefaultToggleAcrossBackends(unittest.TestCase):
 
     def _assert_skips_by_default(self, backend, env):
         stub_config = SolidCoderConfig(llm=LlmConfig(backend=backend))
-        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
-             patch.dict(os.environ, env, clear=True), \
-             patch(HC) as hc, patch(FM) as fm:
+        with (
+            patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config),
+            patch.dict(os.environ, env, clear=True),
+            patch(HC) as hc,
+            patch(FM) as fm,
+        ):
             code, out = call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_not_called()
         fm.assert_not_called()
@@ -73,10 +94,14 @@ class TestDefaultToggleAcrossBackends(unittest.TestCase):
     def test_codex_backend_with_flag_enabled_proceeds_without_credential_check(self):
         """Known gap: ApiKeyGuard has no Codex credential check, so enabling the flag with
         backend=codex proceeds straight to the health check regardless of Codex auth state."""
-        stub_config = SolidCoderConfig(llm=LlmConfig(backend="codex"), code_review_on_write_enabled=True)
-        with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config), \
-             patch.dict(os.environ, {}, clear=True), \
-             patch(HC, return_value=[]) as hc:
+        stub_config = SolidCoderConfig(
+            llm=LlmConfig(backend="codex"), code_review_on_write_enabled=True
+        )
+        with (
+            patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config),
+            patch.dict(os.environ, {}, clear=True),
+            patch(HC, return_value=[]) as hc,
+        ):
             call_main(event("Write", "/src/Foo.swift", LONG_SWIFT))
         hc.assert_called_once()
 

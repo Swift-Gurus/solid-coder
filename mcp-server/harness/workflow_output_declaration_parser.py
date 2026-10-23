@@ -9,15 +9,15 @@ from harness.workflow_output_declaration_resolving import (
     WorkflowOutputDeclarationResolving,
 )
 
-
 """
 solid-name: WorkflowOutputDeclarationParser
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Coordinates typed decoding and executable resolution of authored workflow outputs.
 """
-class WorkflowOutputDeclarationParser:
 
+
+class WorkflowOutputDeclarationParser:
     def __init__(
         self,
         decoder: StructuredModelDecoding[AuthoredWorkflowOutputs],

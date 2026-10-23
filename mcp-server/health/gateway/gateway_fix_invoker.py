@@ -5,15 +5,19 @@ from typing import Protocol
 from health.gateway.gateway_command_runner import GatewayInvoking
 from json_serializer import JsonSerializer, JsonSerializing
 
-
 """
 solid-name: FixInvoking
 solid-category: abstraction
 solid-description: Contract for loading violation fixes and submitting completed fixes.
 """
+
+
 class FixInvoking(Protocol):
     def load_fix(self, metric_ids: list) -> str: ...
     def submit_fix(self, output_dir: str, fixes: list) -> str: ...
+
+
+_DEFAULT_SERIALIZER: JsonSerializing = JsonSerializer()
 
 
 """
@@ -21,11 +25,13 @@ solid-name: GatewayFixInvoker
 solid-category: service
 solid-description: Provides legacy fix guidance and records fix submissions through gateway operations.
 """
+
+
 class GatewayFixInvoker:
     def __init__(
         self,
         invoker: GatewayInvoking,
-        serializer: JsonSerializing = JsonSerializer(),
+        serializer: JsonSerializing = _DEFAULT_SERIALIZER,
     ) -> None:
         self._invoker = invoker
         self._serializer = serializer
@@ -42,7 +48,12 @@ class GatewayFixInvoker:
     def submit_fix(self, output_dir: str, fixes: list) -> str:
         result = self._invoker.invoke(
             "submit_fix",
-            extra_args=["--output_dir", output_dir, "--fixes", self._serializer.serialize(fixes)],
+            extra_args=[
+                "--output_dir",
+                output_dir,
+                "--fixes",
+                self._serializer.serialize(fixes),
+            ],
             result_key=None,
             default="{}",
         )

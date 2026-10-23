@@ -4,13 +4,14 @@ from gate.extension_lookup import ExtensionLookup
 from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.source_language_detecting import SourceLanguageDetecting
 
-
 """
 solid-name: SourceLanguageDetector
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Selects a normalized internal parser language from an exact file extension.
 """
+
+
 class SourceLanguageDetector(SourceLanguageDetecting):
     def __init__(
         self,

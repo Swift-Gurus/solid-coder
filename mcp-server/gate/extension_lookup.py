@@ -4,8 +4,8 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class ExtensionLookup(Protocol):
-    def language_for(self, ext: str) -> Optional[str]: ...
+    def language_for(self, ext: str) -> str | None: ...

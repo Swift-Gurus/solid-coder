@@ -14,13 +14,14 @@ from harness.include_group_membership_resolving import (
 from harness.step_declaration import StepDeclaration
 from harness.step_dependencies_replacing import StepDependenciesReplacing
 
-
 """
 solid-name: CoLocatedMetricDependencyRebaser
 solid-category: service
 solid-spec: [SPEC-058]
 solid-description: Coordinates workflow scope lookup and typed dependency replacement after compact metric expansion.
 """
+
+
 class CoLocatedMetricDependencyRebaser(CoLocatedMetricDependencyRebasing):
     def __init__(
         self,

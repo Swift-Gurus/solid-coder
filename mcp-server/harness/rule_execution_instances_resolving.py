@@ -6,13 +6,14 @@ from harness.flow_def import FlowDef
 from harness.rule_execution_instance import RuleExecutionInstance
 from harness.run_state import RunState
 
-
 """
 solid-name: RuleExecutionInstancesResolving
 solid-category: abstraction
 solid-spec: [SPEC-039]
 solid-description: Contract for resolving completed root and included rule instances in stable workflow execution order.
 """
+
+
 class RuleExecutionInstancesResolving(Protocol):
     def resolve(
         self,

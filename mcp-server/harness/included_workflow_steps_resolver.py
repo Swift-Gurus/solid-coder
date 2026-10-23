@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+
 from harness.include_alias_group import IncludeAliasGroup
 from harness.included_metric_calculation_resolving import (
     IncludedMetricCalculationResolving,
@@ -27,8 +28,9 @@ solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Materializes qualified child workflow steps for one mapped source item.
 """
-class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
 
+
+class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
     def __init__(
         self,
         input_resolver: WorkflowInputBindingsResolving,
@@ -87,9 +89,7 @@ class IncludedWorkflowStepsResolver(IncludedWorkflowStepsResolving):
         return [
             replace(
                 template,
-                id=step_identities.require_declaration(
-                    template.id
-                ).execution_step_id,
+                id=step_identities.require_declaration(template.id).execution_step_id,
                 depends_on=self._dependency_resolver.resolve(
                     template,
                     group,

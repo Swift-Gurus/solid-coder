@@ -8,19 +8,18 @@ from unittest.mock import Mock
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.flow_def import FlowDef  # noqa: E402
-from harness.included_rule_workflow import IncludedRuleWorkflow  # noqa: E402
-from harness.included_workflow_instance import IncludedWorkflowInstance  # noqa: E402
-from harness.rule_declaration import RuleDeclaration  # noqa: E402
-from harness.rule_execution_instances_resolver import (  # noqa: E402
+from harness.flow_def import FlowDef
+from harness.included_rule_workflow import IncludedRuleWorkflow
+from harness.included_workflow_instance import IncludedWorkflowInstance
+from harness.rule_declaration import RuleDeclaration
+from harness.rule_execution_instances_resolver import (
     RuleExecutionInstancesResolver,
 )
-from harness.run_state import RunState  # noqa: E402
-from harness.step_def import StepDef  # noqa: E402
+from harness.run_state import RunState
+from harness.step_def import StepDef
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
 from source.source_unit_identity import SourceUnitIdentity
-
 
 """
 solid-name: TestRuleExecutionInstancesResolver
@@ -28,6 +27,8 @@ solid-category: unit-test
 solid-spec: [SPEC-039, SPEC-041]
 solid-description: Verifies finalized dynamic rule groups retain their include alias and normalized source index for audit attribution.
 """
+
+
 class TestRuleExecutionInstancesResolver(unittest.TestCase):
     def test_retains_dynamic_rule_source_identity(self) -> None:
         rule = IncludedRuleWorkflow(
@@ -40,7 +41,11 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
             source_index=1,
             source_item="second unit",
             rule_workflow=rule,
-            inputs=WorkflowContextValues(entries=[WorkflowContextValue(name="review_unit", value="normalized-unit")]),
+            inputs=WorkflowContextValues(
+                entries=[
+                    WorkflowContextValue(name="review_unit", value="normalized-unit")
+                ]
+            ),
         )
         flow = FlowDef(
             name="review",
@@ -57,7 +62,8 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
         completion.evaluate.return_value = True
         identities = Mock()
         identities.resolve.return_value = SourceUnitIdentity(
-            source_identity="/project/Feature.swift", unit_identity="protocol:Reading",
+            source_identity="/project/Feature.swift",
+            unit_identity="protocol:Reading",
         )
 
         instances = RuleExecutionInstancesResolver(completion, identities).resolve(
@@ -78,8 +84,13 @@ class TestRuleExecutionInstancesResolver(unittest.TestCase):
             "rule_reviews.srp",
         )
         self.assertEqual(instances[0].provenance.source_index, 1)
-        self.assertEqual(instances[0].provenance.source_unit.source_identity, "/project/Feature.swift")
-        self.assertEqual(instances[0].provenance.source_unit.unit_identity, "protocol:Reading")
+        self.assertEqual(
+            instances[0].provenance.source_unit.source_identity,
+            "/project/Feature.swift",
+        )
+        self.assertEqual(
+            instances[0].provenance.source_unit.unit_identity, "protocol:Reading"
+        )
         identities.resolve.assert_called_once_with(workflow_instance.inputs)
 
 

@@ -6,13 +6,14 @@ from harness.condition_parsing import ConditionParsing
 from harness.ratio_metric_reducer_declaration import RatioMetricReducerDeclaration
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: RatioMetricReducerDecoder
 solid-category: boundary
 solid-spec: [SPEC-054, SPEC-059]
 solid-description: Decodes ratio metrics from authored numerator and denominator conditions.
 """
+
+
 class RatioMetricReducerDecoder(StructuredModelDecoding[CollectionMetricReducer]):
     def __init__(
         self,
@@ -27,6 +28,10 @@ class RatioMetricReducerDecoder(StructuredModelDecoding[CollectionMetricReducer]
         return CollectionMetricReducer(
             type=CollectionMetricReducerType.RATIO,
             empty_value=declaration.empty_value,
-            numerator_condition=self._condition_parser.parse(declaration.numerator_when),
-            denominator_condition=self._condition_parser.parse(declaration.denominator_when),
+            numerator_condition=self._condition_parser.parse(
+                declaration.numerator_when
+            ),
+            denominator_condition=self._condition_parser.parse(
+                declaration.denominator_when
+            ),
         )

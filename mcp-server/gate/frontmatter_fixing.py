@@ -4,8 +4,8 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class FrontmatterFixing(Protocol):
-    def fix(self, content: str, session_id: str, path: str) -> Optional[str]: ...
+    def fix(self, content: str, session_id: str, path: str) -> str | None: ...

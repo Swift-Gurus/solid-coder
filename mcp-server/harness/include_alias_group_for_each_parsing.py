@@ -6,13 +6,14 @@ from typing import Protocol
 
 from harness.for_each_declaration import ForEachDeclaration
 
-
 """
 solid-name: IncludeAliasGroupForEachParsing
 solid-category: abstraction
 solid-spec: [SPEC-037]
 solid-description: Contract for restoring an optional for-each reference from one durable alias-group snapshot.
 """
+
+
 class IncludeAliasGroupForEachParsing(Protocol):
     def parse(
         self,

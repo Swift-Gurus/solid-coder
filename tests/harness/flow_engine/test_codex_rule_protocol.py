@@ -9,17 +9,18 @@ from pathlib import Path
 _HARNESS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_HARNESS))
 
+import test_srp_validation_live
+from codex_protocol.evidence import CodexProtocolEvidence
 from live_session_result import LiveSessionResult
 from preserved_live_workflow_run import PreservedLiveWorkflowRun
-from codex_protocol.evidence import CodexProtocolEvidence
-import test_srp_validation_live
-
 
 """
 solid-name: TestCodexRuleProtocol
 solid-category: unit-test
 solid-description: Verifies discovered workflow tools and recovered submission errors remain auditable without weakening successful invocation requirements.
 """
+
+
 class TestCodexRuleProtocol(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -33,13 +34,27 @@ class TestCodexRuleProtocol(unittest.TestCase):
             run_directory=self.root / "flow-run",
         )
 
-    def test_discovery_before_successful_workflow_calls_is_recorded_not_rejected(self) -> None:
+    def test_discovery_before_successful_workflow_calls_is_recorded_not_rejected(
+        self,
+    ) -> None:
         self._write_transcript(
-            self._call("discover", "text(ALL_TOOLS.filter(t => t.name.includes('flow')));"),
-            self._output("discover", "Registered flow_start and flow_next", as_blocks=True),
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
-            self._output("start", '{"content":[{"type":"text","text":"ready"}]}', as_blocks=True),
-            self._call("next", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._call(
+                "discover", "text(ALL_TOOLS.filter(t => t.name.includes('flow')));"
+            ),
+            self._output(
+                "discover", "Registered flow_start and flow_next", as_blocks=True
+            ),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
+            self._output(
+                "start", '{"content":[{"type":"text","text":"ready"}]}', as_blocks=True
+            ),
+            self._call(
+                "next",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});",
+            ),
             self._output("next", '{"content":[{"type":"text","text":"done"}]}'),
         )
 
@@ -55,11 +70,23 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def test_recovered_script_error_remains_in_saved_evidence(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("start", '{"content":[{"type":"text","text":"ready"}]}'),
-            self._call("broken", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}));"),
-            self._output("broken", "Script failed\nScript error:\nSyntaxError: Unexpected token ')'"),
-            self._call("retry", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._call(
+                "broken",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}));",
+            ),
+            self._output(
+                "broken",
+                "Script failed\nScript error:\nSyntaxError: Unexpected token ')'",
+            ),
+            self._call(
+                "retry",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});",
+            ),
             self._output("retry", '{"content":[{"type":"text","text":"done"}]}'),
         )
 
@@ -75,32 +102,50 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def test_failed_start_is_not_a_successful_invocation(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
-            self._output("start", "Script failed\nTypeError: flow_start is not a function"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
+            self._output(
+                "start", "Script failed\nTypeError: flow_start is not a function"
+            ),
         )
 
         with self.assertRaisesRegex(AssertionError, "successful flow_start"):
             self.case._assert_codex_protocol(self.run)
 
-        self.assertIn("not a function", (self.root / "codex-protocol-evidence.json").read_text())
+        self.assertIn(
+            "not a function", (self.root / "codex-protocol-evidence.json").read_text()
+        )
 
     def test_missing_next_is_not_a_completed_protocol(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("start", '{"content":[{"type":"text","text":"ready"}]}'),
         )
 
         with self.assertRaisesRegex(AssertionError, "successful flow_next"):
             self.case._assert_codex_protocol(self.run)
 
-    def test_missing_codex_transcript_fails_instead_of_skipping_validation(self) -> None:
+    def test_missing_codex_transcript_fails_instead_of_skipping_validation(
+        self,
+    ) -> None:
         with self.assertRaisesRegex(AssertionError, "Codex transcript"):
             self.case._assert_codex_protocol(self.run)
 
     def test_mcp_error_response_cannot_satisfy_successful_start(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
-            self._output("start", '{"content":[{"type":"text","text":"unknown flow"}],"isError":true}'),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
+            self._output(
+                "start",
+                '{"content":[{"type":"text","text":"unknown flow"}],"isError":true}',
+            ),
         )
 
         with self.assertRaisesRegex(AssertionError, "successful flow_start"):
@@ -108,7 +153,10 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def test_response_for_another_call_cannot_satisfy_start(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("unrelated", '{"content":[{"type":"text","text":"ready"}]}'),
         )
 
@@ -117,9 +165,15 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def test_workflow_failure_still_fails_after_successful_tool_calls(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("start", '{"content":[{"type":"text","text":"ready"}]}'),
-            self._call("next", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._call(
+                "next",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});",
+            ),
             self._output("next", '{"content":[{"type":"text","text":"failed"}]}'),
         )
         self.run.run_directory.mkdir()
@@ -136,9 +190,15 @@ class TestCodexRuleProtocol(unittest.TestCase):
             '"payload":{"type":"token_count","info":{"total_token_usage":'
             '{"input_tokens":100,"cached_input_tokens":50,"cache_write_input_tokens":0,'
             '"output_tokens":10,"reasoning_output_tokens":0,"total_tokens":110}}}}',
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("start", '{"content":[{"type":"text","text":"ready"}]}'),
-            self._call("next", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._call(
+                "next",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});",
+            ),
             self._output("next", '{"content":[{"type":"text","text":"done"}]}'),
             '{"timestamp":"2026-10-02T00:00:03Z","type":"event_msg",'
             '"payload":{"type":"token_count","info":{"total_token_usage":'
@@ -154,21 +214,35 @@ class TestCodexRuleProtocol(unittest.TestCase):
         self.assertEqual(evidence.startup.token_usage.total_tokens, 110)
         self.assertNotIn(self.case.FIXTURE.read_text(), evidence.model_dump_json())
 
-    def test_unwrapped_responses_require_completed_server_evidence_for_the_same_session(self) -> None:
+    def test_unwrapped_responses_require_completed_server_evidence_for_the_same_session(
+        self,
+    ) -> None:
         self._write_transcript(
-            self._call("start", "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);"),
+            self._call(
+                "start",
+                "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);",
+            ),
             self._output("start", "Classify the supplied unit.", as_blocks=True),
-            self._call("next", "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);"),
+            self._call(
+                "next",
+                "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);",
+            ),
             self._output("next", "Flow complete.", as_blocks=True),
         )
         self.run.run_directory.mkdir()
         events = self.run.run_directory / "events.jsonl"
         for session in ["unrelated", "child"]:
-            events.write_text("\n".join([
-                '{"event":"run_started"}',
-                json.dumps({"event": "session_step_recorded", "session_id": session}),
-                '{"event":"run_completed"}',
-            ]))
+            events.write_text(
+                "\n".join(
+                    [
+                        '{"event":"run_started"}',
+                        json.dumps(
+                            {"event": "session_step_recorded", "session_id": session}
+                        ),
+                        '{"event":"run_completed"}',
+                    ]
+                )
+            )
             if session == "unrelated":
                 with self.assertRaisesRegex(AssertionError, "successful flow_start"):
                     self.case._assert_codex_protocol(self.run)
@@ -177,30 +251,48 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def test_plain_completion_text_alone_does_not_prove_workflow_success(self) -> None:
         self._write_transcript(
-            self._call("start", "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});"),
+            self._call(
+                "start",
+                "await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'});",
+            ),
             self._output("start", "Flow complete."),
-            self._call("next", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});"),
+            self._call(
+                "next",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}});",
+            ),
             self._output("next", "Flow complete."),
         )
 
         with self.assertRaisesRegex(AssertionError, "successful flow_start"):
             self.case._assert_codex_protocol(self.run)
 
-    def test_recovered_error_with_unwrapped_responses_preserves_completed_server_evidence(self) -> None:
+    def test_recovered_error_with_unwrapped_responses_preserves_completed_server_evidence(
+        self,
+    ) -> None:
         self._write_transcript(
-            self._call("start", "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);"),
+            self._call(
+                "start",
+                "const r = await tools.mcp__solid_coder_flow_engine__flow_start({flow:'srp'}); text(r.content[0].text);",
+            ),
             self._output("start", "Classify the supplied unit.", as_blocks=True),
-            self._call("broken", "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}));"),
-            self._output("broken", "Script failed\nScript error:\nSyntaxError: Unexpected token ')'"),
-            self._call("retry", "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);"),
+            self._call(
+                "broken",
+                "await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}));",
+            ),
+            self._output(
+                "broken",
+                "Script failed\nScript error:\nSyntaxError: Unexpected token ')'",
+            ),
+            self._call(
+                "retry",
+                "const r = await tools.mcp__solid_coder_flow_engine__flow_next({outputs:{}}); text(r.content[0].text);",
+            ),
             self._output("retry", "Flow complete.", as_blocks=True),
         )
         self.run.run_directory.mkdir()
-        (self.run.run_directory / "events.jsonl").write_text("\n".join([
-            '{"event":"run_started"}',
-            '{"event":"session_step_recorded","session_id":"child"}',
-            '{"event":"run_completed"}',
-        ]))
+        (self.run.run_directory / "events.jsonl").write_text(
+            '{"event":"run_started"}\n{"event":"session_step_recorded","session_id":"child"}\n{"event":"run_completed"}'
+        )
 
         self.case._assert_codex_protocol(self.run)
 
@@ -228,7 +320,9 @@ class TestCodexRuleProtocol(unittest.TestCase):
 
     def _output(self, call_id: str, output: str, as_blocks: bool = False) -> str:
         encoded = json.dumps(output)
-        content = f'[{{"type":"input_text","text":{encoded}}}]' if as_blocks else encoded
+        content = (
+            f'[{{"type":"input_text","text":{encoded}}}]' if as_blocks else encoded
+        )
         return (
             '{"timestamp":"2026-10-02T00:00:02Z","type":"response_item",'
             '"payload":{"type":"custom_tool_call_output",'

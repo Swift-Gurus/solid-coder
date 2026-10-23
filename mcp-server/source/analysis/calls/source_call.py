@@ -1,7 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-
 from source.source_line_range import SourceLineRange
-
 
 """
 solid-name: SourceCall
@@ -9,6 +7,8 @@ solid-category: model
 solid-spec: [SPEC-067]
 solid-description: Records an authored invocation with exact source coordinates, callee syntax and argument labels without claiming resolved dispatch or reachability.
 """
+
+
 class SourceCall(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

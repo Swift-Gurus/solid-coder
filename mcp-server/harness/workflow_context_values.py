@@ -6,7 +6,6 @@ from typing import Generic, TypeVar
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.workflow_context_value import WorkflowContextValue
 
-
 Value = TypeVar("Value")
 
 
@@ -16,6 +15,8 @@ solid-category: model
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Resolves typed named values from one workflow runtime context collection.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowContextValues(Generic[Value]):
     entries: list[WorkflowContextValue[Value]] = field(default_factory=list)

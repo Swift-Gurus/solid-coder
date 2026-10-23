@@ -4,9 +4,9 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
-from llama.json_serializer import JsonSerializing, JsonSerializer
+from llama.json_serializer import JsonSerializer, JsonSerializing
 
 
 class BatchFindingsHandling(Protocol):
@@ -23,7 +23,7 @@ class GatewayFindingsSubmitter:
     def __init__(
         self,
         handler: BatchFindingsHandling,
-        serializer: Optional[JsonSerializing] = None,
+        serializer: JsonSerializing | None = None,
     ) -> None:
         self._handler = handler
         self._serialize: JsonSerializing = serializer or JsonSerializer()

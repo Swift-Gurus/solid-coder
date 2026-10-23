@@ -9,23 +9,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from harness.all_condition_serializer import AllConditionSerializer  # noqa: E402
-from harness.any_condition_serializer import AnyConditionSerializer  # noqa: E402
-from harness.comparison_condition import ComparisonCondition  # noqa: E402
-from harness.comparison_condition_evidence import ComparisonConditionEvidence  # noqa: E402
-from harness.comparison_condition_serializer import ComparisonConditionSerializer  # noqa: E402
-from harness.condition_operator import ConditionOperator  # noqa: E402
-from harness.condition_serializer import ConditionSerializer  # noqa: E402
-from harness.included_workflow_instance import IncludedWorkflowInstance  # noqa: E402
-from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities  # noqa: E402
-from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity  # noqa: E402
-from harness.not_condition_serializer import NotConditionSerializer  # noqa: E402
-from harness.resolved_condition_value import ResolvedConditionValue  # noqa: E402
-from harness.step_instance import StepInstance  # noqa: E402
-from harness.step_skip import StepSkip  # noqa: E402
-from harness.step_skip_recorder import StepSkipRecorder  # noqa: E402
-from harness.unsupported_condition_serializer import UnsupportedConditionSerializer  # noqa: E402
-from harness.workflow_expression import WorkflowExpression  # noqa: E402
+from harness.all_condition_serializer import AllConditionSerializer
+from harness.any_condition_serializer import AnyConditionSerializer
+from harness.comparison_condition import ComparisonCondition
+from harness.comparison_condition_evidence import ComparisonConditionEvidence
+from harness.comparison_condition_serializer import ComparisonConditionSerializer
+from harness.condition_operator import ConditionOperator
+from harness.condition_serializer import ConditionSerializer
+from harness.included_workflow_instance import IncludedWorkflowInstance
+from harness.included_workflow_step_identities import IncludedWorkflowStepIdentities
+from harness.included_workflow_step_identity import IncludedWorkflowStepIdentity
+from harness.not_condition_serializer import NotConditionSerializer
+from harness.resolved_condition_value import ResolvedConditionValue
+from harness.step_instance import StepInstance
+from harness.step_skip import StepSkip
+from harness.step_skip_recorder import StepSkipRecorder
+from harness.unsupported_condition_serializer import UnsupportedConditionSerializer
+from harness.workflow_expression import WorkflowExpression
 
 
 @dataclass
@@ -37,7 +37,6 @@ class SpyEventAppender:
 
 
 class TestStepSkipRecorder(unittest.TestCase):
-
     def setUp(self) -> None:
         self.appender = SpyEventAppender()
         self.sut = StepSkipRecorder(
@@ -90,7 +89,9 @@ class TestStepSkipRecorder(unittest.TestCase):
             },
         )
 
-    def test_mixed_instances_leave_parent_completion_to_executable_sibling(self) -> None:
+    def test_mixed_instances_leave_parent_completion_to_executable_sibling(
+        self,
+    ) -> None:
         ready = [self._instance(1, skipped=True), self._instance(2, skipped=False)]
 
         self.sut.record("/run/events.jsonl", ready)
@@ -104,13 +105,15 @@ class TestStepSkipRecorder(unittest.TestCase):
             instance_id="workflow-instance-7",
             source_index=0,
             source_item={"language": "kotlin"},
-            steps=IncludedWorkflowStepIdentities(entries=[
-                IncludedWorkflowStepIdentity(
-                    declaration_id="review.inspect",
-                    local_step_id="inspect",
-                    execution_step_id="opaque-step-a7f4",
-                )
-            ]),
+            steps=IncludedWorkflowStepIdentities(
+                entries=[
+                    IncludedWorkflowStepIdentity(
+                        declaration_id="review.inspect",
+                        local_step_id="inspect",
+                        execution_step_id="opaque-step-a7f4",
+                    )
+                ]
+            ),
         )
         skip = StepSkip(
             step_id="opaque-step-a7f4",

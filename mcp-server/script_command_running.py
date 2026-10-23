@@ -7,12 +7,13 @@ solid-description: Contract for executing a command with an explicit timeout.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from harness.script_execution_result import ScriptExecutionResult
 
 
 class ScriptCommandRunning(Protocol):
-
-    def run(self, command: list[str], timeout_seconds: Optional[int]) -> "ScriptExecutionResult": ...
+    def run(
+        self, command: list[str], timeout_seconds: int | None
+    ) -> ScriptExecutionResult: ...

@@ -12,21 +12,20 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from harness.batch_step_renderer_factory import BatchStepRendererFactory  # noqa: E402
-from harness.first_ready_step_selector import FirstReadyStepSelector  # noqa: E402
-from harness.flow_validation_error import FlowValidationError  # noqa: E402
-from harness.flow_run_orchestrator import FlowRunOrchestrator  # noqa: E402
-from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory  # noqa: E402
-from harness.review_result import ReviewResult  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-from harness.sibling_batch_step_selector_factory import (  # noqa: E402
+from harness.batch_step_renderer_factory import BatchStepRendererFactory
+from harness.first_ready_step_selector import FirstReadyStepSelector
+from harness.flow_run_orchestrator import FlowRunOrchestrator
+from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.flow_validation_error import FlowValidationError
+from harness.review_result import ReviewResult
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
+from harness.sibling_batch_step_selector_factory import (
     SiblingBatchStepSelectorFactory,
 )
-from harness.single_step_renderer import SingleStepRenderer  # noqa: E402
-from harness.step_formatter import StepFormatter  # noqa: E402
-from harness.step_renderer import StepRenderer  # noqa: E402
-from harness.subagent_delegator import SubagentDelegator  # noqa: E402
-
+from harness.single_step_renderer import SingleStepRenderer
+from harness.step_formatter import StepFormatter
+from harness.step_renderer import StepRenderer
+from harness.subagent_delegator import SubagentDelegator
 
 """
 solid-name: TestCombinedRulePresentation
@@ -34,6 +33,8 @@ solid-category: integration-test
 solid-spec: [SPEC-043]
 solid-description: Proves combined presentation follows applicability while preserving per-rule and per-unit completion, retries, and replay.
 """
+
+
 class TestCombinedRulePresentation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -67,38 +68,41 @@ class TestCombinedRulePresentation(unittest.TestCase):
     def test_nested_submission_completes_existing_instances(self) -> None:
         started, ready = self._start_combined_review_with_run()
 
-        result = self.sut.flow_next({
-            "AlphaType": {
-                "alpha": self._rule_outputs(1),
-            },
-            "BetaProtocol": {
-                "alpha": self._rule_outputs(1),
-                "protocol_only": self._rule_outputs(1),
-            },
-        })
+        result = self.sut.flow_next(
+            {
+                "AlphaType": {
+                    "alpha": self._rule_outputs(1),
+                },
+                "BetaProtocol": {
+                    "alpha": self._rule_outputs(1),
+                    "protocol_only": self._rule_outputs(1),
+                },
+            }
+        )
 
         self.assertEqual(result.status, "done", result.error)
         completed = [
             event
             for event in self._events(started.run_id)
             if event.get("event") == "step_completed"
-            and event.get("instance_id")
-            in {step.instance_id for step in ready.steps}
+            and event.get("instance_id") in {step.instance_id for step in ready.steps}
         ]
         self.assertEqual(len(completed), 3)
 
     def test_completed_combined_rules_publish_independent_scored_results(self) -> None:
         started, _ = self._start_combined_review_with_run()
 
-        completed = self.sut.flow_next({
-            "AlphaType": {
-                "alpha": self._rule_outputs(1),
-            },
-            "BetaProtocol": {
-                "alpha": self._rule_outputs(1),
-                "protocol_only": self._rule_outputs(1),
-            },
-        })
+        completed = self.sut.flow_next(
+            {
+                "AlphaType": {
+                    "alpha": self._rule_outputs(1),
+                },
+                "BetaProtocol": {
+                    "alpha": self._rule_outputs(1),
+                    "protocol_only": self._rule_outputs(1),
+                },
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = ReviewResult.model_validate_json(
@@ -120,14 +124,16 @@ class TestCombinedRulePresentation(unittest.TestCase):
     def test_partial_submission_and_replay_return_only_missing_pairs(self) -> None:
         self._start_combined_review_with_run()
 
-        partial = self.sut.flow_next({
-            "AlphaType": {
-                "alpha": self._rule_outputs(1),
-            },
-            "BetaProtocol": {
-                "protocol_only": self._rule_outputs(1),
-            },
-        })
+        partial = self.sut.flow_next(
+            {
+                "AlphaType": {
+                    "alpha": self._rule_outputs(1),
+                },
+                "BetaProtocol": {
+                    "protocol_only": self._rule_outputs(1),
+                },
+            }
+        )
         replayed = self._orchestrator().flow_next()
         rendered = self.renderer.render_steps(replayed.steps)
 
@@ -148,19 +154,23 @@ class TestCombinedRulePresentation(unittest.TestCase):
             and "Apply the alpha rule." in step.prompt
         )
 
-        retried = self.sut.flow_next({
-            "AlphaType": {
-                "alpha": self._rule_outputs(1),
-            },
-            "BetaProtocol": {
-                "alpha": self._rule_outputs("invalid"),
-                "protocol_only": self._rule_outputs(1),
-            },
-        })
+        retried = self.sut.flow_next(
+            {
+                "AlphaType": {
+                    "alpha": self._rule_outputs(1),
+                },
+                "BetaProtocol": {
+                    "alpha": self._rule_outputs("invalid"),
+                    "protocol_only": self._rule_outputs(1),
+                },
+            }
+        )
         rendered = self.renderer.render_steps(retried.steps)
 
         self.assertEqual(retried.status, "ready", retried.error)
-        self.assertEqual([step.instance_id for step in retried.steps], [beta_alpha.instance_id])
+        self.assertEqual(
+            [step.instance_id for step in retried.steps], [beta_alpha.instance_id]
+        )
         self.assertIn("BetaProtocol", rendered)
         self.assertIn("alpha", rendered)
         self.assertIn("not of type 'integer'", rendered)
@@ -169,11 +179,13 @@ class TestCombinedRulePresentation(unittest.TestCase):
     def test_unknown_rule_alias_is_rejected_without_completing_work(self) -> None:
         _, ready = self._start_combined_review_with_run()
 
-        rejected = self.sut.flow_next({
-            "AlphaType": {
-                "invented": self._rule_outputs(1),
+        rejected = self.sut.flow_next(
+            {
+                "AlphaType": {
+                    "invented": self._rule_outputs(1),
+                }
             }
-        })
+        )
         still_ready = self.sut.flow_next()
 
         self.assertEqual(rejected.status, "ready")
@@ -186,11 +198,13 @@ class TestCombinedRulePresentation(unittest.TestCase):
     def test_unknown_item_label_is_rejected_without_completing_work(self) -> None:
         _, ready = self._start_combined_review_with_run()
 
-        rejected = self.sut.flow_next({
-            "InventedType": {
-                "alpha": self._rule_outputs(1),
+        rejected = self.sut.flow_next(
+            {
+                "InventedType": {
+                    "alpha": self._rule_outputs(1),
+                }
             }
-        })
+        )
         still_ready = self.sut.flow_next()
 
         self.assertEqual(rejected.status, "ready")
@@ -252,14 +266,16 @@ class TestCombinedRulePresentation(unittest.TestCase):
 
     def _start_combined_review_with_run(self):
         started = self.sut.flow_start(str(self.workflow_path))
-        ready = self.sut.flow_next({
-            started.steps[0].instance_id: {
-                "units": [
-                    {"name": "AlphaType", "kind": "class"},
-                    {"name": "BetaProtocol", "kind": "protocol"},
-                ]
+        ready = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "units": [
+                        {"name": "AlphaType", "kind": "class"},
+                        {"name": "BetaProtocol", "kind": "protocol"},
+                    ]
+                }
             }
-        })
+        )
         self.assertIsNone(ready.error, ready.error)
         self.assertEqual(len(ready.steps), 3)
         return started, ready
@@ -366,9 +382,9 @@ class TestCombinedRulePresentation(unittest.TestCase):
     def _events(self, run_id: str) -> list[dict[str, object]]:
         return [
             json.loads(line)
-            for line in (
-                self.project_root / "runs" / run_id / "events.jsonl"
-            ).read_text(encoding="utf-8").splitlines()
+            for line in (self.project_root / "runs" / run_id / "events.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
         ]
 
     def _orchestrator(self) -> FlowRunOrchestrator:

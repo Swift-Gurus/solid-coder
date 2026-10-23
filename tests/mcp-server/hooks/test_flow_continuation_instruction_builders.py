@@ -5,19 +5,17 @@ from pathlib import Path
 
 from _path_bootstrap import ensure_on_path
 
-
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server",
     Path(__file__).resolve().parent,
 )
 
-from codex_flow_continuation_instruction_builder import (  # noqa: E402
+from codex_flow_continuation_instruction_builder import (
     CodexFlowContinuationInstructionBuilder,
 )
-from native_flow_continuation_instruction_builder import (  # noqa: E402
+from native_flow_continuation_instruction_builder import (
     NativeFlowContinuationInstructionBuilder,
 )
-
 
 """
 solid-name: TestFlowContinuationInstructionBuilders
@@ -25,6 +23,8 @@ solid-category: unit-test
 solid-spec: [SPEC-047]
 solid-description: Verifies isolated child sessions receive directly callable backend-specific flow guidance.
 """
+
+
 class TestFlowContinuationInstructionBuilders(unittest.TestCase):
     def test_codex_instruction_uses_deferred_tool_without_discovery(self) -> None:
         instruction = CodexFlowContinuationInstructionBuilder().build("gate-run")
@@ -50,7 +50,7 @@ class TestFlowContinuationInstructionBuilders(unittest.TestCase):
             instruction,
         )
         self.assertIn("one assign call for every required schema leaf", instruction)
-        self.assertIn("run_id: \"gate-run\", outputs", instruction)
+        self.assertIn('run_id: "gate-run", outputs', instruction)
         self.assertNotIn(
             '{"<returned-step-id>": <JSON output>}',
             instruction,

@@ -13,11 +13,11 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
-from rule_analysis_expectation import RuleAnalysisExpectation  # noqa: E402
-from rule_metric_expectation import RuleMetricExpectation  # noqa: E402
-from rule_validation_flow_contract import RuleValidationFlowContract  # noqa: E402
-from rule_validation_scenario import RuleValidationScenario  # noqa: E402
-from harness.rule_scope import RuleScope  # noqa: E402
+from harness.rule_scope import RuleScope
+from rule_analysis_expectation import RuleAnalysisExpectation
+from rule_metric_expectation import RuleMetricExpectation
+from rule_validation_flow_contract import RuleValidationFlowContract
+from rule_validation_scenario import RuleValidationScenario
 
 
 class TestUITestingValidationFlow(RuleValidationFlowContract):
@@ -124,11 +124,51 @@ class TestUITestingValidationFlow(RuleValidationFlowContract):
             ),
         ],
         metrics=[
-            RuleMetricExpectation(step_id="flow_violations", metric_id="UITEST-1", detection_id="UITEST-1", detection_name="Flow Encapsulation", value=2, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="base_class_violations", metric_id="UITEST-2", detection_id="UITEST-2", detection_name="Base Class Structure", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="grouping_violations", metric_id="UITEST-3", detection_id="UITEST-3", detection_name="Assertion Grouping", value=1, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="sync_violations", metric_id="UITEST-4", detection_id="UITEST-4", detection_name="Synchronization", value=9, severity="SEVERE", mcp_owned=True),
-            RuleMetricExpectation(step_id="identifier_violations", metric_id="UITEST-5", detection_id="UITEST-5", detection_name="Typed Identifiers", value=8, severity="SEVERE", mcp_owned=True),
+            RuleMetricExpectation(
+                step_id="flow_violations",
+                metric_id="UITEST-1",
+                detection_id="UITEST-1",
+                detection_name="Flow Encapsulation",
+                value=2,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="base_class_violations",
+                metric_id="UITEST-2",
+                detection_id="UITEST-2",
+                detection_name="Base Class Structure",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="grouping_violations",
+                metric_id="UITEST-3",
+                detection_id="UITEST-3",
+                detection_name="Assertion Grouping",
+                value=1,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="sync_violations",
+                metric_id="UITEST-4",
+                detection_id="UITEST-4",
+                detection_name="Synchronization",
+                value=9,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
+            RuleMetricExpectation(
+                step_id="identifier_violations",
+                metric_id="UITEST-5",
+                detection_id="UITEST-5",
+                detection_name="Typed Identifiers",
+                value=8,
+                severity="SEVERE",
+                mcp_owned=True,
+            ),
         ],
         final_severity="SEVERE",
         rule_scope=RuleScope.FILE,
@@ -146,18 +186,22 @@ class TestUITestingValidationFlow(RuleValidationFlowContract):
             for observation in self.SCENARIO.analysis[0].output["observations"]
         ]
 
-        exception = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": observations},
-        })
-        completed = self.sut.flow_next({
-            exception.steps[0].instance_id: {
-                "is_exception": False,
-                "additional_info": {
-                    "reasoning": "Only the lifecycle observation is exempt.",
-                    "evidence": "All flow, grouping, synchronization, and identifier findings remain.",
+        exception = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {"observations": observations},
+            }
+        )
+        completed = self.sut.flow_next(
+            {
+                exception.steps[0].instance_id: {
+                    "is_exception": False,
+                    "additional_info": {
+                        "reasoning": "Only the lifecycle observation is exempt.",
+                        "evidence": "All flow, grouping, synchronization, and identifier findings remain.",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._rule_result(started.run_id)
@@ -172,9 +216,11 @@ class TestUITestingValidationFlow(RuleValidationFlowContract):
         invalid = dict(self.SCENARIO.analysis[0].output["observations"][0])
         invalid.pop("evidence")
 
-        rejected = self.sut.flow_next({
-            started.steps[0].instance_id: {"observations": [invalid]},
-        })
+        rejected = self.sut.flow_next(
+            {
+                started.steps[0].instance_id: {"observations": [invalid]},
+            }
+        )
 
         self.assertEqual(rejected.status, "ready")
         self.assertEqual(

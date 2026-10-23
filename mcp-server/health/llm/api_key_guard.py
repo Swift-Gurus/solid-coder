@@ -6,13 +6,15 @@ solid-tags: [hook, utility]
 
 import sys
 from pathlib import Path
+
 _MCP_DIR = Path(__file__).resolve().parents[2]
 _MODULE_DIR = Path(__file__).resolve().parent
 for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from typing import Callable
+from collections.abc import Callable
+
 from utils.debug_logger import Observing
 
 

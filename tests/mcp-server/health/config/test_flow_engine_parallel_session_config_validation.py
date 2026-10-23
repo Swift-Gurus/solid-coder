@@ -8,10 +8,9 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server" / "health" / "config"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "mcp-server" / "hooks"))
 
-from _config_section_stub import ConfigSectionStub  # noqa: E402
-from solid_coder_config_loader import SolidCoderConfigLoader  # noqa: E402
-from solid_coder_config_error import SolidCoderConfigError  # noqa: E402
-
+from _config_section_stub import ConfigSectionStub
+from solid_coder_config_error import SolidCoderConfigError
+from solid_coder_config_loader import SolidCoderConfigLoader
 
 """
 solid-name: TestFlowEngineParallelSessionConfigValidation
@@ -19,11 +18,15 @@ solid-category: unit-test
 solid-spec: [SPEC-037]
 solid-description: Verifies rejection of an unsafe bounded session concurrency setting.
 """
+
+
 class TestFlowEngineParallelSessionConfigValidation(unittest.TestCase):
     def test_rejects_non_positive_max_parallel_sessions(self) -> None:
-        with ConfigSectionStub(flow_engine={"max_parallel_sessions": 0}):
-            with self.assertRaises(SolidCoderConfigError) as context:
-                SolidCoderConfigLoader().load()
+        with (
+            ConfigSectionStub(flow_engine={"max_parallel_sessions": 0}),
+            self.assertRaises(SolidCoderConfigError) as context,
+        ):
+            SolidCoderConfigLoader().load()
 
         self.assertIn(
             "flow_engine.max_parallel_sessions",

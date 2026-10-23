@@ -3,12 +3,14 @@
 import textwrap
 
 import pytest
-
 import test_isp_validation_flow as isp_validation
-
 from harness.project_context import ProjectDirectory
-from source.analysis.operations.discover_source_declaration_input import DiscoverSourceDeclarationInput
-from source.analysis.operations.source_declaration_discovery_operation_factory import SourceDeclarationDiscoveryOperationFactory
+from source.analysis.operations.discover_source_declaration_input import (
+    DiscoverSourceDeclarationInput,
+)
+from source.analysis.operations.source_declaration_discovery_operation_factory import (
+    SourceDeclarationDiscoveryOperationFactory,
+)
 
 
 @pytest.fixture
@@ -23,9 +25,11 @@ def scenario():
 
 def coverage_payload(scenario, run_id, step):
     matches = next(
-        event["outputs"]["matches"] for event in scenario._events(run_id)
+        event["outputs"]["matches"]
+        for event in scenario._events(run_id)
         if event.get("event") == "step_completed"
-        and event.get("step_id") == step.step_id.removesuffix("classify_candidate") + "match"
+        and event.get("step_id")
+        == step.step_id.removesuffix("classify_candidate") + "match"
     )
     entries = [
         {
@@ -39,8 +43,11 @@ def coverage_payload(scenario, run_id, step):
     ]
     return {
         "availability": {
-            "observation_id": "ArchiveBrowser", "matches": True, "included": True,
-            "reasoning": "All implementations inspected.", "evidence": "Canonical fixture.",
+            "observation_id": "ArchiveBrowser",
+            "matches": True,
+            "included": True,
+            "reasoning": "All implementations inspected.",
+            "evidence": "Canonical fixture.",
         },
         "coverage_entries": entries,
     }
@@ -51,20 +58,30 @@ def add_submission(submissions, step, payload):
         submissions[step.instance_id] = payload
     else:
         assert step.batch.mode.value == "aggregate"
-        submissions.setdefault(step.batch.label, {}).setdefault(step.batch.workflow_alias, {})[
-            step.batch.authored_step.step_id
-        ] = payload
+        submissions.setdefault(step.batch.label, {}).setdefault(
+            step.batch.workflow_alias, {}
+        )[step.batch.authored_step.step_id] = payload
 
 
 @pytest.mark.parametrize("aggregate", [False, True])
-@pytest.mark.parametrize("fault", ["missing", "empty", "duplicate", "unknown", "excluded"])
-def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scenario, fault, aggregate):
-    discovery = SourceDeclarationDiscoveryOperationFactory(
-        ProjectDirectory(path=scenario.project_root),
-    ).make().execute(DiscoverSourceDeclarationInput(
-        target=scenario._parameters.review_unit.target,
-        context=scenario._parameters.source_context,
-    ))
+@pytest.mark.parametrize(
+    "fault", ["missing", "empty", "duplicate", "unknown", "excluded"]
+)
+def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(
+    scenario, fault, aggregate
+):
+    discovery = (
+        SourceDeclarationDiscoveryOperationFactory(
+            ProjectDirectory(path=scenario.project_root),
+        )
+        .make()
+        .execute(
+            DiscoverSourceDeclarationInput(
+                target=scenario._parameters.review_unit.target,
+                context=scenario._parameters.source_context,
+            )
+        )
+    )
     wrapper = scenario.project_root / "coverage.yaml"
     child = """- include: {workflow: isp-candidate-review}
   as: candidate_reviews
@@ -78,7 +95,8 @@ def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scen
     steps = (
         "- group: reviews\n  execution: {mode: aggregate}\n  presentation: {mode: combined}\n  steps:\n"
         + textwrap.indent(child, "    ")
-        if aggregate else child
+        if aggregate
+        else child
     )
     wrapper.write_text(
         "id: coverage-test\nname: Retained candidate coverage\nmax_turns: 10\nsteps:\n"
@@ -87,15 +105,25 @@ def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scen
         + textwrap.indent(steps, "  "),
         encoding="utf-8",
     )
-    started = scenario.sut.flow_start(str(wrapper), {
-        "inventory": discovery.inventory.model_dump(mode="json"),
-        "protocol_name": scenario._parameters.review_unit.target.name,
-    })
+    started = scenario.sut.flow_start(
+        str(wrapper),
+        {
+            "inventory": discovery.inventory.model_dump(mode="json"),
+            "protocol_name": scenario._parameters.review_unit.target.name,
+        },
+    )
     assert started.error is None
     run_id = started.run_id
-    started = scenario.sut.flow_next({started.steps[0].instance_id: {
-        "candidates": [candidate.model_dump(mode="json") for candidate in discovery.related_declarations],
-    }})
+    started = scenario.sut.flow_next(
+        {
+            started.steps[0].instance_id: {
+                "candidates": [
+                    candidate.model_dump(mode="json")
+                    for candidate in discovery.related_declarations
+                ],
+            }
+        }
+    )
     assert started.error is None
     if aggregate:
         assert len(started.steps) == 2
@@ -117,7 +145,9 @@ def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scen
 
     submissions = {}
     for sibling in started.steps[1:]:
-        add_submission(submissions, sibling, coverage_payload(scenario, run_id, sibling))
+        add_submission(
+            submissions, sibling, coverage_payload(scenario, run_id, sibling)
+        )
     add_submission(submissions, step, {**payload, "coverage_entries": invalid})
     rejected = scenario.sut.flow_next(submissions)
 
@@ -129,7 +159,8 @@ def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scen
         assert ("missing" if fault == "empty" else fault) in retry.rejection_reason
     assert not any(
         event.get("event") == "step_completed"
-        and event.get("step_id") == step.step_id.removesuffix("classify_candidate") + "coverage_ratio"
+        and event.get("step_id")
+        == step.step_id.removesuffix("classify_candidate") + "coverage_ratio"
         for event in scenario._events(run_id)
     )
 
@@ -140,21 +171,32 @@ def test_rejects_invalid_requirement_accounting_before_scoring_and_recovers(scen
     assert accepted.error is None
     assert all(item.step_id != step.step_id for item in accepted.steps)
     ratio = next(
-        event["outputs"] for event in scenario._events(run_id)
+        event["outputs"]
+        for event in scenario._events(run_id)
         if event.get("event") == "step_completed"
-        and event.get("step_id") == step.step_id.removesuffix("classify_candidate") + "coverage_ratio"
+        and event.get("step_id")
+        == step.step_id.removesuffix("classify_candidate") + "coverage_ratio"
     )
     assert ratio["denominator_count"] == len(entries)
     assert ratio["value"] == 0.5
     match_id = step.step_id.removesuffix("classify_candidate") + "match"
-    assert len([
-        event for event in scenario._events(run_id)
-        if event.get("event") == "step_completed" and event.get("step_id") == match_id
-    ]) == 1
+    assert (
+        len(
+            [
+                event
+                for event in scenario._events(run_id)
+                if event.get("event") == "step_completed"
+                and event.get("step_id") == match_id
+            ]
+        )
+        == 1
+    )
     for sibling in started.steps[1:]:
         assert all(item.step_id != sibling.step_id for item in accepted.steps)
         completions = [
-            event for event in scenario._events(run_id)
-            if event.get("event") == "step_completed" and event.get("step_id") == sibling.step_id
+            event
+            for event in scenario._events(run_id)
+            if event.get("event") == "step_completed"
+            and event.get("step_id") == sibling.step_id
         ]
         assert len(completions) == 1

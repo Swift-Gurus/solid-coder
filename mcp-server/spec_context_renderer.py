@@ -2,12 +2,13 @@
 
 from spec_context_rendering import SpecContextRendering
 
-
 """
 solid-name: SpecContextRenderer
 solid-category: boundary-adapter
 solid-description: Renders specification ancestry records as readable context.
 """
+
+
 class SpecContextRenderer(SpecContextRendering):
     def render(self, spec_number: str, specs: list[dict]) -> str:
         if not specs:

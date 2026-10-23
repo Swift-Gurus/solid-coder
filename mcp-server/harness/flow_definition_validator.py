@@ -8,15 +8,15 @@ from harness.for_each_reference_validating import ForEachReferenceValidating
 from harness.include_structure_validator import IncludeStructureValidator
 from harness.step_shape_validating import StepShapeValidating
 
-
 """
 solid-name: FlowDefinitionValidator
 solid-category: service
 solid-spec: [SPEC-030, SPEC-035]
 solid-description: Applies shape, command, graph, include, and executable-reference checks at their valid stages.
 """
-class FlowDefinitionValidator:
 
+
+class FlowDefinitionValidator:
     def __init__(
         self,
         step_shape_validator: StepShapeValidating,
@@ -36,7 +36,9 @@ class FlowDefinitionValidator:
     def validate_resolved(self, definition: FlowDef) -> None:
         self._step_shape_validator.validate(definition.step_declarations)
         allowlist = self._command_allowlist_resolver.resolve()
-        self._command_allowlist_validator.validate(definition.step_declarations, allowlist)
+        self._command_allowlist_validator.validate(
+            definition.step_declarations, allowlist
+        )
         self._dependency_validator.validate(
             definition.step_declarations,
             definition.alias_groups,

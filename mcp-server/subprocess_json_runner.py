@@ -5,7 +5,6 @@ solid-description: Executes commands and returns their results as parsed objects
 """
 
 import json
-from typing import Optional
 
 from hook_utils import SubprocessError, SubprocessRunning
 
@@ -19,7 +18,9 @@ class SubprocessJsonRunner:
     def __init__(self, runner: SubprocessRunning) -> None:
         self._runner = runner
 
-    def run(self, cmd: list, timeout: Optional[int] = None, stdin=None, cwd: Optional[str] = None) -> object:
+    def run(
+        self, cmd: list, timeout: int | None = None, stdin=None, cwd: str | None = None
+    ) -> object:
         runner_kwargs: dict = {"timeout": timeout, "stdin": stdin}
         if cwd is not None:
             runner_kwargs["cwd"] = cwd
@@ -27,7 +28,7 @@ class SubprocessJsonRunner:
             success, stdout, stderr = self._runner.run(cmd, **runner_kwargs)
         except SubprocessError:
             raise
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — Subprocess boundary normalizes arbitrary runner failures into explicit SubprocessError results.
             raise SubprocessError(f"`{cmd[0]}` failed: {exc}")
         if not success:
             label = " ".join(cmd[:2])

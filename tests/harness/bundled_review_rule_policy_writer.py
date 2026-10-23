@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-
 """
 solid-name: BundledReviewRulePolicyWriter
 solid-category: test-support
 solid-spec: [SPEC-036, SPEC-039]
 solid-description: Selects one packaged review rule for main-chain integration tests without duplicating the bundled rule inventory.
 """
-class BundledReviewRulePolicyWriter:
 
+
+class BundledReviewRulePolicyWriter:
     def __init__(self, plugin_root: Path, project_root: Path) -> None:
         self._rules_root = plugin_root / "workflows" / "review" / "rules"
         self._project_root = project_root
@@ -25,9 +25,7 @@ class BundledReviewRulePolicyWriter:
                 f"Packaged review rule '{selected_rule_id}' was not discovered"
             )
 
-        policy_path = (
-            self._project_root / ".solid-coder" / "policies" / "review.yaml"
-        )
+        policy_path = self._project_root / ".solid-coder" / "policies" / "review.yaml"
         policy_path.parent.mkdir(parents=True, exist_ok=True)
         disabled_rules = [
             rule_id for rule_id in rule_ids if rule_id != selected_rule_id

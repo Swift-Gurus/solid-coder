@@ -5,13 +5,14 @@ from harness.pairwise_relation_declaration import PairwiseRelationDeclaration
 from harness.structured_model_decoding import StructuredModelDecoding
 from harness.workflow_expression_parsing import WorkflowExpressionParsing
 
-
 """
 solid-name: PairwiseRelationDecoder
 solid-category: boundary
 solid-spec: [SPEC-059]
 solid-description: Decodes authored pairwise workflow relations for deterministic collection grouping.
 """
+
+
 class PairwiseRelationDecoder(StructuredModelDecoding[PairwiseRelation]):
     def __init__(
         self,

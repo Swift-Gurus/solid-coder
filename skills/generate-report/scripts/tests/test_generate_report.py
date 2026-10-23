@@ -81,25 +81,33 @@ class TestRenderFinding:
 
 class TestRenderAction:
     def test_basic_structure(self):
-        html = render_action({
-            "suggestion_id": "holistic-001", "principle": "SRP",
-            "resolves": ["SRP-1", "SRP-2"],
-            "todo_items": ["Create protocol", "Move methods"],
-            "suggested_fix": "```swift\nprotocol Foo {}\n```",
-        })
+        html = render_action(
+            {
+                "suggestion_id": "holistic-001",
+                "principle": "SRP",
+                "resolves": ["SRP-1", "SRP-2"],
+                "todo_items": ["Create protocol", "Move methods"],
+                "suggested_fix": "```swift\nprotocol Foo {}\n```",
+            }
+        )
         assert "fix-card" in html and "holistic-001" in html
         assert "<code>SRP-1</code>" in html
         assert "Create protocol" in html
 
     def test_cross_check_rendering(self):
-        html = render_action({
-            "suggestion_id": "a1", "principle": "OCP", "resolves": [],
-            "todo_items": [], "suggested_fix": "",
-            "cross_check_results": [
-                {"principle": "SRP", "passed": True, "detail": "ok"},
-                {"principle": "LSP", "passed": False, "detail": "fails"},
-            ],
-        })
+        html = render_action(
+            {
+                "suggestion_id": "a1",
+                "principle": "OCP",
+                "resolves": [],
+                "todo_items": [],
+                "suggested_fix": "",
+                "cross_check_results": [
+                    {"principle": "SRP", "passed": True, "detail": "ok"},
+                    {"principle": "LSP", "passed": False, "detail": "fails"},
+                ],
+            }
+        )
         assert "SRP" in html and "LSP" in html
 
 
@@ -109,11 +117,15 @@ class TestMarkdown:
         assert "SRP-2" in md and "SEVERE" in md
 
     def test_md_action(self):
-        md = md_action({
-            "suggestion_id": "holistic-001", "principle": "SRP",
-            "resolves": ["SRP-1"], "todo_items": ["step 1"],
-            "suggested_fix": "code here",
-        })
+        md = md_action(
+            {
+                "suggestion_id": "holistic-001",
+                "principle": "SRP",
+                "resolves": ["SRP-1"],
+                "todo_items": ["step 1"],
+                "suggested_fix": "code here",
+            }
+        )
         assert "holistic-001" in md and "SRP-1" in md
         assert "- [ ] step 1" in md
 
@@ -126,34 +138,49 @@ class TestIntegration:
         by_file.mkdir(parents=True)
         synth.mkdir(parents=True)
 
-        (by_file / "MyFile.swift.output.json").write_text(json.dumps({
-            "file_path": "/project/MyFile.swift",
-            "timestamp": "2026-01-01T00:00:00Z",
-            "principles": [{
-                "principle": "SRP",
-                "severity": "SEVERE",
-                "violations": [{"rule_id": "SRP-2", "severity": "SEVERE"}],
-                "suggestions": [],
-            }],
-        }))
+        (by_file / "MyFile.swift.output.json").write_text(
+            json.dumps(
+                {
+                    "file_path": "/project/MyFile.swift",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "principles": [
+                        {
+                            "principle": "SRP",
+                            "severity": "SEVERE",
+                            "violations": [{"rule_id": "SRP-2", "severity": "SEVERE"}],
+                            "suggestions": [],
+                        }
+                    ],
+                }
+            )
+        )
 
-        (synth / "MyFile.plan.json").write_text(json.dumps({
-            "file_path": "/project/MyFile.swift",
-            "timestamp": "2026-01-01T00:00:00Z",
-            "actions": [{
-                "suggestion_id": "holistic-001", "principle": "SRP",
-                "resolves": ["SRP-2"],
-                "todo_items": ["Extract DataFetcher"],
-                "suggested_fix": "```swift\nclass DataFetcher {}\n```",
-            }],
-            "unresolved": [],
-            "conflicts_detected": [],
-        }))
+        (synth / "MyFile.plan.json").write_text(
+            json.dumps(
+                {
+                    "file_path": "/project/MyFile.swift",
+                    "timestamp": "2026-01-01T00:00:00Z",
+                    "actions": [
+                        {
+                            "suggestion_id": "holistic-001",
+                            "principle": "SRP",
+                            "resolves": ["SRP-2"],
+                            "todo_items": ["Extract DataFetcher"],
+                            "suggested_fix": "```swift\nclass DataFetcher {}\n```",
+                        }
+                    ],
+                    "unresolved": [],
+                    "conflicts_detected": [],
+                }
+            )
+        )
 
         report_dir = tmp_path
         result = subprocess.run(
             [sys.executable, str(SCRIPT), str(tmp_path), str(report_dir)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         assert (report_dir / "report.md").exists()

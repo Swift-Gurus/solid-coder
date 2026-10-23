@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from harness.aggregate_phase_audit_recorder import AggregatePhaseAuditRecording
-from harness.execution_and_readiness_coordinating import ExecutionAndReadinessCoordinating
+from harness.execution_and_readiness_coordinating import (
+    ExecutionAndReadinessCoordinating,
+)
 from harness.execution_outcome import ExecutionOutcome
 from harness.interpolation_guarding import InterpolationGuarding
 from harness.models import FlowDef
@@ -14,15 +16,15 @@ from harness.run_snapshot_resolving import RunSnapshotResolving
 from harness.step_execution_coordinating import StepExecutionCoordinating
 from harness.step_result_building import StepResultBuilding
 
-
 """
 solid-name: ExecutionAndReadinessCoordinator
 solid-category: service
 solid-spec: [SPEC-031, SPEC-035]
 solid-description: Coordinates automatic workflow execution, terminal completion, and externally ready steps.
 """
-class ExecutionAndReadinessCoordinator(ExecutionAndReadinessCoordinating):
 
+
+class ExecutionAndReadinessCoordinator(ExecutionAndReadinessCoordinating):
     def __init__(
         self,
         step_execution_coordinator: StepExecutionCoordinating,
@@ -48,7 +50,9 @@ class ExecutionAndReadinessCoordinator(ExecutionAndReadinessCoordinating):
         params: dict,
     ) -> ExecutionOutcome:
         terminal, error = self._interpolation_guard.guard(
-            lambda: self._step_execution_coordinator.run_ready(effective_base_dir, run_id, events_path, flow_def, params)
+            lambda: self._step_execution_coordinator.run_ready(
+                effective_base_dir, run_id, events_path, flow_def, params
+            )
         )
         if error is not None:
             return ExecutionOutcome(error=error)

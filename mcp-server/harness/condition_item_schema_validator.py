@@ -1,7 +1,5 @@
 """Validates condition item references against an authored item schema."""
 
-from typing import Optional
-
 from harness.condition_declaration import ConditionDeclaration
 from harness.condition_item_schema_validating import ConditionItemSchemaValidating
 from harness.condition_reference_collecting import ConditionReferenceCollecting
@@ -9,13 +7,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.workflow_data_schema import WorkflowDataSchema
 from harness.workflow_expression import WorkflowExpression
 
-
 """
 solid-name: ConditionItemSchemaValidator
 solid-category: service
 solid-spec: [SPEC-053]
 solid-description: Validates statically addressable condition item fields.
 """
+
+
 class ConditionItemSchemaValidator(ConditionItemSchemaValidating):
     def __init__(
         self,
@@ -46,9 +45,9 @@ class ConditionItemSchemaValidator(ConditionItemSchemaValidating):
         reference_name: str,
         reference: WorkflowExpression,
         item_schema: WorkflowDataSchema,
-        allowed_types: Optional[list[str]] = None,
+        allowed_types: list[str] | None = None,
         root: str = "item",
-        allowed_item_types: Optional[list[str]] = None,
+        allowed_item_types: list[str] | None = None,
     ) -> None:
         components = reference.value.split(".")
         if not components or components[0] != root:

@@ -14,31 +14,43 @@ from pydantic import TypeAdapter
 
 _HEALTH_DIR = Path(__file__).resolve().parent
 _MCP_DIR = _HEALTH_DIR.parent
-for _d in (_MCP_DIR, _HEALTH_DIR, _HEALTH_DIR / 'config', _HEALTH_DIR / 'llm', _HEALTH_DIR / 'codex'):
+for _d in (
+    _MCP_DIR,
+    _HEALTH_DIR,
+    _HEALTH_DIR / "config",
+    _HEALTH_DIR / "llm",
+    _HEALTH_DIR / "codex",
+):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from code_health_check_request import CodeHealthCheckRequest  # noqa: E402
-from hc_checker import (  # noqa: E402
-    HealthChecking, LLMHealthChecker, HealthPromptBuilder, PrinciplesLoader,
-    LLMReviewer, LLMExecutor, FileBasedOutputHandler, FileOutputReader,
+from code_health_check_request import CodeHealthCheckRequest
+from hc_checker import (
+    FileBasedOutputHandler,
+    FileOutputReader,
+    HealthChecking,
+    HealthPromptBuilder,
+    LLMExecutor,
+    LLMHealthChecker,
+    LLMReviewer,
+    PrinciplesLoader,
 )
-from health_check_context_writer_factory import HealthCheckContextWriterFactory  # noqa: E402
-from health_checker_creating import HealthCheckerCreating  # noqa: E402
-from health_output_path_resolver import HealthOutputPathResolver  # noqa: E402
-from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader  # noqa: E402
-from health.gateway.gateway_command_runner import GatewayCommandRunner  # noqa: E402
-from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader  # noqa: E402
-from health.gateway.gateway_rule_loader import GatewayRuleLoader  # noqa: E402
-from hc_tag_detector import TagDetector  # noqa: E402
-from hook_utils import GateLogger, GATEWAY, solid_coder_project_dir  # noqa: E402
-from legacy_health_violation_payload import LegacyHealthViolationPayload  # noqa: E402
-from output_path_resolver import SessionOutputPathResolver  # noqa: E402
-from runner_strategy_base import RunnerStrategyBase  # noqa: E402
-from solid_coder_config import SolidCoderConfig  # noqa: E402
-from typed_legacy_violation_extractor import TypedLegacyViolationExtractor  # noqa: E402
-from utils.debug_logger import DebugLogger  # noqa: E402
-from violation_extractor import ViolationExtractor  # noqa: E402
+from hc_tag_detector import TagDetector
+from health.gateway.gateway_candidate_tags_loader import GatewayCandidateTagsLoader
+from health.gateway.gateway_command_runner import GatewayCommandRunner
+from health.gateway.gateway_detection_rules_loader import GatewayDetectionRulesLoader
+from health.gateway.gateway_rule_loader import GatewayRuleLoader
+from health_check_context_writer_factory import HealthCheckContextWriterFactory
+from health_checker_creating import HealthCheckerCreating
+from health_output_path_resolver import HealthOutputPathResolver
+from hook_utils import GATEWAY, GateLogger, solid_coder_project_dir
+from legacy_health_violation_payload import LegacyHealthViolationPayload
+from output_path_resolver import SessionOutputPathResolver
+from runner_strategy_base import RunnerStrategyBase
+from solid_coder_config import SolidCoderConfig
+from typed_legacy_violation_extractor import TypedLegacyViolationExtractor
+from utils.debug_logger import DebugLogger
+from violation_extractor import ViolationExtractor
 
 _ALLOWED_TOOLS = (
     "Read,"
@@ -56,6 +68,8 @@ solid-category: factory
 solid-spec: [SPEC-050]
 solid-description: Provides request-scoped legacy source-health checking.
 """
+
+
 class LegacyHealthCheckerFactory(HealthCheckerCreating):
     def __init__(
         self,
@@ -71,10 +85,12 @@ class LegacyHealthCheckerFactory(HealthCheckerCreating):
 
     def make(self, request: CodeHealthCheckRequest) -> HealthChecking:
         log_path = solid_coder_project_dir(self._project_root) / "gate.log"
-        logger = GateLogger(DebugLogger(
-            project_dir_fn=lambda: log_path.parent,
-            filename=log_path.name,
-        ))
+        logger = GateLogger(
+            DebugLogger(
+                project_dir_fn=lambda: log_path.parent,
+                filename=log_path.name,
+            )
+        )
         llm = self._config.llm
         invoker = GatewayCommandRunner(
             GATEWAY,
@@ -104,10 +120,8 @@ class LegacyHealthCheckerFactory(HealthCheckerCreating):
                 output_handler=FileBasedOutputHandler(
                     FileOutputReader(
                         extractor=TypedLegacyViolationExtractor(
-                            legacy=ViolationExtractor(),
-                            adapter=TypeAdapter(
-                                list[LegacyHealthViolationPayload]
-                            ),
+                            legacy=ViolationExtractor(logger=logger),
+                            adapter=TypeAdapter(list[LegacyHealthViolationPayload]),
                         ),
                         debug=llm.debug,
                     )

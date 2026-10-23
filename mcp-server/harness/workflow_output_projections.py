@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 
 from harness.workflow_output_values import WorkflowOutputValues
 
-
 """
 solid-name: WorkflowOutputProjections
 solid-category: model
 solid-spec: [SPEC-037, SPEC-056]
 solid-description: Projects one declared child-workflow output across completed instances in source order.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowOutputProjections:
     declared_names: list[str] = field(default_factory=list)

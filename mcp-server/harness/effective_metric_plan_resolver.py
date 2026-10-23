@@ -7,13 +7,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.metric_override_applying import MetricOverrideApplying
 from harness.review_policy_resolution import ReviewPolicyResolution
 
-
 """
 solid-name: EffectiveMetricPlanResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Validates metric override coordinates and coordinates effective metric planning for one rule workflow.
 """
+
+
 class EffectiveMetricPlanResolver(EffectiveMetricPlanResolving):
     def __init__(
         self,
@@ -43,7 +44,9 @@ class EffectiveMetricPlanResolver(EffectiveMetricPlanResolving):
             for metric in (
                 step.assessment.metrics
                 if step.assessment is not None
-                else [step.metric] if step.metric is not None else []
+                else [step.metric]
+                if step.metric is not None
+                else []
             )
         ]
         declared_ids = {metric.metric_id for metric in declared_metrics}

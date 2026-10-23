@@ -4,13 +4,13 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Optional
+from typing import ClassVar
 
 
 class PatchFormatParser:
     """Parses apply_patch command strings into structured file operation entries."""
 
-    _HEADERS = {
+    _HEADERS: ClassVar[dict[str, str]] = {
         "*** Add File: ": "add",
         "*** Update File: ": "update",
         "*** Delete File: ": "delete",
@@ -19,7 +19,7 @@ class PatchFormatParser:
     def parse(self, command: str) -> list:
         """Return a list of {path, operation, lines} dicts, one per file section."""
         entries: list = []
-        current: Optional[dict] = None
+        current: dict | None = None
         for line in command.splitlines():
             header = self._parse_header(line)
             if header:
@@ -27,7 +27,10 @@ class PatchFormatParser:
                     entries.append(current)
                 path, operation = header
                 current = {"path": path, "operation": operation, "lines": []}
-            elif line.startswith("*** Move to: ") or line in ("*** Begin Patch", "*** End Patch"):
+            elif line.startswith("*** Move to: ") or line in (
+                "*** Begin Patch",
+                "*** End Patch",
+            ):
                 pass
             elif current is not None:
                 current["lines"].append(line)
@@ -35,8 +38,8 @@ class PatchFormatParser:
             entries.append(current)
         return entries
 
-    def _parse_header(self, line: str) -> Optional[tuple]:
+    def _parse_header(self, line: str) -> tuple | None:
         for prefix, operation in self._HEADERS.items():
             if line.startswith(prefix):
-                return line[len(prefix):].strip(), operation
+                return line[len(prefix) :].strip(), operation
         return None

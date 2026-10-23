@@ -6,13 +6,14 @@ from harness.workflow_context_values import WorkflowContextValues
 from harness.workflow_input_bindings_resolving import WorkflowInputBindingsResolving
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: OperationInputsResolver
 solid-category: service
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Resolves typed operation input values from workflow runtime context.
 """
+
+
 class OperationInputsResolver(OperationInputsResolving):
     def __init__(
         self,
@@ -29,4 +30,6 @@ class OperationInputsResolver(OperationInputsResolving):
             operation.input_bindings,
             context,
         )
-        return WorkflowContextValues(entries=[*operation.input_values, *resolved.entries])
+        return WorkflowContextValues(
+            entries=[*operation.input_values, *resolved.entries]
+        )

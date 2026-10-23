@@ -7,13 +7,14 @@ from dataclasses import replace
 from harness.step_declaration import StepDeclaration
 from harness.step_prompt_augmenting import StepPromptAugmenting
 
-
 """
 solid-name: StepPromptAugmenter
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Adds new output requirements to an existing workflow-step prompt.
 """
+
+
 class StepPromptAugmenter(StepPromptAugmenting):
     def augment(
         self,
@@ -26,7 +27,9 @@ class StepPromptAugmenter(StepPromptAugmenting):
         if not requirements:
             return step
         authored_prompt = step.authored_prompt or prompt
-        additions = [requirement for requirement in requirements if requirement not in prompt]
+        additions = [
+            requirement for requirement in requirements if requirement not in prompt
+        ]
         if not additions:
             return (
                 step

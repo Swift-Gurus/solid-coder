@@ -6,13 +6,14 @@ from extension_lookup import ExtensionLookup
 from file_extension_extracting import FileExtensionExtracting
 from gate_handling import GateHandling
 
-
 """
 solid-name: StandardWriteRequestHandler
 solid-category: service
 solid-description: Applies file eligibility policy and delegates an ordinary write or edit to the existing coordinator.
 solid-tags: [hook]
 """
+
+
 class StandardWriteRequestHandler:
     def __init__(
         self,

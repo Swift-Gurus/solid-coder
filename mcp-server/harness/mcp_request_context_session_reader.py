@@ -8,7 +8,6 @@ solid-description: Retrieves the session identifier for the current request.
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from call_meta_providing import CallMetaProviding
 
@@ -17,8 +16,9 @@ _CODEX_TURN_METADATA_KEY = "x-codex-turn-metadata"
 
 
 class McpRequestContextSessionReader:
-
-    def __init__(self, call_meta_provider: CallMetaProviding, env: Optional[dict] = None) -> None:
+    def __init__(
+        self, call_meta_provider: CallMetaProviding, env: dict | None = None
+    ) -> None:
         self._call_meta_provider = call_meta_provider
         self._env = env if env is not None else os.environ
 

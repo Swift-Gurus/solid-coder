@@ -11,13 +11,14 @@ from source.repository_source_snapshots_collecting import (
     RepositorySourceSnapshotsCollecting,
 )
 
-
 """
 solid-name: RepositorySourceSnapshotsCollector
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Collects stable, ordered snapshots of readable source files for repository analysis and search.
 """
+
+
 class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
     def __init__(
         self,
@@ -36,12 +37,18 @@ class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
         root = project_root.resolve()
         snapshots: list[RepositorySourceSnapshot] = []
         for path in self._files.discover(root):
-            if included_file_extensions and path.suffix.casefold() not in included_file_extensions:
+            if (
+                included_file_extensions
+                and path.suffix.casefold() not in included_file_extensions
+            ):
                 continue
             resolved_path = path.resolve()
             if resolved_path in excluded_paths:
                 continue
-            if included_file_extensions and resolved_path.suffix.casefold() not in included_file_extensions:
+            if (
+                included_file_extensions
+                and resolved_path.suffix.casefold() not in included_file_extensions
+            ):
                 continue
             try:
                 source_identity = resolved_path.relative_to(root).as_posix()
@@ -53,10 +60,12 @@ class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
                 continue
             if b"\x00" in content_bytes[:1024]:
                 continue
-            snapshots.append(RepositorySourceSnapshot(
-                path=resolved_path,
-                source_identity=source_identity,
-                content=content_bytes.decode("utf-8", errors="replace"),
-                content_sha256=self._content_hasher.hash(content_bytes),
-            ))
+            snapshots.append(
+                RepositorySourceSnapshot(
+                    path=resolved_path,
+                    source_identity=source_identity,
+                    content=content_bytes.decode("utf-8", errors="replace"),
+                    content_sha256=self._content_hasher.hash(content_bytes),
+                )
+            )
         return sorted(snapshots, key=lambda snapshot: snapshot.source_identity)

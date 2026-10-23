@@ -11,13 +11,14 @@ from source.verified_candidate_source_resolver import (
     VerifiedCandidateSourceResolver,
 )
 
-
 """
 solid-name: ReadSourceCandidatesOperationFactory
 solid-category: factory
 solid-spec: [SPEC-040]
 solid-description: Creates verified, bounded candidate-source loading operations for deterministic review workflows.
 """
+
+
 class ReadSourceCandidatesOperationFactory:
     def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory

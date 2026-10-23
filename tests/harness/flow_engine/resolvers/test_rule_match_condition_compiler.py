@@ -8,28 +8,33 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "mcp-server"))
 
-from findings.review_unit_kind import ReviewUnitKind  # noqa: E402
-from harness.all_condition import AllCondition  # noqa: E402
-from harness.comparison_condition import ComparisonCondition  # noqa: E402
-from harness.condition_operator import ConditionOperator  # noqa: E402
+from findings.review_unit_kind import ReviewUnitKind
+from harness.all_condition import AllCondition
+from harness.comparison_condition import ComparisonCondition
 from harness.condition_conjoiner import ConditionConjoiner
+from harness.condition_operator import ConditionOperator
 from harness.flow_validation_error import FlowValidationError
-from harness.rule_match_condition_compiler import RuleMatchConditionCompiler  # noqa: E402
-from harness.rule_match_declaration import RuleMatchDeclaration  # noqa: E402
-from harness.rule_selection import RuleSelection  # noqa: E402
-from harness.rule_selection_condition_compiler import (  # noqa: E402
+from harness.rule_match_condition_compiler import RuleMatchConditionCompiler
+from harness.rule_match_declaration import RuleMatchDeclaration
+from harness.rule_selection import RuleSelection
+from harness.rule_selection_condition_compiler import (
     RuleSelectionConditionCompiler,
 )
-from harness.workflow_expression import WorkflowExpression  # noqa: E402
+from harness.workflow_expression import WorkflowExpression
 from harness.workflow_input_binding import WorkflowInputBinding
 
 
 class TestRuleMatchConditionCompiler(unittest.TestCase):
     def setUp(self) -> None:
         self.sut = RuleMatchConditionCompiler(
-            RuleSelectionConditionCompiler(), ConditionConjoiner(),
+            RuleSelectionConditionCompiler(),
+            ConditionConjoiner(),
         )
-        self.bindings = [WorkflowInputBinding("review_unit", WorkflowExpression("params.review_unit"))]
+        self.bindings = [
+            WorkflowInputBinding(
+                "review_unit", WorkflowExpression("params.review_unit")
+            )
+        ]
 
     def test_empty_matcher_needs_no_runtime_condition(self) -> None:
         self.assertIsNone(self.sut.compile(RuleMatchDeclaration(), []))
@@ -55,63 +60,74 @@ class TestRuleMatchConditionCompiler(unittest.TestCase):
 
         self.assertEqual(
             result,
-            AllCondition(conditions=(
-                self._comparison(
-                    "params.review_unit.applicability.file_extension",
-                    ConditionOperator.IN,
-                    [".swift", ".py"],
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.file_extension",
-                    ConditionOperator.NOT_IN,
-                    [".md"],
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.unit_kind",
-                    ConditionOperator.IN,
-                    ["class", "struct"],
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.unit_kind",
-                    ConditionOperator.NOT_IN,
-                    ["function"],
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.tags",
-                    ConditionOperator.CONTAINS,
-                    "ui",
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.tags",
-                    ConditionOperator.CONTAINS,
-                    "swiftui",
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.tags",
-                    ConditionOperator.NOT_CONTAINS,
-                    "test",
-                ),
-                self._comparison(
-                    "params.review_unit.applicability.tags",
-                    ConditionOperator.NOT_CONTAINS,
-                    "generated",
-                ),
-            )),
+            AllCondition(
+                conditions=(
+                    self._comparison(
+                        "params.review_unit.applicability.file_extension",
+                        ConditionOperator.IN,
+                        [".swift", ".py"],
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.file_extension",
+                        ConditionOperator.NOT_IN,
+                        [".md"],
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.unit_kind",
+                        ConditionOperator.IN,
+                        ["class", "struct"],
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.unit_kind",
+                        ConditionOperator.NOT_IN,
+                        ["function"],
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.tags",
+                        ConditionOperator.CONTAINS,
+                        "ui",
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.tags",
+                        ConditionOperator.CONTAINS,
+                        "swiftui",
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.tags",
+                        ConditionOperator.NOT_CONTAINS,
+                        "test",
+                    ),
+                    self._comparison(
+                        "params.review_unit.applicability.tags",
+                        ConditionOperator.NOT_CONTAINS,
+                        "generated",
+                    ),
+                )
+            ),
         )
 
     def test_compiles_match_against_the_explicit_parent_binding(self) -> None:
         match = RuleMatchDeclaration(tags=RuleSelection(included=["swiftui"]))
         for reference in ["item", "steps.prepare.outputs.review_file"]:
             with self.subTest(reference=reference):
-                condition = self.sut.compile(match, [WorkflowInputBinding(
-                    "review_unit", WorkflowExpression(reference),
-                )])
-                self.assertEqual(condition.reference.value,
-                                 f"{reference}.applicability.tags")
+                condition = self.sut.compile(
+                    match,
+                    [
+                        WorkflowInputBinding(
+                            "review_unit",
+                            WorkflowExpression(reference),
+                        )
+                    ],
+                )
+                self.assertEqual(
+                    condition.reference.value, f"{reference}.applicability.tags"
+                )
 
     def test_match_requires_an_explicit_review_unit_binding(self) -> None:
         with self.assertRaisesRegex(FlowValidationError, "review_unit"):
-            self.sut.compile(RuleMatchDeclaration(tags=RuleSelection(included=["swiftui"])), [])
+            self.sut.compile(
+                RuleMatchDeclaration(tags=RuleSelection(included=["swiftui"])), []
+            )
 
     def _comparison(
         self,

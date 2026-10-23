@@ -6,15 +6,15 @@ from typing import Protocol
 
 from harness.include_alias_group import IncludeAliasGroup
 
-
 """
 solid-name: IncludeAliasGroupFinding
 solid-category: abstraction
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Contract for finding a workflow include-alias group by its alias.
 """
-class IncludeAliasGroupFinding(Protocol):
 
+
+class IncludeAliasGroupFinding(Protocol):
     def find(
         self,
         alias: str,

@@ -13,15 +13,15 @@ from harness.workflow_result_envelope_building import WorkflowResultEnvelopeBuil
 from harness.workflow_results_context_building import WorkflowResultsContextBuilding
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: WorkflowResultsContextBuilder
 solid-category: service
 solid-spec: [SPEC-037, SPEC-056]
 solid-description: Builds ordered include-alias result envelopes and declared output projections for runtime expressions.
 """
-class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
 
+
+class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
     def __init__(
         self,
         instances_resolver: IncludedWorkflowInstancesResolving,
@@ -48,17 +48,18 @@ class WorkflowResultsContextBuilder(WorkflowResultsContextBuilding):
                 )
                 if envelope.present and envelope.value is not None:
                     results.append(envelope.value)
-            aliases.append(WorkflowContextValue(
-                name=group.alias,
-                value=WorkflowAliasResults(
-                    authored_alias=group.authored_alias,
-                    owner_alias=group.owner_alias,
-                    runtime_owner_instance_id=group.runtime_owner_instance_id,
-                    output_names=[
-                        output.specification.name
-                        for output in group.outputs
-                    ],
-                    entries=results,
-                ),
-            ))
+            aliases.append(
+                WorkflowContextValue(
+                    name=group.alias,
+                    value=WorkflowAliasResults(
+                        authored_alias=group.authored_alias,
+                        owner_alias=group.owner_alias,
+                        runtime_owner_instance_id=group.runtime_owner_instance_id,
+                        output_names=[
+                            output.specification.name for output in group.outputs
+                        ],
+                        entries=results,
+                    ),
+                )
+            )
         return WorkflowContextValues(entries=aliases)

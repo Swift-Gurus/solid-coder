@@ -6,13 +6,14 @@ from harness.interpolation_error_creating import InterpolationErrorCreating
 from harness.nested_component_accessing import NestedComponentAccessing
 from harness.nested_value_resolving import NestedValueResolving
 
-
 """
 solid-name: NestedPathResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves each component of a nested workflow reference.
 """
+
+
 class NestedPathResolver(NestedValueResolving):
     def __init__(
         self,

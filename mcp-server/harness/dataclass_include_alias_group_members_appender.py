@@ -7,13 +7,14 @@ from harness.include_alias_group_members_appending import (
     IncludeAliasGroupMembersAppending,
 )
 
-
 """
 solid-name: DataclassIncludeAliasGroupMembersAppender
 solid-category: adapter
 solid-spec: [SPEC-058]
 solid-description: Appends expanded step identifiers while preserving remaining include-group information.
 """
+
+
 class DataclassIncludeAliasGroupMembersAppender(
     IncludeAliasGroupMembersAppending,
 ):

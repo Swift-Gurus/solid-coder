@@ -29,10 +29,9 @@ import json
 import os
 import re
 import sys
+from datetime import UTC, datetime
 from html import escape
 from pathlib import Path
-from datetime import datetime, timezone
-
 
 SEVERITY_ORDER = {"COMPLIANT": 0, "MINOR": 1, "SEVERE": 2}
 
@@ -90,7 +89,7 @@ def aggregate_data(root):
 
     # (file_path, principle) -> principle_entry with dedup'd findings
     principle_entries = {}
-    file_order = []   # preserve first-seen order
+    file_order = []  # preserve first-seen order
     latest_timestamp = None
 
     for it_dir in iter_dirs:
@@ -113,7 +112,11 @@ def aggregate_data(root):
                 if existing is None:
                     principle_entries[key] = {
                         **pr,
-                        "violations": {v["rule_id"]: v for v in pr.get("violations", []) if v.get("rule_id")},
+                        "violations": {
+                            v["rule_id"]: v
+                            for v in pr.get("violations", [])
+                            if v.get("rule_id")
+                        },
                     }
                 else:
                     existing["severity"] = pr.get("severity", existing.get("severity"))
@@ -130,11 +133,13 @@ def aggregate_data(root):
                 continue
             flat = {**entry, "violations": list(entry["violations"].values())}
             principles.append(flat)
-        file_data.append({
-            "file_path": fp,
-            "timestamp": latest_timestamp or datetime.now(timezone.utc).isoformat(),
-            "principles": principles,
-        })
+        file_data.append(
+            {
+                "file_path": fp,
+                "timestamp": latest_timestamp or datetime.now(UTC).isoformat(),
+                "principles": principles,
+            }
+        )
 
     # Aggregate plans: dedup actions by suggestion_id, merge unresolved + conflicts
     plans_by_file = {}
@@ -148,12 +153,15 @@ def aggregate_data(root):
             if not fp:
                 continue
             key = plan_key(fp)
-            merged = plans_by_file.setdefault(key, {
-                "file_path": fp,
-                "actions": {},     # keyed by suggestion_id
-                "unresolved": {},  # keyed by finding_id
-                "conflicts_detected": [],
-            })
+            merged = plans_by_file.setdefault(
+                key,
+                {
+                    "file_path": fp,
+                    "actions": {},  # keyed by suggestion_id
+                    "unresolved": {},  # keyed by finding_id
+                    "conflicts_detected": [],
+                },
+            )
             for a in plan.get("actions", []):
                 sid = a.get("suggestion_id")
                 if sid:
@@ -189,7 +197,9 @@ def md_violation(v):
 def md_action(a):
     lines = []
     resolves = ", ".join(f"`{r}`" for r in a.get("resolves", []))
-    lines.append(f"#### `{a.get('suggestion_id','')}` · {a.get('principle','')} — resolves {resolves or '_(none)_'}")
+    lines.append(
+        f"#### `{a.get('suggestion_id', '')}` · {a.get('principle', '')} — resolves {resolves or '_(none)_'}"
+    )
     if a.get("note"):
         lines.append(f"\n> {a['note']}")
     todos = a.get("todo_items", [])
@@ -207,7 +217,8 @@ def md_action(a):
     checks = a.get("cross_check_results", [])
     if checks:
         check_line = ", ".join(
-            f"{c.get('principle','')}={'✓' if c.get('passed') else '✗'}" for c in checks
+            f"{c.get('principle', '')}={'✓' if c.get('passed') else '✗'}"
+            for c in checks
         )
         lines.append(f"\n_Cross-checks: {check_line}_")
     return "\n".join(lines)
@@ -222,7 +233,7 @@ def md_file_section(fd, plan):
     out = [f"## {filename}  \n**Severity: {ws}**  \n`{file_path}`\n"]
 
     for p in principles:
-        out.append(f"### {p.get('principle','')} — {p.get('severity','')}")
+        out.append(f"### {p.get('principle', '')} — {p.get('severity', '')}")
         findings = p.get("violations", [])
         if not findings:
             out.append("_No violations._\n")
@@ -242,14 +253,16 @@ def md_file_section(fd, plan):
         if unresolved:
             out.append("### Unresolved\n")
             for u in unresolved:
-                out.append(f"- `{u.get('finding_id','')}` — {u.get('reason','')}")
+                out.append(f"- `{u.get('finding_id', '')}` — {u.get('reason', '')}")
             out.append("")
         conflicts = plan.get("conflicts_detected", [])
         if conflicts:
             out.append("### Conflicts Detected\n")
             for c in conflicts:
                 claimed = ", ".join(c.get("claimed_by", []))
-                out.append(f"- `{c.get('finding','')}` claimed by {claimed} → {c.get('resolution','')}")
+                out.append(
+                    f"- `{c.get('finding', '')}` claimed by {claimed} → {c.get('resolution', '')}"
+                )
             out.append("")
 
     return "\n".join(out)
@@ -275,7 +288,9 @@ def render_markdown(file_data, plans, output_root, timestamp):
         total_findings = sum(len(p.get("violations", [])) for p in principles)
         plan = plans.get(plan_key(file_path))
         total_actions = len(plan.get("actions", [])) if plan else 0
-        lines.append(f"| `{filename}` | **{ws}** | {total_findings} | {total_actions} |")
+        lines.append(
+            f"| `{filename}` | **{ws}** | {total_findings} | {total_actions} |"
+        )
 
     lines.append("")
     for fd in file_data:
@@ -328,7 +343,9 @@ def render_code_blocks(text):
             if not body.strip():
                 continue
             if _looks_like_code(body):
-                html.append(f'<pre class="code-block"><code>{escape(body)}</code></pre>')
+                html.append(
+                    f'<pre class="code-block"><code>{escape(body)}</code></pre>'
+                )
             else:
                 lines = [escape(ln) for ln in body.split("\n")]
                 html.append(f"<p>{'<br>'.join(lines)}</p>")
@@ -349,13 +366,13 @@ def render_finding(v):
 
 
 def render_action(a):
-    resolves = " ".join(f'<code>{escape(r)}</code>' for r in a.get("resolves", []))
+    resolves = " ".join(f"<code>{escape(r)}</code>" for r in a.get("resolves", []))
     code_html = render_code_blocks(a.get("suggested_fix", ""))
     todos = a.get("todo_items", [])
     todo_html = ""
     if todos:
         items = "".join(f"<li>{escape(t)}</li>" for t in todos)
-        todo_html = f"<details open><summary>Steps</summary><ul class=\"todo-list\">{items}</ul></details>"
+        todo_html = f'<details open><summary>Steps</summary><ul class="todo-list">{items}</ul></details>'
     note_html = ""
     if a.get("note"):
         note_html = f'<p class="addresses">{escape(a["note"])}</p>'
@@ -363,8 +380,8 @@ def render_action(a):
     checks_html = ""
     if checks:
         items = "".join(
-            f'<span class="verification-item">{escape(c.get("principle",""))} '
-            f'&rarr; {"✓" if c.get("passed") else "✗"}</span>'
+            f'<span class="verification-item">{escape(c.get("principle", ""))} '
+            f"&rarr; {'✓' if c.get('passed') else '✗'}</span>"
             for c in checks
         )
         checks_html = (
@@ -375,7 +392,7 @@ def render_action(a):
       <div class="fix-header">
         <span class="fix-id">{escape(a.get("suggestion_id", ""))}</span>
         <span class="pattern-tag">{escape(a.get("principle", ""))}</span>
-        <span class="fix-title">Resolves: {resolves or '<em>(none)</em>'}</span>
+        <span class="fix-title">Resolves: {resolves or "<em>(none)</em>"}</span>
       </div>
       {note_html}
       <details open><summary>Suggested Fix</summary>{code_html}</details>
@@ -418,7 +435,7 @@ def render_file_section(fd, plan):
         unresolved = plan.get("unresolved", [])
         if unresolved:
             items = "".join(
-                f'<li><code>{escape(u.get("finding_id",""))}</code> — {escape(u.get("reason",""))}</li>'
+                f"<li><code>{escape(u.get('finding_id', ''))}</code> — {escape(u.get('reason', ''))}</li>"
                 for u in unresolved
             )
             plan_html += f'<h3 class="section-heading">Unresolved</h3><ul class="todo-list">{items}</ul>'
@@ -446,7 +463,7 @@ def render_html(file_data, plans, output_root, timestamp, css):
         summary_rows.append(
             f'<tr><td title="{escape(file_path)}">{escape(filename)}</td>'
             f'<td><span class="badge {badge_class(ws)}">{escape(ws)}</span></td>'
-            f'<td>{total_findings}</td><td>{total_actions}</td></tr>'
+            f"<td>{total_findings}</td><td>{total_actions}</td></tr>"
         )
 
     file_sections = "".join(
@@ -492,7 +509,10 @@ def main():
         del args[idx : idx + 2]
 
     if len(args) < 1:
-        print(f"Usage: {sys.argv[0]} <root> [<report-dir>] [--template <path>]", file=sys.stderr)
+        print(
+            f"Usage: {sys.argv[0]} <root> [<report-dir>] [--template <path>]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     root = Path(args[0])
@@ -511,7 +531,7 @@ def main():
         print(f"Error: no iteration data found under {root}", file=sys.stderr)
         sys.exit(1)
 
-    timestamp = aggregated_ts or datetime.now(timezone.utc).isoformat()
+    timestamp = aggregated_ts or datetime.now(UTC).isoformat()
 
     md = render_markdown(file_data, plans, report_dir, timestamp)
     html = render_html(file_data, plans, report_dir, timestamp, css)

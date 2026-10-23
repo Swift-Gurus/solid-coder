@@ -18,7 +18,7 @@ _HARNESS_DIR = Path(__file__).resolve().parent
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from interfaces import MetricPrefixResolving  # noqa: E402
+from interfaces import MetricPrefixResolving
 
 _BAND_KEY_RE = re.compile(r"^\s+([A-Za-z]+)-\d+:", re.MULTILINE)
 

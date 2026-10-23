@@ -2,13 +2,14 @@
 
 from harness.uses_resolving import UsesResolving
 
-
 """
 solid-name: StepCollectionUsesResolver
 solid-category: service
 solid-spec: [SPEC-030, SPEC-035]
 solid-description: Resolves reusable fragments for every step in a workflow collection.
 """
+
+
 class StepCollectionUsesResolver:
     def __init__(self, step_resolver: UsesResolving) -> None:
         self._step_resolver = step_resolver
@@ -20,6 +21,5 @@ class StepCollectionUsesResolver:
         search_paths: list[str],
     ) -> list[dict]:
         return [
-            self._step_resolver.resolve(step, flow_path, search_paths)
-            for step in steps
+            self._step_resolver.resolve(step, flow_path, search_paths) for step in steps
         ]

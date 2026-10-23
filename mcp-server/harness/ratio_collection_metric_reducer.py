@@ -10,13 +10,14 @@ from harness.flow_validation_error_creating import FlowValidationErrorCreating
 from harness.ratio_value_calculator import RatioValueCalculator
 from harness.selected_collection_metric_entry import SelectedCollectionMetricEntry
 
-
 """
 solid-name: RatioCollectionMetricReducer
 solid-category: strategy
 solid-spec: [SPEC-054]
 solid-description: Calculates an auditable numerator-to-denominator ratio from validated observation conditions.
 """
+
+
 class RatioCollectionMetricReducer(CollectionMetricReducing):
     def __init__(
         self,

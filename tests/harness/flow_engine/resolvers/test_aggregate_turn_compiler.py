@@ -20,13 +20,14 @@ from harness.output_spec import OutputSpec
 from harness.output_spec_schema_serializer import OutputSpecSchemaSerializer
 from harness.strict_object_schema_builder import StrictObjectSchemaBuilder
 
-
 """
 solid-name: TestAggregateTurnCompiler
 solid-category: unit-test
 solid-spec: [SPEC-045]
 solid-description: Proves aggregate turns deduplicate typed instructions and preserve exact assignment output contracts.
 """
+
+
 class TestAggregateTurnCompiler(unittest.TestCase):
     def setUp(self) -> None:
         object_schema_builder = StrictObjectSchemaBuilder()
@@ -47,7 +48,9 @@ class TestAggregateTurnCompiler(unittest.TestCase):
             ),
         )
 
-    def test_renders_ordered_authored_sections_once_for_repeated_assignments(self) -> None:
+    def test_renders_ordered_authored_sections_once_for_repeated_assignments(
+        self,
+    ) -> None:
         inspect = AuthoredStepCoordinate(
             workflow_id="alpha",
             step_id="inspect",
@@ -85,7 +88,9 @@ class TestAggregateTurnCompiler(unittest.TestCase):
 
         self.assertEqual(compiled.prompt.count(inspect.prompt), 1)
         self.assertEqual(compiled.prompt.count(decide.prompt), 1)
-        self.assertLess(compiled.prompt.index(inspect.prompt), compiled.prompt.index(decide.prompt))
+        self.assertLess(
+            compiled.prompt.index(inspect.prompt), compiled.prompt.index(decide.prompt)
+        )
         self.assertIn("A: alpha_rule", compiled.prompt)
         self.assertIn("B: alpha_rule", compiled.prompt)
         self.assertNotIn("internal-alpha-1", compiled.prompt)
@@ -105,11 +110,13 @@ class TestAggregateTurnCompiler(unittest.TestCase):
             outputs=[OutputSpec(name="value", type="data")],
         )
 
-        compiled = self.sut.compile([
-            AggregateAssignment("A", "alpha", "alpha-1", [alpha]),
-            AggregateAssignment("B", "alpha", "alpha-2", [alpha]),
-            AggregateAssignment("B", "beta", "beta-2", [beta]),
-        ])
+        compiled = self.sut.compile(
+            [
+                AggregateAssignment("A", "alpha", "alpha-1", [alpha]),
+                AggregateAssignment("B", "alpha", "alpha-2", [alpha]),
+                AggregateAssignment("B", "beta", "beta-2", [beta]),
+            ]
+        )
 
         self.assertIn("A: alpha", compiled.prompt)
         self.assertIn("B: alpha, beta", compiled.prompt)
@@ -142,9 +149,11 @@ class TestAggregateTurnCompiler(unittest.TestCase):
             ],
         )
 
-        compiled = self.sut.compile([
-            AggregateAssignment("Item A", "alpha", "alpha-1", [analyze, measure]),
-        ])
+        compiled = self.sut.compile(
+            [
+                AggregateAssignment("Item A", "alpha", "alpha-1", [analyze, measure]),
+            ]
+        )
 
         item_schema = compiled.schema["properties"]["Item A"]
         workflow_schema = item_schema["properties"]["alpha"]
@@ -175,12 +184,14 @@ class TestAggregateTurnCompiler(unittest.TestCase):
             ],
         )
 
-        compiled = self.sut.compile([
-            AggregateAssignment("Item A", "alpha", "alpha-1", [collect]),
-        ])
-        outputs = compiled.schema["properties"]["Item A"]["properties"][
-            "alpha"
-        ]["properties"]["collect"]["properties"]
+        compiled = self.sut.compile(
+            [
+                AggregateAssignment("Item A", "alpha", "alpha-1", [collect]),
+            ]
+        )
+        outputs = compiled.schema["properties"]["Item A"]["properties"]["alpha"][
+            "properties"
+        ]["collect"]["properties"]
 
         self.assertEqual(outputs["value"], {})
         self.assertEqual(outputs["artifact"], {"type": "string"})

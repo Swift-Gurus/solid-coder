@@ -1,11 +1,11 @@
 """Authoritative metadata checks for one source declaration."""
 
 from pydantic import BaseModel, ConfigDict
-
-from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
+from source.analysis.declarations.source_scoped_declaration import (
+    SourceScopedDeclaration,
+)
 from source.source_frontmatter import SourceFrontmatter
 from source.technology_detection import TechnologyDetection
-
 
 """
 solid-name: SourceFrontmatterInspection
@@ -13,6 +13,8 @@ solid-category: model
 solid-spec: [SPEC-069]
 solid-description: Records declaration-owned metadata, structural exclusions and mechanically verified field validity.
 """
+
+
 class SourceFrontmatterInspection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

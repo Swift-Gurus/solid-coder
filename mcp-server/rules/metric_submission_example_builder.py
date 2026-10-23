@@ -3,12 +3,13 @@
 from rules.metric_submission_example_building import MetricSubmissionExampleBuilding
 from rules.schema_minimal_value_resolving import SchemaMinimalValueResolving
 
-
 """
 solid-name: MetricSubmissionExampleBuilder
 solid-category: service
 solid-description: Produces a schema-derived metric example containing its value, exception decision, reasoning, and source evidence.
 """
+
+
 class MetricSubmissionExampleBuilder(MetricSubmissionExampleBuilding):
     def __init__(self, value_resolver: SchemaMinimalValueResolving) -> None:
         self._value_resolver = value_resolver

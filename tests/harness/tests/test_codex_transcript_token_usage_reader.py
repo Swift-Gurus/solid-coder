@@ -1,8 +1,8 @@
 """Tests extraction of final cumulative usage from a Codex rollout transcript."""
 
+import sys
 import tempfile
 import unittest
-import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -10,10 +10,9 @@ _HARNESS = _HERE.parent
 if str(_HARNESS) not in sys.path:
     sys.path.insert(0, str(_HARNESS))
 
-from codex_transcript_token_usage_reader import (  # noqa: E402
+from codex_transcript_token_usage_reader import (
     CodexTranscriptTokenUsageReader,
 )
-
 
 """
 solid-name: TestCodexTranscriptTokenUsageReader
@@ -21,6 +20,8 @@ solid-category: unit-test
 solid-spec: [SPEC-036, SPEC-041]
 solid-description: Verifies comparison evidence uses the last cumulative token event and reports unavailable usage explicitly.
 """
+
+
 class TestCodexTranscriptTokenUsageReader(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()

@@ -11,13 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.flow_run_orchestrator_factory import (  # noqa: E402
+from harness.flow_run_orchestrator_factory import (
     FlowRunOrchestratorFactory,
 )
-from harness.review_result import ReviewResult  # noqa: E402
-from harness.rule_review_result import RuleReviewResult  # noqa: E402
-from harness.runs_base_dir_resolver import RunsBaseDirResolver  # noqa: E402
-
+from harness.review_result import ReviewResult
+from harness.rule_review_result import RuleReviewResult
+from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 """
 solid-name: TestAggregateRuleWorkflowExecution
@@ -25,6 +24,8 @@ solid-category: integration-test
 solid-spec: [SPEC-044]
 solid-description: Verifies one aggregate rule step is validated, scored, persisted, and audited through the existing rule finalizer.
 """
+
+
 class TestAggregateRuleWorkflowExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -69,9 +70,9 @@ class TestAggregateRuleWorkflowExecution(unittest.TestCase):
         started = self.sut.flow_start(str(self.workflow_path))
 
         self.assertEqual(len(started.steps), 1)
-        completed = self.sut.flow_next({
-            started.steps[0].instance_id: self._outputs(is_exception=False)
-        })
+        completed = self.sut.flow_next(
+            {started.steps[0].instance_id: self._outputs(is_exception=False)}
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         run_directory = self.project_root / "runs" / started.run_id
@@ -102,9 +103,9 @@ class TestAggregateRuleWorkflowExecution(unittest.TestCase):
     def test_exception_makes_every_aggregate_metric_compliant(self) -> None:
         started = self.sut.flow_start(str(self.workflow_path))
 
-        completed = self.sut.flow_next({
-            started.steps[0].instance_id: self._outputs(is_exception=True)
-        })
+        completed = self.sut.flow_next(
+            {started.steps[0].instance_id: self._outputs(is_exception=True)}
+        )
 
         self.assertEqual(completed.status, "done", completed.error)
         result = self._rule_result(
@@ -126,9 +127,7 @@ class TestAggregateRuleWorkflowExecution(unittest.TestCase):
             run_id=started.run_id,
         )
 
-        run_directory = (
-            self.project_root / "runs" / "subagents" / started.run_id
-        )
+        run_directory = self.project_root / "runs" / "subagents" / started.run_id
         self.assertEqual(completed.status, "done", completed.error)
         self.assertTrue(
             (run_directory / "results" / "review" / "result.json").is_file()
@@ -140,9 +139,7 @@ class TestAggregateRuleWorkflowExecution(unittest.TestCase):
         outputs = self._outputs(is_exception=False)
         del outputs["count"]["additional_info"]
 
-        rejected = self.sut.flow_next({
-            started.steps[0].instance_id: outputs
-        })
+        rejected = self.sut.flow_next({started.steps[0].instance_id: outputs})
 
         self.assertEqual(rejected.status, "ready")
         self.assertIn("additional_info", rejected.steps[0].rejection_reason)

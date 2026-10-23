@@ -4,7 +4,6 @@ from typing import Generic, TypeVar
 
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 
-
 CollectionInput = TypeVar("CollectionInput")
 EntryInput = TypeVar("EntryInput")
 ParsedOutput = TypeVar("ParsedOutput")
@@ -16,6 +15,8 @@ solid-category: service
 solid-spec: [SPEC-063]
 solid-description: Recognizes typed results in ordered source-syntax collections while omitting unrecognized entries.
 """
+
+
 class SourceSyntaxCollectionParser(
     SourceSyntaxParsing[CollectionInput, list[ParsedOutput]],
     Generic[CollectionInput, EntryInput, ParsedOutput],
@@ -30,6 +31,7 @@ class SourceSyntaxCollectionParser(
 
     def parse(self, source: CollectionInput) -> list[ParsedOutput]:
         return [
-            parsed for entry in self._entries.parse(source)
+            parsed
+            for entry in self._entries.parse(source)
             if (parsed := self._parser.parse(entry)) is not None
         ]

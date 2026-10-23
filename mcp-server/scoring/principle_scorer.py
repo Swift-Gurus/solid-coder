@@ -9,12 +9,13 @@ from typing import Protocol
 from scoring.principle_scorer_resolution import PrincipleScorerResolution
 from scoring.principle_scorer_resolving import PrincipleScorerResolving
 
-
 """
 solid-name: PrincipleScorerProviding
 solid-category: abstraction
 solid-description: Contract for providing configured scoring capabilities for named review principles.
 """
+
+
 class PrincipleScorerProviding(PrincipleScorerResolving, Protocol):
     def scorer_for(self, principle: str) -> tuple: ...
 
@@ -24,6 +25,8 @@ solid-name: PrincipleScorerProvider
 solid-category: service
 solid-description: Provides configured server-authoritative scoring capabilities for named review principles.
 """
+
+
 class PrincipleScorerProvider(PrincipleScorerProviding):
     """Resolves a principle folder and constructs a scorer for it.
 

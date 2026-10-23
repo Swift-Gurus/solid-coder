@@ -9,13 +9,14 @@ from harness.rule_workflow_validation_scope_validating import (
     RuleWorkflowValidationScopeValidating,
 )
 
-
 """
 solid-name: RuleWorkflowValidationPlanValidator
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Rejects unowned rule steps and delegates each typed ownership scope to rule-structure validation.
 """
+
+
 class RuleWorkflowValidationPlanValidator(RuleWorkflowValidationPlanValidating):
     def __init__(
         self,

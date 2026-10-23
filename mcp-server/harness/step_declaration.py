@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Annotated, ClassVar, Optional, Union
-
-from pydantic import AliasChoices, ConfigDict, Field
+from typing import Annotated, ClassVar
 
 from harness.co_located_metric_contract import CoLocatedMetricContract
 from harness.collection_metric_calculation import CollectionMetricCalculation
@@ -15,7 +13,7 @@ from harness.metric_declaration import MetricDeclaration
 from harness.operation_step import OperationStep
 from harness.output_spec import OutputSpec
 from harness.rule_assessment_declaration import RuleAssessmentDeclaration
-
+from pydantic import AliasChoices, ConfigDict, Field
 
 """
 solid-name: StepDeclaration
@@ -23,6 +21,8 @@ solid-category: model
 solid-spec: [SPEC-027, SPEC-035, SPEC-037, SPEC-039]
 solid-description: Represents an unvalidated workflow step for later validation.
 """
+
+
 @dataclass(frozen=True)
 class StepDeclaration:
     __pydantic_config__: ClassVar[ConfigDict] = ConfigDict(
@@ -30,29 +30,29 @@ class StepDeclaration:
         arbitrary_types_allowed=True,
     )
 
-    id: Optional[str] = None
+    id: str | None = None
     type: str = "agent"
-    prompt: Optional[str] = None
-    authored_prompt: Optional[str] = None
-    depends_on: Optional[list[str]] = None
+    prompt: str | None = None
+    authored_prompt: str | None = None
+    depends_on: list[str] | None = None
     outputs: list[OutputSpec] = field(default_factory=list)
-    for_each: Optional[ForEachDeclaration] = None
-    condition: Optional[ConditionDeclaration] = None
-    mode: Optional[str] = None
-    prompt_file: Optional[str] = None
-    command: Optional[Union[str, list[str]]] = None
+    for_each: ForEachDeclaration | None = None
+    condition: ConditionDeclaration | None = None
+    mode: str | None = None
+    prompt_file: str | None = None
+    command: str | list[str] | None = None
     script_file_reference: Annotated[
-        Optional[str],
+        str | None,
         Field(validation_alias=AliasChoices("script_file_reference", "file")),
     ] = None
-    script_file: Optional[str] = None
-    executor: Optional[str] = None
-    args: Optional[list[str]] = None
-    timeout_seconds: Optional[int] = None
+    script_file: str | None = None
+    executor: str | None = None
+    args: list[str] | None = None
+    timeout_seconds: int | None = None
     max_attempts: int = 3
-    source_file: Optional[str] = None
-    metric: Optional[MetricDeclaration] = None
-    metric_calculation: Optional[CollectionMetricCalculation] = None
-    assessment: Optional[RuleAssessmentDeclaration] = None
-    operation: Optional[OperationStep] = None
+    source_file: str | None = None
+    metric: MetricDeclaration | None = None
+    metric_calculation: CollectionMetricCalculation | None = None
+    assessment: RuleAssessmentDeclaration | None = None
+    operation: OperationStep | None = None
     co_located_metrics: list[CoLocatedMetricContract] = field(default_factory=list)

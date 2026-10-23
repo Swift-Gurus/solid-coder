@@ -1,14 +1,12 @@
 """Executes filtered typed source search from codebase-search arguments."""
 
-from typing import Optional
-
 from harness.project_context import ProjectDirectory
+from source.source_search_operation_factory import SourceSearchOperationFactory
+
 from search.codebase_search_executing import CodebaseSearchExecuting
 from search.codebase_search_execution import CodebaseSearchExecution
 from search.codebase_search_input_building import CodebaseSearchInputBuilding
 from search.source_search_output_filtering import SourceSearchOutputFiltering
-from source.source_search_operation_factory import SourceSearchOperationFactory
-
 
 """
 solid-name: CodebaseSearchExecutor
@@ -16,8 +14,9 @@ solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Executes validated codebase source searches and applies candidate eligibility policy.
 """
-class CodebaseSearchExecutor(CodebaseSearchExecuting):
 
+
+class CodebaseSearchExecutor(CodebaseSearchExecuting):
     def __init__(
         self,
         input_builder: CodebaseSearchInputBuilding,
@@ -30,10 +29,10 @@ class CodebaseSearchExecutor(CodebaseSearchExecuting):
 
     def execute(
         self,
-        sources_dir: Optional[str],
-        plan_path: Optional[str],
-        tags: Optional[list[str]],
-        spec_numbers: Optional[list[str]],
+        sources_dir: str | None,
+        plan_path: str | None,
+        tags: list[str] | None,
+        spec_numbers: list[str] | None,
         min_matches: int,
     ) -> CodebaseSearchExecution:
         resolution = self._input_builder.build(

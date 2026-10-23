@@ -10,15 +10,15 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.step_dependency_graph_creating import StepDependencyGraphCreating
 from harness.unique_step_identity_validating import UniqueStepIdentityValidating
 
-
 """
 solid-name: StepGraphValidator
 solid-category: service
 solid-spec: [SPEC-027]
 solid-description: Validates workflow-step identities, dependencies, and dependency cycles.
 """
-class StepGraphValidator(DependencyGraphValidating):
 
+
+class StepGraphValidator(DependencyGraphValidating):
     def __init__(
         self,
         identity_validator: UniqueStepIdentityValidating,

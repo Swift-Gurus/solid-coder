@@ -9,13 +9,14 @@ from harness.attempt_failure import AttemptFailure
 from harness.flow_next_result import FlowNextResult
 from harness.models import FlowDef
 
-
 """
 solid-name: AttemptFailuresHandling
 solid-category: abstraction
 solid-spec: [SPEC-027, SPEC-037]
-solid-description: Contract for durably recording an attempt-failure batch before evaluating run completion.
+solid-description: Contract for coordinating failure handling within a workflow run.
 """
+
+
 class AttemptFailuresHandling(Protocol):
     def handle_all(
         self,

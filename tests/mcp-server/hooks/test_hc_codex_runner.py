@@ -11,22 +11,24 @@ from unittest.mock import MagicMock, patch
 
 from _path_bootstrap import ensure_on_path
 
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
-from codex_command_builder import CodexCommandBuilder  # noqa: E402
-from codex_command_executor import CodexCommandExecutor  # noqa: E402
-from codex_execution_validator import CodexExecutionValidator  # noqa: E402
-from codex_mcp_config_argument_builder import CodexMcpConfigArgumentBuilder  # noqa: E402
-from codex_prompt_artifact_user import CodexPromptArtifactUser  # noqa: E402
-from codex_prompt_executor import CodexPromptExecutor  # noqa: E402
-from codex_temp_file_manager import CodexTempFileManager  # noqa: E402
-from hc_codex_runner import CodexRunner, make_codex_runner  # noqa: E402
-from hook_utils import SubprocessError  # noqa: E402
-from llama.json_deserializer import JsonDeserializer  # noqa: E402
-from llama.json_serializer import JsonSerializer  # noqa: E402
-from subprocess_error_factory import SubprocessErrorFactory  # noqa: E402
-from test_utils import TempDirTestBase  # noqa: E402
-
+from codex_command_builder import CodexCommandBuilder
+from codex_command_executor import CodexCommandExecutor
+from codex_execution_validator import CodexExecutionValidator
+from codex_mcp_config_argument_builder import CodexMcpConfigArgumentBuilder
+from codex_prompt_artifact_user import CodexPromptArtifactUser
+from codex_prompt_executor import CodexPromptExecutor
+from codex_temp_file_manager import CodexTempFileManager
+from hc_codex_runner import CodexRunner, make_codex_runner
+from hook_utils import SubprocessError
+from llama.json_deserializer import JsonDeserializer
+from llama.json_serializer import JsonSerializer
+from subprocess_error_factory import SubprocessErrorFactory
+from test_utils import TempDirTestBase
 
 _MCP_CONFIG = """{
   "mcpServers": {
@@ -43,7 +45,9 @@ def _config_argument_builder() -> CodexMcpConfigArgumentBuilder:
     )
 
 
-def _command_builder(model: str = "o4-mini", mcp_config: str = _MCP_CONFIG) -> CodexCommandBuilder:
+def _command_builder(
+    model: str = "o4-mini", mcp_config: str = _MCP_CONFIG
+) -> CodexCommandBuilder:
     return CodexCommandBuilder(
         model=model,
         mcp_config=mcp_config,
@@ -96,17 +100,25 @@ class TestCodexMcpConfigArgumentBuilder(unittest.TestCase):
                 self.assertIn(f"mcp_servers.{server}.required=true", arguments)
                 self.assertIn(f"mcp_servers.{server}.startup_timeout_sec=30", arguments)
 
-    def test_real_gate_profile_requires_the_flow_server_without_changing_shared_json(self):
+    def test_real_gate_profile_requires_the_flow_server_without_changing_shared_json(
+        self,
+    ):
         from mcp_config_builder import McpConfigBuilder
         from mcp_config_profile import McpConfigProfile
 
         configuration = McpConfigBuilder(
-            Path("/plugin/root"), McpConfigProfile.GATE_FLOW, JsonSerializer(),
+            Path("/plugin/root"),
+            McpConfigProfile.GATE_FLOW,
+            JsonSerializer(),
         ).build()
-        command = _command_builder(mcp_config=configuration).build(Path("/tmp/result.txt"))
+        command = _command_builder(mcp_config=configuration).build(
+            Path("/tmp/result.txt")
+        )
 
         self.assertIn("mcp_servers.solid-coder-flow-engine.required=true", command)
-        self.assertIn("mcp_servers.solid-coder-flow-engine.startup_timeout_sec=30", command)
+        self.assertIn(
+            "mcp_servers.solid-coder-flow-engine.startup_timeout_sec=30", command
+        )
         self.assertNotIn("required", configuration)
         self.assertNotIn("startup_timeout_sec", configuration)
 
@@ -125,7 +137,9 @@ class TestCodexCommandBuilder(unittest.TestCase):
         command = _command_builder(model="gpt-5.6-terra").build(Path("/tmp/out.txt"))
 
         self.assertEqual(command[command.index("--model") + 1], "gpt-5.6-terra")
-        self.assertEqual(command[command.index("--output-last-message") + 1], "/tmp/out.txt")
+        self.assertEqual(
+            command[command.index("--output-last-message") + 1], "/tmp/out.txt"
+        )
 
     def test_omits_model_when_empty(self):
         command = _command_builder(model="").build(Path("/tmp/result.txt"))
@@ -156,7 +170,9 @@ class TestCodexPromptExecution(TempDirTestBase):
 
         subprocess_runner.run.side_effect = capture
 
-        result = _prompt_executor(subprocess_runner).execute("my prompt text", timeout=30)
+        result = _prompt_executor(subprocess_runner).execute(
+            "my prompt text", timeout=30
+        )
 
         self.assertEqual(result, "Findings submitted.")
         self.assertEqual(observed_prompts, ["my prompt text"])
@@ -171,7 +187,9 @@ class TestCodexPromptExecution(TempDirTestBase):
     def test_forwards_configured_cwd(self):
         subprocess_runner = _subprocess_with_result("ok")
 
-        _prompt_executor(subprocess_runner, cwd="/Users/alex/Developer/build-mobile").execute(
+        _prompt_executor(
+            subprocess_runner, cwd="/Users/alex/Developer/build-mobile"
+        ).execute(
             "prompt",
             timeout=30,
         )
@@ -202,7 +220,9 @@ class TestMakeCodexRunner(TempDirTestBase):
         audit = self.output_dir / "audit"
         with (
             patch("hc_codex_runner.SubprocessAdapter", return_value=process),
-            patch("hc_codex_runner.solid_coder_project_dir", return_value=audit) as project_audit,
+            patch(
+                "hc_codex_runner.solid_coder_project_dir", return_value=audit
+            ) as project_audit,
         ):
             result = make_codex_runner(cwd="/target/project").run("prompt", timeout=30)
 
@@ -223,12 +243,14 @@ class TestMakeCodexRunner(TempDirTestBase):
         from llm_config import LlmConfig
         from solid_coder_config import SolidCoderConfig
 
-        stub_config = SolidCoderConfig(llm=LlmConfig(
-            backend="codex",
-            model="o4-mini",
-            timeout=300,
-            codex_home=str(self.output_dir),
-        ))
+        stub_config = SolidCoderConfig(
+            llm=LlmConfig(
+                backend="codex",
+                model="o4-mini",
+                timeout=300,
+                codex_home=str(self.output_dir),
+            )
+        )
         with patch("hc_config.SolidCoderConfigLoader.load", return_value=stub_config):
             runner = make_llm_runner(mcp_config=_MCP_CONFIG, allowed_tools="")
 

@@ -8,16 +8,16 @@ _MCP_SERVER = Path(__file__).resolve().parents[2] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from tool_result_formatter import ToolResultFormatter  # noqa: E402
-
+from tool_result_formatter import ToolResultFormatter
 
 """
 solid-name: TestToolResultFormatter
 solid-category: unit-test
 solid-description: Verifies MCP results remain internal tool content and never instruct the model to echo them to the user.
 """
-class TestToolResultFormatter(unittest.TestCase):
 
+
+class TestToolResultFormatter(unittest.TestCase):
     def test_returns_plain_internal_text_without_display_instruction(self) -> None:
         result = ToolResultFormatter().format("id: verb_count-1")
 

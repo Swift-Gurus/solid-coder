@@ -4,14 +4,14 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
+from llama.builtin_range import BuiltinRange, RangeIterating
 from llama.http_client import LlamaHttpChatting
-from llama.tool_dispatcher import TOOLS
-from llama.tool_call_orchestrating import ToolCallOrchestrating
 from llama.session_observer import LLMSessionObserving
-from llama.builtin_range import RangeIterating, BuiltinRange
-from llama.thinking_extractor import ThinkingExtracting, ThinkingExtractor
+from llama.thinking_extractor import ThinkingExtracting
+from llama.tool_call_orchestrating import ToolCallOrchestrating
+from llama.tool_dispatcher import TOOLS
 
 
 class AgentLoopExecuting(Protocol):
@@ -19,7 +19,7 @@ class AgentLoopExecuting(Protocol):
         self,
         messages: list,
         timeout: int,
-        observer: Optional[LLMSessionObserving],
+        observer: LLMSessionObserving | None,
     ) -> tuple: ...
 
 
@@ -37,7 +37,7 @@ class AgentLoopExecutor:
         orchestrator: ToolCallOrchestrating,
         thinker: ThinkingExtracting,
         max_rounds: int,
-        range_iter: Optional[RangeIterating] = None,
+        range_iter: RangeIterating | None = None,
     ) -> None:
         self._client = client
         self._orchestrator = orchestrator
@@ -49,7 +49,7 @@ class AgentLoopExecutor:
         self,
         messages: list,
         timeout: int,
-        observer: Optional[LLMSessionObserving],
+        observer: LLMSessionObserving | None,
     ) -> tuple:
         rounds = 0
         last_usage: dict = {}
@@ -78,7 +78,7 @@ class AgentLoopExecutor:
                 rounds += 1
                 messages.append(message)
                 self._orchestrator.orchestrate(tool_calls, messages, observer)
-        except Exception:
+        except Exception:  # noqa: BLE001 — Legacy llama backend preserves its unavailable-review fallback until separate retirement.
             return None, {}, rounds, ""
 
         return None, last_usage, rounds, ""

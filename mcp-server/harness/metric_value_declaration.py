@@ -1,13 +1,9 @@
 """Defines the validated scalar schema authored by one metric step."""
 
-from typing import Optional, Union
-
+from harness.metric_value_type import MetricValueType
 from pydantic import BaseModel, ConfigDict, StrictFloat, StrictInt, model_validator
 
-from harness.metric_value_type import MetricValueType
-
-
-MetricNumericBoundary = Union[StrictInt, StrictFloat]
+MetricNumericBoundary = StrictInt | StrictFloat
 
 
 """
@@ -16,12 +12,14 @@ solid-category: model
 solid-spec: [SPEC-039]
 solid-description: Represents the closed scalar JSON schema accepted for one metric observation value.
 """
+
+
 class MetricValueDeclaration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     type: MetricValueType
-    minimum: Optional[MetricNumericBoundary] = None
-    maximum: Optional[MetricNumericBoundary] = None
+    minimum: MetricNumericBoundary | None = None
+    maximum: MetricNumericBoundary | None = None
 
     @model_validator(mode="after")
     def validate_numeric_boundaries(self) -> "MetricValueDeclaration":
@@ -31,7 +29,9 @@ class MetricValueDeclaration(BaseModel):
             MetricValueType.NUMBER,
         }
         if has_boundary and not is_numeric:
-            raise ValueError("minimum and maximum are supported only for numeric metric values")
+            raise ValueError(
+                "minimum and maximum are supported only for numeric metric values"
+            )
         if (
             self.minimum is not None
             and self.maximum is not None

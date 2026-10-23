@@ -6,15 +6,15 @@ from harness.resolved_step_resources import ResolvedStepResources
 from harness.resolved_step_resources_applying import ResolvedStepResourcesApplying
 from harness.step_declaration import StepDeclaration
 
-
 """
 solid-name: ResolvedStepResourcesApplier
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Applies resolved resources to a workflow-step declaration.
 """
-class ResolvedStepResourcesApplier(ResolvedStepResourcesApplying):
 
+
+class ResolvedStepResourcesApplier(ResolvedStepResourcesApplying):
     def apply(
         self,
         step: StepDeclaration,

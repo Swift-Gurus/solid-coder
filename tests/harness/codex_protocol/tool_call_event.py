@@ -5,12 +5,13 @@ from typing import Literal
 
 from pydantic import AliasChoices, AliasPath, BaseModel, ConfigDict, Field
 
-
 """
 solid-name: CodexToolCallEvent
 solid-category: test-support
 solid-description: Carries a timestamped Codex tool invocation and its correlation identity without decoding workflow submissions.
 """
+
+
 class CodexToolCallEvent(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 
@@ -21,7 +22,9 @@ class CodexToolCallEvent(BaseModel):
     )
     call_id: str = Field(validation_alias=AliasPath("payload", "call_id"))
     name: str = Field(validation_alias=AliasPath("payload", "name"))
-    input: str = Field(validation_alias=AliasChoices(
-        AliasPath("payload", "input"),
-        AliasPath("payload", "arguments"),
-    ))
+    input: str = Field(
+        validation_alias=AliasChoices(
+            AliasPath("payload", "input"),
+            AliasPath("payload", "arguments"),
+        )
+    )

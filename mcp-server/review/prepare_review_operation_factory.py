@@ -15,13 +15,14 @@ from source.source_search_targets_builder_factory import (
     SourceSearchTargetsBuilderFactory,
 )
 
-
 """
 solid-name: PrepareReviewOperationFactory
 solid-category: factory
 solid-spec: [SPEC-041]
 solid-description: Creates normalized review operations for prospective review inputs.
 """
+
+
 class PrepareReviewOperationFactory:
     def make(self) -> PrepareReviewOperation:
         return PrepareReviewOperation(

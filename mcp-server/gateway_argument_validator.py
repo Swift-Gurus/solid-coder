@@ -2,14 +2,15 @@
 
 import inspect
 import sys
-from typing import Callable
-
+from collections.abc import Callable
 
 """
 solid-name: GatewayArgumentValidator
 solid-category: utility
 solid-description: Validates command-line arguments accepted by a resolved gateway tool.
 """
+
+
 class GatewayArgumentValidator:
     def validate(self, handler: Callable, tool_name: str, kwargs: dict) -> None:
         try:

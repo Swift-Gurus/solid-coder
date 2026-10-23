@@ -9,16 +9,16 @@ from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_result_builder import ReviewResultBuilder
 from harness.review_result_persister import ReviewResultPersister
 from harness.review_run_finalizer import ReviewRunFinalizer
+from harness.rule_assessment_observations_decoder import (
+    RuleAssessmentObservationsDecoder,
+)
+from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_execution_completion_evaluator import (
     RuleExecutionCompletionEvaluator,
 )
 from harness.rule_execution_instances_resolver import (
     RuleExecutionInstancesResolver,
 )
-from harness.rule_assessment_observations_decoder import (
-    RuleAssessmentObservationsDecoder,
-)
-from harness.rule_exception_decision import RuleExceptionDecision
 from harness.rule_metric_submission import RuleMetricSubmission
 from harness.rule_observation_collector import RuleObservationCollector
 from harness.rule_result_event_publisher import RuleResultEventPublisher
@@ -30,13 +30,14 @@ from harness.worst_review_severity_selector import WorstReviewSeveritySelector
 from review.normalized_review_unit import NormalizedReviewUnit
 from review.review_unit_source_identity_resolver import ReviewUnitSourceIdentityResolver
 
-
 """
 solid-name: RuleRunFinalizerFactory
 solid-category: factory
 solid-spec: [SPEC-039, SPEC-044]
 solid-description: Composes the deterministic scoring, persistence, and audit collaborators for rule-run completion.
 """
+
+
 class RuleRunFinalizerFactory:
     def build(
         self,
@@ -67,7 +68,9 @@ class RuleRunFinalizerFactory:
         return ReviewRunFinalizer(
             instances_resolver=RuleExecutionInstancesResolver(
                 RuleExecutionCompletionEvaluator(),
-                ReviewUnitSourceIdentityResolver(PydanticModelDecoder(NormalizedReviewUnit)),
+                ReviewUnitSourceIdentityResolver(
+                    PydanticModelDecoder(NormalizedReviewUnit)
+                ),
             ),
             rule_finalizer=rule_finalizer,
             result_builder=ReviewResultBuilder(severity_selector),

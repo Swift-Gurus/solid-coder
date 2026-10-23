@@ -4,11 +4,10 @@ solid-category: abstraction
 solid-tags: [hook]
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from hook_utils import GateHandling
 from patch_review_context import PatchReviewContext
-
 
 """
 solid-name: HealthGateChecking
@@ -16,6 +15,8 @@ solid-description: Contract for authorizing prospective source health before a w
 solid-category: abstraction
 solid-tags: [hook]
 """
+
+
 class HealthGateChecking(Protocol):
     def check(
         self,
@@ -26,5 +27,5 @@ class HealthGateChecking(Protocol):
         gate: GateHandling,
         file_name: str,
         cwd: str = "",
-        patch_context: Optional[PatchReviewContext] = None,
+        patch_context: PatchReviewContext | None = None,
     ) -> bool: ...

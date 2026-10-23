@@ -1,11 +1,10 @@
 """Defines static validation of item references in workflow conditions."""
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 from harness.condition_declaration import ConditionDeclaration
 from harness.workflow_data_schema import WorkflowDataSchema
 from harness.workflow_expression import WorkflowExpression
-
 
 """
 solid-name: ConditionItemSchemaValidating
@@ -13,6 +12,8 @@ solid-category: abstraction
 solid-spec: [SPEC-053]
 solid-description: Contract for validating condition item references against an authored schema.
 """
+
+
 class ConditionItemSchemaValidating(Protocol):
     def validate(
         self,
@@ -28,7 +29,7 @@ class ConditionItemSchemaValidating(Protocol):
         reference_name: str,
         reference: WorkflowExpression,
         item_schema: WorkflowDataSchema,
-        allowed_types: Optional[list[str]] = None,
+        allowed_types: list[str] | None = None,
         root: str = "item",
-        allowed_item_types: Optional[list[str]] = None,
+        allowed_item_types: list[str] | None = None,
     ) -> None: ...

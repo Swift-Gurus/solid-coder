@@ -4,6 +4,7 @@ solid-category: unit-test
 """
 
 import unittest
+
 from helpers import make_handler
 
 
@@ -33,11 +34,16 @@ class TestLoadDetectionRules(unittest.TestCase):
         """severity_bands field is present but empty — bands are now in YAML frontmatter."""
         p = self._load_first_principle("isp")
         self.assertIn("severity_bands", p)
-        self.assertEqual(p["severity_bands"], {},
-                         "severity_bands XML blocks removed — scoring uses YAML frontmatter bands")
+        self.assertEqual(
+            p["severity_bands"],
+            {},
+            "severity_bands XML blocks removed — scoring uses YAML frontmatter bands",
+        )
 
     def test_unknown_principle_returns_error(self):
-        result = self.handler.load_detection_rules(principle="nonexistent_xyz_principle")
+        result = self.handler.load_detection_rules(
+            principle="nonexistent_xyz_principle"
+        )
         self.assertIn("error", result)
 
     def test_no_argument_returns_multiple_principles(self):
@@ -54,7 +60,6 @@ class TestLoadDetectionRules(unittest.TestCase):
         # so the filtered set must be smaller than the full unfiltered set.
         self.assertGreater(filtered_count, 0, "tag filter returned no principles")
         self.assertLess(filtered_count, unfiltered_count)
-
 
     def test_fallback_path_returns_content_not_full_content(self):
         # code-smells has no XML blocks — hits the fallback path.

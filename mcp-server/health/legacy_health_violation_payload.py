@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 """
 solid-name: LegacyHealthViolationPayload
 solid-category: model
 solid-spec: [SPEC-050]
 solid-description: Represents one validated finding emitted by legacy health review extraction.
 """
+
+
 class LegacyHealthViolationPayload(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
 

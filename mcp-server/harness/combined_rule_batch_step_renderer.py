@@ -7,13 +7,14 @@ from harness.combined_rule_batch_sections_building import (
 )
 from harness.step_result import StepResult
 
-
 """
 solid-name: CombinedRuleBatchStepRenderer
 solid-category: service
 solid-spec: [SPEC-043]
 solid-description: Renders applicable authored rule sections and domain-labelled items in one model-facing batch.
 """
+
+
 class CombinedRuleBatchStepRenderer(BatchStepRendering):
     def __init__(
         self,
@@ -29,10 +30,7 @@ class CombinedRuleBatchStepRenderer(BatchStepRendering):
             (
                 f"Rule: {section.rule_alias}\n"
                 "Applicable items:\n"
-                + "\n".join(
-                    self._item_renderer.render(step)
-                    for step in section.steps
-                )
+                + "\n".join(self._item_renderer.render(step) for step in section.steps)
                 + "\n\n"
                 + section.prompt
             )
@@ -44,6 +42,6 @@ class CombinedRuleBatchStepRenderer(BatchStepRendering):
             "Call flow_next with outputs as one object keyed first by the exact "
             "item label and then by the exact rule alias. Each rule value must "
             "match that rule section's declared outputs.\n"
-            "Shape: {\"<item label>\": {\"<rule alias>\": "
-            "{\"<declared output>\": \"<value>\"}}}"
+            'Shape: {"<item label>": {"<rule alias>": '
+            '{"<declared output>": "<value>"}}}'
         )

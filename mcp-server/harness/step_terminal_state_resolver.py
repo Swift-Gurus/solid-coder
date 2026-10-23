@@ -6,13 +6,14 @@ from harness.models import RunState
 from harness.step_terminal_state import StepTerminalState
 from harness.step_terminal_state_resolving import StepTerminalStateResolving
 
-
 """
 solid-name: StepTerminalStateResolver
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Resolves a workflow step's completed, skipped, or pending state.
 """
+
+
 class StepTerminalStateResolver(StepTerminalStateResolving):
     def resolve(
         self,

@@ -23,7 +23,7 @@ class StubSchemaValidator:
     def __init__(self, errors: list[str] | None = None) -> None:
         self._errors = errors or []
 
-    def validate(self, output_spec: OutputSpec, value) -> "_Result":
+    def validate(self, output_spec: OutputSpec, value) -> _Result:
         return _Result(ok=not self._errors, errors=self._errors)
 
 
@@ -34,13 +34,25 @@ class _Result:
 
 
 def _flow_with_output(name: str, output_name: str) -> FlowDef:
-    return FlowDef(name="test_flow", max_turns=10, steps=[
-        StepDef(id=name, prompt="Do it", outputs=[OutputSpec(name=output_name, type="data", schema={"type": "string"})]),
-    ])
+    return FlowDef(
+        name="test_flow",
+        max_turns=10,
+        steps=[
+            StepDef(
+                id=name,
+                prompt="Do it",
+                outputs=[
+                    OutputSpec(name=output_name, type="data", schema={"type": "string"})
+                ],
+            ),
+        ],
+    )
 
 
 def _instance(step_id: str) -> StepInstance:
-    return StepInstance(step_id=step_id, instance_id=f"{step_id}-1", item=None, prompt="Do it")
+    return StepInstance(
+        step_id=step_id, instance_id=f"{step_id}-1", item=None, prompt="Do it"
+    )
 
 
 def _validator(errors: list[str] | None = None) -> StepOutputValidator:
@@ -52,12 +64,13 @@ def _validator(errors: list[str] | None = None) -> StepOutputValidator:
 
 
 class TestStepOutputValidator(unittest.TestCase):
-
     def test_valid_object_outputs_pass_when_schema_ok(self):
         sut = _validator()
         flow_def = _flow_with_output("greet", "greeting")
 
-        errors = sut.validate([_instance("greet")], {"greet-1": {"greeting": "hi"}}, flow_def)
+        errors = sut.validate(
+            [_instance("greet")], {"greet-1": {"greeting": "hi"}}, flow_def
+        )
 
         self.assertEqual(errors, [])
 
@@ -65,15 +78,21 @@ class TestStepOutputValidator(unittest.TestCase):
         sut = _validator(errors=["not a string"])
         flow_def = _flow_with_output("greet", "greeting")
 
-        errors = sut.validate([_instance("greet")], {"greet-1": {"greeting": 123}}, flow_def)
+        errors = sut.validate(
+            [_instance("greet")], {"greet-1": {"greeting": 123}}, flow_def
+        )
 
         self.assertEqual(errors, ["greeting: not a string"])
 
-    def test_non_object_instance_outputs_reports_clean_shape_error_without_crashing(self):
+    def test_non_object_instance_outputs_reports_clean_shape_error_without_crashing(
+        self,
+    ):
         sut = _validator()
         flow_def = _flow_with_output("greet", "greeting")
 
-        errors = sut.validate([_instance("greet")], {"greet-1": "just a string"}, flow_def)
+        errors = sut.validate(
+            [_instance("greet")], {"greet-1": "just a string"}, flow_def
+        )
 
         self.assertEqual(len(errors), 1)
         self.assertNotIn("greet-1", errors[0])

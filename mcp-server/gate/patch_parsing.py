@@ -2,13 +2,14 @@
 
 from typing import Protocol
 
-
 """
 solid-name: PatchParsing
 solid-category: abstraction
 solid-description: Contract for parsing patch entries and applying their add or update content transformations.
 solid-tags: [hook]
 """
+
+
 class PatchParsing(Protocol):
     def parse(self, command: str) -> list: ...
     def add_content(self, lines: list) -> str: ...

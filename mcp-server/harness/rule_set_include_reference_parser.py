@@ -10,13 +10,14 @@ from harness.rule_set_include_reference_parsing import (
 )
 from harness.structured_model_decoding import StructuredModelDecoding
 
-
 """
 solid-name: RuleSetIncludeReferenceParser
 solid-category: boundary
 solid-spec: [SPEC-039]
 solid-description: Recognizes rule-set include data and decodes its closed all-rules form.
 """
+
+
 class RuleSetIncludeReferenceParser(RuleSetIncludeReferenceParsing):
     def __init__(
         self,

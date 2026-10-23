@@ -7,13 +7,14 @@ from typing import Protocol
 from harness.include_alias_group import IncludeAliasGroup
 from harness.models import StepDef
 
-
 """
 solid-name: ForEachReferenceValidating
 solid-category: abstraction
 solid-spec: [SPEC-010, SPEC-030]
 solid-description: Contract for validating workflow for-each source outputs and dependency reachability.
 """
+
+
 class ForEachReferenceValidating(Protocol):
     def validate_for_each_references(
         self,

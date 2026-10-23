@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from search.search_term_extracting import SearchTermExtracting
 
-
 """
 solid-name: SearchTermsResolver
 solid-category: service
 solid-description: Validates codebase-search input forms and produces individual searchable terms.
 """
+
+
 class SearchTermsResolver:
     def __init__(self, term_extractor: SearchTermExtracting) -> None:
         self._term_extractor = term_extractor

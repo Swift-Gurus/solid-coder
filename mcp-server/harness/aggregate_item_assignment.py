@@ -2,13 +2,14 @@
 
 from dataclasses import dataclass, field
 
-
 """
 solid-name: AggregateItemAssignment
 solid-category: model
 solid-spec: [SPEC-045]
-solid-description: Associates one opaque item label with its ordered applicable workflow aliases.
+solid-description: Represents the workflows applicable to an individual item.
 """
+
+
 @dataclass(frozen=True)
 class AggregateItemAssignment:
     label: str

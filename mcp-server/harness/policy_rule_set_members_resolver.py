@@ -6,15 +6,15 @@ from harness.rule_set_member_include import RuleSetMemberInclude
 from harness.rule_set_members_resolving import RuleSetMembersResolving
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 
-
 """
 solid-name: PolicyRuleSetMembersResolver
 solid-category: service
 solid-spec: [SPEC-039]
 solid-description: Filters catalog rule members through the effective project-policy enablement decision before materialization.
 """
-class PolicyRuleSetMembersResolver(RuleSetMembersResolving):
 
+
+class PolicyRuleSetMembersResolver(RuleSetMembersResolving):
     def __init__(
         self,
         members: RuleSetMembersResolving,

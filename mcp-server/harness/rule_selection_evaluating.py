@@ -9,15 +9,15 @@ from harness.rule_applicability_decision import (
 from harness.rule_selection import RuleSelection
 from harness.rule_selection_requirement import RuleSelectionRequirement
 
-
 """
 solid-name: RuleSelectionEvaluating
 solid-category: abstraction
 solid-spec: [SPEC-039]
 solid-description: Contract for evaluating rule-selection dimensions to determine applicability from candidates and requirements.
 """
-class RuleSelectionEvaluating(Protocol):
 
+
+class RuleSelectionEvaluating(Protocol):
     def evaluate(
         self,
         dimension: RuleMatchDimension,

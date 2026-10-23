@@ -1,8 +1,9 @@
 """Accepts workflow step submissions without additional validation."""
 
 from harness.models import FlowDef, StepInstance, ValidationResult
-from harness.successful_validation_result_providing import SuccessfulValidationResultProviding
-
+from harness.successful_validation_result_providing import (
+    SuccessfulValidationResultProviding,
+)
 
 """
 solid-name: PassThroughStepSubmissionValidator
@@ -10,6 +11,8 @@ solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Accepts workflow step submissions whose outcomes were validated during execution.
 """
+
+
 class PassThroughStepSubmissionValidator:
     def __init__(
         self,

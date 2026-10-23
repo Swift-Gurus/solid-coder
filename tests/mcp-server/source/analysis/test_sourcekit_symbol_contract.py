@@ -1,19 +1,18 @@
 """Checks installed Swift semantic evidence without writing the reviewed source."""
 
 import json
+import subprocess
+import unittest
 from pathlib import Path
 from queue import Empty, Queue
 from shutil import which
-import subprocess
 from tempfile import TemporaryDirectory
 from threading import Thread
 from time import monotonic
 from types import SimpleNamespace
-import unittest
 
 from content_length_reader import ContentLengthReader
 from content_length_writer import ContentLengthWriter
-
 
 """
 solid-name: TestSourceKitSymbolContract
@@ -21,7 +20,11 @@ solid-category: integration-test
 solid-spec: [SPEC-064]
 solid-description: Probes the installed Swift semantic service for declaration and type provenance on an unwritten source document.
 """
-@unittest.skipUnless(which("xcrun"), "Swift semantic contract requires the Xcode toolchain")
+
+
+@unittest.skipUnless(
+    which("xcrun"), "Swift semantic contract requires the Xcode toolchain"
+)
 class TestSourceKitSymbolContract(unittest.TestCase):
     def setUp(self) -> None:
         temporary = TemporaryDirectory(prefix="sourcekit-contract-")
@@ -31,11 +34,16 @@ class TestSourceKitSymbolContract(unittest.TestCase):
         self.addCleanup(self.stderr.close)
         self.process = subprocess.Popen(
             [
-                "xcrun", "sourcekit-lsp",
-                "--scratch-path", str(self.workspace / "build"),
-                "--generated-files-path", str(self.workspace / "generated"),
+                "xcrun",
+                "sourcekit-lsp",
+                "--scratch-path",
+                str(self.workspace / "build"),
+                "--generated-files-path",
+                str(self.workspace / "generated"),
             ],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=self.stderr,
             cwd=self.workspace,
         )
         self.addCleanup(self._close)
@@ -43,11 +51,14 @@ class TestSourceKitSymbolContract(unittest.TestCase):
         self.reader = Thread(target=self._read, daemon=True)
         self.reader.start()
         self.request_id = 0
-        initialized = self._request("initialize", {
-            "processId": None,
-            "rootUri": self.workspace.as_uri(),
-            "capabilities": {"general": {"positionEncodings": ["utf-16"]}},
-        })
+        initialized = self._request(
+            "initialize",
+            {
+                "processId": None,
+                "rootUri": self.workspace.as_uri(),
+                "capabilities": {"general": {"positionEncodings": ["utf-16"]}},
+            },
+        )
         self.assertIsNone(getattr(initialized, "error", None), initialized)
         self._notify("initialized", {})
         self.path = self.workspace / "Unwritten.swift"
@@ -59,10 +70,17 @@ class TestSourceKitSymbolContract(unittest.TestCase):
             " _ = response as? HTTPURLResponse\n"
             "}\n"
         )
-        self._notify("textDocument/didOpen", {"textDocument": {
-            "uri": self.path.as_uri(), "languageId": "swift",
-            "version": 1, "text": self.source,
-        }})
+        self._notify(
+            "textDocument/didOpen",
+            {
+                "textDocument": {
+                    "uri": self.path.as_uri(),
+                    "languageId": "swift",
+                    "version": 1,
+                    "text": self.source,
+                }
+            },
+        )
 
     def _read(self) -> None:
         try:
@@ -72,23 +90,34 @@ class TestSourceKitSymbolContract(unittest.TestCase):
                     return
                 # Wire-boundary decoding; test assertions use attributes.
                 response = json.loads(
-                    json.dumps(raw), object_hook=lambda fields: SimpleNamespace(**fields),
+                    json.dumps(raw),
+                    object_hook=lambda fields: SimpleNamespace(**fields),
                 )
                 self.responses.put(response)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 — Transfer reader-thread failures to the main test thread, which re-raises them.
             self.responses.put(error)
 
     def _notify(self, method: str, params: dict) -> None:
-        ContentLengthWriter().write(self.process.stdin, {
-            "jsonrpc": "2.0", "method": method, "params": params,
-        })
+        ContentLengthWriter().write(
+            self.process.stdin,
+            {
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": params,
+            },
+        )
 
     def _request(self, method: str, params: dict) -> SimpleNamespace:
         self.request_id += 1
-        ContentLengthWriter().write(self.process.stdin, {
-            "jsonrpc": "2.0", "id": self.request_id,
-            "method": method, "params": params,
-        })
+        ContentLengthWriter().write(
+            self.process.stdin,
+            {
+                "jsonrpc": "2.0",
+                "id": self.request_id,
+                "method": method,
+                "params": params,
+            },
+        )
         deadline = monotonic() + 30
         while True:
             try:
@@ -102,21 +131,31 @@ class TestSourceKitSymbolContract(unittest.TestCase):
                 raise response
             if getattr(response, "method", None) is not None:
                 if getattr(response, "id", None) is not None:
-                    ContentLengthWriter().write(self.process.stdin, {
-                        "jsonrpc": "2.0", "id": response.id,
-                        "error": {"code": -32601, "message": "Unsupported test-client request"},
-                    })
+                    ContentLengthWriter().write(
+                        self.process.stdin,
+                        {
+                            "jsonrpc": "2.0",
+                            "id": response.id,
+                            "error": {
+                                "code": -32601,
+                                "message": "Unsupported test-client request",
+                            },
+                        },
+                    )
                 continue
             if getattr(response, "id", None) == self.request_id:
                 return response
 
     def _at(self, method: str, line: int, token: str) -> SimpleNamespace:
         text = self.source.splitlines()[line]
-        character = len(text[:text.index(token)].encode("utf-16-le")) // 2
-        return self._request(method, {
-            "textDocument": {"uri": self.path.as_uri()},
-            "position": {"line": line, "character": character},
-        })
+        character = len(text[: text.index(token)].encode("utf-16-le")) // 2
+        return self._request(
+            method,
+            {
+                "textDocument": {"uri": self.path.as_uri()},
+                "position": {"line": line, "character": character},
+            },
+        )
 
     def _close(self) -> None:
         if self.process.poll() is None:

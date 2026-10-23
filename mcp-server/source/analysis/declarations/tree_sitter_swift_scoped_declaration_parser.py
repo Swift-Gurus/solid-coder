@@ -1,14 +1,14 @@
 """Enriches the shared Swift declaration parser with lexical scope facts."""
 
-from tree_sitter import Node
-
 from source.analysis.declarations.source_scope import SourceScope
 from source.analysis.declarations.source_scope_kind import SourceScopeKind
-from source.analysis.declarations.source_scoped_declaration import SourceScopedDeclaration
+from source.analysis.declarations.source_scoped_declaration import (
+    SourceScopedDeclaration,
+)
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
-from source.source_unit import SourceUnit
 from source.source_evidence import SourceEvidence
-
+from source.source_unit import SourceUnit
+from tree_sitter import Node
 
 """
 solid-name: TreeSitterSwiftScopedDeclarationParser
@@ -16,7 +16,11 @@ solid-category: boundary-adapter
 solid-spec: [SPEC-066, SPEC-069]
 solid-description: Captures lexical scope, declaration metadata, modifiers, comments, and signals for each Swift declaration, including nested declarations.
 """
-class TreeSitterSwiftScopedDeclarationParser(SourceSyntaxParsing[Node, SourceScopedDeclaration | None]):
+
+
+class TreeSitterSwiftScopedDeclarationParser(
+    SourceSyntaxParsing[Node, SourceScopedDeclaration | None]
+):
     def __init__(
         self,
         units: SourceSyntaxParsing[Node, SourceUnit | None],
@@ -46,10 +50,10 @@ class TreeSitterSwiftScopedDeclarationParser(SourceSyntaxParsing[Node, SourceSco
             leading_comments=self._comments.parse(source),
             signals=self._signals.parse(source),
             modifiers=[
-                token for child in source.children
-                if child.type == "modifiers" or (
-                    source.type == "function_declaration" and child.type == "class"
-                )
+                token
+                for child in source.children
+                if child.type == "modifiers"
+                or (source.type == "function_declaration" and child.type == "class")
                 for token in self._tokens.parse(child)
             ],
         )

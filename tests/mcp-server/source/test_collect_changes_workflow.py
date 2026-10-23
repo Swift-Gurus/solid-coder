@@ -15,7 +15,9 @@ sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
-from source.source_operation_registrations_factory import SourceOperationRegistrationsFactory
+from source.source_operation_registrations_factory import (
+    SourceOperationRegistrationsFactory,
+)
 
 
 class TestCollectChangesWorkflow(unittest.TestCase):
@@ -58,9 +60,7 @@ class TestCollectChangesWorkflow(unittest.TestCase):
             )
         )
 
-        started = self.driver.start(
-            params={"project_root": str(self.project_root)}
-        )
+        started = self.driver.start(params={"project_root": str(self.project_root)})
 
         self.assertIsNone(started.error, started.error)
         self.assertEqual([step.step_id for step in started.steps], ["review"])

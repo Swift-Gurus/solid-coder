@@ -33,18 +33,24 @@ for _d in (
     if _d not in sys.path:
         sys.path.insert(0, _d)
 
-from harness_factory import HarnessFactory  # noqa: E402
+from harness_factory import HarnessFactory
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run principle integration tests.")
-    parser.add_argument("--principle", required=True, help="references/ path to the principle")
-    parser.add_argument("--flow", choices=["apply", "health"], help="flow to run (default: both)")
+    parser.add_argument(
+        "--principle", required=True, help="references/ path to the principle"
+    )
+    parser.add_argument(
+        "--flow", choices=["apply", "health"], help="flow to run (default: both)"
+    )
     parser.add_argument("--fixture", help="single fixture stem to run")
     parser.add_argument("--model", help="model profile name (tests/models/<name>.toml)")
     parser.add_argument("--mode", choices=["direct", "e2e"], default="direct")
     parser.add_argument(
-        "--timeout", type=int, default=None,
+        "--timeout",
+        type=int,
+        default=None,
         help="per-fixture timeout in seconds (default: the model profile's own llm.timeout)",
     )
     args = parser.parse_args()

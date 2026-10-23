@@ -4,14 +4,17 @@ from typing import Protocol
 
 from harness.flow_validation_error_creating import FlowValidationErrorCreating
 
-
 """
 solid-name: CollectionIdentityCoverageValidating
 solid-category: abstraction
 solid-description: Contract for validating exactly-once accounting of an expected identity collection.
 """
+
+
 class CollectionIdentityCoverageValidating(Protocol):
-    def validate(self, expected_ids: list[str], submitted_ids: list[str], identity_name: str) -> None: ...
+    def validate(
+        self, expected_ids: list[str], submitted_ids: list[str], identity_name: str
+    ) -> None: ...
 
 
 """
@@ -20,16 +23,21 @@ solid-category: service
 solid-spec: [SPEC-057]
 solid-description: Validates that submitted identities cover an expected collection exactly once and provides replacement guidance.
 """
+
+
 class CollectionIdentityCoverageValidator(CollectionIdentityCoverageValidating):
     def __init__(self, error_factory: FlowValidationErrorCreating) -> None:
         self._error_factory = error_factory
 
-    def validate(self, expected_ids: list[str], submitted_ids: list[str], identity_name: str) -> None:
+    def validate(
+        self, expected_ids: list[str], submitted_ids: list[str], identity_name: str
+    ) -> None:
         missing = [value for value in expected_ids if value not in submitted_ids]
         duplicate = [
-            value for index, value in enumerate(submitted_ids)
+            value
+            for index, value in enumerate(submitted_ids)
             if value in submitted_ids[:index]
-            and value not in submitted_ids[index + 1:]
+            and value not in submitted_ids[index + 1 :]
         ]
         unknown = [value for value in submitted_ids if value not in expected_ids]
         problems = []

@@ -19,21 +19,25 @@ sys.path.insert(0, str(_MCP_DIR))
 sys.path.insert(0, str(_HOOKS_DIR))
 import sys as _sys
 from pathlib import Path as _Path
+
 _PROJECT_ROOT = _Path(__file__).resolve().parents[2]
 _sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server/health"))
 
 from hc_tag_detector import TagDetector
-from helpers import SubmitFindingsTestBase
 
 _GATEWAY = str(Path(__file__).resolve().parents[2] / "mcp-server" / "gateway.py")
 
-_ALWAYS_ON = frozenset({"srp", "ocp", "isp", "lsp", "dry", "code-smells", "frontmatter"})
+_ALWAYS_ON = frozenset(
+    {"srp", "ocp", "isp", "lsp", "dry", "code-smells", "frontmatter"}
+)
 
 
 def _candidate_tags() -> list:
     result = subprocess.run(
         [sys.executable, _GATEWAY, "get_candidate_tags"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     return json.loads(result.stdout)["candidate_tags"]
 
@@ -53,9 +57,16 @@ class PrincipleActivationTester:
         # - No tags detected → only always-on principles (empty matched_tags filters out conditional)
         # - Tags detected → always-on + matching conditional principles
         result = subprocess.run(
-            [sys.executable, self._gateway_path, "load_detection_rules",
-             "--matched_tags", ",".join(tags)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                self._gateway_path,
+                "load_detection_rules",
+                "--matched_tags",
+                ",".join(tags),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         return {p["name"] for p in json.loads(result.stdout)["principles"]}
 
@@ -91,7 +102,7 @@ class TestSwiftUIActivation(unittest.TestCase):
         self.tester = PrincipleActivationTester(_GATEWAY, TagDetector())
 
     def test_import_swiftui_activates_swiftui(self):
-        code = "import SwiftUI\n\nstruct MyView: View {\n    var body: some View { Text(\"hi\") }\n}"
+        code = 'import SwiftUI\n\nstruct MyView: View {\n    var body: some View { Text("hi") }\n}'
         names = self.tester.principles_for_code(code)
         self.assertIn("swiftui", names)
         self.assertTrue(_ALWAYS_ON.issubset(names))
@@ -102,7 +113,7 @@ class TestSwiftUIActivation(unittest.TestCase):
         self.assertIn("swiftui", names)
 
     def test_state_property_wrapper_activates_swiftui(self):
-        code = "struct Counter: View {\n    @State private var count = 0\n    var body: some View { Text(\"\\(count)\") }\n}"
+        code = 'struct Counter: View {\n    @State private var count = 0\n    var body: some View { Text("\\(count)") }\n}'
         names = self.tester.principles_for_code(code)
         self.assertIn("swiftui", names)
 
@@ -159,7 +170,9 @@ class TestUnitTestingActivation(unittest.TestCase):
         self.assertTrue(_ALWAYS_ON.issubset(names))
 
     def test_swift_testing_import_activates_testing(self):
-        code = "import Testing\n\n@Suite struct UserTests {\n    @Test func save() {}\n}"
+        code = (
+            "import Testing\n\n@Suite struct UserTests {\n    @Test func save() {}\n}"
+        )
         names = self.tester.principles_for_code(code)
         self.assertIn("testing", names)
 
@@ -193,7 +206,7 @@ final class AppUITests: XCTestCase {
         self.assertTrue(_ALWAYS_ON.issubset(names))
 
     def test_xcuielement_activates_uitesting(self):
-        code = "let button: XCUIElement = app.buttons[\"Submit\"]"
+        code = 'let button: XCUIElement = app.buttons["Submit"]'
         names = self.tester.principles_for_code(code)
         self.assertIn("uitesting", names)
 

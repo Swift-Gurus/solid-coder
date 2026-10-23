@@ -18,7 +18,7 @@ import tempfile
 import time
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -29,14 +29,14 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CODEX):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from codex_apply_patch_transcript_reader import (  # noqa: E402
+from codex_apply_patch_transcript_reader import (
     CodexApplyPatchTranscriptReader,
 )
-from codex_health_review_transcript_reader import (  # noqa: E402
+from codex_health_review_transcript_reader import (
     CodexHealthReviewTranscriptReader,
 )
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from harness_factory import HookUtilsTomlLoader
+from model_profile_loader import ModelProfileLoader
 
 _MODEL_PROFILE = "codex"
 _ARTIFACT_ROOT = (
@@ -71,22 +71,23 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
     TIMEOUT = 1200
 
     def setUp(self) -> None:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         self.run_dir = _ARTIFACT_ROOT / f"{timestamp}-{uuid.uuid4().hex[:8]}"
         self.run_dir.mkdir(parents=True)
         self.generated_config = self.run_dir / "codex-config.toml"
         self.codex_home = Path(tempfile.mkdtemp(prefix="solid-coder-e2e-codex-home-"))
         relative_run_dir = self.run_dir.relative_to(_PROJECT_ROOT)
         self.relative_files = tuple(
-            str(relative_run_dir / "workspace" / name)
-            for name in _VIEW_NAMES
+            str(relative_run_dir / "workspace" / name) for name in _VIEW_NAMES
         )
 
     def tearDown(self) -> None:
         self.generated_config.unlink(missing_ok=True)
         shutil.rmtree(self.codex_home, ignore_errors=True)
 
-    def test_four_swiftui_files_are_reviewed_isolated_and_denied_atomically(self) -> None:
+    def test_four_swiftui_files_are_reviewed_isolated_and_denied_atomically(
+        self,
+    ) -> None:
         profile = ModelProfileLoader(
             project_root=_PROJECT_ROOT,
             toml_loader=HookUtilsTomlLoader(),
@@ -112,6 +113,7 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
                 timeout=self.TIMEOUT,
                 cwd=str(_PROJECT_ROOT),
                 env=environment,
+                check=False,
             )
         finally:
             self._preserve_codex_runtime()
@@ -119,10 +121,14 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             shutil.rmtree(self.codex_home, ignore_errors=True)
         elapsed = time.monotonic() - started
 
-        (self.run_dir / "codex-events.jsonl").write_text(process.stdout, encoding="utf-8")
+        (self.run_dir / "codex-events.jsonl").write_text(
+            process.stdout, encoding="utf-8"
+        )
         (self.run_dir / "codex-stderr.log").write_text(process.stderr, encoding="utf-8")
         result_path = self.run_dir / "last-message.txt"
-        result_text = result_path.read_text(encoding="utf-8") if result_path.exists() else ""
+        result_text = (
+            result_path.read_text(encoding="utf-8") if result_path.exists() else ""
+        )
         self._assert_single_multi_file_apply_patch()
         reviewed_file_names = self._assert_isolated_health_reviews()
         print(
@@ -134,8 +140,12 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
         )
 
         self.assertEqual(process.returncode, 0, process.stderr)
-        self.assertTrue(result_text, "The outer Codex session returned no final result.")
-        self.assertIn("den", result_text.lower(), "The intentionally severe patch was not denied.")
+        self.assertTrue(
+            result_text, "The outer Codex session returned no final result."
+        )
+        self.assertIn(
+            "den", result_text.lower(), "The intentionally severe patch was not denied."
+        )
         for relative_path in self.relative_files:
             self.assertIn(Path(relative_path).name, result_text)
             self.assertFalse(
@@ -193,8 +203,11 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             timeout=120,
             cwd=str(_PROJECT_ROOT),
             env=environment,
+            check=False,
         )
-        (self.run_dir / "plugin-install.json").write_text(process.stdout, encoding="utf-8")
+        (self.run_dir / "plugin-install.json").write_text(
+            process.stdout, encoding="utf-8"
+        )
         self.assertEqual(process.returncode, 0, process.stderr)
 
     def _preserve_codex_runtime(self) -> None:
@@ -228,8 +241,7 @@ class TestApplyPatchGateE2ELive(unittest.TestCase):
             )
         ]
         expected_operations = [
-            f"*** Add File: {relative_file}"
-            for relative_file in self.relative_files
+            f"*** Add File: {relative_file}" for relative_file in self.relative_files
         ]
         self.assertEqual(file_operations, expected_operations)
 

@@ -7,13 +7,14 @@ from typing import Any
 
 from harness.step_outputs import StepOutputs
 
-
 """
 solid-name: StepInstanceCompletion
 solid-category: model
 solid-spec: [SPEC-010, SPEC-030]
 solid-description: Records the identity, item binding, and validated outputs of one completed for-each iteration.
 """
+
+
 @dataclass(frozen=True)
 class StepInstanceCompletion:
     step_id: str

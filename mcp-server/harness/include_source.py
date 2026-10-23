@@ -8,13 +8,14 @@ from harness.included_rule_workflow import IncludedRuleWorkflow
 from harness.workflow_include_runtime import WorkflowIncludeRuntime
 from harness.workflow_output_declaration import WorkflowOutputDeclaration
 
-
 """
 solid-name: IncludeSource
 solid-category: model
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Represents one resolved reusable workflow entry selected for inclusion.
 """
+
+
 @dataclass(frozen=True)
 class IncludeSource:
     alias: str

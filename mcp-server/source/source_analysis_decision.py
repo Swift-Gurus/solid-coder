@@ -2,13 +2,14 @@
 
 from enum import Enum
 
-
 """
 solid-name: SourceAnalysisDecision
 solid-category: model
 solid-spec: [SPEC-040]
 solid-description: Enumerates parsed, partial, and unsupported source-analysis outcomes.
 """
+
+
 class SourceAnalysisDecision(str, Enum):
     PARSED = "parsed"
     PARTIAL = "partial"

@@ -6,10 +6,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from source.source_frontmatter_reader_factory import SourceFrontmatterReaderFactory
 from harness.flow_validation_error import FlowValidationError
 from source.source_frontmatter import SourceFrontmatter
-
+from source.source_frontmatter_reader_factory import SourceFrontmatterReaderFactory
 
 """
 solid-name: TestSourceFrontmatterReader
@@ -17,6 +16,8 @@ solid-category: unit-test
 solid-spec: [SPEC-040]
 solid-description: Verifies comment-wrapped YAML frontmatter maps directly into typed source metadata.
 """
+
+
 class TestSourceFrontmatterReader(unittest.TestCase):
     def setUp(self) -> None:
         self.reader = SourceFrontmatterReaderFactory().make()
@@ -59,18 +60,28 @@ class TestSourceFrontmatterReader(unittest.TestCase):
             "   Provides a reusable capability\n   for clients.\n solid-category: service\n */",
         )
         self.assertEqual(metadata.name, "Target")
-        self.assertEqual(metadata.description.strip(), "Provides a reusable capability for clients.")
+        self.assertEqual(
+            metadata.description.strip(), "Provides a reusable capability for clients."
+        )
 
     def test_strict_comment_parsing_handles_inline_comment_wrappers(self) -> None:
         self.assertEqual(self.reader.parse("/** solid-name: Target */").name, "Target")
 
     def test_metadata_round_trips_through_typed_operation_outputs(self) -> None:
-        metadata = self.reader.parse("// solid-name: Target\n// solid-category: service")
-        self.assertEqual(SourceFrontmatter.model_validate(metadata.model_dump()), metadata)
+        metadata = self.reader.parse(
+            "// solid-name: Target\n// solid-category: service"
+        )
+        self.assertEqual(
+            SourceFrontmatter.model_validate(metadata.model_dump()), metadata
+        )
 
     def test_preserves_plain_multiline_comment_descriptions(self) -> None:
-        metadata = self.reader.parse("/**\n solid-name: Target\n solid-description: Provides deliveries\n across supported regions.\n solid-category: service\n */")
-        self.assertEqual(metadata.description, "Provides deliveries across supported regions.")
+        metadata = self.reader.parse(
+            "/**\n solid-name: Target\n solid-description: Provides deliveries\n across supported regions.\n solid-category: service\n */"
+        )
+        self.assertEqual(
+            metadata.description, "Provides deliveries across supported regions."
+        )
 
     def test_strict_comment_parsing_distinguishes_absent_from_malformed(self) -> None:
         self.assertIsNone(self.reader.parse("// Ordinary documentation"))

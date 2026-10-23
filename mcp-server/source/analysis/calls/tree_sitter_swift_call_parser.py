@@ -1,9 +1,7 @@
-from tree_sitter import Node
-
 from source.analysis.calls.source_call import SourceCall
 from source.analysis.tree_sitter_syntax_parser import SourceSyntaxParsing
 from source.source_line_range import SourceLineRange
-
+from tree_sitter import Node
 
 """
 solid-name: TreeSitterSwiftCallParser
@@ -11,9 +9,14 @@ solid-category: boundary-adapter
 solid-spec: [SPEC-067]
 solid-description: Decodes actual Swift invocation syntax and argument labels into source evidence, without inferring callable ownership or following dynamic dispatch.
 """
+
+
 class TreeSitterSwiftCallParser(SourceSyntaxParsing[Node, SourceCall | None]):
-    def __init__(self, spans: SourceSyntaxParsing[Node, SourceLineRange],
-                 tokens: SourceSyntaxParsing[Node, list[str]]) -> None:
+    def __init__(
+        self,
+        spans: SourceSyntaxParsing[Node, SourceLineRange],
+        tokens: SourceSyntaxParsing[Node, list[str]],
+    ) -> None:
         self._spans = spans
         self._tokens = tokens
 
@@ -30,7 +33,11 @@ class TreeSitterSwiftCallParser(SourceSyntaxParsing[Node, SourceCall | None]):
                     for argument in arguments.named_children:
                         if argument.type == "value_argument":
                             label = argument.child_by_field_name("name")
-                            labels.append(label.text.decode("utf-8") if label is not None and label.text else "_")
+                            labels.append(
+                                label.text.decode("utf-8")
+                                if label is not None and label.text
+                                else "_"
+                            )
                 elif arguments.type == "lambda_literal":
                     labels.append("_")
         return SourceCall(

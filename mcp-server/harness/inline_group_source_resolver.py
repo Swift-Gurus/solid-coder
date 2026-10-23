@@ -7,15 +7,15 @@ from harness.include_source import IncludeSource
 from harness.step_source_annotating import StepSourceAnnotating
 from harness.workflow_include_runtime_parsing import WorkflowIncludeRuntimeParsing
 
-
 """
 solid-name: InlineGroupSourceResolver
 solid-category: service
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Selects and annotates the non-empty steps declared by one inline workflow group.
 """
-class InlineGroupSourceResolver:
 
+
+class InlineGroupSourceResolver:
     def __init__(
         self,
         source_annotator: StepSourceAnnotating,
@@ -26,7 +26,9 @@ class InlineGroupSourceResolver:
         self._runtime_parser = runtime_parser
         self._error_factory = error_factory
 
-    def resolve(self, entry: dict, flow_file_path: str, search_paths: list[str]) -> IncludeSource | None:
+    def resolve(
+        self, entry: dict, flow_file_path: str, search_paths: list[str]
+    ) -> IncludeSource | None:
         alias = entry.get("group")
         if alias is None:
             return None

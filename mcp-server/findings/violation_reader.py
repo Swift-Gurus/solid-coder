@@ -5,19 +5,19 @@ solid-tags: [utility, service]
 """
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional, Protocol
-
+from typing import Protocol
 
 FileGlobCallable = Callable[[str, str], list]
-JsonReadCallable = Callable[[str], Optional[dict]]
+JsonReadCallable = Callable[[str], dict | None]
 
 
 def _default_glob(directory: str, pattern: str) -> list:
     return sorted(str(p) for p in Path(directory).glob(pattern))
 
 
-def _default_read_json(path: str) -> Optional[dict]:
+def _default_read_json(path: str) -> dict | None:
     try:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
@@ -51,9 +51,11 @@ class ViolationReader:
                     unit_name = unit.get("unit_name", "?")
                     for violation in unit.get("violations", []):
                         if violation.get("severity") == "SEVERE":
-                            violations.append({
-                                "rule_id": violation.get("rule_id", ""),
-                                "file_path": file_path,
-                                "unit_name": unit_name,
-                            })
+                            violations.append(
+                                {
+                                    "rule_id": violation.get("rule_id", ""),
+                                    "file_path": file_path,
+                                    "unit_name": unit_name,
+                                }
+                            )
         return violations

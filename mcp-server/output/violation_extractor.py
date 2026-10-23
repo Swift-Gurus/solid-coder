@@ -5,8 +5,9 @@ solid-tags: [hook, llm]
 """
 
 import re
-from typing import Optional, Protocol
+from typing import Protocol
 
+from logging_protocol import Logging
 from path_file_system_reader import FileSystemReading, PathFileSystemReader
 
 
@@ -21,16 +22,18 @@ class ViolationExtractor:
     the caller's concern.
     """
 
-    def __init__(self, fs: Optional[FileSystemReading] = None) -> None:
+    def __init__(self, logger: Logging, fs: FileSystemReading | None = None) -> None:
+        self._logger = logger
         self._fs: FileSystemReading = fs or PathFileSystemReader()
 
     def _violation_key(self, rule_id: str, file_path: str, unit_name: str) -> str:
-        safe_path = re.sub(r'[^\w.-]', '_', file_path)
-        safe_unit = re.sub(r'[^\w.-]', '_', unit_name)
+        safe_path = re.sub(r"[^\w.-]", "_", file_path)
+        safe_unit = re.sub(r"[^\w.-]", "_", unit_name)
         return f"{rule_id}__{safe_path}__{safe_unit}"
 
     def extract(self, output_dir: str) -> list:
         import json
+
         output_files = self._fs.glob(output_dir, "*/review-output.json")
         violations = []
         for f in output_files:
@@ -42,15 +45,19 @@ class ViolationExtractor:
                     for v in unit.get("violations", []):
                         if v.get("severity") == "SEVERE":
                             rule_id = v.get("rule_id", "")
-                            principle = rule_id.split("-")[0] if "-" in rule_id else rule_id
-                            violations.append({
-                                "principle": principle,
-                                "metric_id": rule_id,
-                                "file_path": file_path,
-                                "unit_name": unit_name,
-                                "issue": f"{rule_id}: {file_path}, unit {unit_name} — SEVERE violation",
-                                "fix": f"Call mcp__docs__load_fix_for_violation({rule_id}) for guidance.",
-                            })
+                            principle = (
+                                rule_id.split("-")[0] if "-" in rule_id else rule_id
+                            )
+                            violations.append(
+                                {
+                                    "principle": principle,
+                                    "metric_id": rule_id,
+                                    "file_path": file_path,
+                                    "unit_name": unit_name,
+                                    "issue": f"{rule_id}: {file_path}, unit {unit_name} — SEVERE violation",
+                                    "fix": f"Call mcp__docs__load_fix_for_violation({rule_id}) for guidance.",
+                                }
+                            )
         fixes = self._read_fixes(output_dir)
         for v in violations:
             key = self._violation_key(v["metric_id"], v["file_path"], v["unit_name"])
@@ -60,6 +67,7 @@ class ViolationExtractor:
 
     def _read_fixes(self, output_dir: str) -> dict:
         import json
+
         fixes: dict = {}
         fixes_dir = self._fs.subpath(output_dir, "fixes")
         if not self._fs.is_dir(fixes_dir):
@@ -73,6 +81,8 @@ class ViolationExtractor:
                     data["unit_name"],
                 )
                 fixes[key] = data
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — Legacy review extraction logs and skips failed fix files.
+                self._logger.log(
+                    f"Skipped submitted fix: file={fp}; {type(exc).__name__}: {exc}"
+                )
         return fixes

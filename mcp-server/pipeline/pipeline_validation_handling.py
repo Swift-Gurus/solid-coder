@@ -2,12 +2,13 @@
 
 from typing import Protocol
 
-
 """
 solid-name: PipelineValidationHandling
 solid-category: abstraction
 solid-description: Contract for validating architecture plans and scored review findings.
 """
+
+
 class PipelineValidationHandling(Protocol):
     def validate_architecture(self, arch_path: str) -> dict: ...
 

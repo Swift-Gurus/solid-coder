@@ -17,8 +17,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from codex_test_base import CodexTestBase  # noqa: E402
-from integration_tests.base import IntegrationTestBase  # noqa: E402
+from codex_test_base import CodexTestBase
+
+from integration_tests.base import IntegrationTestBase
 
 
 class TestCodexPrincipleReview(CodexTestBase, IntegrationTestBase):

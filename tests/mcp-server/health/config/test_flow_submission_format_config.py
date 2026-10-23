@@ -14,13 +14,14 @@ from _config_section_stub import ConfigSectionStub
 from feature_flags_config import FeatureFlagsConfig
 from solid_coder_config_loader import SolidCoderConfigLoader
 
-
 """
 solid-name: TestFlowSubmissionFormatConfig
 solid-category: unit-test
 solid-spec: [SPEC-068]
 solid-description: Verifies default and opt-in flow submission formats use validated feature configuration.
 """
+
+
 class TestFlowSubmissionFormatConfig(unittest.TestCase):
     def test_default_is_nested(self) -> None:
         self.assertEqual(FeatureFlagsConfig().flow_submission_format, "nested")

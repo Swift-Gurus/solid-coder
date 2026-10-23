@@ -1,7 +1,8 @@
 """Assembles role-focused pipeline tool callables."""
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from health.dry_search_coordinating import DrySearchCoordinating
 from health.llama.json_deserializer import JsonDeserializer
@@ -15,12 +16,13 @@ from pipeline.skill_runner import ResultFormatting, SkillRunning
 from pipeline.tool_callables_building import ToolCallablesBuilding
 from utils.path_file_system_reader import PathFileSystemReader
 
-
 """
 solid-name: PipelineToolCallablesAssembler
 solid-category: factory
 solid-description: Assembles role-focused operations into the model-facing pipeline callable registry.
 """
+
+
 class PipelineToolCallablesAssembler(ToolCallablesBuilding):
     def __init__(
         self,

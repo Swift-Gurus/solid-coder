@@ -4,12 +4,13 @@ solid-category: unit-test
 """
 
 import importlib.util
-import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
 _PRODUCTION_HOOKS = _HERE.parents[2] / "mcp-server" / "hooks"
-_spec = importlib.util.spec_from_file_location("_path_bootstrap", _HERE / "_path_bootstrap.py")
+_spec = importlib.util.spec_from_file_location(
+    "_path_bootstrap", _HERE / "_path_bootstrap.py"
+)
 _mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_mod)
 _mod.ensure_on_path(_PRODUCTION_HOOKS, _HERE)

@@ -3,12 +3,13 @@
 from health.gateway.gateway_command_runner import GatewayInvoking
 from output_path_resolver import OutputPathResolving
 
-
 """
 solid-name: HealthOutputPathResolver
 solid-category: service
 solid-description: Provides an isolated output directory for one health-check invocation.
 """
+
+
 class HealthOutputPathResolver:
     def __init__(self, invoker: GatewayInvoking, fallback: OutputPathResolving) -> None:
         self._invoker = invoker

@@ -10,13 +10,14 @@ from harness.run_state import RunState
 from harness.step_def import StepDef
 from harness.step_instance import StepInstance
 
-
 """
 solid-name: AggregatePhaseStepCollecting
 solid-category: abstraction
 solid-spec: [SPEC-045]
 solid-description: Contract for collecting compatible model steps within one aggregate boundary.
 """
+
+
 class AggregatePhaseStepCollecting(Protocol):
     def collect(
         self,

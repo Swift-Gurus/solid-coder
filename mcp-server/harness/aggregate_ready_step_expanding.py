@@ -8,18 +8,19 @@ from harness.run_state import RunState
 from harness.step_instance import StepInstance
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: AggregateReadyStepExpanding
 solid-category: abstraction
 solid-spec: [SPEC-045]
-solid-description: Contract for expanding aggregate phases over an existing ready workflow frontier.
+solid-description: Contract for coordinating aggregate expansion of ready work.
 """
+
+
 class AggregateReadyStepExpanding(Protocol):
     def expand(
         self,
         flow: FlowDef,
         state: RunState,
         ready: list[StepInstance],
-        context: WorkflowRunContext = WorkflowRunContext(),
+        context: WorkflowRunContext,
     ) -> AggregateExpansion: ...

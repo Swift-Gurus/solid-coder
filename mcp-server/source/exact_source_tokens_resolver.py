@@ -3,13 +3,14 @@
 from source.identifier_segmenting import IdentifierSegmenting
 from source.source_tokens_resolving import SourceTokensResolving
 
-
 """
 solid-name: ExactSourceTokensResolver
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Resolves normalized source-text and identifier-component tokens for exact matching.
 """
+
+
 class ExactSourceTokensResolver(SourceTokensResolving):
     def __init__(self, identifier_segmenter: IdentifierSegmenting) -> None:
         self._identifier_segmenter = identifier_segmenter

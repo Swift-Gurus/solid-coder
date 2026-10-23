@@ -12,7 +12,13 @@ from hook_decision import HookDecision
 class StubHandler:
     """Configurable HookHandling test double: should_handle result, a decision, or an exception to raise from handle()."""
 
-    def __init__(self, applicable: bool = True, decision: HookDecision = None, exc: Exception = None, name: str = "") -> None:
+    def __init__(
+        self,
+        applicable: bool = True,
+        decision: HookDecision = None,
+        exc: Exception | None = None,
+        name: str = "",
+    ) -> None:
         self.name = name
         self._applicable = applicable
         self._decision = decision
@@ -72,7 +78,7 @@ class AllowHandler:
 
 
 class DenyHandler:
-    def __init__(self, reason: str, additional_context: str = None) -> None:
+    def __init__(self, reason: str, additional_context: str | None = None) -> None:
         self._reason = reason
         self._context = additional_context
 
@@ -80,7 +86,9 @@ class DenyHandler:
         return True
 
     def handle(self, event: dict) -> HookDecision:
-        return HookDecision(allow=False, reason=self._reason, additional_context=self._context)
+        return HookDecision(
+            allow=False, reason=self._reason, additional_context=self._context
+        )
 
 
 class NotApplicableHandler:

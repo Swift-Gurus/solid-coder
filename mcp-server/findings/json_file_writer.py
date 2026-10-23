@@ -12,7 +12,7 @@ _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from json_serializer import JsonSerializing  # noqa: E402
+from json_serializer import JsonSerializing
 
 
 class JsonFileWriting(Protocol):
@@ -27,4 +27,6 @@ class JsonFileWriter:
 
     def write(self, output_path: str, doc: dict) -> None:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-        Path(output_path).write_text(self._serializer.serialize(doc, indent=2), encoding="utf-8")
+        Path(output_path).write_text(
+            self._serializer.serialize(doc, indent=2), encoding="utf-8"
+        )

@@ -8,13 +8,14 @@ from harness.expression_evaluating import ExpressionEvaluating
 from harness.filter_resolver import FilterResolving
 from harness.workflow_run_context import WorkflowRunContext
 
-
 """
 solid-name: FilteredExpressionEvaluator
 solid-category: service
 solid-spec: [SPEC-030]
 solid-description: Evaluates a workflow expression and applies its optional named filter.
 """
+
+
 class FilteredExpressionEvaluator(ExpressionEvaluating):
     def __init__(
         self,

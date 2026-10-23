@@ -1,10 +1,8 @@
 """Defines one expected metric result for live rule validation."""
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from findings.review_severity import ReviewSeverity
 from harness.metric_scoring_band import MetricComparisonValue
-
+from pydantic import BaseModel, ConfigDict, Field
 
 """
 solid-name: RuleMetricResultExpectation
@@ -12,6 +10,8 @@ solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Carries one expected metric identity, scalar observation, and server severity from a live rule scenario.
 """
+
+
 class RuleMetricResultExpectation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

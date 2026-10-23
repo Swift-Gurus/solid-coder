@@ -14,7 +14,6 @@ from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
-
 _FLOW = """
     name: for_each_lifecycle
     max_turns: 20
@@ -85,9 +84,7 @@ class TestForEachFlowIntegration(unittest.TestCase):
         )
 
     def test_partial_submission_keeps_unfinished_instances_ready(self) -> None:
-        expanded = self._start_fan_out(
-            ["Alpha.swift", "Beta.swift", "Gamma.swift"]
-        )
+        expanded = self._start_fan_out(["Alpha.swift", "Beta.swift", "Gamma.swift"])
 
         result = self.sut.flow_next(
             {expanded.steps[0].instance_id: {"result": "Alpha result"}}
@@ -98,13 +95,11 @@ class TestForEachFlowIntegration(unittest.TestCase):
             ["review_file-2", "review_file-3"],
         )
 
-    def test_replay_returns_only_instances_left_incomplete_before_interruption(self) -> None:
-        expanded = self._start_fan_out(
-            ["Alpha.swift", "Beta.swift", "Gamma.swift"]
-        )
-        self.sut.flow_next(
-            {expanded.steps[0].instance_id: {"result": "Alpha result"}}
-        )
+    def test_replay_returns_only_instances_left_incomplete_before_interruption(
+        self,
+    ) -> None:
+        expanded = self._start_fan_out(["Alpha.swift", "Beta.swift", "Gamma.swift"])
+        self.sut.flow_next({expanded.steps[0].instance_id: {"result": "Alpha result"}})
 
         result = self._make_orchestrator().flow_next()
 
@@ -114,9 +109,7 @@ class TestForEachFlowIntegration(unittest.TestCase):
         )
 
     def test_all_instance_outputs_are_aggregated_for_downstream_steps(self) -> None:
-        expanded = self._start_fan_out(
-            ["Alpha.swift", "Beta.swift", "Gamma.swift"]
-        )
+        _expanded = self._start_fan_out(["Alpha.swift", "Beta.swift", "Gamma.swift"])
 
         result = self.sut.flow_next(
             {
@@ -131,13 +124,17 @@ class TestForEachFlowIntegration(unittest.TestCase):
         self.assertIn("Beta result", result.steps[0].prompt)
         self.assertIn("Gamma result", result.steps[0].prompt)
 
-    def test_empty_collection_completes_parent_and_releases_downstream_step(self) -> None:
+    def test_empty_collection_completes_parent_and_releases_downstream_step(
+        self,
+    ) -> None:
         result = self._start_fan_out([])
 
         self.assertEqual([step.step_id for step in result.steps], ["summarize"])
         self.assertEqual(result.steps[0].prompt, "Summarize []")
 
-    def test_invalid_instance_retries_without_reopening_successful_instances(self) -> None:
+    def test_invalid_instance_retries_without_reopening_successful_instances(
+        self,
+    ) -> None:
         self._start_fan_out(["Alpha.swift", "Beta.swift", "Gamma.swift"])
 
         result = self.sut.flow_next(
@@ -171,14 +168,17 @@ class TestForEachFlowIntegration(unittest.TestCase):
             ["review_file-1", "review_file-2"],
         )
 
-    def test_script_for_each_executes_in_engine_and_aggregates_before_agent_step(self) -> None:
+    def test_script_for_each_executes_in_engine_and_aggregates_before_agent_step(
+        self,
+    ) -> None:
         script_path = self.project_root / "inspect.py"
         script_path.write_text(
             'print(\'{"result": "checked"}\')\n',
             encoding="utf-8",
         )
         process_flow = self.project_root / "process-for-each.yaml"
-        process_flow.write_text(textwrap.dedent(f"""
+        process_flow.write_text(
+            textwrap.dedent(f"""
             name: process_for_each
             max_turns: 20
             steps:
@@ -206,7 +206,9 @@ class TestForEachFlowIntegration(unittest.TestCase):
               - id: summarize
                 prompt: Summarize {{{{steps.inspect.outputs.result}}}}
                 depends_on: [inspect]
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
         sut = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(
                 project_dir_fn=lambda: self.project_root
@@ -216,11 +218,13 @@ class TestForEachFlowIntegration(unittest.TestCase):
         ).build()
         started = sut.flow_start(str(process_flow))
 
-        result = sut.flow_next({
-            started.steps[0].instance_id: {
-                "files": ["Alpha.swift", "Beta.swift", "Gamma.swift"],
+        result = sut.flow_next(
+            {
+                started.steps[0].instance_id: {
+                    "files": ["Alpha.swift", "Beta.swift", "Gamma.swift"],
+                }
             }
-        })
+        )
 
         self.assertEqual([step.step_id for step in result.steps], ["summarize"])
         self.assertEqual(result.steps[0].prompt.count("checked"), 3)
@@ -228,9 +232,7 @@ class TestForEachFlowIntegration(unittest.TestCase):
     def _start_fan_out(self, files: list[str]):
         started = self.sut.flow_start(str(self.flow_path))
         self.assertEqual([step.step_id for step in started.steps], ["prepare"])
-        return self.sut.flow_next(
-            {started.steps[0].instance_id: {"files": files}}
-        )
+        return self.sut.flow_next({started.steps[0].instance_id: {"files": files}})
 
 
 if __name__ == "__main__":

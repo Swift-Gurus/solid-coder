@@ -12,11 +12,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
 
-import hc_config_core  # noqa: E402
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
-_VALID_TOML = b"[llm]\nbackend = \"local\"\nhost = \"http://gpu:9090\"\n"
+import hc_config_core
+
+_VALID_TOML = b'[llm]\nbackend = "local"\nhost = "http://gpu:9090"\n'
 
 
 class TestReadConfigFile(unittest.TestCase):
@@ -32,13 +36,17 @@ class TestReadConfigFile(unittest.TestCase):
 
     @contextmanager
     def _with_temp_toml(self, content: bytes):
-        with self._temp_toml_path(content) as tmp:
-            with patch("hc_config_core.find_config", return_value=tmp):
-                yield hc_config_core.read_llm_section(), tmp
+        with (
+            self._temp_toml_path(content) as tmp,
+            patch("hc_config_core.find_config", return_value=tmp),
+        ):
+            yield hc_config_core.read_llm_section(), tmp
 
     def test_returns_empty_when_no_config_found(self):
-        with patch("hc_config_core.find_config", return_value=None), \
-             patch("hc_config_core.find_repo_config", return_value=None):
+        with (
+            patch("hc_config_core.find_config", return_value=None),
+            patch("hc_config_core.find_repo_config", return_value=None),
+        ):
             self.assertEqual(hc_config_core.read_llm_section(), {})
 
     def test_returns_empty_dict_on_invalid_toml(self):
@@ -54,19 +62,25 @@ class TestReadConfigFile(unittest.TestCase):
 
     def test_reads_from_env_var_override_when_set(self):
         toml_content = b"[llm]\nbackend = 'qwen'\n"
-        with self._temp_toml_path(toml_content) as tmp_path:
-            with patch.dict(os.environ, {"SOLID_CODER_TEST_MODEL_PROFILE": str(tmp_path)}):
-                result = hc_config_core.read_llm_section()
+        with (
+            self._temp_toml_path(toml_content) as tmp_path,
+            patch.dict(os.environ, {"SOLID_CODER_TEST_MODEL_PROFILE": str(tmp_path)}),
+        ):
+            result = hc_config_core.read_llm_section()
         if not result:
             self.skipTest("No TOML parser available")
         self.assertEqual(result.get("backend"), "qwen")
 
     def test_original_behavior_preserved_when_env_var_unset(self):
-        env = {k: v for k, v in os.environ.items() if k != "SOLID_CODER_TEST_MODEL_PROFILE"}
-        with patch.dict(os.environ, env, clear=True):
-            with patch("hc_config_core.find_config", return_value=None), \
-                 patch("hc_config_core.find_repo_config", return_value=None):
-                result = hc_config_core.read_llm_section()
+        env = {
+            k: v for k, v in os.environ.items() if k != "SOLID_CODER_TEST_MODEL_PROFILE"
+        }
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch("hc_config_core.find_config", return_value=None),
+            patch("hc_config_core.find_repo_config", return_value=None),
+        ):
+            result = hc_config_core.read_llm_section()
         self.assertEqual(result, {})
 
 

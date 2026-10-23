@@ -8,15 +8,15 @@ from harness.include_resolution import IncludeResolution
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: IncludeResolving
 solid-category: abstraction
 solid-spec: [SPEC-027, SPEC-035]
 solid-description: Contract for resolving included sub-flow references in flow steps.
 """
-class IncludeResolving(Protocol):
 
+
+class IncludeResolving(Protocol):
     def resolve(
         self,
         raw_steps: list[dict],

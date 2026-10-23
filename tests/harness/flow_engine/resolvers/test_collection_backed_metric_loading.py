@@ -14,13 +14,14 @@ from harness.models import FlowValidationError
 from harness.step_output_reference import StepOutputReference
 from harness.workflow_output_reference import WorkflowOutputReference
 
-
 """
 solid-name: TestCollectionBackedMetricLoading
 solid-category: unit-test
 solid-spec: [SPEC-053]
 solid-description: Verifies typed parsing and structural validation for collection-backed metric scoring.
 """
+
+
 class TestCollectionBackedMetricLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()

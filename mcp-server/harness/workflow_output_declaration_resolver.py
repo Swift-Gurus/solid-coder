@@ -16,15 +16,15 @@ from harness.workflow_output_declaration_resolving import (
     WorkflowOutputDeclarationResolving,
 )
 
-
 """
 solid-name: WorkflowOutputDeclarationResolver
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Transforms one authored workflow output into its executable declaration.
 """
-class WorkflowOutputDeclarationResolver(WorkflowOutputDeclarationResolving):
 
+
+class WorkflowOutputDeclarationResolver(WorkflowOutputDeclarationResolving):
     def __init__(
         self,
         expression_parser: WorkflowExpressionParsing,

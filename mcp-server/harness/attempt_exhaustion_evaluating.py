@@ -7,13 +7,14 @@ from typing import Protocol
 from harness.exhausted_attempt import ExhaustedAttempt
 from harness.models import FlowDef, RunState
 
-
 """
 solid-name: AttemptExhaustionEvaluating
 solid-category: abstraction
 solid-spec: [SPEC-010, SPEC-031]
-solid-description: Contract for identifying an exhausted workflow execution attempt.
+solid-description: Contract for determining whether a workflow execution has exhausted its permitted attempts.
 """
+
+
 class AttemptExhaustionEvaluating(Protocol):
     def evaluate(
         self,

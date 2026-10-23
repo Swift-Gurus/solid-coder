@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook, utility]
 """
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from guard_checking import GuardChecking
 

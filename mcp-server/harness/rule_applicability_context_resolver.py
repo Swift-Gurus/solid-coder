@@ -6,15 +6,15 @@ from source.source_analysis import SourceAnalysis
 from source.source_unit import SourceUnit
 from source.technology_detection_scope import TechnologyDetectionScope
 
-
 """
 solid-name: RuleApplicabilityContextResolver
 solid-category: service
 solid-spec: [SPEC-039, SPEC-040]
 solid-description: Resolves exact extension, unit kind, and inherited deterministic tags for one review unit.
 """
-class RuleApplicabilityContextResolver:
 
+
+class RuleApplicabilityContextResolver:
     def __init__(self, tag_collector: OrderedStringCollecting) -> None:
         self._tag_collector = tag_collector
 

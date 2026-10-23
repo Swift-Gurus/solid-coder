@@ -4,10 +4,10 @@ from harness.effective_metric_plan_resolver import EffectiveMetricPlanResolver
 from harness.effective_rule_plan_builder import EffectiveRulePlanBuilder
 from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
-from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.metric_override_applier import MetricOverrideApplier
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.project_context import ProjectDirectoryReading
+from harness.pydantic_model_decoder import PydanticModelDecoder
 from harness.review_plan_artifact_persister import ReviewPlanArtifactPersister
 from harness.review_policy import ReviewPolicy
 from harness.review_policy_identity_validator import ReviewPolicyIdentityValidator
@@ -23,15 +23,15 @@ from harness.unique_string_validator import UniqueStringValidator
 from harness.workflow_catalog_factory import WorkflowCatalogFactory
 from scoring.yaml_loader import PyYamlLoader
 
-
 """
 solid-name: ReviewRulePlanPreparerFactory
 solid-category: factory
 solid-spec: [SPEC-039]
 solid-description: Provides a production review rule plan preparer.
 """
-class ReviewRulePlanPreparerFactory:
 
+
+class ReviewRulePlanPreparerFactory:
     def __init__(self, project_directory: ProjectDirectoryReading) -> None:
         self._project_directory = project_directory
 
@@ -61,9 +61,7 @@ class ReviewRulePlanPreparerFactory:
                 entry_builder=RulePlanEntryBuilder(
                     content_hasher=content_hasher,
                     enablement_resolver=RuleEnablementResolver(),
-                    origin_resolver=RuleWorkflowOriginResolver(
-                        self._project_directory
-                    ),
+                    origin_resolver=RuleWorkflowOriginResolver(self._project_directory),
                     metric_plan_resolver=EffectiveMetricPlanResolver(
                         override_applier=MetricOverrideApplier(),
                         error_factory=error_factory,

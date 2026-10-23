@@ -11,13 +11,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
-from harness.flow_run_orchestrator import FlowRunOrchestrator
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 
 
 class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
-
     def setUp(self) -> None:
         temporary_directory = tempfile.TemporaryDirectory()
         self.addCleanup(temporary_directory.cleanup)
@@ -96,10 +94,12 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
             [step.step_id for step in result.steps],
             ["review-1.inspect", "review-2.inspect"],
         )
-        reports = self.sut.flow_next({
-            result.steps[0].instance_id: {"finding": "Alpha finding"},
-            result.steps[1].instance_id: {"finding": "Beta finding"},
-        })
+        reports = self.sut.flow_next(
+            {
+                result.steps[0].instance_id: {"finding": "Alpha finding"},
+                result.steps[1].instance_id: {"finding": "Beta finding"},
+            }
+        )
         self.assertEqual(
             [step.step_id for step in reports.steps],
             ["review-1.report", "review-2.report"],
@@ -111,10 +111,12 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
                 "Report Beta using Beta finding.",
             ],
         )
-        summarized = self.sut.flow_next({
-            reports.steps[0].instance_id: {"report": "Alpha report"},
-            reports.steps[1].instance_id: {"report": "Beta report"},
-        })
+        summarized = self.sut.flow_next(
+            {
+                reports.steps[0].instance_id: {"report": "Alpha report"},
+                reports.steps[1].instance_id: {"report": "Beta report"},
+            }
+        )
         self.assertEqual(
             [step.step_id for step in summarized.steps],
             ["summarize"],
@@ -220,18 +222,22 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
                 }
             }
         )
-        reports = self.sut.flow_next({
-            step.instance_id: {
-                "finding": f"{step.step_id} finding",
+        reports = self.sut.flow_next(
+            {
+                step.instance_id: {
+                    "finding": f"{step.step_id} finding",
+                }
+                for step in roots.steps
             }
-            for step in roots.steps
-        })
-        completed = self.sut.flow_next({
-            step.instance_id: {
-                "report": f"{step.step_id} complete",
+        )
+        completed = self.sut.flow_next(
+            {
+                step.instance_id: {
+                    "report": f"{step.step_id} complete",
+                }
+                for step in reports.steps
             }
-            for step in reports.steps
-        })
+        )
 
         self.assertEqual(
             completed.status,
@@ -305,28 +311,32 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
         parent = self._write_nested_dynamic_workflows()
 
         prepared = self.sut.flow_start(str(parent))
-        reviews = self.sut.flow_next({
-            prepared.steps[0].instance_id: {
-                "targets": [{"name": "Alpha"}, {"name": "Beta"}],
+        reviews = self.sut.flow_next(
+            {
+                prepared.steps[0].instance_id: {
+                    "targets": [{"name": "Alpha"}, {"name": "Beta"}],
+                }
             }
-        })
+        )
 
         self.assertIsNone(reviews.error, reviews.error)
         self.assertEqual(
             [step.prompt.splitlines()[0] for step in reviews.steps],
             ["Find candidates for Alpha.", "Find candidates for Beta."],
         )
-        candidates = self.sut.flow_next({
-            reviews.steps[0].instance_id: {
-                "candidates": [{"name": "AlphaCache"}],
-            },
-            reviews.steps[1].instance_id: {
-                "candidates": [
-                    {"name": "BetaStore"},
-                    {"name": "BetaCache"},
-                ],
-            },
-        })
+        candidates = self.sut.flow_next(
+            {
+                reviews.steps[0].instance_id: {
+                    "candidates": [{"name": "AlphaCache"}],
+                },
+                reviews.steps[1].instance_id: {
+                    "candidates": [
+                        {"name": "BetaStore"},
+                        {"name": "BetaCache"},
+                    ],
+                },
+            }
+        )
 
         self.assertIsNone(candidates.error, candidates.error)
         self.assertEqual(
@@ -337,10 +347,12 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
                 "Compare Beta with BetaCache.",
             ],
         )
-        summaries = self.sut.flow_next({
-            step.instance_id: {"result": f"{step.step_id} complete"}
-            for step in candidates.steps
-        })
+        summaries = self.sut.flow_next(
+            {
+                step.instance_id: {"result": f"{step.step_id} complete"}
+                for step in candidates.steps
+            }
+        )
 
         self.assertIsNone(summaries.error, summaries.error)
         self.assertEqual(
@@ -356,9 +368,7 @@ class TestDynamicWorkflowIncludeExecution(unittest.TestCase):
                 for step in summaries.steps
             ],
             [
-                [
-                    "target_reviews-1.candidate_reviews-1.compare complete"
-                ],
+                ["target_reviews-1.candidate_reviews-1.compare complete"],
                 [
                     "target_reviews-2.candidate_reviews-1.compare complete",
                     "target_reviews-2.candidate_reviews-2.compare complete",

@@ -6,13 +6,14 @@ from dataclasses import dataclass
 
 from harness.step_outputs import StepOutputs
 
-
 """
 solid-name: IncludedWorkflowStepCompletion
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Carries explicit nested-workflow, local-step, execution, source, and output identity for one completed child step.
 """
+
+
 @dataclass(frozen=True)
 class IncludedWorkflowStepCompletion:
     workflow_instance_id: str

@@ -10,9 +10,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from health.config.mcp_config_builder import McpConfigBuilder
-from mcp_config_profile import McpConfigProfile
 from json_serializer import JsonSerializer
-
+from mcp_config_profile import McpConfigProfile
 
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -22,6 +21,8 @@ solid-name: TestMcpRuntimeIntegration
 solid-category: integration-test
 solid-description: Verifies real plugin and delegated MCP launches initialize and expose tools independently of the host's default Python.
 """
+
+
 class TestMcpRuntimeIntegration(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory(prefix="mcp runtime ")
@@ -48,6 +49,7 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
             timeout=30,
             cwd=ROOT,
             env=self.environment,
+            check=False,
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         return [
@@ -79,7 +81,10 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
             with self.subTest(server=name):
                 command = SimpleNamespace(
                     command=server.command,
-                    args=[argument.replace("${CLAUDE_PLUGIN_ROOT}", str(ROOT)) for argument in server.args],
+                    args=[
+                        argument.replace("${CLAUDE_PLUGIN_ROOT}", str(ROOT))
+                        for argument in server.args
+                    ],
                 )
                 responses = self._exchange(command)
 
@@ -89,7 +94,9 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
 
     def test_legacy_profile_launches_search_and_submission_tools(self) -> None:
         configuration = json.loads(
-            McpConfigBuilder(ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()).build(),
+            McpConfigBuilder(
+                ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()
+            ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
 
@@ -101,7 +108,9 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
 
     def test_legacy_profile_launches_rule_loading_tools(self) -> None:
         configuration = json.loads(
-            McpConfigBuilder(ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()).build(),
+            McpConfigBuilder(
+                ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()
+            ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
 
@@ -111,7 +120,9 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
 
     def test_workflow_profile_launches_flow_tools(self) -> None:
         configuration = json.loads(
-            McpConfigBuilder(ROOT, McpConfigProfile.GATE_FLOW, JsonSerializer()).build(),
+            McpConfigBuilder(
+                ROOT, McpConfigProfile.GATE_FLOW, JsonSerializer()
+            ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
         server = vars(configuration.mcpServers)["solid-coder-flow-engine"]
@@ -125,27 +136,37 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
         )
 
     def test_legacy_gateway_loads_real_rules_with_system_python_first(self) -> None:
-        source = "\n".join([
-            "import json, sys",
-            "from pathlib import Path",
-            f"sys.path.insert(0, {str(ROOT / 'mcp-server')!r})",
-            "from health.gateway.gateway_command_runner import GatewayCommandRunner",
-            f"gateway = GatewayCommandRunner(Path({str(ROOT / 'mcp-server' / 'gateway.py')!r}), timeout=30)",
-            "tags = gateway.invoke('get_candidate_tags', result_key='candidate_tags')",
-            "rules = gateway.invoke('load_detection_rules', extra_args=['--matched_tags', 'swiftui'])",
-            "print(json.dumps({'tags': tags, 'principles': [rule['name'] for rule in rules['principles']]}))",
-        ])
+        source = "\n".join(
+            [
+                "import json, sys",
+                "from pathlib import Path",
+                f"sys.path.insert(0, {str(ROOT / 'mcp-server')!r})",
+                "from health.gateway.gateway_command_runner import GatewayCommandRunner",
+                f"gateway = GatewayCommandRunner(Path({str(ROOT / 'mcp-server' / 'gateway.py')!r}), timeout=30)",
+                "tags = gateway.invoke('get_candidate_tags', result_key='candidate_tags')",
+                "rules = gateway.invoke('load_detection_rules', extra_args=['--matched_tags', 'swiftui'])",
+                "print(json.dumps({'tags': tags, 'principles': [rule['name'] for rule in rules['principles']]}))",
+            ]
+        )
 
         completed = subprocess.run(
             [sys.executable, "-c", source],
-            text=True, capture_output=True, timeout=60,
-            cwd=self.workspace, env=self.environment,
+            text=True,
+            capture_output=True,
+            timeout=60,
+            cwd=self.workspace,
+            env=self.environment,
+            check=False,
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        result = json.loads(completed.stdout, object_hook=lambda fields: SimpleNamespace(**fields))
+        result = json.loads(
+            completed.stdout, object_hook=lambda fields: SimpleNamespace(**fields)
+        )
         self.assertIn("swiftui", result.tags)
-        self.assertTrue({"srp", "ocp", "lsp", "isp", "dry", "swiftui"}.issubset(result.principles))
+        self.assertTrue(
+            {"srp", "ocp", "lsp", "isp", "dry", "swiftui"}.issubset(result.principles)
+        )
 
     def test_distributed_write_hook_starts_without_launching_a_model(self) -> None:
         configuration = json.loads(
@@ -163,14 +184,20 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
 
         completed = subprocess.run(
             ["/bin/sh", "-c", command],
-            input=json.dumps({
-                "tool_name": "Read",
-                "tool_input": {"file_path": str(self.workspace / "Example.swift")},
-                "session_id": "runtime-integration",
-                "cwd": str(self.workspace),
-            }),
-            text=True, capture_output=True, timeout=30,
-            cwd=self.workspace, env=environment,
+            input=json.dumps(
+                {
+                    "tool_name": "Read",
+                    "tool_input": {"file_path": str(self.workspace / "Example.swift")},
+                    "session_id": "runtime-integration",
+                    "cwd": str(self.workspace),
+                }
+            ),
+            text=True,
+            capture_output=True,
+            timeout=30,
+            cwd=self.workspace,
+            env=environment,
+            check=False,
         )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)

@@ -7,15 +7,15 @@ from harness.single_step_rendering import SingleStepRendering
 from harness.step_rendering import StepRendering
 from harness.step_result import StepResult
 
-
 """
 solid-name: StepRenderer
 solid-category: service
 solid-spec: [SPEC-031]
 solid-description: Delegates next-step selection and rendering for model-facing flow results.
 """
-class StepRenderer(StepRendering):
 
+
+class StepRenderer(StepRendering):
     def __init__(
         self,
         ready_step_selector: ReadyStepSelecting,

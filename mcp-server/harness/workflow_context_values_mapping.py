@@ -5,7 +5,6 @@ from typing import Protocol, TypeVar
 
 from harness.workflow_context_values import WorkflowContextValues
 
-
 Value = TypeVar("Value")
 
 
@@ -15,6 +14,8 @@ solid-category: abstraction
 solid-spec: [SPEC-031, SPEC-037]
 solid-description: Contract for mapping named boundary values into typed workflow context values.
 """
+
+
 class WorkflowContextValuesMapping(Protocol):
     def map(
         self,

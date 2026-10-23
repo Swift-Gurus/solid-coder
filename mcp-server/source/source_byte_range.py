@@ -2,13 +2,14 @@
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 """
 solid-name: SourceByteRange
 solid-category: model
 solid-spec: [SPEC-063, SPEC-064]
 solid-description: Records an exact half-open UTF-8 source range.
 """
+
+
 class SourceByteRange(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 

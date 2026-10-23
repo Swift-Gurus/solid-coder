@@ -15,8 +15,8 @@ for _d in (_MCP_DIR, _SESSION_DIR, _MCP_HEALTH):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from slack_notify import JSONLTranscriptParser, JSONLParsing, FileSystemLineReader  # noqa: E402
-from hook_utils import ensure_on_path  # noqa: E402 -- re-export for callers
+from hook_utils import ensure_on_path
+from slack_notify import FileSystemLineReader, JSONLParsing, JSONLTranscriptParser
 
 ensure_on_path(_MCP_DIR)
 
@@ -84,4 +84,6 @@ class McpToolCallReader:
 
 def make_mcp_tool_call_reader() -> McpToolCallReader:
     """Factory: returns a McpToolCallReader with production defaults."""
-    return McpToolCallReader(parser=JSONLTranscriptParser(file_reader=FileSystemLineReader()))
+    return McpToolCallReader(
+        parser=JSONLTranscriptParser(file_reader=FileSystemLineReader())
+    )

@@ -7,14 +7,14 @@ from pathlib import Path
 
 from codex_health_review_submission import CodexHealthReviewSubmission
 
-
 """
 solid-name: CodexHealthReviewTranscriptReader
 solid-category: test-support
 solid-description: Converts submit_batch_findings completion events into typed per-file health-review observations.
 """
-class CodexHealthReviewTranscriptReader:
 
+
+class CodexHealthReviewTranscriptReader:
     def read(self, sessions_root: Path) -> list[CodexHealthReviewSubmission]:
         submissions: list[CodexHealthReviewSubmission] = []
         for transcript_path in sorted(sessions_root.rglob("*.jsonl")):
@@ -46,14 +46,17 @@ class CodexHealthReviewTranscriptReader:
         if not isinstance(payload, dict) or payload.get("type") != "mcp_tool_call_end":
             return None
         invocation = payload.get("invocation")
-        if not isinstance(invocation, dict) or invocation.get("tool") != "submit_batch_findings":
+        if (
+            not isinstance(invocation, dict)
+            or invocation.get("tool") != "submit_batch_findings"
+        ):
             return None
         arguments = invocation.get("arguments")
         if not isinstance(arguments, dict):
-            raise RuntimeError("submit_batch_findings event had no arguments")
+            raise TypeError("submit_batch_findings event had no arguments")
         principle_payloads = arguments.get("submissions")
         if not isinstance(principle_payloads, dict):
-            raise RuntimeError("submit_batch_findings event had no submissions")
+            raise TypeError("submit_batch_findings event had no submissions")
         file_names = self._file_names(principle_payloads)
         if len(file_names) != 1:
             raise RuntimeError(
@@ -70,13 +73,13 @@ class CodexHealthReviewTranscriptReader:
     def _submission_succeeded(self, payload: dict) -> bool:
         result = payload.get("result")
         if not isinstance(result, dict):
-            raise RuntimeError("submit_batch_findings event had no result")
+            raise TypeError("submit_batch_findings event had no result")
         successful_result = result.get("Ok")
         if not isinstance(successful_result, dict):
             return False
         content = successful_result.get("content")
         if not isinstance(content, list):
-            raise RuntimeError("submit_batch_findings result had no content")
+            raise TypeError("submit_batch_findings result had no content")
         for content_item in content:
             if not isinstance(content_item, dict):
                 continue

@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 
 class FrontmatterAdapter:
@@ -13,5 +13,5 @@ class FrontmatterAdapter:
     def __init__(self, fix_fn: Callable) -> None:
         self._fix = fix_fn
 
-    def fix(self, content: str, session_id: str, path: str) -> Optional[str]:
+    def fix(self, content: str, session_id: str, path: str) -> str | None:
         return self._fix(content, parent_session_id=session_id)

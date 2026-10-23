@@ -1,5 +1,5 @@
 """Tests for mcp-server/build/apple/server.py"""
-import json
+
 import sys
 import tempfile
 import unittest
@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "mcp-server"))
 sys.path.insert(0, str(ROOT / "mcp-server" / "build" / "apple"))
 
 import importlib.util
+
 spec = importlib.util.spec_from_file_location(
     "apple_server", ROOT / "mcp-server" / "build" / "apple" / "server.py"
 )

@@ -8,13 +8,14 @@ from harness.attribute_reading import AttributeReading
 from harness.nested_component_accessing import NestedComponentAccessing
 from harness.resolved_condition_value import ResolvedConditionValue
 
-
 """
 solid-name: NestedComponentAccessor
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Reads one named component while preserving value presence.
 """
+
+
 class NestedComponentAccessor(NestedComponentAccessing):
     def __init__(self, attribute_reader: AttributeReading) -> None:
         self._attribute_reader = attribute_reader

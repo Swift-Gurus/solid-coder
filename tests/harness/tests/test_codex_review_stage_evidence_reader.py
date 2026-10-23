@@ -12,27 +12,31 @@ _HARNESS = Path(__file__).resolve().parents[1]
 if str(_HARNESS) not in sys.path:
     sys.path.insert(0, str(_HARNESS))
 
-from codex_review_stage_evidence_reader import (  # noqa: E402
+from codex_review_stage_evidence_reader import (
     CodexReviewStageEvidenceReader,
 )
 
 
 class TestCodexReviewStageEvidenceReader(unittest.TestCase):
-
     def test_stops_at_the_successful_review_completion_tool(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             transcript = Path(directory) / "rollout.jsonl"
             transcript.write_text(
-                "\n".join([
-                    json.dumps(self._prompt_event()),
-                    json.dumps(self._usage_event("2026-08-23T01:00:02Z", 10)),
-                    json.dumps(self._completion_event(
-                        "2026-08-23T01:00:05Z",
-                        "submit_batch_findings",
-                        '{"violations": []}',
-                    )),
-                    json.dumps(self._usage_event("2026-08-23T01:00:07Z", 30)),
-                ]) + "\n",
+                "\n".join(
+                    [
+                        json.dumps(self._prompt_event()),
+                        json.dumps(self._usage_event("2026-08-23T01:00:02Z", 10)),
+                        json.dumps(
+                            self._completion_event(
+                                "2026-08-23T01:00:05Z",
+                                "submit_batch_findings",
+                                '{"violations": []}',
+                            )
+                        ),
+                        json.dumps(self._usage_event("2026-08-23T01:00:07Z", 30)),
+                    ]
+                )
+                + "\n",
                 encoding="utf-8",
             )
 
@@ -53,10 +57,12 @@ class TestCodexReviewStageEvidenceReader(unittest.TestCase):
             "payload": {
                 "type": "message",
                 "role": "user",
-                "content": [{
-                    "type": "input_text",
-                    "text": "You are a SOLID code quality gate",
-                }],
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": "You are a SOLID code quality gate",
+                    }
+                ],
             },
         }
 

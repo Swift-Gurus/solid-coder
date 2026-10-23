@@ -6,8 +6,7 @@ solid-category: unit-test
 from pathlib import Path
 
 import yaml
-
-from scoring.project_root_finder import CONFIG_DIR, CONFIG_BASENAME, CONFIG_TOML
+from scoring.project_root_finder import CONFIG_BASENAME, CONFIG_DIR, CONFIG_TOML
 
 
 class ConfigTestWriter:
@@ -19,6 +18,4 @@ class ConfigTestWriter:
         marker = config_dir / CONFIG_TOML
         if not marker.exists():
             marker.touch()
-        (config_dir / CONFIG_BASENAME).write_text(
-            yaml.dump(content), encoding="utf-8"
-        )
+        (config_dir / CONFIG_BASENAME).write_text(yaml.dump(content), encoding="utf-8")

@@ -4,7 +4,7 @@ solid-category: service
 solid-tags: [hook]
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 
 class DefaultHookEventParser:
@@ -13,5 +13,5 @@ class DefaultHookEventParser:
     def __init__(self, parse_fn: Callable) -> None:
         self._parse_fn = parse_fn
 
-    def parse(self, raw: str) -> Optional[tuple]:
+    def parse(self, raw: str) -> tuple | None:
         return self._parse_fn(raw)

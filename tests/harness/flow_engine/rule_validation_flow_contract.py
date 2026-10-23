@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
-import sys
 from pathlib import Path
 from typing import ClassVar
 
@@ -12,12 +12,12 @@ _HARNESS_DIRECTORY = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIRECTORY))
 
-from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.collection_operation_registrations_factory import (
     CollectionOperationRegistrationsFactory,
 )
-from harness.flow_validation_error_factory import FlowValidationErrorFactory
+from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
+from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.logical_operation_name_validator import LogicalOperationNameValidator
 from harness.operation_registry import OperationRegistry
 from harness.project_context import ProjectDirectory
@@ -25,8 +25,8 @@ from harness.review_result import ReviewResult
 from harness.rule_review_result import RuleReviewResult
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
 from harness.static_session_id_reader import StaticSessionIdReader
-from review_unit_workflow_parameters import ReviewUnitWorkflowParameters
 from review_unit_workflow_context import ReviewUnitWorkflowContext
+from review_unit_workflow_parameters import ReviewUnitWorkflowParameters
 from review_unit_workflow_target import ReviewUnitWorkflowTarget
 from rule_instruction_block_reader import RuleInstructionBlockReader
 from rule_validation_scenario import RuleValidationScenario
@@ -35,13 +35,14 @@ from source.source_operation_registrations_factory import (
     SourceOperationRegistrationsFactory,
 )
 
-
 """
 solid-name: RuleValidationFlowContract
 solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Applies canonical-instruction, response-validation, scoring, exception, and artifact assertions to one executable rule scenario.
 """
+
+
 class RuleValidationFlowContract(unittest.TestCase):
     __test__ = False
 
@@ -99,16 +100,20 @@ class RuleValidationFlowContract(unittest.TestCase):
             name_validator=LogicalOperationNameValidator(),
             error_factory=FlowValidationErrorFactory(),
         )
-        workflow = FlowEngineAssemblyFactory().build(
-            operation_registry=operation_registry,
-        ).flow_loader.load(
-            self.PROJECT_ROOT
-            / "workflows"
-            / "review"
-            / "rules"
-            / self.SCENARIO.workflow_id
-            / "workflow.yaml",
-            [str(self.PROJECT_ROOT / "workflows")],
+        workflow = (
+            FlowEngineAssemblyFactory()
+            .build(
+                operation_registry=operation_registry,
+            )
+            .flow_loader.load(
+                self.PROJECT_ROOT
+                / "workflows"
+                / "review"
+                / "rules"
+                / self.SCENARIO.workflow_id
+                / "workflow.yaml",
+                [str(self.PROJECT_ROOT / "workflows")],
+            )
         )
 
         self.assertIsNotNone(workflow.rule)
@@ -153,24 +158,19 @@ class RuleValidationFlowContract(unittest.TestCase):
             )
         if self.SCENARIO.has_authored_exceptions:
             self.assertTrue(
+                any(reader.exceptions(rule) in prompt for prompt in checkpoint.prompts)
+            )
+        else:
+            self.assertTrue(
                 any(
-                    reader.exceptions(rule) in prompt
+                    "no rule-wide exception" in prompt.lower()
                     for prompt in checkpoint.prompts
                 )
             )
-        else:
-            self.assertTrue(any(
-                "no rule-wide exception" in prompt.lower()
-                for prompt in checkpoint.prompts
-            ))
 
     def test_metric_measurements_are_audited_before_scoring(self) -> None:
         model_metric = next(
-            (
-                metric
-                for metric in self.SCENARIO.metrics
-                if not metric.mcp_owned
-            ),
+            (metric for metric in self.SCENARIO.metrics if not metric.mcp_owned),
             None,
         )
         mcp_metric_coordinates = {
@@ -187,18 +187,14 @@ class RuleValidationFlowContract(unittest.TestCase):
             checkpoint = self._advance_through_analysis()
             started = checkpoint.result
             metric_step = next(
-                step
-                for step in started.steps
-                if step.step_id == model_metric.step_id
+                step for step in started.steps if step.step_id == model_metric.step_id
             )
             rejected = self.sut.flow_next(
                 {metric_step.instance_id: {"value": model_metric.value}}
             )
             self.assertEqual(rejected.status, "ready")
             rejected_metric = next(
-                step
-                for step in rejected.steps
-                if step.step_id == model_metric.step_id
+                step for step in rejected.steps if step.step_id == model_metric.step_id
             )
             self.assertIn("additional_info", rejected_metric.rejection_reason)
             if not mcp_metric_coordinates:
@@ -210,19 +206,20 @@ class RuleValidationFlowContract(unittest.TestCase):
         audited_decisions = [
             metric
             for metric in result.metrics
-            if (metric.metric_id, metric.observation_id)
-            in mcp_metric_coordinates
+            if (metric.metric_id, metric.observation_id) in mcp_metric_coordinates
         ]
         self.assertEqual(
             len(audited_decisions),
             len(mcp_metric_coordinates),
         )
-        self.assertTrue(all(
-            metric.derivation is not None
-            and metric.additional_info.reasoning
-            and metric.additional_info.evidence
-            for metric in audited_decisions
-        ))
+        self.assertTrue(
+            all(
+                metric.derivation is not None
+                and metric.additional_info.reasoning
+                and metric.additional_info.evidence
+                for metric in audited_decisions
+            )
+        )
 
     def test_mcp_scores_all_metrics_and_publishes_audited_result(self) -> None:
         checkpoint = self._complete_workflow()
@@ -254,7 +251,9 @@ class RuleValidationFlowContract(unittest.TestCase):
             [metric.severity for metric in self.SCENARIO.metrics],
         )
 
-    def test_exception_makes_metric_decisions_compliant_without_hiding_evidence(self) -> None:
+    def test_exception_makes_metric_decisions_compliant_without_hiding_evidence(
+        self,
+    ) -> None:
         checkpoint = self._complete_workflow(is_exception=True)
         completed = checkpoint.result
 
@@ -292,9 +291,11 @@ class RuleValidationFlowContract(unittest.TestCase):
                 for ready_step in current.steps
                 if ready_step.step_id == expectation.step_id
             )
-            current = self.sut.flow_next({
-                step.instance_id: expectation.output,
-            })
+            current = self.sut.flow_next(
+                {
+                    step.instance_id: expectation.output,
+                }
+            )
             prompts.extend(ready_step.prompt for ready_step in current.steps)
             step_ids.extend(ready_step.step_id for ready_step in current.steps)
         return RuleWorkflowCheckpoint(
@@ -330,13 +331,15 @@ class RuleValidationFlowContract(unittest.TestCase):
         prompts = []
         step_ids = []
         while current.steps:
-            current = self.sut.flow_next({
-                step.instance_id: self._output_for(
-                    step.step_id,
-                    is_exception=is_exception,
-                )
-                for step in current.steps
-            })
+            current = self.sut.flow_next(
+                {
+                    step.instance_id: self._output_for(
+                        step.step_id,
+                        is_exception=is_exception,
+                    )
+                    for step in current.steps
+                }
+            )
             prompts.extend(step.prompt for step in current.steps)
             step_ids.extend(step.step_id for step in current.steps)
         self.assertEqual(current.status, "done", current.error)
@@ -375,10 +378,7 @@ class RuleValidationFlowContract(unittest.TestCase):
         review_directory = self.project_root / "runs" / run_id / "results" / "review"
         return RuleReviewResult.model_validate_json(
             (
-                review_directory
-                / self.SCENARIO.workflow_id
-                / run_id
-                / "result.json"
+                review_directory / self.SCENARIO.workflow_id / run_id / "result.json"
             ).read_text()
         )
 

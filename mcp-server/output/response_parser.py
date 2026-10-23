@@ -5,14 +5,14 @@ solid-tags: [hook, llm]
 """
 
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
-from hook_utils import Logging
 from hc_violation_parser import ViolationParsing
+from hook_utils import Logging
 
 
 class ResponseParsing(Protocol):
-    def parse_response(self, raw: Optional[str], path: str) -> Optional[list]: ...
+    def parse_response(self, raw: str | None, path: str) -> list | None: ...
 
 
 class ResponseParser:
@@ -22,9 +22,11 @@ class ResponseParser:
         self._parser = parser
         self._logger = logger
 
-    def parse_response(self, raw: Optional[str], path: str) -> Optional[list]:
+    def parse_response(self, raw: str | None, path: str) -> list | None:
         if not raw:
-            self._logger.log(f"HEALTH_ERR {Path(path).name}: bare session returned no result")
+            self._logger.log(
+                f"HEALTH_ERR {Path(path).name}: bare session returned no result"
+            )
             raise RuntimeError(f"claude -p returned no result for {Path(path).name}")
         violations = self._parser.parse(raw)
         if violations is None:

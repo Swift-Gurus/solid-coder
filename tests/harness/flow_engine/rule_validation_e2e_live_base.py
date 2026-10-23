@@ -13,26 +13,25 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness.review_result import ReviewResult  # noqa: E402
-from harness.rule_review_result import RuleReviewResult  # noqa: E402
-from review.prepare_review_input import PrepareReviewInput  # noqa: E402
-from source.file_analysis_source import FileAnalysisSource  # noqa: E402
-from bundled_review_rule_policy_writer import (  # noqa: E402
+from bundled_review_rule_policy_writer import (
     BundledReviewRulePolicyWriter,
 )
-from codex_protocol.reader import CodexProtocolReader  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_rule_validation_expectation import (  # noqa: E402
+from codex_protocol.reader import CodexProtocolReader
+from harness.review_result import ReviewResult
+from harness.rule_review_result import RuleReviewResult
+from live_rule_validation_expectation import (
     LiveRuleValidationExpectation,
 )
-from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase  # noqa: E402
-from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
-from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
-from review_comparison_source_project import (  # noqa: E402
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase
+from live_workflow_scenario import LiveWorkflowScenario
+from preserved_live_workflow_run import PreservedLiveWorkflowRun
+from review.prepare_review_input import PrepareReviewInput
+from review_comparison_source_project import (
     ReviewComparisonSourceProject,
 )
-from rule_metric_result_expectation import RuleMetricResultExpectation  # noqa: E402
-
+from rule_metric_result_expectation import RuleMetricResultExpectation
+from source.file_analysis_source import FileAnalysisSource
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 
@@ -43,6 +42,8 @@ solid-category: test-support
 solid-spec: [SPEC-039]
 solid-description: Applies one backend-neutral event, observation, scoring, exception, and artifact contract to executable review rules.
 """
+
+
 class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
     PROJECT_ROOT = _PROJECT_ROOT
 
@@ -128,9 +129,7 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             and self._belongs_to_rule(event.get("workflow_instance_id"))
             and event.get("workflow_source_index") == expectation.source_index
         ]
-        completed_step_ids = {
-            event["local_step_id"] for event in completed_steps
-        }
+        completed_step_ids = {event["local_step_id"] for event in completed_steps}
         expected_step_ids = {
             *expectation.analysis_step_ids,
             *(metric.step_id for metric in expectation.metrics),
@@ -153,7 +152,9 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             exception_step = next(
                 event for event in completed_steps if event["local_step_id"] == step_id
             )
-            self.assertEqual(exception_step["outputs"]["is_exception"], expectation.is_exception)
+            self.assertEqual(
+                exception_step["outputs"]["is_exception"], expectation.is_exception
+            )
 
         workflow_instance_ids = {
             event["workflow_instance_id"] for event in completed_steps
@@ -267,14 +268,18 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
             f"unanswered_calls={len(evidence.unanswered_call_ids)}. Evidence: {evidence_path}"
         )
         self.assertTrue(
-            evidence.successful_flow_start_call_ids or (server_confirmed and evidence.flow_start_attempts > 0),
+            evidence.successful_flow_start_call_ids
+            or (server_confirmed and evidence.flow_start_attempts > 0),
             "Expected a successful flow_start MCP response",
         )
         self.assertTrue(
-            evidence.successful_flow_next_call_ids or (server_confirmed and evidence.flow_next_attempts > 0),
+            evidence.successful_flow_next_call_ids
+            or (server_confirmed and evidence.flow_next_attempts > 0),
             "Expected a successful flow_next MCP response",
         )
-        self.assertFalse(evidence.unanswered_call_ids, "Tool calls have no recorded responses")
+        self.assertFalse(
+            evidence.unanswered_call_ids, "Tool calls have no recorded responses"
+        )
         source = self.FIXTURE.read_text(encoding="utf-8")
         self.assertEqual("\n".join(evidence.user_prompts).count(source), 1)
         self.assertNotIn(source, "\n".join(evidence.flow_outputs))
@@ -287,10 +292,16 @@ class RuleValidationE2ELiveBase(LiveWorkflowE2ELiveBase):
         events_path = run.run_directory / "events.jsonl"
         if not events_path.exists():
             return False
-        events = [json.loads(line) for line in events_path.read_text().splitlines() if line.strip()]
+        events = [
+            json.loads(line)
+            for line in events_path.read_text().splitlines()
+            if line.strip()
+        ]
         sessions = {
-            event.get("session_id") for event in events
-            if event.get("event") == "session_step_recorded" and event.get("session_id") != "engine"
+            event.get("session_id")
+            for event in events
+            if event.get("event") == "session_step_recorded"
+            and event.get("session_id") != "engine"
         }
         return bool(events) and (
             events[0].get("event") == "run_started"

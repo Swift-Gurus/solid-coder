@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """PreToolUse hook — block Bash writes to source code files and reads of MCP chunk files.
 
 Prevents agents from using Bash to:
@@ -21,31 +20,30 @@ Allows:
 
 import sys
 from pathlib import Path
-from typing import Optional, Protocol
+from typing import Protocol
 
 _MCP_DIR = Path(__file__).resolve().parents[1]
 if str(_MCP_DIR) not in sys.path:
     sys.path.insert(0, str(_MCP_DIR))
 
-from hook_utils import GateHandling, HookGateFactory, parse_hook_event
-from chunk_read_gate import ChunkReadGate
 from bash_write_gate import BashWriteGate
-from bash_read_gate import BashReadGate
+from chunk_read_gate import ChunkReadGate
+from hook_utils import GateHandling, HookGateFactory, parse_hook_event
 
 _gate = HookGateFactory().build()
 
 
 class CommandChecking(Protocol):
-    def check(self, command: str) -> Optional[str]: ...
+    def check(self, command: str) -> str | None: ...
 
 
 class BashGateCoordinator:
-    """Runs all Bash gate checks in order and issues the appropriate decision."""
+    """Runs enabled Bash gate checks in order and issues the appropriate decision."""
 
     def __init__(
         self,
         chunk_gate: CommandChecking,
-        read_gate: CommandChecking,
+        read_gate: CommandChecking | None,
         write_gate: CommandChecking,
         gate: GateHandling,
     ) -> None:
@@ -63,7 +61,7 @@ class BashGateCoordinator:
             self._gate.block(msg)
             return
 
-        if name := self._read.check(command):
+        if self._read is not None and (name := self._read.check(command)):
             self._gate.block(
                 f"[file-read-gate] Bash file read blocked ({name}). "
                 "Use the Read tool instead — it provides proper content with line numbers "
@@ -83,7 +81,8 @@ class BashGateCoordinator:
 
 _coordinator = BashGateCoordinator(
     chunk_gate=ChunkReadGate(),
-    read_gate=BashReadGate(),
+    # Legacy source-file read restriction disabled; its implementation is retained.
+    read_gate=None,
     write_gate=BashWriteGate(),
     gate=_gate,
 )

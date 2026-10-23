@@ -8,13 +8,14 @@ from harness.selected_collection_metric_entry import SelectedCollectionMetricEnt
 from harness.workflow_run_context import WorkflowRunContext
 from harness.workflow_step_context_resolving import WorkflowStepContextResolving
 
-
 """
 solid-name: CollectionMetricEvaluator
 solid-category: service
 solid-spec: [SPEC-053, SPEC-054]
 solid-description: Produces deterministic, auditable metric values from schema-validated observation collections.
 """
+
+
 class CollectionMetricEvaluator(CollectionMetricEvaluating):
     def __init__(
         self,
@@ -93,9 +94,7 @@ class CollectionMetricEvaluator(CollectionMetricEvaluating):
                 reduction.denominator_indexes if reduction is not None else []
             ),
             numerator_condition_evidence=(
-                reduction.numerator_condition_evidence
-                if reduction is not None
-                else []
+                reduction.numerator_condition_evidence if reduction is not None else []
             ),
             denominator_condition_evidence=(
                 reduction.denominator_condition_evidence

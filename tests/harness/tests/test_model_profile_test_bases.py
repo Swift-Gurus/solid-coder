@@ -15,17 +15,16 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from claude_live_session_runner import ClaudeLiveSessionRunner  # noqa: E402
-from claude_test_base import ClaudeTestBase  # noqa: E402
-from codex_live_session_runner import CodexLiveSessionRunner  # noqa: E402
-from codex_test_base import CodexTestBase  # noqa: E402
-from flow_engine.flow_engine_e2e_live_base import FlowEngineE2ELiveBase  # noqa: E402
-from live_test_base import LiveTestBase  # noqa: E402
-from local_test_base import LocalTestBase  # noqa: E402
+from claude_live_session_runner import ClaudeLiveSessionRunner
+from claude_test_base import ClaudeTestBase
+from codex_live_session_runner import CodexLiveSessionRunner
+from codex_test_base import CodexTestBase
+from flow_engine.flow_engine_e2e_live_base import FlowEngineE2ELiveBase
+from live_test_base import LiveTestBase
+from local_test_base import LocalTestBase
 
 
 class TestModelProfileTestBases(unittest.TestCase):
-
     def test_live_backends_use_callable_flow_lifecycle_names(self) -> None:
         self.assertEqual(
             CodexTestBase.FLOW_START_TOOL,
@@ -58,14 +57,16 @@ class TestModelProfileTestBases(unittest.TestCase):
         self.assertEqual(base.MODEL_PROFILE, "codex")
         self.assertIsInstance(base.live_session_runner(), CodexLiveSessionRunner)
 
-    def test_codex_flow_request_uses_shared_bootstrap_and_mcp_instructions(self) -> None:
+    def test_codex_flow_request_uses_shared_bootstrap_and_mcp_instructions(
+        self,
+    ) -> None:
         instruction = CodexTestBase().flow_execution_instruction(
             workflow_id="solid-review",
             parameters_json='{"target":{"kind":"file","path":"/project/A.swift"}}',
         )
 
         self.assertIn(
-            'Call flow_start with flow=\'solid-review\' and params equal to this JSON: '
+            "Call flow_start with flow='solid-review' and params equal to this JSON: "
             '{"target":{"kind":"file","path":"/project/A.swift"}}.',
             instruction,
         )
@@ -132,9 +133,11 @@ class TestModelProfileTestBases(unittest.TestCase):
             self.assertEqual(ClaudeTestBase().parent_session_id, "codex-parent")
 
     def test_live_base_rejects_missing_parent_session(self) -> None:
-        with patch.dict("os.environ", {}, clear=True):
-            with self.assertRaises(RuntimeError):
-                CodexTestBase().parent_session_id
+        with (
+            patch.dict("os.environ", {}, clear=True),
+            self.assertRaises(RuntimeError),
+        ):
+            _ = CodexTestBase().parent_session_id
 
     def test_flow_base_requires_parent_session_provider(self) -> None:
         with self.assertRaises(TypeError):

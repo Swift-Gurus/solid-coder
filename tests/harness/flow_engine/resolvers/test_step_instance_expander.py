@@ -17,11 +17,11 @@ from harness.step_instance_builder import StepInstanceBuilder
 from harness.step_instance_expander import StepInstanceExpander
 from harness.workflow_context_value import WorkflowContextValue
 from harness.workflow_context_values import WorkflowContextValues
-from harness.workflow_run_context import WorkflowRunContext
-from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 from harness.workflow_results_visibility_selector import (
     WorkflowResultsVisibilitySelector,
 )
+from harness.workflow_run_context import WorkflowRunContext
+from harness.workflow_step_context_resolver import WorkflowStepContextResolver
 
 
 @dataclass(frozen=True)
@@ -31,18 +31,18 @@ class ReviewUnit:
 
 class StubItemsResolver:
     def resolve(self, step_id, expression, context):
-        raise AssertionError("A non-iterated child step must not resolve another collection")
+        raise AssertionError(
+            "A non-iterated child step must not resolve another collection"
+        )
 
 
 class StubRenderer:
     def render(self, template: str, context: WorkflowRunContext) -> str:
         review_unit = context.parameters.find("review_unit").value
         finding = context.completed_steps.find("inspect").value.get("finding")
-        return (
-            template
-            .replace("{{params.review_unit.name}}", review_unit.name)
-            .replace("{{steps.inspect.outputs.finding}}", finding)
-        )
+        return template.replace(
+            "{{params.review_unit.name}}", review_unit.name
+        ).replace("{{steps.inspect.outputs.finding}}", finding)
 
 
 class UnexpectedOperationInputsResolver:
@@ -61,8 +61,9 @@ solid-category: unit-test
 solid-spec: [SPEC-030, SPEC-037]
 solid-description: Verifies that executable step instances preserve iteration and included-workflow source associations.
 """
-class TestStepInstanceExpander(unittest.TestCase):
 
+
+class TestStepInstanceExpander(unittest.TestCase):
     def test_preserves_included_workflow_source_association(self) -> None:
         source_item = ReviewUnit(name="Beta")
         workflow_instance = IncludedWorkflowInstance(
@@ -122,15 +123,11 @@ class TestStepInstanceExpander(unittest.TestCase):
                     entries=[
                         WorkflowContextValue(
                             name="review-1.inspect",
-                            value=StepOutputs(
-                                values={"finding": "Alpha inspected"}
-                            ),
+                            value=StepOutputs(values={"finding": "Alpha inspected"}),
                         ),
                         WorkflowContextValue(
                             name="review-2.inspect",
-                            value=StepOutputs(
-                                values={"finding": "Beta inspected"}
-                            ),
+                            value=StepOutputs(values={"finding": "Beta inspected"}),
                         ),
                     ]
                 )

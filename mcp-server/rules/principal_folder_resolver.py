@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 solid-description: Resolves principle identifiers to their filesystem locations.
 solid-category: utility
@@ -35,6 +34,7 @@ def resolve(
         raise FileNotFoundError(f"References directory not found: {refs_root}")
 
     from rules.principle_registry import PrincipleRegistry
+
     registry = _registry if _registry is not None else PrincipleRegistry(refs_root)
     all_p = registry.all_principles()
 
@@ -44,6 +44,4 @@ def resolve(
             return Path(p["folder"]).resolve()
 
     available = ", ".join(sorted(p["name"] for p in all_p))
-    raise ValueError(
-        f'Unknown principle: "{principle}". Available: {available}'
-    )
+    raise ValueError(f'Unknown principle: "{principle}". Available: {available}')

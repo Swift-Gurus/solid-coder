@@ -3,12 +3,13 @@
 from pathlib import Path
 from typing import Protocol
 
-
 """
 solid-name: SessionProjectContextPathResolving
 solid-category: abstraction
 solid-description: Contract for session-scoped project-context path resolution.
 """
+
+
 class SessionProjectContextPathResolving(Protocol):
     def resolve(self, session_id: str) -> Path: ...
 
@@ -18,11 +19,12 @@ solid-name: SessionProjectContextPathResolver
 solid-category: service
 solid-description: Validates session identities and resolves their project-context file paths.
 """
-class SessionProjectContextPathResolver(SessionProjectContextPathResolving):
 
+
+class SessionProjectContextPathResolver(SessionProjectContextPathResolving):
     def __init__(
         self,
-        root_directory: Path = Path.home() / ".solid-coder" / "sessions",
+        root_directory: Path,
     ) -> None:
         self._root_directory = root_directory
 

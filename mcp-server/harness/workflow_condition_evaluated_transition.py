@@ -9,15 +9,15 @@ from harness.workflow_condition_evaluated_event import (
     WorkflowConditionEvaluatedEvent,
 )
 
-
 """
 solid-name: WorkflowConditionEvaluatedTransition
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Restores durable workflow eligibility decisions during event replay.
 """
-class WorkflowConditionEvaluatedTransition:
 
+
+class WorkflowConditionEvaluatedTransition:
     def __init__(self, condition_parser: ConditionParsing) -> None:
         self._condition_parser = condition_parser
 

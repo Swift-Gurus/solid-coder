@@ -4,11 +4,9 @@ solid-category: service
 solid-tags: [hook, llm]
 """
 
-from typing import Optional
-
-from llama.tool_dispatcher import ToolDispatching
-from llama.tool_call_parser import ToolCallArgsParsing
 from llama.session_observer import LLMSessionObserving
+from llama.tool_call_parser import ToolCallArgsParsing
+from llama.tool_dispatcher import ToolDispatching
 
 
 class ToolCallOrchestrator:
@@ -26,7 +24,7 @@ class ToolCallOrchestrator:
         self,
         tool_calls: list,
         messages: list,
-        observer: Optional[LLMSessionObserving],
+        observer: LLMSessionObserving | None,
     ) -> None:
         for tc in tool_calls:
             call_id = tc.get("id", "unknown")
@@ -37,8 +35,10 @@ class ToolCallOrchestrator:
             result_str = self._dispatcher.dispatch(tc)
             if observer:
                 observer.on_tool_result(call_id, tc_name, result_str)
-            messages.append({
-                "role": "tool",
-                "tool_call_id": call_id,
-                "content": result_str,
-            })
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": result_str,
+                }
+            )

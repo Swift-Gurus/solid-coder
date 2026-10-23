@@ -10,13 +10,14 @@ from harness.include_alias_group_replacing import IncludeAliasGroupReplacing
 from harness.nested_include_child_group_policy import NestedIncludeChildGroupPolicy
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: DataclassIncludeAliasGroupReplacer
 solid-category: adapter
 solid-spec: [SPEC-027, SPEC-035, SPEC-045]
 solid-description: Applies nested include-group policy updates while preserving remaining group information.
 """
+
+
 class DataclassIncludeAliasGroupReplacer(IncludeAliasGroupReplacing):
     def replace_policy(
         self,
@@ -32,6 +33,8 @@ class DataclassIncludeAliasGroupReplacer(IncludeAliasGroupReplacing):
             execution_declared=policy.execution_declared,
             presentation_declared=policy.presentation_declared,
             combined_presentation=(
-                presentation if policy.presentation is WorkflowPresentationMode.COMBINED else None
+                presentation
+                if policy.presentation is WorkflowPresentationMode.COMBINED
+                else None
             ),
         )

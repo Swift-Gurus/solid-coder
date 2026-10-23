@@ -8,15 +8,15 @@ from source.swift_tag_detector import SwiftTagDetecting
 from source.technology_detection import TechnologyDetection
 from source.technology_detection_scope import TechnologyDetectionScope
 
-
 """
 solid-name: SwiftImportTagDetector
 solid-category: boundary-adapter
 solid-spec: [SPEC-040]
 solid-description: Determines auditable file technology tags from exact Swift imports.
 """
-class SwiftImportTagDetector(SwiftTagDetecting):
 
+
+class SwiftImportTagDetector(SwiftTagDetecting):
     def __init__(
         self,
         registrations: list[SwiftImportTagRegistration],
@@ -46,7 +46,11 @@ class SwiftImportTagDetector(SwiftTagDetecting):
                     detector_identity="swift-import-tags-v1",
                     scope=TechnologyDetectionScope.FILE,
                     scope_identity=source.identity,
-                    evidence=[SourceEvidence(fact=f"import {imported.fact}", span=imported.span)],
+                    evidence=[
+                        SourceEvidence(
+                            fact=f"import {imported.fact}", span=imported.span
+                        )
+                    ],
                 )
                 for tag in registration.tags
             )

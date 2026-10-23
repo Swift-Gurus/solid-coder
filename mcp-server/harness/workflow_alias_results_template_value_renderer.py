@@ -11,15 +11,15 @@ from harness.workflow_result_envelope_serializing import (
 )
 from json_serializer import JsonSerializing
 
-
 """
 solid-name: WorkflowAliasResultsTemplateValueRenderer
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Renders ordered workflow-alias results as canonical JSON template text.
 """
-class WorkflowAliasResultsTemplateValueRenderer(TemplateValueRendering):
 
+
+class WorkflowAliasResultsTemplateValueRenderer(TemplateValueRendering):
     def __init__(
         self,
         envelope_serializer: WorkflowResultEnvelopeSerializing,
@@ -30,7 +30,9 @@ class WorkflowAliasResultsTemplateValueRenderer(TemplateValueRendering):
 
     def render(self, value: object) -> str:
         results = cast(WorkflowAliasResults, value)
-        return self._json_serializer.serialize([
-            self._envelope_serializer.serialize(envelope)
-            for envelope in results.entries
-        ])
+        return self._json_serializer.serialize(
+            [
+                self._envelope_serializer.serialize(envelope)
+                for envelope in results.entries
+            ]
+        )

@@ -3,7 +3,7 @@ solid-description: Contract that defines structural validation of values.
 solid-category: abstraction
 """
 
-from typing import Optional, Protocol
+from typing import Protocol
 
 
 class TypeChecking(Protocol):
@@ -13,4 +13,4 @@ class TypeChecking(Protocol):
     conform to the expected structural shape.
     """
 
-    def validate(self, value: object) -> Optional[object]: ...
+    def validate(self, value: object) -> object | None: ...

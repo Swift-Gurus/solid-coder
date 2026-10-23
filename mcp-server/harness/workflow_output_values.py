@@ -7,13 +7,14 @@ from dataclasses import dataclass, field
 from harness.resolved_workflow_context_value import ResolvedWorkflowContextValue
 from harness.workflow_output_value import WorkflowOutputValue
 
-
 """
 solid-name: WorkflowOutputValues
 solid-category: model
 solid-spec: [SPEC-037]
 solid-description: Provides typed lookup over the validated outputs published by one workflow instance.
 """
+
+
 @dataclass(frozen=True)
 class WorkflowOutputValues:
     entries: list[WorkflowOutputValue] = field(default_factory=list)

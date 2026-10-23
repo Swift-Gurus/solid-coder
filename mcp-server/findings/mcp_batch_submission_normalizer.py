@@ -4,12 +4,13 @@ from typing import cast
 
 from findings.batch_submission_normalizing import BatchSubmissionNormalizing
 
-
 """
 solid-name: McpBatchSubmissionNormalizer
 solid-category: boundary-adapter
 solid-description: Normalizes compact keyed MCP findings into the typed submission hierarchy shape.
 """
+
+
 class McpBatchSubmissionNormalizer(BatchSubmissionNormalizing):
     def normalize(self, payload: object) -> object:
         submissions = cast(dict, payload)

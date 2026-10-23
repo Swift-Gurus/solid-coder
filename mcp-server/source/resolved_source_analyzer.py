@@ -11,13 +11,14 @@ from source.source_analysis_decision import SourceAnalysisDecision
 from source.source_language_detecting import SourceLanguageDetecting
 from source.whole_document_unit_resolving import WholeDocumentUnitResolving
 
-
 """
 solid-name: ResolvedSourceAnalyzer
 solid-category: service
 solid-spec: [SPEC-040]
 solid-description: Selects deterministic parsed or whole-document analysis for normalized immutable source content.
 """
+
+
 class ResolvedSourceAnalyzer(ResolvedSourceAnalyzing):
     def __init__(
         self,

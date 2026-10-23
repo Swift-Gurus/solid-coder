@@ -2,13 +2,14 @@
 
 from dataclasses import dataclass
 
-
 """
 solid-name: InlineCommandExecution
 solid-category: model
 solid-spec: [SPEC-035]
 solid-description: Represents an inline workflow command execution request.
 """
+
+
 @dataclass(frozen=True)
 class InlineCommandExecution:
     executor: str

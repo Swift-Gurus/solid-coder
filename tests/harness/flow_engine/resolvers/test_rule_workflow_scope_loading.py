@@ -12,13 +12,14 @@ from harness.flow_engine_assembly_factory import FlowEngineAssemblyFactory
 from harness.models import FlowValidationError
 from harness.rule_scope import RuleScope
 
-
 """
 solid-name: TestRuleWorkflowScopeLoading
 solid-category: unit-test
 solid-spec: [SPEC-039]
 solid-description: Validates typed rule scope defaults, file-scope parsing, and scope-preserving all-rules expansion.
 """
+
+
 class TestRuleWorkflowScopeLoading(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()

@@ -1,18 +1,23 @@
 """Tests for prevent_bash_file_write.py"""
 
-import sys
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 from _path_bootstrap import ensure_on_path
-ensure_on_path(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks", Path(__file__).resolve().parent)
+
+ensure_on_path(
+    Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
+    Path(__file__).resolve().parent,
+)
 
 import prevent_bash_file_write as hook
 import test_utils
+from bash_read_gate import BashReadGate
 from test_utils import is_denied as _is_denied
 
 
-def _call(command: str = None, *, event: dict = None) -> tuple:
+def _call(command: str | None = None, *, event: dict | None = None) -> tuple:
     if event is None:
         event = {"tool_name": "Bash", "tool_input": {"command": command}}
     return test_utils.call_main(event, hook.main)
@@ -81,21 +86,28 @@ class TestFileWriteDetection(unittest.TestCase):
         self.assertTrue(_is_allowed(out))
 
     def test_allows_non_bash_tool(self):
-        _, out = _call(event={"tool_name": "Write", "tool_input": {"file_path": "/tmp/f.swift", "content": "x"}})
+        _, out = _call(
+            event={
+                "tool_name": "Write",
+                "tool_input": {"file_path": "/tmp/f.swift", "content": "x"},
+            }
+        )
         self.assertTrue(_is_allowed(out))
 
     def test_deny_message_mentions_write_tool(self):
-        _assert_deny_reason("echo hello > file.swift", "Write tool", "file-write-gate", tc=self)
+        _assert_deny_reason(
+            "echo hello > file.swift", "Write tool", "file-write-gate", tc=self
+        )
 
     def test_blocks_python3_multiline_write(self):
         """python3 -c with open(..., 'w') on a different line than python3 must be blocked."""
         cmd = (
-            "python3 -c \"\n"
+            'python3 -c "\n'
             "files = ['Foo.swift']\n"
             "for f in files:\n"
             "    with open(f, 'w') as fp:\n"
             "        fp.write('content')\n"
-            "\""
+            '"'
         )
         _, out = _call(cmd)
         self.assertTrue(_is_denied(out))
@@ -103,13 +115,13 @@ class TestFileWriteDetection(unittest.TestCase):
     def test_allows_python3_multiline_read_only(self):
         """python3 -c that only reads files must be allowed."""
         cmd = (
-            "python3 -c \"\n"
+            'python3 -c "\n'
             "files = ['Foo.swift', 'Bar.swift']\n"
             "for f in files:\n"
             "    with open(f, 'rb') as fp:\n"
             "        n = len(fp.read()) - len(fp.read().rstrip(b'\\n'))\n"
             "        print(n, f)\n"
-            "\""
+            '"'
         )
         _, out = _call(cmd)
         self.assertTrue(_is_allowed(out))
@@ -168,7 +180,8 @@ class TestChunkFileReadDetection(unittest.TestCase):
     def test_deny_message_mentions_read_tool(self):
         _assert_deny_reason(
             "cat /tmp/solid-coder-rules-1234-1of1.md",
-            "Read tool", "chunk-read-gate",
+            "Read tool",
+            "chunk-read-gate",
             tc=self,
         )
 
@@ -182,90 +195,116 @@ class TestChunkFileReadDetection(unittest.TestCase):
 
 
 class TestBashReadDetection(unittest.TestCase):
-    """cat / head / tail on source files must be blocked — use the Read tool."""
+    """Source-file reads are allowed while the retained legacy read gate is disabled."""
 
     # ── cat ──────────────────────────────────────────────────────────────────
 
-    def test_blocks_cat_on_python_file(self):
-        _, out = _call("cat hooks/hc_checker.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_on_python_file(self):
+        code, out = _call("cat hooks/hc_checker.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_cat_on_swift_file(self):
-        _, out = _call("cat hooks/ModelCheck.swift")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_on_swift_file(self):
+        code, out = _call("cat hooks/ModelCheck.swift")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_cat_with_flag_on_source_file(self):
-        _, out = _call("cat -n hooks/pre_write_gate.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_with_flag_on_source_file(self):
+        code, out = _call("cat -n hooks/pre_write_gate.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_cat_on_json_file(self):
-        _, out = _call("cat hooks/hooks.json")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_on_json_file(self):
+        code, out = _call("cat hooks/hooks.json")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_cat_on_markdown_file(self):
-        _, out = _call("cat mcp-server/prompts/constraints.md")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_on_markdown_file(self):
+        code, out = _call("cat mcp-server/prompts/constraints.md")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_cat_on_toml_file(self):
-        _, out = _call("cat .claude/solid-coder-local.toml")
-        self.assertTrue(_is_denied(out))
+    def test_allows_cat_on_toml_file(self):
+        code, out = _call("cat .claude/solid-coder-local.toml")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
     def test_allows_cat_heredoc(self):
-        _, out = _call("cat <<'EOF'\nhello\nEOF")
+        code, out = _call("cat <<'EOF'\nhello\nEOF")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     def test_allows_cat_devnull(self):
-        _, out = _call("cat /dev/null")
+        code, out = _call("cat /dev/null")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     def test_allows_cat_without_file(self):
-        _, out = _call("echo hello | cat")
+        code, out = _call("echo hello | cat")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     # ── head ─────────────────────────────────────────────────────────────────
 
-    def test_blocks_head_on_python_file(self):
-        _, out = _call("head hooks/hook_utils.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_head_on_python_file(self):
+        code, out = _call("head hooks/hook_utils.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_head_with_n_flag_on_source_file(self):
-        _, out = _call("head -n 20 hooks/hc_checker.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_head_with_n_flag_on_source_file(self):
+        code, out = _call("head -n 20 hooks/hc_checker.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
     def test_allows_head_as_pipeline_target(self):
-        _, out = _call("git log --oneline | head -20")
+        code, out = _call("git log --oneline | head -20")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     def test_allows_head_without_file_argument(self):
-        _, out = _call("head -c 100")
+        code, out = _call("head -c 100")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     # ── tail ─────────────────────────────────────────────────────────────────
 
-    def test_blocks_tail_on_python_file(self):
-        _, out = _call("tail hooks/validate_swift_frontmatter.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_tail_on_python_file(self):
+        code, out = _call("tail hooks/validate_swift_frontmatter.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
-    def test_blocks_tail_with_flag_on_source_file(self):
-        _, out = _call("tail -n 30 hooks/hc_config.py")
-        self.assertTrue(_is_denied(out))
+    def test_allows_tail_with_flag_on_source_file(self):
+        code, out = _call("tail -n 30 hooks/hc_config.py")
+        self.assertEqual(code, 0)
+        self.assertTrue(_is_allowed(out))
 
     def test_allows_tail_as_pipeline_target(self):
-        _, out = _call("python3 -m pytest | tail -20")
+        code, out = _call("python3 -m pytest | tail -20")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     def test_allows_tail_on_log_file(self):
-        _, out = _call("tail -f ~/.claude/solid-coder-gate.log")
+        code, out = _call("tail -f ~/.claude/solid-coder-gate.log")
+        self.assertEqual(code, 0)
         self.assertTrue(_is_allowed(out))
 
     # ── deny message ─────────────────────────────────────────────────────────
 
-    def test_deny_message_mentions_read_tool(self):
-        _assert_deny_reason(
-            "cat hooks/hc_checker.py",
-            "Read tool", "file-read-gate",
-            tc=self,
+    def test_retained_read_gate_can_be_enabled_explicitly(self):
+        gate = Mock()
+        coordinator = hook.BashGateCoordinator(
+            chunk_gate=hook.ChunkReadGate(),
+            read_gate=BashReadGate(logger=Mock()),
+            write_gate=hook.BashWriteGate(),
+            gate=gate,
         )
+
+        coordinator.run("Bash", "cat hooks/hc_checker.py")
+
+        gate.block.assert_called_once()
+        self.assertIn("file-read-gate", gate.block.call_args.args[0])
+        self.assertIn("Read tool", gate.block.call_args.args[0])
+        gate.allow.assert_not_called()
 
 
 if __name__ == "__main__":

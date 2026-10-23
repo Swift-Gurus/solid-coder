@@ -6,13 +6,14 @@ from harness.flow_status_response_renderer import FlowStatusResponseRenderer
 from pipeline.flow_tool_callables_factory import FlowToolCallablesFactory
 from pipeline.tool_callables_building import ToolCallablesBuilding
 
-
 """
 solid-name: FlowToolCallablesAssembler
 solid-category: factory
 solid-spec: [SPEC-031]
 solid-description: Assembles flow execution and rendering capabilities into model-facing callables.
 """
+
+
 class FlowToolCallablesAssembler(ToolCallablesBuilding):
     def __init__(
         self,

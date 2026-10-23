@@ -8,12 +8,13 @@ from findings.principle_coverage_scope_input import PrincipleCoverageScopeInput
 from findings.principle_coverage_scopes_creating import PrincipleCoverageScopesCreating
 from findings.review_unit_kinds_parsing import ReviewUnitKindsParsing
 
-
 """
 solid-name: PrincipleCoverageScopesFactory
 solid-category: factory
 solid-description: Constructs supported principle coverage scopes from validated configuration inputs.
 """
+
+
 class PrincipleCoverageScopesFactory(PrincipleCoverageScopesCreating):
     def __init__(
         self,

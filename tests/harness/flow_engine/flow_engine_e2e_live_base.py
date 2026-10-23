@@ -20,19 +20,17 @@ for _directory in (_HARNESS_DIR, _MCP_SERVER, _MCP_HEALTH_CONFIG):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness_factory import HookUtilsTomlLoader  # noqa: E402
-from hook_utils import solid_coder_project_dir  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from live_session_running import LiveSessionRunning  # noqa: E402
-from mcp_utils import McpConfigBuilder  # noqa: E402
-from model_profile_environment import model_profile_environment  # noqa: E402
-from model_profile_loader import ModelProfileLoader  # noqa: E402
+from harness_factory import HookUtilsTomlLoader
+from hook_utils import solid_coder_project_dir
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
+from live_session_running import LiveSessionRunning
+from mcp_utils import McpConfigBuilder
+from model_profile_environment import model_profile_environment
+from model_profile_loader import ModelProfileLoader
 
 _PROJECT_ROOT = _MCP_SERVER.parent
-_FLOW_PACKAGE = (
-    _PROJECT_ROOT / ".solid-coder" / "workflows" / "test" / "e2e-test"
-)
+_FLOW_PACKAGE = _PROJECT_ROOT / ".solid-coder" / "workflows" / "test" / "e2e-test"
 _DYNAMIC_INCLUDE_FLOW = (
     _PROJECT_ROOT
     / ".solid-coder"
@@ -73,8 +71,9 @@ solid-category: test-support
 solid-spec: [SPEC-031, SPEC-027, SPEC-037, SPEC-054]
 solid-description: Executes model-profile-backed routing and session-delegate fan-out while verifying persisted engine transitions.
 """
-class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
 
+
+class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
     __test__ = False
     MODEL_PROFILE: ClassVar[str]
     FLOW_START_TOOL: ClassVar[str]
@@ -404,7 +403,8 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             event["step_id"]: event
             for event in events
             if event.get("event") == "step_completed"
-            and event.get("step_id") in {
+            and event.get("step_id")
+            in {
                 "maximum_depth",
                 "minimum_depth",
                 "distinct_groups",
@@ -444,14 +444,14 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
                 "unsafe_ratio": "ratio",
             },
         )
-        self.assertTrue(all(
-            completion["session_id"] == "engine"
-            for completion in metric_completions.values()
-        ))
+        self.assertTrue(
+            all(
+                completion["session_id"] == "engine"
+                for completion in metric_completions.values()
+            )
+        )
 
-        maximum_derivation = metric_completions[
-            "maximum_depth"
-        ]["metric_derivation"]
+        maximum_derivation = metric_completions["maximum_depth"]["metric_derivation"]
         self.assertEqual(maximum_derivation["kind"], "collection_reducer")
         self.assertEqual(maximum_derivation["matched_indexes"], [0, 2])
         self.assertEqual(maximum_derivation["excluded_indexes"], [1, 3])
@@ -459,9 +459,7 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             maximum_derivation["projection_evidence"],
             [{"index": 0, "value": 2}, {"index": 2, "value": 5}],
         )
-        ratio_derivation = metric_completions["unsafe_ratio"][
-            "metric_derivation"
-        ]
+        ratio_derivation = metric_completions["unsafe_ratio"]["metric_derivation"]
         self.assertEqual(ratio_derivation["numerator_indexes"], [0])
         self.assertEqual(ratio_derivation["denominator_indexes"], [0, 2])
         self.assertFalse(ratio_derivation["zero_denominator"])
@@ -472,10 +470,7 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             if event.get("event") == "metric_scored"
         }
         self.assertEqual(
-            {
-                metric_id: decision["value"]
-                for metric_id, decision in scored.items()
-            },
+            {metric_id: decision["value"] for metric_id, decision in scored.items()},
             {
                 "REDUCER-MAX": 5,
                 "REDUCER-MIN": 2,
@@ -483,10 +478,9 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
                 "REDUCER-RATIO": 0.5,
             },
         )
-        self.assertTrue(all(
-            decision["severity"] == "SEVERE"
-            for decision in scored.values()
-        ))
+        self.assertTrue(
+            all(decision["severity"] == "SEVERE" for decision in scored.values())
+        )
         self.assertEqual(events[-1].get("event"), "run_completed")
 
     def _run_classification_case(self, case: ClassificationCase) -> None:
@@ -590,10 +584,7 @@ class FlowEngineE2ELiveBase(unittest.TestCase, ABC):
             [0, 1],
         )
         self.assertEqual(
-            [
-                event["outputs"]["child_value"]
-                for event in ordered_delegated_sessions
-            ],
+            [event["outputs"]["child_value"] for event in ordered_delegated_sessions],
             [42, 42],
         )
         self.assertEqual(

@@ -25,13 +25,14 @@ from source.source_search_input import SourceSearchInput
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from source.source_search_output import SourceSearchOutput
 
-
 """
 solid-name: TestSourceSearchWorkflow
 solid-category: integration-test
 solid-spec: [SPEC-010, SPEC-040]
 solid-description: Proves source search and candidate reads drain internally and replay persisted outputs without filesystem access.
 """
+
+
 class TestSourceSearchWorkflow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
@@ -44,12 +45,14 @@ class TestSourceSearchWorkflow(unittest.TestCase):
             encoding="utf-8",
         )
         project_directory = ProjectDirectory(path=self.project_root)
-        self.search = Mock(wraps=SourceSearchOperationFactory().make(
-            project_directory,
-        ))
-        self.reader = Mock(wraps=ReadSourceCandidatesOperationFactory(
-            project_directory
-        ).make())
+        self.search = Mock(
+            wraps=SourceSearchOperationFactory().make(
+                project_directory,
+            )
+        )
+        self.reader = Mock(
+            wraps=ReadSourceCandidatesOperationFactory(project_directory).make()
+        )
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.project_root,
             registrations=[
@@ -67,8 +70,9 @@ class TestSourceSearchWorkflow(unittest.TestCase):
                 ),
             ],
         )
-        self.driver.write_workflow(textwrap.dedent(
-            """
+        self.driver.write_workflow(
+            textwrap.dedent(
+                """
             name: source-search-replay
             max_turns: 5
             steps:
@@ -87,12 +91,17 @@ class TestSourceSearchWorkflow(unittest.TestCase):
                 depends_on: [read]
                 prompt: "Compare {{steps.read.outputs.results}}"
             """
-        ))
+            )
+        )
 
-    def test_replays_exact_candidate_content_without_searching_or_reading_again(self) -> None:
-        started = self.driver.start(params={
-            "queries": [{"id": "tax", "terms": ["TaxRule"]}],
-        })
+    def test_replays_exact_candidate_content_without_searching_or_reading_again(
+        self,
+    ) -> None:
+        started = self.driver.start(
+            params={
+                "queries": [{"id": "tax", "terms": ["TaxRule"]}],
+            }
+        )
 
         self.assertIsNone(started.error, started.error)
         self.assertIn("struct TaxRule", started.steps[0].prompt)

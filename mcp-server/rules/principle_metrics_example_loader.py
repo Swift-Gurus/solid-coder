@@ -3,16 +3,18 @@
 from pathlib import Path
 
 from health.llama.json_deserializer import JsonDeserializing
-from rules.metric_submission_example_building import MetricSubmissionExampleBuilding
-from rules.principle_metrics_example_loading import PrincipleMetricsExampleLoading
 from utils.prompt_builder import TextFileReading
 
+from rules.metric_submission_example_building import MetricSubmissionExampleBuilding
+from rules.principle_metrics_example_loading import PrincipleMetricsExampleLoading
 
 """
 solid-name: PrincipleMetricsExampleLoader
 solid-category: service
 solid-description: Reads one principle review schema and produces its complete set of auditable metric submission examples.
 """
+
+
 class PrincipleMetricsExampleLoader(PrincipleMetricsExampleLoading):
     def __init__(
         self,

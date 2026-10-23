@@ -8,13 +8,14 @@ from harness.session_delegate_batch_running import SessionDelegateBatchRunning
 from harness.session_delegate_instance_running import SessionDelegateInstanceRunning
 from harness.step_instance_execution import StepInstanceExecution
 
-
 """
 solid-name: ConcurrentSessionDelegateBatchRunner
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Coordinates bounded concurrent session-delegate execution while preserving source order.
 """
+
+
 class ConcurrentSessionDelegateBatchRunner(SessionDelegateBatchRunning):
     def __init__(
         self,

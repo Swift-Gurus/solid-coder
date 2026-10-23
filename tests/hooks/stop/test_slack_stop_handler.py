@@ -14,8 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server" / "hooks"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from stop_handler_doubles import StubNotifier
 from slack_stop_handler import SlackStopHandler
+from stop_handler_doubles import StubNotifier
 
 
 class TestSlackStopHandler(unittest.TestCase):
@@ -31,7 +31,9 @@ class TestSlackStopHandler(unittest.TestCase):
 
         self.assertFalse(handler.should_handle({}))
 
-    def test_should_handle_false_during_internal_session_even_if_notifier_would_accept(self):
+    def test_should_handle_false_during_internal_session_even_if_notifier_would_accept(
+        self,
+    ):
         notifier = StubNotifier(should=True)
         handler = SlackStopHandler(notifier, session_type_fn=lambda: "health-check")
 

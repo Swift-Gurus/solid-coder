@@ -12,13 +12,14 @@ from harness.condition_parsing import ConditionParsing
 from harness.models import FlowValidationError
 from harness.not_condition import NotCondition
 
-
 """
 solid-name: CompositionConditionParser
 solid-category: boundary
 solid-spec: [SPEC-037]
 solid-description: Maps composed condition input into typed condition declarations.
 """
+
+
 class CompositionConditionParser(ConditionNodeParsing):
     _COMPOSITIONS = frozenset({"all", "any", "not"})
 
@@ -29,7 +30,9 @@ class CompositionConditionParser(ConditionNodeParsing):
     ) -> ConditionDeclaration:
         composition_keys = self._COMPOSITIONS.intersection(raw.keys())
         if len(composition_keys) != 1 or len(raw) != 1:
-            raise FlowValidationError("Workflow condition has unsupported condition fields")
+            raise FlowValidationError(
+                "Workflow condition has unsupported condition fields"
+            )
         composition = next(iter(composition_keys))
         value = raw[composition]
         if composition == "not":

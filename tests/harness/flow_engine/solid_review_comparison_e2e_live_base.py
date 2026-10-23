@@ -17,41 +17,37 @@ for _directory in (_HARNESS, _MCP_SERVER):
     if str(_directory) not in sys.path:
         sys.path.insert(0, str(_directory))
 
-from harness.review_result import ReviewResult  # noqa: E402
-from review.prepare_review_input import PrepareReviewInput  # noqa: E402
-from source.file_analysis_source import FileAnalysisSource  # noqa: E402
-from source.selected_source_candidate import SelectedSourceCandidate  # noqa: E402
-from codex_review_stage_evidence_reader import (  # noqa: E402
+from codex_review_stage_evidence_reader import (
     CodexReviewStageEvidenceReader,
 )
-from codex_transcript_token_usage_reader import (  # noqa: E402
+from codex_transcript_token_usage_reader import (
     CodexTranscriptTokenUsageReader,
 )
-from flow_audit_event import FlowAuditEvent  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase  # noqa: E402
-from live_workflow_scenario import LiveWorkflowScenario  # noqa: E402
-from preserved_live_workflow_run import PreservedLiveWorkflowRun  # noqa: E402
-from review_comparison_run_evidence import (  # noqa: E402
-    ReviewComparisonRunEvidence,
-)
-from review_comparison_source_project import (  # noqa: E402
-    ReviewComparisonSourceProject,
-)
-from review_comparison_stage_evidence import (  # noqa: E402
-    ReviewComparisonStageEvidence,
-)
-from review_comparison_rule_expectation import (  # noqa: E402
+from flow_audit_event import FlowAuditEvent
+from harness.review_result import ReviewResult
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_workflow_e2e_live_base import LiveWorkflowE2ELiveBase
+from live_workflow_scenario import LiveWorkflowScenario
+from preserved_live_workflow_run import PreservedLiveWorkflowRun
+from review.prepare_review_input import PrepareReviewInput
+from review_comparison_rule_expectation import (
     ReviewComparisonRuleExpectation,
 )
-
+from review_comparison_run_evidence import (
+    ReviewComparisonRunEvidence,
+)
+from review_comparison_source_project import (
+    ReviewComparisonSourceProject,
+)
+from review_comparison_stage_evidence import (
+    ReviewComparisonStageEvidence,
+)
+from source.file_analysis_source import FileAnalysisSource
+from source.selected_source_candidate import SelectedSourceCandidate
 
 _PROJECT_ROOT = _MCP_SERVER.parent
 _EXPECTATION_FILE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "review_comparison"
-    / "expectation.json"
+    Path(__file__).parent / "fixtures" / "review_comparison" / "expectation.json"
 )
 """
 solid-name: SolidReviewComparisonE2ELiveBase
@@ -59,6 +55,8 @@ solid-category: test-support
 solid-spec: [SPEC-036, SPEC-041, SPEC-056]
 solid-description: Executes and audits the fixed composite workflow-review smoke scenario used before repeated comparison.
 """
+
+
 class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
     PROJECT_ROOT = _PROJECT_ROOT
     EXPECTED_RULE_RESULTS: ClassVar[list[ReviewComparisonRuleExpectation]] = (
@@ -113,12 +111,9 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
 
     def assert_workflow(self, run: PreservedLiveWorkflowRun) -> None:
         result = ReviewResult.model_validate_json(
-            (
-                run.run_directory
-                / "results"
-                / "review"
-                / "result.json"
-            ).read_text(encoding="utf-8")
+            (run.run_directory / "results" / "review" / "result.json").read_text(
+                encoding="utf-8"
+            )
         )
         self.assertEqual(result.workflow_id, "solid-review")
         self.assertEqual(
@@ -157,10 +152,12 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
                     actual_metric.severity,
                     expected_metric.severity,
                 )
-        self.assertTrue(all(
-            rule_result.provenance.kind == "included"
-            for rule_result in result.rule_results
-        ))
+        self.assertTrue(
+            all(
+                rule_result.provenance.kind == "included"
+                for rule_result in result.rule_results
+            )
+        )
         self._assert_dry_classifications_were_selected(run)
         self._assert_dry_candidate_files_were_read(run)
 
@@ -218,9 +215,7 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
         tool_inputs = self._custom_tool_inputs(self._transcript(run))
 
         for classification in classifications:
-            candidate = SelectedSourceCandidate.model_validate(
-                classification["item"]
-            )
+            candidate = SelectedSourceCandidate.model_validate(classification["item"])
             candidate_path = str(candidate.source.path)
             classification_instance = str(classification["instance_id"])
             read_indexes = [
@@ -281,10 +276,7 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
             target_sha256=self._sha256(self._source_project.review_target),
             effective_instructions_sha256=self._sha256(workflow),
             active_rule_ids=sorted(
-                {
-                    expectation.workflow_id
-                    for expectation in self.EXPECTED_RULE_RESULTS
-                }
+                {expectation.workflow_id for expectation in self.EXPECTED_RULE_RESULTS}
             ),
             review_stage=CodexReviewStageEvidenceReader().read(
                 transcript=transcript,
@@ -298,12 +290,9 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
             ),
             reported_cost_available=False,
             reported_cost_usd=0,
-            retry_count=sum(
-                event.event == "step_attempt_failed" for event in events
-            ),
+            retry_count=sum(event.event == "step_attempt_failed" for event in events),
             error_count=sum(
-                event.event in {"step_rejected", "run_failed"}
-                for event in events
+                event.event in {"step_rejected", "run_failed"} for event in events
             ),
             completed=events[-1].event == "run_completed",
         )
@@ -311,11 +300,9 @@ class SolidReviewComparisonE2ELiveBase(LiveWorkflowE2ELiveBase):
     @staticmethod
     def _transcript(run: PreservedLiveWorkflowRun) -> Path:
         transcripts = sorted(
-            (
-                run.session.artifact_directory
-                / "codex-runtime"
-                / "sessions"
-            ).rglob("*.jsonl")
+            (run.session.artifact_directory / "codex-runtime" / "sessions").rglob(
+                "*.jsonl"
+            )
         )
         if not transcripts:
             raise RuntimeError("Codex workflow session preserved no transcript")

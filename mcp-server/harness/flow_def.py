@@ -12,13 +12,14 @@ from harness.step_def import StepDef
 from harness.workflow_execution_mode import WorkflowExecutionMode
 from harness.workflow_presentation_mode import WorkflowPresentationMode
 
-
 """
 solid-name: FlowDef
 solid-category: model
 solid-spec: [SPEC-030, SPEC-035, SPEC-037, SPEC-039]
 solid-description: Represents a resolved workflow definition.
 """
+
+
 @dataclass(frozen=True)
 class FlowDef:
     name: str

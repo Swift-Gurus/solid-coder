@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """solid-coder pipeline MCP server.
 
 Architecture:
@@ -8,7 +7,6 @@ Architecture:
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 SERVER_DIR = Path(__file__).resolve().parent
 MCP_DIR = SERVER_DIR.parent
@@ -22,12 +20,10 @@ sys.path.insert(0, str(SKILLS_ROOT / "validate-findings" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "synthesize-fixes" / "scripts"))
 sys.path.insert(0, str(SKILLS_ROOT / "prepare-review-input" / "scripts"))
 
-from message_transport_running import MessageTransportRunning
-from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from common.mcp_meta import COMPLETE_FLOW_OUTPUT, LARGE_OUTPUT
-from pipeline.flow_tool_callables_assembler import FlowToolCallablesAssembler
+from message_transport_running import MessageTransportRunning
 from pipeline.tool_callables_building import ToolCallablesBuilding
-
+from pipeline.tool_registry import ToolRegistering
 
 # ── Application facade ────────────────────────────────────────────────────────
 
@@ -36,6 +32,8 @@ solid-name: ApplicationBootstrapper
 solid-category: service
 solid-description: Bootstraps and runs the pipeline tool application.
 """
+
+
 class ApplicationBootstrapper:
     """Wires pipeline services into MCP tools and runs the server.
 
@@ -49,7 +47,7 @@ class ApplicationBootstrapper:
         server: MessageTransportRunning,
         registry: ToolRegistering,
         tool_callables: ToolCallablesBuilding,
-        flow_callables: Optional[ToolCallablesBuilding] = None,
+        flow_callables: ToolCallablesBuilding | None = None,
     ) -> None:
         self._server = server
         self._registry = registry
@@ -64,88 +62,150 @@ class ApplicationBootstrapper:
         reg = self._registry
         tools = self._tool_callables.build()
 
-        reg.register("collect_review_results",
-                     "Collect and summarise all review outputs. Returns verdict (ALL_COMPLIANT|MINOR_ONLY|HAS_SEVERE), summary table, and minor_findings.",
-                     {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["collect_review_results"], meta=LARGE_OUTPUT)
+        reg.register(
+            "collect_review_results",
+            "Collect and summarise all review outputs. Returns verdict (ALL_COMPLIANT|MINOR_ONLY|HAS_SEVERE), summary table, and minor_findings.",
+            {
+                "type": "object",
+                "properties": {"output_root": {"type": "string"}},
+                "required": ["output_root"],
+            },
+            tools["collect_review_results"],
+            meta=LARGE_OUTPUT,
+        )
 
-        reg.register("check_severity",
-                     "Check review findings for SEVERE violations. Returns structured verdict.",
-                     {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["check_severity"])
+        reg.register(
+            "check_severity",
+            "Check review findings for SEVERE violations. Returns structured verdict.",
+            {
+                "type": "object",
+                "properties": {"output_root": {"type": "string"}},
+                "required": ["output_root"],
+            },
+            tools["check_severity"],
+        )
 
-        reg.register("validate_findings",
-                     "Filter findings to changed line ranges and reorganize by file. Writes by-file/*.output.json.",
-                     {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["validate_findings"])
+        reg.register(
+            "validate_findings",
+            "Filter findings to changed line ranges and reorganize by file. Writes by-file/*.output.json.",
+            {
+                "type": "object",
+                "properties": {"output_root": {"type": "string"}},
+                "required": ["output_root"],
+            },
+            tools["validate_findings"],
+        )
 
-        reg.register("load_synthesis_context",
-                     "Load all validated findings for synthesis. Returns per-principle summaries and severity counts.",
-                     {"type": "object", "properties": {"output_root": {"type": "string"}}, "required": ["output_root"]},
-                     tools["load_synthesis_context"], meta=LARGE_OUTPUT)
+        reg.register(
+            "load_synthesis_context",
+            "Load all validated findings for synthesis. Returns per-principle summaries and severity counts.",
+            {
+                "type": "object",
+                "properties": {"output_root": {"type": "string"}},
+                "required": ["output_root"],
+            },
+            tools["load_synthesis_context"],
+            meta=LARGE_OUTPUT,
+        )
 
-        reg.register("generate_report",
-                     "Generate MD + HTML reports from validated findings and synthesized fix plans.",
-                     {"type": "object", "properties": {
-                         "data_dir": {"type": "string"},
-                         "report_dir": {"type": "string"},
-                     }, "required": ["data_dir"]},
-                     tools["generate_report"])
+        reg.register(
+            "generate_report",
+            "Generate MD + HTML reports from validated findings and synthesized fix plans.",
+            {
+                "type": "object",
+                "properties": {
+                    "data_dir": {"type": "string"},
+                    "report_dir": {"type": "string"},
+                },
+                "required": ["data_dir"],
+            },
+            tools["generate_report"],
+        )
 
-        reg.register("validate_architecture",
-                     "Validate arch.json structure and semantic SOLID constraints.",
-                     {"type": "object", "properties": {"arch_path": {"type": "string"}}, "required": ["arch_path"]},
-                     tools["validate_architecture"])
+        reg.register(
+            "validate_architecture",
+            "Validate arch.json structure and semantic SOLID constraints.",
+            {
+                "type": "object",
+                "properties": {"arch_path": {"type": "string"}},
+                "required": ["arch_path"],
+            },
+            tools["validate_architecture"],
+        )
 
-        reg.register("split_implementation_plan",
-                     "Split implementation-plan.json into semantically grouped chunks.",
-                     {"type": "object", "properties": {
-                         "plan_path": {"type": "string"},
-                         "output_dir": {"type": "string"},
-                         "arch_path": {"type": "string"},
-                     }, "required": ["plan_path", "output_dir"]},
-                     tools["split_implementation_plan"])
+        reg.register(
+            "split_implementation_plan",
+            "Split implementation-plan.json into semantically grouped chunks.",
+            {
+                "type": "object",
+                "properties": {
+                    "plan_path": {"type": "string"},
+                    "output_dir": {"type": "string"},
+                    "arch_path": {"type": "string"},
+                },
+                "required": ["plan_path", "output_dir"],
+            },
+            tools["split_implementation_plan"],
+        )
 
-        reg.register("search_codebase",
-                     "Search for reusable implementations and record successful health-check DRY-search completion.",
-                     {"type": "object", "properties": {
-                         "sources_dir": {"type": "string"},
-                         "plan_path": {"type": "string"},
-                         "query": {
-                             "type": "string",
-                             "description": "Space-separated type-name, responsibility, and synonym terms.",
-                         },
-                         "tags": {
-                             "type": "array",
-                             "items": {"type": "string"},
-                             "description": (
-                                 "Each array item MUST be exactly one search term containing no spaces. "
-                                 "Never put an aggregated query in tags; use query for space-separated input."
-                             ),
-                         },
-                         "spec_numbers": {"type": "array", "items": {"type": "string"}},
-                         "min_matches": {"type": "integer"},
-                         "output_dir": {
-                             "type": "string",
-                             "description": "Required during health checks; use the output_dir from the prompt.",
-                         },
-                     }, "required": []},
-                     tools["search_codebase"], meta=LARGE_OUTPUT)
+        reg.register(
+            "search_codebase",
+            "Search for reusable implementations and record successful health-check DRY-search completion.",
+            {
+                "type": "object",
+                "properties": {
+                    "sources_dir": {"type": "string"},
+                    "plan_path": {"type": "string"},
+                    "query": {
+                        "type": "string",
+                        "description": "Space-separated type-name, responsibility, and synonym terms.",
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Each array item MUST be exactly one search term containing no spaces. "
+                            "Never put an aggregated query in tags; use query for space-separated input."
+                        ),
+                    },
+                    "spec_numbers": {"type": "array", "items": {"type": "string"}},
+                    "min_matches": {"type": "integer"},
+                    "output_dir": {
+                        "type": "string",
+                        "description": "Required during health checks; use the output_dir from the prompt.",
+                    },
+                },
+                "required": [],
+            },
+            tools["search_codebase"],
+            meta=LARGE_OUTPUT,
+        )
 
-        reg.register("prepare_review_input",
-                     "Prepare git changes (staged, unstaged, untracked) into structured review-input.json.",
-                     {"type": "object", "properties": {
-                         "candidate_tags": {"type": "array", "items": {"type": "string"}},
-                     }},
-                     tools["prepare_review_input"])
+        reg.register(
+            "prepare_review_input",
+            "Prepare git changes (staged, unstaged, untracked) into structured review-input.json.",
+            {
+                "type": "object",
+                "properties": {
+                    "candidate_tags": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+            tools["prepare_review_input"],
+        )
 
-        reg.register("submit_findings",
-                     "Score a partial review output for one principle via severity-bands in rule.md and write review-output.json. LLM provides metrics; server fills scoring and findings.",
-                     {"type": "object", "properties": {
-                         "partial_output": {"type": "object"},
-                         "output_path": {"type": "string"},
-                     }, "required": ["partial_output", "output_path"]},
-                     tools["submit_findings"])
+        reg.register(
+            "submit_findings",
+            "Score a partial review output for one principle via severity-bands in rule.md and write review-output.json. LLM provides metrics; server fills scoring and findings.",
+            {
+                "type": "object",
+                "properties": {
+                    "partial_output": {"type": "object"},
+                    "output_path": {"type": "string"},
+                },
+                "required": ["partial_output", "output_path"],
+            },
+            tools["submit_findings"],
+        )
 
         _measurement_schema = {
             "type": "object",
@@ -177,7 +237,18 @@ class ApplicationBootstrapper:
             "required": ["unit_name", "unit_kind", "metrics"],
             "properties": {
                 "unit_name": {"type": "string"},
-                "unit_kind": {"type": "string", "enum": ["class", "struct", "enum", "protocol", "extension", "actor", "function"]},
+                "unit_kind": {
+                    "type": "string",
+                    "enum": [
+                        "class",
+                        "struct",
+                        "enum",
+                        "protocol",
+                        "extension",
+                        "actor",
+                        "function",
+                    ],
+                },
                 "line_start": {"type": "integer"},
                 "line_end": {"type": "integer"},
                 "metrics": {
@@ -207,48 +278,80 @@ class ApplicationBootstrapper:
                 },
             },
         }
-        reg.register("submit_batch_findings",
-                     "Submit findings for all reviewed principles in one unified payload. Discovers principle keys from metrics, scores each, writes output_dir/{principle}/review-output.json.",
-                     {"type": "object", "properties": {
-                         "output_dir": {"type": "string"},
-                         "submissions": {
-                             "type": "object",
-                             "description": "Map of principle_name to review-output payload (references/review-output.schema.json). Every metric must include value, is_exception, and additional_info {reasoning, evidence}.",
-                             "additionalProperties": _submission_schema,
-                         },
-                     }, "required": ["output_dir", "submissions"]},
-                     tools["submit_batch_findings"])
+        reg.register(
+            "submit_batch_findings",
+            "Submit findings for all reviewed principles in one unified payload. Discovers principle keys from metrics, scores each, writes output_dir/{principle}/review-output.json.",
+            {
+                "type": "object",
+                "properties": {
+                    "output_dir": {"type": "string"},
+                    "submissions": {
+                        "type": "object",
+                        "description": "Map of principle_name to review-output payload (references/review-output.schema.json). Every metric must include value, is_exception, and additional_info {reasoning, evidence}.",
+                        "additionalProperties": _submission_schema,
+                    },
+                },
+                "required": ["output_dir", "submissions"],
+            },
+            tools["submit_batch_findings"],
+        )
 
-        reg.register("submit_fix",
-                     "Submit concrete fixes for ALL SEVERE violations in one call.",
-                     {"type": "object", "properties": {
-                         "output_dir": {"type": "string"},
-                         "fixes": {
-                             "type": "array",
-                             "items": {
-                                 "type": "object",
-                                 "required": ["rule_id", "file_path", "unit_name", "suggested_fix"],
-                             },
-                         },
-                     }, "required": ["output_dir", "fixes"]},
-                     tools["submit_fix"])
+        reg.register(
+            "submit_fix",
+            "Submit concrete fixes for ALL SEVERE violations in one call.",
+            {
+                "type": "object",
+                "properties": {
+                    "output_dir": {"type": "string"},
+                    "fixes": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "rule_id",
+                                "file_path",
+                                "unit_name",
+                                "suggested_fix",
+                            ],
+                        },
+                    },
+                },
+                "required": ["output_dir", "fixes"],
+            },
+            tools["submit_fix"],
+        )
 
-        reg.register("validate_phase_output",
-                     "Validate a JSON file against a JSON schema.",
-                     {"type": "object", "properties": {
-                         "json_path": {"type": "string"},
-                         "schema_path": {"type": "string"},
-                     }, "required": ["json_path", "schema_path"]},
-                     tools["validate_phase_output"])
+        reg.register(
+            "validate_phase_output",
+            "Validate a JSON file against a JSON schema.",
+            {
+                "type": "object",
+                "properties": {
+                    "json_path": {"type": "string"},
+                    "schema_path": {"type": "string"},
+                },
+                "required": ["json_path", "schema_path"],
+            },
+            tools["validate_phase_output"],
+        )
 
-        reg.register("get_output_path",
-                     "Compute the standardized home-dir output path for a solid-coder operation. "
-                     "Reads CLAUDE_PROJECT_DIR from env, derives Claude-style project slug, returns timestamped output_root.",
-                     {"type": "object", "properties": {
-                         "operation": {"type": "string", "enum": ["review", "refactor", "implement", "validate-spec"]},
-                         "spec_number": {"type": "string"},
-                     }, "required": ["operation"]},
-                     tools["get_output_path"])
+        reg.register(
+            "get_output_path",
+            "Compute the standardized home-dir output path for a solid-coder operation. "
+            "Reads CLAUDE_PROJECT_DIR from env, derives Claude-style project slug, returns timestamped output_root.",
+            {
+                "type": "object",
+                "properties": {
+                    "operation": {
+                        "type": "string",
+                        "enum": ["review", "refactor", "implement", "validate-spec"],
+                    },
+                    "spec_number": {"type": "string"},
+                },
+                "required": ["operation"],
+            },
+            tools["get_output_path"],
+        )
 
     def _register_flow_tools(self) -> None:
         if self._flow_callables is None:
@@ -342,7 +445,9 @@ class ApplicationBootstrapper:
             meta=COMPLETE_FLOW_OUTPUT,
         )
 
+
 if __name__ == "__main__":
+    from health.config.solid_coder_config_loader import SolidCoderConfigLoader
     from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
     from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
     from pipeline.flow_run_creator import FlowRunCreator
@@ -350,6 +455,8 @@ if __name__ == "__main__":
     ApplicationBootstrapperFactory(
         plugin_root=PLUGIN_ROOT,
         skills_root=SKILLS_ROOT,
-        flow_run_creator=FlowRunCreator(PLUGIN_ROOT),
+        flow_run_creator=FlowRunCreator(
+            PLUGIN_ROOT, config_loader=SolidCoderConfigLoader()
+        ),
         flow_renderer_creator=FlowResultRendererCreator(),
     ).make().run()

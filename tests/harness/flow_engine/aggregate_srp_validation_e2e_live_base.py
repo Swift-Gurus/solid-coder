@@ -6,13 +6,14 @@ from live_session_artifact_scope import LiveSessionArtifactScope
 from live_workflow_scenario import LiveWorkflowScenario
 from srp_validation_e2e_live_base import SRPValidationE2ELiveBase
 
-
 """
 solid-name: AggregateSRPValidationE2ELiveBase
 solid-category: test-support
 solid-spec: [SPEC-045]
 solid-description: Applies locked SRP expectations to the canonical rules running through aggregate execution.
 """
+
+
 class AggregateSRPValidationE2ELiveBase(SRPValidationE2ELiveBase):
     __test__ = False
     REVIEW_WORKFLOW_ID = "solid-file-review-aggregate"

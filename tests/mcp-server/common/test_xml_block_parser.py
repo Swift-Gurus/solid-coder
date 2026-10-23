@@ -10,11 +10,10 @@ _MCP_SERVER = Path(__file__).resolve().parents[3] / "mcp-server"
 if str(_MCP_SERVER) not in sys.path:
     sys.path.insert(0, str(_MCP_SERVER))
 
-from common.xml_block_parser import parse  # noqa: E402
+from common.xml_block_parser import parse
 
 
 class TestXmlBlockParser(unittest.TestCase):
-
     def test_inline_exception_reference_is_not_an_opening_block(self) -> None:
         content = """
 <detection id="OCP-1">

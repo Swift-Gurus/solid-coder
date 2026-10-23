@@ -7,13 +7,14 @@ from harness.event_appender import EventAppending
 from harness.step_instance import StepInstance
 from harness.step_skip_recording import StepSkipRecording
 
-
 """
 solid-name: StepSkipRecorder
 solid-category: service
 solid-spec: [SPEC-037]
 solid-description: Records conditionally skipped workflow-step instances as durable events.
 """
+
+
 class StepSkipRecorder(StepSkipRecording):
     def __init__(
         self,
@@ -28,7 +29,9 @@ class StepSkipRecorder(StepSkipRecording):
         events_path: str,
         ready: list[StepInstance],
     ) -> None:
-        skipped_instances = [instance for instance in ready if instance.skip is not None]
+        skipped_instances = [
+            instance for instance in ready if instance.skip is not None
+        ]
         for instance in skipped_instances:
             skip = instance.skip
             if skip is None:
@@ -42,9 +45,7 @@ class StepSkipRecorder(StepSkipRecording):
                 else None
             )
             siblings = [
-                sibling
-                for sibling in ready
-                if sibling.step_id == instance.step_id
+                sibling for sibling in ready if sibling.step_id == instance.step_id
             ]
             skipped_siblings = [
                 sibling for sibling in siblings if sibling.skip is not None

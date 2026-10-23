@@ -13,7 +13,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 SCRIPT = (
     Path(__file__).resolve().parents[3]
     / "mcp-server"
@@ -32,6 +31,7 @@ def _run(payload: dict) -> tuple[int, str, str]:
         capture_output=True,
         text=True,
         env=env,
+        check=False,
     )
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -86,6 +86,8 @@ solid-name: ValidateJsonSchemaCLITests
 solid-category: unit-test
 solid-description: Verifies the schema-validation hook CLI accepts valid writes and blocks malformed structured artifacts.
 """
+
+
 class ValidateJsonSchemaCLITests(unittest.TestCase):
     def test_non_json_file_is_allowed(self):
         rc, stdout, _ = _run(_payload("/tmp/random.txt", "hello"))
@@ -142,9 +144,7 @@ class ValidateJsonSchemaCLITests(unittest.TestCase):
     def test_plan_missing_reconciliation_decisions_is_blocked(self):
         bad = dict(_VALID_PLAN)
         del bad["reconciliation_decisions"]
-        rc, stdout, _ = _run(
-            _payload("/tmp/implementation-plan.json", json.dumps(bad))
-        )
+        rc, stdout, _ = _run(_payload("/tmp/implementation-plan.json", json.dumps(bad)))
         self.assertEqual(rc, 0)
         self.assertTrue(_is_blocked(stdout))
         self.assertIn("reconciliation_decisions", _block_reason(stdout))
@@ -162,6 +162,7 @@ class ValidateJsonSchemaCLITests(unittest.TestCase):
             capture_output=True,
             text=True,
             env={**os.environ, "CLAUDE_PLUGIN_ROOT": str(PLUGIN_ROOT)},
+            check=False,
         )
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout.strip(), "")

@@ -14,13 +14,14 @@ from harness.step_output_submission_mapping_result import (
     StepOutputSubmissionMappingResult,
 )
 
-
 """
 solid-name: AggregateEnvelopeSubmissionRejector
 solid-category: service
 solid-spec: [SPEC-052]
 solid-description: Builds rejected aggregate mappings from structural errors and recovery guidance.
 """
+
+
 class AggregateEnvelopeSubmissionRejector(AggregateEnvelopeSubmissionRejecting):
     def __init__(
         self,

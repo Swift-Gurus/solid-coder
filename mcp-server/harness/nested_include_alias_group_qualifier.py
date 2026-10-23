@@ -7,13 +7,14 @@ from harness.include_alias_group import IncludeAliasGroup
 from harness.include_alias_group_qualifying import IncludeAliasGroupQualifying
 from harness.nested_identity_qualifying import NestedIdentityQualifying
 
-
 """
 solid-name: NestedIncludeAliasGroupQualifier
 solid-category: service
 solid-spec: [SPEC-035, SPEC-037]
 solid-description: Prefixes nested group identities and typed local references while preserving external references.
 """
+
+
 class NestedIncludeAliasGroupQualifier(IncludeAliasGroupQualifying):
     def __init__(
         self,
@@ -46,9 +47,7 @@ class NestedIncludeAliasGroupQualifier(IncludeAliasGroupQualifying):
             ],
             combined_presentation=(
                 CombinedRulePresentation(
-                    group_alias=(
-                        f"{alias}.{group.combined_presentation.group_alias}"
-                    ),
+                    group_alias=(f"{alias}.{group.combined_presentation.group_alias}"),
                     rule_alias=group.combined_presentation.rule_alias,
                 )
                 if group.combined_presentation is not None
