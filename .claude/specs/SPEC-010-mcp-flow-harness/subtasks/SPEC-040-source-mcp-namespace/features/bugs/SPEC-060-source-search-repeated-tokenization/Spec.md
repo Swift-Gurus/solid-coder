@@ -2,7 +2,7 @@
 number: SPEC-060
 feature: source-search-repeated-tokenization
 type: bug
-status: in-progress
+status: done
 parent: SPEC-040
 blocked-by: []
 blocking: []
@@ -251,7 +251,7 @@ flowchart LR
 - [x] Eligibility and proposed-path filtering precede content reads.
 - [x] Candidate metadata and exact self-exclusion contracts are covered explicitly.
 - [x] Equivalent-input parity and matching/nonmatching-file analysis-budget tests pass.
-- [ ] Full non-live and relevant live verification passes after unification.
+- [x] Full non-live and relevant live verification passes after unification (see the 2026-10-23 evidence reconciliation; historical DRY-3 failure retained below).
 - [x] Actual slow-request measurements are recorded, or unavailable inputs are
   reported explicitly without claiming the real-project timeout is resolved.
 
@@ -351,7 +351,8 @@ an unresolved classification/locked-expectation mismatch, not an engine count
 error. It is not hidden by changing the expected score or rewriting the rule
 inside the search fix. The investigation is tracked separately in
 [SPEC-061 — DRY-3 missing-abstraction classification](../../../../../../SPEC-001-solid-coder/features/SPEC-036-bundled-solid-workflows/subtasks/SPEC-056-dry-candidate-classification-workflow/features/bugs/SPEC-061-dry-3-missing-abstraction-classification/Spec.md).
-Full live verification remains open, so this bug is not marked done.
+At that checkpoint full live verification remained open, so the bug was not
+marked done. The later evidence reconciliation below supersedes that status.
 
 A preceding Codex attempt never created a flow: `flow_start` was unavailable,
 and stderr also recorded HTTP 503 with “Plugin directory is temporarily
@@ -371,3 +372,26 @@ request were not available for a post-fix replay; the reported real-project
 timeout is therefore not claimed resolved by measurement. Search discovery
 and preparation budgets are verified by deterministic tests, separately from
 the remaining live classification mismatch.
+
+### Acceptance reconciliation — 2026-10-23
+
+The search implementation and its required verification are complete on the
+recorded evidence. This status change does not claim a fresh local test pass.
+
+| Acceptance requirement | Recorded evidence |
+|---|---|
+| Preparation regression, matching precedence, request isolation, real entry points, and bounded timing | The original verification above records failing-before/passing-after tests, 38-to-one preparation counts, both real entry points, and the bounded diagnostic. |
+| Unified discovery, early filtering, typed metadata, exact exclusions, parity, and parser budgets | Follow-up verification above records 2,453 non-live passes after unification, including resource/symlink filtering, extension overrides, typed provenance/order parity, parser budgets, and corrected public-review scenario construction. |
+| Full non-live and relevant live verification after unification | SPEC-055's [migration validation](../../../../../../SPEC-001-solid-coder/features/SPEC-036-bundled-solid-workflows/subtasks/SPEC-055-count-based-rule-workflow-migration/resources/RuleMigrationValidation-2026-10-22.md) records a later full non-live checkpoint of 3,069 passes and fresh passing evidence for all eight DRY case configurations through `solid-review`, including repository protocol reuse and the empty-candidate within-unit case on both backends. SPEC-069 subsequently records 3,142 non-live passes and ten shared live engine checks. |
+| Actual slow-project request | The original project and exact request remain unavailable, as allowed by the final DoD item. No real-project timeout resolution is claimed. |
+
+The old Codex DRY-3 result remains a failed classification sample, not a passing
+search result retroactively relabeled. SPEC-061 records withdrawal of that
+workflow requirement; SPEC-056 records the current three-observation contract
+and its passing locked cases. Legacy semantics remain unchanged. The independent
+full native legacy/workflow health-check comparison remains open in SPEC-050
+and SPEC-036.
+
+Raw artifacts did not transfer to this station. The attempted focused test on
+2026-10-23 stopped before collection because Python 3.12 has no `pytest`;
+infrastructure was not repaired. This does not add new verification evidence.

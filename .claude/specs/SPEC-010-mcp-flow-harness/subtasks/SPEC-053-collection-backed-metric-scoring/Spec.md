@@ -2,7 +2,7 @@
 number: SPEC-053
 feature: collection-backed-metric-scoring
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-037, SPEC-039]
 blocking: [SPEC-054, SPEC-055, SPEC-056]

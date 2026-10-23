@@ -2,7 +2,7 @@
 number: SPEC-045
 feature: aggregate-workflow-execution
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-037, SPEC-042, SPEC-043, SPEC-044]
 blocking: [SPEC-036]

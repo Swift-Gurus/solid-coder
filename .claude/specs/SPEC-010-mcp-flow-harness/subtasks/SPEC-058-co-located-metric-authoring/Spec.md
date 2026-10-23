@@ -2,7 +2,7 @@
 number: SPEC-058
 feature: co-located-metric-authoring
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-039, SPEC-053, SPEC-054]
 blocking: []

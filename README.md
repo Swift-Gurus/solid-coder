@@ -15,7 +15,35 @@ The most important idea is that **rules are applied before code is written, and 
 
 ---
 
-## Python requirements
+## Development setup
+
+Project tooling is declared in `.config/mise/config.toml`: Python 3.12, Ruff,
+and Lefthook. Ruby is inherited from the machine's global mise setup. From the
+checkout, run:
+
+```bash
+mise install
+mise run install
+mise run lint
+mise run test
+```
+
+Mise creates and activates the ignored `.venv/` for this project. The install
+task installs the Python dependencies from `requirements.txt` there. The existing
+Lefthook and conventional-commits setup is unchanged. The lint task checks
+without applying fixes; the test task runs non-live suites in separate processes
+to preserve their import layout.
+Live model checks run separately, after non-live checks pass, and require the
+existing model profiles, authentication, and MCP setup. Swift semantic-analysis
+tests also require a working Xcode/SourceKit installation on macOS.
+
+Use a mise-activated shell or `mise exec -- <command>` to use these tools.
+Launch Claude/Codex from that environment so Python MCP servers and hooks inherit
+the project's virtualenv on `PATH`. Changes do not update an already running
+desktop app's environment. Personal overrides belong in the ignored
+`.config/mise/config.local.toml`.
+
+### Python requirements
 
 Use **Python 3.12** for the plugin. From the plugin checkout, install dependencies
 into the Python environment that will run the plugin:

@@ -2,7 +2,7 @@
 number: SPEC-052
 feature: aggregate-partial-submission-recovery
 type: bug
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-045]
 blocking: [SPEC-036]

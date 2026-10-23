@@ -2,7 +2,7 @@
 number: SPEC-054
 feature: deterministic-metric-reducers
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-053]
 blocking: [SPEC-057]

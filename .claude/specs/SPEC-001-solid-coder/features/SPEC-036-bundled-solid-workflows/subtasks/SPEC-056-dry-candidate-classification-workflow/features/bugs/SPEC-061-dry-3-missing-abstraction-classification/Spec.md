@@ -2,7 +2,7 @@
 number: SPEC-061
 feature: dry-3-missing-abstraction-classification
 type: bug
-status: in-progress
+status: deferred
 parent: SPEC-056
 blocked-by: []
 blocking: []
@@ -11,6 +11,16 @@ blocking: []
 # DRY-3 missing-abstraction classification differs between live backends
 
 ## Description
+
+**Bookkeeping reconciliation — 2026-10-23:** deferred because the user withdrew
+the requirement, not because the original classification discrepancy was fixed.
+Reintroduction requires a new policy decision. The old reproduction, proposed
+fix, test plan, and results below are historical; they are not instructions to
+restore the removed metric or its four-observation expectations. SPEC-056 and
+SPEC-055's 2026-10-22 validation record the current DRY-1/DRY-2 contract and its
+locked passing cases. The original SPEC-065 helper expectation was separately
+superseded by the approved identical-forwarding-body policy; it is no longer an
+active deferred false-positive requirement.
 
 **Current decision — 2026-10-21:** the user withdrew the separate DRY-3
 missing-abstraction check for now. Remove its hypothetical-reuse prompt,
@@ -43,6 +53,9 @@ each submitted observation collection, so an engine counting defect is not
 established.
 
 ## Steps to Reproduce
+
+Historical setup before the DRY-3 withdrawal; the four-value contract below
+does not describe the current bundled workflow.
 
 1. Use `tests/principles/DRY/fixtures/fixture-1.swift` unchanged. Its
    `PayrollLedger.grossWages` and `PayrollLedger.reimbursements` methods repeat
@@ -200,6 +213,10 @@ sequenceDiagram
 
 ## Test Plan
 
+**Withdrawn plan:** these cases describe the rejected DRY-3 experiment. Preserve
+them as evidence, not active acceptance requirements. Current DRY validation is
+owned by SPEC-056 and the SPEC-055 migration report.
+
 - When the real DRY prompt is rendered, the generic composition distinction is
   present without new counting instructions; the assertion fails before the
   wording change and passes after it.
@@ -254,12 +271,19 @@ The paired Claude attempt and submission failures are recorded in SPEC-067.
 After withdrawing only the experimental wording and corresponding three
 prompt-string assertions, the focused integration suite again passed **12 tests
 and 6 subtests**. All scoring assertions, live expectations, schemas, and source
-fixtures remain unchanged. The bug remains open.
+fixtures remain unchanged. At that checkpoint the bug remained open; its
+requirement was subsequently withdrawn rather than fixed.
 
 ## Definition of Done
 
 - [x] The observed empty collection is traced through model evidence and MCP scoring.
 - [x] The candidate is exercised and its unsuccessful live outcome is preserved; unproven wording is withdrawn.
 - [x] Non-live checks and focused rollback validation pass without scoring changes.
-- [ ] Locked Codex and Claude positive cases pass across isolated and aggregate contexts with preserved source evidence.
+- **Withdrawn — 2026-10-21:** ~~Locked Codex and Claude positive cases pass across isolated and aggregate contexts with preserved source evidence.~~ This DRY-3 requirement is not a closure prerequisite and is not claimed satisfied.
 - [x] The extracted-helper comparison is recorded without weakening its expectations.
+
+These checked items record investigation and rollback evidence only. They do
+not establish a successful DRY-3 fix. Removal of DRY-3 from current prompts,
+submissions, and results is recorded by SPEC-056's completed migration and
+SPEC-055's validation report; the current live harness also explicitly rejects
+`missing_abstractions` in target-analysis outputs.

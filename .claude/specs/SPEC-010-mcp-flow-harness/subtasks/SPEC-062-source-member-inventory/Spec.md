@@ -2,7 +2,7 @@
 number: SPEC-062
 feature: source-member-inventory
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-040]
 blocking: []

@@ -1,0 +1,28 @@
+# Project tools and tasks. Run `mise install`, then `mise run install`.
+# https://mise.jdx.dev/mise-cookbook/python.html
+
+[tools]
+python = "3.12.15"
+lefthook = "latest"
+ruff = "0.17.1"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.install]
+description = "Install Python dependencies into the project virtualenv"
+run = "python -m pip install -r requirements.txt"
+
+[tasks.lint]
+description = "Check Python with Ruff without changing files"
+run = "ruff check ."
+
+[tasks.test]
+description = "Run all non-live test groups in separate processes"
+run = [
+    "python -m pytest tests/harness/flow_engine --ignore-glob='*live.py' -q --tb=short",
+    "python -m pytest tests/mcp-server tests/mcp -q --tb=short",
+    "python -m pytest tests/harness tests/hooks tests/integration tests/validators tests/coding tests/testing --ignore=tests/harness/flow_engine --ignore=tests/harness/integration_tests --ignore-glob='*live.py' -q --tb=short",
+    "python -m pytest scripts/tests -q --tb=short",
+    "python -m pytest mcp-server/build/apple/tests skills .claude/skills/version-bumper/scripts/tests -q --tb=short",
+]

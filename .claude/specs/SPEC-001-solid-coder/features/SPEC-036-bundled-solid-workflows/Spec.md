@@ -48,6 +48,24 @@ unchanged passing retry, plus exact run IDs. Shared configuration/import and
 cleanup-hook repairs were validated without changing legacy rule semantics.
 This does not close the remaining parent deliverables below.
 
+### Acceptance reconciliation — 2026-10-23
+
+This is a bookkeeping review of committed evidence, not a fresh test run.
+The transferred checkout has no raw test-artifact copies. The rule results above
+remain recorded evidence; they do not establish every broader acceptance item.
+
+| Acceptance area | Evidence and disposition |
+|---|---|
+| US-1: stable review package and validated principle measurements | SPEC-055's [migration validation](subtasks/SPEC-055-count-based-rule-workflow-migration/resources/RuleMigrationValidation-2026-10-22.md) records all eleven rule families on both backends, including SRP/OCP/LSP/ISP/DRY. Explicit unavailable LSP measurements are retained rather than fabricated as zero. The principle-coverage DoD item is complete. |
+| US-1: every target variant | Still open under SPEC-041. File-based rule evidence does not prove working-tree, files, folder, Git-range/PR, buffer, and code-block normalization through the public review entry point. |
+| US-1/US-2: compact context, dependency handling, aggregation, and gate execution | Existing implementation boundary and checked gate items below remain recorded implementation evidence. SPEC-067 records inheritance, coverage, replay, and phase-boundary checks; its later full-gate failures remain unresolved validation. No new end-to-end pass is inferred here. |
+| US-2: auditable test-code exceptions | Still open. The temporary test-tree exclusion remains; filtered-rule checks do not prove the exemption requirements or justify removing the exclusion. |
+| US-3: reusable refactor | Still open. `solid-refactor` is not shipped; initial/verification includes, fix application, iteration caps, and residual findings are not established. |
+| US-4: shared measurements and comparison | Rule workflows and recorded per-run measurements exist, but the same-source native legacy/workflow comparison in SPEC-050 and the complete gate/review/refactor comparison remain open. Rule-specific live passes are not comparison evidence. |
+
+The complete reconciliation and station setup result are recorded in
+[the bookkeeping report](../../../BookkeepingReconciliation-2026-10-23.md).
+
 ## Input / Output
 
 | Workflow | Input | Output |
@@ -238,7 +256,7 @@ Before rerunning the comparison:
 ## Definition of Done
 
 - [ ] All three public workflow packages are shipped and start by stable ID.
-- [ ] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics.
+- [x] `solid-review` covers SRP, OCP, LSP, ISP, and DRY with complete validated metrics (including explicit unavailable outcomes where required evidence is unresolved; SPEC-055 validation above).
 - [x] Gate-on-write defaults to `solid-gate-on-write`; direct health-review prompt
   execution is available only through the explicit SPEC-050 comparison selector.
 - [x] Gate artifacts are routed exclusively by server-owned flow-run context; model calls cannot select or redirect persistence paths.

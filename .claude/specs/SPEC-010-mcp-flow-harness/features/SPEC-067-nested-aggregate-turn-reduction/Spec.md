@@ -360,11 +360,30 @@ from `20261021T191634Z-593e1e4c` through `20261021T192251Z-e9b08741`.
 These successful mechanics checks do not reclassify either full-gate failure
 as a pass, nor validate the withdrawn prompt experiment for release.
 
-Remaining before closing the entire spec: resolve the recorded real-gate
-submission/classification failures. Required startup is now tested, not claimed
-to solve either of those separate issues. SPEC-048 separately retains strict
-capability enforcement and authoritative child-completion follow-ups; passing
-delegate JSON is not proof of those stronger guarantees.
+At that checkpoint, closing the entire spec still required resolving the
+recorded real-gate submission/classification failures. The current disposition
+of each requirement is reconciled below. Required startup is tested, not claimed
+to solve the separate submission/classification issues. SPEC-048 separately
+retains strict capability enforcement and authoritative child-completion
+follow-ups; passing delegate JSON is not proof of those stronger guarantees.
+
+### Acceptance reconciliation — 2026-10-23
+
+| Acceptance area | Evidence and current disposition |
+|---|---|
+| US-1 P1–P4: policy inheritance, explicit opt-outs, child-only opt-in, and replay | Implementation and validation checkpoints above record passing deterministic policy/replay cases. Implemented and verified in the recorded runs. |
+| US-2 F1–F8: resolved work combines; engine work and unresolved inputs remain boundaries | Five-pair/ten-output submission, known-condition/materialized-loop, operation, and render-dependency cases are recorded above. Phase-split audit adds four focused integration cases and a full non-live checkpoint. Implemented and verified in the recorded runs. |
+| US-3 C1–C7: coverage, partial recovery, identity, empty work, equivalence, and audit reasons | Checkpoints above record original-step completions, invalid-producer rejection, replay, equivalence, and typed `aggregate_phase_planned` evidence. The final retained-tree checkpoint records 3,052 non-live passes and ten shared live mechanics checks. |
+| Approved LSP coverage and fatal-call policy | The 28 real-workflow granular/aggregate integration cases establish deterministic detection and exact classification coverage. SPEC-055's later migration validation records fresh basic/relationship LSP passes on both backends with explicit unavailable outcomes. |
+| Required Codex startup follow-up | Both permanent delayed/failed-start checks passed, with artifacts and child identity recorded above. Historical missing-tool attempts remain failures. |
+| DRY-3 gate classification requirement | Withdrawn by the user on 2026-10-21, recorded in SPEC-061 and SPEC-056. The old Codex DRY-3 mismatch remains a historical failure; no restoration or successful fix is required or claimed. SPEC-065's old helper expectation was separately superseded by the identical-wrapper policy. |
+| Final real-gate validation on both locked backends | Still open. Later SPEC-055 DRY rule passes and SPEC-069's six Frontmatter plus ten shared engine passes do not replay the full gate. No later completed Claude gate evidence resolves the malformed-submission run under the retained contract, and no final paired gate validation is recorded after the policy changes. |
+
+The spec stays `in-progress` for the last row. The earlier successful gate runs
+and subsequent failures remain distinct samples; no one-sample turn reduction
+is promoted into an accuracy or general performance claim. Raw artifacts are
+absent on this station, and the 2026-10-23 test attempt was blocked before
+collection by missing `pytest`. No new passing outcome is inferred.
 
 ## Definition of Done
 

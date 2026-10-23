@@ -2,7 +2,7 @@
 number: SPEC-043
 feature: combined-rule-presentation
 type: subtask
-status: complete
+status: done
 parent: SPEC-010
 blocked-by: [SPEC-037, SPEC-039, SPEC-042]
 blocking: [SPEC-036]

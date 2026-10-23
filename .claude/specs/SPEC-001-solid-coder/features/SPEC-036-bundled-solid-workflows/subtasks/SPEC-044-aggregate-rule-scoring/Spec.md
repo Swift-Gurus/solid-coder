@@ -2,7 +2,7 @@
 number: SPEC-044
 feature: aggregate-rule-scoring
 type: subtask
-status: completed
+status: done
 parent: SPEC-036
 blocked-by: [SPEC-039, SPEC-042, SPEC-043]
 blocking: [SPEC-036]

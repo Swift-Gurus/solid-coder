@@ -167,5 +167,5 @@ flowchart LR
 - [x] Iteration loop with configurable max iterations
 - [x] Delta-aware review (changed ranges filtering)
 - [ ] build-spec-from-code skill — analyze existing code, produce rewrite spec with subtasks
-- [ ] Workflow package discovery and stable ID-based composition — SPEC-035
+- [x] Workflow package discovery and stable ID-based composition — SPEC-035 (its completed DoD records collision-checked discovery, ID composition, and Claude/Codex bare-ID live checks; SPEC-055 also records execution through the public `solid-review` ID).
 - [ ] Bundled `solid-review`, `solid-gate-on-write`, and `solid-refactor` workflows — SPEC-036
