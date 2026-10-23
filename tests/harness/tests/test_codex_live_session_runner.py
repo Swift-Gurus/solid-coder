@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from subprocess import CompletedProcess
 from unittest.mock import patch
@@ -13,15 +15,14 @@ _HARNESS_DIR = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIR) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIR))
 
-from codex_live_session_runner import CodexLiveSessionRunner  # noqa: E402
-from live_session_artifact_scope import LiveSessionArtifactScope  # noqa: E402
-from live_session_request import LiveSessionRequest  # noqa: E402
-from live_session_result import LiveSessionResult  # noqa: E402
-from review_comparison_stage_evidence import ReviewComparisonStageEvidence  # noqa: E402
+from codex_live_session_runner import CodexLiveSessionRunner
+from live_session_artifact_scope import LiveSessionArtifactScope
+from live_session_request import LiveSessionRequest
+from live_session_result import LiveSessionResult
+from review_comparison_stage_evidence import ReviewComparisonStageEvidence
 
 
 class TestCodexLiveSessionRunner(unittest.TestCase):
-
     def test_returns_child_thread_id_and_final_output(self) -> None:
         runner = CodexLiveSessionRunner()
         event_stream = '{"type":"thread.started","thread_id":"codex-child"}\n'
@@ -105,9 +106,7 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
                 )
 
         command = process.call_args.args[0]
-        self.assertFalse(
-            any("mcp_servers." in argument for argument in command)
-        )
+        self.assertFalse(any("mcp_servers." in argument for argument in command))
         environment = process.call_args.kwargs["env"]
         self.assertNotIn("CLAUDE_PROJECT_DIR", environment)
         self.assertEqual(
@@ -121,6 +120,127 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "no child thread ID"):
             self._run_with_output(runner, '{"type":"turn.started"}\n', "completed")
+
+    def test_install_trusts_only_the_matching_copied_mise_config(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            request = replace(self._request(), plugin_root=root / "checkout")
+            source = request.plugin_root / ".config/mise/config.toml"
+            source.parent.mkdir(parents=True)
+            source.write_text('[tools]\npython = "3.12.15"\n')
+            home = root / "codex-home"
+            installed = home / "plugins/cache/solid-coder/solid-coder/1.7.18"
+            config = installed / ".config/mise/config.toml"
+            config.parent.mkdir(parents=True)
+            config.write_bytes(source.read_bytes())
+            environment = {"CODEX_HOME": str(home)}
+            install = CompletedProcess(
+                [], 0, json.dumps({"installedPath": str(installed)}), ""
+            )
+            trust = CompletedProcess([], 0, "trusted exact config", "")
+
+            with patch(
+                "codex_live_session_runner.subprocess.run", side_effect=[install, trust]
+            ) as process:
+                runner._install_plugin(request, environment, root)
+
+            self.assertEqual(process.call_count, 2)
+            self.assertEqual(process.call_args.args[0], ["mise", "trust", str(config)])
+            self.assertEqual(process.call_args.kwargs["env"], environment)
+            self.assertEqual((root / "mise-trust.stdout.log").read_text(), trust.stdout)
+            self.assertEqual((root / "mise-trust.stderr.log").read_text(), trust.stderr)
+
+    def test_install_rejects_mise_config_outside_the_isolated_plugin_cache(
+        self,
+    ) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            request = replace(self._request(), plugin_root=root / "checkout")
+            source = request.plugin_root / ".config/mise/config.toml"
+            source.parent.mkdir(parents=True)
+            source.write_text('[tools]\npython = "3.12.15"\n')
+            install = CompletedProcess(
+                [], 0, json.dumps({"installedPath": str(request.plugin_root)}), ""
+            )
+
+            with (
+                patch(
+                    "codex_live_session_runner.subprocess.run", return_value=install
+                ) as process,
+                self.assertRaisesRegex(
+                    RuntimeError, "outside the isolated plugin cache"
+                ),
+            ):
+                runner._install_plugin(
+                    request, {"CODEX_HOME": str(root / "home")}, root
+                )
+
+            self.assertEqual(process.call_count, 1)
+
+    def test_install_rejects_changed_or_escaping_copied_mise_config(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            request = replace(self._request(), plugin_root=root / "checkout")
+            source = request.plugin_root / ".config/mise/config.toml"
+            source.parent.mkdir(parents=True)
+            source.write_text('[tools]\npython = "3.12.15"\n')
+            home = root / "home"
+            installed = home / "plugins/cache/solid-coder/solid-coder/1.7.18"
+            config = installed / ".config/mise/config.toml"
+            config.parent.mkdir(parents=True)
+            config.write_text('[tools]\npython = "3.14"\n')
+            install = CompletedProcess(
+                [], 0, json.dumps({"installedPath": str(installed)}), ""
+            )
+
+            with patch(
+                "codex_live_session_runner.subprocess.run", return_value=install
+            ) as process:
+                with self.assertRaisesRegex(
+                    RuntimeError, "does not match the checkout"
+                ):
+                    runner._install_plugin(request, {"CODEX_HOME": str(home)}, root)
+                config.unlink()
+                config.symlink_to(source)
+                with self.assertRaisesRegex(
+                    RuntimeError, "outside the installed plugin"
+                ):
+                    runner._install_plugin(request, {"CODEX_HOME": str(home)}, root)
+
+            self.assertEqual(process.call_count, 2)
+
+    def test_install_preserves_failed_mise_trust_diagnostics(self) -> None:
+        runner = CodexLiveSessionRunner()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            request = replace(self._request(), plugin_root=root / "checkout")
+            source = request.plugin_root / ".config/mise/config.toml"
+            source.parent.mkdir(parents=True)
+            source.write_text('[tools]\npython = "3.12.15"\n')
+            home = root / "home"
+            installed = home / "plugins/cache/solid-coder/solid-coder/1.7.18"
+            config = installed / ".config/mise/config.toml"
+            config.parent.mkdir(parents=True)
+            config.write_bytes(source.read_bytes())
+            install = CompletedProcess(
+                [], 0, json.dumps({"installedPath": str(installed)}), ""
+            )
+            trust = CompletedProcess([], 1, "partial diagnostic", "permission denied")
+
+            with (
+                patch(
+                    "codex_live_session_runner.subprocess.run",
+                    side_effect=[install, trust],
+                ),
+                self.assertRaisesRegex(RuntimeError, "permission denied"),
+            ):
+                runner._install_plugin(request, {"CODEX_HOME": str(home)}, root)
+
+            self.assertEqual((root / "mise-trust.stdout.log").read_text(), trust.stdout)
+            self.assertEqual((root / "mise-trust.stderr.log").read_text(), trust.stderr)
 
     def test_generated_config_preserves_complete_flow_tool_responses(self) -> None:
         runner = CodexLiveSessionRunner()
@@ -174,11 +294,25 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
 
             runtime = artifact_directory / "codex-runtime"
             self.assertEqual(
-                sorted(str(path.relative_to(runtime)) for path in runtime.rglob("*") if path.is_file()),
-                ["config.toml", "log/codex-tui.log", "logs_1.sqlite", "logs_1.sqlite-wal", "state_5.sqlite"],
+                sorted(
+                    str(path.relative_to(runtime))
+                    for path in runtime.rglob("*")
+                    if path.is_file()
+                ),
+                [
+                    "config.toml",
+                    "log/codex-tui.log",
+                    "logs_1.sqlite",
+                    "logs_1.sqlite-wal",
+                    "state_5.sqlite",
+                ],
             )
-            self.assertEqual((runtime / "log" / "codex-tui.log").read_text(), "MCP startup failed")
-            self.assertEqual((runtime / "logs_1.sqlite-wal").read_bytes(), b"pending logs")
+            self.assertEqual(
+                (runtime / "log" / "codex-tui.log").read_text(), "MCP startup failed"
+            )
+            self.assertEqual(
+                (runtime / "logs_1.sqlite-wal").read_bytes(), b"pending logs"
+            )
 
     def _run_with_output(
         self,
@@ -233,7 +367,9 @@ class TestCodexLiveSessionRunner(unittest.TestCase):
             )
             self.assertEqual(result.artifact_directory, artifact_directory)
             self.assertTrue(
-                (artifact_directory / "codex-runtime" / "sessions" / "rollout.jsonl").exists()
+                (
+                    artifact_directory / "codex-runtime" / "sessions" / "rollout.jsonl"
+                ).exists()
             )
             self.assertTrue(
                 (artifact_directory / "codex-runtime" / "state_test.sqlite").exists()

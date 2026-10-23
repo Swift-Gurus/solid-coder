@@ -7,12 +7,8 @@ Uses subprocess for integration tests and direct imports for unit tests.
 import json
 import subprocess
 import sys
-import os
 import textwrap
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -29,6 +25,7 @@ SCRIPT = Path(__file__).resolve().parent.parent / "prepare-changes.py"
 
 
 # ---------- _coalesce ----------
+
 
 class TestCoalesce:
     def test_empty_list(self):
@@ -71,6 +68,7 @@ class TestCoalesce:
 
 
 # ---------- parse_diff ----------
+
 
 class TestParseDiff:
     def test_empty_diff(self):
@@ -207,6 +205,7 @@ class TestParseDiff:
 
 # ---------- extract_imports ----------
 
+
 class TestExtractImports:
     def test_no_imports(self, tmp_path):
         f = tmp_path / "empty.swift"
@@ -249,6 +248,7 @@ class TestExtractImports:
 
 # ---------- file_line_count ----------
 
+
 class TestFileLineCount:
     def test_existing_file(self, tmp_path):
         f = tmp_path / "a.swift"
@@ -271,27 +271,37 @@ class TestFileLineCount:
 
 # ---------- Integration: build_output ----------
 
+
 class TestBuildOutputIntegration:
     """Integration tests that run the script via subprocess in a temp git repo."""
 
     def _init_git_repo(self, tmp_path):
         """Create a minimal git repo with one committed Swift file."""
-        subprocess.run(["git", "init"], cwd=tmp_path, capture_output=True)
+        git = ["git", "-c", "core.hooksPath=/dev/null"]
+        subprocess.run([*git, "init"], cwd=tmp_path, capture_output=True, check=True)
         subprocess.run(
-            ["git", "config", "user.email", "test@test.com"],
-            cwd=tmp_path, capture_output=True,
+            [*git, "config", "user.email", "test@test.com"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
         )
         subprocess.run(
-            ["git", "config", "user.name", "Test"],
-            cwd=tmp_path, capture_output=True,
+            [*git, "config", "user.name", "Test"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
         )
 
         swift_file = tmp_path / "Example.swift"
         swift_file.write_text("import Foundation\n\nclass Foo {}\n")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
         subprocess.run(
-            ["git", "commit", "-m", "init"],
-            cwd=tmp_path, capture_output=True,
+            [*git, "add", "."], cwd=tmp_path, capture_output=True, check=True
+        )
+        subprocess.run(
+            [*git, "commit", "-m", "init"],
+            cwd=tmp_path,
+            capture_output=True,
+            check=True,
         )
         return swift_file
 
@@ -302,7 +312,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -318,7 +331,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -334,12 +350,17 @@ class TestBuildOutputIntegration:
         """Staged modifications produce changed_ranges."""
         swift_file = self._init_git_repo(tmp_path)
         swift_file.write_text("import Foundation\nimport SwiftUI\n\nclass Foo {}\n")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=False
+        )
         out_file = tmp_path / "output.json"
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -356,7 +377,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -377,7 +401,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -392,7 +419,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -406,7 +436,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0
 
@@ -426,7 +459,9 @@ class TestBuildOutputIntegration:
         swift_file = self._init_git_repo(tmp_path)
         # Stage a change
         swift_file.write_text("import Foundation\nimport SwiftUI\n\nclass Foo {}\n")
-        subprocess.run(["git", "add", "."], cwd=tmp_path, capture_output=True)
+        subprocess.run(
+            ["git", "add", "."], cwd=tmp_path, capture_output=True, check=False
+        )
         # Make another unstaged change
         swift_file.write_text(
             "import Foundation\nimport SwiftUI\n\nclass Foo {\n    var x = 1\n}\n"
@@ -435,7 +470,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -455,7 +493,10 @@ class TestBuildOutputIntegration:
 
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "-o", str(out_file)],
-            cwd=tmp_path, capture_output=True, text=True,
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         )
         assert result.returncode == 0
 

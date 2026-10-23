@@ -19,19 +19,23 @@ from live_session_result import LiveSessionResult
 from live_session_running import LiveSessionRunning
 from review_comparison_stage_evidence import ReviewComparisonStageEvidence
 
-
 """
 solid-name: CodexLiveSessionRunner
 solid-category: adapter
 solid-description: Adapts isolated Codex CLI execution with checkout plugin hooks, checkout MCP servers, model selection, authentication, and validated final output.
 """
-class CodexLiveSessionRunner(LiveSessionRunning):
 
+
+class CodexLiveSessionRunner(LiveSessionRunning):
     def __init__(
         self,
-        artifact_directory_creator: LiveSessionArtifactDirectoryCreator = LiveSessionArtifactDirectoryCreator(),
+        artifact_directory_creator: LiveSessionArtifactDirectoryCreator | None = None,
     ) -> None:
-        self._artifact_directory_creator = artifact_directory_creator
+        self._artifact_directory_creator = (
+            artifact_directory_creator
+            if artifact_directory_creator is not None
+            else LiveSessionArtifactDirectoryCreator()
+        )
 
     def run(self, request: LiveSessionRequest) -> LiveSessionResult:
         artifact_directory = self._artifact_directory_creator.create(
@@ -64,9 +68,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
                 artifact_directory=artifact_directory,
             )
         except Exception as error:
-            raise RuntimeError(
-                f"{error}. Artifacts: {artifact_directory}"
-            ) from error
+            raise RuntimeError(f"{error}. Artifacts: {artifact_directory}") from error
         finally:
             self._preserve_runtime(codex_home, artifact_directory)
             if execution_elapsed_seconds is not None:
@@ -86,12 +88,14 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         raise RuntimeError("Codex session returned no child thread ID")
 
     def _write_config(self, codex_home: Path, plugin_root: Path) -> None:
-        session_start_command = " ".join([
-            shlex.quote(sys.executable),
-            shlex.quote(str(
-                plugin_root / "mcp-server" / "hooks" / "on_agent_start.py"
-            )),
-        ])
+        session_start_command = " ".join(
+            [
+                shlex.quote(sys.executable),
+                shlex.quote(
+                    str(plugin_root / "mcp-server" / "hooks" / "on_agent_start.py")
+                ),
+            ]
+        )
         (codex_home / "config.toml").write_text(
             "tool_output_token_limit = 262144\n"
             f"log_dir = {json.dumps(str(codex_home / 'log'))}\n\n"
@@ -126,6 +130,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
     ) -> None:
         process = subprocess.run(
             ["codex", "plugin", "add", "solid-coder@solid-coder", "--json"],
+            check=False,
             capture_output=True,
             text=True,
             timeout=120,
@@ -142,6 +147,45 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         )
         if process.returncode != 0:
             raise RuntimeError(f"Codex plugin installation failed: {process.stderr}")
+
+        source_config = request.plugin_root / ".config/mise/config.toml"
+        if not source_config.is_file():
+            return
+        installed_root = Path(json.loads(process.stdout)["installedPath"]).resolve()
+        cache_root = (Path(environment["CODEX_HOME"]) / "plugins/cache").resolve()
+        if installed_root == cache_root or not installed_root.is_relative_to(
+            cache_root
+        ):
+            raise RuntimeError("Installed plugin is outside the isolated plugin cache")
+        copied_config = (installed_root / ".config/mise/config.toml").resolve()
+        if not copied_config.is_relative_to(installed_root):
+            raise RuntimeError("Copied mise config is outside the installed plugin")
+        if (
+            not copied_config.is_file()
+            or copied_config.read_bytes() != source_config.read_bytes()
+        ):
+            raise RuntimeError("Copied mise config does not match the checkout")
+        trust = subprocess.run(
+            ["mise", "trust", str(copied_config)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            cwd=str(request.project_root),
+            env=environment,
+        )
+        (artifact_directory / "mise-trust.stdout.log").write_text(
+            trust.stdout,
+            encoding="utf-8",
+        )
+        (artifact_directory / "mise-trust.stderr.log").write_text(
+            trust.stderr,
+            encoding="utf-8",
+        )
+        if trust.returncode != 0:
+            raise RuntimeError(
+                f"Copied plugin mise trust failed: {trust.stderr or trust.stdout}"
+            )
 
     def _execute(
         self,
@@ -164,12 +208,14 @@ class CodexLiveSessionRunner(LiveSessionRunning):
                 str(result_path),
                 "-",
             ],
+            check=False,
             input=request.prompt,
             capture_output=True,
             text=True,
             timeout=request.timeout,
             cwd=str(request.project_root),
-            env=environment | {
+            env=environment
+            | {
                 "RUST_LOG": (
                     "warn,codex_mcp=debug,codex_mcp_extension=debug,"
                     "codex_core::mcp_tool_exposure=debug"
@@ -185,7 +231,9 @@ class CodexLiveSessionRunner(LiveSessionRunning):
             encoding="utf-8",
         )
         if process.returncode != 0:
-            raise RuntimeError(f"Codex session failed: {process.stderr or process.stdout}")
+            raise RuntimeError(
+                f"Codex session failed: {process.stderr or process.stdout}"
+            )
         return process.stdout
 
     def _preserve_runtime(
@@ -209,11 +257,7 @@ class CodexLiveSessionRunner(LiveSessionRunning):
         elapsed_seconds: float,
     ) -> None:
         transcripts = sorted(
-            (
-                artifact_directory
-                / "codex-runtime"
-                / "sessions"
-            ).rglob("*.jsonl")
+            (artifact_directory / "codex-runtime" / "sessions").rglob("*.jsonl")
         )
         if not transcripts:
             raise RuntimeError("Codex session preserved no rollout transcript")

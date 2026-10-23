@@ -155,6 +155,12 @@ steps:
   - id: summarize
     prompt: >
       Write one sentence noting that the greeting was "{{steps.greet.outputs.greeting}}"
-      and it contained {{steps.count_words.outputs.word_count}} words. This step has no
-      declared outputs — just say the sentence back in your final reply.
+      and it contained {{steps.count_words.outputs.word_count}} words. Submit the
+      sentence as the "summary" output field of this step.
     depends_on: [handle_question_units, handle_statement_units]
+    outputs:
+      - name: summary
+        type: data
+        schema:
+          type: string
+          minLength: 1

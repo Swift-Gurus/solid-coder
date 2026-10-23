@@ -34,7 +34,8 @@ class GitWorkingTreeFixture:
         arguments: list[str],
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["git", *arguments],
+            ["git", "-c", "core.hooksPath=/dev/null", *arguments],
+            check=False,
             cwd=self.project_root,
             capture_output=True,
             text=True,

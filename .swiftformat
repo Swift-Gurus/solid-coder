@@ -1,0 +1,30 @@
+# Managed by mise Swift config sync. Edit the shared template instead.
+# SwiftFormat owns layout; SwiftLint retains quality and style diagnostics.
+# Explicit rules prevent formatter upgrades from enabling unrelated rewrites.
+--rules blankLineAfterImports,blankLinesAroundMark,blankLinesAtEndOfScope,blankLinesAtStartOfScope,blankLinesBetweenScopes,braces,consecutiveBlankLines,consecutiveSpaces,elseOnSameLine,emptyBraces,indent,linebreakAtEndOfFile,linebreaks,spaceAroundBraces,spaceAroundBrackets,spaceAroundComments,spaceAroundGenerics,spaceAroundOperators,spaceAroundParens,spaceInsideBraces,spaceInsideBrackets,spaceInsideComments,spaceInsideGenerics,spaceInsideParens,trailingCommas,trailingSpace,wrap,wrapArguments,wrapAttributes,wrapCaseBodies,wrapFunctionBodies,wrapGuardStatementBodies,wrapIfStatementBodies,wrapLoopBodies,wrapDoBodies,wrapMultilineFunctionChains,wrapEnumCases,wrapSwitchCases
+
+--indent 4
+--linebreaks lf
+--max-width 150
+--allman false
+--else-position same-line
+--empty-braces no-space
+--indent-case false
+--trim-whitespace always
+# Match SwiftLint's current trailing_comma policy.
+--trailing-commas never
+--wrap-arguments before-first
+--wrap-parameters before-first
+--wrap-collections before-first
+--wrap-conditions before-first
+--allow-partial-wrapping false
+--func-attributes prev-line
+--type-attributes prev-line
+--stored-var-attributes same-line
+--computed-var-attributes same-line
+--complex-attributes prev-line
+
+# Leave self, access control, type inference, test frameworks, and declarations
+# unchanged. SwiftLint's explicit_self analyzer remains authoritative.
+# Build output is excluded by SwiftFormat by default; skip dependencies too.
+--exclude **/Pods,**/Carthage,**/node_modules
