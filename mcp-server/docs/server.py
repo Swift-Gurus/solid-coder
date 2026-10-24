@@ -38,7 +38,21 @@ from rules.rule_file_collector import collect_files
 from spec import parse_frontmatter
 from utils.debug_logger import DebugLogger
 
-server = MCPServerFactory().build("solid-coder-docs", "1.0.0")
+# Legacy handlers remain below for direct CLI/internal callers; only this surface is advertised.
+_ENABLED_MCP_TOOLS: frozenset[str] = frozenset(
+    {
+        "load_pattern",
+        "get_candidate_tags",
+        "score_severity",
+        "load_fix_for_violation",
+        "load_detection_rules",
+        "load_rules",
+    }
+)
+
+server = MCPServerFactory().build(
+    "solid-coder-docs", "1.0.0", enabled_tools=_ENABLED_MCP_TOOLS
+)
 _chunker = Chunker()
 _registry = PrincipleRegistry(REFS_ROOT)
 _logger = GateLogger(DebugLogger())

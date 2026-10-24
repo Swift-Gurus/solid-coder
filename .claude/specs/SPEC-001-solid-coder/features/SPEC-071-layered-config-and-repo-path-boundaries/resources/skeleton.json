@@ -1,0 +1,15 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-071-layered-config-and-repo-path-boundaries/Spec.md",
+  "language": "Python",
+  "skeleton_loc": 169,
+  "multiplier_used": 1.2,
+  "projected_loc": 203,
+  "severity": "MINOR",
+  "skeleton_files": [
+    "RepositoryRoot.py",
+    "LayeredSettingsLoader.py",
+    "RepositoryTargetBoundary.py",
+    "ReviewSearchBoundary.py"
+  ],
+  "unsketched": []
+}

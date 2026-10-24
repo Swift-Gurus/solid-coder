@@ -21,13 +21,6 @@
       ],
       "cwd": "."
     },
-    "solid-coder-specs": {
-      "command": "python3.12",
-      "args": [
-        "mcp-server/specs/server.py"
-      ],
-      "cwd": "."
-    },
     "solid-coder-pipeline": {
       "command": "python3.12",
       "args": [

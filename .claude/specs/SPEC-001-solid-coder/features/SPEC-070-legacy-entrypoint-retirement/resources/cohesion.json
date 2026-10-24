@@ -1,0 +1,60 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-070-legacy-entrypoint-retirement/Spec.md",
+  "group_count": 5,
+  "severity": "SEVERE",
+  "groups": [
+    {
+      "label": "Retained MCP runtime surface",
+      "acs": [
+        "US-1.1",
+        "US-1.2",
+        "US-3.1"
+      ],
+      "shared_signals": [
+        "data_type:MCP tools",
+        "data_type:retirement ledger",
+        "integration:MCP",
+        "lifecycle:subscribe"
+      ]
+    },
+    {
+      "label": "Repository host manifest configuration",
+      "acs": [
+        "US-1.3"
+      ],
+      "shared_signals": []
+    },
+    {
+      "label": "Retained workflow runtime behavior",
+      "acs": [
+        "US-1.4",
+        "US-3.2"
+      ],
+      "shared_signals": [
+        "integration:Legacy healthcheck",
+        "lifecycle:subscribe"
+      ]
+    },
+    {
+      "label": "Recoverable instruction discovery inventory",
+      "acs": [
+        "US-2.1",
+        "US-2.2",
+        "US-2.3"
+      ],
+      "shared_signals": [
+        "data_type:agent entrypoints",
+        "data_type:retirement ledger",
+        "data_type:skill entrypoints",
+        "lifecycle:observation"
+      ]
+    },
+    {
+      "label": "Global installation evidence boundary",
+      "acs": [
+        "US-3.3"
+      ],
+      "shared_signals": []
+    }
+  ]
+}

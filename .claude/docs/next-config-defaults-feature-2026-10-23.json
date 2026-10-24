@@ -1,0 +1,39 @@
+{
+  "status": "draft spec written; not implemented",
+  "scope": "Add shared user defaults and alternate repository config lookup to solid-coder, with repository-bounded review/search targets. Keep this separate from legacy entrypoint retirement.",
+  "approved_merge_precedence_low_to_high": [
+    "built-in defaults",
+    "selected user-wide config",
+    "selected repository config",
+    "<repo>/.solid-coder/config.local.toml"
+  ],
+  "user_config_lookup_first_existing": [
+    "~/.config/solid-coder/config.toml",
+    "~/.solid-coder/config.toml"
+  ],
+  "repository_config_lookup_first_existing": [
+    "<repo>/.solid-coder/config.toml",
+    "<repo>/.config/solid.coder/config.toml"
+  ],
+  "lookup_policy": "At each layer select the first existing candidate rather than merging aliases. Merge repository settings over shared user defaults. Alternate repo directory intentionally uses solid.coder as specified by the user.",
+  "path_constraints": [
+    "Resolve review/search target paths against the selected Git repository/worktree root, including paths supplied by user-wide config.",
+    "Never resolve target paths relative to the user config directory or treat the home directory as the project root.",
+    "Validate containment after resolving symlinks; reject outside-repo absolute paths, parent traversal and symlink escapes.",
+    "Keep dependency/plugin resource paths and existing audit storage separate from review/search target containment; do not relocate them incidentally."
+  ],
+  "setup_integration": "repo:setup may synchronize the project config or its repo differences; mise manages the user-wide defaults. No global setup files are changed as part of the current retirement task.",
+  "ci": "Commit required CI settings in project config; CI must not depend on a developer user-wide file.",
+  "verification_to_specify": [
+    "merge precedence and partial nested overrides",
+    "first-existing lookup for each alias pair",
+    "local project overrides",
+    "missing versus invalid configuration",
+    "repo/worktree root selection from nested working directories",
+    "relative and absolute target containment",
+    "parent traversal and symlink escape rejection",
+    "legacy healthcheck and workflow review/search use identical repository boundaries"
+  ],
+  "spec": "SPEC-071",
+  "failure_policy": "Selected existing unreadable, malformed, or schema-invalid config reports its source and reason; no silent alias fallback. See SPEC-071."
+}

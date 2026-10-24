@@ -1,0 +1,261 @@
+{
+  "date": "2026-10-23",
+  "status": "implemented and non-live verified; uncommitted",
+  "scope": "Disable automatic MCP and skill/agent entrypoints; preserve all handlers, scripts, schemas and archived instructions. No global settings or installed plugin caches modified.",
+  "active_mcp_tools": {
+    "docs": [
+      "get_candidate_tags",
+      "load_rules",
+      "load_pattern",
+      "load_detection_rules",
+      "score_severity",
+      "load_fix_for_violation"
+    ],
+    "pipeline": [
+      "search_codebase",
+      "submit_batch_findings",
+      "submit_fix",
+      "get_output_path"
+    ],
+    "flow_engine": [
+      "flow_start",
+      "flow_next"
+    ],
+    "build/apple": [
+      "build",
+      "test",
+      "lint",
+      "get_log",
+      "get_test_failures",
+      "detect_build_system"
+    ]
+  },
+  "disabled_mcp_tools": {
+    "docs": [
+      "discover_principles",
+      "load_examples",
+      "load_fix_instructions",
+      "load_fix_instructions_for_findings"
+    ],
+    "pipeline": [
+      "collect_review_results",
+      "check_severity",
+      "validate_findings",
+      "load_synthesis_context",
+      "generate_report",
+      "validate_architecture",
+      "split_implementation_plan",
+      "prepare_review_input",
+      "validate_phase_output",
+      "submit_findings"
+    ],
+    "flow_engine": [],
+    "specs": [
+      "parse_spec",
+      "query_specs",
+      "load_spec_context",
+      "update_spec_status"
+    ],
+    "build/apple": []
+  },
+  "tools_before": 36,
+  "tools_after": 18,
+  "active_skills": [
+    "build-spec",
+    "build-spec-from-code",
+    "code",
+    "cohesion-cluster",
+    "create-type",
+    "find-spec",
+    "predict-loc-heuristic",
+    "predict-loc-skeleton",
+    "propose-split",
+    "scope-synthesize",
+    "validate-spec"
+  ],
+  "active_agents": [
+    "code-agent",
+    "cohesion-cluster-agent",
+    "predict-loc-heuristic-agent",
+    "predict-loc-skeleton-agent",
+    "propose-split-agent",
+    "scope-synthesize-agent"
+  ],
+  "archived_entrypoints": [
+    {
+      "original": "skills/validate-completeness/SKILL.md",
+      "disabled": "skills/validate-completeness/SKILL.md.disabled",
+      "sha256": "73846d48432708f3b97960cd07af4b8ca4683e7b0844ef198f1a501acff1f8dc"
+    },
+    {
+      "original": "skills/validate-findings/SKILL.md",
+      "disabled": "skills/validate-findings/SKILL.md.disabled",
+      "sha256": "edb8f0c6f4ee85cc08990e315bcd72a2e541a96b016d27d15b04ec09ee376027"
+    },
+    {
+      "original": "skills/apply-principle-review/SKILL.md",
+      "disabled": "skills/apply-principle-review/SKILL.md.disabled",
+      "sha256": "3c1022235dd371b1d4b70a5b33b6f5847cabb9b24330955ddb6999a625b86c69"
+    },
+    {
+      "original": "skills/synthesize-implementation/SKILL.md",
+      "disabled": "skills/synthesize-implementation/SKILL.md.disabled",
+      "sha256": "aac52ab74b7ba616d0a7c739a52c4551dc748838958f9c917d49f01baeb0b30c"
+    },
+    {
+      "original": "skills/plan/SKILL.md",
+      "disabled": "skills/plan/SKILL.md.disabled",
+      "sha256": "fc4e63be80f4273646c29eeda1c349faf9f1c9ca8295c657769e39998bcad5d3"
+    },
+    {
+      "original": "skills/prepare-review-input/SKILL.md",
+      "disabled": "skills/prepare-review-input/SKILL.md.disabled",
+      "sha256": "662702f62f5fb0044ee5fb42c4b6372cc19ab47d3ecf0c0914c41e89edc37271"
+    },
+    {
+      "original": "skills/validate-implementation/SKILL.md",
+      "disabled": "skills/validate-implementation/SKILL.md.disabled",
+      "sha256": "e8845746799bd759d4d2da3c719a21532f74bfab65f377f64c691ff32846cc45"
+    },
+    {
+      "original": "skills/reconstruct-spec/SKILL.md",
+      "disabled": "skills/reconstruct-spec/SKILL.md.disabled",
+      "sha256": "6c3a8eda53abbb00d5d832ae5ba23b9d8552b0dc63b96b2bc57733408dcf9516"
+    },
+    {
+      "original": "skills/validate-plan/SKILL.md",
+      "disabled": "skills/validate-plan/SKILL.md.disabled",
+      "sha256": "dddb31fa08da8878e29398cfebbd9b03f2747cd91adc1f76a98d4463b33d7020"
+    },
+    {
+      "original": "skills/synthesize-fixes/SKILL.md",
+      "disabled": "skills/synthesize-fixes/SKILL.md.disabled",
+      "sha256": "110077099202c6059b0b480a63c86149834d5d3f635109ff43937f75ccb9ee8f"
+    },
+    {
+      "original": "skills/review/SKILL.md",
+      "disabled": "skills/review/SKILL.md.disabled",
+      "sha256": "e8a70be4b76864a011442a8280fc5cb6e86578c6d3f0e916b8d70234b805ea70"
+    },
+    {
+      "original": "skills/implement/SKILL.md",
+      "disabled": "skills/implement/SKILL.md.disabled",
+      "sha256": "5074ddca95a668d52100cb669bea290141dd85dc55339116cd38ed88e504e5ea"
+    },
+    {
+      "original": "skills/refactor/SKILL.md",
+      "disabled": "skills/refactor/SKILL.md.disabled",
+      "sha256": "758c7baa49b8b4bb8b7b4144c3530f75d6dbf69964d57e55f763dcde0de7db8b"
+    },
+    {
+      "original": "skills/validate-decomposition/SKILL.md",
+      "disabled": "skills/validate-decomposition/SKILL.md.disabled",
+      "sha256": "cdbde21a9675fb009008b13be84f74431fca89116c8041cdced2c33381c4e537"
+    },
+    {
+      "original": "agents/synthesize-implementation-agent.md",
+      "disabled": "agents/synthesize-implementation-agent.md.disabled",
+      "sha256": "5b8f977c9c548899234d98bb80ef562a496847f6e0e3a7fa58994bdc0287419a"
+    },
+    {
+      "original": "agents/validate-decomposition-agent.md",
+      "disabled": "agents/validate-decomposition-agent.md.disabled",
+      "sha256": "4251a49b354897441668f3e4e3c7101f3a89d7a6cc8da0bdc986bb5c3cd11cd3"
+    },
+    {
+      "original": "agents/validate-completeness-agent.md",
+      "disabled": "agents/validate-completeness-agent.md.disabled",
+      "sha256": "102d2baddd1d1c2ed5f1f4d7630d35a71c7e1d9183dc1be6b1a9b5b71422f9e2"
+    },
+    {
+      "original": "agents/prepare-review-input-agent.md",
+      "disabled": "agents/prepare-review-input-agent.md.disabled",
+      "sha256": "e01c4d766b27ba614fa9b77d91c52d9b4d5b19dfcf5769ff1d4a903f88609725"
+    },
+    {
+      "original": "agents/reconstruct-spec-agent.md",
+      "disabled": "agents/reconstruct-spec-agent.md.disabled",
+      "sha256": "848209e01c37655ecc0dafa745acd72b8250352592a833cb65206955a03d3501"
+    },
+    {
+      "original": "agents/apply-principle-review-agent.md",
+      "disabled": "agents/apply-principle-review-agent.md.disabled",
+      "sha256": "fe40bf882697620f7df94a1f703d81ec5580ac9af73d19d00c37cfe09647e456"
+    },
+    {
+      "original": "agents/validate-plan-agent.md",
+      "disabled": "agents/validate-plan-agent.md.disabled",
+      "sha256": "b07430865d67523d44f176db9eb6696084819c724f44def51f00b55aec12673a"
+    },
+    {
+      "original": "agents/plan-agent.md",
+      "disabled": "agents/plan-agent.md.disabled",
+      "sha256": "2e05492e09cdeea2d5c206a970466205ae316bc4981adf66dccc4ceb9834ba7f"
+    },
+    {
+      "original": "agents/validate-findings-agent.md",
+      "disabled": "agents/validate-findings-agent.md.disabled",
+      "sha256": "fdbc721ab38c85779ad6904244cd01f20d16ae81e2b2719dbb5870f866123cde"
+    },
+    {
+      "original": "agents/synthesize-fixes-agent.md",
+      "disabled": "agents/synthesize-fixes-agent.md.disabled",
+      "sha256": "f5afc18c871cf2bf83e2a524d74634a538a40b88f473cd529c07e2db33130ad3"
+    }
+  ],
+  "removed_server_registrations": {
+    ".mcp.json": {
+      "solid-coder-specs": {
+        "command": "python3.12",
+        "args": [
+          "mcp-server/specs/server.py"
+        ],
+        "cwd": "."
+      }
+    },
+    ".claude-plugin/plugin.json": {
+      "specs": {
+        "command": "python3.12",
+        "args": [
+          "${CLAUDE_PLUGIN_ROOT}/mcp-server/specs/server.py"
+        ]
+      }
+    }
+  },
+  "retained_dependencies": {
+    "get_output_path": "Used by legacy health output resolution and retained validate-spec scope measurement.",
+    "docs_tools": "Retain health detection/fix/severity and standalone coding rules/pattern/tag tools.",
+    "spec_authoring": "CLI scripts and gateway functions remain accessible even though the specs MCP server is not registered.",
+    "project_review_agent": ".claude/agents/review-test.md uses dedicated flow-engine and is retained.",
+    "legacy_verification_harness": "Its preserved archived prompt uses submit_batch_findings. Unused single submit_findings permission is removed from its allowed-tools list; the internal callable remains available to old CLI/helper tests."
+  },
+  "restore": "Rename each archived entrypoint to its original name; restore the specs server entries shown here; remove or extend _ENABLED_MCP_TOOLS in docs/server.py and pipeline/application_bootstrapper_factory.py. Remove enabled_tools filters (or pass None) to restore every retained MCP handler. Legacy harness prompt path must match the restored skill filename.",
+  "validation": {
+    "focused_tests_passed": 101,
+    "focused_subtests_passed": 14,
+    "non_live_tests_passed": 3197,
+    "subtests_passed": 322,
+    "existing_skips": 4,
+    "subtest_count_change": "Two per-server subtests disappear because specs registration was removed from .mcp.json and .claude-plugin/plugin.json; all configured-server startup checks remain intact.",
+    "mcp_rpc": "All four configured servers initialize; 18 retained metadata/schema descriptors exactly match the baseline; all 14 retired docs/pipeline RPC calls reject as unknown tools; specs server registrations are absent from both host manifests.",
+    "preserved_archive_files": 24,
+    "archive_bytes_identical": true,
+    "retained_health_tools": "Legacy and workflow session allowlists verified against retained MCP surfaces; archived review harness builds its explicit prompt.",
+    "ruff_changed_files": "passed",
+    "ruff_whole_repo": "passed: zero findings with project-pinned Ruff 0.17.1 and installed Ruff 0.17.2 after restoring the approved local BLE001 exemption",
+    "gate_enabled": true,
+    "infrastructure_failures": [],
+    "live_checks_run": false,
+    "installed_caches_modified": false,
+    "latest_scoped_tests": {
+      "permission_hook": 18,
+      "retirement_contracts": 7,
+      "harness_and_other_non_live": 171,
+      "subtests": 18
+    },
+    "latest_infrastructure_observations": [
+      "mise exec returned Operation not permitted in sandbox; existing standalone Ruff binaries pass; machine setup unchanged"
+    ]
+  },
+  "spec": "SPEC-070"
+}

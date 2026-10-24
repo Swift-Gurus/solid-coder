@@ -1,0 +1,43 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-071-layered-config-and-repo-path-boundaries/Spec.md",
+  "group_count": 3,
+  "severity": "SEVERE",
+  "groups": [
+    {
+      "label": "Layered configuration snapshot construction",
+      "acs": [
+        "US-1.1",
+        "US-1.2",
+        "US-1.3",
+        "US-1.4",
+        "US-1.5"
+      ],
+      "shared_signals": [
+        "data_type:config.toml",
+        "data_type:configuration settings",
+        "lifecycle:construction"
+      ]
+    },
+    {
+      "label": "Repository contained target execution",
+      "acs": [
+        "US-2.1",
+        "US-2.2",
+        "US-2.3",
+        "US-2.4"
+      ],
+      "shared_signals": [
+        "data_type:repository root",
+        "data_type:review/search targets",
+        "lifecycle:subscribe"
+      ]
+    },
+    {
+      "label": "Separate resource storage preservation",
+      "acs": [
+        "US-2.5"
+      ],
+      "shared_signals": []
+    }
+  ]
+}

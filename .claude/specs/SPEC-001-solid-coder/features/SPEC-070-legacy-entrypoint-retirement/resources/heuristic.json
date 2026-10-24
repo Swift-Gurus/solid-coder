@@ -1,0 +1,22 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-070-legacy-entrypoint-retirement/Spec.md",
+  "ac_count": 10,
+  "screens": 0,
+  "predicted_loc": 120,
+  "formula": "(10 \u00d7 12) + (0 \u00d7 80) = 120",
+  "severity": "COMPLIANT",
+  "by_story": [
+    {
+      "story_id": "US-1: Retain the required MCP surface",
+      "ac_count": 4
+    },
+    {
+      "story_id": "US-2: Preserve recoverable instructions",
+      "ac_count": 3
+    },
+    {
+      "story_id": "US-3: Keep retirement bounded",
+      "ac_count": 3
+    }
+  ]
+}

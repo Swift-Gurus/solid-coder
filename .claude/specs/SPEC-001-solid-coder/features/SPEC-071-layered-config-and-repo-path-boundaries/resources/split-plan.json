@@ -1,0 +1,297 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-071-layered-config-and-repo-path-boundaries/Spec.md",
+  "applicable": true,
+  "driver": "cohesion",
+  "split_rationale": "Configuration ACs join configuration-settings data with construction lifecycle. Containment ACs join repository-root/target data with runtime lifecycle. The resource/storage preservation AC shares neither the same data nor a second signal kind and therefore remains a singleton. These are draft delivery proposals only; the singleton is best evaluated as a preservation verification subtask rather than evidence of a new resource subsystem.",
+  "parent_residue": {
+    "description": "If adopted, this draft feature would index three subtasks for layered configuration, repository-contained execution, and preservation verification. Retain high-level Connection and Flow diagrams at this index; partition the Sequence diagram so settings request/read/merge exchanges accompany configuration and target-resolution/dispatch exchanges accompany containment. The index has no own ACs or TR; the complete scope restriction from TR paragraph 4 sentence 1 is carried by preservation verification and constrains all children. Keep the feature draft until separately approved and implemented; the proposal creates no Spec.md files. Parent-wide DoD retained as aggregation evidence: Non-live regression results and infrastructure failures are recorded; live equivalence claims require separately recorded live evidence.",
+    "connects_to_kept": [
+      {
+        "direction": "depends on",
+        "target": "SPEC-001",
+        "how": "Adds shared defaults to existing plugin configuration consumers."
+      },
+      {
+        "direction": "depends on",
+        "target": "SPEC-036, SPEC-055, SPEC-067, SPEC-069",
+        "how": "Native workflow/legacy rule behavior and source-backed review semantics remain distinct from config discovery."
+      }
+    ],
+    "subtasks_table": [
+      {
+        "index": 1,
+        "title": "Layered configuration snapshot construction",
+        "spec_placeholder": "SPEC-NNN-1",
+        "scope": "US-1.1, US-1.2, US-1.3, US-1.4, US-1.5"
+      },
+      {
+        "index": 2,
+        "title": "Repository contained target execution",
+        "spec_placeholder": "SPEC-NNN-2",
+        "scope": "US-2.1, US-2.2, US-2.3, US-2.4"
+      },
+      {
+        "index": 3,
+        "title": "Separate resource storage preservation",
+        "spec_placeholder": "SPEC-NNN-3",
+        "scope": "US-2.5"
+      }
+    ]
+  },
+  "candidate_subtasks": [
+    {
+      "title": "Layered configuration snapshot construction",
+      "kind": "cohesion",
+      "description": "Build the operation settings snapshot from user defaults and root-to-leaf repository/local configuration. Own effective-directory and Git-root discovery in the existing configuration core, preserving typed validation and test-profile compatibility.",
+      "user_story": {
+        "id": "US-1",
+        "narrative": "As a developer, I want repository configuration to override shared user defaults so that I can reuse preferences without copying every setting into each repository.",
+        "acs": [
+          {
+            "source_id": "US-1.1",
+            "text": "Configuration precedence is built-in defaults, selected user config, repository config, then personal project overrides; higher layers replace conflicting scalar/list values and recursively merge tables while retaining lower-layer keys omitted above, including explicit false and zero values."
+          },
+          {
+            "source_id": "US-1.2",
+            "text": "User config selects the first existing file from `~/.config/solid-coder/config.toml` then `~/.solid-coder/config.toml`; repository config at each applicable directory selects `.solid-coder/config.toml` then `.config/solid.coder/config.toml`. If both aliases exist, only the first contributes settings."
+          },
+          {
+            "source_id": "US-1.3",
+            "text": "A request from a nested directory preserves repository-root-to-request-directory overrides: each directory's selected repository config is followed by its `.solid-coder/config.local.toml`, with deeper directories overriding ancestors; user defaults are merged only once below this entire chain."
+          },
+          {
+            "source_id": "US-1.4",
+            "text": "Missing optional files contribute no settings; a selected unreadable, malformed, or schema-invalid file reports its path and reason without silently selecting the lower-priority alias. The final merged settings receive existing typed validation, and omitted values receive built-in defaults without overwriting supplied lower-layer values."
+          },
+          {
+            "source_id": "US-1.5",
+            "text": "With no user config, existing project settings and explicit test-model-profile selection retain their behavior; a clean CI home with committed project configuration produces the required project settings without a developer's home files."
+          }
+        ]
+      },
+      "input_output": {
+        "input": "Existing TOML settings schema, effective working directory, Git root marker, optional user/repository/local config files, and review/search targets from configuration or invocation.",
+        "output": "A validated settings snapshot returned through the existing loading boundary to each requesting consumer for that operation, plus canonical repository-contained targets returned to review/search execution. No process-wide settings cache or mutable snapshot sharing is introduced."
+      },
+      "technical_requirements": [
+        {
+          "text": "The configuration core owns root discovery, candidate selection, and precedence.",
+          "source": "parent TR paragraph 1, sentence 1 (split)"
+        },
+        {
+          "text": "Start with the effective working directory: explicit request, existing project-directory environment setting, then process directory.",
+          "source": "parent TR paragraph 1, sentence 2 (split)"
+        },
+        {
+          "text": "Resolve it and walk ancestors until the nearest Git marker; never merge project files from above that boundary.",
+          "source": "parent TR paragraph 1, sentence 3 (split)"
+        },
+        {
+          "text": "Reuse the existing recursive table merge and typed decoder.",
+          "source": "parent TR paragraph 1, sentence 4 (split)"
+        },
+        {
+          "text": "Apply user defaults once, then each directory's repository/local pair in root-to-leaf order.",
+          "source": "parent TR paragraph 1, sentence 5 (split)"
+        },
+        {
+          "text": "An absent key uses the schema default only after all layers have merged.",
+          "source": "parent TR paragraph 1, sentence 6 (split)"
+        },
+        {
+          "text": "Read settings anew at the existing operation boundary; no new cross-operation cache is required.",
+          "source": "parent TR paragraph 1, sentence 7 (split)"
+        },
+        {
+          "text": "Candidate selection uses existence before parsing.",
+          "source": "parent TR paragraph 2, sentence 1 (split)"
+        },
+        {
+          "text": "An existing preferred alias that cannot be read or parsed is an error, not permission to try the second alias.",
+          "source": "parent TR paragraph 2, sentence 2 (split)"
+        },
+        {
+          "text": "Report the source file for invalid supplied settings; after merging, validate the complete settings contract and report merged-setting errors with their contributing sources.",
+          "source": "parent TR paragraph 2, sentence 3 (split)"
+        },
+        {
+          "text": "Preserve the explicit test-model-profile override used by the existing test infrastructure.",
+          "source": "parent TR paragraph 2, sentence 4 (split)"
+        },
+        {
+          "text": "Document that external setup can synchronize `.solid-coder/config.toml` as the canonical project location, that `.config/solid.coder/config.toml` is the exact supported alternate, and that mise may manage the primary user config.",
+          "source": "parent TR paragraph 4, sentence 2 (split)"
+        },
+        {
+          "text": "Automation code outside this repository is a separate delivery.",
+          "source": "parent TR paragraph 4, sentence 3 (split)"
+        },
+        {
+          "text": "Keep required CI configuration committed; optional personal files cannot be its sole source.",
+          "source": "parent TR paragraph 4, sentence 4 (split)"
+        }
+      ],
+      "connects_to": {
+        "depends_on": [
+          {
+            "target": "Existing configuration core, recursive merge, and typed settings decoding",
+            "how": "Extend lookup without replacing settings schema or splitting precedence across consumers."
+          },
+          {
+            "target": "`repo:setup` and mise",
+            "how": "Consume documented locations; their machine-wide synchronization implementation is outside this repo's scope."
+          }
+        ],
+        "serves": [
+          {
+            "target": "Legacy healthcheck and flow-engine review/search",
+            "how": "Receive validated snapshots and repository-bounded targets through their existing composition boundaries."
+          }
+        ]
+      },
+      "definition_of_done": [
+        "All acceptance criteria have deterministic regression coverage through existing consumer boundaries.",
+        "Config precedence, candidate locations, errors, and source-target containment are documented with project/user examples.",
+        "External setup synchronization contract is documented without claiming changes to machine-wide automation."
+      ],
+      "blocked_by": [],
+      "estimated_size_band": "small",
+      "rationale": "Partition uses original ACs and source-attributed TR sentences. Original Input/Output rows are quoted as interface context; candidate ownership is only its listed ACs. "
+    },
+    {
+      "title": "Repository contained target execution",
+      "kind": "cohesion",
+      "description": "Apply repository containment to every configured and explicit review/search target. Consume the root discovered by configuration and prevent content reads or dispatch when any target escapes.",
+      "user_story": {
+        "id": "US-1",
+        "narrative": "As a developer, I want every review/search target interpreted within the selected repository so that shared defaults cannot cause another directory to be read as project source.",
+        "acs": [
+          {
+            "source_id": "US-2.1",
+            "text": "The selected repository is the nearest ancestor Git root of the effective working directory, accepting both `.git` directories and worktree marker files; explicit working directory precedes the existing project-directory environment setting and process working directory. A review/search request without such a root fails before traversal."
+          },
+          {
+            "source_id": "US-2.2",
+            "text": "Relative review/search targets from any config layer or invocation resolve against that repository root, including requests made from nested working directories; absolute paths within that root are accepted and targets are never anchored at the user config directory or home directory."
+          },
+          {
+            "source_id": "US-2.3",
+            "text": "Outside-root absolute paths, parent traversal that resolves outside the root, and symlink escapes fail before target content is read, naming the offending target. Review/search enumeration excludes outside-root resolved entries even when reached through a directory or glob inside the root."
+          },
+          {
+            "source_id": "US-2.4",
+            "text": "Legacy healthcheck and workflow review/search enforce the same boundary on configured and explicitly supplied targets; a rejected target prevents dispatch of that operation rather than silently broadening or dropping its requested scope."
+          }
+        ]
+      },
+      "input_output": {
+        "input": "Existing TOML settings schema, effective working directory, Git root marker, optional user/repository/local config files, and review/search targets from configuration or invocation.",
+        "output": "A validated settings snapshot returned through the existing loading boundary to each requesting consumer for that operation, plus canonical repository-contained targets returned to review/search execution. No process-wide settings cache or mutable snapshot sharing is introduced."
+      },
+      "technical_requirements": [
+        {
+          "text": "The review/search execution boundary owns target containment.",
+          "source": "parent TR paragraph 3, sentence 1 (split)"
+        },
+        {
+          "text": "Resolve requested target paths and symlinks against the discovered root, compare by path components rather than string prefixes, and reject escapes before opening target content.",
+          "source": "parent TR paragraph 3, sentence 2 (split)"
+        },
+        {
+          "text": "For target patterns, validate their literal anchor and validate each resolved match before reading it; discovered escapes produce the same target error rather than being followed.",
+          "source": "parent TR paragraph 3, sentence 3 (split)"
+        },
+        {
+          "text": "An operation with any invalid target fails as a whole.",
+          "source": "parent TR paragraph 3, sentence 4 (split)"
+        },
+        {
+          "text": "Existing nonexistent-target behavior remains unchanged after containment checks.",
+          "source": "parent TR paragraph 3, sentence 5 (split)"
+        },
+        {
+          "text": "This is a boundary for project-source traversal, not a new security sandbox against concurrent filesystem mutation.",
+          "source": "parent TR paragraph 3, sentence 6 (split)"
+        }
+      ],
+      "connects_to": {
+        "depends_on": [
+          {
+            "target": "Layered configuration snapshot construction",
+            "how": "Consumes discovered repository root and settings through existing operation boundaries.",
+            "is_sibling": true
+          }
+        ],
+        "serves": [
+          {
+            "target": "Legacy healthcheck and flow-engine review/search",
+            "how": "Receive validated snapshots and repository-bounded targets through their existing composition boundaries."
+          }
+        ]
+      },
+      "definition_of_done": [
+        "All acceptance criteria have deterministic regression coverage through existing consumer boundaries.",
+        "Config precedence, candidate locations, errors, and source-target containment are documented with project/user examples."
+      ],
+      "blocked_by": [
+        "Layered configuration snapshot construction"
+      ],
+      "estimated_size_band": "small",
+      "rationale": "Partition uses original ACs and source-attributed TR sentences. Original Input/Output rows are quoted as interface context; candidate ownership is only its listed ACs. "
+    },
+    {
+      "title": "Separate resource storage preservation",
+      "kind": "cohesion",
+      "description": "Verify existing plugin/dependency resource locations and audit/model storage remain unchanged. This preservation criterion scopes containment to project review/search targets.",
+      "user_story": {
+        "id": "US-1",
+        "narrative": "As a developer, I want every review/search target interpreted within the selected repository so that shared defaults cannot cause another directory to be read as project source.",
+        "acs": [
+          {
+            "source_id": "US-2.5",
+            "text": "Plugin/dependency resource lookup and existing audit/model storage retain their existing locations; the repository containment rule applies to project review/search targets and does not relocate those separate resources."
+          }
+        ]
+      },
+      "input_output": {
+        "input": "Existing TOML settings schema, effective working directory, Git root marker, optional user/repository/local config files, and review/search targets from configuration or invocation.",
+        "output": "A validated settings snapshot returned through the existing loading boundary to each requesting consumer for that operation, plus canonical repository-contained targets returned to review/search execution. No process-wide settings cache or mutable snapshot sharing is introduced."
+      },
+      "technical_requirements": [
+        {
+          "text": "Do not introduce settings keys, change native rules, alter resource/audit/model paths, or change global machine files.",
+          "source": "parent TR paragraph 4, sentence 1 (split)"
+        }
+      ],
+      "connects_to": {
+        "depends_on": [
+          {
+            "target": "Layered configuration snapshot construction",
+            "how": "Consumes integrated configuration/target behavior for preservation verification.",
+            "is_sibling": true
+          },
+          {
+            "target": "Repository contained target execution",
+            "how": "Consumes integrated configuration/target behavior for preservation verification.",
+            "is_sibling": true
+          }
+        ],
+        "serves": []
+      },
+      "definition_of_done": [
+        "All acceptance criteria have deterministic regression coverage through existing consumer boundaries."
+      ],
+      "blocked_by": [
+        "Layered configuration snapshot construction",
+        "Repository contained target execution"
+      ],
+      "estimated_size_band": "small",
+      "rationale": "Partition uses original ACs and source-attributed TR sentences. Original Input/Output rows are quoted as interface context; candidate ownership is only its listed ACs. "
+    }
+  ],
+  "dependency_order": [
+    "Layered configuration snapshot construction",
+    "Repository contained target execution",
+    "Separate resource storage preservation"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-070-legacy-entrypoint-retirement/Spec.md",
+  "language": "Python",
+  "skeleton_loc": 34,
+  "multiplier_used": 1.2,
+  "projected_loc": 41,
+  "severity": "COMPLIANT",
+  "skeleton_files": [
+    "ToolRegistrar.py",
+    "RetainedServerConstruction.py",
+    "ArchivedPromptConsumer.py"
+  ],
+  "unsketched": []
+}

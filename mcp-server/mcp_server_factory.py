@@ -45,6 +45,7 @@ class MCPServerFactory:
         name: str,
         version: str = "1.0.0",
         instructions: str | None = None,
+        enabled_tools: frozenset[str] | None = None,
     ) -> MCPServer:
         format_detector = TransportFormatDetector()
         tools_call_handler = ToolsCallHandler(self._handlers, ToolResultFormatter())
@@ -65,7 +66,9 @@ class MCPServerFactory:
             name=name,
             version=version,
             tool_registering=ToolDecorator(
-                ToolRegistrar(self._metadata, self._handlers)
+                ToolRegistrar(
+                    self._metadata, self._handlers, enabled_tools=enabled_tools
+                )
             ),
             call_meta_provider=tools_call_handler,
             transport_runner=transport_runner,

@@ -32,6 +32,12 @@ from pipeline.tool_registry import ToolRegistering, ToolRegistry
 from search.codebase_searcher_factory import CodebaseSearcherFactory
 from search.tag_codebase_searching import TagCodebaseSearching
 
+# Preserve legacy helpers while restricting the default MCP surface to retained callers.
+_ENABLED_MCP_TOOLS: frozenset[str] = frozenset(
+    {"submit_fix", "submit_batch_findings", "search_codebase", "get_output_path"}
+)
+
+
 """
 solid-name: ApplicationBootstrapperFactory
 solid-category: factory
@@ -77,7 +83,7 @@ class ApplicationBootstrapperFactory(
 
     def make(self) -> ApplicationBootstrapper:
         server = self._server or MCPServerFactory().build(
-            "solid-coder-pipeline", "1.0.0"
+            "solid-coder-pipeline", "1.0.0", enabled_tools=_ENABLED_MCP_TOOLS
         )
         return ApplicationBootstrapper(
             server=server,

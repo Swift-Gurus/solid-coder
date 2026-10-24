@@ -1,0 +1,18 @@
+{
+  "spec_path": "/Users/dev/Developer/Swift-Gurus/solid-coder/.claude/specs/SPEC-001-solid-coder/features/SPEC-071-layered-config-and-repo-path-boundaries/Spec.md",
+  "ac_count": 10,
+  "screens": 0,
+  "predicted_loc": 120,
+  "formula": "(10 \u00d7 12) + (0 \u00d7 80) = 120",
+  "severity": "COMPLIANT",
+  "by_story": [
+    {
+      "story_id": "US-1: Merge shared defaults with repository settings",
+      "ac_count": 5
+    },
+    {
+      "story_id": "US-2: Bound review and search to the repository",
+      "ac_count": 5
+    }
+  ]
+}

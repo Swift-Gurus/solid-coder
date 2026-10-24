@@ -1,0 +1,145 @@
+{
+  "spec": "SPEC-071",
+  "status": "draft",
+  "date": "2026-10-23",
+  "verdict": "needs_clarification",
+  "phase_a": {
+    "result": "pass",
+    "checks": [
+      "A.1 frontmatter",
+      "A.2 required section order",
+      "A.3 conditional technical requirements/test plan; no UI",
+      "A.4 connection/flow/sequence diagrams",
+      "A.5 no forbidden sections"
+    ]
+  },
+  "phase_b": {
+    "result": "pass",
+    "reviewed_checks": [
+      "B.1 story and observable acceptance quality",
+      "B.2 concrete terms",
+      "B.3 no undefined application types prescribed",
+      "B.4 operations explained by algorithms",
+      "B.5 outputs delivered through existing consumer boundaries with operation/session lifetime",
+      "B.6 no new external API signatures prescribed",
+      "B.7 scope ownership/exclusions explicit",
+      "B.8 behavioral requirements; paths and schema identifiers only",
+      "B.9 criteria trace to technical mechanisms and test plan"
+    ]
+  },
+  "phase_c": {
+    "verdict": "needs_split",
+    "size": {
+      "heuristic_loc": 120,
+      "skeleton_loc": 169,
+      "skeleton_projected_loc": 203,
+      "consensus_loc": 203,
+      "severity": "MINOR",
+      "calibration_drift": false,
+      "calibration_delta": 0.409
+    },
+    "cohesion": {
+      "group_count": 3,
+      "severity": "SEVERE",
+      "groups": [
+        {
+          "label": "Layered configuration snapshot construction",
+          "acs": [
+            "US-1.1",
+            "US-1.2",
+            "US-1.3",
+            "US-1.4",
+            "US-1.5"
+          ],
+          "shared_signals": [
+            "data_type:config.toml",
+            "data_type:configuration settings",
+            "lifecycle:construction"
+          ]
+        },
+        {
+          "label": "Repository contained target execution",
+          "acs": [
+            "US-2.1",
+            "US-2.2",
+            "US-2.3",
+            "US-2.4"
+          ],
+          "shared_signals": [
+            "data_type:repository root",
+            "data_type:review/search targets",
+            "lifecycle:subscribe"
+          ]
+        },
+        {
+          "label": "Separate resource storage preservation",
+          "acs": [
+            "US-2.5"
+          ],
+          "shared_signals": []
+        }
+      ]
+    },
+    "split_recommendation": {
+      "should_split": true,
+      "driver": "cohesion",
+      "candidate_subtasks": [
+        {
+          "title": "Layered configuration snapshot construction",
+          "acs": [
+            "US-1.1",
+            "US-1.2",
+            "US-1.3",
+            "US-1.4",
+            "US-1.5"
+          ],
+          "estimated_size_band": "small"
+        },
+        {
+          "title": "Repository contained target execution",
+          "acs": [
+            "US-2.1",
+            "US-2.2",
+            "US-2.3",
+            "US-2.4"
+          ],
+          "estimated_size_band": "small"
+        },
+        {
+          "title": "Separate resource storage preservation",
+          "acs": [
+            "US-2.5"
+          ],
+          "estimated_size_band": "small"
+        }
+      ]
+    }
+  },
+  "findings": [
+    {
+      "category": "incohesive",
+      "severity": "SEVERE",
+      "location": "User Stories",
+      "question": "Resolve or accept the strict cohesion split recommendation before spec readiness/close-out.",
+      "group_count": 3
+    },
+    {
+      "category": "split_recommendation",
+      "severity": "SEVERE",
+      "location": "User Stories / Technical Requirements",
+      "question": "Review the attached split-plan proposal; no child specs have been created.",
+      "plan": "split-plan.json"
+    },
+    {
+      "category": "scope_oversized",
+      "severity": "MINOR",
+      "location": "User Stories",
+      "question": "Review projected implementation size when deciding delivery boundaries.",
+      "consensus_loc": 203
+    }
+  ],
+  "spec_sha256": "8c70d05dbd42fde17b9c3799bed6a9dc1ede207f8a7bda5dda993530e1f230b2",
+  "measurement_note": "Measurements ran against the same acceptance criteria; subsequent edits clarified test-plan phrasing and the retirement close-out checklist without changing measured criteria.",
+  "artifact_location_note": "Gateway output root was user-home storage outside writable workspace; scope measurements were kept under repository .solid-coder/.artifacts/spec-validation-2026-10-23 instead. Portable measurement summaries and split plans are copied here; skeleton files remain ignored artifacts.",
+  "implementation_claim": "Future feature only; no implementation or feature regression results claimed."
+}

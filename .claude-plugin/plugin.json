@@ -24,12 +24,6 @@
         "${CLAUDE_PLUGIN_ROOT}/mcp-server/flow_engine/server.py"
       ]
     },
-    "specs": {
-      "command": "python3.12",
-      "args": [
-        "${CLAUDE_PLUGIN_ROOT}/mcp-server/specs/server.py"
-      ]
-    },
     "pipeline": {
       "command": "python3.12",
       "args": [

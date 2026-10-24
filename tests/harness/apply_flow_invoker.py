@@ -33,13 +33,13 @@ from interfaces import (
 )
 from models import ModelProfile, OutputPaths
 
-_SKILL_PATH = "skills/apply-principle-review/SKILL.md"
+# The preserved legacy verification harness reads the archived prompt explicitly.
+_SKILL_PATH = "skills/apply-principle-review/SKILL.md.disabled"
 _ALLOWED_TOOLS = (
     "Read,"
     "mcp__docs__load_rules,"
     "mcp__docs__load_detection_rules,"
     "mcp__docs__load_fix_for_violation,"
-    "mcp__pipeline__submit_findings,"
     "mcp__pipeline__submit_batch_findings,"
     "mcp__pipeline__submit_fix,"
     "mcp__pipeline__search_codebase"
