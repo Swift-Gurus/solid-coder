@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from source.analysis.operations.discover_source_declaration_input import (
     DiscoverSourceDeclarationInput,
@@ -33,6 +34,7 @@ class TestSourceDeclarationContextOperation(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.interface = self.root / "Reading.swift"
         self.extension = self.root / "Reading+Helpers.swift"
         self.interface.write_text("protocol Reading { func read() }\n")
@@ -53,7 +55,7 @@ class TestSourceDeclarationContextOperation(unittest.TestCase):
     def prepare(self, path: Path, replace_disk: bool = False, exclusions=None):
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(ProjectDirectory(path=self.root))
             .execute(
                 PrepareSearchTargetsInput(
                     source=FileAnalysisSource(path=path),

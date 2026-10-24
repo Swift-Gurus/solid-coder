@@ -102,22 +102,21 @@ class FlowTransitionGateFactory:
             active_run=active_run,
         )
         workflow_catalog = WorkflowCatalogFactory().make()
+        project_directory = McpRequestContextProjectDirectoryReader(
+            session_reader=StaticSessionIdReader(self._session_id),
+            session_project_directory=SessionProjectDirectoryReader(
+                SessionProjectContextPathResolver(root_directory=DEFAULT_SESSION_ROOT)
+            ),
+        )
         assembly = FlowEngineAssemblyFactory().build(
             workflow_catalog_resolver=workflow_catalog,
             operation_registry=OperationRegistry(
                 registrations=[
                     *CollectionOperationRegistrationsFactory().make(),
                     *SourceOperationRegistrationsFactory(
-                        project_directory=McpRequestContextProjectDirectoryReader(
-                            session_reader=StaticSessionIdReader(self._session_id),
-                            session_project_directory=SessionProjectDirectoryReader(
-                                SessionProjectContextPathResolver(
-                                    root_directory=DEFAULT_SESSION_ROOT
-                                )
-                            ),
-                        ),
+                        project_directory=project_directory,
                     ).make(),
-                    *ReviewOperationRegistrationsFactory().make(),
+                    *ReviewOperationRegistrationsFactory().make(project_directory),
                 ],
                 name_validator=LogicalOperationNameValidator(),
                 error_factory=FlowValidationErrorFactory(),

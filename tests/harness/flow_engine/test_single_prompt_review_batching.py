@@ -11,6 +11,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.batch_step_presentation_mode import BatchStepPresentationMode
 from harness.batch_step_renderer_factory import BatchStepRendererFactory
 from harness.first_ready_step_selector import FirstReadyStepSelector
@@ -45,13 +46,14 @@ class TestSinglePromptReviewBatching(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.run_root = Path(temporary.name)
+        self.run_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.run_root).initialize()
         project_directory = ProjectDirectory(path=self.run_root)
         registrations = [
             *SourceOperationRegistrationsFactory(
                 project_directory=project_directory,
             ).make(),
-            *ReviewOperationRegistrationsFactory().make(),
+            *ReviewOperationRegistrationsFactory().make(project_directory),
         ]
         self.sut = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(

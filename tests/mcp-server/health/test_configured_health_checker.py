@@ -25,8 +25,11 @@ for _part in (
 
 from code_health_check_request import CodeHealthCheckRequest
 from code_health_check_service import CodeHealthCheckService
+from git_working_tree_fixture import GitWorkingTreeFixture
+from health.config.hc_config_core import find_repository_root
 from health.configured_health_checker_factory import ConfiguredHealthCheckerFactory
 from health_check_outcome import HealthCheckOutcome
+from source.repository_target_resolver import RepositoryTargetResolver
 
 """
 solid-name: TestConfiguredHealthChecker
@@ -37,6 +40,12 @@ solid-description: Verifies one configured construction point selects matching c
 
 
 class TestConfiguredHealthChecker:
+    @pytest.fixture(autouse=True)
+    def repository(self, tmp_path):
+        GitWorkingTreeFixture(tmp_path).initialize()
+        self.root = tmp_path
+        self.targets = RepositoryTargetResolver(find_repository_root)
+
     @pytest.mark.parametrize("mode", ["legacy", "workflow"])
     def test_selects_matching_checker_and_tools(self, tmp_path, mode):
         config_dir = tmp_path / ".solid-coder"
@@ -68,6 +77,8 @@ class TestConfiguredHealthChecker:
             )
             service = CodeHealthCheckService(
                 checker_factory=ConfiguredHealthCheckerFactory(plugin_root=_ROOT),
+                targets=self.targets,
+                current_directory=lambda: self.root,
             )
             assert service.check(request) == HealthCheckOutcome()
             other.assert_not_called()
@@ -102,12 +113,16 @@ class TestConfiguredHealthChecker:
     def test_checker_failure_is_not_a_successful_empty_review(self):
         checker_factory = MagicMock()
         checker_factory.make.return_value.check.return_value = None
-        service = CodeHealthCheckService(checker_factory=checker_factory)
+        service = CodeHealthCheckService(
+            checker_factory=checker_factory,
+            targets=self.targets,
+            current_directory=lambda: self.root,
+        )
         with pytest.raises(RuntimeError, match="no result"):
             service.check(
                 CodeHealthCheckRequest(
                     content="class Example {}",
-                    path="/project/Example.swift",
+                    path=str(self.root / "Example.swift"),
                     language="Swift",
                     parent_session_id="parent",
                 )
@@ -117,15 +132,65 @@ class TestConfiguredHealthChecker:
         checker_factory = MagicMock()
         checker = checker_factory.make.return_value
         checker.check.side_effect = TimeoutError("review timed out")
-        service = CodeHealthCheckService(checker_factory=checker_factory)
+        service = CodeHealthCheckService(
+            checker_factory=checker_factory,
+            targets=self.targets,
+            current_directory=lambda: self.root,
+        )
         with pytest.raises(TimeoutError, match="review timed out"):
             service.check(
                 CodeHealthCheckRequest(
                     content="class Example {}",
-                    path="/project/Example.swift",
+                    path=str(self.root / "Example.swift"),
                     language="Swift",
                     parent_session_id="parent",
                 )
             )
         assert checker_factory.make.call_count == 1
         assert checker.check.call_count == 1
+
+    @pytest.mark.parametrize(
+        "target", ["../Outside.swift", "../project-sibling/Outside.swift"]
+    )
+    def test_escape_is_rejected_before_checker_construction(self, target):
+        factory = MagicMock()
+        service = CodeHealthCheckService(
+            checker_factory=factory,
+            targets=self.targets,
+            current_directory=lambda: self.root,
+        )
+        request = CodeHealthCheckRequest(
+            content="struct Outside {}",
+            path=target,
+            language="Swift",
+            parent_session_id="parent",
+        )
+
+        with pytest.raises(ValueError, match="outside repository"):
+            service.check(request)
+
+        factory.make.assert_not_called()
+
+    def test_relative_target_uses_explicit_repository_root_from_nested_cwd(self):
+        nested = self.root / "Sources"
+        nested.mkdir()
+        factory = MagicMock()
+        factory.make.return_value.check.return_value = HealthCheckOutcome()
+        service = CodeHealthCheckService(
+            checker_factory=factory,
+            targets=self.targets,
+            current_directory=lambda: self.root.parent,
+        )
+        request = CodeHealthCheckRequest(
+            content="struct New {}",
+            path="New.swift",
+            language="Swift",
+            parent_session_id="parent",
+            cwd=str(nested),
+        )
+
+        service.check(request)
+
+        normalized = factory.make.call_args.args[0]
+        assert normalized.path == str(self.root / "New.swift")
+        assert normalized.cwd == str(nested)

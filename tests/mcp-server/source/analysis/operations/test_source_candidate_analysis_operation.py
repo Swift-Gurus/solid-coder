@@ -2,6 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from source.analysis.operations.candidate_source_analysis_visitor import (
     CandidateSourceAnalysisVisitor,
@@ -38,10 +39,11 @@ class TestSourceCandidateAnalysisOperation(TestCase):
         temporary = TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.path = self.root / "Reading.swift"
         self.path.write_text("protocol Reading { func read() }\n", encoding="utf-8")
         directory = ProjectDirectory(path=self.root)
-        analyzer = SourceAnalysisOperationFactory().make()
+        analyzer = SourceAnalysisOperationFactory().make(directory)
         self.operation = SourceCandidateAnalysisOperation(
             reader=ReadSourceCandidatesOperationFactory(directory).make(),
             analyzer=analyzer,
@@ -105,7 +107,7 @@ class TestSourceCandidateAnalysisOperation(TestCase):
     ) -> None:
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(ProjectDirectory(path=self.root))
             .execute(
                 PrepareSearchTargetsInput(
                     source=FileAnalysisSource(path=self.path),

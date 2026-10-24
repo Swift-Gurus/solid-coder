@@ -13,6 +13,7 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.operation_registration import OperationRegistration
 from harness.project_context import ProjectDirectory
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
@@ -37,7 +38,8 @@ class TestSourceSearchWorkflow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.candidate_path = self.project_root / "Sources" / "TaxRule.swift"
         self.candidate_path.parent.mkdir(parents=True)
         self.candidate_path.write_text(

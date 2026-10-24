@@ -1,6 +1,7 @@
 """Composes internal review-domain workflow operations."""
 
 from harness.operation_registration import OperationRegistration
+from harness.project_context import ProjectDirectoryReading
 from review.normalized_review_input import NormalizedReviewInput
 from review.prepare_review_input import PrepareReviewInput
 from review.prepare_review_operation_factory import PrepareReviewOperationFactory
@@ -14,12 +15,14 @@ solid-description: Provides typed review-target preparation to the flow engine w
 
 
 class ReviewOperationRegistrationsFactory:
-    def make(self) -> list[OperationRegistration]:
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> list[OperationRegistration]:
         return [
             OperationRegistration(
                 name="review.prepare",
                 input_model=PrepareReviewInput,
                 output_model=NormalizedReviewInput,
-                handler=PrepareReviewOperationFactory().make(),
+                handler=PrepareReviewOperationFactory().make(project_directory),
             )
         ]

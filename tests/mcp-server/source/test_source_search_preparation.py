@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, call, patch
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from source.exact_source_tokens_resolver_factory import ExactSourceTokensResolverFactory
 from source.source_search_input import SourceSearchInput
@@ -24,7 +25,8 @@ class TestSourceSearchPreparation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.path = self.root / "Probe.swift"
         self.content = "import Foundation\nstruct Probe { func loadProfile() {} }\n"
         self.path.write_text(self.content, encoding="utf-8")

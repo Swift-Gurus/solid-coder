@@ -6,11 +6,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from source.search_target_granularity import SearchTargetGranularity
 from source.source_search_input import SourceSearchInput
@@ -30,7 +32,8 @@ class TestSourceSearchOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self._write(
             "Sources/Current.swift",
             "struct InvoiceTaxCalculator {}\n",
@@ -191,13 +194,20 @@ class TestSourceSearchOperation(unittest.TestCase):
         outside_path.write_text("struct Escaped {}\n", encoding="utf-8")
         (self.project_root / "Escaped.swift").symlink_to(outside_path)
 
-        result = self.operation.execute(
-            SourceSearchInput(
-                queries=[SourceSearchQuery(id="escaped", terms=["Escaped"])],
+        with (
+            patch.object(
+                Path,
+                "read_bytes",
+                side_effect=AssertionError("Source read before validation"),
+            ) as reads,
+            self.assertRaisesRegex(ValueError, "Escaped.swift.*outside repository"),
+        ):
+            self.operation.execute(
+                SourceSearchInput(
+                    queries=[SourceSearchQuery(id="escaped", terms=["Escaped"])],
+                )
             )
-        )
-
-        self.assertEqual(result.candidates, [])
+        reads.assert_not_called()
 
     def _write(self, relative_path: str, content: str) -> None:
         destination = self.project_root / relative_path

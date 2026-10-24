@@ -1,515 +1,216 @@
 # solid-coder
 
-A Claude Code plugin for **spec-driven implementation**, **principle-based review**, and **structured self-correction**.
+SOLID Coder drives AI-assisted work through **client-defined workflows with
+required steps, evidence, and validation**. The flow engine controls which steps
+can run and which submitted results are accepted before the workflow advances.
 
-`solid-coder` is not a single prompt loop. It is a staged workflow system built around:
+Clients can define their own workflows and checks. The bundled workflows apply
+the same engine to principle-based source review. Claude Code and Codex plugin
+integrations supply MCP tools and hooks for enforcing the workflow around agent
+actions.
 
-- spec creation and validation
-- code-aware planning
-- reuse / modify / create decisions
-- rule-aware coding
-- structured principle review
-- safe correction routed back through `code`
+## How the workflow engine works
 
-The most important idea is that **rules are applied before code is written, and again after code is written**.
+A client maps a request, such as "research this", to a workflow and starts a run.
+The workflow defines the required work: deterministic tool operations, model
+reasoning, evidence to collect, output schemas, validation conditions, and any
+independent reviewer sessions. The engine returns the ready work and accepts
+completion only through the workflow's submission and validation contract.
 
----
+```mermaid
+flowchart TD
+    Request[User request] --> Client[AI client and model]
+    Definition[Client-defined workflow and validations] --> Engine[Flow engine and recorded run state]
+    Client -->|Start run or submit evidence| Engine
+    Engine --> Step{Ready step}
+    Step -->|Deterministic work| Tools[Tools, scripts, and registered MCP operations]
+    Step -->|Reasoning| Agent[Agent produces an evidence-backed result]
+    Step -->|Independent review| Reviewer[Separate session or agent validates the result]
+    Tools --> Validate[Validate outputs, evidence requirements, and conditions]
+    Agent --> Validate
+    Reviewer --> Validate
+    Validate -->|Accept| Next{Required work remains?}
+    Validate -->|Reject| Retry[Return rejection reasons and retry within limits]
+    Retry --> Engine
+    Next -->|Yes| Engine
+    Next -->|No| Complete[Workflow completed]
+    Client -->|Attempt to stop or perform a protected action| Hook[Host lifecycle hook]
+    Hook -->|Check active run| Engine
+    Engine -->|Required work pending| Block[Block and return the pending work]
+    Engine -->|Completed or failed| Finish[Allow completion and report the outcome]
+```
 
-## Development setup
+The engine runs deterministic steps itself and holds dependent work until its
+prerequisites are accepted. A model cannot complete a required step merely by
+saying it did the work: it must submit the required result, and failed validation
+keeps that step pending or rejected. Attempts and turn limits make stalled runs
+fail explicitly rather than remain locked forever.
 
-Project tooling is declared in `.config/mise/config.toml`: Python 3.12, Ruff,
-and Lefthook. Ruby is inherited from the machine's global mise setup. From the
-checkout, run:
+The execution contract is model-independent. A compatible AI client can drive
+model-owned steps through MCP; its host integration supplies lifecycle hooks and
+the adapters needed for delegated sessions. The shipped integrations support
+Claude Code and Codex, with a local-model review backend as well. Stop/action
+blocking depends on those host integrations being present and enabled.
+
+### Example: evidence-backed research
+
+A client-defined research workflow could require:
+
+1. Search the web and submit sources with evidence for each claim.
+2. Query the client's database and submit the relevant records or query results.
+3. Produce a draft tied to both sets of evidence.
+4. Require an independent validation step before the run can finish. If the agent
+   tries to stop with validation still pending, the host hook blocks completion
+   and directs it to the remaining step.
+5. Pass the draft and evidence to a separate reviewer session or agent to check
+   for unsupported claims, contradictions, and missing evidence.
+6. Accept the result, or reject it with reasons and require correction before
+   successful completion.
+
+This is an example of a client-authored workflow, not a bundled web/database
+integration. Clients define what counts as evidence and how to validate it.
+Schema and execution checks are deterministic; judging whether a claim is
+supported can be assigned to a reviewer. The current main-session Stop hook
+checks active-run progress; it does not automatically create this research
+workflow or launch a fact-checker for every answer. Enforcement of a delegated
+subagent's own unfinished isolated run remains separate, deferred work.
+
+### Example: gate on write
+
+With workflow review selected, a source-write hook starts the bundled
+`solid-gate-on-write` workflow against the exact proposed source buffer. The
+review gathers source evidence, applies the configured rules, and produces an
+outcome before the file is written.
+
+```mermaid
+flowchart LR
+    Write[Proposed source write] --> Hook[Pre-write hook]
+    Hook --> Review[Bundled review workflow]
+    Review --> Decision{Review outcome}
+    Decision -->|Accepted| Apply[Allow the write]
+    Decision -->|Blocking findings| Block[Block with findings and correction guidance]
+    Block --> Revise[Agent revises the proposed change]
+    Revise --> Write
+    Decision -->|Review incomplete or failed| Failure[Block and report the review failure]
+```
+
+The legacy healthcheck remains an alternative review path. Select the path with
+`[feature_flags].health_check_mode`; both use the source-write hook, while their
+native review rules remain distinct.
+
+## Current capabilities
+
+- Source-write review through the legacy healthcheck or the flow engine.
+- Executable workflows and bundled principle-review workflows.
+- Spec creation, code-to-spec analysis, and spec validation.
+- Coding with loaded SOLID rules and source metadata.
+- Apple build, test, and lint tools, with build logs and test-failure inspection.
+
+The active user-facing skills are `build-spec`, `build-spec-from-code`,
+`validate-spec`, and `code`. The older `implement`, `plan`, `refactor`, `review`,
+and related pipeline skills and agents are retained as disabled copies.
+They are not the current entry points.
+
+The plugin registers four MCP servers: `docs` for principle rules and patterns,
+`pipeline` for preserved healthcheck/search support, `flow-engine` for workflows,
+and `apple-build` for Apple tooling. The `docs` server supplies rule knowledge;
+it is separate from the Markdown guides linked below.
+
+## Requirements
+
+| Requirement | When needed |
+| --- | --- |
+| Python 3.12 available as `python3.12` to the host | Plugin MCP servers and hooks |
+| Packages in `requirements-runtime.txt`, installed into that host interpreter | Plugin runtime; a checkout's `.venv` does not supply these automatically |
+| The selected Claude or Codex CLI, configured and authenticated | Reviews using that backend |
+| A running local inference server | Reviews using `backend = "local"` |
+| Xcode and its Swift/SourceKit toolchain on macOS | Apple builds/tests and Swift semantic analysis |
+| mise, Ruff, pytest, and the existing Ruby/Lefthook setup | Development and repository checks |
+
+## Setup
+
+Install or update solid-coder through your host's plugin manager. Both Claude
+and Codex plugin manifests are included in this repository.
+
+For development from a checkout:
 
 ```bash
 mise install
 mise run install
-mise run lint
-mise run test
 ```
 
-Mise creates and activates the ignored `.venv/` for this project. The install
-task installs the Python dependencies from `requirements.txt` there. The existing
-Lefthook and conventional-commits setup is unchanged. The lint task checks
-without applying fixes; the test task runs non-live suites in separate processes
-to preserve their import layout.
-Live model checks run separately, after non-live checks pass, and require the
-existing model profiles, authentication, and MCP setup. Swift semantic-analysis
-tests also require a working Xcode/SourceKit installation on macOS.
+This creates the project `.venv` and installs development dependencies. Ruby is
+inherited from the machine's global setup; the existing Lefthook and
+conventional-commit setup is preserved.
 
-Use a mise-activated shell or `mise exec -- <command>` for development tools.
-Desktop's Python is provisioned separately below; passing development tests in
-the project virtualenv does not verify its dependencies. Changes do not update
-an already running desktop app's environment. Personal overrides belong in the ignored
-`.config/mise/config.local.toml`.
-
-### Python requirements
-
-Install **Python 3.12** and make `python3.12` available to the Claude/Codex host.
-Provision the exact interpreter Desktop resolves, independently of the target
-repository's `.venv`. The plugin keeps its direct `python3.12` entrypoints and
-does not install dependencies automatically during MCP or hook startup.
-
-```bash
-python3.12 --version
-```
-
-From this checkout, set `DESKTOP_PYTHON` to that interpreter's absolute path and
-run `mise run install:desktop`. For a Desktop using mise's global Python 3.12:
+Provision the **exact Python interpreter the host uses** separately. For a host
+using mise's global Python 3.12:
 
 ```bash
 DESKTOP_PYTHON="$HOME/.local/share/mise/installs/python/3.12/bin/python3.12" mise run install:desktop
 ```
 
-The explicit executable prevents mise's activated project virtualenv from
-redirecting pip to the wrong environment. Only the locked runtime dependencies
-are installed; pytest remains a development dependency. From outside the
-checkout, the equivalent command is:
+Set `DESKTOP_PYTHON` to a different absolute interpreter path when appropriate.
+This installs the pinned runtime packages and checks their dependencies. The
+plugin does not install dependencies automatically at startup. Repeat this
+step when changing the host interpreter or the runtime requirements, then
+restart the host session to relaunch its MCP servers.
 
-```bash
-"$DESKTOP_PYTHON" -I -m pip install -r /path/to/solid-coder/requirements-runtime.txt
+## Configuration
+
+Commit project settings in `.solid-coder/config.toml`. Put personal project
+overrides in `.solid-coder/config.local.toml` and keep that file out of Git.
+These plugin settings are separate from `.config/mise/config.toml`.
+
+For defaults shared across repositories, use `~/.config/solid-coder/config.toml`
+(or the fallback `~/.solid-coder/config.toml`). Repository settings override
+those defaults. The alternate repository location is
+`.config/solid.coder/config.toml`; each alias pair uses its first existing file.
+
+A minimal Codex-backed legacy review configuration is:
+
+```toml
+code_review_on_write_enabled = true
+
+[llm]
+backend = "codex"
+timeout = 1000
+
+[feature_flags]
+health_check_mode = "legacy"
 ```
 
-Repeat provisioning when changing the host's Python or updating the runtime
-lock. Package-index access or an offline wheelhouse is needed only during this
-explicit installation, not during MCP startup. Legacy gateway calls and generated
-delegated MCP configurations inherit the running interpreter via `sys.executable`.
-
-After updating the plugin configuration, restart the Claude/Codex session so its
-MCP servers are relaunched with the provisioned interpreter. No Python-version
-fallback or `SOLID_CODER_PYTHON` override is used. Entry commands are unchanged.
-
-Tree-sitter and its Swift and TypeScript grammars are pinned together in
-`requirements-runtime.txt`. Development `requirements.txt` includes that lock
-plus pytest. Python 3.9 and the older Swift grammar are no longer part of
-the supported dependency configuration.
-
-### Release validation
-
-Run `mise run release:check` before release. This runs Ruff and the non-live
-regressions, then `python scripts/release-smoke.py`. The smoke check copies the
-distributable plugin to a temporary install, supplies an empty home and base
-Python-only PATH, and launches both host manifests from an unrelated directory.
-It defaults to the runner's base interpreter, not its active virtualenv; set
-`DESKTOP_PYTHON` or pass `--python /absolute/path/to/python3.12` when Desktop uses
-a different interpreter. It checks every MCP initialize/tools-list exchange,
-every declared hook's startup, and write-gate schema-invalid-config denial.
-It never installs or repairs dependencies; an unprovisioned interpreter fails.
-It does not use the development `.venv` packages, invoke a model, or establish
-that a host dispatched a hook around a real source edit; that remains a separate
-live enforcement check.
-
-The version-bumper CLI runs the installed-plugin smoke check before modifying
-either manifest; a failure leaves both versions unchanged. The GitHub
-`Installed plugin release check` workflow provisions the host Python from the
-runtime lock, then runs the same smoke check on pull requests, main pushes, and
-`v*` tags. Require its `installed-plugin` status in
-branch protection to enforce it for remote merges. The check never publishes a
-release or changes the installed plugin cache.
-
-## Core workflows
-
-### `build-spec`
-Interactive spec authoring for new or evolving work.
-
-### `build-spec-from-code`
-Generate a rewrite-oriented spec from existing code.
-
-### `implement`
-Run the staged spec-to-code pipeline:
-1. `plan`
-2. `validate-plan`
-3. `synthesize-implementation`
-4. `code`
-5. `refactor`
-
-### `refactor`
-Run principle-based review and structured correction for changed code.
-
----
-
-## Workflow overview
-
-```mermaid
-flowchart TD
-    A[build-spec] --> VS[validate-spec]
-    B[build-spec-from-code] --> VS
-    VS --> I[implement]
-    I --> P[plan]
-    P --> VP[validate-plan]
-    VP --> SI[synthesize-implementation]
-    SI --> C[code]
-    C --> R[refactor]
-```
-
----
-
-## Implement flow
-
-```mermaid
-flowchart TD
-    S[validated spec] --> P[plan]
-    P --> VP[validate-plan]
-    VP --> SI[synthesize-implementation]
-    SI --> D{per component}
-    D -->|reuse| RU[reuse existing code]
-    D -->|modify| MO[modify existing code]
-    D -->|create| CR[create new code]
-    RU --> C[code]
-    MO --> C
-    CR --> C
-    C --> R[refactor]
-```
-
----
-
-## Refactor flow
-
-```mermaid
-flowchart TD
-    A[changed files] --> PRI[prepare-review-input]
-    PRI --> DP[discover-principles]
-    DP --> APR[apply-principle-review]
-    APR --> VF[validate-findings]
-    VF --> SF[synthesize-fixes]
-    SF --> C[code]
-```
-
----
-
-## Rule discovery and application
-
-The rule system has three layers:
-
-1. **Principle discovery**
-2. **Rule / instruction front matter parsing**
-3. **Contextual loading inside `code` and `refactor`**
-
-### High-level rule pipeline
-
-```mermaid
-flowchart TD
-    RP[references/*/rule.md] --> D[discover-principles]
-    D --> CT[all_candidate_tags]
-    CT --> PRI[prepare-review-input]
-    PRI --> MT[matched_tags]
-    MT --> D2[discover-principles filtered]
-    D2 --> AP[active principles]
-
-    AP --> PF[parse-frontmatter]
-    PF --> FL[files_to_load]
-
-    AP --> CODE[code]
-    AP --> APR[apply-principle-review]
-
-    FL --> LR[load-reference]
-    LR --> CODE
-    LR --> APR
-```
-
-### What `discover-principles` does
-
-`discover-principles` scans `references/*/rule.md`, parses each rule front matter, and returns:
-
-- `active_principles`
-- `skipped_principles`
-- `all_candidate_tags`
-
-Rule tags come from each `rule.md` front matter.
-
-Important behavior:
-
-- **untagged rules** are always active
-- if no filtering input is provided, all rules are returned as active
-- if `matched_tags` are provided, only tagged rules with intersecting tags remain active
-
-This means:
-- core rules can always apply
-- framework or stack-specific rules activate only when code evidence matches them
-
----
-
-## How tags are matched
-
-`prepare-review-input` receives `candidate_tags` from the orchestrator and matches them against the code being reviewed.
-
-It uses:
-- `detected_imports`
-- direct code-pattern inspection
-- semantic matching for tags that are not simple import names
-
-Examples:
-- `swiftui` can match `import SwiftUI`
-- `gcd` can match `DispatchQueue`
-- `structured-concurrency` can match `async`, `await`, or `Task {`
-- `combine` can match `Publisher` or `Subscriber`
-
-The result is written into `review-input.json` as `matched_tags`.
-
-That file is then fed back into `discover-principles` to narrow the principle set.
-
----
-
-## Rule front matter vs code front matter
-
-These are different and serve different purposes.
-
-### Rule front matter
-Every principle folder has a `rule.md` with front matter such as:
-
-- `name`
-- `displayName`
-- `category`
-- `description`
-- `tags`
-- `examples`
-
-This front matter is used to:
-- identify the principle
-- expose candidate tags
-- locate examples and referenced files to load
-
-### Code front matter
-Generated top-level types can receive semantic comments such as:
-
-- `solid-name`
-- `solid-category`
-- `solid-stack`
-- `solid-description`
-
-This front matter is used to:
-- describe the type's role
-- improve later discovery in `validate-plan`
-- help expose stack or framework context in the codebase
-
-Example:
-
-```swift
-/**
- solid-name: DSTheme
- solid-category: design-system theme facade
- solid-stack: swiftui
- solid-description: resolves design tokens for color, spacing, typography, elevation, and motion.
- */
-```
-
-`solid-stack` matters because it can help make framework usage more explicit in the codebase, but it is **not** the only signal used for rule activation. Imports and actual code patterns are also part of the discovery story.
-
----
-
-## How `code` applies rules
-
-`code` does not write first and review later. It loads rules before writing.
-
-### `code` rule-loading flow
-
-```mermaid
-flowchart TD
-    C0[code phase 1 load context] --> C1[discover-principles]
-    C1 --> C2{greenfield?}
-    C2 -->|yes| C3[use all principles]
-    C2 -->|no| C4[scan source for matched tags]
-    C4 --> C5[discover-principles filtered]
-    C3 --> C6[parse rule front matter]
-    C5 --> C6
-    C6 --> C7[load rule.md]
-    C6 --> C8[load files_to_load]
-    C6 --> C9[load fix/instructions.md]
-    C7 --> CW[write code with constraints]
-    C8 --> CW
-    C9 --> CW
-    CW --> SC[self-check against rules and acceptance criteria]
-```
-
-### What actually gets loaded in `code`
-
-For each active principle:
-
-1. `discover-principles` returns the active principle folder
-2. `parse-frontmatter` reads the principle's `rule.md`
-3. `files_to_load` is built from front matter fields like:
-   - `examples`
-   - `required_patterns`
-   - `rules`
-4. `load-reference` loads:
-   - the `rule.md`
-   - referenced examples and patterns
-   - `fix/instructions.md`
-
-Those files stay in context while code is being written.
-
-That means `code` writes with:
-- the metrics from `rule.md`
-- the examples from each principle
-- the repair strategies from `fix/instructions.md`
-
-Then `code` performs a self-check against:
-- all loaded rules
-- per-plan acceptance criteria
-- top-level cross-cutting acceptance criteria
-
----
-
-## How `refactor` applies rules
-
-`refactor` uses the same principle system, but in a different order and for a different purpose.
-
-It is a review-and-correction orchestrator.
-
-### Refactor execution shape
-
-1. discover all principles and collect candidate tags
-2. prepare normalized `review-input.json`
-3. match tags from real code
-4. rediscover principles using those matched tags
-5. run one review per active principle
-6. validate findings
-7. synthesize cross-principle fix plans
-8. send those plans back through `code`
-
-This makes `refactor` a structured correction pipeline, not a loose review prompt.
-
----
-
-## How `apply-principle-review` works
-
-`apply-principle-review` is the generic review runner.
-
-It is not hardcoded to SRP, OCP, SwiftUI, or any single principle. It works from a principle folder.
-
-### Input
-It receives:
-- principle name / folder
-- output path
-- `review-input.json`
-
-### Execution steps
-
-```mermaid
-flowchart TD
-    RI[review-input.json] --> APR[apply-principle-review]
-    PF1[parse review/instructions.md front matter] --> APR
-    PF2[parse rule.md front matter] --> APR
-    APR --> LR1[load referenced review rules]
-    APR --> LR2[load rule examples and patterns]
-    APR --> U[iterate changed units only]
-    U --> O[write review-output.json matching output schema]
-```
-
-### What it parses
-For each principle:
-
-1. parse `review/instructions.md` front matter
-   - can point to:
-     - rules
-     - output schema
-2. parse `rule.md` front matter
-   - exposes examples / related files
-3. load references from both
-
-### What it reviews
-It reads `review-input.json`, then:
-
-- iterates file by file
-- iterates unit by unit
-- only reviews units where `has_changes == true`
-- scopes analysis to the unit's line range
-
-That is important: it is not supposed to review the entire file indiscriminately.
-
-### Output
-It writes one structured `review-output.json` per principle.
-
-That output is later consumed by:
-- `validate-findings`
-- `synthesize-fixes`
-
----
-
-## Why rules fork through both `code` and `refactor`
-
-This is the main execution model:
-
-- `code` uses rules **proactively**
-- `refactor` uses the same principles **reactively**
-
-So the same principle ecosystem supports:
-- prevention during implementation
-- detection during review
-- correction during refactor
-
-That is one of the main design strengths of the system.
-
----
-
-## Front matter parsing details
-
-The repo has a dedicated `parse-frontmatter` skill and script.
-
-Its job is not only to extract YAML. It also:
-
-- resolves local relative paths
-- resolves references-root paths for design patterns
-- expands `Examples/` automatically when present
-- builds a flat `files_to_load` list for consumers
-
-This means front matter is not only documentation. It is also the rule system's file-loading contract.
-
----
-
-## Expected spec format
-
-Specs are markdown files with YAML front matter.
-
-Typical front matter includes:
-
-- `number`
-- `feature`
-- `type`
-- `status`
-- `blocked-by`
-- `blocking`
-- `parent`
-
-Example:
-
-```md
----
-number: SPEC-012
-feature: inspector-panel
-type: feature
-status: ready
-blocked-by: []
-blocking: []
-parent: SPEC-010
----
-```
-
-Common sections:
-
-- Description
-- Diagrams
-- Definition of Done
-
-Feature / subtask specs usually include:
-- Input / Output
-- User Stories
-- Connects To
-- Technical Requirements
-- UI / Mockup when relevant
-
----
+Omitting `model` uses the CLI default. Select `health_check_mode = "workflow"`
+for flow-engine review. Keep the root review flag before any TOML table header.
+
+See the [configuration reference](.claude/docs/configuration.md) for every
+setting's meaning, type, default, examples, and override rules.
 
 ## Documentation
 
+- [Configuration reference](.claude/docs/configuration.md)
 - [Workflow YAML reference](.claude/docs/workflow-yaml-reference.md)
-- [Architecture overview](docs/architecture-overview.md)
-- [Spec format](docs/spec-format.md)
-- [Build spec](docs/build-spec.md)
-- [Build spec from code](docs/build-spec-from-code.md)
-- [Implement flow](docs/implement-flow.md)
-- [Refactor flow](docs/refactor-flow.md)
-- [Rules and principles](docs/rules-and-principles.md)
-- [Front matter](docs/front-matter.md)
-- [Validate spec](docs/validate-spec.md)
-- [Orchestrator ideas](docs/orchestrator-ideas.md)
+- [Testing guide](tests/README.md)
+
+## Development and release checks
+
+```bash
+mise run lint
+mise run test
+mise run release:check
+```
+
+`lint` checks without applying fixes. `test` runs non-live groups in separate
+processes. Live model checks require their own profiles, authentication, and
+MCP setup and run separately after non-live checks pass.
+
+`release:check` runs lint, non-live tests, and the installed-plugin smoke check.
+The smoke check copies the distribution outside the checkout, uses an empty
+home and base Python, and verifies MCP initialization, hook startup, and
+schema-invalid-config denial. It does not invoke a model or prove a live
+reviewer completed a source-write review.
+
+The version-bumper runs that smoke guard before changing either plugin version.
+The GitHub release-check workflow runs it with explicitly provisioned runtime
+dependencies. Required remote status checks still depend on repository branch
+protection.

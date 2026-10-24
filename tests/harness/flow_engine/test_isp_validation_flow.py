@@ -77,12 +77,14 @@ class TestISPValidationFlow(RuleValidationFlowContract):
 
     def setUp(self) -> None:
         super().setUp()
+        fixture = self.project_root / "Fixture.swift"
+        fixture.write_text(self.review_unit, encoding="utf-8")
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareSearchTargetsInput(
-                    source=FileAnalysisSource(path=self.SCENARIO.fixture_path),
+                    source=FileAnalysisSource(path=fixture),
                     granularity=SearchTargetGranularity.UNIT,
                 ),
             )

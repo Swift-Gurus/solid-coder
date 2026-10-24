@@ -15,6 +15,7 @@ from dry_duplication_assessment import DRYDuplicationAssessment
 from dry_duplication_classification import DRYDuplicationClassification
 from dry_reuse_assessment import DRYReuseAssessment
 from dry_reuse_classification import DRYReuseClassification
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.isolated_run_paths import ISOLATED_RUNS_DIRNAME
 from harness.project_context import ProjectDirectory
@@ -51,7 +52,8 @@ class TestDryValidationFlow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.project_directory = ProjectDirectory(path=self.project_root)
         self.run_root = self.project_root / ".solid-coder" / "runs"
         self.current_path = self.project_root / "Current.swift"
@@ -552,7 +554,7 @@ class TestDryValidationFlow(unittest.TestCase):
         (self.project_root / "SharedTaxFormatter.swift").unlink()
         current = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareSearchTargetsInput(
                     source=TextAnalysisSource(
@@ -573,7 +575,7 @@ class TestDryValidationFlow(unittest.TestCase):
         )
         proposed = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareSearchTargetsInput(
                     source=TextAnalysisSource(
@@ -774,7 +776,7 @@ class TestDryValidationFlow(unittest.TestCase):
     def _parameters(self) -> dict[str, object]:
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareSearchTargetsInput(
                     source=FileAnalysisSource(path=self.current_path),

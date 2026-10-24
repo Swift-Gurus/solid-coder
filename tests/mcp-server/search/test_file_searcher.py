@@ -4,8 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from harness.path_builder import PathBuilder
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
+from health.config.hc_config_core import find_repository_root
 from search.codebase_searcher_factory import CodebaseSearcherFactory
 from search.file_searcher import FileSearcher
 from source.default_repository_source_exclusions import (
@@ -15,6 +16,7 @@ from source.filtered_repository_source_files_discoverer import (
     FilteredRepositorySourceFilesDiscoverer,
 )
 from source.os_directory_tree_walker import OsDirectoryTreeWalker
+from source.repository_target_resolver import RepositoryTargetResolver
 from utils.path_file_system_reader import PathFileSystemReader
 
 """
@@ -30,6 +32,7 @@ class TestFileSearcher(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.path = self.root / "Catalog.swift"
         self.path.write_text(
             "struct Catalog {}\nstruct CatalogExtra {}\nextension Catalog {}\n"
@@ -45,7 +48,7 @@ class TestFileSearcher(unittest.TestCase):
             ),
             file_system=PathFileSystemReader(),
             project_directory=ProjectDirectory(path=self.root),
-            paths=PathBuilder(),
+            targets=RepositoryTargetResolver(find_repository_root),
         )
 
     def test_definition_search_preserves_lines_and_excludes_resources_and_builds(

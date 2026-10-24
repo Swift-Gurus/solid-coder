@@ -6,6 +6,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.event_replayer import EventParser
 from harness.project_context import ProjectDirectory
 from harness.step_completed_event import StepCompletedEvent
@@ -29,6 +30,7 @@ class TestSourceRelationshipOperationsFlow(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.interface = self.root / "Reading.swift"
         self.source = self.root / "Store.swift"
         self.extension = self.root / "Store+Reading.swift"

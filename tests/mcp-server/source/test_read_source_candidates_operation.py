@@ -6,9 +6,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from source.candidate_source_read_kind import CandidateSourceReadKind
 from source.read_source_candidates_input import ReadSourceCandidatesInput
@@ -35,7 +37,8 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.candidate_path = self.project_root / "Sources" / "TaxRule.swift"
         self.candidate_path.parent.mkdir(parents=True)
         self.candidate_path.write_text(
@@ -82,7 +85,7 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
 
         self.assertEqual(result.results[0].kind, CandidateSourceReadKind.CHANGED)
 
-    def test_reports_an_escaped_root_candidate_as_a_typed_outcome(self) -> None:
+    def test_rejects_an_escaped_root_candidate_before_reading_source(self) -> None:
         escaped = SourceSearchCandidate(
             unit="Outside.swift",
             unit_identity="document:Outside.swift:1",
@@ -100,13 +103,20 @@ class TestReadSourceCandidatesOperation(unittest.TestCase):
             ],
         )
 
-        result = self.operation.execute(
-            ReadSourceCandidatesInput(
-                candidates=[escaped],
+        with (
+            patch.object(
+                Path,
+                "read_bytes",
+                side_effect=AssertionError("Source read before validation"),
+            ) as reads,
+            self.assertRaisesRegex(ValueError, "Outside.swift.*outside repository"),
+        ):
+            self.operation.execute(
+                ReadSourceCandidatesInput(
+                    candidates=[self.candidate, escaped],
+                )
             )
-        )
-
-        self.assertEqual(result.results[0].kind, CandidateSourceReadKind.ESCAPED_ROOT)
+        reads.assert_not_called()
 
 
 if __name__ == "__main__":

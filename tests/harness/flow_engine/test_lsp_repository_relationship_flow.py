@@ -11,6 +11,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.rule_applicability_context import RuleApplicabilityContext
@@ -41,7 +42,8 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.run_root = Path(temporary.name)
+        self.run_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.run_root).initialize()
         self.project_directory = ProjectDirectory(path=self.run_root)
         fixture = (
             _PROJECT_ROOT
@@ -51,12 +53,14 @@ class TestLSPRepositoryRelationshipFlow(unittest.TestCase):
             / "fixtures"
             / "fixture-3.swift"
         )
+        local_fixture = self.run_root / "Fixture.swift"
+        local_fixture.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareSearchTargetsInput(
-                    source=FileAnalysisSource(path=fixture),
+                    source=FileAnalysisSource(path=local_fixture),
                     granularity=SearchTargetGranularity.UNIT,
                 )
             )

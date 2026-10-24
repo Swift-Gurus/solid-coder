@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
 from source.analyze_source_input import AnalyzeSourceInput
 from source.file_analysis_source import FileAnalysisSource
@@ -154,7 +156,12 @@ struct Real {
     def test_file_and_buffer_share_facts_but_stale_file_is_not_read(self) -> None:
         source = "struct Outer { static func make() { struct Local {} } }"
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "Example.swift"
+            root = Path(directory).resolve()
+            GitWorkingTreeFixture(root).initialize()
+            self.operation = SourceAnalysisOperationFactory().make(
+                ProjectDirectory(path=root)
+            )
+            path = root / "Example.swift"
             path.write_text(source, encoding="utf-8")
             on_disk = self.operation.execute(
                 AnalyzeSourceInput(source=FileAnalysisSource(path=path))

@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.flow_validation_error import FlowValidationError
 from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.project_context import ProjectDirectory
@@ -37,7 +38,8 @@ class TestValidateCandidateSelectionOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         (self.project_root / "First.swift").write_text(
             "struct FirstFormatter { func format() {} }\n",
             encoding="utf-8",

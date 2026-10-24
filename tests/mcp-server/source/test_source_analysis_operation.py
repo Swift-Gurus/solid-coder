@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 
 from findings.review_unit_kind import ReviewUnitKind
+from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 from source.analyze_source_input import AnalyzeSourceInput
 from source.file_analysis_source import FileAnalysisSource
 from source.source_analysis_decision import SourceAnalysisDecision
@@ -40,7 +42,12 @@ class TestSourceAnalysisOperation(unittest.TestCase):
     def test_file_and_equivalent_text_produce_the_same_analysis(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        path = Path(temporary.name) / "Feature.swift"
+        root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(root).initialize()
+        self.operation = SourceAnalysisOperationFactory().make(
+            ProjectDirectory(path=root)
+        )
+        path = root / "Feature.swift"
         path.write_text(self.swift, encoding="utf-8")
 
         file_result = self.operation.execute(

@@ -4,6 +4,9 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
+
+from git_working_tree_fixture import GitWorkingTreeFixture
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
 
@@ -22,6 +25,16 @@ def _write(root: Path, rel: str, content: str) -> Path:
 
 class CodebaseSearcherTests(unittest.TestCase):
     def setUp(self) -> None:
+        temporary = TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
+        directory = patch(
+            "search.codebase_search_executor_factory._resolve_project_root",
+            return_value=self.project_root,
+        )
+        directory.start()
+        self.addCleanup(directory.stop)
         self.sut = CodebaseSearcherFactory().make()
         self.raw_sut = RawCodebaseSearcherFactory().make()
 
@@ -62,7 +75,7 @@ class CodebaseSearcherTests(unittest.TestCase):
         return {Path(m["path"]).name for m in result["matches"]}
 
     def test_tag_match_meets_min_matches(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             self._tree(root)
             # description words {fetch,user,data,remote} + tags {networking,user}
@@ -77,7 +90,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertNotIn("Unrelated.swift", self._paths(res))
 
     def test_below_min_matches_excluded(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             self._tree(root)
             res = self.raw_sut.search_raw(
@@ -86,7 +99,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertNotIn("Fetcher.swift", self._paths(res))
 
     def test_spec_match_bypasses_min_matches(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             self._tree(root)
             res = self.raw_sut.search_raw(
@@ -99,7 +112,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertEqual(match["matched_specs"], ["SPEC-042"])
 
     def test_skip_dir_never_scanned(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             self._tree(root)
             res = self.raw_sut.search_raw(
@@ -113,7 +126,7 @@ class CodebaseSearcherTests(unittest.TestCase):
 
     def test_build_output_dirs_pruned(self):
         # Vendored dependency checkouts under build-output dirs must be skipped.
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             _write(
                 root,
@@ -138,7 +151,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertEqual(res["summary"]["total_files_scanned"], 1)
 
     def test_binary_file_skipped(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             (root / "blob.swift").write_bytes(
                 b"// solid-description: fetch user data networking\x00\x00binary"
@@ -152,7 +165,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertEqual(res["summary"]["total_files_scanned"], 0)
 
     def test_repeated_imports_count_as_one_distinct_query_match(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             _write(
                 root,
@@ -174,7 +187,7 @@ class CodebaseSearcherTests(unittest.TestCase):
         # file can carry several blocks separated by large bodies. All blocks
         # must aggregate — this guards against any future head/line-cap that
         # would silently drop frontmatter past the cap.
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             body = "\n".join(f"    let v{i} = {i}" for i in range(200))
             _write(
@@ -198,7 +211,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             self.assertIn("TwoTypes.swift", self._paths(res_spec))
 
     def test_exact_symbols_match_without_frontmatter(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             _write(
                 root,
@@ -216,7 +229,7 @@ class CodebaseSearcherTests(unittest.TestCase):
             )
 
     def test_search_renders_unit_description_and_absolute_inspection_path(self):
-        with TemporaryDirectory() as d:
+        with TemporaryDirectory(dir=self.project_root) as d:
             root = Path(d)
             documented = _write(
                 root,

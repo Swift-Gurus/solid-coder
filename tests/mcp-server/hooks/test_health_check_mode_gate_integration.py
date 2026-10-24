@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from _path_bootstrap import ensure_on_path
+from git_working_tree_fixture import GitWorkingTreeFixture
 
 ensure_on_path(
     Path(__file__).resolve().parents[3] / "mcp-server" / "hooks",
@@ -13,6 +14,8 @@ ensure_on_path(
 
 from health_check_outcome import HealthCheckOutcome
 from write_gate_coordinator_factory import WriteGateCoordinatorFactory
+
+pytestmark = pytest.mark.usefixtures("isolated_configuration_home")
 
 """
 solid-name: TestHealthCheckModeGateIntegration
@@ -31,6 +34,7 @@ class TestHealthCheckModeGateIntegration:
         mode: str,
         relative_directory: str,
     ) -> None:
+        GitWorkingTreeFixture(tmp_path).initialize()
         config_directory = tmp_path / ".solid-coder"
         config_directory.mkdir()
         (config_directory / "config.toml").write_text(

@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from _path_bootstrap import ensure_on_path
 
 ensure_on_path(
@@ -19,6 +20,9 @@ ensure_on_path(
 )
 
 import hc_config_core
+from solid_coder_config_error import SolidCoderConfigError
+
+pytestmark = pytest.mark.usefixtures("isolated_configuration_home")
 
 _VALID_TOML = b'[llm]\nbackend = "local"\nhost = "http://gpu:9090"\n'
 
@@ -49,9 +53,13 @@ class TestReadConfigFile(unittest.TestCase):
         ):
             self.assertEqual(hc_config_core.read_llm_section(), {})
 
-    def test_returns_empty_dict_on_invalid_toml(self):
-        with self._with_temp_toml(b"not valid toml") as (result, _):
-            self.assertIsInstance(result, dict)
+    def test_invalid_selected_toml_reports_its_path(self):
+        with (
+            self._temp_toml_path(b"not valid toml") as tmp,
+            patch("hc_config_core.find_config", return_value=tmp),
+            pytest.raises(SolidCoderConfigError, match=str(tmp)),
+        ):
+            hc_config_core.read_llm_section()
 
     def test_reads_llm_section_when_tomllib_available(self):
         with self._with_temp_toml(_VALID_TOML) as (result, _):

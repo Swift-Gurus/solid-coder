@@ -5,6 +5,8 @@ import textwrap
 import unittest
 from pathlib import Path
 
+from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 from review.prepare_review_input import PrepareReviewInput
 from review.prepare_review_operation_factory import PrepareReviewOperationFactory
 from source.file_analysis_source import FileAnalysisSource
@@ -22,7 +24,9 @@ class TestPrepareReviewOperation(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
+        self.project_directory = ProjectDirectory(path=self.project_root)
         self.target_path = self.project_root / "Profile.swift"
         self.target_path.write_text(
             "struct StaleDiskValue {}\n",
@@ -45,7 +49,7 @@ class TestPrepareReviewOperation(unittest.TestCase):
     def test_buffer_content_drives_every_normalized_review_fact(self) -> None:
         result = (
             PrepareReviewOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareReviewInput(
                     target=TextAnalysisSource(
@@ -90,7 +94,7 @@ class TestPrepareReviewOperation(unittest.TestCase):
 
         result = (
             PrepareReviewOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareReviewInput(
                     target=FileAnalysisSource(path=self.target_path),
@@ -114,7 +118,7 @@ class TestPrepareReviewOperation(unittest.TestCase):
 
         result = (
             PrepareReviewOperationFactory()
-            .make()
+            .make(self.project_directory)
             .execute(
                 PrepareReviewInput(
                     target=TextAnalysisSource(

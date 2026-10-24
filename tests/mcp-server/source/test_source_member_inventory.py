@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 from source.analyze_source_input import AnalyzeSourceInput
 from source.file_analysis_source import FileAnalysisSource
 from source.source_analysis_decision import SourceAnalysisDecision
@@ -193,7 +195,12 @@ class TestSourceMemberInventory(unittest.TestCase):
         self,
     ) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "Unicode.swift"
+            root = Path(directory).resolve()
+            GitWorkingTreeFixture(root).initialize()
+            self.operation = SourceAnalysisOperationFactory().make(
+                ProjectDirectory(path=root)
+            )
+            path = root / "Unicode.swift"
             text = "// café 😀\nprotocol Café {\n  func télécharger()\n}\n"
             buffer_result = self.operation.execute(
                 AnalyzeSourceInput(

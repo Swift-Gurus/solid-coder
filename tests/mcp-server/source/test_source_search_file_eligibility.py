@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import call, patch
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from harness.sha256_content_hasher import Sha256ContentHasher
 from source.repository_source_snapshot import RepositorySourceSnapshot
@@ -27,6 +28,7 @@ class TestSourceSearchFileEligibility(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.path = self.root / "Profile.swift"
         self.content = (
             "// solid-name: Profile\n"

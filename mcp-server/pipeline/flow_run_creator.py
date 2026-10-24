@@ -66,6 +66,6 @@ class FlowRunCreator(FlowRunCreating):
                 *SourceOperationRegistrationsFactory(
                     project_directory=project_directory_reader,
                 ).make(),
-                *ReviewOperationRegistrationsFactory().make(),
+                *ReviewOperationRegistrationsFactory().make(project_directory_reader),
             ],
         ).build()

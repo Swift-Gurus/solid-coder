@@ -12,6 +12,7 @@ _HARNESS_DIRECTORY = Path(__file__).resolve().parents[1]
 if str(_HARNESS_DIRECTORY) not in sys.path:
     sys.path.insert(0, str(_HARNESS_DIRECTORY))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.collection_operation_registrations_factory import (
     CollectionOperationRegistrationsFactory,
 )
@@ -52,7 +53,8 @@ class RuleValidationFlowContract(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.project_directory = ProjectDirectory(path=self.project_root)
         self.review_unit = self.SCENARIO.fixture_path.read_text(encoding="utf-8")
         self.review_unit_name = f"{self.SCENARIO.workflow_id}-fixture-unit"

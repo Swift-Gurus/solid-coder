@@ -4,12 +4,15 @@ import sys
 from pathlib import Path
 
 import pytest
+from git_working_tree_fixture import GitWorkingTreeFixture
 
 _ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(_ROOT / "mcp-server" / "health" / "config"))
 
 from solid_coder_config_error import SolidCoderConfigError
 from solid_coder_config_loader import SolidCoderConfigLoader
+
+pytestmark = pytest.mark.usefixtures("isolated_configuration_home")
 
 """
 solid-name: TestHealthCheckModeConfiguration
@@ -20,6 +23,10 @@ solid-description: Verifies typed health-check selection, project overrides, and
 
 
 class TestHealthCheckModeConfiguration:
+    @pytest.fixture(autouse=True)
+    def repository(self, tmp_path):
+        GitWorkingTreeFixture(tmp_path).initialize()
+
     def test_omitted_mode_defaults_to_workflow(self, tmp_path):
         assert (
             SolidCoderConfigLoader()
@@ -31,7 +38,6 @@ class TestHealthCheckModeConfiguration:
     @pytest.mark.parametrize("mode", ["legacy", "workflow"])
     @pytest.mark.parametrize("relative_directory", [".", "ios/Tools/BuildInsights"])
     def test_loads_explicit_mode(self, tmp_path, mode, relative_directory):
-        (tmp_path / ".git").mkdir()
         config_dir = tmp_path / ".solid-coder"
         config_dir.mkdir()
         (config_dir / "config.toml").write_text(

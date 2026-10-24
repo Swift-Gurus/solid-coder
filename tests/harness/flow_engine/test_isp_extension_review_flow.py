@@ -7,6 +7,7 @@ from pathlib import Path
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.event_replayer import EventParser
 from harness.flow_next_result import FlowNextResult
 from harness.project_context import ProjectDirectory
@@ -39,6 +40,7 @@ class TestISPExtensionReviewFlow(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.root).initialize()
         self.driver = OperationWorkflowIntegrationDriver(
             project_root=self.root,
             registrations=SourceOperationRegistrationsFactory(
@@ -73,7 +75,7 @@ class TestISPExtensionReviewFlow(unittest.TestCase):
         self.sources = [interface, extension, conformer]
         prepared = (
             PrepareSearchTargetsOperationFactory()
-            .make()
+            .make(ProjectDirectory(path=self.root))
             .execute(
                 PrepareSearchTargetsInput(
                     source=FileAnalysisSource(

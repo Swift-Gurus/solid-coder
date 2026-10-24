@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.event_replayer import EventParser
 from harness.operations.operation_result import OperationResult
 from harness.project_context import ProjectDirectory
@@ -34,6 +35,7 @@ class TestTypeInspectionOperationReplay(unittest.TestCase):
     ) -> None:
         with TemporaryDirectory() as directory:
             root = Path(directory).resolve()
+            GitWorkingTreeFixture(root).initialize()
             path = root / "Inspect.swift"
             path.write_text(
                 "func inspect(_ value: Any) {\n"

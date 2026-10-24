@@ -1,6 +1,7 @@
 """Composes deterministic review-target normalization."""
 
 from harness.ordered_string_collector import OrderedStringCollector
+from harness.project_context import ProjectDirectoryReading
 from harness.rule_applicability_context_resolver import (
     RuleApplicabilityContextResolver,
 )
@@ -24,9 +25,11 @@ solid-description: Creates normalized review operations for prospective review i
 
 
 class PrepareReviewOperationFactory:
-    def make(self) -> PrepareReviewOperation:
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> PrepareReviewOperation:
         return PrepareReviewOperation(
-            source_resolver=AnalysisSourceResolverFactory().make(),
+            source_resolver=AnalysisSourceResolverFactory().make(project_directory),
             analyzer=ResolvedSourceAnalyzerFactory().make(),
             targets=SourceSearchTargetsBuilderFactory().make(),
             review_file=NormalizedReviewFileBuilder(

@@ -14,6 +14,7 @@ _REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(_REPOSITORY_ROOT / "mcp-server"))
 sys.path.insert(0, str(_REPOSITORY_ROOT / "tests" / "harness" / "flow_engine"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.operations.operation_result import OperationResult
 from harness.project_context import ProjectDirectory
 from operation_workflow_integration_driver import OperationWorkflowIntegrationDriver
@@ -35,7 +36,8 @@ class TestSourceAnalysisWorkflow(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.first_path = self.project_root / "First.swift"
         self.second_path = self.project_root / "Second.swift"
         self.first_path.write_text("struct First {}\n", encoding="utf-8")

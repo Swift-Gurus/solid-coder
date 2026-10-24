@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -26,10 +27,13 @@ for _directory in (
 import code_health_check
 from code_health_check_request import CodeHealthCheckRequest
 from code_health_check_service import CodeHealthCheckService
+from git_working_tree_fixture import GitWorkingTreeFixture
 from hc_checker import LLMHealthChecker
+from health.config.hc_config_core import find_repository_root
 from health_check_outcome import HealthCheckOutcome
 from health_prompt_builder import HealthPromptBuilder
 from principles_loader import PrinciplesLoader
+from source.repository_target_resolver import RepositoryTargetResolver
 
 """
 solid-name: TestPrincipleScopedHealthCheck
@@ -122,18 +126,25 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
             )
 
     def test_service_passes_declared_principles_to_real_checker_contract(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(root).initialize()
+        path = str(root / "Example.swift")
         checker = MagicMock()
         checker.check.return_value = HealthCheckOutcome()
         checker_factory = MagicMock()
         checker_factory.make.return_value = checker
         service = CodeHealthCheckService(
             checker_factory=checker_factory,
+            targets=RepositoryTargetResolver(find_repository_root),
+            current_directory=lambda: root,
         )
 
         service.check(
             CodeHealthCheckRequest(
                 content="final class Example {}",
-                path="/project/Example.swift",
+                path=path,
                 language="Swift",
                 parent_session_id="comparison-session",
                 principle_names=["SRP"],
@@ -142,7 +153,7 @@ class TestPrincipleScopedHealthCheck(unittest.TestCase):
 
         checker.check.assert_called_once_with(
             "final class Example {}",
-            "/project/Example.swift",
+            path,
             "Swift",
             "comparison-session",
             patch_context=None,

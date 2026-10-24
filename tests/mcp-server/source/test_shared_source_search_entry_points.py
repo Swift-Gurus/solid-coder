@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "harness" / "flow_engine"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from health.dry_search_completion_status import DrySearchCompletionStatus
 from health.dry_search_service_factory import DrySearchServiceFactory
@@ -36,10 +37,17 @@ class TestSharedSourceSearchEntryPoints(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.project = self.root / "project"
         self.path = self.project / "Sources" / "Catalog.swift"
         self.path.parent.mkdir(parents=True)
+        GitWorkingTreeFixture(self.project).initialize()
+        project_directory = patch(
+            "search.codebase_search_executor_factory._resolve_project_root",
+            return_value=self.project,
+        )
+        project_directory.start()
+        self.addCleanup(project_directory.stop)
         self.path.write_text(
             "// solid-name: Catalog\n"
             "// solid-description: Retrieves profile records.\n"

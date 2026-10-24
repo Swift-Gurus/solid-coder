@@ -27,7 +27,7 @@ from source.source_search_operation_factory import SourceSearchOperationFactory
 solid-name: SourceDeclarationDiscoveryOperationFactory
 solid-category: factory
 solid-spec: [SPEC-057]
-solid-description: Composes shared repository search, verified source inspection, parsing, and bounded relationship selection for declaration discovery.
+solid-description: Creates repository-scoped declaration discovery capabilities for related source definitions and implementations.
 """
 
 
@@ -36,7 +36,7 @@ class SourceDeclarationDiscoveryOperationFactory:
         self._project_directory = project_directory
 
     def make(self) -> SourceDeclarationDiscoveryOperation:
-        analyzer = SourceAnalysisOperationFactory().make()
+        analyzer = SourceAnalysisOperationFactory().make(self._project_directory)
         return SourceDeclarationDiscoveryOperation(
             searcher=SourceSearchOperationFactory().make(self._project_directory),
             analyzer=SourceCandidateAnalysisOperation(

@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "mcp-server"))
 
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.project_context import ProjectDirectory
 from hooks.pathlib_extractor import PathlibExtractor
 from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
@@ -46,7 +47,8 @@ class TestUnitScopedSourceSearch(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.project_root = Path(temporary.name)
+        self.project_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.project_root).initialize()
         self.project_directory = ProjectDirectory(path=self.project_root)
         self.source_path = self.project_root / "Sources" / "Calculators.swift"
         self.source_path.parent.mkdir(parents=True)

@@ -24,9 +24,11 @@ from hc_runner_factory import (
     LocalRunnerStrategy,
     select_strategy,
 )
+from health.config.hc_config_core import find_repository_root
 from health_check_outcome import HealthCheckOutcome
 from llm_config import LlmConfig
 from solid_coder_config import SolidCoderConfig
+from source.repository_target_resolver import RepositoryTargetResolver
 
 _ENV_KEY = "SOLID_CODER_SESSION_TYPE"
 _EXPECTED = "health_check"
@@ -165,8 +167,10 @@ class TestCodeHealthCheckSetsEnv(unittest.TestCase):
                     checker_factory=ConfiguredHealthCheckerFactory(
                         plugin_root=Path(__file__).resolve().parents[3],
                     ),
+                    targets=RepositoryTargetResolver(find_repository_root),
+                    current_directory=lambda: Path(__file__).resolve().parents[3],
                 )
-            ).check("content", "/f.swift", "Swift", "sid")
+            ).check("content", "f.swift", "Swift", "sid")
 
     def test_claude_backend_sets_session_type(self):
         self._run_check_with_backend("claude")

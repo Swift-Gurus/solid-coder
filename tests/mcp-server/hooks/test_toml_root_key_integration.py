@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from _path_bootstrap import ensure_on_path
 
 ensure_on_path(
@@ -18,6 +19,8 @@ ensure_on_path(
 
 from _gate_fixtures import FM, HC, LONG_SWIFT, call_main, event
 from test_utils import write_toml
+
+pytestmark = pytest.mark.usefixtures("isolated_configuration_home")
 
 
 class TestTomlRootKeyIntegration(unittest.TestCase):
@@ -33,7 +36,11 @@ class TestTomlRootKeyIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             write_toml(tmp_path, toml_content)
-            full_env = {"CLAUDE_PROJECT_DIR": str(tmp_path), **env}
+            full_env = {
+                "HOME": os.environ["HOME"],
+                "CLAUDE_PROJECT_DIR": str(tmp_path),
+                **env,
+            }
             with (
                 patch.dict(os.environ, full_env, clear=True),
                 patch(HC, return_value=[]) as hc,

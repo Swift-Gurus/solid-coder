@@ -88,7 +88,7 @@ class WorkflowHealthCheckerFactory(HealthCheckerCreating):
                 *SourceOperationRegistrationsFactory(
                     project_directory=project_directory,
                 ).make(),
-                *ReviewOperationRegistrationsFactory().make(),
+                *ReviewOperationRegistrationsFactory().make(project_directory),
             ],
         ).build()
         continuation_instruction_builder = (
@@ -117,7 +117,7 @@ class WorkflowHealthCheckerFactory(HealthCheckerCreating):
             assessor=HealthReviewAssessor(ScoredReviewViolationSelector()),
             introductions=VerifyIntroducedInterfacesOperation(
                 reader=PathSourceBytesReader(),
-                analyzer=SourceAnalysisOperationFactory().make(),
+                analyzer=SourceAnalysisOperationFactory().make(project_directory),
                 paths=PathBuilder(),
                 hasher=Sha256ContentHasher(),
             ),

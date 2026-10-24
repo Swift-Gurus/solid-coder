@@ -1,4 +1,4 @@
-"""Provides a reusable real Git working tree for source-operation tests."""
+"""Provides a reusable real Git working tree for repository-scoped tests."""
 
 from __future__ import annotations
 

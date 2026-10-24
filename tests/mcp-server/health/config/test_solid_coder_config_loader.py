@@ -8,6 +8,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock, patch
 
+import pytest
+
 sys.path.insert(
     0, str(Path(__file__).resolve().parents[4] / "mcp-server" / "health" / "config")
 )
@@ -15,6 +17,8 @@ sys.path.insert(
 from config_section_reading import ConfigSectionReading
 from solid_coder_config_error import SolidCoderConfigError
 from solid_coder_config_loader import SolidCoderConfigLoader
+
+pytestmark = pytest.mark.usefixtures("isolated_configuration_home")
 
 """
 solid-name: TestSolidCoderConfigLoader
@@ -32,7 +36,7 @@ class TestSolidCoderConfigLoader(unittest.TestCase):
         (self.root / ".git").mkdir()
         self.folder = self.root / ".solid-coder"
         self.folder.mkdir()
-        environment = patch.dict(os.environ, {}, clear=True)
+        environment = patch.dict(os.environ, {"HOME": os.environ["HOME"]}, clear=True)
         environment.start()
         self.addCleanup(environment.stop)
         self.sut = SolidCoderConfigLoader()

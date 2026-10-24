@@ -13,6 +13,7 @@ sys.path.insert(0, str(_PROJECT_ROOT / "mcp-server"))
 sys.path.insert(0, str(_TEST_HARNESS_ROOT))
 
 from bundled_review_rule_policy_writer import BundledReviewRulePolicyWriter
+from git_working_tree_fixture import GitWorkingTreeFixture
 from harness.flow_run_orchestrator_factory import FlowRunOrchestratorFactory
 from harness.project_context import ProjectDirectory
 from harness.runs_base_dir_resolver import RunsBaseDirResolver
@@ -35,7 +36,8 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
     def setUp(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.run_root = Path(temporary.name)
+        self.run_root = Path(temporary.name).resolve()
+        GitWorkingTreeFixture(self.run_root).initialize()
         self.target_path = self.run_root / "Profile.swift"
         self.source = textwrap.dedent(
             """
@@ -55,7 +57,7 @@ class TestSolidReviewBundleExecution(unittest.TestCase):
             *SourceOperationRegistrationsFactory(
                 project_directory=project_directory,
             ).make(),
-            *ReviewOperationRegistrationsFactory().make(),
+            *ReviewOperationRegistrationsFactory().make(project_directory),
         ]
         self.sut = FlowRunOrchestratorFactory(
             base_dir_resolver=RunsBaseDirResolver(project_dir_fn=lambda: self.run_root),

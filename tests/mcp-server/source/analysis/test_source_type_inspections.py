@@ -5,6 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 from source.analysis.tree_sitter_syntax_parser import TreeSitterSyntaxParser
 from source.analyze_source_input import AnalyzeSourceInput
 from source.file_analysis_source import FileAnalysisSource
@@ -135,7 +137,12 @@ class TestSourceTypeInspections(unittest.TestCase):
     def test_file_and_unwritten_buffer_have_equivalent_stable_facts(self) -> None:
         source = "func inspect(_ value: Any) { let result = value as? Model }"
         with TemporaryDirectory() as directory:
-            path = Path(directory) / "New.swift"
+            root = Path(directory).resolve()
+            GitWorkingTreeFixture(root).initialize()
+            self.operation = SourceAnalysisOperationFactory().make(
+                ProjectDirectory(path=root)
+            )
+            path = root / "New.swift"
             buffer = self.operation.execute(
                 AnalyzeSourceInput(
                     source=TextAnalysisSource(
