@@ -28,10 +28,15 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="mcp runtime ")
         self.addCleanup(temporary.cleanup)
         self.workspace = Path(temporary.name)
-        runtime_bin = Path(sys.executable).parent
+        self.executable = str(
+            Path(os.environ.get("DESKTOP_PYTHON", sys._base_executable)).absolute()
+        )
+        runtime_bin = Path(self.executable).parent
         self.environment = os.environ.copy()
-        self.environment["PATH"] = f"/usr/bin:/bin:{runtime_bin}"
+        self.environment["PATH"] = f"{runtime_bin}:/usr/bin:/bin"
         self.environment["CLAUDE_PROJECT_DIR"] = str(self.workspace)
+        for key in ("VIRTUAL_ENV", "PYTHONPATH", "PYTHONHOME"):
+            self.environment.pop(key, None)
         self.environment.pop("SOLID_CODER_HEALTH_INPUT_PATH", None)
         self.environment.pop("SOLID_CODER_HEALTH_OUTPUT_PATH", None)
 
@@ -41,13 +46,19 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
             {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
             {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
         ]
+        arguments = []
+        for argument in server.args:
+            argument = argument.replace("${CLAUDE_PLUGIN_ROOT}", str(ROOT))
+            if not argument.startswith("-") and (ROOT / argument).is_file():
+                argument = str(ROOT / argument)
+            arguments.append(argument)
         completed = subprocess.run(
-            [server.command, *server.args],
+            [server.command, *arguments],
             input="".join(json.dumps(message) + "\n" for message in messages),
             text=True,
             capture_output=True,
             timeout=30,
-            cwd=ROOT,
+            cwd=self.workspace,
             env=self.environment,
             check=False,
         )
@@ -95,7 +106,10 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
     def test_legacy_profile_launches_search_and_submission_tools(self) -> None:
         configuration = json.loads(
             McpConfigBuilder(
-                ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()
+                ROOT,
+                McpConfigProfile.LEGACY_HEALTH,
+                JsonSerializer(),
+                executable=self.executable,
             ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
@@ -109,7 +123,10 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
     def test_legacy_profile_launches_rule_loading_tools(self) -> None:
         configuration = json.loads(
             McpConfigBuilder(
-                ROOT, McpConfigProfile.LEGACY_HEALTH, JsonSerializer()
+                ROOT,
+                McpConfigProfile.LEGACY_HEALTH,
+                JsonSerializer(),
+                executable=self.executable,
             ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
@@ -121,7 +138,10 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
     def test_workflow_profile_launches_flow_tools(self) -> None:
         configuration = json.loads(
             McpConfigBuilder(
-                ROOT, McpConfigProfile.GATE_FLOW, JsonSerializer()
+                ROOT,
+                McpConfigProfile.GATE_FLOW,
+                JsonSerializer(),
+                executable=self.executable,
             ).build(),
             object_hook=lambda fields: SimpleNamespace(**fields),
         )
@@ -150,7 +170,7 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
         )
 
         completed = subprocess.run(
-            [sys.executable, "-c", source],
+            [self.executable, "-c", source],
             text=True,
             capture_output=True,
             timeout=60,
@@ -202,3 +222,36 @@ class TestMcpRuntimeIntegration(unittest.TestCase):
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(completed.stdout.strip(), "")
+
+    def test_invalid_config_during_gate_construction_produces_denial(self) -> None:
+        config = self.workspace / ".solid-coder" / "config.toml"
+        config.parent.mkdir()
+        config.write_text('code_review_on_write_enabled = "not-a-boolean"\n')
+        environment = self.environment.copy()
+        environment["CLAUDE_PLUGIN_ROOT"] = str(ROOT)
+        configuration = json.loads((ROOT / "hooks/hooks.json").read_text())
+        command = next(
+            hook["command"]
+            for entry in configuration["hooks"]["PreToolUse"]
+            for hook in entry["hooks"]
+            if "pre_write_gate.py" in hook["command"]
+        )
+
+        completed = subprocess.run(
+            ["/bin/sh", "-c", command],
+            input=json.dumps(
+                {"tool_name": "Read", "tool_input": {}, "cwd": str(self.workspace)}
+            ),
+            text=True,
+            capture_output=True,
+            timeout=30,
+            cwd=self.workspace,
+            env=environment,
+            check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(
+            json.loads(completed.stdout)["hookSpecificOutput"]["permissionDecision"],
+            "deny",
+        )

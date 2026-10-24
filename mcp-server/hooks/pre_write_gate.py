@@ -36,20 +36,17 @@ from write_gate_coordinator_factory import WriteGateCoordinatorFactory
 _GATE = HookGateFactory().build()
 _PATCH_SIMULATOR_FACTORY = ApplyPatchContentSimulatorFactory()
 _COORDINATOR_FACTORY = WriteGateCoordinatorFactory()
-_ORCHESTRATOR = GateOrchestratorFactory(
-    guard_factory=DefaultGuardFactory(),
-    exclusion_checker_factory=DefaultExclusionCheckerFactory(),
-    patch_simulator_factory=_PATCH_SIMULATOR_FACTORY,
-    patch_reviewer_factory=ApplyPatchReviewerFactory(),
-).create(
-    _GATE,
-    _COORDINATOR_FACTORY,
-)
 
 
 def main() -> None:
     try:
-        _ORCHESTRATOR.run(sys.stdin.read())
+        orchestrator = GateOrchestratorFactory(
+            guard_factory=DefaultGuardFactory(),
+            exclusion_checker_factory=DefaultExclusionCheckerFactory(),
+            patch_simulator_factory=_PATCH_SIMULATOR_FACTORY,
+            patch_reviewer_factory=ApplyPatchReviewerFactory(),
+        ).create(_GATE, _COORDINATOR_FACTORY)
+        orchestrator.run(sys.stdin.read())
     except SolidCoderConfigError as exc:
         _GATE.block(
             "solid-coder config invalid — fix .solid-coder/config.toml or config.local.toml",

@@ -51,6 +51,10 @@ class TestBumpPluginVersion(unittest.TestCase):
 
     def _run_in_fake_repo(self, args: list) -> subprocess.CompletedProcess:
         script_copy = self._patch_manifest_paths()
+        smoke = self.repo_root / "scripts" / "release-smoke.py"
+        smoke.parent.mkdir(exist_ok=True)
+        if not smoke.exists():
+            smoke.write_text("print('release smoke invoked')\n", encoding="utf-8")
         return subprocess.run(
             [sys.executable, str(script_copy), *args],
             capture_output=True,
@@ -65,6 +69,7 @@ class TestBumpPluginVersion(unittest.TestCase):
         result = self._run_in_fake_repo([])
 
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("release smoke invoked", result.stdout)
         self.assertIn("1.7.7 -> 1.7.8", result.stdout)
         self.assertEqual(
             json.loads(self.claude_manifest.read_text())["version"], "1.7.8"
@@ -128,6 +133,19 @@ class TestBumpPluginVersion(unittest.TestCase):
         self.assertEqual(
             json.loads(self.claude_manifest.read_text())["description"], "hello"
         )
+
+    def test_failed_release_smoke_preserves_both_versions(self):
+        _write_manifest(self.claude_manifest, "1.7.7")
+        _write_manifest(self.codex_manifest, "1.7.7")
+        smoke = self.repo_root / "scripts" / "release-smoke.py"
+        smoke.parent.mkdir()
+        smoke.write_text("raise SystemExit(1)\n", encoding="utf-8")
+
+        result = self._run_in_fake_repo([])
+
+        self.assertNotEqual(result.returncode, 0)
+        for manifest in (self.claude_manifest, self.codex_manifest):
+            self.assertEqual(json.loads(manifest.read_text())["version"], "1.7.7")
 
 
 if __name__ == "__main__":

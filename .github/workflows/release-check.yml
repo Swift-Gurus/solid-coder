@@ -1,0 +1,24 @@
+name: Installed plugin release check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  installed-plugin:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Provision the host Python runtime, not a project virtualenv
+        run: python3.12 -I -m pip install --requirement requirements-runtime.txt
+      - name: Verify the copied plugin using host Python outside the repository
+        run: python3.12 scripts/release-smoke.py

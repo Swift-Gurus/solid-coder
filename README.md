@@ -37,36 +37,75 @@ Live model checks run separately, after non-live checks pass, and require the
 existing model profiles, authentication, and MCP setup. Swift semantic-analysis
 tests also require a working Xcode/SourceKit installation on macOS.
 
-Use a mise-activated shell or `mise exec -- <command>` to use these tools.
-Launch Claude/Codex from that environment so Python MCP servers and hooks inherit
-the project's virtualenv on `PATH`. Changes do not update an already running
-desktop app's environment. Personal overrides belong in the ignored
+Use a mise-activated shell or `mise exec -- <command>` for development tools.
+Desktop's Python is provisioned separately below; passing development tests in
+the project virtualenv does not verify its dependencies. Changes do not update
+an already running desktop app's environment. Personal overrides belong in the ignored
 `.config/mise/config.local.toml`.
 
 ### Python requirements
 
-Use **Python 3.12** for the plugin. From the plugin checkout, install dependencies
-into the Python environment that will run the plugin:
+Install **Python 3.12** and make `python3.12` available to the Claude/Codex host.
+Provision the exact interpreter Desktop resolves, independently of the target
+repository's `.venv`. The plugin keeps its direct `python3.12` entrypoints and
+does not install dependencies automatically during MCP or hook startup.
 
 ```bash
 python3.12 --version
-python3.12 -m pip install -r requirements.txt
 ```
 
-Use an activated virtual environment if dependencies are not installed in your
-chosen Python environment. The plugin's MCP servers and hooks invoke `python3.12`
-from the host process's `PATH`. Legacy gateway calls and generated delegated MCP
-configurations inherit that running interpreter through `sys.executable`, rather
-than selecting the host's default `python3` again. Installing dependencies under
-a different interpreter does not make them available to the plugin.
+From this checkout, set `DESKTOP_PYTHON` to that interpreter's absolute path and
+run `mise run install:desktop`. For a Desktop using mise's global Python 3.12:
+
+```bash
+DESKTOP_PYTHON="$HOME/.local/share/mise/installs/python/3.12/bin/python3.12" mise run install:desktop
+```
+
+The explicit executable prevents mise's activated project virtualenv from
+redirecting pip to the wrong environment. Only the locked runtime dependencies
+are installed; pytest remains a development dependency. From outside the
+checkout, the equivalent command is:
+
+```bash
+"$DESKTOP_PYTHON" -I -m pip install -r /path/to/solid-coder/requirements-runtime.txt
+```
+
+Repeat provisioning when changing the host's Python or updating the runtime
+lock. Package-index access or an offline wheelhouse is needed only during this
+explicit installation, not during MCP startup. Legacy gateway calls and generated
+delegated MCP configurations inherit the running interpreter via `sys.executable`.
 
 After updating the plugin configuration, restart the Claude/Codex session so its
-MCP servers are relaunched with the selected runtime. No Python-version fallback
-or `SOLID_CODER_PYTHON` override is used.
+MCP servers are relaunched with the provisioned interpreter. No Python-version
+fallback or `SOLID_CODER_PYTHON` override is used. Entry commands are unchanged.
 
 Tree-sitter and its Swift and TypeScript grammars are pinned together in
-`requirements.txt`. Python 3.9 and the older Swift grammar are no longer part of
+`requirements-runtime.txt`. Development `requirements.txt` includes that lock
+plus pytest. Python 3.9 and the older Swift grammar are no longer part of
 the supported dependency configuration.
+
+### Release validation
+
+Run `mise run release:check` before release. This runs Ruff and the non-live
+regressions, then `python scripts/release-smoke.py`. The smoke check copies the
+distributable plugin to a temporary install, supplies an empty home and base
+Python-only PATH, and launches both host manifests from an unrelated directory.
+It defaults to the runner's base interpreter, not its active virtualenv; set
+`DESKTOP_PYTHON` or pass `--python /absolute/path/to/python3.12` when Desktop uses
+a different interpreter. It checks every MCP initialize/tools-list exchange,
+every declared hook's startup, and write-gate schema-invalid-config denial.
+It never installs or repairs dependencies; an unprovisioned interpreter fails.
+It does not use the development `.venv` packages, invoke a model, or establish
+that a host dispatched a hook around a real source edit; that remains a separate
+live enforcement check.
+
+The version-bumper CLI runs the installed-plugin smoke check before modifying
+either manifest; a failure leaves both versions unchanged. The GitHub
+`Installed plugin release check` workflow provisions the host Python from the
+runtime lock, then runs the same smoke check on pull requests, main pushes, and
+`v*` tags. Require its `installed-plugin` status in
+branch protection to enforce it for remote merges. The check never publishes a
+release or changes the installed plugin cache.
 
 ## Core workflows
 

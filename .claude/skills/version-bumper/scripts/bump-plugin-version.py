@@ -15,6 +15,7 @@ Exit codes:
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -98,10 +99,16 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
+        current = _read_current_version(_MANIFEST_PATHS)
+        _parse_version(args.set_version if args.set_version is not None else current)
+        subprocess.run(
+            [sys.executable, str(_REPO_ROOT / "scripts" / "release-smoke.py")],
+            check=True,
+        )
         old_version, new_version = bump_versions(
             _MANIFEST_PATHS, part=args.part, set_version=args.set_version
         )
-    except (FileNotFoundError, ValueError) as exc:
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         sys.exit(1)
 

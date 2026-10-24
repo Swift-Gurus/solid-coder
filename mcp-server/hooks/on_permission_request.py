@@ -17,12 +17,13 @@ for _d in (_MCP_DIR, _MCP_HEALTH_CONFIG):
         sys.path.insert(0, str(_d))
 
 from hook_utils import ensure_on_path
-from on_stop import HookEventReader, OnStopGate, main
+from on_stop import HookEventReader
 from slack_notify import SlackPermissionNotifier
+from slack_stop_handler import SlackStopHandler
 
 if __name__ == "__main__":
     ensure_on_path(Path(__file__).resolve().parent)
-    main(
-        reader=HookEventReader(),
-        gate=OnStopGate(handlers=[SlackPermissionNotifier()]),
-    )
+    event = HookEventReader().read()
+    handler = SlackStopHandler(SlackPermissionNotifier())
+    if handler.should_handle(event):
+        handler.handle(event)
