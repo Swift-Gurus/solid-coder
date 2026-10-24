@@ -42,12 +42,6 @@ class TestSharedSourceSearchEntryPoints(unittest.TestCase):
         self.path = self.project / "Sources" / "Catalog.swift"
         self.path.parent.mkdir(parents=True)
         GitWorkingTreeFixture(self.project).initialize()
-        project_directory = patch(
-            "search.codebase_search_executor_factory._resolve_project_root",
-            return_value=self.project,
-        )
-        project_directory.start()
-        self.addCleanup(project_directory.stop)
         self.path.write_text(
             "// solid-name: Catalog\n"
             "// solid-description: Retrieves profile records.\n"
@@ -65,7 +59,9 @@ class TestSharedSourceSearchEntryPoints(unittest.TestCase):
             terms=["profile", *[f"absent{index}" for index in range(37)]],
         )
         self.health_services = DrySearchServiceFactory()
-        self.legacy = self.health_services.make_search(CodebaseSearcherFactory().make())
+        self.legacy = self.health_services.make_search(
+            CodebaseSearcherFactory().make(ProjectDirectory(path=self.project))
+        )
         workflow_root = self.root / "workflow"
         workflow_root.mkdir()
         registrations = SourceOperationRegistrationsFactory(
@@ -194,7 +190,7 @@ class TestSharedSourceSearchEntryPoints(unittest.TestCase):
     ) -> None:
         legacy = (
             CodebaseSearchExecutorFactory()
-            .make()
+            .make(ProjectDirectory(path=self.project))
             .execute(
                 sources_dir=str(self.project),
                 plan_path=None,

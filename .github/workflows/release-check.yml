@@ -22,3 +22,7 @@ jobs:
         run: python3.12 -I -m pip install --requirement requirements-runtime.txt
       - name: Verify the copied plugin using host Python outside the repository
         run: python3.12 scripts/release-smoke.py
+      - name: Install regression test dependencies
+        run: python3.12 -m pip install --requirement requirements.txt
+      - name: Verify installed search uses real session context and strict containment
+        run: python3.12 -m pytest scripts/tests/test_installed_mcp_search.py -q --tb=short

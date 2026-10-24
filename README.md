@@ -200,11 +200,12 @@ mise run test
 mise run release:check
 ```
 
-`lint` checks without applying fixes. `test` runs non-live groups in separate
+`lint` applies Ruff's safe autofixes, then checks remaining findings. `test` runs non-live groups in separate
 processes. Live model checks require their own profiles, authentication, and
 MCP setup and run separately after non-live checks pass.
 
-`release:check` runs lint, non-live tests, and the installed-plugin smoke check.
+`release:check` runs lint, non-live tests, and the installed-plugin smoke check
+in that order, completing fixes before tests start.
 The smoke check copies the distribution outside the checkout, uses an empty
 home and base Python, and verifies MCP initialization, hook startup, and
 schema-invalid-config denial. It does not invoke a model or prove a live

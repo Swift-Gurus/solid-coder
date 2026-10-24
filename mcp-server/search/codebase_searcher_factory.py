@@ -33,8 +33,10 @@ class CodebaseSearcherFactory:
         self._adapters = adapters
         self._file_search = file_search
 
-    def make(self) -> CodebaseSearchAdapter:
-        return self._adapters.make()
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> CodebaseSearchAdapter:
+        return self._adapters.make(project_directory)
 
     def make_file_search(
         self, project_directory: ProjectDirectoryReading

@@ -21,8 +21,8 @@ run = [
 ]
 
 [tasks.lint]
-description = "Check Python with Ruff without changing files"
-run = "ruff check ."
+description = "Apply Ruff safe fixes, then check remaining Python findings"
+run = ["ruff check --fix .", "ruff check ."]
 
 [tasks.test]
 description = "Run all non-live test groups in separate processes"
@@ -36,5 +36,8 @@ run = [
 
 [tasks."release:check"]
 description = "Block release on lint, non-live regressions, and a clean installed-plugin smoke check"
-depends = ["lint", "test"]
-run = "python scripts/release-smoke.py"
+run = [
+    "mise run lint",
+    "mise run test",
+    "python scripts/release-smoke.py",
+]

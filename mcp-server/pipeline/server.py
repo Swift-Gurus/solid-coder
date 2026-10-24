@@ -447,10 +447,34 @@ class ApplicationBootstrapper:
 
 
 if __name__ == "__main__":
+    from harness.mcp_request_context_session_reader import (
+        McpRequestContextSessionReader,
+    )
+    from harness.project_context import McpRequestContextProjectDirectoryReader
     from health.config.solid_coder_config_loader import SolidCoderConfigLoader
-    from pipeline.application_bootstrapper_factory import ApplicationBootstrapperFactory
+    from mcp_server_factory import MCPServerFactory
+    from pipeline.application_bootstrapper_factory import (
+        _ENABLED_MCP_TOOLS,
+        ApplicationBootstrapperFactory,
+    )
     from pipeline.flow_result_renderer_creator import FlowResultRendererCreator
     from pipeline.flow_run_creator import FlowRunCreator
+    from search.codebase_searcher_factory import CodebaseSearcherFactory
+    from session.project_context import (
+        DEFAULT_SESSION_ROOT,
+        SessionProjectContextPathResolver,
+        SessionProjectDirectoryReader,
+    )
+
+    server = MCPServerFactory().build(
+        "solid-coder-pipeline", "1.0.0", enabled_tools=_ENABLED_MCP_TOOLS
+    )
+    project_directory = McpRequestContextProjectDirectoryReader(
+        session_reader=McpRequestContextSessionReader(call_meta_provider=server),
+        session_project_directory=SessionProjectDirectoryReader(
+            SessionProjectContextPathResolver(root_directory=DEFAULT_SESSION_ROOT)
+        ),
+    )
 
     ApplicationBootstrapperFactory(
         plugin_root=PLUGIN_ROOT,
@@ -459,4 +483,6 @@ if __name__ == "__main__":
             PLUGIN_ROOT, config_loader=SolidCoderConfigLoader()
         ),
         flow_renderer_creator=FlowResultRendererCreator(),
+        server=server,
+        search=CodebaseSearcherFactory().make(project_directory),
     ).make().run()

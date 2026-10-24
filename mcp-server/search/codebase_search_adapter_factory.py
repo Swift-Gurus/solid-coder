@@ -2,6 +2,8 @@
 
 from typing import Protocol
 
+from harness.project_context import ProjectDirectoryReading
+
 from search.codebase_search_adapter import CodebaseSearchAdapter
 from search.codebase_search_executor_factory import CodebaseSearchExecutorFactory
 from search.codebase_search_output_renderer import CodebaseSearchOutputRenderer
@@ -15,7 +17,9 @@ solid-description: Contract for constructing the presented codebase-search bound
 
 
 class CodebaseSearchAdapterCreating(Protocol):
-    def make(self) -> CodebaseSearchAdapter: ...
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> CodebaseSearchAdapter: ...
 
 
 """
@@ -27,8 +31,10 @@ solid-description: Composes the presented codebase-search adapter from shared se
 
 
 class CodebaseSearchAdapterFactory(CodebaseSearchAdapterCreating):
-    def make(self) -> CodebaseSearchAdapter:
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> CodebaseSearchAdapter:
         return CodebaseSearchAdapter(
-            executor=CodebaseSearchExecutorFactory().make(),
+            executor=CodebaseSearchExecutorFactory().make(project_directory),
             renderer=CodebaseSearchOutputRenderer(),
         )

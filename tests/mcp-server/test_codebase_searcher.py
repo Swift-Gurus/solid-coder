@@ -4,9 +4,9 @@ import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
 
 from git_working_tree_fixture import GitWorkingTreeFixture
+from harness.project_context import ProjectDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mcp-server"))
 
@@ -29,14 +29,9 @@ class CodebaseSearcherTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.project_root = Path(temporary.name).resolve()
         GitWorkingTreeFixture(self.project_root).initialize()
-        directory = patch(
-            "search.codebase_search_executor_factory._resolve_project_root",
-            return_value=self.project_root,
-        )
-        directory.start()
-        self.addCleanup(directory.stop)
-        self.sut = CodebaseSearcherFactory().make()
-        self.raw_sut = RawCodebaseSearcherFactory().make()
+        project_directory = ProjectDirectory(path=self.project_root)
+        self.sut = CodebaseSearcherFactory().make(project_directory)
+        self.raw_sut = RawCodebaseSearcherFactory().make(project_directory)
 
     def _tree(self, root: Path):
         _write(

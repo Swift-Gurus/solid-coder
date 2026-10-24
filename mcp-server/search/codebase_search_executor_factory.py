@@ -3,6 +3,7 @@
 from gate_logger import GateLogger
 from harness.json_loading import JsonLoader
 from harness.ordered_string_collector import OrderedStringCollector
+from harness.project_context import ProjectDirectoryReading
 from harness.pydantic_model_decoder import PydanticModelDecoder
 from health.config.hc_config_core import find_repository_root
 from hook_utils import _resolve_project_root
@@ -30,10 +31,16 @@ solid-description: Provides production codebase source-search executors.
 
 
 class CodebaseSearchExecutorFactory:
-    def make(self) -> CodebaseSearchExecutor:
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> CodebaseSearchExecutor:
         return CodebaseSearchExecutor(
             input_builder=CodebaseSearchInputBuilder(
-                current_directory=_resolve_project_root,
+                current_directory=(
+                    project_directory.read
+                    if project_directory is not None
+                    else _resolve_project_root
+                ),
                 targets=RepositoryTargetResolver(find_repository_root),
                 terms=CodebaseSearchTermsResolver(
                     plan_loader=YamlConfigFileLoader(
