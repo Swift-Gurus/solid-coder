@@ -6,6 +6,7 @@ solid-tags: [hook]
 
 import os
 import sys
+import tomllib
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
@@ -16,9 +17,13 @@ for _d in (_MCP_DIR, _MODULE_DIR):
     if str(_d) not in sys.path:
         sys.path.insert(0, str(_d))
 
-from hook_utils import load_toml
+from harness.flow_validation_error import FlowValidationError
+from harness.pydantic_model_decoder import PydanticModelDecoder
+from harness.structured_model_decoding import StructuredModelDecoding
 from scoring.config_merger import ConfigMerger, ConfigMerging
 from scoring.parent_chain import parent_chain
+from solid_coder_config import SolidCoderConfig
+from solid_coder_config_error import SolidCoderConfigError
 from solid_coder_paths import CONFIG_DIR, CONFIG_LOCAL_TOML, CONFIG_TOML
 from toml_root_values import TomlRootValues
 from utils.debug_logger import Observing
@@ -52,7 +57,35 @@ def find_config(_cwd: Path | None = None) -> Path | None:
 
 def find_repo_config(_cwd: Path | None = None) -> Path | None:
     """Return the committed project config path, or None if absent."""
-    return _find_config_file(CONFIG_TOML, _cwd=_cwd)
+    preferred = _find_config_file(CONFIG_TOML, _cwd=_cwd)
+    base = _cwd if _cwd is not None else _PROJECT_ROOT
+    alternate = base / ".config" / "solid.coder" / CONFIG_TOML
+    return (
+        preferred
+        if preferred is not None
+        else (alternate if alternate.exists() else None)
+    )
+
+
+def find_user_config(home: Path) -> Path | None:
+    for candidate in (
+        home / ".config" / "solid-coder" / CONFIG_TOML,
+        home / CONFIG_DIR / CONFIG_TOML,
+    ):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def find_repository_root(cwd: Path) -> Path | None:
+    return next(
+        (
+            directory
+            for directory in parent_chain(cwd.resolve())
+            if (directory / ".git").exists()
+        ),
+        None,
+    )
 
 
 def _resolve_project_cwd(_env: dict | None = None, _cwd: Path | None = None) -> Path:
@@ -66,23 +99,45 @@ def _resolve_project_cwd(_env: dict | None = None, _cwd: Path | None = None) -> 
 
 
 _DEFAULT_MERGER: ConfigMerging = ConfigMerger()
+_CONFIG_DECODER: StructuredModelDecoding[SolidCoderConfig] = PydanticModelDecoder(
+    SolidCoderConfig
+)
+
+
+def load_selected_toml(
+    path: Path,
+    decoder: StructuredModelDecoding[SolidCoderConfig] = _CONFIG_DECODER,
+) -> dict:
+    try:
+        with path.open("rb") as stream:
+            values = tomllib.load(stream)
+        decoder.decode(values, f"configuration '{path}'")
+        return values
+    except (OSError, ValueError, FlowValidationError) as error:
+        raise SolidCoderConfigError(
+            f"Invalid configuration '{path}': {error}"
+        ) from error
 
 
 def _read_with_overrides(
     extract: Callable[[dict], dict],
-    _loader: TomlLoader = load_toml,
+    _loader: TomlLoader = load_selected_toml,
     _cwd: Path | None = None,
     _merger: ConfigMerging = _DEFAULT_MERGER,
 ) -> dict:
     """Merge root-to-leaf project settings, stopping at the nearest Git boundary."""
     effective_cwd = _resolve_project_cwd(_cwd=_cwd).resolve()
+    root = find_repository_root(effective_cwd)
     directories: list[Path] = []
     for directory in parent_chain(effective_cwd):
         directories.append(directory)
-        if (directory / ".git").exists():
+        if root is None or directory == root:
             break
 
     merged: dict = {}
+    user_config = find_user_config(Path.home())
+    if user_config is not None:
+        merged = extract(_loader(user_config))
     for directory in reversed(directories):
         for config_path in (
             find_repo_config(_cwd=directory),
@@ -95,7 +150,7 @@ def _read_with_overrides(
 
 def read_section(
     section: str,
-    _loader: TomlLoader = load_toml,
+    _loader: TomlLoader = load_selected_toml,
     _cwd: Path | None = None,
 ) -> dict:
     """Read a config section, merging repo defaults under local overrides."""
@@ -105,7 +160,7 @@ def read_section(
 
 
 def read_root_section(
-    _loader: TomlLoader = load_toml,
+    _loader: TomlLoader = load_selected_toml,
     _cwd: Path | None = None,
 ) -> dict:
     """Read top-level scalar keys (not [table] sections), merging repo defaults under local overrides."""
@@ -118,7 +173,7 @@ def read_root_section(
 
 @Observing("config.read_llm_section")
 def read_llm_section(
-    _loader: TomlLoader = load_toml,
+    _loader: TomlLoader = load_selected_toml,
     _env: dict | None = None,
     _cwd: Path | None = None,
 ) -> dict:
@@ -144,7 +199,7 @@ def llm_value(
     key: str,
     default: T,
     converter: Callable[[Any], T],
-    _loader: TomlLoader = load_toml,
+    _loader: TomlLoader = load_selected_toml,
     _env: dict | None = None,
     _cwd: Path | None = None,
 ) -> T:

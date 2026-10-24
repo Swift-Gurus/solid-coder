@@ -3,6 +3,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
+from source.repository_target_resolver import RepositoryTargetResolving
 from source.source_search_input import SourceSearchInput
 from source.source_search_query import SourceSearchQuery
 
@@ -25,10 +26,12 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
         current_directory: Callable[[], Path],
         terms: CodebaseSearchTermsResolving,
         query_kinds: type[CodebaseSearchQueryKind],
+        targets: RepositoryTargetResolving,
     ) -> None:
         self._current_directory = current_directory
         self._terms = terms
         self._query_kinds = query_kinds
+        self._targets = targets
 
     def build(
         self,
@@ -38,7 +41,9 @@ class CodebaseSearchInputBuilder(CodebaseSearchInputBuilding):
         spec_numbers: list[str] | None,
         min_matches: int,
     ) -> CodebaseSearchInputResolution:
-        project_root = Path(sources_dir) if sources_dir else self._current_directory()
+        project_root = self._targets.resolve(
+            self._current_directory(), Path(sources_dir) if sources_dir else Path(".")
+        )
         if not project_root.is_dir():
             raise ValueError(f"sources_dir not found: {project_root}")
         resolved_terms = self._terms.resolve(

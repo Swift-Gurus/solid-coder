@@ -7,6 +7,7 @@ from source.repository_source_snapshots_collecting import (
 from source.repository_source_units_resolving import (
     RepositorySourceUnitsResolving,
 )
+from source.repository_target_resolver import RepositoryTargetResolving
 from source.source_candidate_origin import SourceCandidateOrigin
 from source.source_search_candidate import SourceSearchCandidate
 from source.source_search_input import SourceSearchInput
@@ -30,21 +31,28 @@ class SourceSearchOperation:
         matches: SourceSearchMatchesResolving,
         exclusion: SourceUnitExclusionChecking,
         project_directory: ProjectDirectoryReading,
+        targets: RepositoryTargetResolving,
     ) -> None:
         self._snapshots = snapshots
         self._units = units
         self._matches = matches
         self._exclusion = exclusion
         self._project_directory = project_directory
+        self._targets = targets
 
     def execute(self, operation_input: SourceSearchInput) -> SourceSearchOutput:
-        root = self._project_directory.read().resolve()
-        proposed_paths = {
-            snapshot.path.resolve() for snapshot in operation_input.context.sources
-        }
+        cwd = self._project_directory.read()
+        root = self._targets.resolve(cwd, cwd.resolve())
+        proposed_sources = [
+            snapshot.model_copy(
+                update={"path": self._targets.resolve(root, snapshot.path)}
+            )
+            for snapshot in operation_input.context.sources
+        ]
+        proposed_paths = {snapshot.path for snapshot in proposed_sources}
         proposed_snapshots = [
             snapshot
-            for snapshot in operation_input.context.sources
+            for snapshot in proposed_sources
             if not operation_input.included_file_extensions
             or snapshot.path.suffix.casefold()
             in operation_input.included_file_extensions

@@ -1,15 +1,16 @@
 """Composes production codebase source-search execution."""
 
-from pathlib import Path
-
 from gate_logger import GateLogger
 from harness.json_loading import JsonLoader
 from harness.ordered_string_collector import OrderedStringCollector
 from harness.pydantic_model_decoder import PydanticModelDecoder
+from health.config.hc_config_core import find_repository_root
+from hook_utils import _resolve_project_root
 from scoring.yaml_config_file_loader import YamlConfigFileLoader
 from source.exact_source_tokens_resolver_factory import (
     ExactSourceTokensResolverFactory,
 )
+from source.repository_target_resolver import RepositoryTargetResolver
 from source.source_search_operation_factory import SourceSearchOperationFactory
 from utils.debug_logger import DebugLogger
 
@@ -32,7 +33,8 @@ class CodebaseSearchExecutorFactory:
     def make(self) -> CodebaseSearchExecutor:
         return CodebaseSearchExecutor(
             input_builder=CodebaseSearchInputBuilder(
-                current_directory=Path.cwd,
+                current_directory=_resolve_project_root,
+                targets=RepositoryTargetResolver(find_repository_root),
                 terms=CodebaseSearchTermsResolver(
                     plan_loader=YamlConfigFileLoader(
                         loader=JsonLoader(), logger=GateLogger(DebugLogger())

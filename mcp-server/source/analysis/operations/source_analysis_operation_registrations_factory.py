@@ -3,6 +3,7 @@ from harness.flow_validation_error_factory import FlowValidationErrorFactory
 from harness.operation_registration import OperationRegistration
 from harness.operations.operation_result import OperationResult
 from harness.operations.result_operation_adapter import ResultOperationAdapter
+from harness.project_context import ProjectDirectoryReading
 from source.analysis.declarations.bind_declaration_classifications_input import (
     BindDeclarationClassificationsInput,
 )
@@ -116,7 +117,9 @@ solid-description: Provides typed workflow operations for source inspection, bou
 
 
 class SourceAnalysisOperationRegistrationsFactory:
-    def make(self) -> list[OperationRegistration]:
+    def make(
+        self, project_directory: ProjectDirectoryReading | None = None
+    ) -> list[OperationRegistration]:
         members = SourceDeclarationMembersOperation(
             members=SourceOwnedMembersResolver(),
             signatures=SwiftMemberSignatureMatcherFactory().make(),
@@ -143,7 +146,7 @@ class SourceAnalysisOperationRegistrationsFactory:
                 input_model=AnalyzeSourceInput,
                 output_model=OperationResult[SourceAnalysis],
                 handler=ResultOperationAdapter(
-                    operation=SourceAnalysisOperationFactory().make(),
+                    operation=SourceAnalysisOperationFactory().make(project_directory),
                     result_type=OperationResult[SourceAnalysis],
                 ),
             ),
@@ -153,7 +156,7 @@ class SourceAnalysisOperationRegistrationsFactory:
                 output_model=OperationResult[SourceAnalysis],
                 handler=ResultOperationAdapter(
                     operation=TextSourceAnalysisAdapter(
-                        SourceAnalysisOperationFactory().make()
+                        SourceAnalysisOperationFactory().make(project_directory)
                     ),
                     result_type=OperationResult[SourceAnalysis],
                 ),

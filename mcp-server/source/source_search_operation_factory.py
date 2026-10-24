@@ -3,6 +3,8 @@
 from harness.path_builder import PathBuilder
 from harness.project_context import ProjectDirectoryReading
 from harness.sha256_content_hasher import Sha256ContentHasher
+from health.config.hc_config_core import find_repository_root
+from search.file_searcher import FileSearcher
 from source.default_repository_source_exclusions import (
     DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
 )
@@ -25,10 +27,12 @@ from source.frontmatter_repository_source_units_resolver import (
     FrontmatterRepositorySourceUnitsResolver,
 )
 from source.os_directory_tree_walker import OsDirectoryTreeWalker
+from source.repository_source_files_discovering import RepositorySourceFilesDiscovering
 from source.repository_source_snapshots_collector import (
     RepositorySourceSnapshotsCollector,
 )
 from source.repository_source_unit_projector import RepositorySourceUnitProjector
+from source.repository_target_resolver import RepositoryTargetResolver
 from source.source_frontmatter_reader_factory import SourceFrontmatterReaderFactory
 from source.source_frontmatter_selector import SourceFrontmatterSelector
 from source.source_search_operation import SourceSearchOperation
@@ -37,6 +41,7 @@ from source.utf8_source_slice_resolver import UTF8SourceSliceResolver
 from source.whole_file_repository_source_unit_builder import (
     WholeFileRepositorySourceUnitBuilder,
 )
+from utils.path_file_system_reader import PathFileSystemReader
 
 """
 solid-name: SourceSearchOperationFactory
@@ -47,10 +52,27 @@ solid-description: Provides repository source search operations.
 
 
 class SourceSearchOperationFactory:
+    def make_files(self) -> RepositorySourceFilesDiscovering:
+        return FilteredRepositorySourceFilesDiscoverer(
+            tree=OsDirectoryTreeWalker(),
+            excluded_directories=DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES,
+        )
+
+    def make_file_search(
+        self, project_directory: ProjectDirectoryReading
+    ) -> FileSearcher:
+        return FileSearcher(
+            files=self.make_files(),
+            file_system=PathFileSystemReader(),
+            project_directory=project_directory,
+            targets=RepositoryTargetResolver(find_repository_root),
+        )
+
     def make(
         self,
         project_directory: ProjectDirectoryReading,
     ) -> SourceSearchOperation:
+        targets = RepositoryTargetResolver(find_repository_root)
         frontmatter_reader = SourceFrontmatterReaderFactory().make()
         units = FrontmatterRepositorySourceUnitsResolver(
             frontmatter_reader=frontmatter_reader,
@@ -62,13 +84,9 @@ class SourceSearchOperationFactory:
         )
         return SourceSearchOperation(
             snapshots=RepositorySourceSnapshotsCollector(
-                files=FilteredRepositorySourceFilesDiscoverer(
-                    tree=OsDirectoryTreeWalker(),
-                    excluded_directories=(
-                        DEFAULT_REPOSITORY_SOURCE_EXCLUDED_DIRECTORIES
-                    ),
-                ),
+                files=self.make_files(),
                 content_hasher=Sha256ContentHasher(),
+                targets=targets,
             ),
             units=units,
             matches=ExactSourceSearchMatchesResolver(
@@ -79,4 +97,5 @@ class SourceSearchOperationFactory:
             ),
             exclusion=SourceUnitExclusionChecker(PathBuilder()),
             project_directory=project_directory,
+            targets=targets,
         )

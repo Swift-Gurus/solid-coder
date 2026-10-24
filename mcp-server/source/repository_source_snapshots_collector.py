@@ -10,11 +10,12 @@ from source.repository_source_snapshot import RepositorySourceSnapshot
 from source.repository_source_snapshots_collecting import (
     RepositorySourceSnapshotsCollecting,
 )
+from source.repository_target_resolver import RepositoryTargetResolving
 
 """
 solid-name: RepositorySourceSnapshotsCollector
 solid-category: service
-solid-spec: [SPEC-040]
+solid-spec: [SPEC-040, SPEC-071]
 solid-description: Collects stable, ordered snapshots of readable source files for repository analysis and search.
 """
 
@@ -24,9 +25,11 @@ class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
         self,
         files: RepositorySourceFilesDiscovering,
         content_hasher: ContentHashing,
+        targets: RepositoryTargetResolving,
     ) -> None:
         self._files = files
         self._content_hasher = content_hasher
+        self._targets = targets
 
     def collect(
         self,
@@ -34,14 +37,15 @@ class RepositorySourceSnapshotsCollector(RepositorySourceSnapshotsCollecting):
         included_file_extensions: list[str],
         excluded_paths: set[Path],
     ) -> list[RepositorySourceSnapshot]:
-        root = project_root.resolve()
+        root = self._targets.resolve(project_root, project_root.resolve())
+        paths = [
+            self._targets.resolve(root, path)
+            for path in self._files.discover(root)
+            if not included_file_extensions
+            or path.suffix.casefold() in included_file_extensions
+        ]
         snapshots: list[RepositorySourceSnapshot] = []
-        for path in self._files.discover(root):
-            if (
-                included_file_extensions
-                and path.suffix.casefold() not in included_file_extensions
-            ):
-                continue
+        for path in paths:
             resolved_path = path.resolve()
             if resolved_path in excluded_paths:
                 continue

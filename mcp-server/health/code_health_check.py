@@ -23,9 +23,11 @@ from code_health_check_request import CodeHealthCheckRequest
 from code_health_check_request_checking import CodeHealthCheckRequestChecking
 from code_health_check_service import CodeHealthCheckService
 from configured_health_checker_factory import ConfiguredHealthCheckerFactory
+from health.config.hc_config_core import find_repository_root
 from health_check_outcome import HealthCheckOutcome
-from hook_utils import PLUGIN_ROOT
+from hook_utils import PLUGIN_ROOT, _resolve_project_root
 from patch_review_context import PatchReviewContext
+from source.repository_target_resolver import RepositoryTargetResolver
 
 SUPPORTED_EXTENSIONS: dict = {
     ".swift": "Swift",
@@ -71,5 +73,7 @@ _CHECKER_FACTORY = ConfiguredHealthCheckerFactory(PLUGIN_ROOT)
 CHECK = CodeHealthCheck(
     CodeHealthCheckService(
         checker_factory=_CHECKER_FACTORY,
+        targets=RepositoryTargetResolver(find_repository_root),
+        current_directory=_resolve_project_root,
     )
 )

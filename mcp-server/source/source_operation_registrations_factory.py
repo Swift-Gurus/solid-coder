@@ -89,7 +89,9 @@ class SourceOperationRegistrationsFactory:
                 output_model=CollectChangesOutput,
                 handler=CollectChangesOperationFactory().make(),
             ),
-            *SourceAnalysisOperationRegistrationsFactory().make(),
+            *SourceAnalysisOperationRegistrationsFactory().make(
+                self._project_directory
+            ),
             *FrontmatterOperationRegistrationsFactory(self._project_directory).make(),
             OperationRegistration(
                 name="source.resolve_type_inspections",
@@ -114,7 +116,9 @@ class SourceOperationRegistrationsFactory:
                 name="source.prepare_search_targets",
                 input_model=PrepareSearchTargetsInput,
                 output_model=PrepareSearchTargetsOutput,
-                handler=PrepareSearchTargetsOperationFactory().make(),
+                handler=PrepareSearchTargetsOperationFactory().make(
+                    self._project_directory
+                ),
             ),
             OperationRegistration(
                 name="source.prepare_search_query",

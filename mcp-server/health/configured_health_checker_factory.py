@@ -8,6 +8,7 @@ from gate_logger import GateLogger
 from hc_checker import HealthChecking
 from hc_checker_factory import LegacyHealthCheckerFactory
 from hc_runner_factory import select_strategy
+from health.config.hc_config_core import find_repository_root
 from health_check_mode import HealthCheckMode
 from health_check_outcome import HealthCheckOutcome
 from health_checker_creating import HealthCheckerCreating
@@ -17,6 +18,7 @@ from legacy_health_outcome_adapter import LegacyHealthOutcomeAdapter
 from mcp_config_builder import McpConfigBuilder
 from mcp_config_profile import McpConfigProfile
 from solid_coder_config_loader import SolidCoderConfigLoader
+from source.repository_target_resolver import RepositoryTargetResolver
 from utils.debug_logger import DebugLogger
 from workflow_health_checker_factory import WorkflowHealthCheckerFactory
 
@@ -35,12 +37,15 @@ class ConfiguredHealthCheckerFactory(HealthCheckerCreating[HealthCheckOutcome]):
     def make(
         self, request: CodeHealthCheckRequest
     ) -> HealthChecking[HealthCheckOutcome]:
-        project_root = (
+        effective_cwd = (
             Path(request.cwd).resolve()
             if request.cwd
             else _resolve_project_root().resolve()
         )
-        config = SolidCoderConfigLoader().load(project_root)
+        project_root = RepositoryTargetResolver(find_repository_root).resolve(
+            effective_cwd, Path(".")
+        )
+        config = SolidCoderConfigLoader().load(effective_cwd)
         strategy = select_strategy(config_loader=lambda: config)
         strategy.apply_env()
         mode = config.feature_flags.health_check_mode

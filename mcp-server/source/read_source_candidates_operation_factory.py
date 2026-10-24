@@ -2,11 +2,13 @@
 
 from harness.project_context import ProjectDirectoryReading
 from harness.sha256_content_hasher import Sha256ContentHasher
+from health.config.hc_config_core import find_repository_root
 from source.path_source_bytes_reader import PathSourceBytesReader
 from source.proposed_candidate_source_resolver import (
     ProposedCandidateSourceResolver,
 )
 from source.read_source_candidates_operation import ReadSourceCandidatesOperation
+from source.repository_target_resolver import RepositoryTargetResolver
 from source.verified_candidate_source_resolver import (
     VerifiedCandidateSourceResolver,
 )
@@ -31,4 +33,5 @@ class ReadSourceCandidatesOperationFactory:
             ),
             proposed_source=ProposedCandidateSourceResolver(),
             project_directory=self._project_directory,
+            targets=RepositoryTargetResolver(find_repository_root),
         )

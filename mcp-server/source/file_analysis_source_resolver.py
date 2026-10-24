@@ -1,8 +1,12 @@
 """Resolves accessible file-backed source content."""
 
+from collections.abc import Callable
+from pathlib import Path
+
 from gate.file_extension_extracting import FileExtensionExtracting
 from source.file_analysis_source import FileAnalysisSource
 from source.file_analysis_source_resolving import FileAnalysisSourceResolving
+from source.repository_target_resolver import RepositoryTargetResolving
 from source.resolved_analysis_source import ResolvedAnalysisSource
 from source.source_operation_error import SourceOperationError
 from utils.prompt_builder import TextFileReading
@@ -20,15 +24,19 @@ class FileAnalysisSourceResolver(FileAnalysisSourceResolving):
         self,
         reader: TextFileReading,
         extension_extractor: FileExtensionExtracting,
+        targets: RepositoryTargetResolving,
+        current_directory: Callable[[], Path],
     ) -> None:
         self._reader = reader
         self._extension_extractor = extension_extractor
+        self._targets = targets
+        self._current_directory = current_directory
 
     def resolve(
         self,
         source: FileAnalysisSource,
     ) -> ResolvedAnalysisSource:
-        path = source.path.resolve()
+        path = self._targets.resolve(self._current_directory(), source.path)
         content = self._reader.read(path)
         if content is None:
             raise SourceOperationError(f"Unable to read source analysis file '{path}'")
